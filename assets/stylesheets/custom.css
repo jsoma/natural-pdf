@@ -1,0 +1,38 @@
+/* Natural PDF - Minimal Custom Styling */
+
+/* Typography improvements */
+.md-typeset h1 {
+  font-weight: 400;
+}
+
+.md-typeset h2 {
+  font-weight: 400;
+  margin-top: 1.5em;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  padding-bottom: 0.3em;
+}
+
+.md-typeset h3 {
+  font-weight: 500;
+}
+
+/* Table improvements */
+.md-typeset table:not([class]) {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+/* API Reference improvements */
+.doc-method {
+  border-left: 3px solid var(--md-primary-fg-color);
+  padding-left: 1em;
+  margin: 1.5em 0;
+}
+
+/* Example images */
+.pdf-screenshot {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 1em 0;
+}
