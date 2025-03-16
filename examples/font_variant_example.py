@@ -1,5 +1,5 @@
 """
-Example demonstrating font variant detection in Natural PDF Plumber.
+Example demonstrating font variant detection in Natural PDF.
 
 This example shows how to identify and filter text elements by font variant
 (the prefix in embedded font names, such as 'AAAAAB+FontName').

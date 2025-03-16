@@ -1,6 +1,10 @@
-# Natural PDF Plumber
+# Natural PDF
 
-A more intuitive interface for working with PDFs, built on top of pdfplumber.
+A friendly library for working with PDFs, built on top of [pdfplumber](https://github.com/jsvine/pdfplumber).
+
+Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
+
+[Complete documentation here](https://jsoma.github.io/natural-pdf)
 
 ## Features
 
@@ -19,15 +23,11 @@ A more intuitive interface for working with PDFs, built on top of pdfplumber.
 
 ## Installation
 
-### Basic Installation
-
 ```bash
 pip install natural-pdf
 ```
 
-### Installation Options
-
-Natural PDF supports several installation options based on your needs:
+or if you're picky...
 
 ```bash
 # Minimal installation without AI models (faster, smaller)
@@ -35,9 +35,6 @@ pip install natural-pdf[core]
 
 # With all OCR engines
 pip install natural-pdf[easyocr,paddle]
-
-# Complete installation with all dependencies
-pip install natural-pdf[all]
 ```
 
 ## Quick Start
@@ -211,3 +208,7 @@ Logs follow a hierarchical structure matching the library's module organization:
 - `natural_pdf.core` - Core PDF operations
 - `natural_pdf.analyzers` - Layout analysis operations
 - `natural_pdf.ocr` - OCR engine operations
+
+## More details
+
+[Complete documentation here](https://jsoma.github.io/natural-pdf)

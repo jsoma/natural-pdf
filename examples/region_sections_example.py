@@ -1,5 +1,5 @@
 """
-Example demonstrating the get_sections() method on regions in Natural PDF Plumber.
+Example demonstrating the get_sections() method on regions in Natural PDF.
 
 This example shows how to extract logical sections from regions 
 using various types of boundary elements.

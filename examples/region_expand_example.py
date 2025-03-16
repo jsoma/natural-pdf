@@ -1,5 +1,5 @@
 """
-Example demonstrating the region.expand() method in Natural PDF Plumber.
+Example demonstrating the region.expand() method in Natural PDF.
 
 This example shows how to expand or shrink regions in various ways.
 """

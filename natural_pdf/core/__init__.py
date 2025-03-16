@@ -1,3 +1,3 @@
 """
-Core classes for Natural PDF Plumber.
+Core classes for Natural PDF.
 """

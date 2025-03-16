@@ -1,5 +1,5 @@
 """
-Example demonstrating font-aware text extraction in Natural PDF Plumber.
+Example demonstrating font-aware text extraction in Natural PDF.
 
 This example shows how to use the font_attrs parameter to group text by font properties,
 which helps preserve the formatting and style of text during extraction.

@@ -1,5 +1,5 @@
 """
-Example demonstrating how to use exclusion zones in Natural PDF Plumber.
+Example demonstrating how to use exclusion zones in Natural PDF.
 """
 
 import os

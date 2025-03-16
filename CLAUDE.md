@@ -1,6 +1,6 @@
-# Natural PDF Plumber Notes
+# Natural PDF Notes
 
-This file contains important information about the Natural PDF Plumber codebase for reference.
+This file contains important information about the Natural PDF codebase for reference.
 
 ## Development Setup
 

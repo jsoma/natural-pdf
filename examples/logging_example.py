@@ -1,5 +1,5 @@
 """
-Example demonstrating the logging system in Natural PDF Plumber.
+Example demonstrating the logging system in Natural PDF.
 """
 import os
 import sys

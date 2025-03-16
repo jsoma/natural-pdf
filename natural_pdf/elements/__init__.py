@@ -1,3 +1,3 @@
 """
-Element classes for Natural PDF Plumber.
+Element classes for Natural PDF.
 """

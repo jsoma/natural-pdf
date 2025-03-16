@@ -1,5 +1,5 @@
 """
-Natural PDF Plumber - A more intuitive interface for working with PDFs.
+Natural PDF - A more intuitive interface for working with PDFs.
 """
 import logging
 
