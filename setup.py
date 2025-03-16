@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 from datetime import datetime
 
-# Create version using CalVer: YY.MM.DD
+# Create version using CalVer: YY.MM.DD.build
 now = datetime.now()
-version = f"{now.year % 100:02d}.{now.month:02d}.{now.day:02d}"
+build = 2  # Increment this for each release on the same day
+version = f"{now.year % 100:02d}.{now.month:02d}.{now.day:02d}.{build}"
 
 setup(
     name="natural-pdf",
