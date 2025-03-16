@@ -1,0 +1,131 @@
+site_name: Natural PDF
+site_description: A more intuitive interface for working with PDFs
+site_url: https://github.com/jsoma/natural-pdf/
+repo_url: https://github.com/jsoma/natural-pdf
+repo_name: jsoma/natural-pdf
+copyright: "&copy; 2023-2025 Jonathan Soma"
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: SFMono-Regular
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - navigation.instant
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  language: en
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+  
+extra_css:
+  - assets/stylesheets/custom.css
+
+nav:
+  - Home: index.md
+  - Getting Started: installation/index.md
+  - Working with PDFs:
+    - PDF Navigation: pdf-navigation/index.md
+    - Element Selection: element-selection/index.md
+    - Text Extraction: text-extraction/index.md
+    - Working with Regions: regions/index.md
+  - Advanced Features:
+    - Visual Debugging: visual-debugging/index.md
+    - OCR: ocr/index.md
+    - Layout Analysis: layout-analysis/index.md
+    - Tables: tables/index.md
+    - Document Q&A: document-qa/index.md
+  - Explanations:
+    - Overview: explanations/index.md
+    - PDF Extraction Challenges: explanations/pdf-extraction-challenges.md
+    - Understanding PDF Fonts: explanations/pdf-fonts.md
+    - OCR Challenges & Solutions: explanations/ocr-challenges.md
+  - API Reference: api/index.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      pygments_style: fruity
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          rendering:
+            show_source: true
+            show_category_heading: true
+            show_root_heading: true
+            show_object_full_path: true
+            heading_level: 3
+          selection:
+            docstring_style: google
+            docstring_options:
+              replace_admonitions: true
+      watch:
+        - natural_pdf/
+        
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jsoma/natural-pdf
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/natural-pdf/

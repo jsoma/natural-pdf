@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+recursive-include natural_pdf/templates *.html
+recursive-include docs *.md *.png *.jpg *.gif
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#3f51b5"/>
+  <rect x="50" y="50" width="1100" height="530" rx="15" fill="#fff" opacity="0.1"/>
+  
+  <!-- Logo -->
+  <path d="M300,200 H200 Q180,200 180,220 V410 Q180,430 200,430 H300 Q320,430 320,410 V220 Q320,200 300,200 M300,430 H200 V200 H270 V250 H300 V430 M290,270 V350 L270,330 L240,360 L210,330 L240,300 L220,280 L240,260 L290,310 V270 H290Z" fill="#fff"/>
+  
+  <!-- Text -->
+  <text x="380" y="290" font-family="'Roboto', sans-serif" font-size="100" font-weight="700" fill="#fff">Natural PDF</text>
+  <text x="380" y="360" font-family="'Roboto', sans-serif" font-size="40" font-weight="300" fill="#fff">A more intuitive way to work with PDFs</text>
+  
+  <!-- Decorative elements -->
+  <rect x="380" y="380" width="500" height="4" rx="2" fill="#fff"/>
+  <circle cx="150" cy="150" r="30" fill="#fff" opacity="0.1"/>
+  <circle cx="1050" cy="480" r="50" fill="#fff" opacity="0.1"/>
+  <circle cx="950" cy="150" r="20" fill="#fff" opacity="0.1"/>
+</svg>

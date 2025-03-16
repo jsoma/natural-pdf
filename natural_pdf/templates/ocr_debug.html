@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Debug Report</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        h1, h2 {{
+            color: #2c3e50;
+        }}
+        .page-section {{
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background: #f8f9fa;
+        }}
+        .page-title {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        .page-controls {{
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }}
+        .controls {{
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }}
+        .filter-control {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        input, select, button {{
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }}
+        button {{
+            background: #4b6bfb;
+            color: white;
+            cursor: pointer;
+        }}
+        button:hover {{
+            background: #3b5de7;
+        }}
+        .region-table {{
+            width: 100%;
+            border-collapse: collapse;
+        }}
+        .region-table th,
+        .region-table td {{
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }}
+        .region-table th {{
+            background: #f2f2f2;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }}
+        .region-image {{
+            width: 35%;  /* Limit image cell width */
+        }}
+        .image-clip {{
+            position: relative;
+            overflow: hidden;
+            background-repeat: no-repeat;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            margin: 0 auto;
+            max-width: 350px;  /* Maximum width */
+            max-height: 250px; /* Maximum height */
+            transform-origin: top left; /* For scaling */
+        }}
+        .confidence {{
+            width: 90px;
+            text-align: center;
+            white-space: nowrap;
+        }}
+        .confidence[data-level="high"] {{
+            background-color: rgba(0, 200, 0, 0.2);
+        }}
+        .confidence[data-level="medium"] {{
+            background-color: rgba(255, 200, 0, 0.2);
+        }}
+        .confidence[data-level="low"] {{
+            background-color: rgba(255, 0, 0, 0.2);
+        }}
+        .text-content {{
+            width: 60%;
+        }}
+        .text-content-input {{
+            width: 100%;
+            font-family: monospace;
+            padding: 8px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }}
+        .text-content-input:focus {{
+            border-color: #4b6bfb;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(75, 107, 251, 0.25);
+        }}
+        .modified-status {{
+            text-align: center;
+            width: 80px;
+        }}
+        .modified-checkbox {{
+            width: 18px;
+            height: 18px;
+            cursor: not-allowed;
+        }}
+        .hidden {{
+            display: none;
+        }}
+        .toggle-btn {{
+            background: #eee;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }}
+        .toggle-btn:hover {{
+            background: #ddd;
+        }}
+        .export-btn {{
+            margin-left: auto;
+        }}
+        .page-image {{
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            display: none;
+        }}
+        .show {{
+            display: block;
+        }}
+        
+        @media (max-width: 800px) {{
+            .region-table, .region-table tbody, .region-table tr, .region-table td, .region-table th {{
+                display: block;
+            }}
+            .region-table td {{
+                margin-bottom: 8px;
+            }}
+            .region-table th {{
+                position: static;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <h1>OCR Debug Report</h1>
+    
+    <div class="controls">
+        <div class="filter-control">
+            <label for="confidence-filter">Min Confidence:</label>
+            <input type="range" id="confidence-filter" min="0" max="1" step="0.05" value="0">
+            <span id="confidence-value">0</span>
+        </div>
+        
+        <div class="filter-control">
+            <label for="text-filter">Text Filter:</label>
+            <input type="text" id="text-filter" placeholder="Filter text...">
+        </div>
+        
+        <div class="filter-control">
+            <label for="sort-by">Sort By:</label>
+            <select id="sort-by">
+                <option value="position">Position (default)</option>
+                <option value="confidence-asc">Confidence (Low to High)</option>
+                <option value="confidence-desc">Confidence (High to Low)</option>
+                <option value="text-length">Text Length</option>
+            </select>
+        </div>
+        
+        <button id="export-json" class="export-btn">Export JSON</button>
+    </div>
+    
+    <div id="pages-container">
+        <!-- Pages will be inserted here -->
+    </div>
+    
+    <script>
+        // Main OCR data structure with pages and regions
+        const ocrData = {pages_data};
+        
+        // ===== DOM Elements =====
+        const pagesContainer = document.getElementById('pages-container');
+        const confidenceFilter = document.getElementById('confidence-filter');
+        const confidenceValue = document.getElementById('confidence-value');
+        const textFilter = document.getElementById('text-filter');
+        const sortBySelect = document.getElementById('sort-by');
+        const exportButton = document.getElementById('export-json');
+        
+        // ===== Rendering Functions =====
+        
+        // Render a single page section with its regions
+        function renderPage(page, pageIndex) {{
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'page-section';
+            pageDiv.id = `page-${{pageIndex}}`;
+            
+            // Page header with controls
+            const pageTitle = document.createElement('div');
+            pageTitle.className = 'page-title';
+            
+            const pageHeading = document.createElement('h2');
+            pageHeading.textContent = `Page ${{page.page_number}}`;
+            pageTitle.appendChild(pageHeading);
+            
+            const pageControls = document.createElement('div');
+            pageControls.className = 'page-controls';
+            
+            const toggleImageBtn = document.createElement('button');
+            toggleImageBtn.className = 'toggle-btn';
+            toggleImageBtn.textContent = 'Show Full Image';
+            toggleImageBtn.onclick = () => toggleFullImage(pageIndex);
+            pageControls.appendChild(toggleImageBtn);
+            
+            pageTitle.appendChild(pageControls);
+            pageDiv.appendChild(pageTitle);
+            
+            // Full page image (hidden by default)
+            const pageImage = document.createElement('img');
+            pageImage.src = page.image;
+            pageImage.className = 'page-image';
+            pageImage.id = `page-image-${{pageIndex}}`;
+            pageImage.alt = `Page ${{page.page_number}}`;
+            pageDiv.appendChild(pageImage);
+            
+            // Table for regions
+            const table = document.createElement('table');
+            table.className = 'region-table';
+            
+            // Table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            const headers = ['Confidence', 'Text Region', 'Text Content'];
+            headers.forEach(header => {{
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            }});
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Table body
+            const tbody = document.createElement('tbody');
+            tbody.id = `regions-${{pageIndex}}`;
+            
+            // Render each region row
+            page.regions.forEach((region, regionIndex) => {{
+                const row = renderRegionRow(region, pageIndex, regionIndex, page.image);
+                tbody.appendChild(row);
+            }});
+            
+            table.appendChild(tbody);
+            pageDiv.appendChild(table);
+            
+            return pageDiv;
+        }}
+        
+        // Render a single region row
+        function renderRegionRow(region, pageIndex, regionIndex, pageImage) {{
+            const row = document.createElement('tr');
+            row.className = 'region-row';
+            row.dataset.confidence = region.confidence;
+            row.dataset.text = region.ocr_text;
+            row.dataset.modified = (region.modified || false).toString();
+            row.dataset.regionId = `${{pageIndex}}-${{regionIndex}}`;
+            
+            // Confidence cell
+            const confidenceCell = document.createElement('td');
+            confidenceCell.className = 'confidence';
+            confidenceCell.textContent = region.confidence.toFixed(2);
+            
+            // Set color level based on confidence
+            if (region.confidence >= 0.8) {{
+                confidenceCell.dataset.level = 'high';
+            }} else if (region.confidence >= 0.5) {{
+                confidenceCell.dataset.level = 'medium';
+            }} else {{
+                confidenceCell.dataset.level = 'low';
+            }}
+            
+            row.appendChild(confidenceCell);
+            
+            // Image region cell
+            const imageCell = document.createElement('td');
+            imageCell.className = 'region-image';
+            
+            const imageClip = document.createElement('div');
+            imageClip.className = 'image-clip';
+            imageClip.style.backgroundImage = `url('${{pageImage}}')`;
+            
+            // Calculate dimensions (scaled by 2.0 to match the image scale)
+            const width = (region.bbox[2] - region.bbox[0]) * 2.0;
+            const height = (region.bbox[3] - region.bbox[1]) * 2.0;
+            
+            // Calculate background position (negative of the top-left corner)
+            imageClip.style.backgroundPosition = `-${{region.bbox[0] * 2.0}}px -${{region.bbox[1] * 2.0}}px`;
+            
+            // If the image is very large, we'll apply CSS transform scaling instead of 
+            // changing the dimensions directly to maintain proper background position
+            const maxWidth = 350;
+            const maxHeight = 250;
+            let scale = 1;
+            
+            if (width > maxWidth || height > maxHeight) {{
+                const scaleX = maxWidth / width;
+                const scaleY = maxHeight / height;
+                scale = Math.min(scaleX, scaleY);
+                imageClip.style.transform = `scale(${{scale}})`;
+            }}
+            
+            // Set the final dimensions
+            imageClip.style.width = `${{width}}px`;
+            imageClip.style.height = `${{height}}px`;
+            
+            imageCell.appendChild(imageClip);
+            row.appendChild(imageCell);
+            
+            // Combined text content cell with textarea
+            const textCell = document.createElement('td');
+            textCell.className = 'text-content';
+            
+            const textArea = document.createElement('textarea');
+            textArea.className = 'text-content-input';
+            textArea.value = region.ocr_text;
+            textArea.rows = Math.max(1, Math.ceil(region.ocr_text.length / 40)); // Approximate rows based on text length
+            textArea.dataset.pageIndex = pageIndex;
+            textArea.dataset.regionIndex = regionIndex;
+            textArea.dataset.originalText = region.ocr_text;
+            
+            // Save changes to data structure
+            textArea.addEventListener('change', (e) => {{
+                const pIdx = parseInt(e.target.dataset.pageIndex);
+                const rIdx = parseInt(e.target.dataset.regionIndex);
+                ocrData.pages[pIdx].regions[rIdx].corrected_text = e.target.value;
+                
+                // Update the modified status in the dataset
+                const isModified = e.target.value !== e.target.dataset.originalText;
+                ocrData.pages[pIdx].regions[rIdx].modified = isModified;
+                
+                // Visual indication of modification through textarea style
+                if (isModified) {{
+                    e.target.style.borderColor = '#4b6bfb';
+                    e.target.style.backgroundColor = 'rgba(75, 107, 251, 0.05)';
+                }} else {{
+                    e.target.style.borderColor = '#ddd';
+                    e.target.style.backgroundColor = '';
+                }}
+            }});
+            
+            textCell.appendChild(textArea);
+            row.appendChild(textCell);
+            
+            // No Modified column needed
+            
+            return row;
+        }}
+        
+        // ===== Interactive Functions =====
+        
+        // Toggle display of full page image
+        function toggleFullImage(pageIndex) {{
+            const image = document.getElementById(`page-image-${{pageIndex}}`);
+            const button = image.previousElementSibling.querySelector('.toggle-btn');
+            
+            if (image.classList.contains('show')) {{
+                image.classList.remove('show');
+                button.textContent = 'Show Full Image';
+            }} else {{
+                image.classList.add('show');
+                button.textContent = 'Hide Full Image';
+            }}
+        }}
+        
+        // Filter regions by confidence
+        function filterByConfidence(minConfidence) {{
+            document.querySelectorAll('.region-row').forEach(row => {{
+                const confidence = parseFloat(row.dataset.confidence);
+                if (confidence < minConfidence) {{
+                    row.classList.add('hidden');
+                }} else {{
+                    row.classList.remove('hidden');
+                }}
+            }});
+        }}
+        
+        // Filter regions by text content
+        function filterByText(text) {{
+            const searchText = text.toLowerCase();
+            // If no search text, we don't need to do anything
+            if (!searchText) {{
+                document.querySelectorAll('.region-row').forEach(row => {{
+                    row.classList.remove('hidden');
+                }});
+                return;
+            }}
+            
+            // Filter based on current textarea content (not just original text)
+            document.querySelectorAll('.region-row').forEach(row => {{
+                const textarea = row.querySelector('.text-content-input');
+                const currentText = textarea ? textarea.value.toLowerCase() : row.dataset.text.toLowerCase();
+                
+                if (!currentText.includes(searchText)) {{
+                    row.classList.add('hidden');
+                }} else {{
+                    row.classList.remove('hidden');
+                }}
+            }});
+        }}
+        
+        // Sort regions by different criteria
+        function sortRegions(sortBy) {{
+            ocrData.pages.forEach((page, pageIndex) => {{
+                const tbody = document.getElementById(`regions-${{pageIndex}}`);
+                const rows = Array.from(tbody.querySelectorAll('.region-row'));
+                
+                // Sort based on selected criterion
+                rows.sort((a, b) => {{
+                    switch (sortBy) {{
+                        case 'confidence-asc':
+                            return parseFloat(a.dataset.confidence) - parseFloat(b.dataset.confidence);
+                        case 'confidence-desc':
+                            return parseFloat(b.dataset.confidence) - parseFloat(a.dataset.confidence);
+                        case 'text-length':
+                            return b.dataset.text.length - a.dataset.text.length;
+                        case 'position':
+                        default:
+                            // Default sort by region ID (original position)
+                            return a.dataset.regionId.localeCompare(b.dataset.regionId);
+                    }}
+                }});
+                
+                // Reinsert in sorted order
+                rows.forEach(row => tbody.appendChild(row));
+            }});
+        }}
+        
+        // Export data as JSON
+        function exportJSON() {{
+            // Create a downloadable JSON with corrected text
+            const exportData = JSON.stringify(ocrData, null, 2);
+            const blob = new Blob([exportData], {{type: 'application/json'}});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ocr_debug_export.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }}
+        
+        // ===== Event Listeners =====
+        
+        confidenceFilter.addEventListener('input', (e) => {{
+            const value = parseFloat(e.target.value);
+            confidenceValue.textContent = value.toFixed(2);
+            filterByConfidence(value);
+        }});
+        
+        textFilter.addEventListener('input', (e) => {{
+            filterByText(e.target.value);
+        }});
+        
+        sortBySelect.addEventListener('change', (e) => {{
+            sortRegions(e.target.value);
+        }});
+        
+        exportButton.addEventListener('click', exportJSON);
+        
+        // ===== Initialize =====
+        
+        // Render all pages
+        ocrData.pages.forEach((page, i) => {{
+            const pageElement = renderPage(page, i);
+            pagesContainer.appendChild(pageElement);
+        }});
+    </script>
+</body>
+</html>

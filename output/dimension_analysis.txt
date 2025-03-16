@@ -1,0 +1,48 @@
+Page dimensions: 612 x 792
+
+image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpzi7y8vwu/page_0.png: 1024x800 2 titles, 3 plain texts, 2 abandons, 1 table, 656.9ms
+Speed: 5.2ms preprocess, 656.9ms inference, 0.8ms postprocess per image at shape (1, 3, 1024, 800)
+YOLO Detections:
+Found 8 regions
+YOLO Average width in image space: 437.63 pixels
+YOLO Average width in PDF space: 218.82 PDF units
+YOLO Average width as % of page width: 35.75%
+YOLO Detection #1 (table):
+  Original: (97.6, 782.2, 1101.4, 1106.8)
+  Original width: 1003.8 pixels (82.0% of page)
+  Fixed: (52.4, 782.2, 1206.8, 1106.8)
+  Fixed width: 1154.4 pixels (94.3% of page)
+  Width increase: 150.6 pixels (15.0%)
+YOLO Detection #2 (plain text):
+  Original: (97.3, 283.5, 1024.6, 502.7)
+  Original width: 927.4 pixels (75.8% of page)
+  Fixed: (55.6, 283.5, 1122.0, 502.7)
+  Fixed width: 1066.5 pixels (87.1% of page)
+  Width increase: 139.1 pixels (15.0%)
+YOLO Detection #3 (title):
+  Original: (98.4, 244.0, 274.8, 269.8)
+  Original width: 176.4 pixels (14.4% of page)
+  Fixed: (90.5, 244.0, 293.4, 269.8)
+  Fixed width: 202.9 pixels (16.6% of page)
+  Width increase: 26.5 pixels (15.0%)
+
+TATR Detections:
+Found 15 regions
+TATR Average width in image space: 782.74 pixels
+TATR Average width in PDF space: 391.37 PDF units
+TATR Average width as % of page width: 63.95%
+TATR Detection #1 (table):
+  Coords: (108.9, 793.9, 1087.3, 1096.1)
+  Width: 978.4 pixels (79.9% of page)
+TATR Detection #2 (table column):
+  Coords: (190.5, 794.1, 806.1, 1094.9)
+  Width: 615.7 pixels (50.3% of page)
+TATR Detection #3 (table row):
+  Coords: (108.9, 903.4, 1086.7, 943.3)
+  Width: 977.8 pixels (79.9% of page)
+
+Comparison:
+Original TATR/YOLO width ratio: 1.7886
+YOLO is 44.09% narrower than TATR
+After fix TATR/YOLO width ratio: 1.5553
+Fixed YOLO is 35.70% narrower than TATR
