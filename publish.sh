@@ -25,7 +25,7 @@ then
     python -m twine upload dist/*
     
     # Get the version
-    VERSION=$(python -c "from datetime import datetime; now = datetime.now(); print(f'{now.year % 100:02d}.{now.month:02d}.{now.day:02d}')")
+    VERSION=$(python -c "from datetime import datetime; now = datetime.now(); print(f'{now.year % 100:02d}.{now.month:02d}.{now.day:02d}-2')")
     
     # Create a git tag
     git tag -a "v$VERSION" -m "Release $VERSION"

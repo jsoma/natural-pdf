@@ -17,6 +17,7 @@ setup(
         "Pillow>=8.0.0",           # Image processing
         "colour>=0.1.5",           # Color name/hex/RGB conversion for selectors
         "numpy>=1.20.0",           # Required for image processing
+        "urllib3>=1.26.0",         # For handling URL downloads
         # The following can be moved to extras to reduce install size
         "doclayout_yolo>=0.0.3",   # YOLO model for document layout detection
         "torch>=2.0.0",            # Required for AI models

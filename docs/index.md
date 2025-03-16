@@ -4,6 +4,8 @@ A friendly library for working with PDFs, built on top of [pdfplumber](https://g
 
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
 
+- [Live demo here](https://colab.research.google.com/github/jsoma/)
+
 ## Quick Example
 
 ```python

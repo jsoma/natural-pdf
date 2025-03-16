@@ -1,5 +1,9 @@
 import pdfplumber
 import logging
+import tempfile
+import os
+import re
+import urllib.request
 from typing import List, Optional, Union, Any, Dict, Callable, Tuple, Type
 
 from natural_pdf.core.page import Page
@@ -28,7 +32,7 @@ class PDF:
     with improved selection, navigation, and extraction capabilities.
     """
     
-    def __init__(self, path: str, reading_order: bool = True, 
+    def __init__(self, path_or_url: str, reading_order: bool = True, 
                  ocr: Optional[Union[bool, str, List, Dict]] = None,
                  ocr_engine: Optional[Union[str, Any]] = None,
                  font_attrs: Optional[List[str]] = None,
@@ -37,7 +41,7 @@ class PDF:
         Initialize the enhanced PDF object.
         
         Args:
-            path: Path to the PDF file
+            path_or_url: Path to the PDF file or a URL to a PDF
             reading_order: Whether to use natural reading order
             ocr: OCR configuration:
                  - None or False: OCR disabled
@@ -58,6 +62,40 @@ class PDF:
                        True: Spaces are part of words, better for multi-word searching
                        False: Break text at spaces, each word is separate (legacy behavior)
         """
+        # Check if the input is a URL
+        is_url = path_or_url.startswith('http://') or path_or_url.startswith('https://')
+        
+        # Initialize path-related attributes
+        self._original_path = path_or_url
+        self._temp_file = None
+        
+        if is_url:
+            logger.info(f"Downloading PDF from URL: {path_or_url}")
+            try:
+                # Create a temporary file to store the downloaded PDF
+                self._temp_file = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False)
+                
+                # Download the PDF
+                with urllib.request.urlopen(path_or_url) as response:
+                    self._temp_file.write(response.read())
+                    self._temp_file.flush()
+                    self._temp_file.close()
+                
+                # Use the temporary file path
+                path = self._temp_file.name
+                logger.info(f"PDF downloaded to temporary file: {path}")
+            except Exception as e:
+                if self._temp_file and hasattr(self._temp_file, 'name'):
+                    try:
+                        os.unlink(self._temp_file.name)
+                    except:
+                        pass
+                logger.error(f"Failed to download PDF from URL: {e}")
+                raise ValueError(f"Failed to download PDF from URL: {e}")
+        else:
+            # Use the provided path directly
+            path = path_or_url
+            
         logger.info(f"Initializing PDF from {path}")
         logger.debug(f"Parameters: reading_order={reading_order}, ocr={ocr}, ocr_engine={ocr_engine}, font_attrs={font_attrs}, keep_spaces={keep_spaces}")
         
@@ -558,10 +596,21 @@ class PDF:
         return self.pages[key]
         
     def close(self):
-        """Close the underlying PDF file."""
+        """Close the underlying PDF file and clean up any temporary files."""
         if hasattr(self, '_pdf') and self._pdf is not None:
             self._pdf.close()
             self._pdf = None
+            
+        # Clean up temporary file if it exists
+        if hasattr(self, '_temp_file') and self._temp_file is not None:
+            try:
+                if os.path.exists(self._temp_file.name):
+                    os.unlink(self._temp_file.name)
+                    logger.debug(f"Removed temporary PDF file: {self._temp_file.name}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary PDF file: {e}")
+            finally:
+                self._temp_file = None
     
     def __enter__(self):
         """Context manager entry."""

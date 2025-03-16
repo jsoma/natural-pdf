@@ -4,7 +4,8 @@ A friendly library for working with PDFs, built on top of [pdfplumber](https://g
 
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
 
-[Complete documentation here](https://jsoma.github.io/natural-pdf)
+- [Complete documentation here](https://jsoma.github.io/natural-pdf)
+- [Live demo here](https://colab.research.google.com/github/jsoma/)
 
 ## Features
 
@@ -42,8 +43,11 @@ pip install natural-pdf[easyocr,paddle]
 ```python
 from natural_pdf import PDF
 
-# Open a PDF
+# Open a local PDF
 pdf = PDF('document.pdf')
+
+# Or open a PDF from a URL
+pdf = PDF('https://example.com/document.pdf')
 
 # Get the first page
 page = pdf.pages[0]

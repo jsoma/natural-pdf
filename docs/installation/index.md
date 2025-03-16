@@ -4,18 +4,8 @@ Let's get Natural PDF installed and run your first extraction.
 
 ## Installation
 
-Natural PDF is available on PyPI. The simplest way to install it is with pip:
-
 ```bash
 pip install natural-pdf
-```
-
-You can also install from source:
-
-```bash
-git clone https://github.com/jsoma/natural-pdf.git
-cd natural-pdf
-pip install -e .
 ```
 
 ### Optional Dependencies
