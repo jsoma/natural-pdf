@@ -619,7 +619,7 @@ The library supports document layout analysis using machine learning models to d
 
 ```python
 # Analyze document layout
-page.analyze_layout(confidence=0.2)  # Uses YOLO model by default
+page.analyze_layout(confidence=0.2)  # Uses Docling model by default
 # The detected regions are stored in page.detected_layout_regions
 
 # Find specific region types using selectors
@@ -693,6 +693,18 @@ The Table Transformer model provides detailed table structure analysis:
 - `table column`: Individual columns in the table
 - `table column header`: Column headers in the table
 
+#### Docling
+Docling provides hierarchical document understanding with semantic structure recognition:
+- Automatically detects document structure with semantic labels (section_header, text, table, etc.)
+- Preserves parent-child relationships between document elements
+- Performs OCR and text extraction in one pass
+- Provides table structure and content extraction
+- Supports hierarchical navigation through document elements
+- Common types include: `section-header`, `text`, `figure`, `table`, etc.
+- Automatically supports all label types provided by the Docling library
+
+Installation: `pip install docling`
+
 ### Region Type Selector Format
 
 Note that space-separated region types like "plain text" are converted to hyphenated format in selectors:
@@ -702,6 +714,24 @@ page.find_all('region[type=plain-text]')
 
 # For "figure_caption" region type:
 page.find_all('region[type=figure_caption]')
+```
+
+### Element Source Attributes
+
+Text elements have source attributes to identify their origin:
+```python
+# Find original document text elements
+native_text = page.find_all('text[source=native]')
+
+# Find OCR-extracted text elements
+ocr_text = page.find_all('text[source=ocr]')
+
+# Find elements from a specific model
+docling_elements = page.find_all('region[model=docling]')
+yolo_elements = page.find_all('region[model=yolo]')
+
+# Combine attributes in selectors
+important_native = page.find_all('text[source=native][size>=12]')
 ```
 
 ### Customization Options
@@ -723,6 +753,48 @@ page.analyze_layout(exclude_classes=["table", "figure"])
 
 # Set different confidence thresholds for highlighting
 page.highlight_layout(confidence=0.5)
+```
+
+### Hierarchical Document Analysis
+
+For documents with hierarchical structure, you can use Docling model and the hierarchical navigation methods:
+
+```python
+# Run Docling analysis 
+page.analyze_layout(
+    model="docling",
+    confidence=0.3,  # Not used by Docling but kept for API consistency
+    model_params={
+        "verbose": True  # Additional parameters are passed to DocumentConverter
+    }
+)
+
+# Find regions by type
+headers = page.find_all('section-header')
+paragraphs = page.find_all('text')
+
+# Navigate hierarchy
+if headers:
+    header = headers[0]
+    
+    # Get direct children of this header
+    children = header.get_children()
+    print(f"Header has {len(children)} direct children")
+    
+    # Get all descendants recursively
+    descendants = header.get_descendants()
+    print(f"Header has {len(descendants)} total descendants")
+    
+    # Find specific types of children
+    text_children = header.get_children('text')
+    print(f"Header has {len(text_children)} direct text children")
+    
+    # Recursive search within a section
+    section_figures = header.find_all('figure', recursive=True)
+    print(f"Section contains {len(section_figures)} figures")
+    
+    # Extract text from the entire section hierarchy
+    section_text = header.extract_text()
 ```
 
 ### Table Structure Analysis
@@ -848,7 +920,7 @@ All navigation methods respect exclusion zones by default and can be customized 
 
 ## OCR Integration
 
-The library supports OCR (Optical Character Recognition) for extracting text from scanned documents or image-based PDFs:
+The library supports OCR (Optical Character Recognition) for extracting text from scanned documents or image-based PDFs. PaddleOCR is the default OCR engine with better performance for most languages, especially Asian languages.
 
 ### Basic OCR Usage
 

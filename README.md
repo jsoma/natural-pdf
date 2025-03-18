@@ -5,7 +5,7 @@ A friendly library for working with PDFs, built on top of [pdfplumber](https://g
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
 
 - [Complete documentation here](https://jsoma.github.io/natural-pdf)
-- [Live demo here](https://colab.research.google.com/github/jsoma/)
+- [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb)
 
 ## Features
 
@@ -212,6 +212,23 @@ Logs follow a hierarchical structure matching the library's module organization:
 - `natural_pdf.core` - Core PDF operations
 - `natural_pdf.analyzers` - Layout analysis operations
 - `natural_pdf.ocr` - OCR engine operations
+
+## Document QA
+
+Ask questions directly to your documents:
+
+```python
+# Ask questions about the document content
+result = pdf.ask("What was the company's revenue in 2022?")
+print(f"Answer: {result['answer']}")
+print(f"Confidence: {result['confidence']:.2f}")
+
+# Access more details in the result dictionary
+result = pdf.ask("Who is the CEO?")
+print(f"Answer: {result['answer']}")
+print(f"Found on page: {result['page_num']}")
+print(f"Source text: {result.get('source_text', 'N/A')}")
+```
 
 ## More details
 

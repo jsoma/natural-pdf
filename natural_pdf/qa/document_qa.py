@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional, Union, Tuple
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 import os
 import tempfile
 import json
@@ -207,47 +207,38 @@ class DocumentQA:
                 logger.info(f"Visualization: {vis_path}")
         
         # Run the query through the pipeline
-        try:
-            logger.info(f"Running document QA pipeline with question: {question}")
-            result = self.pipe(query)[0]
-            logger.info(f"Raw result: {result}")
-            
-            # Save the result if debugging
-            if debug:
-                result_path = os.path.join(debug_output_dir, "debug_qa_result.json")
-                with open(result_path, 'w') as f:
-                    # Convert any non-serializable data
-                    serializable_result = {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v 
-                                        for k, v in result.items()}
-                    json.dump(serializable_result, f, indent=2)
-            
-            # Check confidence against threshold
-            if result["score"] < min_confidence:
-                logger.info(f"Answer confidence {result['score']:.4f} below threshold {min_confidence}")
-                return {
-                    "answer": "",
-                    "confidence": result["score"],
-                    "start": result.get("start", -1),
-                    "end": result.get("end", -1),
-                    "found": False
-                }
-            
-            return {
-                "answer": result["answer"],
-                "confidence": result["score"],
-                "start": result.get("start", 0),
-                "end": result.get("end", 0),
-                "found": True
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in document QA: {e}")
+        logger.info(f"Running document QA pipeline with question: {question}")
+        result = self.pipe(query)[0]
+        logger.info(f"Raw result: {result}")
+        
+        # Save the result if debugging
+        if debug:
+            result_path = os.path.join(debug_output_dir, "debug_qa_result.json")
+            with open(result_path, 'w') as f:
+                # Convert any non-serializable data
+                serializable_result = {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v 
+                                    for k, v in result.items()}
+                json.dump(serializable_result, f, indent=2)
+        
+        # Check confidence against threshold
+        if result["score"] < min_confidence:
+            logger.info(f"Answer confidence {result['score']:.4f} below threshold {min_confidence}")
             return {
                 "answer": "",
-                "confidence": 0.0,
-                "error": str(e),
+                "confidence": result["score"],
+                "start": result.get("start", -1),
+                "end": result.get("end", -1),
                 "found": False
             }
+        
+        return {
+            "answer": result["answer"],
+            "confidence": result["score"],
+            "start": result.get("start", 0),
+            "end": result.get("end", 0),
+            "found": True
+        }
+        
     
     def ask_pdf_page(self, page, question: str, min_confidence: float = 0.1, debug: bool = False) -> Dict[str, Any]:
         """

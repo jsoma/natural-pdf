@@ -110,8 +110,13 @@ class PDF:
         if HAS_OCR_ENGINES:
             # Handle OCR engine selection
             if ocr_engine is None:
-                # Use default engine (EasyOCR)
-                self._ocr_engine = EasyOCREngine()
+                # Use default engine (PaddleOCR)
+                try:
+                    self._ocr_engine = PaddleOCREngine()
+                except (ImportError, ValueError) as e:
+                    logger.warning(f"PaddleOCR engine could not be loaded: {e}")
+                    logger.warning("Falling back to EasyOCR engine.")
+                    self._ocr_engine = EasyOCREngine()
             elif isinstance(ocr_engine, str):
                 # String-based engine selection
                 try:
@@ -519,74 +524,51 @@ class PDF:
             **kwargs: Additional parameters passed to the QA engine
             
         Returns:
-            Dictionary with answer and confidence
+            A dictionary containing the answer, confidence, and other metadata.
+            Result will have an 'answer' key containing the answer text.
         """
-        try:
-            from natural_pdf.qa import get_qa_engine
-            
-            # Initialize or get QA engine
-            qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
-            
-            # Determine which pages to query
-            if pages is None:
-                # Query all pages by default, prioritizing first few pages
-                target_pages = list(range(min(10, len(self.pages))))
-            elif isinstance(pages, int):
-                # Single page
-                target_pages = [pages]
-            elif isinstance(pages, (list, range)):
-                # List or range of pages
-                target_pages = pages
-            else:
-                raise ValueError(f"Invalid pages parameter: {pages}")
-            
-            # Actually query each page and gather results
-            results = []
-            for page_idx in target_pages:
-                if 0 <= page_idx < len(self.pages):
-                    page = self.pages[page_idx]
-                    page_result = qa_engine.ask_pdf_page(
-                        page=page,
-                        question=question,
-                        min_confidence=min_confidence,
-                        **kwargs
-                    )
-                    
-                    # Add to results if it found an answer
-                    if page_result.get("found", False):
-                        results.append(page_result)
-            
-            # Sort results by confidence
-            results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
-            
-            # Return the best result, or an empty result if none found
-            if results:
-                return results[0]
-            else:
-                return {
-                    "answer": "",
-                    "confidence": 0.0,
-                    "found": False,
-                    "message": "No answer found in document"
-                }
+        from natural_pdf.qa import get_qa_engine
+        
+        # Initialize or get QA engine
+        qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
+        
+        # Determine which pages to query
+        if pages is None:
+            target_pages = list(range(len(self.pages)))
+        elif isinstance(pages, int):
+            # Single page
+            target_pages = [pages]
+        elif isinstance(pages, (list, range)):
+            # List or range of pages
+            target_pages = pages
+        else:
+            raise ValueError(f"Invalid pages parameter: {pages}")
+        
+        # Actually query each page and gather results
+        results = []
+        for page_idx in target_pages:
+            if 0 <= page_idx < len(self.pages):
+                page = self.pages[page_idx]
+                page_result = qa_engine.ask_pdf_page(
+                    page=page,
+                    question=question,
+                    min_confidence=min_confidence,
+                    **kwargs
+                )
                 
-        except ImportError as e:
-            logger.warning(f"QA functionality not available: {e}")
-            return {
-                "answer": "",
-                "confidence": 0.0,
-                "error": "QA functionality not available",
-                "found": False
-            }
-        except Exception as e:
-            logger.error(f"Error in document QA: {e}")
-            return {
-                "answer": "",
-                "confidence": 0.0,
-                "error": str(e),
-                "found": False
-            }
-    
+                # Add to results if it found an answer
+                if page_result.get("found", False):
+                    results.append(page_result)
+        
+        # Sort results by confidence
+        results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+        
+        # Return the best result, or a default result if none found
+        if results:
+            return results[0]
+        else:
+            return None
+                
     def __len__(self) -> int:
         """Return the number of pages in the PDF."""
         return len(self.pages)

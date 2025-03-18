@@ -162,8 +162,12 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> callable:
                     return False
                     
                 # If 'type' attribute specified, it will be checked in the attributes section
-            # Otherwise, require exact match
-            elif element.type != selector['type']:
+            # Check for Docling-specific types (section-header, etc.)
+            elif hasattr(element, 'normalized_type') and element.normalized_type == selector['type']:
+                # This is a direct match with a Docling region type
+                pass
+            # Otherwise, require exact match with the element's type attribute
+            elif not hasattr(element, 'type') or element.type != selector['type']:
                 return False
         
         # Check attributes

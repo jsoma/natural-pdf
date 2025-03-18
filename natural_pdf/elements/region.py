@@ -18,7 +18,7 @@ class Region:
     Represents a rectangular region on a page.
     """
     
-    def __init__(self, page: 'Page', bbox: Tuple[float, float, float, float], polygon: List[Tuple[float, float]] = None):
+    def __init__(self, page: 'Page', bbox: Tuple[float, float, float, float], polygon: List[Tuple[float, float]] = None, parent=None):
         """
         Initialize a region.
         
@@ -26,6 +26,7 @@ class Region:
             page: Parent page
             bbox: Bounding box as (x0, top, x1, bottom)
             polygon: Optional list of coordinate points [(x1,y1), (x2,y2), ...] for non-rectangular regions
+            parent: Optional parent region (for hierarchical document structure)
         """
         self._page = page
         self._bbox = bbox
@@ -48,6 +49,12 @@ class Region:
         # Region management attributes
         self.name = None
         self.source = None  # Will be set by creation methods
+        
+        # Hierarchy support for nested document structure
+        self.parent_region = parent
+        self.child_regions = []
+        self.text_content = None  # Direct text content (e.g., from Docling)
+        self.associated_text_elements = []  # Native text elements that overlap with this region
     
     @property
     def page(self) -> 'Page':
@@ -387,6 +394,11 @@ class Region:
         """
         Extract text from this region using pdfplumber's native functionality.
         
+        For regions created by Docling, this will first try to use:
+        1. Associated text elements from the PDF (if available)
+        2. Direct text content from Docling (if available)
+        3. Fall back to standard pdfplumber extraction
+        
         Args:
             keep_blank_chars: Whether to keep blank characters (legacy parameter)
             apply_exclusions: Whether to apply exclusion regions
@@ -398,6 +410,28 @@ class Region:
         Returns:
             Extracted text as string
         """
+        import logging
+        logger = logging.getLogger("natural_pdf.elements.region")
+        
+        # Check for Docling model or if we have direct text content
+        if self.model == 'docling' or hasattr(self, 'text_content'):
+            # First priority: check if we have associated native text elements
+            if hasattr(self, 'associated_text_elements') and self.associated_text_elements:
+                source_count = len(self.associated_text_elements)
+                logger.info(f"Region {self.region_type}: Using {source_count} native PDF text elements")
+                # Sort elements in reading order
+                sorted_elements = sorted(self.associated_text_elements, key=lambda e: (e.top, e.x0))
+                # Extract and join their text
+                text_result = " ".join(elem.text for elem in sorted_elements)
+                return text_result
+                
+            # Second priority: use direct text content from Docling
+            elif self.text_content:
+                logger.info(f"Region {self.region_type}: Using Docling OCR text content")
+                return self.text_content
+                
+            logger.debug(f"Region {self.region_type}: No Docling text found, falling back to standard extraction")
+                
         # Handle preserve_whitespace parameter for consistency with Page.extract_text
         if preserve_whitespace is not None:
             keep_blank_chars = preserve_whitespace
@@ -1346,21 +1380,142 @@ class Region:
                 "source_elements": list of elements that contain the answer (if found)
             }
         """
-        try:
-            from natural_pdf.qa.document_qa import get_qa_engine
+        from natural_pdf.qa.document_qa import get_qa_engine
+        
+        # Get or initialize QA engine with specified model
+        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+        
+        # Ask the question using the QA engine
+        
+    def add_child(self, child):
+        """
+        Add a child region to this region.
+        
+        Used for hierarchical document structure when using models like Docling
+        that understand document hierarchy.
+        
+        Args:
+            child: Region object to add as a child
             
-            # Get or initialize QA engine with specified model
-            qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+        Returns:
+            Self for method chaining
+        """
+        self.child_regions.append(child)
+        child.parent_region = self
+        return self
+        
+    def get_children(self, selector=None):
+        """
+        Get immediate child regions, optionally filtered by selector.
+        
+        Args:
+            selector: Optional selector to filter children
             
-            # Ask the question using the QA engine
-            return qa_engine.ask_pdf_region(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
-        except ImportError as e:
-            import logging
-            logger = logging.getLogger("natural_pdf.elements.region")
-            logger.warning(f"QA functionality not available: {e}")
-            return {
-                "answer": "",
-                "confidence": 0.0,
-                "error": "QA functionality not available",
-                "found": False
+        Returns:
+            List of child regions matching the selector
+        """
+        import logging
+        logger = logging.getLogger("natural_pdf.elements.region")
+        
+        if selector is None:
+            return self.child_regions
+        
+        # Use existing selector parser to filter
+        from natural_pdf.selectors.parser import match_elements_with_selector
+        matched = match_elements_with_selector(self.child_regions, selector)
+        logger.debug(f"get_children: found {len(matched)} of {len(self.child_regions)} children matching '{selector}'")
+        return matched
+        
+    def get_descendants(self, selector=None):
+        """
+        Get all descendant regions (children, grandchildren, etc.), optionally filtered by selector.
+        
+        Args:
+            selector: Optional selector to filter descendants
+            
+        Returns:
+            List of descendant regions matching the selector
+        """
+        import logging
+        logger = logging.getLogger("natural_pdf.elements.region")
+        
+        all_descendants = []
+        
+        # First add direct children
+        all_descendants.extend(self.child_regions)
+        
+        # Then recursively add their descendants
+        for child in self.child_regions:
+            all_descendants.extend(child.get_descendants())
+            
+        logger.debug(f"get_descendants: found {len(all_descendants)} total descendants")
+            
+        # Filter by selector if provided
+        if selector is not None:
+            from natural_pdf.selectors.parser import match_elements_with_selector
+            matched = match_elements_with_selector(all_descendants, selector)
+            logger.debug(f"get_descendants: filtered to {len(matched)} matching '{selector}'")
+            return matched
+        
+        return all_descendants
+        
+    def find_all(self, selector, recursive=True, **kwargs):
+        """
+        Find all matching elements within this region, with optional recursion through child regions.
+        
+        Args:
+            selector: The selector to find elements with
+            recursive: Whether to search recursively through child regions
+            **kwargs: Additional parameters to pass to the selector parser
+            
+        Returns:
+            Collection of matching elements
+        """
+        # Get direct matches 
+        direct_matches = self.page.find_all(selector, region=self, **kwargs)
+        
+        if not recursive or not self.child_regions:
+            return direct_matches
+            
+        # Get recursive matches from children
+        from natural_pdf.elements.collections import ElementCollection
+        all_matches = list(direct_matches)
+        
+        for child in self.child_regions:
+            child_matches = child.find_all(selector, recursive=True, **kwargs)
+            for match in child_matches:
+                if match not in all_matches:
+                    all_matches.append(match)
+                    
+        return ElementCollection(all_matches)
+    
+    def ask(self, question: str, min_confidence: float = 0.1, model: str = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
+        """
+        Ask a question about the region content using document QA.
+        
+        This method uses a document question answering model to extract answers from the region content.
+        It leverages both textual content and layout information for better understanding.
+        
+        Args:
+            question: The question to ask about the region content
+            min_confidence: Minimum confidence threshold for answers (0.0-1.0)
+            model: Optional model name to use for QA (if None, uses default model)
+            **kwargs: Additional parameters to pass to the QA engine
+            
+        Returns:
+            Dictionary with answer details: {
+                "answer": extracted text,
+                "confidence": confidence score,
+                "found": whether an answer was found,
+                "page_num": page number,
+                "region": reference to this region,
+                "source_elements": list of elements that contain the answer (if found)
             }
+        """
+        from natural_pdf.qa.document_qa import get_qa_engine
+        
+        # Get or initialize QA engine with specified model
+        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+        
+        # Ask the question using the QA engine
+        return qa_engine.ask_pdf_region(self, question, min_confidence=min_confidence, debug=debug, **kwargs)

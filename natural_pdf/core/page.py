@@ -17,6 +17,7 @@ from natural_pdf.analyzers.document_layout import (
     YOLODocLayoutDetector, 
     TableTransformerDetector,
     PaddleLayoutDetector,
+    DoclingLayoutDetector,
     convert_to_regions
 )
 from natural_pdf.utils.ocr import OCRManager
@@ -808,6 +809,8 @@ class Page:
                     except (KeyError, AttributeError, TypeError):
                         pass
                 
+                # Add source attribute for native text elements
+                c['source'] = 'native'
                 chars.append(TextElement(c, self))
             
             # Create word-level text elements by grouping chars
@@ -872,6 +875,8 @@ class Page:
                                     if attr in current_word[0]:
                                         word_obj[attr] = current_word[0][attr]
                                     
+                                # Add source attribute for native text elements
+                                word_obj['source'] = 'native'
                                 words.append(TextElement(word_obj, self))
                                 current_word = []
                             continue
@@ -927,6 +932,8 @@ class Page:
                                 if attr in current_word[0]:
                                     word_obj[attr] = current_word[0][attr]
                                 
+                            # Add source attribute for native text elements
+                            word_obj['source'] = 'native'
                             words.append(TextElement(word_obj, self))
                             current_word = [char]
                         # If the gap between chars is larger than a threshold, it's a new word
@@ -965,6 +972,8 @@ class Page:
                                 if attr in current_word[0]:
                                     word_obj[attr] = current_word[0][attr]
                                 
+                            # Add source attribute for native text elements
+                            word_obj['source'] = 'native'
                             words.append(TextElement(word_obj, self))
                             current_word = [char]
                         else:
@@ -1005,6 +1014,8 @@ class Page:
                         if attr in current_word[0]:
                             word_obj[attr] = current_word[0][attr]
                         
+                    # Add source attribute for native text elements
+                    word_obj['source'] = 'native'
                     words.append(TextElement(word_obj, self))
             
                 line_groups.extend(words)
@@ -1853,7 +1864,7 @@ class Page:
         return elements
         
     def analyze_layout(self, 
-                      model: str = "yolo",
+                      model: str = "docling",
                       confidence: float = 0.2,
                       classes: Optional[List[str]] = None,
                       exclude_classes: Optional[List[str]] = None,
@@ -1868,7 +1879,7 @@ class Page:
         Analyze the page layout using a machine learning model.
         
         Args:
-            model: Model type to use ('yolo', 'tatr', or 'paddle')
+            model: Model type to use ('yolo', 'tatr', 'paddle', or 'docling')
             confidence: Minimum confidence threshold for detections
             classes: Specific classes to detect (None for all supported classes)
             exclude_classes: Classes to exclude from detection
@@ -1878,6 +1889,7 @@ class Page:
                 - YOLO: {"model_path": "...", "image_size": 1024}
                 - TATR: {"model_path": "...", "create_cells": False}
                 - Paddle: {"lang": "en", "use_angle_cls": False, "enable_table": True}
+                - Docling: {"model_name": "ds4sd/SmolDocling-256M-preview", "prompt_text": "...", "verbose": False}
             model_path: (Legacy) Optional path to custom model file
             image_size: (Legacy) Size to resize the image to before detection (YOLO only)
             create_cells: (Legacy) Whether to create cell regions for TATR table regions
@@ -1969,8 +1981,32 @@ class Page:
                     exclude_classes=exclude_classes
                 )
                 
+            elif model.lower() == "docling":
+                # Extract Docling-specific parameters
+                verbose = model_params.get('verbose', False)
+                
+                # Pass all other model_params directly to DocumentConverter
+                detector_kwargs = {k: v for k, v in model_params.items() if k != 'verbose'}
+                
+                # Initialize DoclingLayoutDetector
+                detector = DoclingLayoutDetector(
+                    verbose=verbose,
+                    **detector_kwargs
+                )
+                
+                # Run detection
+                detections = detector.detect(
+                    temp_image_path,
+                    confidence=confidence,
+                    classes=classes,
+                    exclude_classes=exclude_classes
+                )
+                
+                # Store the original Docling document for advanced usage
+                self.docling_document = detector.get_docling_document()
+                
             else:
-                raise ValueError(f"Unsupported model type: {model}. Currently supported: 'yolo', 'tatr', 'paddle'")
+                raise ValueError(f"Unsupported model type: {model}. Currently supported: 'yolo', 'tatr', 'paddle', 'docling'")
             
             # Calculate the scale factor to convert from image to PDF coordinates
             # Note: This assumes the image resolution is 150 DPI
@@ -1981,6 +2017,9 @@ class Page:
             layout_regions = []
             
             # Convert detections to regions
+            # First create all regions and track by docling_id if available
+            docling_id_to_region = {}
+            
             for detection in detections:
                 x_min, y_min, x_max, y_max = detection['bbox']
                 
@@ -1998,7 +2037,30 @@ class Page:
                 region.model = model  # Store which model detected this region
                 region.source = 'detected'  # Set the source for selectors
                 
+                # If this is a Docling detection, include text content
+                if model.lower() == 'docling':
+                    if 'text' in detection:
+                        region.text_content = detection.get('text')
+                        
+                    # Track by docling_id for building hierarchy later
+                    if 'docling_id' in detection:
+                        region.docling_id = detection['docling_id']
+                        docling_id_to_region[detection['docling_id']] = region
+                        
+                    # Store parent ID for hierarchy building
+                    if 'parent_id' in detection:
+                        region.parent_id = detection.get('parent_id')
+                
                 layout_regions.append(region)
+                
+            # If using Docling model, build parent-child relationships
+            if model.lower() == 'docling':
+                # Second pass to establish parent-child relationships
+                for region in layout_regions:
+                    if hasattr(region, 'parent_id') and region.parent_id:
+                        parent_region = docling_id_to_region.get(region.parent_id)
+                        if parent_region:
+                            parent_region.add_child(region)
             
             # Handle existing regions based on mode
             if existing.lower() == 'append':
@@ -2356,21 +2418,10 @@ class Page:
                 "source_elements": list of elements that contain the answer (if found)
             }
         """
-        try:
-            from natural_pdf.qa.document_qa import get_qa_engine
-            
-            # Get or initialize QA engine with specified model
-            qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
-            
-            # Ask the question using the QA engine
-            return qa_engine.ask_pdf_page(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
-        except ImportError as e:
-            import logging
-            logger = logging.getLogger("natural_pdf.core.page")
-            logger.warning(f"QA functionality not available: {e}")
-            return {
-                "answer": "",
-                "confidence": 0.0,
-                "error": "QA functionality not available",
-                "found": False
-            }
+        from natural_pdf.qa.document_qa import get_qa_engine
+        
+        # Get or initialize QA engine with specified model
+        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+        
+        # Ask the question using the QA engine
+        return qa_engine.ask_pdf_page(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
