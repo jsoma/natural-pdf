@@ -341,7 +341,7 @@ class HighlightingService:
         self,
         color_input: Optional[Union[Tuple, str]] = None,
         label: Optional[str] = None,
-        use_color_cycling: bool = False,
+        use_color_cycling: bool = False
     ) -> Tuple[int, int, int, int]:
         """
         Determines the final RGBA color for a highlight using the ColorManager.
@@ -494,7 +494,7 @@ class HighlightingService:
         return self._highlights_by_page.get(page_index, [])
 
     def get_labels_and_colors(self) -> Dict[str, Tuple[int, int, int, int]]:
-        """Gets the current mapping of labels to colors from the ColorManager."""
+        """Returns a mapping of labels used to their assigned colors (for persistent highlights)."""
         return self._color_manager.get_label_colors()
 
     def render_page(
@@ -578,3 +578,81 @@ class HighlightingService:
                 logger.debug(f"Added legend with {len(label_colors)} labels to page {page_index}.")
 
         return rendered_image 
+
+    def render_preview(
+        self,
+        page_index: int,
+        temporary_highlights: List[Dict],
+        scale: float = 2.0,
+        labels: bool = True,
+        legend_position: str = 'right',
+        render_ocr: bool = False,
+        resolution: Optional[float] = None,
+        **kwargs
+    ) -> Optional[Image.Image]:
+        """
+        Renders a preview image for a specific page containing only the
+        provided temporary highlights. Does not affect persistent state.
+
+        Args:
+            page_index: Index of the page to render.
+            temporary_highlights: List of highlight data dicts (from ElementCollection._prepare).
+            scale: Scale factor for rendering.
+            labels: Whether to include a legend.
+            legend_position: Position of the legend.
+            render_ocr: Whether to render OCR text.
+            resolution: Resolution for base page image rendering.
+            **kwargs: Additional args for pdfplumber's to_image.
+
+        Returns:
+            PIL Image of the preview, or None if rendering fails.
+        """
+        if page_index < 0 or page_index >= len(self._pdf.pages):
+            logger.error(f"Invalid page index {page_index} for render_preview.")
+            return None
+
+        page = self._pdf.pages[page_index]
+        render_resolution = resolution if resolution is not None else scale * 72
+
+        try:
+            # Get base image from pdfplumber
+            img_object = page._page.to_image(resolution=render_resolution, **kwargs)
+            base_image = img_object.annotated if hasattr(img_object, 'annotated') else img_object._repr_png_()
+            if isinstance(base_image, bytes):
+                from io import BytesIO
+                base_image = Image.open(BytesIO(base_image))
+            base_image = base_image.convert("RGB") # Ensure consistent format
+
+            # Convert temporary highlight dicts to Highlight objects
+            # Note: Colors/labels are already determined by _prepare_highlight_data
+            preview_highlights = [
+                Highlight(
+                    page_index=h['page_index'],
+                    bbox=h.get('bbox'),
+                    polygon=h.get('polygon'),
+                    color=h['color'],
+                    label=h.get('label'),
+                    attributes=h.get('attributes_to_draw', {})
+                )
+                for h in temporary_highlights if h.get('bbox') or h.get('polygon')
+            ]
+
+            # Render only these highlights
+            renderer = HighlightRenderer(page, base_image, preview_highlights, scale, render_ocr)
+            rendered_image = renderer.render()
+
+            # Create legend only from temporary highlights
+            legend = None
+            if labels:
+                preview_labels = {h.label: h.color for h in preview_highlights if h.label}
+                if preview_labels:
+                     legend = create_legend(preview_labels)
+
+            # Merge with legend if created
+            final_image = merge_images_with_legend(rendered_image, legend, position=legend_position)
+
+        except Exception as e:
+            logger.error(f"Error rendering preview for page {page_index}: {e}", exc_info=True)
+            return None
+
+        return final_image 

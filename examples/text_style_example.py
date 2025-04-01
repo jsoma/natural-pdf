@@ -65,8 +65,10 @@ def text_style_example(pdf_path):
         print("\nEXAMPLE 2: Visualizing text styles")
         print("-" * 60)
         
-        # Highlight the styles
-        page.highlight_text_styles()
+        # Highlight the styles by iterating through the analyzed styles
+        # Each value in the 'styles' dict is an ElementCollection
+        for label, elements_collection in styles.items():
+            elements_collection.highlight(label=label) # Use the style label for the highlight
         
         # Save the image with a legend
         output_file = os.path.join(output_dir, "text_styles.png")
@@ -76,18 +78,15 @@ def text_style_example(pdf_path):
         # Clear highlights for the next example
         page.clear_highlights()
         
-        # EXAMPLE 3: Using highlight_all with text styles
-        print("\nEXAMPLE 3: Using highlight_all with text styles")
-        print("-" * 60)
-        
-        # Highlight all elements including text styles
-        page.highlight_all(include_text_styles=True)
-        
-        # Save the image with a legend
-        output_file = os.path.join(output_dir, "highlight_all_styles.png")
-        page.to_image(path=output_file, show_labels=True)
-        print(f"Saved highlight_all with text styles to: {output_file}")
-        
+        # EXAMPLE 3 REMOVED - Use EXAMPLE 2 to visualize styles. 
+        # To highlight styles alongside other elements, highlight them separately.
+        # Example:
+        # styles = page.analyze_text_styles()
+        # for label, coll in styles.items():
+        #    coll.highlight(label=label)
+        # page.find_all('line').highlight(label="Lines")
+        # page.to_image(...)
+
         print("\nEnd of text style demonstration.")
 
 if __name__ == "__main__":

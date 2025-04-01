@@ -208,40 +208,45 @@ class Region:
                 
     def highlight(self, 
                  label: Optional[str] = None,
-                 color: Optional[Tuple[int, int, int, int]] = None, 
+                 color: Optional[Union[Tuple, str]] = None,
                  use_color_cycling: bool = False,
-                 include_attrs: Optional[List[str]] = None) -> 'Region':
+                 include_attrs: Optional[List[str]] = None,
+                 existing: str = 'append') -> 'Region':
         """
         Highlight this region on the page.
         
         Args:
             label: Optional label for the highlight
-            color: RGBA color tuple for the highlight, or None to use automatic color
+            color: Color tuple/string for the highlight, or None to use automatic color
             use_color_cycling: Force color cycling even with no label (default: False)
             include_attrs: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
+            existing: How to handle existing highlights ('append' or 'replace').
             
         Returns:
             Self for method chaining
         """
-        # Add highlight to the page's highlight manager
+        # Access the highlighter service correctly
+        highlighter = self._page._highlighter
+
+        # Prepare common arguments
+        highlight_args = {
+            "page_index": self.page.index,
+            "color": color,
+            "label": label,
+            "use_color_cycling": use_color_cycling,
+            "element": self,  # Pass the region itself so attributes can be accessed
+            "include_attrs": include_attrs,
+            "existing": existing
+        }
+
+        # Call the appropriate service method
         if self.has_polygon:
-            self._page._highlight_mgr.add_polygon_highlight(
-                self.polygon, 
-                color, 
-                label, 
-                use_color_cycling,
-                element=self,  # Pass the region itself so attributes can be accessed
-                include_attrs=include_attrs
-            )
+            highlight_args["polygon"] = self.polygon
+            highlighter.add_polygon(**highlight_args)
         else:
-            self._page._highlight_mgr.add_highlight(
-                self.bbox, 
-                color, 
-                label, 
-                use_color_cycling,
-                element=self,  # Pass the region itself so attributes can be accessed
-                include_attrs=include_attrs
-            )
+            highlight_args["bbox"] = self.bbox
+            highlighter.add(**highlight_args)
+
         return self
     
     def to_image(self, 
@@ -1386,7 +1391,8 @@ class Region:
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
         
         # Ask the question using the QA engine
-        
+        return qa_engine.ask_pdf_region(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
+
     def add_child(self, child):
         """
         Add a child region to this region.
@@ -1488,34 +1494,3 @@ class Region:
                     all_matches.append(match)
                     
         return ElementCollection(all_matches)
-    
-    def ask(self, question: str, min_confidence: float = 0.1, model: str = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
-        """
-        Ask a question about the region content using document QA.
-        
-        This method uses a document question answering model to extract answers from the region content.
-        It leverages both textual content and layout information for better understanding.
-        
-        Args:
-            question: The question to ask about the region content
-            min_confidence: Minimum confidence threshold for answers (0.0-1.0)
-            model: Optional model name to use for QA (if None, uses default model)
-            **kwargs: Additional parameters to pass to the QA engine
-            
-        Returns:
-            Dictionary with answer details: {
-                "answer": extracted text,
-                "confidence": confidence score,
-                "found": whether an answer was found,
-                "page_num": page number,
-                "region": reference to this region,
-                "source_elements": list of elements that contain the answer (if found)
-            }
-        """
-        from natural_pdf.qa.document_qa import get_qa_engine
-        
-        # Get or initialize QA engine with specified model
-        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
-        
-        # Ask the question using the QA engine
-        return qa_engine.ask_pdf_region(self, question, min_confidence=min_confidence, debug=debug, **kwargs)

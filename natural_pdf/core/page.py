@@ -5,6 +5,8 @@ import tempfile
 from typing import List, Optional, Union, Any, Dict, Callable, TYPE_CHECKING, Tuple
 from PIL import Image
 
+from natural_pdf.elements.collections import ElementCollection
+
 if TYPE_CHECKING:
     import pdfplumber
     from natural_pdf.core.pdf import PDF
@@ -329,7 +331,6 @@ class Page:
         Returns:
             ElementCollection of matching elements
         """
-        from natural_pdf.elements.collections import ElementCollection
         from natural_pdf.selectors.parser import selector_to_filter_func
         
         # Get element type to filter
@@ -655,7 +656,6 @@ class Page:
             print(f"Page {self.index}: Excluded {excluded_count} elements, keeping {len(filtered_elements)}")
         
         # Extract text from filtered elements
-        from natural_pdf.elements.collections import ElementCollection
         collection = ElementCollection(filtered_elements)
         # Ensure elements are sorted for logical text flow
         if all(hasattr(el, 'top') and hasattr(el, 'x0') for el in collection.elements):
@@ -831,7 +831,7 @@ class Page:
             legend_position: str = 'right',
             render_ocr: bool = False) -> Optional[Image.Image]:
         """
-        Show the page, rendering highlights via HighlightingService.
+        Generates and returns an image of the page with persistent highlights rendered.
         
         Args:
             scale: Scale factor for rendering.
@@ -841,10 +841,9 @@ class Page:
             render_ocr: Whether to render OCR text.
             
         Returns:
-            PIL Image of the page or None if rendering fails.
+            PIL Image object of the page with highlights, or None if rendering fails.
         """
-        # Use to_image to get the image
-        img = self.to_image(
+        return self.to_image(
             scale=scale,
             width=width,
             labels=labels, 
@@ -852,24 +851,6 @@ class Page:
             render_ocr=render_ocr,
             include_highlights=True # Ensure highlights are requested
         )
-        # Display the image (requires a display hook or saving temporarily)
-        if img:
-             try:
-                 # This works in environments like Jupyter
-                 from IPython.display import display
-                 display(img)
-             except ImportError:
-                 # Fallback: save to temp file and open
-                 try:
-                      with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
-                          img.save(temp_img.name)
-                          print(f"Image saved temporarily to {temp_img.name}")
-                          # Try opening with default viewer (platform dependent)
-                          import webbrowser
-                          webbrowser.open(f"file://{os.path.abspath(temp_img.name)}")
-                 except Exception as e:
-                      print(f"Could not display image automatically: {e}")
-        return img # Return the image object anyway
         
     def save_image(self, 
             filename: str, 
@@ -922,159 +903,36 @@ class Page:
         self._highlighter.clear_page(self.index)
         return self
         
-    def analyze_text_styles(self) -> Dict[str, 'ElementCollection']:
+    def analyze_text_styles(self) -> ElementCollection:
         """
         Analyze and group text elements by their style properties.
-        
+        Adds a 'style_label' attribute to each element.
+
         Returns:
-            Dictionary mapping style labels to element collections
+            ElementCollection containing all TextElements with added 'style_label'.
         """
         # Import the analyzer
         from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
-        
+
         # Create analyzer
         analyzer = TextStyleAnalyzer()
-        
-        # Analyze the page and store the results
-        self._text_styles = analyzer.analyze(self)
-        
-        # Return the analyzed styles
-        return self._text_styles
-        
-    def highlight_text_styles(self) -> 'Page':
-        """
-        Highlight text elements grouped by style, using the central highlighter.
-        
-        Returns:
-            Self for method chaining
-        """
-        if self._text_styles is None:
-            self.analyze_text_styles()
-            
-        for label, elements in self._text_styles.items():
-             # Use the highlight method of ElementCollection, which now delegates
-             elements.highlight(label=label, use_color_cycling=True) # Ensure cycling for unique labels
-            
-        return self
-    
-    def highlight_all(self, 
-                     include_types: Optional[List[str]] = None, 
-                     include_text_styles: bool = False,
-                     include_layout_regions: bool = False,
-                     apply_exclusions: bool = True,
-                     use_color_cycling: bool = True,
-                     layout_confidence: Optional[float] = 0.2, # Allow None to disable filtering
-                     include_attrs: Optional[Dict[str, List[str]]] = None) -> 'Page':
-        """
-        Highlight various element types on the page using the central highlighter.
-        
-        Args:
-            include_types: Element types ('text', 'line', 'rect', 'char') to include. None=all.
-            include_text_styles: Highlight text by style instead of as one group.
-            include_layout_regions: Include detected layout regions (runs detection if needed).
-            apply_exclusions: Respect exclusion zones (default: True).
-            use_color_cycling: Use different colors for each type/style (default: True).
-            layout_confidence: Confidence threshold for layout regions. None=disable filter.
-            include_attrs: Dict mapping element type (e.g., 'region') to list of attributes
-                           to display (e.g., {'region': ['confidence', 'region_type']}).
 
-        Returns:
-            Self for method chaining.
-        """
-        self._load_elements() # Ensure elements are loaded
-        
-        exclusion_regions = self._get_exclusion_regions(include_callable=True) if apply_exclusions else []
-        
-        all_element_types = {
-            'text': self.words,
-            'char': self.chars,
-            'rect': self.rects,
-            'line': self.lines,
-            'region': self._element_mgr.regions # Include existing regions
-        }
+        # Analyze the page - analyzer returns Dict[str, List[TextElement]]
+        grouped_elements = analyzer.analyze(self)
 
-        highlighted_text = False
+        all_styled_elements = []
+        # Add the style_label attribute to each element and collect them
+        for style_label, elements_in_group in grouped_elements.items():
+            for element in elements_in_group:
+                element.style_label = style_label
+                all_styled_elements.append(element)
 
-        # Highlight by text styles if requested
-        if include_text_styles:
-            styles = self.analyze_text_styles()
-            for label, elements in styles.items():
-                collection = ElementCollection(elements.elements)
-                if apply_exclusions:
-                    collection = collection.exclude_regions(exclusion_regions)
-                # Delegate highlighting to ElementCollection
-                collection.highlight(
-                     label=label, 
-                     use_color_cycling=use_color_cycling,
-                     include_attrs=include_attrs.get('text') if include_attrs else None
-                )
-            highlighted_text = True
+        # Store the grouped results internally if needed for legacy access
+        self._text_styles = grouped_elements
 
-        # Determine types to highlight normally
-        types_to_highlight = include_types if include_types is not None else all_element_types.keys()
+        # Return a single collection of all styled elements
+        return ElementCollection(all_styled_elements)
 
-        for element_type in types_to_highlight:
-            if element_type == 'text' and highlighted_text:
-                 continue # Skip if text already highlighted by style
-            if element_type == 'region' and include_layout_regions:
-                 continue # Skip generic regions if layout regions are handled separately below
-
-            if element_type in all_element_types:
-                elements = all_element_types[element_type]
-                if not elements: continue
-
-                collection = ElementCollection(elements) # Ensure it's a collection
-                if apply_exclusions:
-                    collection = collection.exclude_regions(exclusion_regions)
-                
-                if not collection.elements: continue # Skip if all excluded
-                
-                label = f"{element_type.capitalize()} Elements"
-                attrs_to_include = include_attrs.get(element_type) if include_attrs else None
-                
-                # Delegate highlighting to ElementCollection
-                collection.highlight(
-                     label=label, 
-                     use_color_cycling=use_color_cycling,
-                     include_attrs=attrs_to_include
-                 )
-        
-        # Include layout regions if requested
-        if include_layout_regions:
-            # Run layout detection if not already done
-            if 'detected' not in self._regions or not self._regions['detected']:
-                self.analyze_layout(confidence=layout_confidence)
-            
-            layout_regions = self._regions.get('detected', [])
-
-            # Filter by confidence if threshold is set
-            if layout_confidence is not None:
-                layout_regions = [r for r in layout_regions if getattr(r, 'confidence', 0) >= layout_confidence]
-
-            # Group regions by type for highlighting
-            regions_by_type: Dict[str, List[Region]] = {}
-            for region in layout_regions:
-                 region_label = getattr(region, 'region_type', 'Unknown Layout Region')
-                 if region_label not in regions_by_type:
-                     regions_by_type[region_label] = []
-                 regions_by_type[region_label].append(region)
-            
-            # Highlight each group
-            attrs_to_include = include_attrs.get('region') if include_attrs else None
-            for label, regions_group in regions_by_type.items():
-                 collection = ElementCollection(regions_group)
-                 if apply_exclusions:
-                      collection = collection.exclude_regions(exclusion_regions)
-                 if not collection.elements: continue
-
-                 collection.highlight(
-                     label=f"Layout: {label}", # More specific label
-                     use_color_cycling=use_color_cycling,
-                     include_attrs=attrs_to_include
-                 )
-
-        return self
-        
     def to_image(self,
             path: Optional[str] = None,
             scale: float = 2.0,
@@ -1283,15 +1141,22 @@ class Page:
         exclude_classes: Optional[List[str]] = None,
         device: Optional[str] = None,
         existing: str = "replace"
-    ) -> 'Page':
+    ) -> ElementCollection[Region]:
         """
         Analyze the page layout using the configured LayoutManager.
+        Adds detected Region objects to the page's element manager.
+
+        Returns:
+            ElementCollection containing the detected Region objects.
         """
-        analyzer = self.layout_analyzer 
+        analyzer = self.layout_analyzer
         if not analyzer:
              logger.error("Layout analysis failed: LayoutAnalyzer not initialized (is LayoutManager available?).")
-             return self
-        analyzer.analyze_layout( 
+             return ElementCollection([]) # Return empty collection
+
+        # The analyzer's analyze_layout method already adds regions to the page
+        # and its element manager. We just need to retrieve them.
+        analyzer.analyze_layout(
             engine=engine,
             options=options,
             confidence=confidence,
@@ -1300,64 +1165,13 @@ class Page:
             device=device,
             existing=existing
         )
-        return self
-    
-    def highlight_layout(self, 
-                        layout_regions: Optional[List[Region]] = None,
-                        confidence: float = 0.2, # Allow None
-                        label_format: str = "Layout: {type} ({model:.3s})") -> 'Page': # Default format
-        """
-        Highlight detected layout regions, delegating to central highlighter.
-        
-        Args:
-            layout_regions: List of regions to highlight (runs analyze_layout if None).
-            confidence: Minimum confidence threshold (None to disable filtering).
-            label_format: Format string for region labels (can use {type}, {conf:.2f}, {model}).
-            
-        Returns:
-            Self for method chaining.
-        """
-        regions_to_highlight = []
-        if layout_regions:
-            regions_to_highlight = layout_regions
-        elif 'detected' in self._regions and self._regions['detected']:
-            regions_to_highlight = self._regions['detected']
-        else:
-            logger.info("No layout regions provided or detected, running analyze_layout first.")
-            self.analyze_layout() # Run with defaults if needed
-            regions_to_highlight = self._regions.get('detected', [])
-            
-        # Filter by confidence if threshold is provided
-        if confidence is not None:
-             regions_to_highlight = [r for r in regions_to_highlight if getattr(r, 'confidence', 0) >= confidence]
-        
-        # Highlight each region using the Page's highlight method
-        for region in regions_to_highlight:
-            model_name = getattr(region, 'model', 'N/A')
-            region_type = getattr(region, 'region_type', 'Unknown')
-            region_conf = getattr(region, 'confidence', 0.0)
-            
-            try:
-                 label = label_format.format(type=region_type, conf=region_conf, model=model_name)
-            except KeyError as e:
-                 logger.warning(f"Invalid key in label_format '{label_format}': {e}. Using default format.")
-                 label = f"Layout: {region_type} ({model_name:.3s})"
-            except Exception as format_e:
-                  logger.warning(f"Error formatting label '{label_format}': {format_e}. Using default format.")
-                  label = f"Layout: {region_type} ({model_name:.3s})"
 
-            # Use highlight_polygon if available, otherwise rectangle
-            highlight_method = self.highlight_polygon if region.has_polygon else self.highlight
-            highlight_method(
-                 polygon=region.polygon if region.has_polygon else None,
-                 bbox=region.bbox if not region.has_polygon else None,
-                 label=label,
-                 use_color_cycling=True, # Cycle colors for different layout types
-                 element=region, # Pass region to potentially include attrs
-                 # include_attrs=['confidence'] # Example: uncomment to show confidence
-            )
-            
-        return self
+        # Retrieve the detected regions from the element manager
+        # Filter regions based on source='detected' and potentially the model used if available
+        detected_regions = [r for r in self._element_mgr.regions
+                            if r.source == 'detected' and (not engine or getattr(r, 'model', None) == engine)]
+
+        return ElementCollection(detected_regions)
 
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion='both') -> Optional[Region]: # Return Optional
         """
@@ -1509,3 +1323,46 @@ class Page:
         except Exception as e:
              logger.error(f"Error during page.ask: {e}", exc_info=True)
              return {"answer": None, "confidence": 0.0, "found": False, "page_num": self.number, "source_elements": []}
+
+    def show_preview(self, 
+                     temporary_highlights: List[Dict], 
+                     scale: float = 2.0, 
+                     width: Optional[int] = None,
+                     labels: bool = True,
+                     legend_position: str = 'right',
+                     render_ocr: bool = False) -> Optional[Image.Image]:
+        """
+        Generates and returns a non-stateful preview image containing only
+        the provided temporary highlights.
+
+        Args:
+            temporary_highlights: List of highlight data dictionaries (as prepared by
+                                  ElementCollection._prepare_highlight_data).
+            scale: Scale factor for rendering.
+            width: Optional width for the output image.
+            labels: Whether to include a legend.
+            legend_position: Position of the legend.
+            render_ocr: Whether to render OCR text.
+
+        Returns:
+            PIL Image object of the preview, or None if rendering fails.
+        """
+        try:
+            # Delegate rendering to the highlighter service's preview method
+            img = self._highlighter.render_preview(
+                page_index=self.index,
+                temporary_highlights=temporary_highlights,
+                scale=scale,
+                labels=labels,
+                legend_position=legend_position,
+                render_ocr=render_ocr
+            )
+        except AttributeError:
+            logger.error(f"HighlightingService does not have the required 'render_preview' method.")
+            return None
+        except Exception as e:
+            logger.error(f"Error calling highlighter.render_preview for page {self.index}: {e}", exc_info=True)
+            return None
+
+        # Return the rendered image directly
+        return img

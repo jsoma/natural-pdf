@@ -478,7 +478,7 @@ class Element:
     
     def highlight(self, 
                  label: Optional[str] = None,
-                 color: Optional[Tuple[int, int, int, int]] = None, 
+                 color: Optional[Union[Tuple, str]] = None, # Allow string color
                  use_color_cycling: bool = False,
                  include_attrs: Optional[List[str]] = None,
                  existing: str = 'append') -> 'Element':
@@ -487,7 +487,7 @@ class Element:
         
         Args:
             label: Optional label for the highlight
-            color: RGBA color tuple for the highlight, or None to use automatic color
+            color: Color tuple/string for the highlight, or None to use automatic color
             use_color_cycling: Force color cycling even with no label (default: False)
             include_attrs: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
             existing: How to handle existing highlights - 'append' (default) or 'replace'
@@ -495,16 +495,28 @@ class Element:
         Returns:
             Self for method chaining
         """
-        # Add highlight to the page's highlight manager
-        self.page._highlight_mgr.add_highlight(
-            self.bbox, 
-            color, 
-            label, 
-            use_color_cycling, 
-            element=self,  # Pass the element itself so attributes can be accessed
-            include_attrs=include_attrs,
-            existing=existing
-        )
+        # Access the correct highlighter service
+        highlighter = self.page._highlighter
+
+        # Prepare common arguments
+        highlight_args = {
+            "page_index": self.page.index,
+            "color": color,
+            "label": label,
+            "use_color_cycling": use_color_cycling,
+            "element": self,  # Pass the element itself so attributes can be accessed
+            "include_attrs": include_attrs,
+            "existing": existing
+        }
+
+        # Call the appropriate service method based on geometry
+        if self.has_polygon:
+            highlight_args["polygon"] = self.polygon
+            highlighter.add_polygon(**highlight_args)
+        else:
+            highlight_args["bbox"] = self.bbox
+            highlighter.add(**highlight_args)
+
         return self
     
     def show(self, 

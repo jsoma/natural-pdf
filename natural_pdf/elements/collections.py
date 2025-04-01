@@ -228,124 +228,369 @@ class ElementCollection(Generic[T]):
         self._elements.sort(key=key, reverse=reverse)
         return self
     
-    def highlight(self, 
+    def highlight(self,
                  label: Optional[str] = None,
                  color: Optional[Union[Tuple, str]] = None,
-                 distinct: bool = False, # <-- Renamed parameter, default False
+                 group_by: Optional[str] = None,
+                 label_format: Optional[str] = None,
+                 distinct: bool = False,
                  include_attrs: Optional[List[str]] = None,
                  existing: str = 'append') -> 'ElementCollection':
         """
-        Highlight all elements in the collection using the HighlightingService.
+        Adds persistent highlights for all elements in the collection to the page
+        via the HighlightingService.
 
-        Default behavior (distinct=False): 
-        Groups all elements in the collection under a single color. 
-        If no 'label' is provided, a default label is generated based on the 
-        element type (e.g., "Text Elements"), ensuring color consistency 
-        and enabling legend generation for the group.
+        Uses grouping logic based on parameters (defaulting to grouping by type).
+        To display a non-persistent preview, use `show()`.
 
         Args:
-            label: Optional label for the highlight group. If provided, it groups all 
-                   elements under this label with one consistent color. 
-                   Cannot be used when distinct=True.
-            color: Optional explicit color for the highlight (tuple/string accepted by 
-                   HighlightingService). Overrides default color assignment. Applied 
-                   consistently if grouping, ignored if distinct=True.
-            distinct: If True, each element in the collection will be highlighted 
-                      individually, potentially with different colors by cycling 
-                      through the color manager's palette. Default is False (group elements). 
-                      Cannot be True if a 'label' is provided.
-            include_attrs: List of attribute names from the element to display on the highlight.
+            label: Optional explicit label for the entire collection. If provided,
+                   all elements are highlighted as a single group with this label,
+                   ignoring 'group_by' and the default type-based grouping.
+            color: Optional explicit color for the highlight (tuple/string). Applied
+                   consistently if 'label' is provided or if grouping occurs.
+            group_by: Optional attribute name present on the elements. If provided
+                      (and 'label' is None), elements will be grouped based on the
+                      value of this attribute, and each group will be highlighted
+                      with a distinct label and color.
+            label_format: Optional Python f-string to format the group label when
+                          'group_by' is used. Can reference element attributes
+                          (e.g., "Type: {region_type}, Conf: {confidence:.2f}").
+                          If None, the attribute value itself is used as the label.
+            distinct: If True, bypasses all grouping and highlights each element
+                      individually with cycling colors (the previous default behavior).
+                      (default: False)
+            include_attrs: List of attribute names from the element to display directly
+                           on the highlight itself (distinct from group label).
             existing: How to handle existing highlights on the page ('append' or 'replace').
                       Note: 'replace' applies per-page as elements are processed.
-                      
+
         Returns:
             Self for method chaining
-            
+
         Raises:
-            ValueError: If both 'label' is provided and 'distinct' is True.
+            AttributeError: If 'group_by' is provided but the attribute doesn't exist
+                            on some elements.
+            ValueError: If 'label_format' is provided but contains invalid keys for
+                        element attributes.
         """
-        if not self._elements:
-            return self # Nothing to highlight
+        # 1. Prepare the highlight data based on parameters
+        highlight_data_list = self._prepare_highlight_data(
+            distinct=distinct,
+            label=label,
+            color=color,
+            group_by=group_by,
+            label_format=label_format,
+            include_attrs=include_attrs
+            # 'existing' is handled during the add call below
+        )
 
-        # --- Validation ---
-        if label is not None and distinct:
-            raise ValueError("Cannot provide a 'label' and set 'distinct=True' simultaneously. "
-                             "Labels imply grouping with a single color.")
+        # 2. Add prepared highlights to the persistent service
+        if not highlight_data_list:
+            return self # Nothing to add
 
-        effective_label = label # Start with user-provided label
-        use_cycling_for_page_method = False # Default: rely on label for consistency
+        # Get page and highlighter from the first element (assume uniform page)
+        first_element = self._elements[0]
+        if not hasattr(first_element, 'page') or not hasattr(first_element.page, '_highlighter'):
+            logger.warning("Cannot highlight collection: Elements lack page or highlighter access.")
+            return self
 
-        # --- Determine effective label and cycling behavior ---
-        if label is None: # No explicit grouping label provided
-            if distinct:
-                # User wants individual colors, no label grouping
-                effective_label = None 
-                use_cycling_for_page_method = True
-                logger.debug("Highlighting collection: distinct=True, cycling colors for each element.")
-            else:
-                # Default: Auto-group by type
-                first_element = self._elements[0]
-                element_type_name = type(first_element).__name__.replace("Element", "")
-                effective_label = f"{element_type_name} Elements" if element_type_name else "Highlighted Elements"
-                use_cycling_for_page_method = False # Use the derived label for consistency
-                logger.debug(f"Highlighting collection: distinct=False, no label provided. Grouping with derived label: '{effective_label}'")
-        else:
-             # Label provided, group under this label
-             use_cycling_for_page_method = False
-             logger.debug(f"Highlighting collection: Grouping with provided label: '{label}'")
+        page = first_element.page
+        highlighter = page._highlighter
 
+        # Use a set to track pages affected if 'replace' is used
+        pages_to_clear = set()
+        if existing == 'replace':
+            # Identify all unique page indices in this operation
+            for data in highlight_data_list:
+                pages_to_clear.add(data['page_index'])
+            # Clear those pages *before* adding new highlights
+            for page_idx in pages_to_clear:
+                highlighter.clear_page(page_idx)
 
-        # --- Process each element ---
-        for element in self._elements:
-            if not hasattr(element, 'page') or not hasattr(element.page, '_highlighter'):
-                logger.warning(f"Cannot highlight element, missing 'page' attribute or page lacks highlighter access: {element}")
-                continue
-                
-            page = element.page
-            
-            # Prepare arguments for the underlying add/add_polygon call
-            args_for_highlighter = {
-                 "page_index": page.index,
-                 "color": color, # Pass explicit color if provided
-                 "label": effective_label, # Pass the determined label (could be None if distinct=True)
-                 "use_color_cycling": use_cycling_for_page_method, # Tell highlighter whether to cycle *for this specific element*
-                 "include_attrs": include_attrs,
-                 "existing": existing,
-                 "element": element # Pass the element itself
+        for data in highlight_data_list:
+            # Call the appropriate service add method
+            add_args = {
+                "page_index": data['page_index'],
+                "color": data['color'], # Color determined by _prepare
+                "label": data['label'], # Label determined by _prepare
+                "use_color_cycling": data.get('use_color_cycling', False), # Set by _prepare if distinct
+                "element": data['element'],
+                "include_attrs": data['include_attrs'],
+                "existing": 'append' # Always append now, replace was handled above
             }
-
-            # Check if element is polygon or bbox based
-            is_polygon = getattr(element, 'has_polygon', False)
-            geom_data = None
-            if is_polygon:
-                 geom_data = getattr(element, 'polygon', None)
-                 add_method = page._highlighter.add_polygon
-                 args_for_highlighter['polygon'] = geom_data
+            if data.get('polygon'):
+                add_args["polygon"] = data['polygon']
+                highlighter.add_polygon(**add_args)
+            elif data.get('bbox'):
+                add_args["bbox"] = data['bbox']
+                highlighter.add(**add_args)
             else:
-                 geom_data = getattr(element, 'bbox', None)
-                 add_method = page._highlighter.add
-                 args_for_highlighter['bbox'] = geom_data
-
-            # Call the appropriate highlighter method if geometry is valid
-            if geom_data:
-                 try:
-                      add_method(**args_for_highlighter)
-                 except Exception as e:
-                      logger.error(f"Error calling highlighter method for element {element} on page {page.index}: {e}", exc_info=True)
-            else:
-                 logger.warning(f"Cannot highlight element, no bbox or polygon found: {element}")
+                logger.warning(f"Skipping highlight data, no bbox or polygon found: {data}")
 
         return self
+
+    def _prepare_highlight_data(self,
+                                distinct: bool = False,
+                                label: Optional[str] = None,
+                                color: Optional[Union[Tuple, str]] = None,
+                                group_by: Optional[str] = None,
+                                label_format: Optional[str] = None,
+                                include_attrs: Optional[List[str]] = None) -> List[Dict]:
+        """
+        Determines the parameters for highlighting each element based on the strategy.
+
+        Does not interact with the HighlightingService directly.
+
+        Returns:
+            List of dictionaries, each containing parameters for a single highlight
+            (e.g., page_index, bbox/polygon, color, label, element, include_attrs, attributes_to_draw).
+            Color and label determination happens here.
+        """
+        prepared_data = []
+        if not self._elements: return prepared_data
+
+        # Need access to the HighlightingService to determine colors correctly.
+        highlighter = None
+        first_element = self._elements[0]
+        if hasattr(first_element, 'page') and hasattr(first_element.page, '_highlighter'):
+            highlighter = first_element.page._highlighter
+        else:
+            logger.warning("Cannot determine highlight colors: HighlightingService not accessible from elements.")
+            return []
+
+        if distinct:
+            logger.debug("_prepare: Distinct highlighting strategy.")
+            for element in self._elements:
+                # Call the service's color determination logic
+                final_color = highlighter._determine_highlight_color(label=None, color_input=None, use_color_cycling=True)
+                element_data = self._get_element_highlight_params(element, include_attrs)
+                if element_data:
+                    element_data.update({
+                        'color': final_color,
+                        'label': None,
+                        'use_color_cycling': True
+                    })
+                    prepared_data.append(element_data)
+
+        elif label is not None:
+            logger.debug(f"_prepare: Explicit label '{label}' strategy.")
+            final_color = highlighter._determine_highlight_color(label=label, color_input=color, use_color_cycling=False)
+            for element in self._elements:
+                element_data = self._get_element_highlight_params(element, include_attrs)
+                if element_data:
+                    element_data.update({
+                        'color': final_color,
+                        'label': label
+                    })
+                    prepared_data.append(element_data)
+
+        elif group_by is not None:
+            logger.debug("_prepare: Grouping by attribute strategy.")
+            grouped_elements = self._group_elements_by_attr(group_by)
+            for group_key, group_elements in grouped_elements.items():
+                if not group_elements: continue
+                group_label = self._format_group_label(group_key, label_format, group_elements[0], group_by)
+                final_color = highlighter._determine_highlight_color(label=group_label, color_input=None, use_color_cycling=False)
+                logger.debug(f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}")
+                for element in group_elements:
+                    element_data = self._get_element_highlight_params(element, include_attrs)
+                    if element_data:
+                        element_data.update({
+                            'color': final_color,
+                            'label': group_label
+                        })
+                        prepared_data.append(element_data)
+        else:
+            logger.debug("_prepare: Default grouping strategy.")
+            element_types = set(type(el).__name__ for el in self._elements)
+
+            if len(element_types) == 1:
+                type_name = element_types.pop()
+                base_name = type_name.replace("Element", "").replace("Region", "") if type_name != "Region" else "Region"
+                auto_label = f"{base_name} Elements" if base_name else "Elements"
+                # Determine color *before* logging or using it
+                final_color = highlighter._determine_highlight_color(label=auto_label, color_input=color, use_color_cycling=False)
+                logger.debug(f"  _prepare default group '{auto_label}' -> color {final_color}")
+                for element in self._elements:
+                    element_data = self._get_element_highlight_params(element, include_attrs)
+                    if element_data:
+                        element_data.update({'color': final_color, 'label': auto_label})
+                        prepared_data.append(element_data)
+            else:
+                # Mixed types: Generate generic label and warn
+                type_names_str = ", ".join(sorted(list(element_types)))
+                auto_label = "Mixed Elements"
+                logger.warning(
+                    f"Highlighting collection with mixed element types ({type_names_str}) "
+                    f"using generic label '{auto_label}'. Consider using 'label', 'group_by', "
+                    f"or 'distinct=True' for more specific highlighting."
+                )
+                final_color = highlighter._determine_highlight_color(label=auto_label, color_input=color, use_color_cycling=False)
+                # Determine color *before* logging or using it (already done above for this branch)
+                logger.debug(f"  _prepare default group '{auto_label}' -> color {final_color}")
+                for element in self._elements:
+                    element_data = self._get_element_highlight_params(element, include_attrs)
+                    if element_data:
+                        element_data.update({'color': final_color, 'label': auto_label})
+                        prepared_data.append(element_data)
+
+        return prepared_data
+
+    def _call_element_highlighter(self, element: T,
+                                  color: Optional[Union[Tuple, str]],
+                                  label: Optional[str],
+                                  use_color_cycling: bool,
+                                  include_attrs: Optional[List[str]],
+                                  existing: str):
+        """Low-level helper to call the appropriate HighlightingService method for an element."""
+        if not hasattr(element, 'page') or not hasattr(element.page, '_highlighter'):
+            logger.warning(f"Cannot highlight element, missing 'page' attribute or page lacks highlighter access: {element}")
+            return
+
+        page = element.page
+        args_for_highlighter = {
+            "page_index": page.index,
+            "color": color,
+            "label": label,
+            "use_color_cycling": use_color_cycling,
+            "include_attrs": include_attrs,
+            "existing": existing,
+            "element": element
+        }
+
+        is_polygon = getattr(element, 'has_polygon', False)
+        geom_data = None
+        add_method = None
+
+        if is_polygon:
+            geom_data = getattr(element, 'polygon', None)
+            if geom_data:
+                args_for_highlighter['polygon'] = geom_data
+                add_method = page._highlighter.add_polygon
+        else:
+            geom_data = getattr(element, 'bbox', None)
+            if geom_data:
+                args_for_highlighter['bbox'] = geom_data
+                add_method = page._highlighter.add
+
+        if add_method and geom_data:
+            try:
+                add_method(**args_for_highlighter)
+            except Exception as e:
+                logger.error(f"Error calling highlighter method for element {element} on page {page.index}: {e}", exc_info=True)
+        elif not geom_data:
+            logger.warning(f"Cannot highlight element, no bbox or polygon found: {element}")
+
+    def _highlight_as_single_group(self, label: str,
+                                   color: Optional[Union[Tuple, str]],
+                                   include_attrs: Optional[List[str]],
+                                   existing: str):
+        """Highlights all elements with the same explicit label and color."""
+        for element in self._elements:
+            self._call_element_highlighter(
+                element=element,
+                color=color, # Use explicit color if provided
+                label=label, # Use the explicit group label
+                use_color_cycling=False, # Use consistent color for the label
+                include_attrs=include_attrs,
+                existing=existing
+            )
+
+    def _highlight_grouped_by_attribute(self, group_by: str,
+                                        label_format: Optional[str],
+                                        include_attrs: Optional[List[str]],
+                                        existing: str):
+        """Groups elements by attribute and highlights each group distinctly."""
+        grouped_elements: Dict[Any, List[T]] = {}
+        # Group elements by the specified attribute value
+        for element in self._elements:
+            try:
+                group_key = getattr(element, group_by, None)
+                if group_key is None: # Handle elements missing the attribute
+                     group_key = f"Missing '{group_by}'"
+                # Ensure group_key is hashable (convert list/dict if necessary)
+                if isinstance(group_key, (list, dict)):
+                    group_key = str(group_key)
+
+                if group_key not in grouped_elements:
+                    grouped_elements[group_key] = []
+                grouped_elements[group_key].append(element)
+            except AttributeError:
+                 logger.warning(f"Attribute '{group_by}' not found on element {element}. Skipping grouping.")
+                 group_key = f"Error accessing '{group_by}'"
+                 if group_key not in grouped_elements:
+                     grouped_elements[group_key] = []
+                 grouped_elements[group_key].append(element)
+            except TypeError: # Handle unhashable types
+                 logger.warning(f"Attribute value for '{group_by}' on {element} is unhashable ({type(group_key)}). Using string representation.")
+                 group_key = str(group_key)
+                 if group_key not in grouped_elements:
+                     grouped_elements[group_key] = []
+                 grouped_elements[group_key].append(element)
+
+
+        # Highlight each group
+        for group_key, group_elements in grouped_elements.items():
+            if not group_elements: continue
+
+            # Determine the label for this group
+            first_element = group_elements[0] # Use first element for formatting
+            group_label = None
+            if label_format:
+                try:
+                    # Create a dict of element attributes for formatting
+                    element_attrs = first_element.__dict__.copy() # Start with element's dict
+                    # Ensure the group_by key itself is present correctly
+                    element_attrs[group_by] = group_key
+                    group_label = label_format.format(**element_attrs)
+                except KeyError as e:
+                    logger.warning(f"Invalid key '{e}' in label_format '{label_format}'. Using group key as label.")
+                    group_label = str(group_key)
+                except Exception as format_e:
+                    logger.warning(f"Error formatting label '{label_format}': {format_e}. Using group key as label.")
+                    group_label = str(group_key)
+            else:
+                group_label = str(group_key) # Use the attribute value as label
+
+            logger.debug(f"  Highlighting group '{group_label}' ({len(group_elements)} elements)")
+
+            # Highlight all elements in this group with the derived label
+            for element in group_elements:
+                self._call_element_highlighter(
+                    element=element,
+                    color=None, # Let ColorManager choose based on label
+                    label=group_label, # Use the derived group label
+                    use_color_cycling=False, # Use consistent color for the label
+                    include_attrs=include_attrs,
+                    existing=existing
+                )
+
+    def _highlight_distinctly(self, include_attrs: Optional[List[str]], existing: str):
+        """DEPRECATED: Logic moved to _prepare_highlight_data. Kept for reference/potential reuse."""
+        # This method is no longer called directly by the main highlight path.
+        # The distinct logic is handled within _prepare_highlight_data.
+        for element in self._elements:
+            self._call_element_highlighter(
+                element=element,
+                color=None, # Let ColorManager cycle
+                label=None, # No label for distinct elements
+                use_color_cycling=True, # Force cycling
+                include_attrs=include_attrs,
+                existing=existing
+            )
         
-    def show(self, 
+    def show(self,
             scale: float = 2.0,
             width: Optional[int] = None,
             labels: bool = True,
             legend_position: str = 'right',
-            render_ocr: bool = False) -> 'Image.Image':
+            render_ocr: bool = False) -> Optional['Image.Image']:
         """
-        Show the page with this collection's elements highlighted.
-        
+        Displays a non-stateful preview image of the page containing only the highlights
+        for the elements in this collection. Uses default highlight grouping (by type).
+        This does NOT add persistent highlights to the page.
+
         Args:
             scale: Scale factor for rendering
             width: Optional width for the output image in pixels
@@ -354,16 +599,35 @@ class ElementCollection(Generic[T]):
             render_ocr: Whether to render OCR text with white background boxes
             
         Returns:
-            PIL Image of the page with elements highlighted
+            PIL Image object that was displayed (or None if display failed or no page).
         """
-        # Use to_image to get the image
-        return self.to_image(
-            scale=scale,
-            width=width,
-            labels=labels,
-            legend_position=legend_position,
-            render_ocr=render_ocr
+        # 1. Prepare highlight data using default strategy (no distinct, label, group_by)
+        highlight_data_list = self._prepare_highlight_data(
+            # Defaults: distinct=False, label=None, color=None, group_by=None
         )
+
+        # 2. Get the page object from the first element
+        page = self.elements[0].page if self.elements and hasattr(self.elements[0], 'page') else None
+
+        # 3. If page exists, call the new non-stateful preview method
+        if page:
+            # Call the yet-to-be-implemented page.show_preview method
+            # Ensure page.show_preview is implemented to accept these arguments
+            if hasattr(page, 'show_preview') and callable(page.show_preview):
+                 return page.show_preview(
+                      temporary_highlights=highlight_data_list,
+                      scale=scale,
+                      width=width,
+                      labels=labels,
+                      legend_position=legend_position,
+                      render_ocr=render_ocr
+                 )
+            else:
+                 logger.error("Page object does not have the required 'show_preview' method.")
+                 return None # Cannot generate preview
+        else:
+            logger.warning("Cannot show collection preview: No associated page found.")
+            return None
         
     def save(self, 
             filename: str, 
@@ -432,6 +696,92 @@ class ElementCollection(Generic[T]):
                 render_ocr=render_ocr
             )
         return None
+
+    def _group_elements_by_attr(self, group_by: str) -> Dict[Any, List[T]]:
+        """Groups elements by the specified attribute."""
+        grouped_elements: Dict[Any, List[T]] = {}
+        for element in self._elements:
+            try:
+                group_key = getattr(element, group_by, None)
+                if group_key is None: # Handle elements missing the attribute
+                    group_key = f"Missing '{group_by}'"
+                # Ensure group_key is hashable (convert list/dict if necessary)
+                if isinstance(group_key, (list, dict)):
+                    group_key = str(group_key)
+
+                if group_key not in grouped_elements:
+                    grouped_elements[group_key] = []
+                grouped_elements[group_key].append(element)
+            except AttributeError:
+                logger.warning(f"Attribute '{group_by}' not found on element {element}. Skipping grouping.")
+                group_key = f"Error accessing '{group_by}'"
+                if group_key not in grouped_elements:
+                    grouped_elements[group_key] = []
+                grouped_elements[group_key].append(element)
+            except TypeError: # Handle unhashable types
+                logger.warning(f"Attribute value for '{group_by}' on {element} is unhashable ({type(group_key)}). Using string representation.")
+                group_key = str(group_key)
+                if group_key not in grouped_elements:
+                    grouped_elements[group_key] = []
+                grouped_elements[group_key].append(element)
+
+        return grouped_elements
+
+    def _format_group_label(self, group_key: Any, label_format: Optional[str], sample_element: T, group_by_attr: str) -> str:
+        """Formats the label for a group based on the key and format string."""
+        if label_format:
+            try:
+                element_attrs = sample_element.__dict__.copy()
+                element_attrs[group_by_attr] = group_key # Ensure key is present
+                return label_format.format(**element_attrs)
+            except KeyError as e:
+                logger.warning(f"Invalid key '{e}' in label_format '{label_format}'. Using group key as label.")
+                return str(group_key)
+            except Exception as format_e:
+                logger.warning(f"Error formatting label '{label_format}': {format_e}. Using group key as label.")
+                return str(group_key)
+        else:
+            return str(group_key)
+
+    def _get_element_highlight_params(self, element: T, include_attrs: Optional[List[str]]) -> Optional[Dict]:
+        """Extracts common parameters needed for highlighting a single element."""
+        if not hasattr(element, 'page'): return None
+        page = element.page
+
+        base_data = {
+            'page_index': page.index,
+            'element': element,
+            'include_attrs': include_attrs,
+            'attributes_to_draw': {},
+            'bbox': None,
+            'polygon': None
+        }
+
+        # Extract geometry
+        is_polygon = getattr(element, 'has_polygon', False)
+        geom_data = None
+        if is_polygon:
+            geom_data = getattr(element, 'polygon', None)
+            if geom_data: base_data['polygon'] = geom_data
+        else:
+            geom_data = getattr(element, 'bbox', None)
+            if geom_data: base_data['bbox'] = geom_data
+
+        if not geom_data:
+            logger.warning(f"Cannot prepare highlight, no bbox or polygon found for element: {element}")
+            return None
+
+        # Extract attributes if requested
+        if include_attrs:
+            for attr_name in include_attrs:
+                try:
+                    attr_value = getattr(element, attr_name, None)
+                    if attr_value is not None:
+                        base_data['attributes_to_draw'][attr_name] = attr_value
+                except AttributeError:
+                    logger.warning(f"Attribute '{attr_name}' not found on element {element} for include_attrs")
+
+        return base_data
 
 class PageCollection(Generic[P]):
     """
