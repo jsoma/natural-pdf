@@ -1,6 +1,63 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=42", "wheel", "setuptools-scm>=6.2"]
 build-backend = "setuptools.build_meta"
+
+# --- Project Metadata (PEP 621) ---
+[project]
+name = "natural-pdf"
+# Version is now managed dynamically by setuptools-scm based on Git tags
+authors = [
+    { name="Jonathan Soma", email="jonathan.soma@gmail.com" },
+]
+description = "A more intuitive interface for working with PDFs"
+readme = "README.md"
+license = { text = "MIT License" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pdfplumber>=0.7.0",       # Base PDF parsing
+    "Pillow>=8.0.0",           # Image processing
+    "colour>=0.1.5",           # Color name/hex/RGB conversion for selectors
+    "numpy>=1.20.0",           # Required for image processing
+    "urllib3>=1.26.0",         # For handling URL downloads
+    "torch>=2.0.0",            # Required for AI models
+    "torchvision>=0.15.0",     # Required for AI models
+    "transformers>=4.30.0",    # Used for TATR and document QA
+    "huggingface_hub>=0.19.0", # For downloading models
+]
+
+[project.optional-dependencies]
+interactive = [
+    # Only require ipywidgets, frontend is user's responsibility
+    "ipywidgets>=7.0.0,<9.0.0",
+]
+easyocr = ["easyocr"]
+paddle = ["paddlepaddle", "paddleocr"]
+layout_yolo = ["doclayout_yolo"]
+surya = ["surya-ocr"]
+qa = [] # Uses transformers from dependencies
+all = [
+    "natural-pdf[interactive]", # Include interactive deps in 'all'
+    "natural-pdf[easyocr]",
+    "natural-pdf[paddle]",
+    "natural-pdf[layout_yolo]",
+    "natural-pdf[surya]",
+    # "natural-pdf[qa]", # 'qa' is empty, no need to list
+]
+
+[project.urls]
+Homepage = "https://github.com/jsoma/natural-pdf"
+Repository = "https://github.com/jsoma/natural-pdf"
+
+# --- Tool Configurations ---
+
+# Add setuptools_scm configuration
+[tool.setuptools_scm]
+# Empty section uses default configuration (version from Git tags)
 
 [tool.black]
 line-length = 100
@@ -20,14 +77,3 @@ disallow_incomplete_defs = false
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
-
-[project.optional-dependencies]
-interactive = [
-    "ipywidgets>=7.0.0,<9.0.0",
-    "notebook",
-    "jupyterlab"
-]
-
-[project.urls]
-Homepage = "https://github.com/jsoma/natural-pdf"
-Repository = "https://github.com/jsoma/natural-pdf"
