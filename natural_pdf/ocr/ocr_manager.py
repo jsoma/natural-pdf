@@ -21,7 +21,7 @@ class OCRManager:
     # Registry mapping engine names to classes and default options
     ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
         'easyocr': {'class': EasyOCREngine, 'options_class': EasyOCROptions},
-        'paddleocr': {'class': PaddleOCREngine, 'options_class': PaddleOCROptions},
+        'paddle': {'class': PaddleOCREngine, 'options_class': PaddleOCROptions},
         'surya': {'class': SuryaOCREngine, 'options_class': SuryaOCROptions}, # <-- Add Surya
         # Add other engines here
     }
@@ -69,7 +69,7 @@ class OCRManager:
 
         Args:
             images: A single PIL Image or a list of PIL Images to process.
-            engine: Name of the engine to use (e.g., 'easyocr', 'paddleocr', 'surya').
+            engine: Name of the engine to use (e.g., 'easyocr', 'paddle', 'surya').
                     Ignored if 'options' object is provided. Defaults to 'easyocr'.
             options: An instance of EasyOCROptions, PaddleOCROptions, or SuryaOCROptions
                      for detailed configuration. If provided, simple kwargs (languages, etc.)

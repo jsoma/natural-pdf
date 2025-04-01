@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 # Import OCRManager conditionally to avoid circular imports
 try:
-    from natural_pdf.utils.ocr import OCRManager
+    from natural_pdf.ocr import OCRManager
 except ImportError:
     # OCRManager will be imported directly in methods that use it
     pass
@@ -949,7 +949,7 @@ class Region:
         Returns:
             List of created text elements
         """
-        from natural_pdf.utils.ocr import OCRManager
+        from natural_pdf.ocr import OCRManager
         
         # Get OCR configuration but suppress verbose output
         if isinstance(ocr_params, dict):

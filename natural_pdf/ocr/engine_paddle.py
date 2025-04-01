@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class PaddleOCREngine(OCREngine):
     """PaddleOCR engine implementation."""
 
-    LANGUAGE_MAP = { # Copied from previous version
+    LANGUAGE_MAP = { 
         'en': 'en', 'zh': 'ch', 'zh-cn': 'ch', 'zh-tw': 'chinese_cht',
         'ja': 'japan', 'ko': 'korean', 'th': 'thai', 'fr': 'french',
         'de': 'german', 'ru': 'russian', 'ar': 'arabic', 'hi': 'hindi',
@@ -160,6 +160,7 @@ class PaddleOCREngine(OCREngine):
         img_array_bgr = img_array_rgb[:, :, ::-1] # Convert RGB to BGR
         return img_array_bgr
 
+
     def process_image(
         self,
         images: Union[Image.Image, List[Image.Image]],
@@ -178,73 +179,26 @@ class PaddleOCREngine(OCREngine):
 
         reader = self._get_reader(options)
         ocr_args = self._prepare_ocr_args(options)
-
-        # --- Handle single image or batch ---
-        if isinstance(images, list):
-            # --- Batch Processing (Native Support in PaddleOCR) ---
-            all_results = []
-            logger.info(f"Processing batch of {len(images)} images with PaddleOCR...")
-            img_arrays_bgr = []
-            valid_indices = [] # Keep track of images successfully converted
-            for i, img in enumerate(images):
-                 if isinstance(img, Image.Image):
-                     try:
-                         img_arrays_bgr.append(self._pil_to_bgr(img))
-                         valid_indices.append(i)
-                     except Exception as e:
-                         logger.error(f"Error converting image {i} in batch to array: {e}")
-                         # We'll insert an empty result later for this index
-                 else:
-                      logger.warning(f"Item at index {i} in batch is not a PIL Image. Skipping.")
-                      # We'll insert an empty result later for this index
-
-            if not img_arrays_bgr: # If no images were valid
-                 logger.warning("No valid images found in the batch for PaddleOCR.")
-                 return [[] for _ in images] # Return list of empty lists
-
+        
+        # Helper function to process one image
+        def process_one(img):
             try:
-                # Pass the list of numpy arrays to PaddleOCR
-                # PaddleOCR returns: [[page1_results], [page2_results], ...]
-                # where pageN_results = [[box, (text, conf)], ...]
-                raw_batch_results = reader.ocr(img_arrays_bgr, **ocr_args)
-
-                # Ensure the result length matches the number of processed images
-                if len(raw_batch_results) != len(img_arrays_bgr):
-                     logger.error(f"PaddleOCR batch result length ({len(raw_batch_results)}) does not match input batch length ({len(img_arrays_bgr)}).")
-                     # Fallback: return empty results for all original images
-                     return [[] for _ in images]
-
-                # Standardize results and place them back into the original batch structure
-                standardized_batch_results = iter(self._standardize_results(page_res, options) for page_res in raw_batch_results)
-                final_results = [[] for _ in images] # Initialize with empty lists
-                for idx, standardized_res in zip(valid_indices, standardized_batch_results):
-                     final_results[idx] = standardized_res # Place results at correct original index
-
-                logger.info(f"Finished processing batch with PaddleOCR.")
-                return final_results # Return List[List[Dict]]
-
-            except Exception as e:
-                logger.error(f"Error during PaddleOCR batch processing: {e}", exc_info=True)
-                # Return empty lists for all original images on batch failure
-                return [[] for _ in images]
-
-
-        elif isinstance(images, Image.Image):
-            # --- Single Image Processing ---
-            logger.info("Processing single image with PaddleOCR...")
-            try:
-                img_array_bgr = self._pil_to_bgr(images)
-                # Paddle returns [[results]] for single image
+                img_array_bgr = self._pil_to_bgr(img)
                 raw_results = reader.ocr(img_array_bgr, **ocr_args)
+                
                 page_results = []
                 if raw_results and isinstance(raw_results, list) and len(raw_results) > 0:
-                     page_results = raw_results[0] # Extract results for the single page
-
-                standardized = self._standardize_results(page_results, options)
-                logger.info(f"Finished processing single image. Found {len(standardized)} results.")
-                return standardized # Return List[Dict]
+                    page_results = raw_results[0]
+                
+                return self._standardize_results(page_results, options)
             except Exception as e:
-                logger.error(f"Error processing single image with PaddleOCR: {e}", exc_info=True)
-                return [] # Return empty list on failure
+                logger.error(f"Error processing image with PaddleOCR: {e}")
+                return []
+
+        # Handle single image or list of images
+        if isinstance(images, Image.Image):
+            return process_one(images)
+        elif isinstance(images, list):
+            return [process_one(img) for img in images]
         else:
             raise TypeError("Input 'images' must be a PIL Image or a list of PIL Images.")

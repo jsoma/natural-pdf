@@ -230,62 +230,111 @@ class ElementCollection(Generic[T]):
     
     def highlight(self, 
                  label: Optional[str] = None,
-                 color: Optional[tuple] = None, 
-                 use_color_cycling: bool = False,
-                 cycle_colors: bool = False,
+                 color: Optional[Union[Tuple, str]] = None,
+                 distinct: bool = False, # <-- Renamed parameter, default False
                  include_attrs: Optional[List[str]] = None,
-                 existing: str = 'append') -> 'ElementCollection':  # Added for backward compatibility
+                 existing: str = 'append') -> 'ElementCollection':
         """
-        Highlight all elements in the collection.
-        
+        Highlight all elements in the collection using the HighlightingService.
+
+        Default behavior (distinct=False): 
+        Groups all elements in the collection under a single color. 
+        If no 'label' is provided, a default label is generated based on the 
+        element type (e.g., "Text Elements"), ensuring color consistency 
+        and enabling legend generation for the group.
+
         Args:
-            label: Optional label for the highlight
-            color: Optional color for the highlight (RGBA tuple)
-            use_color_cycling: Force color cycling even with no label (default: False)
-            cycle_colors: Alias for use_color_cycling (deprecated, for backward compatibility)
-            include_attrs: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
-            existing: How to handle existing highlights - 'append' (default) or 'replace'
-            
+            label: Optional label for the highlight group. If provided, it groups all 
+                   elements under this label with one consistent color. 
+                   Cannot be used when distinct=True.
+            color: Optional explicit color for the highlight (tuple/string accepted by 
+                   HighlightingService). Overrides default color assignment. Applied 
+                   consistently if grouping, ignored if distinct=True.
+            distinct: If True, each element in the collection will be highlighted 
+                      individually, potentially with different colors by cycling 
+                      through the color manager's palette. Default is False (group elements). 
+                      Cannot be True if a 'label' is provided.
+            include_attrs: List of attribute names from the element to display on the highlight.
+            existing: How to handle existing highlights on the page ('append' or 'replace').
+                      Note: 'replace' applies per-page as elements are processed.
+                      
         Returns:
             Self for method chaining
+            
+        Raises:
+            ValueError: If both 'label' is provided and 'distinct' is True.
         """
-        # Use cycle_colors if provided (backward compatibility)
-        color_cycle = use_color_cycling or cycle_colors
-        
-        # Get the highlight manager from the first element's page (if available)
-        if self._elements and hasattr(self._elements[0], 'page'):
-            page = self._elements[0].page
-            if hasattr(page, '_highlight_mgr'):
-                highlight_mgr = page._highlight_mgr
+        if not self._elements:
+            return self # Nothing to highlight
+
+        # --- Validation ---
+        if label is not None and distinct:
+            raise ValueError("Cannot provide a 'label' and set 'distinct=True' simultaneously. "
+                             "Labels imply grouping with a single color.")
+
+        effective_label = label # Start with user-provided label
+        use_cycling_for_page_method = False # Default: rely on label for consistency
+
+        # --- Determine effective label and cycling behavior ---
+        if label is None: # No explicit grouping label provided
+            if distinct:
+                # User wants individual colors, no label grouping
+                effective_label = None 
+                use_cycling_for_page_method = True
+                logger.debug("Highlighting collection: distinct=True, cycling colors for each element.")
+            else:
+                # Default: Auto-group by type
+                first_element = self._elements[0]
+                element_type_name = type(first_element).__name__.replace("Element", "")
+                effective_label = f"{element_type_name} Elements" if element_type_name else "Highlighted Elements"
+                use_cycling_for_page_method = False # Use the derived label for consistency
+                logger.debug(f"Highlighting collection: distinct=False, no label provided. Grouping with derived label: '{effective_label}'")
+        else:
+             # Label provided, group under this label
+             use_cycling_for_page_method = False
+             logger.debug(f"Highlighting collection: Grouping with provided label: '{label}'")
+
+
+        # --- Process each element ---
+        for element in self._elements:
+            if not hasattr(element, 'page') or not hasattr(element.page, '_highlighter'):
+                logger.warning(f"Cannot highlight element, missing 'page' attribute or page lacks highlighter access: {element}")
+                continue
                 
-                # Add highlights for each element
-                for element in self._elements:
-                    # Check if element has polygon coordinates
-                    if hasattr(element, 'has_polygon') and element.has_polygon:
-                        # Use polygon highlight
-                        highlight_mgr.add_polygon_highlight(
-                            element.polygon, 
-                            color, 
-                            label, 
-                            color_cycle,
-                            element=element, 
-                            include_attrs=include_attrs,
-                            existing=existing if element is self._elements[0] else 'append'
-                        )
-                    else:
-                        # Get the element's bounding box
-                        bbox = (element.x0, element.top, element.x1, element.bottom)
-                        # Add the highlight
-                        highlight_mgr.add_highlight(
-                            bbox, 
-                            color, 
-                            label, 
-                            color_cycle,
-                            element=element, 
-                            include_attrs=include_attrs,
-                            existing=existing if element is self._elements[0] else 'append'
-                        )
-        
+            page = element.page
+            
+            # Prepare arguments for the underlying add/add_polygon call
+            args_for_highlighter = {
+                 "page_index": page.index,
+                 "color": color, # Pass explicit color if provided
+                 "label": effective_label, # Pass the determined label (could be None if distinct=True)
+                 "use_color_cycling": use_cycling_for_page_method, # Tell highlighter whether to cycle *for this specific element*
+                 "include_attrs": include_attrs,
+                 "existing": existing,
+                 "element": element # Pass the element itself
+            }
+
+            # Check if element is polygon or bbox based
+            is_polygon = getattr(element, 'has_polygon', False)
+            geom_data = None
+            if is_polygon:
+                 geom_data = getattr(element, 'polygon', None)
+                 add_method = page._highlighter.add_polygon
+                 args_for_highlighter['polygon'] = geom_data
+            else:
+                 geom_data = getattr(element, 'bbox', None)
+                 add_method = page._highlighter.add
+                 args_for_highlighter['bbox'] = geom_data
+
+            # Call the appropriate highlighter method if geometry is valid
+            if geom_data:
+                 try:
+                      add_method(**args_for_highlighter)
+                 except Exception as e:
+                      logger.error(f"Error calling highlighter method for element {element} on page {page.index}: {e}", exc_info=True)
+            else:
+                 logger.warning(f"Cannot highlight element, no bbox or polygon found: {element}")
+
         return self
         
     def show(self, 
@@ -544,25 +593,25 @@ class PageCollection(Generic[P]):
         
         return ElementCollection(all_elements)
         
-    def debug_ocr(self, output_path):
-        """
-        Generate an interactive HTML debug report for OCR results.
+    # def debug_ocr(self, output_path):
+    #     """
+    #     Generate an interactive HTML debug report for OCR results.
         
-        This creates a single-file HTML report with:
-        - Side-by-side view of image regions and OCR text
-        - Confidence scores with color coding
-        - Editable correction fields
-        - Filtering and sorting options
-        - Export functionality for corrected text
+    #     This creates a single-file HTML report with:
+    #     - Side-by-side view of image regions and OCR text
+    #     - Confidence scores with color coding
+    #     - Editable correction fields
+    #     - Filtering and sorting options
+    #     - Export functionality for corrected text
         
-        Args:
-            output_path: Path to save the HTML report
+    #     Args:
+    #         output_path: Path to save the HTML report
             
-        Returns:
-            Path to the generated HTML file
-        """
-        from natural_pdf.utils.ocr import debug_ocr_to_html
-        return debug_ocr_to_html(self.pages, output_path)
+    #     Returns:
+    #         Path to the generated HTML file
+    #     """
+    #     from natural_pdf.utils.ocr import debug_ocr_to_html
+    #     return debug_ocr_to_html(self.pages, output_path)
     
     def get_sections(self, 
                    start_elements=None, 

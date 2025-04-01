@@ -1,55 +1,107 @@
 """
 Visualization utilities for natural-pdf.
 """
-from typing import List, Dict, Tuple, Optional, Union, Any
+from typing import List, Dict, Tuple, Optional, Union, Any, Set
 import io
 import math
 import random
+import itertools # Added for cycling
 from PIL import Image, ImageDraw, ImageFont
 
-# Define a list of visually distinct colors for highlighting
-# Format: (R, G, B, alpha)
-HIGHLIGHT_COLORS = [
-    (255, 255, 0, 100),    # Yellow (semi-transparent)
-    (255, 0, 0, 100),      # Red (semi-transparent)
-    (0, 255, 0, 100),      # Green (semi-transparent)
-    (0, 0, 255, 100),      # Blue (semi-transparent)
-    (255, 0, 255, 100),    # Magenta (semi-transparent)
-    (0, 255, 255, 100),    # Cyan (semi-transparent)
-    (255, 165, 0, 100),    # Orange (semi-transparent)
-    (128, 0, 128, 100),    # Purple (semi-transparent)
-    (0, 128, 0, 100),      # Dark Green (semi-transparent)
-    (0, 0, 128, 100),      # Navy (semi-transparent)
+# Define a base list of visually distinct colors for highlighting
+# Format: (R, G, B)
+_BASE_HIGHLIGHT_COLORS = [
+    (255, 0, 0),      # Red
+    (0, 255, 0),      # Green
+    (0, 0, 255),      # Blue
+    (255, 0, 255),    # Magenta
+    (0, 255, 255),    # Cyan
+    (255, 165, 0),    # Orange
+    (128, 0, 128),    # Purple
+    (0, 128, 0),      # Dark Green
+    (0, 0, 128),      # Navy
+    (255, 215, 0),    # Gold
+    (75, 0, 130),     # Indigo
+    (240, 128, 128),  # Light Coral
+    (32, 178, 170),   # Light Sea Green
+    (138, 43, 226),   # Blue Violet
+    (160, 82, 45),    # Sienna
 ]
 
-# Keep track of the next color to use
-_next_color_index = 0
+# Default Alpha for highlight fills
+DEFAULT_FILL_ALPHA = 100
 
-def get_next_highlight_color() -> Tuple[int, int, int, int]:
+class ColorManager:
     """
-    Get the next highlight color in the cycle.
-    
-    Returns:
-        Tuple of (R, G, B, alpha) values
+    Manages color assignment for highlights, ensuring consistency for labels.
     """
-    global _next_color_index
-    color = HIGHLIGHT_COLORS[_next_color_index % len(HIGHLIGHT_COLORS)]
-    _next_color_index += 1
-    return color
+    def __init__(self, alpha: int = DEFAULT_FILL_ALPHA):
+        """
+        Initializes the ColorManager.
 
-def reset_highlight_colors():
-    """Reset the highlight color cycle."""
-    global _next_color_index
-    _next_color_index = 0
+        Args:
+            alpha (int): The default alpha transparency (0-255) for highlight fills.
+        """
+        self._alpha = alpha
+        # Shuffle the base colors to avoid the same sequence every time
+        self._available_colors = random.sample(_BASE_HIGHLIGHT_COLORS, len(_BASE_HIGHLIGHT_COLORS))
+        self._color_cycle = itertools.cycle(self._available_colors)
+        self._labels_colors: Dict[str, Tuple[int, int, int, int]] = {}
 
-def get_random_highlight_color() -> Tuple[int, int, int, int]:
-    """
-    Get a random highlight color.
-    
-    Returns:
-        Tuple of (R, G, B, alpha) values
-    """
-    return random.choice(HIGHLIGHT_COLORS)
+    def _get_rgba_color(self, rgb: Tuple[int, int, int]) -> Tuple[int, int, int, int]:
+        """Applies the instance's alpha to an RGB tuple."""
+        return (*rgb, self._alpha)
+
+    def get_color(self, label: Optional[str] = None, 
+                  force_cycle: bool = False) -> Tuple[int, int, int, int]:
+        """
+        Gets an RGBA color tuple.
+
+        If a label is provided, it returns a consistent color for that label.
+        If no label is provided, it cycles through the available colors (unless force_cycle=False).
+        If force_cycle is True, it always returns the next color in the cycle, ignoring the label.
+
+        Args:
+            label (Optional[str]): The label associated with the highlight.
+            force_cycle (bool): If True, ignore the label and always get the next cycle color.
+
+        Returns:
+            Tuple[int, int, int, int]: An RGBA color tuple (0-255).
+        """
+        if force_cycle:
+            # Always get the next color, don't store by label
+            rgb = next(self._color_cycle)
+            return self._get_rgba_color(rgb)
+            
+        if label is not None:
+            if label in self._labels_colors:
+                # Return existing color for this label
+                return self._labels_colors[label]
+            else:
+                # New label, get next color and store it
+                rgb = next(self._color_cycle)
+                rgba = self._get_rgba_color(rgb)
+                self._labels_colors[label] = rgba
+                return rgba
+        else:
+            # No label and not forced cycle - get next color from cycle
+            rgb = next(self._color_cycle)
+            return self._get_rgba_color(rgb)
+
+    def get_label_colors(self) -> Dict[str, Tuple[int, int, int, int]]:
+        """Returns the current mapping of labels to colors."""
+        return self._labels_colors.copy()
+
+    def reset(self) -> None:
+        """Resets the color cycle and clears the label-to-color mapping."""
+        # Re-shuffle and reset the cycle
+        self._available_colors = random.sample(_BASE_HIGHLIGHT_COLORS, len(_BASE_HIGHLIGHT_COLORS))
+        self._color_cycle = itertools.cycle(self._available_colors)
+        self._labels_colors = {}
+
+# --- Global color state and functions removed --- 
+# HIGHLIGHT_COLORS, _color_cycle, _current_labels_colors, _used_colors_iterator
+# get_next_highlight_color(), reset_highlight_colors()
 
 def create_legend(labels_colors: Dict[str, Tuple[int, int, int, int]], 
                  width: int = 200, 
@@ -74,15 +126,24 @@ def create_legend(labels_colors: Dict[str, Tuple[int, int, int, int]],
     
     # Try to load a font, use default if not available
     try:
-        font = ImageFont.truetype("Arial", 12)
+        # Use a commonly available font, adjust size
+        font = ImageFont.truetype("DejaVuSans.ttf", 12) 
     except IOError:
-        font = ImageFont.load_default()
+        try:
+             font = ImageFont.truetype("Arial.ttf", 12)
+        except IOError:
+            font = ImageFont.load_default()
     
     # Draw each legend item
     y = 5  # Start with 5px padding
     for label, color in labels_colors.items():
         # Get the color components
-        r, g, b, alpha = color
+        # Handle potential case where alpha isn't provided (use default 255)
+        if len(color) == 3:
+            r, g, b = color
+            alpha = 255 # Assume opaque if alpha is missing
+        else:
+            r, g, b, alpha = color
         
         # Calculate the apparent color when drawn on white background
         # Alpha blending formula: result = (source * alpha) + (dest * (1-alpha))
@@ -99,7 +160,7 @@ def create_legend(labels_colors: Dict[str, Tuple[int, int, int, int]],
         draw.rectangle([(10, y), (30, y + item_height - 5)], fill=legend_color)
         
         # Draw the label text
-        draw.text((40, y + item_height // 4), label, fill=(0, 0, 0, 255), font=font)
+        draw.text((40, y + (item_height // 2) - 6), label, fill=(0, 0, 0, 255), font=font)
         
         # Move to the next position
         y += item_height
@@ -120,32 +181,43 @@ def merge_images_with_legend(image: Image.Image,
     Returns:
         Merged image
     """
+    if not legend:
+        return image # Return original image if legend is None or empty
+        
+    # Determine background color from top-left pixel (safer than assuming white)
+    bg_color = image.getpixel((0,0)) if image.mode == 'RGBA' else (255, 255, 255, 255)
+
     if position == 'right':
         # Create a new image with extra width for the legend
-        merged = Image.new('RGBA', (image.width + legend.width, max(image.height, legend.height)), 
-                          (255, 255, 255, 255))
+        merged_width = image.width + legend.width
+        merged_height = max(image.height, legend.height)
+        merged = Image.new('RGBA', (merged_width, merged_height), bg_color)
         merged.paste(image, (0, 0))
-        merged.paste(legend, (image.width, 0))
+        merged.paste(legend, (image.width, 0), legend if legend.mode == 'RGBA' else None) # Handle transparency
     elif position == 'bottom':
         # Create a new image with extra height for the legend
-        merged = Image.new('RGBA', (max(image.width, legend.width), image.height + legend.height), 
-                          (255, 255, 255, 255))
+        merged_width = max(image.width, legend.width)
+        merged_height = image.height + legend.height
+        merged = Image.new('RGBA', (merged_width, merged_height), bg_color)
         merged.paste(image, (0, 0))
-        merged.paste(legend, (0, image.height))
+        merged.paste(legend, (0, image.height), legend if legend.mode == 'RGBA' else None)
     elif position == 'top':
         # Create a new image with extra height for the legend
-        merged = Image.new('RGBA', (max(image.width, legend.width), image.height + legend.height),
-                          (255, 255, 255, 255))
-        merged.paste(legend, (0, 0))
+        merged_width = max(image.width, legend.width)
+        merged_height = image.height + legend.height
+        merged = Image.new('RGBA', (merged_width, merged_height), bg_color)
+        merged.paste(legend, (0, 0), legend if legend.mode == 'RGBA' else None)
         merged.paste(image, (0, legend.height))
     elif position == 'left':
         # Create a new image with extra width for the legend
-        merged = Image.new('RGBA', (image.width + legend.width, max(image.height, legend.height)),
-                          (255, 255, 255, 255))
-        merged.paste(legend, (0, 0))
+        merged_width = image.width + legend.width
+        merged_height = max(image.height, legend.height)
+        merged = Image.new('RGBA', (merged_width, merged_height), bg_color)
+        merged.paste(legend, (0, 0), legend if legend.mode == 'RGBA' else None)
         merged.paste(image, (legend.width, 0))
     else:
         # Invalid position, return the original image
+        print(f"Warning: Invalid legend position '{position}'. Returning original image.")
         merged = image
     
     return merged

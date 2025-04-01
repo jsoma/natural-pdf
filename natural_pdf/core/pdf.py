@@ -11,7 +11,9 @@ from natural_pdf.core.page import Page
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.ocr import OCRManager
+from natural_pdf.ocr import OCRManager, OCROptions
+from natural_pdf.analyzers.layout.layout_manager import LayoutManager # Import the new LayoutManager
+from natural_pdf.core.highlighting_service import HighlightingService # <-- Import the new service
 
 # Set up module logger
 logger = logging.getLogger("natural_pdf.core.pdf")
@@ -95,11 +97,22 @@ class PDF:
             self._ocr_manager = None
             logger.warning("OCRManager could not be imported. OCR functionality disabled.")
 
+        if LayoutManager:
+            self._layout_manager = LayoutManager()
+            logger.info(f"Initialized LayoutManager. Available engines: {self._layout_manager.get_available_engines()}")
+        else:
+            self._layout_manager = None
+            logger.warning("LayoutManager could not be imported. Layout analysis disabled.")
+
         self._pages = [Page(p, parent=self, index=i, font_attrs=font_attrs) for i, p in enumerate(self._pdf.pages)]
         self._element_cache = {}
         self._exclusions = []  # List to store exclusion functions/regions
         self._regions = []  # List to store region functions/definitions
         
+        # Initialize the Highlighting Service
+        self.highlighter = HighlightingService(self) 
+        logger.info("Initialized HighlightingService.")
+
     @property
     def pages(self) -> 'PageCollection':
         """Access pages as a PageCollection object."""
@@ -135,7 +148,8 @@ class PDF:
             page.add_exclusion(exclusion_wrapper)
             
         return self
-    def apply_ocr(
+
+    def apply_ocr_to_pages(
         self,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         engine: Optional[str] = None,
@@ -206,6 +220,7 @@ class PDF:
             ocr_scale = getattr(self, '_config', {}).get('ocr_image_scale', 2.0)
             for i, page in enumerate(target_pages):
                 logger.debug(f"  Rendering page {page.number} (index {page.index})...")
+                # Use page.to_image but ensure highlights are off for OCR base image
                 img = page.to_image(scale=ocr_scale, include_highlights=False)
                 images_pil.append(img)
                 page_image_map.append((page, img)) # Store pair
@@ -254,16 +269,14 @@ class PDF:
                  continue
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
-            # Use the page's own method to create elements from its results
-            elements = page._create_text_elements_from_ocr(results_for_page, img.width, img.height)
+            # Use the page's element manager to create elements from its results
+            # Changed from page._create_text_elements_from_ocr to use element_mgr
+            elements = page._element_mgr.create_text_elements_from_ocr(results_for_page, img.width, img.height)
 
             if elements:
-                # Add OCR elements to the page's main element list
-                page._load_elements() # Ensure _elements dict exists
-                if 'words' not in page._elements: page._elements['words'] = []
-                page._elements['words'].extend(elements)
-                total_elements_added += len(elements)
-                logger.debug(f"  Added {len(elements)} TextElements to page {page.number}.")
+                 # Note: element_mgr.create_text_elements_from_ocr already adds them
+                 total_elements_added += len(elements)
+                 logger.debug(f"  Added {len(elements)} OCR TextElements to page {page.number}.")
             else:
                  logger.debug(f"  No valid TextElements created for page {page.number}.")
 
@@ -407,7 +420,11 @@ class PDF:
         
         # Sort in document order if requested
         if kwargs.get('document_order', True):
-            combined.sort(key=lambda el: (el.page.index, el.top, el.x0))
+            # Check if elements have page, top, x0 before sorting
+            if all(hasattr(el, 'page') and hasattr(el, 'top') and hasattr(el, 'x0') for el in combined.elements):
+                 combined.sort(key=lambda el: (el.page.index, el.top, el.x0))
+            else:
+                 logger.warning("Cannot sort elements in document order: Missing required attributes (page, top, x0).")
             
         return combined
     
@@ -466,42 +483,42 @@ class PDF:
         """
         return self.extract_text(selector, preserve_whitespace=preserve_whitespace, **kwargs)
         
-    def debug_ocr(self, output_path, pages=None):
-        """
-        Generate an interactive HTML debug report for OCR results.
+    # def debug_ocr(self, output_path, pages=None):
+    #     """
+    #     Generate an interactive HTML debug report for OCR results.
         
-        This creates a single-file HTML report with:
-        - Side-by-side view of image regions and OCR text
-        - Confidence scores with color coding
-        - Editable correction fields
-        - Filtering and sorting options
-        - Export functionality for corrected text
+    #     This creates a single-file HTML report with:
+    #     - Side-by-side view of image regions and OCR text
+    #     - Confidence scores with color coding
+    #     - Editable correction fields
+    #     - Filtering and sorting options
+    #     - Export functionality for corrected text
         
-        Args:
-            output_path: Path to save the HTML report
-            pages: Pages to include in the report (default: all pages)
-                  Can be a page index, slice, or list of page indices
+    #     Args:
+    #         output_path: Path to save the HTML report
+    #         pages: Pages to include in the report (default: all pages)
+    #               Can be a page index, slice, or list of page indices
             
-        Returns:
-            Self for method chaining
-        """
-        from natural_pdf.utils.ocr import debug_ocr_to_html
+    #     Returns:
+    #         Self for method chaining
+    #     """
+    #     from natural_pdf.utils.ocr import debug_ocr_to_html
         
-        if pages is None:
-            # Include all pages
-            target_pages = self.pages
-        elif isinstance(pages, int):
-            # Single page index
-            target_pages = [self.pages[pages]]
-        elif isinstance(pages, slice):
-            # Slice of pages
-            target_pages = self.pages[pages]
-        else:
-            # Assume it's an iterable of page indices
-            target_pages = [self.pages[i] for i in pages]
+    #     if pages is None:
+    #         # Include all pages
+    #         target_pages = self.pages
+    #     elif isinstance(pages, int):
+    #         # Single page index
+    #         target_pages = [self.pages[pages]]
+    #     elif isinstance(pages, slice):
+    #         # Slice of pages
+    #         target_pages = self.pages[pages]
+    #     else:
+    #         # Assume it's an iterable of page indices
+    #         target_pages = [self.pages[i] for i in pages]
             
-        debug_ocr_to_html(target_pages, output_path)
-        return self
+    #     debug_ocr_to_html(target_pages, output_path)
+    #     return self
     
     def extract_tables(self, selector: Optional[str] = None, merge_across_pages: bool = False, **kwargs) -> List[Any]:
         """
@@ -569,7 +586,7 @@ class PDF:
                 )
                 
                 # Add to results if it found an answer
-                if page_result.get("found", False):
+                if page_result and page_result.get("found", False):
                     results.append(page_result)
         
         # Sort results by confidence
@@ -579,7 +596,14 @@ class PDF:
         if results:
             return results[0]
         else:
-            return None
+            # Return a structure indicating no answer found
+            return {
+                 "answer": None,
+                 "confidence": 0.0,
+                 "found": False,
+                 "page_num": None, # Or maybe the pages searched?
+                 "source_elements": []
+            }
                 
     def __len__(self) -> int:
         """Return the number of pages in the PDF."""
@@ -587,7 +611,15 @@ class PDF:
     
     def __getitem__(self, key) -> Union[Page, List[Page]]:
         """Access pages by index or slice."""
-        return self.pages[key]
+        # Check if self._pages has been initialized
+        if not hasattr(self, '_pages'):
+             raise AttributeError("PDF pages not initialized yet.")
+        if isinstance(key, slice):
+             # Return a PageCollection slice
+             from natural_pdf.elements.collections import PageCollection
+             return PageCollection(self._pages[key])
+        # Return a single Page object
+        return self._pages[key]
         
     def close(self):
         """Close the underlying PDF file and clean up any temporary files."""
@@ -598,7 +630,7 @@ class PDF:
         # Clean up temporary file if it exists
         if hasattr(self, '_temp_file') and self._temp_file is not None:
             try:
-                if os.path.exists(self._temp_file.name):
+                if hasattr(self._temp_file, 'name') and self._temp_file.name and os.path.exists(self._temp_file.name):
                     os.unlink(self._temp_file.name)
                     logger.debug(f"Removed temporary PDF file: {self._temp_file.name}")
             except Exception as e:

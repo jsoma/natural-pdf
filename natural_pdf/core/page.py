@@ -9,12 +9,17 @@ if TYPE_CHECKING:
     import pdfplumber
     from natural_pdf.core.pdf import PDF
     from natural_pdf.elements.collections import ElementCollection
-    from natural_pdf.utils.highlighting import HighlightManager
+    from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.elements.base import Element
 
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
+from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.ocr import OCROptions
+from natural_pdf.ocr import OCRManager
+from natural_pdf.core.element_manager import ElementManager
+from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +40,10 @@ class Page:
             parent: Parent PDF object
             index: Index of this page in the PDF (0-based)
             font_attrs: Font attributes to consider when grouping characters into words.
-                       Default: ['fontname', 'size'] (Group by font name and size)
-                       None: Only consider spatial relationships
-                       List: Custom attributes to consider (e.g., ['fontname', 'size', 'color'])
         """
         self._page = page
         self._parent = parent
         self._index = index
-        self._elements = None  # Lazy-loaded
-        self._highlight_manager = None  # Lazy-loaded
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
         
@@ -53,9 +53,30 @@ class Page:
             'named': {},     # Named regions (name -> region)
         }
         
-        # Default to grouping by fontname and size if not specified
-        self._font_attrs = ['fontname', 'size'] if font_attrs is None else font_attrs
-        
+        # Initialize ElementManager
+        self._element_mgr = ElementManager(self, font_attrs)
+
+        # --- Get OCR Manager Instance ---
+        if OCRManager and hasattr(parent, '_ocr_manager') and isinstance(parent._ocr_manager, OCRManager):
+            self._ocr_manager = parent._ocr_manager
+            logger.debug(f"Page {self.number}: Using OCRManager instance from parent PDF.")
+        else:
+            self._ocr_manager = None
+            if OCRManager:
+                 logger.warning(f"Page {self.number}: OCRManager instance not found on parent PDF object.")
+
+        # --- Get Layout Manager Instance ---
+        if LayoutManager and hasattr(parent, '_layout_manager') and isinstance(parent._layout_manager, LayoutManager):
+            self._layout_manager = parent._layout_manager
+            logger.debug(f"Page {self.number}: Using LayoutManager instance from parent PDF.")
+        else:
+            self._layout_manager = None
+            if LayoutManager:
+                 logger.warning(f"Page {self.number}: LayoutManager instance not found on parent PDF object. Layout analysis will fail.")
+
+        # Initialize the internal variable with a single underscore
+        self._layout_analyzer = None 
+
     @property
     def number(self) -> int:
         """Get page number (1-based)."""
@@ -75,6 +96,15 @@ class Page:
     def height(self) -> float:
         """Get page height."""
         return self._page.height
+
+    # --- Highlighting Service Accessor ---
+    @property
+    def _highlighter(self) -> 'HighlightingService':
+         """Provides access to the parent PDF's HighlightingService."""
+         if not hasattr(self._parent, 'highlighter'):
+              # This should ideally not happen if PDF.__init__ works correctly
+              raise AttributeError("Parent PDF object does not have a 'highlighter' attribute.")
+         return self._parent.highlighter
 
     def add_exclusion(self, exclusion_func_or_region: Union[Callable[['Page'], Region], Region]) -> 'Page':
         """
@@ -116,14 +146,8 @@ class Page:
             # Add to detected regions list (unnamed but registered)
             self._regions['detected'].append(region)
             
-        # Make sure regions is in _elements for selectors
-        if self._elements is not None and 'regions' not in self._elements:
-            self._elements['regions'] = []
-            
-        # Add to elements for selector queries
-        if self._elements is not None:
-            if region not in self._elements['regions']:
-                self._elements['regions'].append(region)
+        # Add to element manager for selector queries
+        self._element_mgr.add_region(region)
                 
         return self
                 
@@ -308,57 +332,27 @@ class Page:
         from natural_pdf.elements.collections import ElementCollection
         from natural_pdf.selectors.parser import selector_to_filter_func
         
-        # Load all elements if not already loaded
-        self._load_elements()
-        
         # Get element type to filter
         element_type = selector_obj.get('type', 'any').lower()
         
         # Determine which elements to search based on element type
         elements_to_search = []
         if element_type == 'any':
-            # Search all element types
-            for key, elements_list in self._elements.items():
-                # Skip chars if we have words for text search (avoid duplication)
-                if key == 'chars' and 'words' in self._elements:
-                    continue
-                elements_to_search.extend(elements_list)
+            elements_to_search = self._element_mgr.get_all_elements()
         elif element_type == 'text':
-            # Prefer word elements over character elements for text
-            if 'words' in self._elements:
-                elements_to_search = self._elements.get('words', [])
-            else:
-                elements_to_search = self._elements.get('chars', [])
+            elements_to_search = self._element_mgr.words
         elif element_type == 'char':
-            elements_to_search = self._elements.get('chars', [])
+            elements_to_search = self._element_mgr.chars
         elif element_type == 'word':
-            elements_to_search = self._elements.get('words', [])
+            elements_to_search = self._element_mgr.words
         elif element_type == 'rect' or element_type == 'rectangle':
-            elements_to_search = self._elements.get('rects', [])
+            elements_to_search = self._element_mgr.rects
         elif element_type == 'line':
-            elements_to_search = self._elements.get('lines', [])
+            elements_to_search = self._element_mgr.lines
         elif element_type == 'region':
-            # Start with an empty list
-            elements_to_search = []
-            
-            # Add regions from _elements if available
-            if 'regions' in self._elements and self._elements['regions']:
-                elements_to_search.extend(self._elements['regions'])
-                
-            # If no regions in _elements, look in _regions
-            if not elements_to_search:
-                # Add detected regions
-                elements_to_search.extend(self._regions['detected'])
-                
-                # Add named regions
-                elements_to_search.extend(self._regions['named'].values())
+            elements_to_search = self._element_mgr.regions
         else:
-            # If type doesn't match a specific category, look in all categories
-            for key, elements_list in self._elements.items():
-                # Skip chars if we have words for text search (avoid duplication)
-                if key == 'chars' and 'words' in self._elements:
-                    continue
-                elements_to_search.extend(elements_list)
+            elements_to_search = self._element_mgr.get_all_elements()
         
         # Create filter function from selector, passing any additional parameters
         filter_func = selector_to_filter_func(selector_obj, **kwargs)
@@ -378,50 +372,48 @@ class Page:
                 ref_elements = self._apply_selector(ref_selector)
                 
                 if not ref_elements:
-                    # No reference elements found, so no matches
                     return ElementCollection([])
                 
-                # Use the first reference element for now
-                # TODO: Improve this to consider all reference elements
-                ref_element = ref_elements.first()
+                ref_element = ref_elements.first
+                if not ref_element: continue
                 
                 # Filter elements based on spatial relationship
                 if name == 'above':
-                    matching_elements = [el for el in matching_elements if el.bottom <= ref_element.top]
+                    matching_elements = [el for el in matching_elements if hasattr(el, 'bottom') and hasattr(ref_element, 'top') and el.bottom <= ref_element.top]
                 elif name == 'below':
-                    matching_elements = [el for el in matching_elements if el.top >= ref_element.bottom]
+                    matching_elements = [el for el in matching_elements if hasattr(el, 'top') and hasattr(ref_element, 'bottom') and el.top >= ref_element.bottom]
                 elif name == 'left-of':
-                    matching_elements = [el for el in matching_elements if el.x1 <= ref_element.x0]
+                    matching_elements = [el for el in matching_elements if hasattr(el, 'x1') and hasattr(ref_element, 'x0') and el.x1 <= ref_element.x0]
                 elif name == 'right-of':
-                    matching_elements = [el for el in matching_elements if el.x0 >= ref_element.x1]
+                    matching_elements = [el for el in matching_elements if hasattr(el, 'x0') and hasattr(ref_element, 'x1') and el.x0 >= ref_element.x1]
                 elif name == 'near':
-                    # Calculate distance between centers
                     def distance(el1, el2):
-                        el1_center_x = (el1.x0 + el1.x1) / 2
-                        el1_center_y = (el1.top + el1.bottom) / 2
-                        el2_center_x = (el2.x0 + el2.x1) / 2
-                        el2_center_y = (el2.top + el2.bottom) / 2
-                        return ((el1_center_x - el2_center_x) ** 2 + (el1_center_y - el2_center_y) ** 2) ** 0.5
+                         if not (hasattr(el1, 'x0') and hasattr(el1, 'x1') and hasattr(el1, 'top') and hasattr(el1, 'bottom') and
+                                 hasattr(el2, 'x0') and hasattr(el2, 'x1') and hasattr(el2, 'top') and hasattr(el2, 'bottom')):
+                             return float('inf') # Cannot calculate distance
+                         el1_center_x = (el1.x0 + el1.x1) / 2
+                         el1_center_y = (el1.top + el1.bottom) / 2
+                         el2_center_x = (el2.x0 + el2.x1) / 2
+                         el2_center_y = (el2.top + el2.bottom) / 2
+                         return ((el1_center_x - el2_center_x) ** 2 + (el1_center_y - el2_center_y) ** 2) ** 0.5
                     
-                    # Get distance threshold from kwargs or use default
-                    threshold = kwargs.get('near_threshold', 50)  # Default 50 points
+                    threshold = kwargs.get('near_threshold', 50)
                     matching_elements = [el for el in matching_elements if distance(el, ref_element) <= threshold]
         
         # Sort elements in reading order if requested
         if kwargs.get('reading_order', True):
-            # TODO: Implement proper reading order sorting
-            # For now, simple top-to-bottom, left-to-right ordering
-            matching_elements.sort(key=lambda el: (el.top, el.x0))
+            if all(hasattr(el, 'top') and hasattr(el, 'x0') for el in matching_elements):
+                 matching_elements.sort(key=lambda el: (el.top, el.x0))
+            else:
+                 logger.warning("Cannot sort elements in reading order: Missing required attributes (top, x0).")
         
         # Create result collection
         result = ElementCollection(matching_elements)
         
-        # Apply exclusions if requested and if there are exclusions defined
-        # Note: We don't apply exclusions here as that would cause recursion
-        # Exclusions are applied at the higher level via exclude_regions
+        # Exclusions are handled by the calling methods (find, find_all)
         
         return result
-    
+
     def create_region(self, x0: float, top: float, x1: float, bottom: float) -> Any:
         """
         Create a region on this page with the specified coordinates.
@@ -484,15 +476,8 @@ class Page:
         Returns:
             List of all elements on the page
         """
-        # Load elements if not already loaded
-        self._load_elements()
-        
-        # Combine all element types
-        all_elements = []
-        all_elements.extend(self.words)
-        all_elements.extend(self.rects)
-        all_elements.extend(self.lines)
-        # Add other element types as needed
+        # Get all elements from the element manager
+        all_elements = self._element_mgr.get_all_elements()
         
         # Apply exclusions if requested
         if apply_exclusions and self._exclusions:
@@ -503,9 +488,12 @@ class Page:
                 for element in all_elements:
                     in_exclusion = False
                     for region in exclusion_regions:
-                        if region._is_element_in_region(element):
-                            in_exclusion = True
-                            break
+                        # Check if element center is inside region polygon or bbox
+                        el_center_x = (element.x0 + element.x1) / 2
+                        el_center_y = (element.top + element.bottom) / 2
+                        if region._is_point_in_polygon(el_center_x, el_center_y):
+                             in_exclusion = True
+                             break
                     if not in_exclusion:
                         filtered_elements.append(element)
                 return filtered_elements
@@ -530,14 +518,17 @@ class Page:
         selector_obj = parse_selector(selector)
         
         # Create filter function from selector
-        filter_func = selector_to_filter_func(selector_obj)
+        filter_func = selector_to_filter_func(selector_obj, **kwargs)
         
         # Apply the filter to the elements
         matching_elements = [element for element in elements if filter_func(element)]
         
         # Sort elements in reading order if requested
         if kwargs.get('reading_order', True):
-            matching_elements.sort(key=lambda el: (el.top, el.x0))
+            if all(hasattr(el, 'top') and hasattr(el, 'x0') for el in matching_elements):
+                 matching_elements.sort(key=lambda el: (el.top, el.x0))
+            else:
+                 logger.warning("Cannot sort elements in reading order: Missing required attributes (top, x0).")
         
         return matching_elements
     
@@ -560,43 +551,26 @@ class Page:
         # Find the target element 
         target = self.find(selector, **kwargs)
         if not target:
-            # If target not found, return a default region
+            # If target not found, return a default region (full page)
             from natural_pdf.elements.region import Region
             return Region(self, (0, 0, self.width, self.height))
             
         # Create a region from the top of the page to the target
         from natural_pdf.elements.region import Region
+        # Ensure target has positional attributes before using them
+        target_top = getattr(target, 'top', 0)
+        target_bottom = getattr(target, 'bottom', self.height)
+
         if include_endpoint:
             # Include the target element
-            region = Region(self, (0, 0, self.width, target.bottom))
+            region = Region(self, (0, 0, self.width, target_bottom))
         else:
             # Up to the target element
-            region = Region(self, (0, 0, self.width, target.top))
+            region = Region(self, (0, 0, self.width, target_top))
             
         region.end_element = target
         return region
-        
-    # Alias for backward compatibility
-    def select_until(self, selector: str, include_target: bool = True, **kwargs) -> Any:
-        """
-        DEPRECATED: Use until() instead.
-        Select content from this point until matching selector.
 
-        Args:
-            selector: CSS-like selector string
-            include_target: Whether to include the target element in the region
-            **kwargs: Additional selection parameters
-            
-        Returns:
-            Region object representing the selected content
-        """
-        import warnings
-        warnings.warn(
-            "select_until() is deprecated and will be removed in a future version. Use until() instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        return self.until(selector, include_endpoint=include_target, **kwargs)
     
     def crop(self, bbox=None, **kwargs) -> Any:
         """
@@ -609,11 +583,11 @@ class Page:
             **kwargs: Additional parameters (top, bottom, left, right)
 
         Returns:
-            Cropped page object
+            Cropped page object (pdfplumber.Page)
         """
-        # TODO: Create proper wrapper for cropped page
+        # Returns the pdfplumber page object, not a natural-pdf Page
         return self._page.crop(bbox, **kwargs)
-    
+
     def extract_text(self, 
                   preserve_whitespace=True,
                   use_exclusions=True,
@@ -654,20 +628,23 @@ class Page:
         if debug_exclusions:
             print(f"Page {self.index}: Found {len(exclusion_regions)} exclusion regions to apply")
         
-        # Find all text elements
-        all_text = self.find_all('text')
+        # Find all text elements (words)
+        all_text_elements = self.words # Use the words property
         
         if debug_exclusions:
-            print(f"Page {self.index}: Found {len(all_text)} text elements before exclusion filtering")
+            print(f"Page {self.index}: Found {len(all_text_elements)} text elements before exclusion filtering")
         
         # Filter out elements in excluded regions
         filtered_elements = []
         excluded_count = 0
         
-        for element in all_text:
+        for element in all_text_elements:
             exclude = False
+            # Check if element center is inside any exclusion region
+            el_center_x = (element.x0 + element.x1) / 2
+            el_center_y = (element.top + element.bottom) / 2
             for region in exclusion_regions:
-                if region._is_element_in_region(element):
+                 if region._is_point_in_polygon(el_center_x, el_center_y):
                     exclude = True
                     excluded_count += 1
                     break
@@ -680,7 +657,12 @@ class Page:
         # Extract text from filtered elements
         from natural_pdf.elements.collections import ElementCollection
         collection = ElementCollection(filtered_elements)
-        result = collection.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
+        # Ensure elements are sorted for logical text flow
+        if all(hasattr(el, 'top') and hasattr(el, 'x0') for el in collection.elements):
+             collection.sort(key=lambda el: (el.top, el.x0))
+        
+        # Join text, handling potential missing text attributes gracefully
+        result = " ".join(getattr(el, 'text', '') for el in collection.elements)
                 
         if debug_exclusions:
             print(f"Page {self.index}: Extracted {len(result)} characters of text with exclusions applied")
@@ -695,9 +677,9 @@ class Page:
             table_settings: Additional extraction parameters
             
         Returns:
-            List of extracted tables
+            List of extracted tables (or None if no table found)
         """
-        # For now, directly use pdfplumber's extraction
+        # pdfplumber returns None if no table found
         return self._page.extract_table(table_settings)
 
     def extract_tables(self, table_settings={}) -> List[Any]:
@@ -710,309 +692,135 @@ class Page:
         Returns:
             List of extracted tables
         """
-        # For now, directly use pdfplumber's extraction
+        # pdfplumber returns list of tables
         return self._page.extract_tables(table_settings)
-    
+
     def _load_elements(self):
-        """
-        Load all elements from the page (lazy loading).
-        """
-        if self._elements is None:
-            from natural_pdf.elements.text import TextElement
-            from natural_pdf.elements.rect import RectangleElement
-            from natural_pdf.elements.line import LineElement
-            
-            # Get the font attributes to use for word grouping
-            font_attrs = self._font_attrs
-            
-            # Get keep_spaces setting from PDF config or default to True (new behavior)
-            keep_spaces = self._parent._config.get('keep_spaces', True)
-            
-            # Process characters, annotating with font information
-            chars = []
-            for c in self._page.chars:
-                # Check for font references (F0, F1, etc.) and map to actual fonts
-                if c.get('fontname', '').startswith('F') and len(c['fontname']) <= 3:
-                    # Access the PDF resource info to get actual font name
-                    font_ref = c['fontname']
-                    try:
-                        # Try to get font info from resources
-                        if self._page.page_obj.get('Resources', {}).get('Font', {}):
-                            fonts = self._page.page_obj['Resources']['Font']
-                            if font_ref in fonts:
-                                font_obj = fonts[font_ref]
-                                if font_obj.get('BaseFont'):
-                                    c['real_fontname'] = font_obj['BaseFont']
-                    except (KeyError, AttributeError, TypeError):
-                        pass
-                
-                # Add source attribute for native text elements
-                c['source'] = 'native'
-                chars.append(TextElement(c, self))
-            
-            # Create word-level text elements by grouping chars
-            from itertools import groupby
-            from operator import itemgetter
-            
-            # Sort chars by y-position (line) and then x-position
-            sorted_chars = sorted(self._page.chars, key=lambda c: (round(c['top']), c['x0']))
-            
-            # Group chars by line (similar y-position)
-            line_groups = []
-            for _, line_chars in groupby(sorted_chars, key=lambda c: round(c['top'])):
-                line_chars = list(line_chars)
-                
-                # Now group chars into words based on x-distance and font attributes
-                words = []
-                current_word = []
-                
-                for i, char in enumerate(line_chars):
-                    # Handle whitespace characters differently based on keep_spaces setting
-                    if char['text'].isspace():
-                        if keep_spaces:
-                            # Include spaces in words when keep_spaces is enabled
-                            if current_word:
-                                current_word.append(char)
-                            else:
-                                # Skip leading spaces at the start of a line
-                                continue
-                        else:
-                            # Original behavior: Skip whitespace and close current word
-                            if current_word:
-                                # Combine text from characters and normalize spaces
-                                text = ''.join(c['text'] for c in current_word)
-                                
-                                # Collapse multiple consecutive spaces into a single space
-                                import re
-                                text = re.sub(r'\s+', ' ', text)
-                                
-                                # Create a combined word object
-                                word_obj = {
-                                    'text': text,
-                                    'x0': min(c['x0'] for c in current_word),
-                                    'x1': max(c['x1'] for c in current_word),
-                                    'top': min(c['top'] for c in current_word),
-                                    'bottom': max(c['bottom'] for c in current_word),
-                                    'fontname': current_word[0].get('fontname', ''),
-                                    'size': current_word[0].get('size', 0),
-                                    'object_type': 'word',
-                                    'page_number': current_word[0]['page_number']
-                                }
-                                
-                                # Handle real fontname if available
-                                if 'real_fontname' in current_word[0]:
-                                    word_obj['real_fontname'] = current_word[0]['real_fontname']
-                                    
-                                # Handle color - use the first char's color
-                                if 'non_stroking_color' in current_word[0]:
-                                    word_obj['non_stroking_color'] = current_word[0]['non_stroking_color']
-                                
-                                # Copy any additional font attributes
-                                for attr in font_attrs:
-                                    if attr in current_word[0]:
-                                        word_obj[attr] = current_word[0][attr]
-                                    
-                                # Add source attribute for native text elements
-                                word_obj['source'] = 'native'
-                                words.append(TextElement(word_obj, self))
-                                current_word = []
-                            continue
-                    
-                    # If this is a new word, start it
-                    if not current_word:
-                        current_word.append(char)
-                    else:
-                        # Check if this char is part of the current word or a new word
-                        prev_char = current_word[-1]
-                        
-                        # Check if font attributes match for this character
-                        font_attrs_match = True
-                        if font_attrs:
-                            for attr in font_attrs:
-                                # If attribute doesn't match or isn't present in both chars, break word
-                                if attr not in char or attr not in prev_char or char[attr] != prev_char[attr]:
-                                    font_attrs_match = False
-                                    break
-                        
-                        # If font attributes don't match, it's a new word
-                        if not font_attrs_match:
-                            # Combine text from characters and normalize spaces
-                            text = ''.join(c['text'] for c in current_word)
-                            
-                            # Collapse multiple consecutive spaces into a single space
-                            import re
-                            text = re.sub(r'\s+', ' ', text)
-                            
-                            # Finish current word
-                            word_obj = {
-                                'text': text,
-                                'x0': min(c['x0'] for c in current_word),
-                                'x1': max(c['x1'] for c in current_word),
-                                'top': min(c['top'] for c in current_word),
-                                'bottom': max(c['bottom'] for c in current_word),
-                                'fontname': current_word[0].get('fontname', ''),
-                                'size': current_word[0].get('size', 0),
-                                'object_type': 'word',
-                                'page_number': current_word[0]['page_number']
-                            }
-                            
-                            # Handle real fontname if available
-                            if 'real_fontname' in current_word[0]:
-                                word_obj['real_fontname'] = current_word[0]['real_fontname']
-                                
-                            # Handle color - use the first char's color
-                            if 'non_stroking_color' in current_word[0]:
-                                word_obj['non_stroking_color'] = current_word[0]['non_stroking_color']
-                            
-                            # Copy any additional font attributes
-                            for attr in font_attrs:
-                                if attr in current_word[0]:
-                                    word_obj[attr] = current_word[0][attr]
-                                
-                            # Add source attribute for native text elements
-                            word_obj['source'] = 'native'
-                            words.append(TextElement(word_obj, self))
-                            current_word = [char]
-                        # If the gap between chars is larger than a threshold, it's a new word
-                        # Use a wider threshold when keep_spaces is enabled to allow for natural spaces
-                        elif char['x0'] - prev_char['x1'] > prev_char['width'] * (1.5 if keep_spaces else 0.5):
-                            # Combine text from characters and normalize spaces
-                            text = ''.join(c['text'] for c in current_word)
-                            
-                            # Collapse multiple consecutive spaces into a single space
-                            import re
-                            text = re.sub(r'\s+', ' ', text)
-                            
-                            # Finish current word
-                            word_obj = {
-                                'text': text,
-                                'x0': min(c['x0'] for c in current_word),
-                                'x1': max(c['x1'] for c in current_word),
-                                'top': min(c['top'] for c in current_word),
-                                'bottom': max(c['bottom'] for c in current_word),
-                                'fontname': current_word[0].get('fontname', ''),
-                                'size': current_word[0].get('size', 0),
-                                'object_type': 'word',
-                                'page_number': current_word[0]['page_number']
-                            }
-                            
-                            # Handle real fontname if available
-                            if 'real_fontname' in current_word[0]:
-                                word_obj['real_fontname'] = current_word[0]['real_fontname']
-                                
-                            # Handle color - use the first char's color
-                            if 'non_stroking_color' in current_word[0]:
-                                word_obj['non_stroking_color'] = current_word[0]['non_stroking_color']
-                            
-                            # Copy any additional font attributes
-                            for attr in font_attrs:
-                                if attr in current_word[0]:
-                                    word_obj[attr] = current_word[0][attr]
-                                
-                            # Add source attribute for native text elements
-                            word_obj['source'] = 'native'
-                            words.append(TextElement(word_obj, self))
-                            current_word = [char]
-                        else:
-                            # Continue current word
-                            current_word.append(char)
-                    
-                # Handle the last word if there is one
-                if current_word:
-                    # Combine text from characters and normalize spaces
-                    text = ''.join(c['text'] for c in current_word)
-                    
-                    # Collapse multiple consecutive spaces into a single space
-                    import re
-                    text = re.sub(r'\s+', ' ', text)
-                    
-                    word_obj = {
-                        'text': text,
-                        'x0': min(c['x0'] for c in current_word),
-                        'x1': max(c['x1'] for c in current_word),
-                        'top': min(c['top'] for c in current_word),
-                        'bottom': max(c['bottom'] for c in current_word),
-                        'fontname': current_word[0].get('fontname', ''),
-                        'size': current_word[0].get('size', 0),
-                        'object_type': 'word',
-                        'page_number': current_word[0]['page_number']
-                    }
-                    
-                    # Handle real fontname if available
-                    if 'real_fontname' in current_word[0]:
-                        word_obj['real_fontname'] = current_word[0]['real_fontname']
-                        
-                    # Handle color - use the first char's color
-                    if 'non_stroking_color' in current_word[0]:
-                        word_obj['non_stroking_color'] = current_word[0]['non_stroking_color']
-                    
-                    # Copy any additional font attributes
-                    for attr in font_attrs:
-                        if attr in current_word[0]:
-                            word_obj[attr] = current_word[0][attr]
-                        
-                    # Add source attribute for native text elements
-                    word_obj['source'] = 'native'
-                    words.append(TextElement(word_obj, self))
-            
-                line_groups.extend(words)
-            
-            self._elements = {
-                'chars': chars,
-                'words': line_groups,
-                'rects': [RectangleElement(r, self) for r in self._page.rects],
-                'lines': [LineElement(l, self) for l in self._page.lines],
-                # Add other element types as needed
-            }
+        """Load all elements from the page via ElementManager."""
+        self._element_mgr.load_elements()
     
+    def _create_char_elements(self):
+        """DEPRECATED: Use self._element_mgr.chars"""
+        logger.warning("_create_char_elements is deprecated. Access via self._element_mgr.chars.")
+        return self._element_mgr.chars # Delegate
+
+    def _process_font_information(self, char_dict):
+         """DEPRECATED: Handled by ElementManager"""
+         logger.warning("_process_font_information is deprecated. Handled by ElementManager.")
+         # ElementManager handles this internally
+         pass 
+
+    def _group_chars_into_words(self, keep_spaces=True, font_attrs=None):
+        """DEPRECATED: Use self._element_mgr.words"""
+        logger.warning("_group_chars_into_words is deprecated. Access via self._element_mgr.words.")
+        return self._element_mgr.words # Delegate
+
+    def _process_line_into_words(self, line_chars, keep_spaces, font_attrs):
+        """DEPRECATED: Handled by ElementManager"""
+        logger.warning("_process_line_into_words is deprecated. Handled by ElementManager.")
+        pass
+    
+    def _check_font_attributes_match(self, char, prev_char, font_attrs):
+        """DEPRECATED: Handled by ElementManager"""
+        logger.warning("_check_font_attributes_match is deprecated. Handled by ElementManager.")
+        pass
+    
+    def _create_word_element(self, chars, font_attrs):
+        """DEPRECATED: Handled by ElementManager"""
+        logger.warning("_create_word_element is deprecated. Handled by ElementManager.")
+        pass
+
     @property
     def chars(self) -> List[Any]:
         """Get all character elements on this page."""
-        self._load_elements()
-        return self._elements['chars']
+        return self._element_mgr.chars
     
     @property
     def words(self) -> List[Any]:
         """Get all word elements on this page."""
-        self._load_elements()
-        return self._elements['words']
+        return self._element_mgr.words
     
     @property
     def rects(self) -> List[Any]:
         """Get all rectangle elements on this page."""
-        self._load_elements()
-        return self._elements['rects']
+        return self._element_mgr.rects
     
     @property
     def lines(self) -> List[Any]:
         """Get all line elements on this page."""
-        self._load_elements()
-        return self._elements['lines']
-    
-    @property
-    def _highlight_mgr(self) -> 'HighlightManager':
-        """Get the highlight manager for this page."""
-        if self._highlight_manager is None:
-            from natural_pdf.utils.highlighting import HighlightManager
-            self._highlight_manager = HighlightManager(self)
-        return self._highlight_manager
+        return self._element_mgr.lines
     
     def highlight(self, 
-                 color: Optional[Tuple[int, int, int, int]] = None, 
-                 label: Optional[str] = None) -> 'Page':
+                 bbox: Optional[Tuple[float, float, float, float]] = None, 
+                 color: Optional[Union[Tuple, str]] = None, 
+                 label: Optional[str] = None,
+                 use_color_cycling: bool = False,
+                 element: Optional[Any] = None,
+                 include_attrs: Optional[List[str]] = None,
+                 existing: str = 'append') -> 'Page':
         """
-        Highlight the entire page.
+        Highlight a bounding box or the entire page.
+        Delegates to the central HighlightingService.
         
         Args:
-            color: RGBA color tuple for the highlight, or None to use the next color
-            label: Optional label for the highlight
-            
+            bbox: Bounding box (x0, top, x1, bottom). If None, highlight entire page.
+            color: RGBA color tuple/string for the highlight.
+            label: Optional label for the highlight.
+            use_color_cycling: If True and no label/color, use next cycle color.
+            element: Optional original element being highlighted (for attribute extraction).
+            include_attrs: List of attribute names from 'element' to display.
+            existing: How to handle existing highlights ('append' or 'replace').
+
         Returns:
-            Self for method chaining
+            Self for method chaining.
         """
-        # Add a highlight for the entire page
-        self._highlight_mgr.add_highlight(
-            (0, 0, self.width, self.height), color, label
+        target_bbox = bbox if bbox is not None else (0, 0, self.width, self.height)
+        self._highlighter.add(
+            page_index=self.index,
+            bbox=target_bbox,
+            color=color,
+            label=label,
+            use_color_cycling=use_color_cycling,
+            element=element,
+            include_attrs=include_attrs,
+            existing=existing
+        )
+        return self
+
+    def highlight_polygon(
+        self, 
+        polygon: List[Tuple[float, float]],
+        color: Optional[Union[Tuple, str]] = None, 
+        label: Optional[str] = None,
+        use_color_cycling: bool = False,
+        element: Optional[Any] = None,
+        include_attrs: Optional[List[str]] = None,
+        existing: str = 'append') -> 'Page':
+        """
+        Highlight a polygon shape on the page.
+        Delegates to the central HighlightingService.
+        
+        Args:
+            polygon: List of (x, y) points defining the polygon.
+            color: RGBA color tuple/string for the highlight.
+            label: Optional label for the highlight.
+            use_color_cycling: If True and no label/color, use next cycle color.
+            element: Optional original element being highlighted (for attribute extraction).
+            include_attrs: List of attribute names from 'element' to display.
+            existing: How to handle existing highlights ('append' or 'replace').
+
+        Returns:
+            Self for method chaining.
+        """
+        self._highlighter.add_polygon(
+            page_index=self.index,
+            polygon=polygon,
+            color=color,
+            label=label,
+            use_color_cycling=use_color_cycling,
+            element=element,
+            include_attrs=include_attrs,
+            existing=existing
         )
         return self
     
@@ -1021,30 +829,47 @@ class Page:
             width: Optional[int] = None,
             labels: bool = True,
             legend_position: str = 'right',
-            render_ocr: bool = False) -> Image.Image:
+            render_ocr: bool = False) -> Optional[Image.Image]:
         """
-        Show the page with any highlights.
+        Show the page, rendering highlights via HighlightingService.
         
         Args:
-            scale: Scale factor for rendering
-            width: Optional width for the output image in pixels
-            labels: Whether to include a legend for labels
-            legend_position: Position of the legend
-            render_ocr: Whether to render OCR text with white background boxes
+            scale: Scale factor for rendering.
+            width: Optional width for the output image.
+            labels: Whether to include a legend for labels.
+            legend_position: Position of the legend.
+            render_ocr: Whether to render OCR text.
             
         Returns:
-            PIL Image of the page with highlights
+            PIL Image of the page or None if rendering fails.
         """
         # Use to_image to get the image
-        return self.to_image(
+        img = self.to_image(
             scale=scale,
             width=width,
             labels=labels, 
             legend_position=legend_position, 
-            render_ocr=render_ocr
+            render_ocr=render_ocr,
+            include_highlights=True # Ensure highlights are requested
         )
-        
-        
+        # Display the image (requires a display hook or saving temporarily)
+        if img:
+             try:
+                 # This works in environments like Jupyter
+                 from IPython.display import display
+                 display(img)
+             except ImportError:
+                 # Fallback: save to temp file and open
+                 try:
+                      with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_img:
+                          img.save(temp_img.name)
+                          print(f"Image saved temporarily to {temp_img.name}")
+                          # Try opening with default viewer (platform dependent)
+                          import webbrowser
+                          webbrowser.open(f"file://{os.path.abspath(temp_img.name)}")
+                 except Exception as e:
+                      print(f"Could not display image automatically: {e}")
+        return img # Return the image object anyway
         
     def save_image(self, 
             filename: str, 
@@ -1052,20 +877,26 @@ class Page:
             width: Optional[int] = None,
             labels: bool = True,
             legend_position: str = 'right',
-            render_ocr: bool = False) -> 'Page':
+            render_ocr: bool = False,
+            include_highlights: bool = True, # Allow saving without highlights
+            resolution: Optional[float] = None,
+            **kwargs) -> 'Page':
         """
-        Save the page with any highlights to an image file.
+        Save the page image to a file, rendering highlights via HighlightingService.
         
         Args:
-            filename: Path to save the image to
-            scale: Scale factor for rendering
-            width: Optional width for the output image in pixels
-            labels: Whether to include a legend for labels
-            legend_position: Position of the legend
-            render_ocr: Whether to render OCR text with white background boxes
+            filename: Path to save the image to.
+            scale: Scale factor for rendering highlights.
+            width: Optional width for the output image.
+            labels: Whether to include a legend.
+            legend_position: Position of the legend.
+            render_ocr: Whether to render OCR text.
+            include_highlights: Whether to render highlights.
+            resolution: Resolution for base image rendering.
+            **kwargs: Additional args for pdfplumber's to_image.
             
         Returns:
-            Self for method chaining
+            Self for method chaining.
         """
         # Use to_image to generate and save the image
         self.to_image(
@@ -1074,63 +905,21 @@ class Page:
             width=width,
             labels=labels, 
             legend_position=legend_position,
-            render_ocr=render_ocr
-        )
-        return self
-        
-    def debug_ocr(self, output_path):
-        """
-        Generate an interactive HTML debug report for OCR results.
-        
-        This creates a single-file HTML report with:
-        - Side-by-side view of image regions and OCR text
-        - Confidence scores with color coding
-        - Editable correction fields
-        - Filtering and sorting options
-        - Export functionality for corrected text
-        
-        Args:
-            output_path: Path to save the HTML report
-            
-        Returns:
-            Path to the generated HTML file
-        """
-        from natural_pdf.utils.ocr import debug_ocr_to_html
-        return debug_ocr_to_html([self], output_path)
-        
-    def save(self, 
-            filename: str, 
-            scale: float = 2.0,
-            width: Optional[int] = None,
-            labels: bool = False,
-            legend_position: str = 'right') -> 'Page':
-        """
-        DEPRECATED: Use to_image() instead.
-        Save the page with any highlights to an image file.
-        """
-        import warnings
-        warnings.warn(
-            "save() is deprecated and will be removed in a future version. Use to_image() instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        self.to_image(
-            path=filename,
-            scale=scale,
-            width=width,
-            show_labels=labels,
-            legend_position=legend_position
+            render_ocr=render_ocr,
+            include_highlights=include_highlights,
+            resolution=resolution,
+            **kwargs
         )
         return self
         
     def clear_highlights(self) -> 'Page':
         """
-        Clear all highlights from the page.
+        Clear all highlights *from this specific page* via HighlightingService.
         
         Returns:
             Self for method chaining
         """
-        self._highlight_mgr.clear_highlights()
+        self._highlighter.clear_page(self.index)
         return self
         
     def analyze_text_styles(self) -> Dict[str, 'ElementCollection']:
@@ -1154,20 +943,17 @@ class Page:
         
     def highlight_text_styles(self) -> 'Page':
         """
-        Highlight text elements grouped by their style properties.
-        
-        This automatically analyzes the styles if they haven't been analyzed yet.
+        Highlight text elements grouped by style, using the central highlighter.
         
         Returns:
             Self for method chaining
         """
-        # Analyze styles if not already done
         if self._text_styles is None:
             self.analyze_text_styles()
             
-        # Highlight each style group with its own color
         for label, elements in self._text_styles.items():
-            elements.highlight(label=label)
+             # Use the highlight method of ElementCollection, which now delegates
+             elements.highlight(label=label, use_color_cycling=True) # Ensure cycling for unique labels
             
         return self
     
@@ -1177,214 +963,116 @@ class Page:
                      include_layout_regions: bool = False,
                      apply_exclusions: bool = True,
                      use_color_cycling: bool = True,
-                     layout_confidence: float = 0.2) -> 'Page':
+                     layout_confidence: Optional[float] = 0.2, # Allow None to disable filtering
+                     include_attrs: Optional[Dict[str, List[str]]] = None) -> 'Page':
         """
-        Highlight all elements on the page, grouped by type or style.
-        
-        Each element type or style gets its own color and label in the legend.
+        Highlight various element types on the page using the central highlighter.
         
         Args:
-            include_types: Optional list of element types to include
-                           (e.g., ['text', 'line', 'rect'])
-                           If None, all available types will be included
-            include_text_styles: Whether to highlight text by style groups
-                                (font, size, etc.) instead of as a single group
-            include_layout_regions: Whether to include detected layout regions
-                                   (will run layout detection if not already done)
-                                   Layout regions will be grouped by model and type
-            apply_exclusions: Whether to respect exclusion zones (default: True)
-            use_color_cycling: Whether to use different colors for each type (default: True)
-            layout_confidence: Confidence threshold for layout regions (default: 0.2)
-                               If True is passed, all regions will be included regardless of confidence
-                           
+            include_types: Element types ('text', 'line', 'rect', 'char') to include. None=all.
+            include_text_styles: Highlight text by style instead of as one group.
+            include_layout_regions: Include detected layout regions (runs detection if needed).
+            apply_exclusions: Respect exclusion zones (default: True).
+            use_color_cycling: Use different colors for each type/style (default: True).
+            layout_confidence: Confidence threshold for layout regions. None=disable filter.
+            include_attrs: Dict mapping element type (e.g., 'region') to list of attributes
+                           to display (e.g., {'region': ['confidence', 'region_type']}).
+
         Returns:
-            Self for method chaining
+            Self for method chaining.
         """
-        # Load all elements if not already loaded
-        self._load_elements()
+        self._load_elements() # Ensure elements are loaded
         
-        # Get exclusion regions if we're applying exclusions
-        exclusion_regions = []
-        if apply_exclusions and self._exclusions:
-            # Get exclusion regions using callable functions when appropriate
-            exclusion_regions = self._get_exclusion_regions(include_callable=True)
+        exclusion_regions = self._get_exclusion_regions(include_callable=True) if apply_exclusions else []
         
-        # Define all available element types
-        all_types = {
+        all_element_types = {
             'text': self.words,
             'char': self.chars,
             'rect': self.rects,
             'line': self.lines,
-            # Add other types as they become available
+            'region': self._element_mgr.regions # Include existing regions
         }
-        
+
+        highlighted_text = False
+
         # Highlight by text styles if requested
-        # This takes precedence over normal text highlighting
         if include_text_styles:
-            # Analyze text styles 
             styles = self.analyze_text_styles()
-            
-            # Apply exclusions to each style group if needed
-            if apply_exclusions and exclusion_regions:
-                for label, elements in styles.items():
-                    # Filter out excluded elements
-                    filtered_elements = elements.exclude_regions(exclusion_regions)
-                    # Highlight with appropriate label
-                    filtered_elements.highlight(label=label, use_color_cycling=use_color_cycling)
-            else:
-                # Highlight without exclusions
-                for label, elements in styles.items():
-                    elements.highlight(label=label, use_color_cycling=use_color_cycling)
-            
-            # Highlight non-text elements normally
-            if include_types:
-                # Filter to only include non-text types
-                non_text_types = [t for t in include_types if t != 'text']
-                
-                # Highlight each non-text type
-                for element_type in non_text_types:
-                    if element_type in all_types and all_types[element_type]:
-                        label = f"{element_type.capitalize()} Elements"
-                        elements = all_types[element_type]
-                        
-                        # Skip empty collections
-                        if not elements:
-                            continue
-                            
-                        # Create an ElementCollection if needed
-                        from natural_pdf.elements.collections import ElementCollection
-                        if not isinstance(elements, ElementCollection):
-                            elements = ElementCollection(elements)
-                        
-                        # Apply exclusions if needed
-                        if apply_exclusions and exclusion_regions:
-                            elements = elements.exclude_regions(exclusion_regions)
-                            
-                        # Highlight with appropriate label
-                        elements.highlight(label=label, cycle_colors=cycle_colors)
-            else:
-                # Highlight all non-text elements
-                for element_type in all_types.keys():
-                    if element_type != 'text' and element_type != 'char':
-                        if all_types[element_type]:
-                            label = f"{element_type.capitalize()} Elements"
-                            elements = all_types[element_type]
-                            
-                            # Skip empty collections
-                            if not elements:
-                                continue
-                                
-                            # Create an ElementCollection if needed
-                            from natural_pdf.elements.collections import ElementCollection
-                            if not isinstance(elements, ElementCollection):
-                                elements = ElementCollection(elements)
-                            
-                            # Apply exclusions if needed
-                            if apply_exclusions and exclusion_regions:
-                                elements = elements.exclude_regions(exclusion_regions)
-                                
-                            # Highlight with appropriate label
-                            elements.highlight(label=label, use_color_cycling=use_color_cycling)
-            
-            return self
-            
-        # Normal highlight_all behavior (by element type)
-        # Determine which types to highlight
-        types_to_highlight = include_types if include_types else all_types.keys()
-        
-        # Highlight each type of element with its own color/label
+            for label, elements in styles.items():
+                collection = ElementCollection(elements.elements)
+                if apply_exclusions:
+                    collection = collection.exclude_regions(exclusion_regions)
+                # Delegate highlighting to ElementCollection
+                collection.highlight(
+                     label=label, 
+                     use_color_cycling=use_color_cycling,
+                     include_attrs=include_attrs.get('text') if include_attrs else None
+                )
+            highlighted_text = True
+
+        # Determine types to highlight normally
+        types_to_highlight = include_types if include_types is not None else all_element_types.keys()
+
         for element_type in types_to_highlight:
-            if element_type in all_types and all_types[element_type]:
-                # Format label (e.g., "text" -> "Text Elements")
+            if element_type == 'text' and highlighted_text:
+                 continue # Skip if text already highlighted by style
+            if element_type == 'region' and include_layout_regions:
+                 continue # Skip generic regions if layout regions are handled separately below
+
+            if element_type in all_element_types:
+                elements = all_element_types[element_type]
+                if not elements: continue
+
+                collection = ElementCollection(elements) # Ensure it's a collection
+                if apply_exclusions:
+                    collection = collection.exclude_regions(exclusion_regions)
+                
+                if not collection.elements: continue # Skip if all excluded
+                
                 label = f"{element_type.capitalize()} Elements"
+                attrs_to_include = include_attrs.get(element_type) if include_attrs else None
                 
-                # Get the elements and highlight them
-                elements = all_types[element_type]
-                
-                # Skip empty collections
-                if not elements:
-                    continue
-                    
-                # Create an ElementCollection if needed
-                from natural_pdf.elements.collections import ElementCollection
-                if not isinstance(elements, ElementCollection):
-                    elements = ElementCollection(elements)
-                
-                # Apply exclusions if needed
-                if apply_exclusions and exclusion_regions:
-                    elements = elements.exclude_regions(exclusion_regions)
-                    
-                # Highlight with appropriate label
-                elements.highlight(label=label, use_color_cycling=use_color_cycling)
-                
+                # Delegate highlighting to ElementCollection
+                collection.highlight(
+                     label=label, 
+                     use_color_cycling=use_color_cycling,
+                     include_attrs=attrs_to_include
+                 )
+        
         # Include layout regions if requested
         if include_layout_regions:
             # Run layout detection if not already done
-            if (not hasattr(self, 'detected_layout_regions') or not self.detected_layout_regions) and \
-               ('detected' not in self._regions or not self._regions['detected']):
-                # Make sure to run analyze_layout with include_highlights=False
+            if 'detected' not in self._regions or not self._regions['detected']:
                 self.analyze_layout(confidence=layout_confidence)
             
-            # Get layout regions from either detected_layout_regions or _regions['detected']
-            layout_regions = []
-            if hasattr(self, 'detected_layout_regions') and self.detected_layout_regions:
-                layout_regions = self.detected_layout_regions
-            elif 'detected' in self._regions and self._regions['detected']:
-                layout_regions = self._regions['detected']
+            layout_regions = self._regions.get('detected', [])
+
+            # Filter by confidence if threshold is set
+            if layout_confidence is not None:
+                layout_regions = [r for r in layout_regions if getattr(r, 'confidence', 0) >= layout_confidence]
+
+            # Group regions by type for highlighting
+            regions_by_type: Dict[str, List[Region]] = {}
+            for region in layout_regions:
+                 region_label = getattr(region, 'region_type', 'Unknown Layout Region')
+                 if region_label not in regions_by_type:
+                     regions_by_type[region_label] = []
+                 regions_by_type[region_label].append(region)
             
-            # Filter regions by confidence (handle case where layout_confidence=True)
-            if isinstance(layout_confidence, bool):
-                # If True is passed, don't filter by confidence
-                filtered_regions = layout_regions
-            else:
-                # Filter by confidence threshold
-                filtered_regions = [r for r in layout_regions if hasattr(r, 'confidence') and r.confidence >= layout_confidence]
-            layout_regions = filtered_regions
-            
-            # Group regions by model and type for better visualization
-            models = set(r.model for r in layout_regions if hasattr(r, 'model'))
-            
-            for model in models:
-                # Get regions for this model
-                model_regions = [r for r in layout_regions if hasattr(r, 'model') and r.model == model]
-                
-                # Group by type within model
-                types = set(r.region_type for r in model_regions if hasattr(r, 'region_type'))
-                
-                for region_type in types:
-                    # Get regions of this type
-                    type_regions = [r for r in model_regions if hasattr(r, 'region_type') and r.region_type == region_type]
-                    
-                    # Create a collection and highlight
-                    from natural_pdf.elements.collections import ElementCollection
-                    collection = ElementCollection(type_regions)
-                    
-                    # Determine color based on type (similar to highlight_layout logic)
-                    color = None
-                    if model == 'tatr':
-                        if region_type == 'table':
-                            color = (1, 0, 0, 0.3)  # Red for tables
-                        elif region_type == 'table row':
-                            color = (0, 1, 0, 0.3)  # Green for rows
-                        elif region_type == 'table column':
-                            color = (0, 0, 1, 0.3)  # Blue for columns
-                        elif region_type == 'table column header':
-                            color = (0, 1, 1, 0.3)  # Cyan for column headers
-                    
-                    # Don't use ElementCollection for this case since we want individual confidence scores
-                    # Instead, highlight each region individually with its own confidence
-                    for region in type_regions:
-                        # Create a label with model and type
-                        label = f"Layout ({model}): {region_type}"
-                        
-                        # Highlight with the same color scheme but don't automatically include attributes
-                        region.highlight(
-                            label=label, 
-                            color=color, 
-                            use_color_cycling=use_color_cycling
-                            # No include_attrs by default - user must explicitly request it
-                        )
-                
+            # Highlight each group
+            attrs_to_include = include_attrs.get('region') if include_attrs else None
+            for label, regions_group in regions_by_type.items():
+                 collection = ElementCollection(regions_group)
+                 if apply_exclusions:
+                      collection = collection.exclude_regions(exclusion_regions)
+                 if not collection.elements: continue
+
+                 collection.highlight(
+                     label=f"Layout: {label}", # More specific label
+                     use_color_cycling=use_color_cycling,
+                     include_attrs=attrs_to_include
+                 )
+
         return self
         
     def to_image(self,
@@ -1394,121 +1082,81 @@ class Page:
             labels: bool = True,
             legend_position: str = 'right',
             render_ocr: bool = False,
-            resolution: float = None,
+            resolution: Optional[float] = None,
             include_highlights: bool = True,
-            **kwargs) -> Image.Image:
+            **kwargs) -> Optional[Image.Image]:
         """
-        Generate a PIL image of the page, optionally with highlights, and optionally save it to a file.
+        Generate a PIL image of the page, using HighlightingService if needed.
         
         Args:
-            path: Optional path to save the image to
-            scale: Scale factor for rendering highlights (default: 2.0)
-            width: Optional width for the output image in pixels (height calculated to maintain aspect ratio)
-            labels: Whether to include a legend for labels (default: True)
-            legend_position: Position of the legend (default: 'right')
-            render_ocr: Whether to render OCR text with white background boxes (default: False)
-            resolution: Resolution in DPI for base page image (default: scale * 72)
-            include_highlights: Whether to include highlights (default: True)
-            **kwargs: Additional parameters for pdfplumber.to_image
+            path: Optional path to save the image to.
+            scale: Scale factor for rendering highlights.
+            width: Optional width for the output image.
+            labels: Whether to include a legend for highlights.
+            legend_position: Position of the legend.
+            render_ocr: Whether to render OCR text on highlights.
+            resolution: Resolution in DPI for base page image (default: scale * 72).
+            include_highlights: Whether to render highlights.
+            **kwargs: Additional parameters for pdfplumber.to_image.
             
         Returns:
-            PIL Image of the page
-            
-        Examples:
-            >>> # Get base page image without highlights
-            >>> img = page.to_image(include_highlights=False)
-            >>> 
-            >>> # Get image with highlights and no labels
-            >>> img = page.to_image(labels=False)
-            >>> 
-            >>> # Save image with specific width
-            >>> page.to_image(path="output.png", width=800)
+            PIL Image of the page, or None if rendering fails.
         """
-        # Use resolution based on scale if not provided
-        if resolution is None:
-            resolution = scale * 72  # Convert scale to DPI (72 is base DPI)
-            
-        if include_highlights and hasattr(self, '_highlight_mgr'):
-            # Get the highlighted image
-            image = self._highlight_mgr.get_highlighted_image(scale, labels, legend_position, render_ocr)
-        else:
-            # Get the base page image from pdfplumber
-            image = self._page.to_image(resolution=resolution, **kwargs).annotated
+        image = None
+        try:
+            if include_highlights:
+                # Delegate rendering to the central service
+                image = self._highlighter.render_page(
+                    page_index=self.index,
+                    scale=scale,
+                    labels=labels,
+                    legend_position=legend_position,
+                    render_ocr=render_ocr,
+                    resolution=resolution,
+                    **kwargs
+                )
+            else:
+                # Get the base page image directly from pdfplumber if no highlights needed
+                render_resolution = resolution if resolution is not None else scale * 72
+                # Use the underlying pdfplumber page object
+                img_object = self._page.to_image(resolution=render_resolution, **kwargs)
+                # Access the PIL image directly (assuming pdfplumber structure)
+                image = img_object.annotated if hasattr(img_object, 'annotated') else img_object._repr_png_()
+                if isinstance(image, bytes): # Handle cases where it returns bytes
+                     from io import BytesIO
+                     image = Image.open(BytesIO(image)).convert('RGB') # Convert to RGB for consistency
         
-        # Resize the image if width is provided
-        if width is not None and width > 0:
-            # Calculate height to maintain aspect ratio
+        except Exception as e:
+            logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
+            return None # Return None on error
+
+        if image is None: return None
+
+        # Resize the final image if width is provided
+        if width is not None and width > 0 and image.width > 0:
             aspect_ratio = image.height / image.width
             height = int(width * aspect_ratio)
-            # Resize the image
-            image = image.resize((width, height), Image.LANCZOS)
+            try:
+                image = image.resize((width, height), Image.Resampling.LANCZOS) # Use modern resampling
+            except Exception as resize_error:
+                 logger.warning(f"Could not resize image: {resize_error}")
         
         # Save the image if path is provided
         if path:
-            image.save(path)
+            try:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                image.save(path)
+                logger.debug(f"Saved page image to: {path}")
+            except Exception as save_error:
+                 logger.error(f"Failed to save image to {path}: {save_error}")
             
         return image
         
     def _create_text_elements_from_ocr(self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None) -> List[TextElement]:
-        """
-        Convert OCR results to TextElement objects.
-        
-        Args:
-            ocr_results: List of OCR results with text, bbox, and confidence
-            image_width: Width of the source image (for coordinate scaling)
-            image_height: Height of the source image (for coordinate scaling)
-            
-        Returns:
-            List of created TextElement objects
-        """
-        elements = []
-        
-        # Calculate scale factors to convert from image coordinates to PDF coordinates
-        # Default to 1.0 if not provided (assume coordinates are already in PDF space)
-        scale_x = 1.0
-        scale_y = 1.0
-        
-        if image_width and image_height:
-            scale_x = self.width / image_width
-            scale_y = self.height / image_height
-        
-        for result in ocr_results:
-            # Convert numpy int32 to float if needed and scale to PDF coordinates
-            x0 = float(result['bbox'][0]) * scale_x
-            top = float(result['bbox'][1]) * scale_y
-            x1 = float(result['bbox'][2]) * scale_x
-            bottom = float(result['bbox'][3]) * scale_y
-            
-            # Create a TextElement object with additional required fields for highlighting
-            element_data = {
-                'text': result['text'],
-                'x0': x0,
-                'top': top,
-                'x1': x1,
-                'bottom': bottom,
-                'width': x1 - x0,
-                'height': bottom - top,
-                'object_type': 'text',
-                'source': 'ocr',
-                'confidence': result['confidence'],
-                # Add default font information to work with existing expectations
-                'fontname': 'OCR-detected',
-                'size': 10.0,
-                'page_number': self.number
-            }
-            
-            elem = TextElement(element_data, self)
-            elements.append(elem)
-            
-            # Add to page's elements
-            if hasattr(self, '_elements') and self._elements is not None:
-                # Add to words list to make it accessible via standard API
-                if 'words' in self._elements:
-                    self._elements['words'].append(elem)
-                else:
-                    self._elements['words'] = [elem]
-                
-        return elements
+        """DEPRECATED: Use self._element_mgr.create_text_elements_from_ocr"""
+        logger.warning("_create_text_elements_from_ocr is deprecated. Use self._element_mgr version.")
+        return self._element_mgr.create_text_elements_from_ocr(ocr_results, image_width, image_height)
         
     def apply_ocr(
         self,
@@ -1517,59 +1165,35 @@ class Page:
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
-        # Add other simple mode args if needed
     ) -> List[TextElement]:
         """
-        Apply OCR to THIS page and add results to page elements.
-
-        This method now acts as a wrapper around the PDF class's batch
-        processing method (`apply_ocr_to_pages`) for efficiency and code reuse.
-
-        Args:
-            (Same arguments as PDF.apply_ocr_to_pages, applied only to this page)
-
+        Apply OCR to THIS page and add results to page elements via PDF.apply_ocr_to_pages.
+        
         Returns:
             List of created TextElements derived from OCR results for this page.
         """
-        if not hasattr(self, '_parent') or not self._parent:
-             logger.error(f"Page {self.number}: Cannot apply OCR. Parent PDF object not available.")
-             return []
-        if not hasattr(self._parent, 'apply_ocr_to_pages') or not callable(self._parent.apply_ocr_to_pages):
-             logger.error(f"Page {self.number}: Cannot apply OCR. Parent PDF object missing 'apply_ocr_to_pages' method.")
+        if not hasattr(self._parent, 'apply_ocr_to_pages'):
+             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr_to_pages'. Cannot apply OCR.")
              return []
 
-        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr_to_pages for index {self.index}.")
-
+        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr_to_pages.")
         try:
-            # Call the parent PDF's batch method, specifying only this page's index
-            self._parent.apply_ocr(
-                pages=[self.index], # Target only this page
-                engine=engine,
-                options=options,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device
-                # Pass any other relevant simple_kwargs here if added
+            # Delegate to parent PDF, targeting only this page's index
+            self._parent.apply_ocr_to_pages(
+                pages=[self.index],
+                engine=engine, options=options, languages=languages,
+                min_confidence=min_confidence, device=device
             )
         except Exception as e:
-             logger.error(f"Page {self.number}: Error occurred during delegated OCR call: {e}", exc_info=True)
-             # Return empty list as OCR failed for this page
+             logger.error(f"Page {self.number}: Error during delegated OCR call: {e}", exc_info=True)
              return []
 
-        # Reload elements to include the newly added OCR words
-        # Note: _load_elements itself shouldn't add OCR elements anymore
-        self._load_elements()
-
         # Return the OCR elements specifically added to this page
-        # Assumes elements have a 'source' attribute
+        # Use element manager to retrieve them
         ocr_elements = [el for el in self.words if getattr(el, 'source', None) == 'ocr']
-        # Be careful if apply_ocr could be called multiple times, this might return old results too.
-        # A more robust way might be for apply_ocr_to_pages to return the added elements,
-        # but returning self is simpler for chaining. Let's assume this filtering is sufficient for now.
-        logger.debug(f"Page {self.number}: apply_ocr completed. Returning {len(ocr_elements)} OCR elements found.")
+        logger.debug(f"Page {self.number}: apply_ocr completed. Found {len(ocr_elements)} OCR elements.")
         return ocr_elements
         
-    # --- OCR Method (Runs OCR, Does NOT Add Elements) ---
     def extract_ocr_elements(
         self,
         engine: Optional[str] = None,
@@ -1580,439 +1204,195 @@ class Page:
     ) -> List[TextElement]:
         """
         Extract text elements using OCR *without* adding them to the page's elements.
-        (Implementation is identical to the one in the artifact 'page_class_ocr_edits')
+        Uses the shared OCRManager instance.
         """
         if not self._ocr_manager:
              logger.error(f"Page {self.number}: OCRManager not available. Cannot extract OCR elements.")
              return []
+        
         logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
-        # 1. Render image
-        logger.debug(f"  Rendering page {self.number} to image...")
         try:
             ocr_scale = getattr(self._parent, '_config', {}).get('ocr_image_scale', 2.0)
+            # Get base image without highlights
             image = self.to_image(scale=ocr_scale, include_highlights=False)
+            if not image:
+                 logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
+                 return []
             logger.debug(f"  Rendered image size: {image.width}x{image.height}")
         except Exception as e:
             logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
-        # 2. Prepare args
+        
         manager_args = {'images': image, 'options': options, 'engine': engine}
         if languages is not None: manager_args['languages'] = languages
         if min_confidence is not None: manager_args['min_confidence'] = min_confidence
         if device is not None: manager_args['device'] = device
-        # 3. Call manager
-        logger.debug(f"  Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k != 'images'} }")
+        
+        logger.debug(f"  Calling OCR Manager (extract only) with args: { {k:v for k,v in manager_args.items() if k != 'images'} }")
         try:
-            results = self._ocr_manager.apply_ocr(**manager_args)
+            # apply_ocr now returns List[List[Dict]] or List[Dict]
+            results_list = self._ocr_manager.apply_ocr(**manager_args)
+            # If it returned a list of lists (batch mode), take the first list
+            results = results_list[0] if isinstance(results_list, list) and results_list and isinstance(results_list[0], list) else results_list
+            
             if not isinstance(results, list):
                  logger.error(f"  OCR Manager returned unexpected type: {type(results)}")
                  results = []
-            logger.info(f"  OCR Manager returned {len(results)} results.")
+            logger.info(f"  OCR Manager returned {len(results)} results for extraction.")
         except Exception as e:
-             logger.error(f"  OCR processing failed: {e}", exc_info=True)
+             logger.error(f"  OCR processing failed during extraction: {e}", exc_info=True)
              return []
-        # 4. Convert results (DO NOT add to self._elements)
+        
+        # Convert results but DO NOT add to ElementManager
         logger.debug(f"  Converting OCR results to TextElements (extract only)...")
-        elements = self._create_text_elements_from_ocr(results, image.width, image.height)
-        logger.info(f"  Created {len(elements)} TextElements from OCR (extract only).")
-        return elements
-        
-    def analyze_layout(self, 
-                      model: str = "docling",
-                      confidence: float = 0.2,
-                      classes: Optional[List[str]] = None,
-                      exclude_classes: Optional[List[str]] = None,
-                      device: str = "cpu",
-                      existing: str = "replace",
-                      model_params: Optional[Dict[str, Any]] = None,
-                      # Legacy parameters for backward compatibility
-                      model_path: Optional[str] = None,
-                      image_size: int = 1024,
-                      create_cells: bool = False) -> 'Page':
-        """
-        Analyze the page layout using a machine learning model.
-        
-        Args:
-            model: Model type to use ('yolo', 'tatr', 'paddle', or 'docling')
-            confidence: Minimum confidence threshold for detections
-            classes: Specific classes to detect (None for all supported classes)
-            exclude_classes: Classes to exclude from detection
-            device: Device to use for inference ('cpu' or 'cuda:0'/'gpu')
-            existing: How to handle existing regions: 'replace' (default) or 'append'
-            model_params: Dictionary of model-specific parameters:
-                - YOLO: {"model_path": "...", "image_size": 1024}
-                - TATR: {"model_path": "...", "create_cells": False}
-                - Paddle: {"lang": "en", "use_angle_cls": False, "enable_table": True}
-                - Docling: {"model_name": "ds4sd/SmolDocling-256M-preview", "prompt_text": "...", "verbose": False}
-            model_path: (Legacy) Optional path to custom model file
-            image_size: (Legacy) Size to resize the image to before detection (YOLO only)
-            create_cells: (Legacy) Whether to create cell regions for TATR table regions
-            
-        Returns:
-            Self for method chaining
-        """
-        # Initialize model_params if None
-        if model_params is None:
-            model_params = {}
-                    
-        # Create a temporary directory to store the page image
-        temp_dir = tempfile.mkdtemp()
-        temp_image_path = os.path.join(temp_dir, f"page_{self.index}.png")
-        
-        try:
-            # Render the page as an image and save to temp file
-            # Explicitly set include_highlights=False to ensure we get the original page image
-            page_image = self.to_image(resolution=150.0, include_highlights=False)
-            page_image.save(temp_image_path)
-            
-            # Initialize the appropriate detector based on the model type
-            if model.lower() == "yolo":
-                # Extract YOLO-specific parameters
-                model_file = model_params.get('model_path', "doclayout_yolo_docstructbench_imgsz1024.pt")
-                yolo_image_size = model_params.get('image_size', 1024)
-                
-                from natural_pdf.analyzers.layout_detectors.yolo import YOLODocLayoutDetector
+        # Use a temporary method to create elements without adding them globally
+        temp_elements = []
+        scale_x = self.width / image.width if image.width else 1
+        scale_y = self.height / image.height if image.height else 1
+        for result in results:
+            x0, top, x1, bottom = [float(c) for c in result['bbox']]
+            elem_data = {
+                'text': result['text'], 'confidence': result['confidence'],
+                'x0': x0 * scale_x, 'top': top * scale_y,
+                'x1': x1 * scale_x, 'bottom': bottom * scale_y,
+                'width': (x1 - x0) * scale_x, 'height': (bottom - top) * scale_y,
+                'object_type': 'text', 'source': 'ocr',
+                'fontname': 'OCR-temp', 'size': 10.0, 'page_number': self.number
+            }
+            temp_elements.append(TextElement(elem_data, self))
 
-                detector = YOLODocLayoutDetector(
-                    model_file=model_file,
-                    device=device
-                )
-                # Run detection
-                detections = detector.detect(
-                    temp_image_path,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes,
-                    image_size=yolo_image_size
-                )
-                
-            elif model.lower() == "tatr" or model.lower() == "table-transformer":
-                # Extract TATR-specific parameters
-                tatr_model_path = model_params.get('model_path')
-                
-                from natural_pdf.analyzers.layout_detectors.tatr import TableTransformerDetector
-                detector = TableTransformerDetector(
-                    detection_model="microsoft/table-transformer-detection" if tatr_model_path is None else tatr_model_path,
-                    device=device
-                )
-                # Run detection
-                detections = detector.detect(
-                    temp_image_path,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes
-                )
-                
-            elif model.lower() == "paddle":
-                # Extract PaddlePaddle-specific parameters
-                paddle_lang = model_params.get('lang', 'en')
-                use_angle_cls = model_params.get('use_angle_cls', False)
-                enable_table = model_params.get('enable_table', True)
-                show_log = model_params.get('show_log', False)
-                
-                # Convert device format
-                paddle_device = 'gpu' if device.startswith('cuda') else device
-                
-                from natural_pdf.analyzers.layout_detectors.paddle import PaddleLayoutDetector
-                # Initialize PaddleLayoutDetector
-                detector = PaddleLayoutDetector(
-                    lang=paddle_lang,
-                    use_angle_cls=use_angle_cls,
-                    device=paddle_device,
-                    enable_table=enable_table,
-                    show_log=show_log
-                )
-                
-                # Run detection
-                detections = detector.detect(
-                    temp_image_path,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes
-                )
-                
-            elif model.lower() == "docling":
-                # Extract Docling-specific parameters
-                verbose = model_params.get('verbose', False)
-                
-                # Pass all other model_params directly to DocumentConverter
-                detector_kwargs = {k: v for k, v in model_params.items() if k != 'verbose'}
-                
-                from natural_pdf.analyzers.layout_detectors.docling import DoclingLayoutDetector
-                # Initialize DoclingLayoutDetector
-                detector = DoclingLayoutDetector(
-                    verbose=verbose,
-                    **detector_kwargs
-                )
-                
-                # Run detection
-                detections = detector.detect(
-                    temp_image_path,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes
-                )
-                
-                # Store the original Docling document for advanced usage
-                self.docling_document = detector.get_docling_document()
-                
-            elif model.lower() == "surya":
-                # Extract Surya-specific parameters
-                verbose = model_params.get('verbose', False)
-                
-                # Import only when needed
-                from natural_pdf.analyzers.layout_detectors.surya import SuryaLayoutDetector
-                
-                # Initialize SuryaLayoutDetector
-                detector = SuryaLayoutDetector(
-                    device=device,
-                    verbose=verbose
-                )
-                
-                # Run detection
-                detections = detector.detect(
-                    temp_image_path,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes
-                )
-                
-                # Store the original Surya document for advanced usage if available
-                if hasattr(detector, 'get_surya_document'):
-                    self.surya_document = detector.get_surya_document()
-            else:
-                raise ValueError(f"Unsupported model type: {model}. Currently supported: 'yolo', 'tatr', 'paddle', 'docling', 'surya'")
-            
-            # Calculate the scale factor to convert from image to PDF coordinates
-            # Note: This assumes the image resolution is 150 DPI
-            scale_x = self.width / page_image.width
-            scale_y = self.height / page_image.height
-            
-            # Create a list to store layout regions
-            layout_regions = []
-            
-            # Convert detections to regions
-            # First create all regions and track by docling_id if available
-            docling_id_to_region = {}
-            
-            for detection in detections:
-                x_min, y_min, x_max, y_max = detection['bbox']
-                
-                # Convert coordinates from image to PDF space
-                pdf_x0 = x_min * scale_x
-                pdf_y0 = y_min * scale_y
-                pdf_x1 = x_max * scale_x
-                pdf_y1 = y_max * scale_y
-                
-                # Create a region
-                region = Region(self, (pdf_x0, pdf_y0, pdf_x1, pdf_y1))
-                region.region_type = detection['class']
-                region.normalized_type = detection['normalized_class']
-                region.confidence = detection['confidence']
-                region.model = model  # Store which model detected this region
-                region.source = 'detected'  # Set the source for selectors
-                
-                # If this is a Docling detection, include text content
-                if model.lower() == 'docling':
-                    if 'text' in detection:
-                        region.text_content = detection.get('text')
-                        
-                    # Track by docling_id for building hierarchy later
-                    if 'docling_id' in detection:
-                        region.docling_id = detection['docling_id']
-                        docling_id_to_region[detection['docling_id']] = region
-                        
-                    # Store parent ID for hierarchy building
-                    if 'parent_id' in detection:
-                        region.parent_id = detection.get('parent_id')
-                
-                layout_regions.append(region)
-                
-            # If using Docling model, build parent-child relationships
-            if model.lower() == 'docling':
-                # Second pass to establish parent-child relationships
-                for region in layout_regions:
-                    if hasattr(region, 'parent_id') and region.parent_id:
-                        parent_region = docling_id_to_region.get(region.parent_id)
-                        if parent_region:
-                            parent_region.add_child(region)
-            
-            # Handle existing regions based on mode
-            if existing.lower() == 'append':
-                # Append to existing detected regions
-                self._regions['detected'].extend(layout_regions)
-            else:
-                # Replace existing detected regions
-                self._regions['detected'] = layout_regions
-            
-            # Make sure elements is initialized
-            self._load_elements()
-            
-            # Update elements collection for selectors
-            if 'regions' not in self._elements:
-                self._elements['regions'] = []
-                
-            # Update elements collection based on existing mode
-            if existing.lower() == 'append':
-                # Only add new regions that aren't already in the collection
-                for region in layout_regions:
-                    if region not in self._elements['regions']:
-                        self._elements['regions'].append(region)
-            else:
-                # Replace existing regions in _elements with detected regions, keep named regions
-                # First get all named regions from _elements['regions']
-                named_regions = [r for r in self._elements['regions'] if r.source == 'named']
-                # Then create a new list with named regions and layout regions
-                self._elements['regions'] = named_regions + layout_regions
-            
-            # Create cells for table regions if requested and using TATR
-            create_cells_flag = model_params.get('create_cells', create_cells)
-            if model.lower() == 'tatr' and create_cells_flag:
-                # Debug log
-                print(f"Creating cells for {len([r for r in layout_regions if r.region_type == 'table'])} table regions")
-                
-                cell_count = 0
-                for region in layout_regions:
-                    # Check if it's a table region
-                    if region.region_type == 'table':
-                        try:
-                            # Create cells for the table
-                            cells = region.create_cells()
-                            cell_count += len(cells)
-                            
-                            # Add cell regions to our tracking structures
-                            layout_regions.extend(cells)
-                            
-                            # Also add to _elements for selectors
-                            if 'regions' in self._elements:
-                                self._elements['regions'].extend(cells)
-                                
-                            # And to _regions['detected']
-                            self._regions['detected'].extend(cells)
-                            
-                        except Exception as e:
-                            print(f"Error creating cells for table: {e}")
-                            
-                # Debug log
-                print(f"Created {cell_count} cells in total")
-                        
-            # Store layout regions in an instance variable so they can be accessed after the method returns
-            self.detected_layout_regions = layout_regions
-            return self
-            
-        finally:
-            # Clean up temporary file and directory
-            if os.path.exists(temp_image_path):
-                os.remove(temp_image_path)
-            os.rmdir(temp_dir)
+        logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
+        return temp_elements
+        
+    @property
+    def layout_analyzer(self) -> LayoutAnalyzer:
+        """Get or create the layout analyzer for this page."""
+        if self._layout_analyzer is None: 
+             if not self._layout_manager:
+                  logger.warning("LayoutManager not available, cannot create LayoutAnalyzer.")
+                  return None 
+             self._layout_analyzer = LayoutAnalyzer(self) 
+        return self._layout_analyzer 
+
+    def analyze_layout(
+        self,
+        engine: Optional[str] = None,
+        options: Optional[LayoutOptions] = None,
+        confidence: Optional[float] = None,
+        classes: Optional[List[str]] = None,
+        exclude_classes: Optional[List[str]] = None,
+        device: Optional[str] = None,
+        existing: str = "replace"
+    ) -> 'Page':
+        """
+        Analyze the page layout using the configured LayoutManager.
+        """
+        analyzer = self.layout_analyzer 
+        if not analyzer:
+             logger.error("Layout analysis failed: LayoutAnalyzer not initialized (is LayoutManager available?).")
+             return self
+        analyzer.analyze_layout( 
+            engine=engine,
+            options=options,
+            confidence=confidence,
+            classes=classes,
+            exclude_classes=exclude_classes,
+            device=device,
+            existing=existing
+        )
+        return self
     
     def highlight_layout(self, 
                         layout_regions: Optional[List[Region]] = None,
-                        confidence: float = 0.2,
-                        label_format: str = "{type} {model}") -> 'Page':
+                        confidence: float = 0.2, # Allow None
+                        label_format: str = "Layout: {type} ({model:.3s})") -> 'Page': # Default format
         """
-        Highlight detected layout regions on the page.
+        Highlight detected layout regions, delegating to central highlighter.
         
         Args:
-            layout_regions: List of regions to highlight (runs analyze_layout if None)
-            confidence: Minimum confidence threshold for highlighting regions
-            label_format: Format string for region labels
+            layout_regions: List of regions to highlight (runs analyze_layout if None).
+            confidence: Minimum confidence threshold (None to disable filtering).
+            label_format: Format string for region labels (can use {type}, {conf:.2f}, {model}).
             
         Returns:
-            Self for method chaining
+            Self for method chaining.
         """
-        # If no regions provided, use detected_layout_regions, detected regions, or run layout detection
+        regions_to_highlight = []
         if layout_regions:
-            regions = layout_regions
-        elif hasattr(self, 'detected_layout_regions') and self.detected_layout_regions:
-            regions = self.detected_layout_regions
+            regions_to_highlight = layout_regions
         elif 'detected' in self._regions and self._regions['detected']:
-            regions = self._regions['detected']
+            regions_to_highlight = self._regions['detected']
         else:
-            # Call analyze_layout with include_highlights=False and use the result directly
-            self.analyze_layout(confidence=confidence)
-            regions = self.detected_layout_regions
+            logger.info("No layout regions provided or detected, running analyze_layout first.")
+            self.analyze_layout() # Run with defaults if needed
+            regions_to_highlight = self._regions.get('detected', [])
             
-        # Highlight each region with its type as the label
-        for region in regions:
-            # Skip regions below confidence threshold
-            if region.confidence < confidence:
-                continue
-                
-            # No model filtering here - use selectors for that
-                
-            # Format label
-            model_suffix = f" ({region.model})" if hasattr(region, 'model') else ""
-            label = label_format.format(
-                type=region.region_type,
-                conf=region.confidence,
-                model=model_suffix
+        # Filter by confidence if threshold is provided
+        if confidence is not None:
+             regions_to_highlight = [r for r in regions_to_highlight if getattr(r, 'confidence', 0) >= confidence]
+        
+        # Highlight each region using the Page's highlight method
+        for region in regions_to_highlight:
+            model_name = getattr(region, 'model', 'N/A')
+            region_type = getattr(region, 'region_type', 'Unknown')
+            region_conf = getattr(region, 'confidence', 0.0)
+            
+            try:
+                 label = label_format.format(type=region_type, conf=region_conf, model=model_name)
+            except KeyError as e:
+                 logger.warning(f"Invalid key in label_format '{label_format}': {e}. Using default format.")
+                 label = f"Layout: {region_type} ({model_name:.3s})"
+            except Exception as format_e:
+                  logger.warning(f"Error formatting label '{label_format}': {format_e}. Using default format.")
+                  label = f"Layout: {region_type} ({model_name:.3s})"
+
+            # Use highlight_polygon if available, otherwise rectangle
+            highlight_method = self.highlight_polygon if region.has_polygon else self.highlight
+            highlight_method(
+                 polygon=region.polygon if region.has_polygon else None,
+                 bbox=region.bbox if not region.has_polygon else None,
+                 label=label,
+                 use_color_cycling=True, # Cycle colors for different layout types
+                 element=region, # Pass region to potentially include attrs
+                 # include_attrs=['confidence'] # Example: uncomment to show confidence
             )
             
-            # Highlight region with appropriate color based on model
-            if hasattr(region, 'model') and region.model == 'tatr':
-                # Use different colors for table structure elements
-                if region.region_type == 'table':
-                    color = (1, 0, 0, 0.3)  # Red for tables
-                elif region.region_type == 'table row':
-                    color = (0, 1, 0, 0.3)  # Green for rows
-                elif region.region_type == 'table column':
-                    color = (0, 0, 1, 0.3)  # Blue for columns
-                elif region.region_type == 'table column header':
-                    color = (0, 1, 1, 0.3)  # Cyan for column headers
-                else:
-                    color = None  # Default color cycling
-                region.highlight(label=label, color=color)
-            else:
-                region.highlight(label=label)
-            
         return self
-        
-    def get_section_between(self, start_element=None, end_element=None, boundary_inclusion='both') -> Region:
+
+    def get_section_between(self, start_element=None, end_element=None, boundary_inclusion='both') -> Optional[Region]: # Return Optional
         """
         Get a section between two elements on this page.
-        
-        Args:
-            start_element: Element marking the start of the section
-            end_element: Element marking the end of the section
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none'
-            
-        Returns:
-            Region representing the section between elements
         """
-        # Create a full-page region
+        # Create a full-page region to operate within
         page_region = self.create_region(0, 0, self.width, self.height)
         
-        # Get the section from the region
-        return page_region.get_section_between(
-            start_element=start_element,
-            end_element=end_element,
-            boundary_inclusion=boundary_inclusion
-        )
+        # Delegate to the region's method
+        try:
+            return page_region.get_section_between(
+                start_element=start_element,
+                end_element=end_element,
+                boundary_inclusion=boundary_inclusion
+            )
+        except Exception as e:
+             logger.error(f"Error getting section between elements on page {self.index}: {e}", exc_info=True)
+             return None
     
     def get_sections(self, 
                   start_elements=None, 
                   end_elements=None,
                   boundary_inclusion='both',
                   y_threshold=5.0,
-                  bounding_box=None):
+                  bounding_box=None) -> List[Region]:
         """
         Get sections of a page defined by start/end elements.
-        
-        Args:
-            start_elements: Elements or selector string that mark the start of sections
-            end_elements: Elements or selector string that mark the end of sections
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none'
-            y_threshold: Maximum vertical difference to consider elements on same line
-            bounding_box: Optional tuple (x0, top, x1, bottom) to limit the section area
-            
-        Returns:
-            List of Region objects representing the sections
+        Uses the page-level implementation.
         """
         # Helper function to get bounds from bounding_box parameter
         def get_bounds():
             if bounding_box:
-                return bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]
+                x0, top, x1, bottom = bounding_box
+                # Clamp to page boundaries
+                return max(0, x0), max(0, top), min(self.width, x1), min(self.height, bottom)
             else:
                 return 0, 0, self.width, self.height
                 
@@ -2020,150 +1400,92 @@ class Page:
         
         # Handle cases where elements are provided as strings (selectors)
         if isinstance(start_elements, str):
-            start_elements = self.find_all(start_elements)
+            start_elements = self.find_all(start_elements).elements # Get list of elements
+        elif hasattr(start_elements, 'elements'): # Handle ElementCollection input
+             start_elements = start_elements.elements
             
         if isinstance(end_elements, str):
-            end_elements = self.find_all(end_elements)
+            end_elements = self.find_all(end_elements).elements
+        elif hasattr(end_elements, 'elements'):
+             end_elements = end_elements.elements
 
-        # Validate boundary_inclusion parameter
+        # Ensure start_elements is a list
+        if start_elements is None: start_elements = []
+        if end_elements is None: end_elements = []
+
         valid_inclusions = ['start', 'end', 'both', 'none']
         if boundary_inclusion not in valid_inclusions:
             raise ValueError(f"boundary_inclusion must be one of {valid_inclusions}")
         
-        # If no start elements, can't do anything
         if not start_elements:
             return regions
             
-        # Sort elements by position (top-to-bottom, left-to-right)
-        all_elements = []
-        
-        for element in start_elements:
-            all_elements.append((element, 'start'))
-            
-        if end_elements:
-            for element in end_elements:
-                all_elements.append((element, 'end'))
+        # Combine start and end elements with their type
+        all_boundaries = []
+        for el in start_elements: all_boundaries.append((el, 'start'))
+        for el in end_elements: all_boundaries.append((el, 'end'))
                 
-        # Group elements with similar Y coordinates
-        # Consider elements on the same line if they're within the threshold
-        
-        # First sort all elements by Y position
-        all_elements.sort(key=lambda x: x[0].top)
-        
-        # Group elements on the same line
-        grouped_elements = []
-        current_group = []
-        current_group_type = None
-        current_y = None
-        
-        for element, element_type in all_elements:
-            if current_y is None or abs(element.top - current_y) <= y_threshold:
-                # Element is on the same line as current group
-                if current_group and element_type != current_group_type:
-                    # If we have a mixed group, prioritize start elements over end elements
-                    if element_type == 'start':
-                        current_group_type = 'start'
-                elif not current_group:
-                    current_group_type = element_type
-                    
-                current_group.append(element)
-                current_y = element.top  # Update reference Y
-            else:
-                # Element is on a new line, close current group and start a new one
-                if current_group:
-                    # Find the leftmost element in the group
-                    leftmost = min(current_group, key=lambda e: e.x0)
-                    grouped_elements.append((leftmost, current_group_type))
-                
-                # Start a new group
-                current_group = [element]
-                current_group_type = element_type
-                current_y = element.top
-        
-        # Add the last group
-        if current_group:
-            # Find the leftmost element in the group
-            leftmost = min(current_group, key=lambda e: e.x0)
-            grouped_elements.append((leftmost, current_group_type))
-        
-        # Use the grouped elements for sectioning
-        all_elements = grouped_elements
-        
-        # Find sections
-        current_start = None
-        
-        for i, (element, element_type) in enumerate(all_elements):
+        # Sort all boundary elements primarily by top, then x0
+        try:
+             all_boundaries.sort(key=lambda x: (x[0].top, x[0].x0))
+        except AttributeError as e:
+             logger.error(f"Error sorting boundaries: Element missing top/x0 attribute? {e}")
+             return [] # Cannot proceed if elements lack position
+
+        # Process sorted boundaries to find sections
+        current_start_element = None
+        active_section_started = False
+
+        for element, element_type in all_boundaries:
             if element_type == 'start':
-                # If we already have a start without an end, create a section until this start
-                if current_start is not None:
-                    # Create a region from current_start to this start
-                    start_element = current_start
-                    end_element = element
+                # If we have an active section, this start implicitly ends it
+                if active_section_started:
+                    end_boundary_el = element # Use this start as the end boundary
+                    # Determine region boundaries
+                    sec_top = current_start_element.top if boundary_inclusion in ['start', 'both'] else current_start_element.bottom
+                    sec_bottom = end_boundary_el.top if boundary_inclusion not in ['end', 'both'] else end_boundary_el.bottom
                     
-                    # Determine region boundaries based on inclusion parameter
-                    if boundary_inclusion in ['start', 'both']:
-                        top = start_element.top
-                    else:
-                        top = start_element.bottom
-                        
-                    if boundary_inclusion in ['end', 'both']:
-                        bottom = end_element.bottom
-                    else:
-                        bottom = end_element.top
-                        
-                    # Create the region
+                    if sec_top < sec_bottom: # Ensure valid region
+                        x0, _, x1, _ = get_bounds()
+                        region = self.create_region(x0, sec_top, x1, sec_bottom)
+                        region.start_element = current_start_element
+                        region.end_element = end_boundary_el # Mark the element that ended it
+                        region.is_end_next_start = True # Mark how it ended
+                        regions.append(region)
+                    active_section_started = False # Reset for the new start
+                
+                # Set this as the potential start of the next section
+                current_start_element = element
+                active_section_started = True
+
+            elif element_type == 'end' and active_section_started:
+                # We found an explicit end for the current section
+                end_boundary_el = element
+                sec_top = current_start_element.top if boundary_inclusion in ['start', 'both'] else current_start_element.bottom
+                sec_bottom = end_boundary_el.bottom if boundary_inclusion in ['end', 'both'] else end_boundary_el.top
+                
+                if sec_top < sec_bottom: # Ensure valid region
                     x0, _, x1, _ = get_bounds()
-                    region = self.create_region(x0, top, x1, bottom)
-                    region.start_element = start_element
-                    region.end_element = end_element
-                    region.is_end_next_start = True
+                    region = self.create_region(x0, sec_top, x1, sec_bottom)
+                    region.start_element = current_start_element
+                    region.end_element = end_boundary_el
+                    region.is_end_next_start = False
                     regions.append(region)
                 
-                # Save this element as the current start
-                current_start = element
-                
-            elif element_type == 'end' and current_start is not None:
-                # We found an end for the current start
-                start_element = current_start
-                end_element = element
-                
-                # Determine region boundaries based on inclusion parameter
-                if boundary_inclusion in ['start', 'both']:
-                    top = start_element.top
-                else:
-                    top = start_element.bottom
-                    
-                if boundary_inclusion in ['end', 'both']:
-                    bottom = end_element.bottom
-                else:
-                    bottom = end_element.top
-                    
-                # Create the region
-                x0, _, x1, _ = get_bounds()
-                region = self.create_region(x0, top, x1, bottom)
-                region.start_element = start_element
-                region.end_element = end_element
-                region.is_end_next_start = False
-                regions.append(region)
-                
-                # Reset current start so we don't use it again
-                current_start = None
+                # Reset: section ended explicitly
+                current_start_element = None
+                active_section_started = False
         
-        # If we have a start without an end at the end, create a section to the page bottom
-        if current_start is not None:
-            # Determine region top boundary based on inclusion parameter
-            if boundary_inclusion in ['start', 'both']:
-                top = current_start.top
-            else:
-                top = current_start.bottom
-                
-            # Create the region to the bottom of the page
+        # Handle the last section if it was started but never explicitly ended
+        if active_section_started:
+            sec_top = current_start_element.top if boundary_inclusion in ['start', 'both'] else current_start_element.bottom
             x0, _, x1, page_bottom = get_bounds()
-            region = self.create_region(x0, top, x1, page_bottom)
-            region.start_element = current_start
-            region.end_element = None
-            region.is_end_next_start = False
-            regions.append(region)
+            if sec_top < page_bottom:
+                 region = self.create_region(x0, sec_top, x1, page_bottom)
+                 region.start_element = current_start_element
+                 region.end_element = None # Ended by page end
+                 region.is_end_next_start = False
+                 regions.append(region)
             
         return regions
             
@@ -2174,29 +1496,16 @@ class Page:
     def ask(self, question: str, min_confidence: float = 0.1, model: str = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
         """
         Ask a question about the page content using document QA.
-        
-        This method uses a document question answering model to extract answers from the page content.
-        It leverages both textual content and layout information for better understanding.
-        
-        Args:
-            question: The question to ask about the page content
-            min_confidence: Minimum confidence threshold for answers (0.0-1.0)
-            model: Optional model name to use for QA (if None, uses default model)
-            **kwargs: Additional parameters to pass to the QA engine
-            
-        Returns:
-            Dictionary with answer details: {
-                "answer": extracted text,
-                "confidence": confidence score,
-                "found": whether an answer was found,
-                "page_num": page number,
-                "source_elements": list of elements that contain the answer (if found)
-            }
         """
-        from natural_pdf.qa.document_qa import get_qa_engine
-        
-        # Get or initialize QA engine with specified model
-        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
-        
-        # Ask the question using the QA engine
-        return qa_engine.ask_pdf_page(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
+        try:
+             from natural_pdf.qa.document_qa import get_qa_engine
+             # Get or initialize QA engine with specified model
+             qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+             # Ask the question using the QA engine
+             return qa_engine.ask_pdf_page(self, question, min_confidence=min_confidence, debug=debug, **kwargs)
+        except ImportError:
+             logger.error("Question answering requires the 'natural_pdf.qa' module. Please install necessary dependencies.")
+             return {"answer": None, "confidence": 0.0, "found": False, "page_num": self.number, "source_elements": []}
+        except Exception as e:
+             logger.error(f"Error during page.ask: {e}", exc_info=True)
+             return {"answer": None, "confidence": 0.0, "found": False, "page_num": self.number, "source_elements": []}
