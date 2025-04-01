@@ -7,22 +7,16 @@ import logging
 
 # Set up module logger
 logger = logging.getLogger("natural_pdf.ocr")
+from .ocr_manager import OCRManager
 from .engine import OCREngine
-from .easyocr_engine import EasyOCREngine
+from .ocr_options import OCROptions
+from .engine import OCREngine
+from .engine_paddle import PaddleOCREngine
+from .engine_surya import SuryaOCREngine
 
-# Try to import PaddleOCR engine, but don't fail if it's not available
-try:
-    from .paddleocr_engine import PaddleOCREngine
-    __all__ = ['OCREngine', 'EasyOCREngine', 'PaddleOCREngine']
-except ImportError:
-    __all__ = ['OCREngine', 'EasyOCREngine']
+__all__ = ['OCRManager', 'OCREngine', 'OCROptions', 'EasyOCREngine', 'PaddleOCREngine', 'SuryaOCREngine']
 
-# Default engine to use if none is specified
-try:
-    from .paddleocr_engine import PaddleOCREngine
-    DEFAULT_ENGINE = PaddleOCREngine  # Use PaddleOCR as default if available
-except ImportError:
-    DEFAULT_ENGINE = EasyOCREngine  # Fall back to EasyOCR if PaddleOCR is not available
+DEFAULT_ENGINE = SuryaOCREngine
 
 def get_engine(engine_name=None, **kwargs):
     """
@@ -49,7 +43,7 @@ def get_engine(engine_name=None, **kwargs):
     
     if engine_name.lower() == 'paddleocr':
         try:
-            from .paddleocr_engine import PaddleOCREngine
+            from .engine_paddle import PaddleOCREngine
             logger.info("Initializing PaddleOCR engine")
             return PaddleOCREngine(**kwargs)
         except ImportError:

@@ -1,4 +1,9 @@
+import logging
+
 from typing import List, Optional, Dict, Any, Union, Callable, TypeVar, Generic, Iterator, Tuple, TYPE_CHECKING
+from natural_pdf.ocr import OCROptions
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -432,7 +437,75 @@ class PageCollection(Generic[P]):
             texts.append(text)
         
         return "\n".join(texts)
-    
+
+    # --- NEW METHOD ---
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        options: Optional[OCROptions] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        # Add other simple mode args if needed
+    ) -> 'PageCollection[P]':
+        """
+        Applies OCR to all pages within this collection using batch processing.
+
+        This delegates the work to the parent PDF object's `apply_ocr_to_pages`
+        method for efficiency. The OCR results (TextElements) are added directly
+        to the respective Page objects within this collection.
+
+        Args:
+            engine: Name of the engine (e.g., 'easyocr', 'paddleocr', 'surya').
+                    Uses manager's default if None. Ignored if 'options' is provided.
+            options: An specific Options object (e.g., EasyOCROptions) for
+                     advanced configuration. Overrides simple arguments.
+            languages: List of language codes for simple mode.
+            min_confidence: Minimum confidence threshold for simple mode.
+            device: Device string ('cpu', 'cuda', etc.) for simple mode.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            RuntimeError: If pages in the collection lack a parent PDF object
+                          or if the parent PDF object lacks the required
+                          `apply_ocr_to_pages` method.
+            (Propagates exceptions from PDF.apply_ocr_to_pages)
+        """
+        if not self.pages:
+            logger.warning("Cannot apply OCR to an empty PageCollection.")
+            return self
+
+        # Assume all pages share the same parent PDF object
+        first_page = self.pages[0]
+        if not hasattr(first_page, '_parent') or not first_page._parent:
+            raise RuntimeError("Pages in this collection do not have a parent PDF reference.")
+
+        parent_pdf = first_page._parent
+
+        if not hasattr(parent_pdf, 'apply_ocr_to_pages') or not callable(parent_pdf.apply_ocr_to_pages):
+             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr_to_pages' method.")
+
+        # Get the 0-based indices of the pages in this collection
+        page_indices = [p.index for p in self.pages]
+
+        logger.info(f"Applying OCR via parent PDF to page indices: {page_indices} in collection.")
+
+        # Delegate the batch call to the parent PDF object
+        parent_pdf.apply_ocr_to_pages(
+            pages=page_indices,
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device
+            # Pass any other relevant simple_kwargs here if added
+        )
+        # The PDF method modifies the Page objects directly by adding elements.
+
+        return self # Return self for chaining
+
     def find(self, selector: str, apply_exclusions=True, **kwargs) -> Optional[T]:
         """
         Find the first element matching the selector across all pages.

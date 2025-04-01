@@ -1,158 +1,104 @@
-"""
-Base OCR engine interface.
-"""
+# ocr_engine_base.py
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Tuple, Union
 from PIL import Image
 
-# Set up module logger
-logger = logging.getLogger("natural_pdf.ocr.engine")
+# Assuming ocr_options defines BaseOCROptions
+from .ocr_options import BaseOCROptions
 
+logger = logging.getLogger(__name__)
 
 class OCREngine(ABC):
-    """Base OCR engine interface."""
-    
-    def __init__(self, **kwargs):
-        """
-        Initialize with engine-specific settings.
-        
-        Args:
-            **kwargs: Engine-specific settings
-        """
-        self.logger = logging.getLogger(f"natural_pdf.ocr.{self.__class__.__name__}")
-        self.logger.debug(f"Initializing {self.__class__.__name__} with settings: {kwargs}")
-    
+    """Abstract Base Class for OCR engines."""
+
+    def __init__(self):
+        """Initializes the base OCR engine."""
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger.info(f"Initializing {self.__class__.__name__}")
+        self._reader_cache = {} # Cache for initialized models/readers
+
     @abstractmethod
-    def process_image(self, image: Image.Image, config: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def process_image(
+        self,
+        images: Union[Image.Image, List[Image.Image]], # Accept single or list
+        options: BaseOCROptions
+    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]: # Return single or list of lists
         """
-        Process an image and return standardized results.
-        
+        Processes a single image or a batch of images using the specific engine and options.
+
         Args:
-            image: PIL Image to process
-            config: OCR configuration:
-                - enabled: Whether OCR is enabled
-                - languages: List of language codes (ISO format)
-                - device: Device to use (e.g., 'cpu', 'cuda')
-                - min_confidence: Threshold for result filtering
-                - model_settings: Engine-specific settings
-            
+            images: A single PIL Image or a list of PIL Images.
+            options: An instance of a dataclass inheriting from BaseOCROptions
+                     containing configuration for this run.
+
         Returns:
-            List of standardized result dictionaries with:
-            - 'bbox': (x0, y0, x1, y1) - Rectangle coordinates
-            - 'text': Recognized text
-            - 'confidence': Confidence score (0.0-1.0)
+            If input is a single image: List of result dictionaries.
+            If input is a list of images: List of lists of result dictionaries,
+                                          corresponding to each input image.
+                                          An empty list indicates failure for that image.
         """
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     @abstractmethod
     def is_available(self) -> bool:
         """
-        Check if this engine's dependencies are installed.
-        
+        Check if the engine's dependencies are installed and usable.
+
         Returns:
-            True if the engine can be used, False otherwise
+            True if the engine is available, False otherwise.
         """
-        return False
-    
-    def normalize_config(self, config: Optional[Union[bool, str, List, Dict]] = None) -> Dict[str, Any]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _get_cache_key(self, options: BaseOCROptions) -> str:
         """
-        Normalize OCR configuration from various formats.
-        
+        Generates a cache key based on relevant options.
+        Subclasses should override if more specific key generation is needed.
+
         Args:
-            config: OCR configuration in various formats:
-                - None: OCR disabled
-                - True: OCR enabled with defaults
-                - "auto": Auto OCR mode
-                - ["en", "fr"]: Use these languages
-                - {"languages": ["en"]}: Detailed configuration
-                
+            options: The options dataclass instance.
+
         Returns:
-            Normalized configuration dictionary
+            A string cache key.
         """
-        logger.debug(f"Normalizing OCR config: {config}")
-        # Base config - Note: default is now enabled=True except for None
-        result = {
-            "enabled": False,  # Will be updated below for different config types
-            "languages": ["en"],
-            "device": "cpu",
-            "min_confidence": 0.5,
-            "model_settings": {}
-        }
-        
-        # Handle simple cases
-        if config is None:
-            # Keep default of disabled for None
-            return result
-            
-        if config is True:
-            result["enabled"] = True
-            return result
-            
-        if isinstance(config, str):
-            if config.lower() == "auto":
-                result["enabled"] = "auto"
-                return result
-            else:
-                # Assume it's a language code
-                result["enabled"] = True
-                result["languages"] = [config]
-                return result
-                
-        if isinstance(config, list):
-            # Assume it's a list of languages
-            result["enabled"] = True
-            result["languages"] = config
-            return result
-            
-        if isinstance(config, dict):
-            # If enabled isn't explicitly set and we have contents, assume enabled
-            if "enabled" not in config:
-                # Enable by default if we have settings
-                has_settings = (
-                    ("languages" in config and config["languages"]) or
-                    ("model_settings" in config and config["model_settings"])
-                )
-                if has_settings:
-                    result["enabled"] = True
-                
-            # Update with provided values
-            result.update(config)
-            
-            # Ensure model_settings exists
-            result.setdefault("model_settings", {})
-            
-            return result
-            
-        # Fallback for unknown types - enable by default
-        result["enabled"] = True
-        logger.debug(f"Normalized OCR config: {result}")
-        return result
-    
-    def merge_configs(self, base_config: Dict[str, Any], override_config: Dict[str, Any]) -> Dict[str, Any]:
+        # Basic key includes languages and device
+        lang_key = "-".join(sorted(options.languages))
+        device_key = str(options.device).lower()
+        return f"{self.__class__.__name__}_{lang_key}_{device_key}"
+
+    def _standardize_bbox(self, bbox: Any) -> Optional[Tuple[float, float, float, float]]:
         """
-        Merge OCR configurations, with override_config taking precedence.
-        
+        Helper to standardize bounding boxes to (x0, y0, x1, y1) format.
+
         Args:
-            base_config: Base configuration
-            override_config: Configuration to override base with
-            
+            bbox: The bounding box in the engine's native format.
+                  Expected formats:
+                  - List/Tuple of 4 numbers: (x0, y0, x1, y1)
+                  - List of points: [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] (polygon)
+
         Returns:
-            Merged configuration
+            Tuple[float, float, float, float] or None if conversion fails.
         """
-        logger.debug(f"Merging OCR configs: base={base_config}, override={override_config}")
-        result = base_config.copy()
-        
-        # Special handling for model_settings to ensure deep merge
-        if "model_settings" in override_config:
-            if "model_settings" not in result:
-                result["model_settings"] = {}
-            result["model_settings"].update(override_config["model_settings"])
-            
-        # Merge other top-level keys
-        for key, value in override_config.items():
-            if key != "model_settings":  # Already handled above
-                result[key] = value
-                
-        logger.debug(f"Merged OCR config result: {result}")
-        return result
+        try:
+            if isinstance(bbox, (list, tuple)) and len(bbox) == 4 and all(isinstance(n, (int, float)) for n in bbox):
+                # Already in (x0, y0, x1, y1) format (or similar)
+                return tuple(float(c) for c in bbox[:4])
+            elif isinstance(bbox, (list, tuple)) and len(bbox) > 0 and isinstance(bbox[0], (list, tuple)):
+                # Polygon format [[x1,y1],[x2,y2],...]
+                x_coords = [float(point[0]) for point in bbox]
+                y_coords = [float(point[1]) for point in bbox]
+                x0 = min(x_coords)
+                y0 = min(y_coords)
+                x1 = max(x_coords)
+                y1 = max(y_coords)
+                return (x0, y0, x1, y1)
+        except Exception as e:
+            self.logger.warning(f"Could not standardize bounding box: {bbox}. Error: {e}")
+        return None
+
+    def __del__(self):
+        """Cleanup resources when the engine is deleted."""
+        self.logger.info(f"Cleaning up {self.__class__.__name__} resources.")
+        # Clear reader cache to free up memory/GPU resources
+        self._reader_cache.clear()
+

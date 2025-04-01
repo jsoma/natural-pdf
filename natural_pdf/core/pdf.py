@@ -4,24 +4,17 @@ import tempfile
 import os
 import re
 import urllib.request
-from typing import List, Optional, Union, Any, Dict, Callable, Tuple, Type
+from typing import List, Optional, Union, Any, Dict, Callable, Tuple, Type, Iterable # Added Iterable
+from PIL import Image
 
 from natural_pdf.core.page import Page
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.utils.ocr import OCRManager
+from natural_pdf.ocr import OCRManager
 
 # Set up module logger
 logger = logging.getLogger("natural_pdf.core.pdf")
-
-# Import OCR engines
-try:
-    from natural_pdf.ocr import OCREngine, EasyOCREngine, PaddleOCREngine, get_engine
-    HAS_OCR_ENGINES = True
-except ImportError:
-    # Fallback if the OCR engines are not available
-    HAS_OCR_ENGINES = False
 
 
 class PDF:
@@ -33,8 +26,6 @@ class PDF:
     """
     
     def __init__(self, path_or_url: str, reading_order: bool = True, 
-                 ocr: Optional[Union[bool, str, List, Dict]] = None,
-                 ocr_engine: Optional[Union[str, Any]] = None,
                  font_attrs: Optional[List[str]] = None,
                  keep_spaces: bool = True):
         """
@@ -43,17 +34,6 @@ class PDF:
         Args:
             path_or_url: Path to the PDF file or a URL to a PDF
             reading_order: Whether to use natural reading order
-            ocr: OCR configuration:
-                 - None or False: OCR disabled
-                 - True: OCR enabled with defaults
-                 - "auto": Auto OCR mode
-                 - ["en", "fr"]: Use these languages
-                 - {"languages": ["en"]}: Detailed configuration
-            ocr_engine: OCR engine to use:
-                 - None: Use default engine (PaddleOCR if available, otherwise EasyOCR)
-                 - "easyocr": Use EasyOCR engine
-                 - "paddleocr": Use PaddleOCR engine
-                 - OCREngine instance: Use the provided engine instance
             font_attrs: Font attributes to consider when grouping characters into words.
                        Default: ['fontname', 'size'] (Group by font name and size)
                        None: Only consider spatial relationships
@@ -97,7 +77,7 @@ class PDF:
             path = path_or_url
             
         logger.info(f"Initializing PDF from {path}")
-        logger.debug(f"Parameters: reading_order={reading_order}, ocr={ocr}, ocr_engine={ocr_engine}, font_attrs={font_attrs}, keep_spaces={keep_spaces}")
+        logger.debug(f"Parameters: reading_order={reading_order}, font_attrs={font_attrs}, keep_spaces={keep_spaces}")
         
         self._pdf = pdfplumber.open(path)
         self._path = path
@@ -105,73 +85,16 @@ class PDF:
         self._config = {
             'keep_spaces': keep_spaces
         }
-        
-        # Initialize OCR engine
-        if HAS_OCR_ENGINES:
-            # Handle OCR engine selection
-            if ocr_engine is None:
-                # Use default engine (PaddleOCR)
-                try:
-                    self._ocr_engine = PaddleOCREngine()
-                except (ImportError, ValueError) as e:
-                    logger.warning(f"PaddleOCR engine could not be loaded: {e}")
-                    logger.warning("Falling back to EasyOCR engine.")
-                    self._ocr_engine = EasyOCREngine()
-            elif isinstance(ocr_engine, str):
-                # String-based engine selection
-                try:
-                    self._ocr_engine = get_engine(ocr_engine)
-                except (ImportError, ValueError) as e:
-                    print(f"Warning: OCR engine '{ocr_engine}' could not be loaded: {e}")
-                    print("Falling back to default OCR engine.")
-                    self._ocr_engine = EasyOCREngine()
-            elif hasattr(ocr_engine, 'process_image') and hasattr(ocr_engine, 'is_available'):
-                # Engine instance
-                self._ocr_engine = ocr_engine
-            else:
-                print("Warning: Invalid OCR engine provided. Using default engine.")
-                self._ocr_engine = EasyOCREngine()
-        else:
-            # Fallback to legacy OCR manager
-            self._ocr_engine = None
-        
-        # Normalize OCR configuration
-        if self._ocr_engine:
-            # Use new OCR engine system
-            if ocr is None:
-                # If no OCR config is provided, disable OCR by default
-                ocr = {"enabled": False}
-            elif ocr is False:
-                # Explicit disable
-                ocr = {"enabled": False}
-            elif ocr is True:
-                # Explicit enable
-                ocr = {"enabled": True}
-            elif isinstance(ocr, dict) and "enabled" not in ocr:
-                # If OCR config is provided but doesn't specify enabled, disable it by default
-                ocr["enabled"] = False
                 
-            # Now normalize the config with the engine
-            self._ocr_config = self._ocr_engine.normalize_config(ocr)
-            logger.info(f"Initialized PDF with OCR engine: {self._ocr_engine.__class__.__name__}, enabled: {self._ocr_config.get('enabled')}")
-            
-            # Double-check enabled status for debugging
-            if isinstance(ocr, dict) and "enabled" in ocr:
-                if ocr["enabled"] != self._ocr_config.get("enabled"):
-                    logger.warning(f"OCR enabled status changed during normalization: {ocr['enabled']} -> {self._ocr_config.get('enabled')}")
-        else:
-            # Fallback to legacy OCR manager
-            self._ocr_manager = OCRManager.get_instance()
-            if ocr is None:
-                # If no OCR config is provided, disable OCR by default
-                ocr = {"enabled": False}
-            elif ocr is True:
-                # Explicit enable
-                ocr = {"enabled": True}
-            
-            self._ocr_config = self._ocr_manager.normalize_config(ocr)
-        
         self._font_attrs = font_attrs  # Store the font attribute configuration
+
+        if OCRManager:
+            self._ocr_manager = OCRManager()
+            logger.info(f"Initialized OCRManager. Available engines: {self._ocr_manager.get_available_engines()}")
+        else:
+            self._ocr_manager = None
+            logger.warning("OCRManager could not be imported. OCR functionality disabled.")
+
         self._pages = [Page(p, parent=self, index=i, font_attrs=font_attrs) for i, p in enumerate(self._pdf.pages)]
         self._element_cache = {}
         self._exclusions = []  # List to store exclusion functions/regions
@@ -182,52 +105,7 @@ class PDF:
         """Access pages as a PageCollection object."""
         from natural_pdf.elements.collections import PageCollection
         return PageCollection(self._pages)
-        
-    def with_ocr(self, enabled: bool = False, languages: List[str] = None, 
-             engine: str = None, min_confidence: float = None) -> 'PDF':
-        """
-        Configure OCR settings using a builder pattern.
-        
-        Args:
-            enabled: Whether OCR is enabled (default: False)
-            languages: List of language codes (e.g., ["en", "fr"])
-            engine: OCR engine to use ("easyocr" or "paddleocr")
-            min_confidence: Minimum confidence threshold for OCR results
-            
-        Returns:
-            Self for method chaining
-        """
-        # Initialize the config object
-        config = {"enabled": enabled}
-        
-        # Add optional parameters if provided
-        if languages:
-            config["languages"] = languages
-        if min_confidence is not None:
-            config["min_confidence"] = min_confidence
-            
-        # Set up the OCR engine if specified
-        if engine:
-            self._ocr_engine = None  # Clear existing engine
-            try:
-                from natural_pdf.ocr import get_engine
-                self._ocr_engine = get_engine(engine)
-            except (ImportError, ValueError) as e:
-                logger.warning(f"OCR engine '{engine}' could not be loaded: {e}")
-                logger.warning("Falling back to default OCR engine.")
-                from natural_pdf.ocr import EasyOCREngine
-                self._ocr_engine = EasyOCREngine()
                 
-        # Normalize the configuration
-        if self._ocr_engine:
-            self._ocr_config = self._ocr_engine.normalize_config(config)
-        else:
-            from natural_pdf.utils.ocr import OCRManager
-            self._ocr_manager = OCRManager.get_instance()
-            self._ocr_config = self._ocr_manager.normalize_config(config)
-            
-        return self
-        
     def add_exclusion(self, exclusion_func: Callable[[Page], Region], label: str = None) -> 'PDF':
         """
         Add an exclusion function to the PDF. Text from these regions will be excluded from extraction.
@@ -257,7 +135,141 @@ class PDF:
             page.add_exclusion(exclusion_wrapper)
             
         return self
-        
+    def apply_ocr(
+        self,
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        engine: Optional[str] = None,
+        options: Optional['OCROptions'] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        # Add other simple mode args if needed
+    ) -> 'PDF':
+        """
+        Applies OCR to specified pages (or all pages) of the PDF using batch processing.
+
+        This method renders the specified pages to images, sends them as a batch
+        to the OCRManager, and adds the resulting TextElements to each respective page.
+
+        Args:
+            pages: An iterable of 0-based page indices (list, range, tuple),
+                   a slice object, or None to process all pages.
+            engine: Name of the engine (e.g., 'easyocr', 'paddleocr', 'surya').
+                    Uses manager's default if None. Ignored if 'options' is provided.
+            options: An specific Options object (e.g., EasyOCROptions) for
+                     advanced configuration. Overrides simple arguments.
+            languages: List of language codes for simple mode.
+            min_confidence: Minimum confidence threshold for simple mode.
+            device: Device string ('cpu', 'cuda', etc.) for simple mode.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If page indices are invalid or the engine name is invalid.
+            TypeError: If unexpected keyword arguments are provided in simple mode.
+            RuntimeError: If the OCRManager or selected engine is not available.
+        """
+        if not self._ocr_manager:
+             logger.error("OCRManager not available. Cannot apply OCR.")
+             # Or raise RuntimeError("OCRManager not initialized.")
+             return self
+
+        # --- Determine Target Pages ---
+        target_pages: List[Page] = []
+        if pages is None:
+            target_pages = self._pages
+        elif isinstance(pages, slice):
+            target_pages = self._pages[pages]
+        elif hasattr(pages, '__iter__'): # Check if it's iterable (list, range, tuple, etc.)
+            try:
+                target_pages = [self._pages[i] for i in pages]
+            except IndexError:
+                raise ValueError("Invalid page index provided in 'pages' iterable.")
+            except TypeError:
+                 raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+        else:
+             raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+
+        if not target_pages:
+            logger.warning("No pages selected for OCR processing.")
+            return self
+
+        page_numbers = [p.number for p in target_pages]
+        logger.info(f"Applying batch OCR to pages: {page_numbers}...")
+
+        # --- Render Images for Batch ---
+        images_pil: List[Image.Image] = []
+        page_image_map: List[Tuple[Page, Image.Image]] = [] # Store page and its image
+        logger.info(f"Rendering {len(target_pages)} pages to images...")
+        try:
+            ocr_scale = getattr(self, '_config', {}).get('ocr_image_scale', 2.0)
+            for i, page in enumerate(target_pages):
+                logger.debug(f"  Rendering page {page.number} (index {page.index})...")
+                img = page.to_image(scale=ocr_scale, include_highlights=False)
+                images_pil.append(img)
+                page_image_map.append((page, img)) # Store pair
+        except Exception as e:
+            logger.error(f"Failed to render one or more pages for batch OCR: {e}", exc_info=True)
+            # Decide whether to continue with successfully rendered pages or fail completely
+            # For now, let's fail if any page rendering fails.
+            raise RuntimeError(f"Failed to render page {page.number} for OCR.") from e
+
+        if not images_pil:
+             logger.error("No images were successfully rendered for batch OCR.")
+             return self
+
+        # --- Prepare Arguments for Manager ---
+        manager_args = {'images': images_pil, 'options': options, 'engine': engine}
+        if languages is not None: manager_args['languages'] = languages
+        if min_confidence is not None: manager_args['min_confidence'] = min_confidence
+        if device is not None: manager_args['device'] = device
+
+        # --- Call OCR Manager for Batch Processing ---
+        logger.info(f"Calling OCR Manager for batch processing {len(images_pil)} images...")
+        try:
+            # The manager's apply_ocr handles the batch input and returns List[List[Dict]]
+            batch_results = self._ocr_manager.apply_ocr(**manager_args)
+
+            if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
+                logger.error(f"OCR Manager returned unexpected result format or length for batch processing. "
+                             f"Expected list of length {len(images_pil)}, got {type(batch_results)} "
+                             f"with length {len(batch_results) if isinstance(batch_results, list) else 'N/A'}.")
+                # Handle error - maybe return early or try processing valid parts?
+                return self # Return self without adding elements
+
+            logger.info("OCR Manager batch processing complete.")
+
+        except Exception as e:
+             logger.error(f"Batch OCR processing failed: {e}", exc_info=True)
+             return self # Return self without adding elements
+
+        # --- Distribute Results and Add Elements to Pages ---
+        logger.info("Adding OCR results to respective pages...")
+        total_elements_added = 0
+        for i, (page, img) in enumerate(page_image_map):
+            results_for_page = batch_results[i]
+            if not isinstance(results_for_page, list):
+                 logger.warning(f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}")
+                 continue
+
+            logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
+            # Use the page's own method to create elements from its results
+            elements = page._create_text_elements_from_ocr(results_for_page, img.width, img.height)
+
+            if elements:
+                # Add OCR elements to the page's main element list
+                page._load_elements() # Ensure _elements dict exists
+                if 'words' not in page._elements: page._elements['words'] = []
+                page._elements['words'].extend(elements)
+                total_elements_added += len(elements)
+                logger.debug(f"  Added {len(elements)} TextElements to page {page.number}.")
+            else:
+                 logger.debug(f"  No valid TextElements created for page {page.number}.")
+
+        logger.info(f"Finished adding OCR results. Total elements added across {len(target_pages)} pages: {total_elements_added}")
+        return self
+  
     def add_region(self, region_func: Callable[[Page], Region], name: str = None) -> 'PDF':
         """
         Add a region function to the PDF. This creates regions on all pages using the provided function.

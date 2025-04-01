@@ -1,5 +1,6 @@
 import pdfplumber
 import os
+import logging
 import tempfile
 from typing import List, Optional, Union, Any, Dict, Callable, TYPE_CHECKING, Tuple
 from PIL import Image
@@ -13,23 +14,9 @@ if TYPE_CHECKING:
 
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
-from natural_pdf.analyzers.document_layout import (
-    YOLODocLayoutDetector, 
-    TableTransformerDetector,
-    PaddleLayoutDetector,
-    DoclingLayoutDetector,
-    convert_to_regions
-)
-from natural_pdf.utils.ocr import OCRManager
+from natural_pdf.ocr import OCROptions
 
-# Import OCR engines
-try:
-    from natural_pdf.ocr import OCREngine, EasyOCREngine, PaddleOCREngine
-    HAS_OCR_ENGINES = True
-except ImportError:
-    # Fallback if the OCR engines are not available
-    HAS_OCR_ENGINES = False
-
+logger = logging.getLogger(__name__)
 
 class Page:
     """
@@ -630,7 +617,7 @@ class Page:
     def extract_text(self, 
                   preserve_whitespace=True,
                   use_exclusions=True,
-                  debug_exclusions=False, ocr=None, **kwargs) -> str:
+                  debug_exclusions=False, **kwargs) -> str:
         """
         Extract text from this page, respecting any exclusion regions.
         
@@ -638,7 +625,6 @@ class Page:
             preserve_whitespace: Whether to keep blank characters (default: True)
             use_exclusions: Whether to apply exclusion regions (default: True)
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False)
-            ocr: OCR configuration. If None, uses PDF settings
             **kwargs: Additional extraction parameters
             
         Returns:
@@ -695,53 +681,7 @@ class Page:
         from natural_pdf.elements.collections import ElementCollection
         collection = ElementCollection(filtered_elements)
         result = collection.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
-        
-        # Apply OCR if explicitly requested
-        use_ocr = ocr is True or (ocr is not None and isinstance(ocr, dict) and ocr.get('enabled', False))
-        if use_ocr:
-            # Process OCR parameter into normalized config
-            ocr_config = self._get_ocr_config(ocr)
-            
-            # Apply OCR if explicitly enabled or in auto mode and no text found
-            if ocr_config.get('enabled') is True or ocr is True or (
-                ocr_config.get('enabled') == 'auto' and not result.strip()
-            ):
-                print(f"Using OCR for extract_text")
-                # Get existing OCR elements or run OCR
-                if any(elem.source == 'ocr' for elem in filtered_elements):
-                    # We already have OCR elements, just re-extract from them
-                    ocr_elements = [elem for elem in filtered_elements if elem.source == 'ocr']
-                    ocr_collection = ElementCollection(ocr_elements)
-                    ocr_text = ocr_collection.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
-                    
-                    if ocr_text.strip():
-                        result = ocr_text
-                else:
-                    # Run OCR and get text from OCR elements
-                    ocr_elements = self.apply_ocr(**ocr_config)
-                    
-                    if ocr_elements:
-                        # Filter OCR elements by exclusions
-                        if use_exclusions:
-                            filtered_ocr = []
-                            for element in ocr_elements:
-                                exclude = False
-                                for region in exclusion_regions:
-                                    if region._is_element_in_region(element):
-                                        exclude = True
-                                        break
-                                if not exclude:
-                                    filtered_ocr.append(element)
-                        else:
-                            filtered_ocr = ocr_elements
-                            
-                        ocr_collection = ElementCollection(filtered_ocr)
-                        ocr_text = ocr_collection.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
-                        
-                        # Use OCR text if it's not empty
-                        if ocr_text.strip():
-                            result = ocr_text
-        
+                
         if debug_exclusions:
             print(f"Page {self.index}: Extracted {len(result)} characters of text with exclusions applied")
             
@@ -773,12 +713,9 @@ class Page:
         # For now, directly use pdfplumber's extraction
         return self._page.extract_tables(table_settings)
     
-    def _load_elements(self, include_ocr=None):
+    def _load_elements(self):
         """
         Load all elements from the page (lazy loading).
-        
-        Args:
-            include_ocr: Whether to include OCR text elements. If None, uses PDF settings.
         """
         if self._elements is None:
             from natural_pdf.elements.text import TextElement
@@ -1027,23 +964,6 @@ class Page:
                 'lines': [LineElement(l, self) for l in self._page.lines],
                 # Add other element types as needed
             }
-            
-            # Check if we should run OCR
-            apply_ocr = False
-            
-            # Check if OCR is explicitly requested
-            if include_ocr is True:
-                apply_ocr = True
-            # Otherwise, check PDF-level settings for auto mode
-            elif include_ocr is None and self._parent._ocr_config.get('enabled') == 'auto':
-                # In auto mode, apply OCR if few or no text elements found
-                if len(line_groups) < 5:  # Arbitrary threshold
-                    apply_ocr = True
-            
-            # Apply OCR if needed
-            if apply_ocr:
-                ocr_elements = self.apply_ocr()
-                # OCR elements are already added to self._elements in apply_ocr()
     
     @property
     def chars(self) -> List[Any]:
@@ -1529,83 +1449,6 @@ class Page:
             
         return image
         
-    def _get_ocr_config(self, ocr_params: Optional[Union[bool, str, List, Dict]] = None) -> Dict[str, Any]:
-        """
-        Get the OCR configuration by merging defaults, PDF settings, and provided params.
-        
-        Args:
-            ocr_params: OCR parameters to override defaults
-            
-        Returns:
-            Merged OCR configuration
-        """
-        if HAS_OCR_ENGINES and hasattr(self._parent, '_ocr_engine') and self._parent._ocr_engine:
-            # Use new OCR engine system
-            engine = self._parent._ocr_engine
-            
-            # Get normalized PDF-level config
-            pdf_config = self._parent._ocr_config
-            
-            # Special case: If ocr_params is boolean True, convert to config with enabled=True
-            if ocr_params is True:
-                ocr_params = {"enabled": True}
-            
-            # Normalize provided config
-            if ocr_params is not None:
-                provided_config = engine.normalize_config(ocr_params)
-                
-                # If provided config explicitly sets enabled, respect that
-                if "enabled" in provided_config:
-                    # Always merge configs to get language settings etc. from PDF-level config
-                    result_config = engine.merge_configs(pdf_config, provided_config)
-                    # Only print status if verbose mode is not explicitly disabled
-                    if provided_config.get('verbose', True):
-                        print(f"OCR enabled status from provided params: {provided_config.get('enabled')}")
-                    return result_config
-                else:
-                    # Merge configs and keep PDF-level enabled status
-                    result_config = engine.merge_configs(pdf_config, provided_config)
-                    # Only print status if verbose mode is not explicitly disabled
-                    if provided_config.get('verbose', True):
-                        print(f"OCR enabled status from PDF config: {pdf_config.get('enabled')}")
-                    return result_config
-            else:
-                # Use PDF-level config
-                # Only print status if verbose mode is not explicitly disabled
-                if ocr_params is None or not isinstance(ocr_params, dict) or ocr_params.get('verbose', True):
-                    print(f"Using PDF-level OCR config: {pdf_config}")
-                return pdf_config
-        else:
-            # Fallback to legacy OCR manager
-            ocr_manager = OCRManager.get_instance()
-            
-            # Get normalized PDF-level config
-            pdf_config = self._parent._ocr_config
-            
-            # Special case: If ocr_params is boolean True, convert to config with enabled=True
-            if ocr_params is True:
-                ocr_params = {"enabled": True}
-            
-            # Normalize provided config
-            if ocr_params is not None:
-                provided_config = ocr_manager.normalize_config(ocr_params)
-                
-                # If provided config explicitly sets enabled, respect that
-                if "enabled" in provided_config:
-                    # Always merge configs to get language settings etc. from PDF-level config
-                    result_config = ocr_manager.merge_configs(pdf_config, provided_config)
-                    print(f"OCR enabled status from provided params: {provided_config.get('enabled')}")
-                    return result_config
-                else:
-                    # Merge configs and keep PDF-level enabled status
-                    result_config = ocr_manager.merge_configs(pdf_config, provided_config)
-                    print(f"OCR enabled status from PDF config: {pdf_config.get('enabled')}")
-                    return result_config
-            else:
-                # Use PDF-level config
-                print(f"Using PDF-level OCR config: {pdf_config}")
-                return pdf_config
-            
     def _create_text_elements_from_ocr(self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None) -> List[TextElement]:
         """
         Convert OCR results to TextElement objects.
@@ -1667,200 +1510,111 @@ class Page:
                 
         return elements
         
-    def apply_ocr(self, **ocr_params) -> List[TextElement]:
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        options: Optional[OCROptions] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        # Add other simple mode args if needed
+    ) -> List[TextElement]:
         """
-        Apply OCR to this page and register results as text elements.
-        
+        Apply OCR to THIS page and add results to page elements.
+
+        This method now acts as a wrapper around the PDF class's batch
+        processing method (`apply_ocr_to_pages`) for efficiency and code reuse.
+
         Args:
-            **ocr_params: OCR parameters to override defaults
-            
+            (Same arguments as PDF.apply_ocr_to_pages, applied only to this page)
+
         Returns:
-            List of created text elements
+            List of created TextElements derived from OCR results for this page.
         """
-        # Get OCR config (merge defaults, PDF settings, and provided params)
-        # Ensure OCR is enabled for this explicit OCR call
-        if isinstance(ocr_params, dict):
-            ocr_params["enabled"] = True
-        else:
-            ocr_params = {"enabled": True}
-            
-        config = self._get_ocr_config(ocr_params)
-        
-        # Skip if OCR is still disabled (should not happen after the above override)
-        if not config.get('enabled'):
-            print(f"OCR is disabled in config despite override - forcing enabled=True")
-            config["enabled"] = True
-            
-        # Render page to image
-        print(f"Rendering page {self.number} to image for OCR...")
-        image = self.to_image()
-        print(f"Image size: {image.width}x{image.height}")
-        
-        # Save image for debugging if needed
+        if not hasattr(self, '_parent') or not self._parent:
+             logger.error(f"Page {self.number}: Cannot apply OCR. Parent PDF object not available.")
+             return []
+        if not hasattr(self._parent, 'apply_ocr_to_pages') or not callable(self._parent.apply_ocr_to_pages):
+             logger.error(f"Page {self.number}: Cannot apply OCR. Parent PDF object missing 'apply_ocr_to_pages' method.")
+             return []
+
+        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr_to_pages for index {self.index}.")
+
         try:
-            import os
-            debug_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "output")
-            os.makedirs(debug_dir, exist_ok=True)
-            debug_path = os.path.join(debug_dir, f"page_{self.number}_for_ocr.png")
-            image.save(debug_path)
-            print(f"Saved page image for debugging to {debug_path}")
+            # Call the parent PDF's batch method, specifying only this page's index
+            self._parent.apply_ocr(
+                pages=[self.index], # Target only this page
+                engine=engine,
+                options=options,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device
+                # Pass any other relevant simple_kwargs here if added
+            )
         except Exception as e:
-            print(f"Could not save debug image: {e}")
+             logger.error(f"Page {self.number}: Error occurred during delegated OCR call: {e}", exc_info=True)
+             # Return empty list as OCR failed for this page
+             return []
+
+        # Reload elements to include the newly added OCR words
+        # Note: _load_elements itself shouldn't add OCR elements anymore
+        self._load_elements()
+
+        # Return the OCR elements specifically added to this page
+        # Assumes elements have a 'source' attribute
+        ocr_elements = [el for el in self.words if getattr(el, 'source', None) == 'ocr']
+        # Be careful if apply_ocr could be called multiple times, this might return old results too.
+        # A more robust way might be for apply_ocr_to_pages to return the added elements,
+        # but returning self is simpler for chaining. Let's assume this filtering is sufficient for now.
+        logger.debug(f"Page {self.number}: apply_ocr completed. Returning {len(ocr_elements)} OCR elements found.")
+        return ocr_elements
         
-        # Process the image with the appropriate OCR engine
-        print(f"Processing image with OCR engine...")
-        if HAS_OCR_ENGINES and hasattr(self._parent, '_ocr_engine') and self._parent._ocr_engine:
-            # Use new OCR engine system
-            print(f"Using OCR engine: {self._parent._ocr_engine.__class__.__name__}")
-            engine = self._parent._ocr_engine
-            results = engine.process_image(image, config)
-        else:
-            # Fallback to legacy OCR manager
-            print(f"Using legacy OCR manager")
-            ocr_mgr = OCRManager.get_instance()
-            results = ocr_mgr.detect_and_recognize(image, config)
-            
-        print(f"OCR returned {len(results)} results")
-        
-        # Convert results to elements and add to page, with image dimensions for scaling
-        elements = self._create_text_elements_from_ocr(results, image.width, image.height)
-        
-        return elements
-        
-    def extract_ocr_elements(self, **ocr_params) -> List[TextElement]:
+    # --- OCR Method (Runs OCR, Does NOT Add Elements) ---
+    def extract_ocr_elements(
+        self,
+        engine: Optional[str] = None,
+        options: Optional[OCROptions] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+    ) -> List[TextElement]:
         """
-        Extract text elements using OCR.
-        
-        This method applies OCR to the page and returns the resulting text elements
-        without modifying the page's elements list.
-        
-        Args:
-            **ocr_params: OCR parameters to override defaults
-            
-        Returns:
-            List of text elements created from OCR
+        Extract text elements using OCR *without* adding them to the page's elements.
+        (Implementation is identical to the one in the artifact 'page_class_ocr_edits')
         """
-        print("=" * 40)
-        print(f"Page.extract_ocr_elements called with params: {ocr_params}")
-        
-        # Get OCR config
-        # Ensure OCR is enabled for this explicit OCR call
-        if isinstance(ocr_params, dict):
-            ocr_params["enabled"] = True
-        else:
-            ocr_params = {"enabled": True}
-            
-        config = self._get_ocr_config(ocr_params)
-        print(f"OCR config after normalization: {config}")
-        
-        # Skip if OCR is still disabled (should not happen after the above override)
-        if not config.get('enabled'):
-            print(f"OCR is disabled in config despite override - forcing enabled=True")
-            config["enabled"] = True
-        
-        # Try direct OCR test for debugging
-        import os
+        if not self._ocr_manager:
+             logger.error(f"Page {self.number}: OCRManager not available. Cannot extract OCR elements.")
+             return []
+        logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
+        # 1. Render image
+        logger.debug(f"  Rendering page {self.number} to image...")
         try:
-            print("Trying direct OCR test for debugging...")
-            
-            # Save image to temp file for debugging
-            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "output")
-            os.makedirs(output_dir, exist_ok=True)
-            temp_image_path = os.path.join(output_dir, "direct_ocr_debug.png")
-            
-            # Get the image using the direct method
-            print("Generating page image...")
-            from PIL import Image
-            image = self.to_image()
-            image.save(temp_image_path)
-            print(f"Saved image to {temp_image_path}")
-            
-            try:
-                import easyocr
-                print("Testing direct EasyOCR...")
-                reader = easyocr.Reader(['en'])
-                import numpy as np
-                result = reader.readtext(np.array(image))
-                print(f"Direct EasyOCR test got {len(result)} results")
-            except ImportError:
-                print("EasyOCR not available for direct test")
-            except Exception as e:
-                print(f"Error in direct EasyOCR test: {e}")
-                
-            try:
-                import paddleocr
-                print("Testing direct PaddleOCR...")
-                reader = paddleocr.PaddleOCR(lang='en')
-                import numpy as np
-                result = reader.ocr(np.array(image), cls=False)
-                if result is not None and len(result) > 0:
-                    page_result = result[0] if isinstance(result[0], list) else result
-                    print(f"Direct PaddleOCR test got {len(page_result)} results")
-                else:
-                    print(f"Direct PaddleOCR test got no results: {result}")
-            except ImportError:
-                print("PaddleOCR not available for direct test")
-            except Exception as e:
-                print(f"Error in direct PaddleOCR test: {e}")
+            ocr_scale = getattr(self._parent, '_config', {}).get('ocr_image_scale', 2.0)
+            image = self.to_image(scale=ocr_scale, include_highlights=False)
+            logger.debug(f"  Rendered image size: {image.width}x{image.height}")
         except Exception as e:
-            print(f"Error in direct OCR test: {e}")
-            
-        # Now try the normal process
-        print("Proceeding with normal OCR process...")
-            
-        # Render page to image
-        print(f"Rendering page {self.number} to image for OCR...")
-        image = self.to_image()
-        print(f"Image size: {image.width}x{image.height}")
-        
-        # Process the image with the appropriate OCR engine
-        print(f"Processing image with OCR engine...")
-        results = []
-        
-        try:
-            if HAS_OCR_ENGINES and hasattr(self._parent, '_ocr_engine') and self._parent._ocr_engine:
-                # Use new OCR engine system
-                print(f"Using OCR engine: {self._parent._ocr_engine.__class__.__name__}")
-                engine = self._parent._ocr_engine
-                
-                # Directly test the engine
-                print(f"Direct test of {engine.__class__.__name__}.process_image")
-                results = engine.process_image(image, config)
-                print(f"Engine returned {len(results)} results")
-            else:
-                # Fallback to legacy OCR manager
-                print(f"Using legacy OCR manager")
-                ocr_mgr = OCRManager.get_instance()
-                results = ocr_mgr.detect_and_recognize(image, config)
-                print(f"OCR manager returned {len(results)} results")
-        except Exception as e:
-            print(f"Error during OCR processing: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
-        
-        print(f"OCR returned {len(results)} results")
-        if len(results) > 0:
-            print(f"First result: {results[0]}")
-        
-        # Create a copy of the original _elements so we can restore it later
-        original_elements = None
-        if hasattr(self, '_elements'):
-            original_elements = self._elements
-            # Temporarily set _elements to None so they aren't added to the page
-            self._elements = None
-        
-        # Create elements with proper scaling (but don't add to page)
-        print(f"Creating text elements from {len(results)} OCR results...")
+        # 2. Prepare args
+        manager_args = {'images': image, 'options': options, 'engine': engine}
+        if languages is not None: manager_args['languages'] = languages
+        if min_confidence is not None: manager_args['min_confidence'] = min_confidence
+        if device is not None: manager_args['device'] = device
+        # 3. Call manager
+        logger.debug(f"  Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k != 'images'} }")
+        try:
+            results = self._ocr_manager.apply_ocr(**manager_args)
+            if not isinstance(results, list):
+                 logger.error(f"  OCR Manager returned unexpected type: {type(results)}")
+                 results = []
+            logger.info(f"  OCR Manager returned {len(results)} results.")
+        except Exception as e:
+             logger.error(f"  OCR processing failed: {e}", exc_info=True)
+             return []
+        # 4. Convert results (DO NOT add to self._elements)
+        logger.debug(f"  Converting OCR results to TextElements (extract only)...")
         elements = self._create_text_elements_from_ocr(results, image.width, image.height)
-        print(f"Created {len(elements)} text elements")
-        
-        # Restore original elements
-        if original_elements is not None:
-            self._elements = original_elements
-            
-        print(f"Returning {len(elements)} OCR elements")
-        print("=" * 40)
+        logger.info(f"  Created {len(elements)} TextElements from OCR (extract only).")
         return elements
         
     def analyze_layout(self, 
@@ -1900,15 +1654,7 @@ class Page:
         # Initialize model_params if None
         if model_params is None:
             model_params = {}
-            
-        # Handle legacy parameters by adding them to model_params
-        if model_path is not None:
-            model_params['model_path'] = model_path
-        if model.lower() == "yolo" and image_size != 1024:
-            model_params['image_size'] = image_size
-        if model.lower() == "tatr" and create_cells:
-            model_params['create_cells'] = create_cells
-            
+                    
         # Create a temporary directory to store the page image
         temp_dir = tempfile.mkdtemp()
         temp_image_path = os.path.join(temp_dir, f"page_{self.index}.png")
@@ -1925,6 +1671,8 @@ class Page:
                 model_file = model_params.get('model_path', "doclayout_yolo_docstructbench_imgsz1024.pt")
                 yolo_image_size = model_params.get('image_size', 1024)
                 
+                from natural_pdf.analyzers.layout_detectors.yolo import YOLODocLayoutDetector
+
                 detector = YOLODocLayoutDetector(
                     model_file=model_file,
                     device=device
@@ -1942,6 +1690,7 @@ class Page:
                 # Extract TATR-specific parameters
                 tatr_model_path = model_params.get('model_path')
                 
+                from natural_pdf.analyzers.layout_detectors.tatr import TableTransformerDetector
                 detector = TableTransformerDetector(
                     detection_model="microsoft/table-transformer-detection" if tatr_model_path is None else tatr_model_path,
                     device=device
@@ -1964,6 +1713,7 @@ class Page:
                 # Convert device format
                 paddle_device = 'gpu' if device.startswith('cuda') else device
                 
+                from natural_pdf.analyzers.layout_detectors.paddle import PaddleLayoutDetector
                 # Initialize PaddleLayoutDetector
                 detector = PaddleLayoutDetector(
                     lang=paddle_lang,
@@ -1988,6 +1738,7 @@ class Page:
                 # Pass all other model_params directly to DocumentConverter
                 detector_kwargs = {k: v for k, v in model_params.items() if k != 'verbose'}
                 
+                from natural_pdf.analyzers.layout_detectors.docling import DoclingLayoutDetector
                 # Initialize DoclingLayoutDetector
                 detector = DoclingLayoutDetector(
                     verbose=verbose,
@@ -2005,8 +1756,32 @@ class Page:
                 # Store the original Docling document for advanced usage
                 self.docling_document = detector.get_docling_document()
                 
+            elif model.lower() == "surya":
+                # Extract Surya-specific parameters
+                verbose = model_params.get('verbose', False)
+                
+                # Import only when needed
+                from natural_pdf.analyzers.layout_detectors.surya import SuryaLayoutDetector
+                
+                # Initialize SuryaLayoutDetector
+                detector = SuryaLayoutDetector(
+                    device=device,
+                    verbose=verbose
+                )
+                
+                # Run detection
+                detections = detector.detect(
+                    temp_image_path,
+                    confidence=confidence,
+                    classes=classes,
+                    exclude_classes=exclude_classes
+                )
+                
+                # Store the original Surya document for advanced usage if available
+                if hasattr(detector, 'get_surya_document'):
+                    self.surya_document = detector.get_surya_document()
             else:
-                raise ValueError(f"Unsupported model type: {model}. Currently supported: 'yolo', 'tatr', 'paddle', 'docling'")
+                raise ValueError(f"Unsupported model type: {model}. Currently supported: 'yolo', 'tatr', 'paddle', 'docling', 'surya'")
             
             # Calculate the scale factor to convert from image to PDF coordinates
             # Note: This assumes the image resolution is 150 DPI
@@ -2134,7 +1909,7 @@ class Page:
     def highlight_layout(self, 
                         layout_regions: Optional[List[Region]] = None,
                         confidence: float = 0.2,
-                        label_format: str = "{type} ({conf:.2f}){model}") -> 'Page':
+                        label_format: str = "{type} {model}") -> 'Page':
         """
         Highlight detected layout regions on the page.
         

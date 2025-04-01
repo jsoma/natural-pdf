@@ -46,12 +46,12 @@ class Highlight:
                     
             # Default alpha value if needed
             if len(processed_color) == 3:
-                processed_color.append(100)  # Default alpha
+                processed_color.append(75)  # Default alpha
                 
             self.color = tuple(processed_color)
         else:
             # Default if invalid color is provided
-            self.color = (255, 255, 0, 100)  # Yellow with semi-transparency
+            self.color = (255, 255, 0, 75)  # Yellow with semi-transparency
             
         self.label = label
         
