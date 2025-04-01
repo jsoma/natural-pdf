@@ -19,36 +19,28 @@ setup(
         "colour>=0.1.5",           # Color name/hex/RGB conversion for selectors
         "numpy>=1.20.0",           # Required for image processing
         "urllib3>=1.26.0",         # For handling URL downloads
-        # The following can be moved to extras to reduce install size
-        "doclayout_yolo>=0.0.3",   # YOLO model for document layout detection
+        # Core AI libraries, potentially used by multiple optional features
         "torch>=2.0.0",            # Required for AI models
         "torchvision>=0.15.0",     # Required for AI models
         "transformers>=4.30.0",    # Used for TATR and document QA
         "huggingface_hub>=0.19.0", # For downloading models
     ],
     extras_require={
-        # Optional dependencies for specific features
-        "easyocr": ["easyocr>=1.7.0"],  # OCR using EasyOCR engine
-        "paddle": ["paddlepaddle>=2.5.0", "paddleocr>=2.7.0"],  # OCR using PaddleOCR engine
-        "qa": [],  # Document QA already uses transformers from install_requires 
-        "core": [  # Minimal install without AI models
-            "pdfplumber>=0.7.0", 
-            "Pillow>=8.0.0", 
-            "colour>=0.1.5", 
-            "numpy>=1.20.0"
+        # Optional dependencies for specific features/engines (latest versions will be installed)
+        "easyocr": ["easyocr"],  # OCR using EasyOCR engine
+        "paddle": ["paddlepaddle", "paddleocr"],  # OCR using PaddleOCR engine
+        "layout_yolo": ["doclayout_yolo"], # Layout detection using doclayout_yolo
+        "surya": ["surya-ocr"], # OCR using Surya
+        # QA feature uses 'transformers' from install_requires, so no extra deps needed here unless others are added
+        "qa": [], 
+        "all": [ # Installs all optional engines/features (latest versions)
+            "easyocr",
+            "paddlepaddle", 
+            "paddleocr",
+            "doclayout_yolo",
+            "surya-ocr", 
+            # Removed "surya-detection",
         ],
-        "ai": [  # Just the AI models
-            "doclayout_yolo>=0.0.3",
-            "torch>=2.0.0",
-            "torchvision>=0.15.0",
-            "transformers>=4.30.0",
-            "huggingface_hub>=0.19.0",
-        ],
-        "all": [
-            "easyocr>=1.7.0",
-            "paddlepaddle>=2.5.0", 
-            "paddleocr>=2.7.0"
-        ],  # Everything
     },
     author="Jonathan Soma",
     author_email="jonathan.soma@gmail.com",

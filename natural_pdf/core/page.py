@@ -249,6 +249,51 @@ class Page:
             
         return regions
 
+    def _filter_elements_by_exclusions(self, elements: List['Element'], debug_exclusions: bool = False) -> List['Element']:
+        """
+        Filters a list of elements, removing those within the page's exclusion regions.
+
+        Args:
+            elements: The list of elements to filter.
+            debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
+
+        Returns:
+            A new list containing only the elements not falling within any exclusion region.
+        """
+        if not self._exclusions:
+            if debug_exclusions:
+                print(f"Page {self.index}: No exclusions defined, returning all {len(elements)} elements.")
+            return elements
+
+        # Get all exclusion regions, including evaluating callable functions
+        exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug_exclusions)
+
+        if not exclusion_regions:
+            if debug_exclusions:
+                print(f"Page {self.index}: No valid exclusion regions found, returning all {len(elements)} elements.")
+            return elements
+
+        if debug_exclusions:
+            print(f"Page {self.index}: Applying {len(exclusion_regions)} exclusion regions to {len(elements)} elements.")
+
+        filtered_elements = []
+        excluded_count = 0
+        for element in elements:
+            exclude = False
+            for region in exclusion_regions:
+                # Use the region's method to check if the element is inside
+                if region._is_element_in_region(element):
+                    exclude = True
+                    excluded_count += 1
+                    break  # No need to check other regions for this element
+            if not exclude:
+                filtered_elements.append(element)
+
+        if debug_exclusions:
+            print(f"Page {self.index}: Excluded {excluded_count} elements, keeping {len(filtered_elements)}.")
+
+        return filtered_elements
+
     def find(self, selector: str, apply_exclusions=True, regex=False, case=True, **kwargs) -> Any:
         """
         Find first element on this page matching selector.
@@ -270,19 +315,19 @@ class Page:
         kwargs['regex'] = regex
         kwargs['case'] = case
         
-        # First get all matching elements without applying exclusions
-        results = self._apply_selector(selector_obj, **kwargs)
+        # First get all matching elements without applying exclusions initially within _apply_selector
+        results_collection = self._apply_selector(selector_obj, **kwargs) # _apply_selector doesn't filter
         
-        # Then filter by exclusions if requested
-        if apply_exclusions and self._exclusions and results:
-            # Get all exclusion regions, including those from lambda functions
-            exclusion_regions = self._get_exclusion_regions(include_callable=True)
-            
-            # Apply exclusion regions if any
-            if exclusion_regions:
-                results = results.exclude_regions(exclusion_regions)
-        
-        return results.first if results else None
+        # Filter the results based on exclusions if requested
+        if apply_exclusions and self._exclusions and results_collection:
+            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
+            # Return the first element from the filtered list
+            return filtered_elements[0] if filtered_elements else None
+        elif results_collection:
+            # Return the first element from the unfiltered results
+            return results_collection.first
+        else:
+            return None
 
     def find_all(self, selector: str, apply_exclusions=True, regex=False, case=True, **kwargs) -> 'ElementCollection':
         """
@@ -305,31 +350,28 @@ class Page:
         kwargs['regex'] = regex
         kwargs['case'] = case
         
-        # First get all matching elements without applying exclusions
-        results = self._apply_selector(selector_obj, **kwargs)
+        # First get all matching elements without applying exclusions initially within _apply_selector
+        results_collection = self._apply_selector(selector_obj, **kwargs) # _apply_selector doesn't filter
         
-        # Then filter by exclusions if requested
-        if apply_exclusions and self._exclusions and results:
-            # Get all exclusion regions, including those from lambda functions
-            exclusion_regions = self._get_exclusion_regions(include_callable=True)
-            
-            # Apply exclusion regions if any
-            if exclusion_regions:
-                results = results.exclude_regions(exclusion_regions)
-        
-        return results
+        # Filter the results based on exclusions if requested
+        if apply_exclusions and self._exclusions and results_collection:
+            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
+            return ElementCollection(filtered_elements)
+        else:
+            # Return the unfiltered collection
+            return results_collection
     
-    def _apply_selector(self, selector_obj: Dict, apply_exclusions=True, **kwargs) -> 'ElementCollection':
+    def _apply_selector(self, selector_obj: Dict, **kwargs) -> 'ElementCollection': # Removed apply_exclusions arg
         """
         Apply selector to page elements.
+        Exclusions are now handled by the calling methods (find, find_all) if requested.
         
         Args:
             selector_obj: Parsed selector dictionary
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            **kwargs: Additional filter parameters
+            **kwargs: Additional filter parameters including 'regex' and 'case'
             
         Returns:
-            ElementCollection of matching elements
+            ElementCollection of matching elements (unfiltered by exclusions)
         """
         from natural_pdf.selectors.parser import selector_to_filter_func
         
@@ -370,7 +412,8 @@ class Page:
                 # Find the reference element first
                 from natural_pdf.selectors.parser import parse_selector
                 ref_selector = parse_selector(args) if isinstance(args, str) else args
-                ref_elements = self._apply_selector(ref_selector)
+                # Recursively call _apply_selector for reference element (exclusions handled later)
+                ref_elements = self._apply_selector(ref_selector, **kwargs) 
                 
                 if not ref_elements:
                     return ElementCollection([])
@@ -408,11 +451,9 @@ class Page:
             else:
                  logger.warning("Cannot sort elements in reading order: Missing required attributes (top, x0).")
         
-        # Create result collection
+        # Create result collection - exclusions are handled by the calling methods (find, find_all)
         result = ElementCollection(matching_elements)
-        
-        # Exclusions are handled by the calling methods (find, find_all)
-        
+                
         return result
 
     def create_region(self, x0: float, top: float, x1: float, bottom: float) -> Any:
@@ -467,39 +508,27 @@ class Page:
         region = Region(self, (left, top, right, bottom))
         return region
         
-    def get_elements(self, apply_exclusions=True) -> List['Element']:
+    def get_elements(self, apply_exclusions=True, debug_exclusions: bool = False) -> List['Element']:
         """
         Get all elements on this page.
         
         Args:
-            apply_exclusions: Whether to apply exclusion regions
+            apply_exclusions: Whether to apply exclusion regions (default: True).
+            debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
             
         Returns:
-            List of all elements on the page
+            List of all elements on the page, potentially filtered by exclusions.
         """
         # Get all elements from the element manager
         all_elements = self._element_mgr.get_all_elements()
         
         # Apply exclusions if requested
         if apply_exclusions and self._exclusions:
-            exclusion_regions = self._get_exclusion_regions(include_callable=True)
-            if exclusion_regions:
-                # Keep elements that are not in any exclusion region
-                filtered_elements = []
-                for element in all_elements:
-                    in_exclusion = False
-                    for region in exclusion_regions:
-                        # Check if element center is inside region polygon or bbox
-                        el_center_x = (element.x0 + element.x1) / 2
-                        el_center_y = (element.top + element.bottom) / 2
-                        if region._is_point_in_polygon(el_center_x, el_center_y):
-                             in_exclusion = True
-                             break
-                    if not in_exclusion:
-                        filtered_elements.append(element)
-                return filtered_elements
-        
-        return all_elements
+            return self._filter_elements_by_exclusions(all_elements, debug_exclusions=debug_exclusions)
+        else:
+            if debug_exclusions:
+                 print(f"Page {self.index}: get_elements returning all {len(all_elements)} elements (exclusions not applied).")
+            return all_elements
         
     def filter_elements(self, elements: List['Element'], selector: str, **kwargs) -> List['Element']:
         """
@@ -600,64 +629,30 @@ class Page:
             preserve_whitespace: Whether to keep blank characters (default: True)
             use_exclusions: Whether to apply exclusion regions (default: True)
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False)
-            **kwargs: Additional extraction parameters
+            **kwargs: Additional extraction parameters passed to pdfplumber
             
         Returns:
             Extracted text as string
         """
-        if not self._exclusions or not use_exclusions:
+        if not use_exclusions or not self._exclusions:
             # If no exclusions or exclusions disabled, use regular extraction
             if debug_exclusions:
-                print(f"Page {self.index}: No exclusions to apply or use_exclusions=False")
+                print(f"Page {self.index}: Extracting text via pdfplumber (exclusions not applied).")
             # Note: pdfplumber still uses keep_blank_chars parameter
             return self._page.extract_text(keep_blank_chars=preserve_whitespace, **kwargs)
         
-        # Get all exclusion regions
-        if debug_exclusions:
-            print(f"Page {self.index}: Getting exclusion regions with debugging enabled")
-        
-        # Important: We need to evaluate lambda functions from PDF level
-        # These functions are stored directly in _exclusions and not as tuples
-        exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug_exclusions)
-        
-        if not exclusion_regions:
-            if debug_exclusions:
-                print(f"Page {self.index}: No valid exclusion regions were found")
-            # Note: pdfplumber still uses keep_blank_chars parameter
-            return self._page.extract_text(keep_blank_chars=preserve_whitespace, **kwargs)
-        
-        if debug_exclusions:
-            print(f"Page {self.index}: Found {len(exclusion_regions)} exclusion regions to apply")
-        
-        # Find all text elements (words)
+        # --- Exclusion Logic ---
+        # 1. Get all potentially relevant text elements (words)
         all_text_elements = self.words # Use the words property
-        
         if debug_exclusions:
-            print(f"Page {self.index}: Found {len(all_text_elements)} text elements before exclusion filtering")
-        
-        # Filter out elements in excluded regions
-        filtered_elements = []
-        excluded_count = 0
-        
-        for element in all_text_elements:
-            exclude = False
-            # Check if element center is inside any exclusion region
-            el_center_x = (element.x0 + element.x1) / 2
-            el_center_y = (element.top + element.bottom) / 2
-            for region in exclusion_regions:
-                 if region._is_point_in_polygon(el_center_x, el_center_y):
-                    exclude = True
-                    excluded_count += 1
-                    break
-            if not exclude:
-                filtered_elements.append(element)
-        
-        if debug_exclusions:
-            print(f"Page {self.index}: Excluded {excluded_count} elements, keeping {len(filtered_elements)}")
-        
-        # Extract text from filtered elements
+            print(f"Page {self.index}: Starting text extraction with {len(all_text_elements)} words before exclusion.")
+
+        # 2. Filter elements using the centralized method
+        filtered_elements = self._filter_elements_by_exclusions(all_text_elements, debug_exclusions=debug_exclusions)
+
+        # 3. Extract text from the filtered elements
         collection = ElementCollection(filtered_elements)
-        # Ensure elements are sorted for logical text flow
+        # Ensure elements are sorted for logical text flow (might be redundant if self.words is sorted)
         if all(hasattr(el, 'top') and hasattr(el, 'x0') for el in collection.elements):
              collection.sort(key=lambda el: (el.top, el.x0))
         
@@ -665,7 +660,7 @@ class Page:
         result = " ".join(getattr(el, 'text', '') for el in collection.elements)
                 
         if debug_exclusions:
-            print(f"Page {self.index}: Extracted {len(result)} characters of text with exclusions applied")
+            print(f"Page {self.index}: Extracted {len(result)} characters of text with exclusions applied.")
             
         return result
 
