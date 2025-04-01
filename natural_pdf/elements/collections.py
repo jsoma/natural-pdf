@@ -38,6 +38,15 @@ class ElementCollection(Generic[T]):
         """Iterate over elements."""
         return iter(self._elements)
     
+    def __repr__(self) -> str:
+        """Return a string representation showing the element count."""
+        element_type = "Mixed"
+        if self._elements:
+            types = set(type(el).__name__ for el in self._elements)
+            if len(types) == 1:
+                element_type = types.pop()
+        return f"<ElementCollection[{element_type}](count={len(self)})>"
+    
     @property
     def elements(self) -> List['Element']:
         """Get the elements in this collection."""
@@ -235,13 +244,15 @@ class ElementCollection(Generic[T]):
                  label_format: Optional[str] = None,
                  distinct: bool = False,
                  include_attrs: Optional[List[str]] = None,
-                 existing: str = 'append') -> 'ElementCollection':
+                 replace: bool = False) -> 'ElementCollection':
         """
         Adds persistent highlights for all elements in the collection to the page
         via the HighlightingService.
 
+        By default, this APPENDS highlights to any existing ones on the page.
+        To replace existing highlights, set `replace=True`.
+
         Uses grouping logic based on parameters (defaulting to grouping by type).
-        To display a non-persistent preview, use `show()`.
 
         Args:
             label: Optional explicit label for the entire collection. If provided,
@@ -262,8 +273,9 @@ class ElementCollection(Generic[T]):
                       (default: False)
             include_attrs: List of attribute names from the element to display directly
                            on the highlight itself (distinct from group label).
-            existing: How to handle existing highlights on the page ('append' or 'replace').
-                      Note: 'replace' applies per-page as elements are processed.
+            replace: If True, existing highlights on the affected page(s)
+                     are cleared before adding these highlights.
+                     If False (default), highlights are appended to existing ones.
 
         Returns:
             Self for method chaining
@@ -282,7 +294,7 @@ class ElementCollection(Generic[T]):
             group_by=group_by,
             label_format=label_format,
             include_attrs=include_attrs
-            # 'existing' is handled during the add call below
+            # 'replace' flag is handled during the add call below
         )
 
         # 2. Add prepared highlights to the persistent service
@@ -298,13 +310,15 @@ class ElementCollection(Generic[T]):
         page = first_element.page
         highlighter = page._highlighter
 
-        # Use a set to track pages affected if 'replace' is used
+        # Use a set to track pages affected if replacing
         pages_to_clear = set()
-        if existing == 'replace':
+        # Check the 'replace' flag. If True, we replace.
+        if replace:
             # Identify all unique page indices in this operation
             for data in highlight_data_list:
                 pages_to_clear.add(data['page_index'])
             # Clear those pages *before* adding new highlights
+            logger.debug(f"Highlighting with replace=True. Clearing highlights for pages: {pages_to_clear}")
             for page_idx in pages_to_clear:
                 highlighter.clear_page(page_idx)
 
@@ -317,7 +331,8 @@ class ElementCollection(Generic[T]):
                 "use_color_cycling": data.get('use_color_cycling', False), # Set by _prepare if distinct
                 "element": data['element'],
                 "include_attrs": data['include_attrs'],
-                "existing": 'append' # Always append now, replace was handled above
+                # Internal call to service always appends, as clearing was handled above
+                "existing": 'append'
             }
             if data.get('polygon'):
                 add_args["polygon"] = data['polygon']
@@ -581,47 +596,82 @@ class ElementCollection(Generic[T]):
             )
         
     def show(self,
+            # --- Visualization Parameters --- 
+            group_by: Optional[str] = None,
+            label: Optional[str] = None,
+            color: Optional[Union[Tuple, str]] = None,
+            label_format: Optional[str] = None,
+            distinct: bool = False,
+            include_attrs: Optional[List[str]] = None,
+            # --- Rendering Parameters --- 
             scale: float = 2.0,
             width: Optional[int] = None,
-            labels: bool = True,
+            show_legend: bool = True, # Renamed from 'labels' for clarity
             legend_position: str = 'right',
             render_ocr: bool = False) -> Optional['Image.Image']:
         """
-        Displays a non-stateful preview image of the page containing only the highlights
-        for the elements in this collection. Uses default highlight grouping (by type).
-        This does NOT add persistent highlights to the page.
+        Generates a temporary preview image highlighting elements in this collection,
+        starting from a clean page (ignoring persistent highlights).
+
+        Allows grouping and coloring elements based on attributes, similar to the
+        persistent `highlight()` method, but only for this temporary view.
 
         Args:
-            scale: Scale factor for rendering
-            width: Optional width for the output image in pixels
-            labels: Whether to include a legend for labels
-            legend_position: Position of the legend
-            render_ocr: Whether to render OCR text with white background boxes
-            
+            group_by: Attribute name to group elements by for distinct colors/labels.
+            label: Explicit label for all elements (overrides group_by).
+            color: Explicit color for all elements (if label used) or base color.
+            label_format: F-string to format group labels if group_by is used.
+            distinct: Highlight each element distinctly (overrides group_by/label).
+            include_attrs: Attributes to display on individual highlights.
+            scale: Scale factor for rendering image.
+            width: Optional width for the output image in pixels.
+            show_legend: Whether to include a legend for the temporary highlights.
+            legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
+            render_ocr: Whether to render OCR text.
+
         Returns:
-            PIL Image object that was displayed (or None if display failed or no page).
+            PIL Image object of the temporary preview, or None if rendering fails.
         """
-        # 1. Prepare highlight data using default strategy (no distinct, label, group_by)
+        if not self._elements:
+            logger.warning("Cannot show collection preview: Collection is empty.")
+            return None
+
+        # 1. Prepare temporary highlight data based on grouping parameters
+        # Uses the same internal logic as highlight() but doesn't affect persistent state
         highlight_data_list = self._prepare_highlight_data(
-            # Defaults: distinct=False, label=None, color=None, group_by=None
+            distinct=distinct,
+            label=label,
+            color=color,
+            group_by=group_by,
+            label_format=label_format,
+            include_attrs=include_attrs
         )
 
-        # 2. Get the page object from the first element
-        page = self.elements[0].page if self.elements and hasattr(self.elements[0], 'page') else None
+        if not highlight_data_list:
+            logger.warning("No highlight data generated for show().")
+            # Return a clean image of the page maybe?
+            # Or just return None
+            return None
 
-        # 3. If page exists, call the new non-stateful preview method
+        # 2. Get the page object from the first element
+        page = self.elements[0].page if hasattr(self.elements[0], 'page') else None
+
+        # 3. If page exists, call page.show_preview (or equivalent)
         if page:
-            # Call the yet-to-be-implemented page.show_preview method
-            # Ensure page.show_preview is implemented to accept these arguments
+            # Ensure page.show_preview exists and accepts the necessary arguments
             if hasattr(page, 'show_preview') and callable(page.show_preview):
-                 return page.show_preview(
-                      temporary_highlights=highlight_data_list,
-                      scale=scale,
-                      width=width,
-                      labels=labels,
-                      legend_position=legend_position,
-                      render_ocr=render_ocr
-                 )
+                 try:
+                     return page.show_preview(
+                          temporary_highlights=highlight_data_list,
+                          scale=scale,
+                          width=width,
+                          labels=show_legend, # Pass renamed arg
+                          legend_position=legend_position,
+                          render_ocr=render_ocr
+                     )
+                 except Exception as e:
+                      logger.error(f"Error calling page.show_preview: {e}", exc_info=True)
+                      return None
             else:
                  logger.error("Page object does not have the required 'show_preview' method.")
                  return None # Cannot generate preview
@@ -783,6 +833,46 @@ class ElementCollection(Generic[T]):
 
         return base_data
 
+    def viewer(self, title: Optional[str] = None) -> Optional['widgets.DOMWidget']:
+        """
+        Creates and returns an interactive ipywidget showing ONLY the elements
+        in this collection on their page background.
+
+        Args:
+            title: Optional title for the viewer window/widget.
+
+        Returns:
+            An InteractiveViewerWidget instance or None if elements lack page context.
+        """
+        if not self.elements:
+            logger.warning("Cannot generate interactive viewer for empty collection.")
+            return None
+
+        # Assume all elements are on the same page and have .page attribute
+        try:
+            page = self.elements[0].page
+            # Check if the page object actually has the method
+            if hasattr(page, 'viewer') and callable(page.viewer):
+                final_title = title or f"Interactive Viewer for Collection ({len(self.elements)} elements)"
+                # Call the page method, passing this collection's elements
+                return page.viewer(
+                    elements_to_render=self.elements,
+                    title=final_title # Pass title if Page method accepts it
+                )
+            else:
+                 logger.error("Page object is missing the 'viewer' method.")
+                 return None
+        except AttributeError:
+            logger.error("Cannot generate interactive viewer: Elements in collection lack 'page' attribute.")
+            return None
+        except IndexError:
+             # Should be caught by the empty check, but just in case
+             logger.error("Cannot generate interactive viewer: Collection unexpectedly became empty.")
+             return None
+        except Exception as e:
+             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
+             return None
+
 class PageCollection(Generic[P]):
     """
     A collection of PDF pages with cross-page operations.
@@ -813,6 +903,10 @@ class PageCollection(Generic[P]):
     def __iter__(self) -> Iterator[P]:
         """Support iteration."""
         return iter(self.pages)
+    
+    def __repr__(self) -> str:
+        """Return a string representation showing the page count."""
+        return f"<PageCollection(count={len(self)})>"
     
     def extract_text(self, keep_blank_chars=True, apply_exclusions=True, **kwargs) -> str:
         """

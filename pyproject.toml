@@ -20,3 +20,14 @@ disallow_incomplete_defs = false
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
+
+[project.optional-dependencies]
+interactive = [
+    "ipywidgets>=7.0.0,<9.0.0",
+    "notebook",
+    "jupyterlab"
+]
+
+[project.urls]
+Homepage = "https://github.com/jsoma/natural-pdf"
+Repository = "https://github.com/jsoma/natural-pdf"

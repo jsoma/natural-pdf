@@ -57,6 +57,13 @@ class Region:
         self.associated_text_elements = []  # Native text elements that overlap with this region
     
     @property
+    def type(self) -> str:
+        """Element type."""
+        # Return the specific type if detected (e.g., from layout analysis)
+        # or 'region' as a default.
+        return self.region_type or 'region' # Prioritize specific region_type if set
+    
+    @property
     def page(self) -> 'Page':
         """Get the parent page."""
         return self._page

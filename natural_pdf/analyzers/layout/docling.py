@@ -74,8 +74,6 @@ class DoclingLayoutDetector(LayoutDetector):
         try:
             # Pass device if converter accepts it, otherwise handle via extra_args
             converter_args = options.extra_args.copy()
-            if options.device and 'device' not in converter_args: # Avoid overriding if already in extra_args
-                 converter_args['device'] = options.device
 
             converter = DocumentConverter(**converter_args)
             self.logger.info("Docling DocumentConverter initialized.")

@@ -22,7 +22,7 @@ except ImportError:
     TableTransformerDetector = None
 
 try:
-    from .padle import PaddleLayoutDetector
+    from .paddle import PaddleLayoutDetector
 except ImportError:
     PaddleLayoutDetector = None
 

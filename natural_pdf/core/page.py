@@ -4,6 +4,9 @@ import logging
 import tempfile
 from typing import List, Optional, Union, Any, Dict, Callable, TYPE_CHECKING, Tuple
 from PIL import Image
+import base64
+import io
+import json
 
 from natural_pdf.elements.collections import ElementCollection
 
@@ -22,6 +25,10 @@ from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr import OCRManager
 from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
+from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
+from natural_pdf.analyzers.text_options import TextStyleOptions
+from natural_pdf.widgets import InteractiveViewerWidget
+from natural_pdf.widgets.viewer import SimpleInteractiveViewerWidget
 
 logger = logging.getLogger(__name__)
 
@@ -898,35 +905,33 @@ class Page:
         self._highlighter.clear_page(self.index)
         return self
         
-    def analyze_text_styles(self) -> ElementCollection:
+    def analyze_text_styles(self, options: Optional[TextStyleOptions] = None) -> ElementCollection:
         """
-        Analyze and group text elements by their style properties.
-        Adds a 'style_label' attribute to each element.
+        Analyze text elements by style, adding attributes directly to elements.
+
+        This method uses TextStyleAnalyzer to process text elements (typically words)
+        on the page. It adds the following attributes to each processed element:
+        - style_label: A descriptive or numeric label for the style group.
+        - style_key: A hashable tuple representing the style properties used for grouping.
+        - style_properties: A dictionary containing the extracted style properties.
+
+        Args:
+            options: Optional TextStyleOptions to configure the analysis.
+                     If None, the analyzer's default options are used.
 
         Returns:
-            ElementCollection containing all TextElements with added 'style_label'.
+            ElementCollection containing all processed text elements with added style attributes.
         """
-        # Import the analyzer
-        from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
-
-        # Create analyzer
+        # Create analyzer (optionally pass default options from PDF config here)
+        # For now, it uses its own defaults if options=None
         analyzer = TextStyleAnalyzer()
 
-        # Analyze the page - analyzer returns Dict[str, List[TextElement]]
-        grouped_elements = analyzer.analyze(self)
+        # Analyze the page. The analyzer now modifies elements directly
+        # and returns the collection of processed elements.
+        processed_elements_collection = analyzer.analyze(self, options=options)
 
-        all_styled_elements = []
-        # Add the style_label attribute to each element and collect them
-        for style_label, elements_in_group in grouped_elements.items():
-            for element in elements_in_group:
-                element.style_label = style_label
-                all_styled_elements.append(element)
-
-        # Store the grouped results internally if needed for legacy access
-        self._text_styles = grouped_elements
-
-        # Return a single collection of all styled elements
-        return ElementCollection(all_styled_elements)
+        # Return the collection of elements which now have style attributes
+        return processed_elements_collection
 
     def to_image(self,
             path: Optional[str] = None,
@@ -1361,3 +1366,69 @@ class Page:
 
         # Return the rendered image directly
         return img
+
+    @property
+    def text_style_labels(self) -> List[str]:
+        """ 
+        Get a sorted list of unique text style labels found on the page.
+
+        Runs text style analysis with default options if it hasn't been run yet.
+        To use custom options, call `analyze_text_styles(options=...)` explicitly first.
+
+        Returns:
+            A sorted list of unique style label strings.
+        """
+        # Check if the summary attribute exists from a previous run
+        if not hasattr(self, '_text_styles_summary') or not self._text_styles_summary:
+            # If not, run the analysis with default options
+            logger.debug(f"Page {self.number}: Running default text style analysis to get labels.")
+            self.analyze_text_styles() # Use default options
+
+        # Extract labels from the summary dictionary
+        if hasattr(self, '_text_styles_summary') and self._text_styles_summary:
+            # The summary maps style_key -> {'label': ..., 'properties': ...}
+            labels = {style_info['label'] for style_info in self._text_styles_summary.values()}
+            return sorted(list(labels))
+        else:
+            # Fallback if summary wasn't created for some reason (e.g., no text elements)
+             logger.warning(f"Page {self.number}: Text style summary not found after analysis.")
+             return []
+
+    def viewer(self,
+                           # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
+                           # include_element_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
+                          ) -> 'SimpleInteractiveViewerWidget': # Return type hint updated
+        """
+        Creates and returns an interactive ipywidget for exploring elements on this page.
+
+        Uses SimpleInteractiveViewerWidget.from_page() to create the viewer.
+
+        Returns:
+            A SimpleInteractiveViewerWidget instance ready for display in Jupyter.
+
+        Raises:
+            RuntimeError: If required dependencies (ipywidgets) are missing.
+            ValueError: If image rendering or data preparation fails within from_page.
+        """
+        # Import the widget class (might need to be moved to top if used elsewhere)
+        from natural_pdf.widgets.viewer import SimpleInteractiveViewerWidget
+
+        logger.info(f"Generating interactive viewer for Page {self.number} using SimpleInteractiveViewerWidget.from_page...")
+
+        try:
+            # Delegate creation entirely to the from_page class method
+            viewer_widget = SimpleInteractiveViewerWidget.from_page(self)
+            if viewer_widget is None:
+                 # This case might happen if from_page had error handling to return None, though we removed most.
+                 # Keeping a check here just in case.
+                 raise RuntimeError("SimpleInteractiveViewerWidget.from_page returned None, indicating an issue during widget creation.")
+
+            logger.info("Interactive viewer widget created successfully.")
+            return viewer_widget
+        except ImportError as e:
+            logger.error("Failed to import SimpleInteractiveViewerWidget. Ensure natural_pdf.widgets and ipywidgets are installed.")
+            raise RuntimeError("Widget class not found. ipywidgets or natural_pdf.widgets might be missing or setup incorrect.") from e
+        except Exception as e:
+            logger.error(f"Failed to create interactive viewer: {e}", exc_info=True)
+            # Re-raise the exception to make it visible to the user
+            raise RuntimeError(f"Failed to create interactive viewer: {e}") from e
