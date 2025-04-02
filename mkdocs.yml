@@ -125,7 +125,12 @@ plugins:
       ignore:
         - "tutorials/*.md"
       execute: false
-      remove_tag: "remove-for-docs"
+      remove_cell_tags:
+        - "remove_cell"  # Tags that will remove entire cells
+      remove_input_tags:
+        - "remove_input"  # Tags that will remove just the input (code)
+      remove_output_tags:
+        - "remove_output"  # Tags that will remove just the output
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -140,8 +145,9 @@ plugins:
             docstring_style: google
             docstring_options:
               replace_admonitions: true
-      watch:
-        - natural_pdf/
+watch:
+  - natural_pdf/
+  - docs/
         
 extra:
   social:
