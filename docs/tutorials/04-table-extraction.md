@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 4: Basic Table Extraction
 
 PDFs often contain tables, and `natural-pdf` provides methods to extract their data, building on `pdfplumber`'s capabilities.
@@ -8,7 +12,7 @@ Let's extract the "Violations" table from our practice PDF.
 from natural_pdf import PDF
 
 # Load a PDF
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
 # Use extract_tables() to find all tables on the page.

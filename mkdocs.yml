@@ -111,6 +111,7 @@ plugins:
       ignore:
         - "tutorials/*.md"
       execute: false
+      remove_tag: "remove-for-docs"
   - mkdocstrings:
       default_handler: python
       handlers:

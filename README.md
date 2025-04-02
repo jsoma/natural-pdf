@@ -5,7 +5,7 @@ A friendly library for working with PDFs, built on top of [pdfplumber](https://g
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
 
 - [Complete documentation here](https://jsoma.github.io/natural-pdf)
-- [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb)
+- [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb), and [many more here](https://colab.research.google.com/github/jsoma/natural-pdf/)
 
 ## Features
 

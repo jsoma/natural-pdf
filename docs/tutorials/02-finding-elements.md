@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 2: Finding Specific Elements
 
 Extracting all the text is useful, but often you need specific pieces of information. `natural-pdf` lets you find elements using selectors, similar to CSS.
@@ -8,7 +12,7 @@ Let's find the "Site" and "Date" information from our `01-practice.pdf`:
 from natural_pdf import PDF
 
 # Load a PDF
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Get the first page (index 0)
 page = pdf.pages[0]

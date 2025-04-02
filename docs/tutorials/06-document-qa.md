@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 6: Document Question Answering (QA)
 
 Sometimes, instead of searching for specific text patterns, you just want to ask the document a question directly. `natural-pdf` includes an extractive Question Answering feature.
@@ -10,7 +14,7 @@ Let's ask our `01-practice.pdf` a few questions.
 from natural_pdf import PDF
 
 # Load the PDF and get the page
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
 # Ask about the date
@@ -49,7 +53,7 @@ If you're asking multiple questions, it's often useful to collect the results in
 from natural_pdf import PDF
 import pandas as pd
 
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
 # List of questions to ask

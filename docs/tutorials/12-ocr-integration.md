@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 12: OCR Integration for Scanned Documents
 
 Optical Character Recognition (OCR) allows you to extract text from scanned documents where the text isn't embedded in the PDF. This tutorial demonstrates how to work with scanned documents.
@@ -6,7 +10,7 @@ Optical Character Recognition (OCR) allows you to extract text from scanned docu
 from natural_pdf import PDF
 
 # Load a PDF
-pdf = PDF("pdfs/needs-ocr.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf")
 page = pdf.pages[0]
 
 # Try extracting text without OCR

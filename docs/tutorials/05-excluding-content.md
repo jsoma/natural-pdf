@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 5: Excluding Content (Headers/Footers)
 
 Often, PDFs have repeating headers or footers on every page that you want to ignore when extracting the main content. `natural-pdf` allows you to define exclusion regions.

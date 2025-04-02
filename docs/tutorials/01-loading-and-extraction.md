@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 1: Loading and Basic Text Extraction
 
 In this tutorial, we'll learn how to:
@@ -15,7 +19,7 @@ from natural_pdf import PDF
 import os
 
 # Load a PDF file
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Basic info about the document
 {
@@ -38,7 +42,7 @@ page = pdf.pages[0]
 text = page.extract_text()
 
 # Show the first 200 characters of the text
-text[:200]
+print(text[:200])
 ```
 
 ## Finding and Extracting Specific Elements
@@ -47,11 +51,11 @@ We can find specific elements using spatial queries and text content:
 
 ```python
 # Find text elements containing specific words
-report_elements = page.find_all('text:contains("Report")')
+elements = page.find_all('text:contains("Inadequate")')
 
 # Show these elements on the page
 page.clear_highlights()
-report_elements.highlight(color="red", label="Contains 'Report'")
+elements.highlight(color="red", label="Contains 'Inadequate'")
 
 # Display the page to see them
 page.to_image(width=700)
@@ -67,7 +71,7 @@ page.analyze_layout(engine='yolo')
 
 # Find and highlight all detected regions
 page.clear_highlights()
-page.find_all('region').highlight()
+page.find_all('region').highlight(group_by='type')
 
 # Display the page to see the regions
 page.to_image(width=900)
@@ -85,3 +89,7 @@ for page in pdf.pages:
 ```
 
 This tutorial covered the basics of loading PDFs and extracting text. In the next tutorials, we'll explore more advanced features like searching for specific elements, extracting structured content, and working with tables. 
+
+```bash
+pip install "natural-pdf[all]"
+``` 

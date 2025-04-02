@@ -1,3 +1,7 @@
+```python {"tags": ["remove-for-docs"]}
+#%pip install "natural-pdf[all]"
+```
+
 # Tutorial 9: Section Extraction
 
 Documents are often organized into logical sections like chapters, articles, or content blocks. This tutorial shows how to extract these sections using natural-pdf, using a library weeding log as an example.
@@ -6,7 +10,7 @@ Documents are often organized into logical sections like chapters, articles, or 
 import natural_pdf
 
 # Load the PDF using the relative path
-pdf = natural_pdf.PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+pdf = natural_pdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 
 # Find horizontal lines that separate book entries
