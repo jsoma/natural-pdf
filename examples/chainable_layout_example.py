@@ -49,7 +49,7 @@ os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
 # Chain the whole sequence: clear highlights, analyze layout, highlight all, save image
 page.clear_highlights()\
-    .analyze_layout(model="yolo", confidence=args.conf)\
+    .analyze_layout(engine="yolo", confidence=args.conf)\
     .highlight_all(include_layout_regions=True)\
     .to_image(path=output_path, show_labels=True)
 

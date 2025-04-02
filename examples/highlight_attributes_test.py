@@ -36,8 +36,8 @@ page = pdf.pages[args.page]
 # Test 1: Standard highlight without attributes
 print("\nTest 1: Standard layout highlighting (no attributes)")
 page.clear_highlights()
-page.analyze_layout(model="yolo", confidence=0.2)
-page.analyze_layout(model="tatr", confidence=0.2, existing="append")
+page.analyze_layout(engine="yolo", confidence=0.2)
+page.analyze_layout(engine="tatr", confidence=0.2, existing="append")
 page.highlight_layout()
 output_path = os.path.join(root_dir, "output", "highlight_no_attrs.png")
 page.to_image(path=output_path, show_labels=True)

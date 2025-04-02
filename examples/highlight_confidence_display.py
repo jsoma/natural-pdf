@@ -34,7 +34,7 @@ page = pdf.pages[args.page]
 
 # Run layout analysis
 print("\nRunning layout analysis...")
-page.analyze_layout(model="yolo", confidence=0.1)  # Use low confidence to show a range of values
+page.analyze_layout(engine="yolo", confidence=0.1)  # Use low confidence to show a range of values
 regions = page.detected_layout_regions
 print(f"Found {len(regions)} layout regions")
 

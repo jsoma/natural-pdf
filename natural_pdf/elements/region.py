@@ -1,8 +1,8 @@
 from typing import Optional, Union, List, Dict, Tuple, Any, Callable, TYPE_CHECKING
+from natural_pdf.elements.base import DirectionalMixin
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-    from natural_pdf.elements.base import Element
     from natural_pdf.elements.text import TextElement
 
 # Import OCRManager conditionally to avoid circular imports
@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 
-class Region:
+class Region(DirectionalMixin):
     """
     Represents a rectangular region on a page.
     """
@@ -55,6 +55,247 @@ class Region:
         self.child_regions = []
         self.text_content = None  # Direct text content (e.g., from Docling)
         self.associated_text_elements = []  # Native text elements that overlap with this region
+    
+    def _direction(self, direction: str, size: Optional[float] = None,
+                   cross_size: str = "full", include_element: bool = False,
+                   until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Protected helper method to create a region in a specified direction relative to this region.
+
+        Args:
+            direction: 'left', 'right', 'above', or 'below'
+            size: Size in the primary direction (width for horizontal, height for vertical)
+            cross_size: Size in the cross direction ('full' or 'element')
+            include_element: Whether to include this region's area in the result
+            until: Optional selector string to specify a boundary element
+            include_endpoint: Whether to include the boundary element found by 'until'
+            **kwargs: Additional parameters for the 'until' selector search
+
+        Returns:
+            Region object
+        """
+        import math # Use math.inf for infinity
+
+        is_horizontal = direction in ('left', 'right')
+        is_positive = direction in ('right', 'below') # right/below are positive directions
+        pixel_offset = 1 # Offset for excluding elements/endpoints
+
+        # 1. Determine initial boundaries based on direction and include_element
+        if is_horizontal:
+            # Initial cross-boundaries (vertical)
+            y0 = 0 if cross_size == "full" else self.top
+            y1 = self.page.height if cross_size == "full" else self.bottom
+
+            # Initial primary boundaries (horizontal)
+            if is_positive: # right
+                x0_initial = self.x0 if include_element else self.x1 + pixel_offset
+                x1_initial = self.x1 # This edge moves
+            else: # left
+                x0_initial = self.x0 # This edge moves
+                x1_initial = self.x1 if include_element else self.x0 - pixel_offset
+        else: # Vertical
+            # Initial cross-boundaries (horizontal)
+            x0 = 0 if cross_size == "full" else self.x0
+            x1 = self.page.width if cross_size == "full" else self.x1
+
+            # Initial primary boundaries (vertical)
+            if is_positive: # below
+                y0_initial = self.top if include_element else self.bottom + pixel_offset
+                y1_initial = self.bottom # This edge moves
+            else: # above
+                y0_initial = self.top # This edge moves
+                y1_initial = self.bottom if include_element else self.top - pixel_offset
+
+        # 2. Calculate the final primary boundary, considering 'size' or page limits
+        if is_horizontal:
+            if is_positive: # right
+                x1_final = min(self.page.width, x1_initial + (size if size is not None else (self.page.width - x1_initial)))
+                x0_final = x0_initial
+            else: # left
+                x0_final = max(0, x0_initial - (size if size is not None else x0_initial))
+                x1_final = x1_initial
+        else: # Vertical
+            if is_positive: # below
+                y1_final = min(self.page.height, y1_initial + (size if size is not None else (self.page.height - y1_initial)))
+                y0_final = y0_initial
+            else: # above
+                y0_final = max(0, y0_initial - (size if size is not None else y0_initial))
+                y1_final = y1_initial
+
+        # 3. Handle 'until' selector if provided
+        target = None
+        if until:
+            all_matches = self.page.find_all(until, **kwargs)
+            matches_in_direction = []
+
+            # Filter and sort matches based on direction
+            if direction == 'above':
+                matches_in_direction = [m for m in all_matches if m.bottom <= self.top]
+                matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
+            elif direction == 'below':
+                matches_in_direction = [m for m in all_matches if m.top >= self.bottom]
+                matches_in_direction.sort(key=lambda e: e.top)
+            elif direction == 'left':
+                matches_in_direction = [m for m in all_matches if m.x1 <= self.x0]
+                matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
+            elif direction == 'right':
+                matches_in_direction = [m for m in all_matches if m.x0 >= self.x1]
+                matches_in_direction.sort(key=lambda e: e.x0)
+
+            if matches_in_direction:
+                target = matches_in_direction[0]
+
+                # Adjust the primary boundary based on the target
+                if is_horizontal:
+                    if is_positive: # right
+                        x1_final = target.x1 if include_endpoint else target.x0 - pixel_offset
+                    else: # left
+                        x0_final = target.x0 if include_endpoint else target.x1 + pixel_offset
+                else: # Vertical
+                    if is_positive: # below
+                        y1_final = target.bottom if include_endpoint else target.top - pixel_offset
+                    else: # above
+                        y0_final = target.top if include_endpoint else target.bottom + pixel_offset
+
+                # Adjust cross boundaries if cross_size is 'element'
+                if cross_size == "element":
+                    if is_horizontal: # Adjust y0, y1
+                        target_y0 = target.top if include_endpoint else target.bottom # Use opposite boundary if excluding
+                        target_y1 = target.bottom if include_endpoint else target.top
+                        y0 = min(y0, target_y0)
+                        y1 = max(y1, target_y1)
+                    else: # Adjust x0, x1
+                        target_x0 = target.x0 if include_endpoint else target.x1 # Use opposite boundary if excluding
+                        target_x1 = target.x1 if include_endpoint else target.x0
+                        x0 = min(x0, target_x0)
+                        x1 = max(x1, target_x1)
+
+        # 4. Finalize bbox coordinates
+        if is_horizontal:
+            bbox = (x0_final, y0, x1_final, y1)
+        else:
+            bbox = (x0, y0_final, x1, y1_final)
+
+        # Ensure valid coordinates (x0 <= x1, y0 <= y1)
+        final_x0 = min(bbox[0], bbox[2])
+        final_y0 = min(bbox[1], bbox[3])
+        final_x1 = max(bbox[0], bbox[2])
+        final_y1 = max(bbox[1], bbox[3])
+        final_bbox = (final_x0, final_y0, final_x1, final_y1)
+
+        # 5. Create and return Region
+        region = Region(self.page, final_bbox)
+        region.source_element = self
+        region.includes_source = include_element
+        # Optionally store the boundary element if found
+        if target:
+            region.boundary_element = target
+
+        return region
+
+    def above(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
+             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region above this region.
+        
+        Args:
+            height: Height of the region above, in points
+            width: Width mode - "full" for full page width or "element" for element width
+            include_element: Whether to include this region in the result (default: False)
+            until: Optional selector string to specify an upper boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
+            
+        Returns:
+            Region object representing the area above
+        """
+        return self._direction(
+            direction='above',
+            size=height,
+            cross_size=width,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
+    def below(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
+              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region below this region.
+        
+        Args:
+            height: Height of the region below, in points
+            width: Width mode - "full" for full page width or "element" for element width
+            include_element: Whether to include this region in the result (default: False)
+            until: Optional selector string to specify a lower boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
+            
+        Returns:
+            Region object representing the area below
+        """
+        return self._direction(
+            direction='below',
+            size=height,
+            cross_size=width,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
+    def left(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
+             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region to the left of this region.
+        
+        Args:
+            width: Width of the region to the left, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_element: Whether to include this region in the result (default: False)
+            until: Optional selector string to specify a left boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
+            
+        Returns:
+            Region object representing the area to the left
+        """
+        return self._direction(
+            direction='left',
+            size=width,
+            cross_size=height,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
+    def right(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
+              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region to the right of this region.
+        
+        Args:
+            width: Width of the region to the right, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_element: Whether to include this region in the result (default: False)
+            until: Optional selector string to specify a right boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
+            
+        Returns:
+            Region object representing the area to the right
+        """
+        return self._direction(
+            direction='right',
+            size=width,
+            cross_size=height,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
     
     @property
     def type(self) -> str:
@@ -127,33 +368,55 @@ class Region:
         Check if a point is inside the polygon using ray casting algorithm.
         
         Args:
-            x: X-coordinate to check
-            y: Y-coordinate to check
+            x: X coordinate of the point
+            y: Y coordinate of the point
             
         Returns:
-            True if the point is inside the polygon
+            bool: True if the point is inside the polygon
         """
-        # If no polygon, use simple rectangle check
         if not self.has_polygon:
             return (self.x0 <= x <= self.x1) and (self.top <= y <= self.bottom)
             
-        # Ray casting algorithm for complex polygons
-        poly = self.polygon
-        n = len(poly)
+        # Ray casting algorithm
         inside = False
+        j = len(self.polygon) - 1
         
-        p1x, p1y = poly[0]
-        for i in range(1, n + 1):
-            p2x, p2y = poly[i % n]
-            if y > min(p1y, p2y) and y <= max(p1y, p2y) and x <= max(p1x, p2x):
-                if p1y != p2y:
-                    xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xinters:
-                        inside = not inside
-            p1x, p1y = p2x, p2y
+        for i in range(len(self.polygon)):
+            if ((self.polygon[i][1] > y) != (self.polygon[j][1] > y)) and \
+               (x < (self.polygon[j][0] - self.polygon[i][0]) * (y - self.polygon[i][1]) / \
+                (self.polygon[j][1] - self.polygon[i][1]) + self.polygon[i][0]):
+                inside = not inside
+            j = i
             
         return inside
-    
+
+    def is_point_inside(self, x: float, y: float) -> bool:
+        """
+        Check if a point is inside this region using ray casting algorithm for polygons.
+        
+        Args:
+            x: X coordinate of the point
+            y: Y coordinate of the point
+            
+        Returns:
+            bool: True if the point is inside the region
+        """
+        if not self.has_polygon:
+            return (self.x0 <= x <= self.x1) and (self.top <= y <= self.bottom)
+            
+        # Ray casting algorithm
+        inside = False
+        j = len(self.polygon) - 1
+        
+        for i in range(len(self.polygon)):
+            if ((self.polygon[i][1] > y) != (self.polygon[j][1] > y)) and \
+               (x < (self.polygon[j][0] - self.polygon[i][0]) * (y - self.polygon[i][1]) / \
+                (self.polygon[j][1] - self.polygon[i][1]) + self.polygon[i][0]):
+                inside = not inside
+            j = i
+            
+        return inside
+
     def _is_element_in_region(self, element: 'Element', use_boundary_tolerance=True) -> bool:
         """
         Check if an element is within this region.
@@ -195,10 +458,10 @@ class Region:
         # If the element itself has a polygon, check if ANY corner is in this region
         if hasattr(element, 'has_polygon') and element.has_polygon:
             for point in element.polygon:
-                if self._is_point_in_polygon(point[0], point[1]):
+                if self.is_point_inside(point[0], point[1]):
                     return True
             # If no point is inside, check if the center is inside
-            return self._is_point_in_polygon(element_center_x, element_center_y)
+            return self.is_point_inside(element_center_x, element_center_y)
             
         # For regular elements, check if center is in the region
         # Add a small tolerance (1 pixel) to avoid including elements that are exactly on the boundary
@@ -207,12 +470,12 @@ class Region:
         
         # Check if within region with the tolerance applied
         if self.has_polygon:
-            return self._is_point_in_polygon(element_center_x, element_center_y)
+            return self.is_point_inside(element_center_x, element_center_y)
         else:
             # For rectangular regions, apply tolerance to all sides
             return (self.x0 + tolerance <= element_center_x <= self.x1 - tolerance and 
                     self.top + tolerance <= element_center_y <= self.bottom - tolerance)
-                
+
     def highlight(self, 
                  label: Optional[str] = None,
                  color: Optional[Union[Tuple, str]] = None,

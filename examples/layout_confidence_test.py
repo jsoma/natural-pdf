@@ -34,8 +34,8 @@ page = pdf.pages[args.page]
 
 # Run layout analysis with YOLO and TATR
 print("Running layout analysis...")
-page.analyze_layout(model="yolo", confidence=0.1)  # Use low confidence to get more regions
-page.analyze_layout(model="tatr", confidence=0.1, existing="append")  # Low confidence for TATR too
+page.analyze_layout(engine="yolo", confidence=0.1)  # Use low confidence to get more regions
+page.analyze_layout(engine="tatr", confidence=0.1, existing="append")  # Low confidence for TATR too
 print(f"Found {len(page.detected_layout_regions)} total layout regions")
 
 # Count regions by confidence thresholds

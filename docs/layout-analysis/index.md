@@ -170,7 +170,7 @@ The TATR (Table Transformer) model can detect detailed table structure:
 
 ```python
 # Analyze table structure
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 
 # Find table structure elements
 tables = page.find_all('region[type=table]')
@@ -230,13 +230,9 @@ Layout regions have additional attributes you can access:
 ```python
 region = page.find('region')
 if region:
-    # Region type (title, table, paragraph, etc.)
-    region_type = region.region_type
-    
-    # Confidence score (0-1)
+    # Get region type and confidence
+    region_type = region.type
     confidence = region.confidence
-    
-    # Model used for detection
     model = region.model
     
     # Print region info
@@ -262,7 +258,7 @@ For detailed table analysis, use the Table Transformer (TATR) model:
 
 ```python
 # Analyze table structure
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 
 # Find table components
 tables = page.find_all('region[type=table]')

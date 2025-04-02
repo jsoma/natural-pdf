@@ -74,7 +74,7 @@ for i, block in enumerate(text_blocks):
 
 ```python
 # Detect tables with layout analysis
-page.analyze_layout(model="tatr")  # Table Transformer model
+page.analyze_layout(engine="tatr")  # Table Transformer model
 
 # Find and extract tables
 tables = page.find_all('region[type=table]')

@@ -60,7 +60,7 @@ page.analyze_layout()  # Uses YOLO by default
 tables = page.find_all('region[type=table]')
 
 # Comprehensive table structure detection with TATR
-page.analyze_layout(model="tatr") 
+page.analyze_layout(engine="tatr") 
 tables = page.find_all('region[type=table]')
 rows = page.find_all('region[type=table-row]')
 columns = page.find_all('region[type=table-column]')
@@ -78,7 +78,7 @@ Natural PDF automatically selects the appropriate extraction method based on the
 table_plumber = page.extract_table(method='plumber')
 
 # Advanced approach for complex tables 
-page.analyze_layout(model="tatr")  # Detect detailed table structure
+page.analyze_layout(engine="tatr")  # Detect detailed table structure
 table_region = page.find('region[type=table]')
 if table_region:
     # The TATR method uses detected rows and columns to create cells
@@ -95,7 +95,7 @@ When to use each approach:
   - Tables have irregular structures
   - Text alignment is complex
 
-If you run `analyze_layout(model="tatr")` and then call `extract_table()` on a table region without specifying a method, Natural PDF will automatically use the TATR method since it has the detailed structure information available.
+If you run `analyze_layout(engine="tatr")` and then call `extract_table()` on a table region without specifying a method, Natural PDF will automatically use the TATR method since it has the detailed structure information available.
 
 ## Table Settings
 
@@ -149,7 +149,7 @@ For precise table extraction, the TATR model provides detailed structural analys
 
 ```python
 # Analyze table structure using TATR model
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 
 # Get table structure elements
 table = page.find('region[type=table]')
@@ -240,7 +240,7 @@ page = pdf.pages[0]
 page.apply_ocr()
 
 # Then detect and extract tables
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 tables = page.find_all('region[type=table]')
 
 if tables:
@@ -265,7 +265,7 @@ tables = page.find_all('region[type=table]')
 tables.highlight(color=(0, 0, 1, 0.2), label="Tables")
 
 # With table structure detection
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 tables = page.find_all('region[type=table]')
 rows = page.find_all('region[type=table-row]')
 columns = page.find_all('region[type=table-column]')
@@ -307,7 +307,7 @@ pdf = PDF("document_with_tables.pdf")
 page = pdf.pages[0]  # Assuming table is on the first page
 
 # Detect tables using Table Transformer
-page.analyze_layout(model="tatr", confidence=0.4)
+page.analyze_layout(engine="tatr", confidence=0.4)
 
 # Find table regions
 tables = page.find_all('region[type=table]')

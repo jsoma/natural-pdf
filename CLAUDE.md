@@ -664,7 +664,7 @@ page.analyze_layout(confidence=0.3)\
     
 # Chain with specific filters
 page.clear_highlights()\
-    .analyze_layout(model="tatr", confidence=0.4)\
+    .analyze_layout(engine="tatr", confidence=0.4)\
     .find_all('region[type=table]')\
     .highlight(label="Tables", color=(1, 0, 0, 0.3))
 ```
@@ -854,7 +854,7 @@ table_data = page.extract_table()
 
 # Using Table Transformer (TATR) detection for more accurate extraction
 # First detect tables and structure
-page.analyze_layout(model="tatr")
+page.analyze_layout(engine="tatr")
 
 # Then find the tables
 tables = page.find_all('region[type=table]')

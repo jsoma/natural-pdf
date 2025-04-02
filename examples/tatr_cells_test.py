@@ -24,7 +24,7 @@ page = pdf.pages[6]
 
 # Test 1: Analyze layout with create_cells=True
 print("\n-- Testing layout detection with cell creation --")
-regions = page.analyze_layout(model='tatr', create_cells=True)
+regions = page.analyze_layout(engine='tatr', create_cells=True)
 
 # Count tables and cells
 tables = page.find_all('region[type=table][model=tatr]')

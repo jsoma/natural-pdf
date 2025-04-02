@@ -25,7 +25,7 @@ page = pdf.pages[3]  # Try page 3 (this should be correct - pages are indexed fr
 
 # Run document layout analysis to find tables
 print("\n-- Running layout analysis to find tables --")
-regions = page.analyze_layout(model='tatr')
+regions = page.analyze_layout(engine='tatr')
 
 # Find the first table
 table = page.find('region[type=table][model=tatr]')

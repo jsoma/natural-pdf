@@ -42,7 +42,7 @@ print(f"Saved to {output_path}")
 
 # Now run layout analysis with YOLO
 print("\nRunning YOLO layout analysis...")
-page.analyze_layout(model="yolo", confidence=0.2)
+page.analyze_layout(engine="yolo", confidence=0.2)
 print(f"Found {len(page.detected_layout_regions)} YOLO layout regions")
 
 # Create an image with highlight_all including layout regions
@@ -55,7 +55,7 @@ print(f"Saved to {output_path}")
 
 # Now run table structure analysis with TATR and append to existing regions
 print("\nRunning TATR table structure analysis...")
-page.analyze_layout(model="tatr", confidence=0.3, existing="append")
+page.analyze_layout(engine="tatr", confidence=0.3, existing="append")
 print(f"Found {len(page.detected_layout_regions)} total layout regions (YOLO + TATR)")
 
 # Create an image with highlight_all including all layout regions

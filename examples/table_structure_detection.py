@@ -53,7 +53,7 @@ print(f"Found {len(page.detected_layout_regions)} total regions (including table
 print("\nDemonstrating method chaining for layout analysis and highlighting:")
 # Create a highlighted image with a single method chain
 page.clear_highlights()\
-    .analyze_layout(model="tatr", confidence=0.3)\
+    .analyze_layout(engine="tatr", confidence=0.3)\
     .highlight_layout()\
     .to_image(path=os.path.join(output_dir, "chained_analysis.png"), show_labels=True)
 print("Created highlighted image with method chaining")

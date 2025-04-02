@@ -134,22 +134,13 @@ class HighlightRenderer:
         """Draws attribute key-value pairs on the highlight."""
         try:
             # Slightly larger font, scaled
-            font_size = max(14, int(12 * self.scale))
+            font_size = max(10, int(8 * self.scale))
             # Prioritize monospace fonts for better alignment
-            font = ImageFont.truetype("DejaVuSansMono.ttf", font_size)
+            font = ImageFont.truetype("Arial.ttf", font_size) # Fallback sans-serif
         except IOError:
-            try:
-                 font = ImageFont.truetype("Courier New.ttf", font_size)
-            except IOError:
-                 try:
-                     font = ImageFont.truetype("Arial.ttf", font_size) # Fallback sans-serif
-                 except IOError:
-                     font = ImageFont.load_default()
-                     font_size = 12 # Reset size for default font
+            font = ImageFont.load_default()
+            font_size = 10 # Reset size for default font
 
-        # Position near top-left corner with padding
-        x = bbox_scaled[0] + int(5 * self.scale)
-        y = bbox_scaled[1] + int(5 * self.scale)
         line_height = font_size + int(4 * self.scale) # Scaled line spacing
         bg_padding = int(3 * self.scale)
         max_width = 0
@@ -171,6 +162,10 @@ class HighlightRenderer:
         if not text_lines: return # Nothing to draw
 
         total_height = line_height * len(text_lines)
+
+        # Position near top-right corner with padding
+        x = bbox_scaled[2] - int(2 * self.scale) - max_width
+        y = bbox_scaled[1] + int(2 * self.scale)
 
         # Draw background rectangle (semi-transparent white)
         bg_x0 = x - bg_padding

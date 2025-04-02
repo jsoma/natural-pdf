@@ -107,7 +107,7 @@ def debug_detection_coordinates(pdf_path, page_num=0, output_dir="output"):
     type(page).analyze_layout = debug_analyze_layout
     
     # Run YOLO model layout detection
-    page.analyze_layout(model="yolo")
+    page.analyze_layout(engine="yolo")
     
     # Get regions and save visualization
     yolo_regions = page.find_all('region[model=yolo]')
@@ -137,7 +137,7 @@ def debug_detection_coordinates(pdf_path, page_num=0, output_dir="output"):
     page._regions['detected'] = []
     
     # Run TATR model layout detection
-    page.analyze_layout(model="tatr")
+    page.analyze_layout(engine="tatr")
     
     # Get regions and save visualization
     tatr_regions = page.find_all('region[model=tatr]')

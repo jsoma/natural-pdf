@@ -35,7 +35,7 @@ os.makedirs(output_dir, exist_ok=True)
 # Use a specific page
 page = pdf.pages[6]
 # Run document layout analysis
-regions = page.analyze_layout(model='tatr')
+regions = page.analyze_layout(engine='tatr')
 
 print(f"Found {len(regions)} regions")
 
