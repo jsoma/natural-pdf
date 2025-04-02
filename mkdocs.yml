@@ -106,7 +106,7 @@ markdown_extensions:
 
 plugins:
   - search
-  - jupyter:
+  - mkdocs-jupyter:
       include_source: true
       ignore:
         - "tutorials/*.md"
