@@ -13,11 +13,12 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 - **CSS-like selectors** for finding elements
 - **Spatial navigation** with intuitive methods like `above()`, `below()`, and `select_until()`
 - **Element collections** for batch operations
-- **Visual highlighting** for debugging
+- **Visual highlighting** for debugging (persistent highlights)
+- **Interactive element viewer** for Jupyter environments (`.viewer()`)
 - **Region visualization** with direct image extraction of specific regions
 - **Text style analysis** for document structure
 - **Exclusion zones** for headers, footers, and other areas to ignore
-- **OCR integration** for extracting text from scanned documents
+- **OCR integration** with multiple engines (EasyOCR, PaddleOCR, Surya)
 - **Document layout analysis** for detecting document structure with ML models
 - **Table extraction** with multiple detection methods
 - **Structured logging** with configurable levels and handlers
@@ -28,14 +29,21 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 pip install natural-pdf
 ```
 
-or if you're picky...
-
+# Installs the core library along with required AI dependencies (PyTorch, Transformers)
 ```bash
-# Minimal installation without AI models (faster, smaller)
-pip install natural-pdf[core]
+# Install with support for specific OCR engines
+pip install natural-pdf[easyocr]   # EasyOCR engine
+pip install natural-pdf[paddle]    # PaddleOCR engine (requires paddlepaddle)
+pip install natural-pdf[surya]     # Surya OCR engine
 
-# With all OCR engines
-pip install natural-pdf[easyocr,paddle]
+# Install with support for YOLO layout detection model
+pip install natural-pdf[layout_yolo]
+
+# Install with support for the interactive Jupyter widget
+pip install natural-pdf[interactive]
+
+# Install everything
+pip install natural-pdf[all]
 ```
 
 ## Quick Start
@@ -134,31 +142,19 @@ Exclusions work efficiently with different region types:
 
 ## OCR Integration
 
-Extract text from scanned documents using OCR with multiple engine options:
+Extract text from scanned documents using OCR, with support for multiple engines (EasyOCR, PaddleOCR, Surya):
 
 ```python
-# Using the default EasyOCR engine
-pdf = PDF('scanned_document.pdf', ocr={
-    'enabled': 'auto',  # Only use OCR when necessary
-    'languages': ['en'],
-    'min_confidence': 0.5
-})
+# Apply OCR using a specific engine (e.g., PaddleOCR)
+ocr_elements = page.apply_ocr(engine='paddle', languages=['en', 'zh-cn'])
 
-# Using PaddleOCR for better Asian language support
-pdf = PDF('scanned_document.pdf', 
-          ocr_engine='paddleocr',
-          ocr={
-              'enabled': True,
-              'languages': ['zh-cn', 'en'],  # Chinese and English
-              'min_confidence': 0.3,
-              'model_settings': {
-                  'use_angle_cls': False,  # PaddleOCR-specific setting
-                  'rec_batch_num': 6
-              }
-          })
-
-# Extract text, OCR will be used if needed
+# Extract text (will use previously applied OCR results if available)
 text = page.extract_text()
+
+# Configure advanced engine options using Options classes
+from natural_pdf.ocr import PaddleOCROptions
+paddle_opts = PaddleOCROptions(languages=['en'], use_angle_cls=False, rec_batch_num=8)
+ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
 
 # Force OCR regardless of existing text
 ocr_text = page.extract_text(ocr=True)
@@ -233,3 +229,24 @@ print(f"Source text: {result.get('source_text', 'N/A')}")
 ## More details
 
 [Complete documentation here](https://jsoma.github.io/natural-pdf)
+
+## Visual Debugging & Interactive Viewer
+
+Use highlighting to understand element selection and analysis results. Add persistent highlights using `.highlight()` and view them with the interactive `.viewer()` or static `.save_image()`. You can also generate temporary previews of selected elements using `ElementCollection.show()`.
+
+```python
+# Highlight selected elements persistently
+page.find_all('text:bold').highlight(label="Bold Text")
+
+# Launch the interactive widget in Jupyter (shows persistent highlights)
+# Requires: pip install natural-pdf[interactive]
+page.viewer()
+
+# Save a static image file with highlights and legend
+page.save_image("highlighted_page.png", labels=True)
+
+# Show a temporary preview image of specific elements, grouped by attribute
+preview_image = page.find_all('region[type*=table]').show(group_by='type')
+# In Jupyter, this image will display automatically
+preview_image
+```

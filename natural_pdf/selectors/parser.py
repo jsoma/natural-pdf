@@ -290,30 +290,20 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> callable:
                 if not element.text or not element.text.endswith(args):
                     return False
             elif name == 'bold':
-                # Try to use the element's bold property if it exists
-                if hasattr(element, 'bold'):
-                    if not element.bold:
-                        return False
-                # Otherwise check fontname
-                elif hasattr(element, 'fontname'):
-                    font_lower = element.fontname.lower()
-                    if not ('bold' in font_lower or 'black' in font_lower or element.fontname.endswith('-B')):
-                        return False
-                else:
+                if not (hasattr(element, 'bold') and element.bold):
                     return False
             elif name == 'italic':
-                # Try to use the element's italic property if it exists
-                if hasattr(element, 'italic'):
-                    if not element.italic:
-                        return False
-                # Otherwise check fontname
-                elif hasattr(element, 'fontname'):
-                    font_lower = element.fontname.lower()
-                    if not ('italic' in font_lower or 'oblique' in font_lower or element.fontname.endswith('-I')):
-                        return False
-                else:
+                if not (hasattr(element, 'italic') and element.italic):
                     return False
-            # Spatial pseudo-classes are handled at a higher level (in _apply_selector)
+            elif name == 'horizontal':
+                if not (hasattr(element, 'is_horizontal') and element.is_horizontal):
+                    return False
+            elif name == 'vertical':
+                if not (hasattr(element, 'is_vertical') and element.is_vertical):
+                    return False
+            else:
+                # Potentially unsupported pseudo-class, or one handled elsewhere (like :not)
+                pass
         
         # If we get here, all checks passed
         return True
@@ -336,16 +326,16 @@ def _is_approximate_match(value1, value2, tolerance: float = 0.1) -> bool:
         True if the values approximately match
     """
     # Handle string colors by converting them to RGB tuples
-    if isinstance(value1, str) and (value1.startswith('#') or value1.lower() in Color.COLOR_NAME_TO_RGB):
+    if isinstance(value1, str):
         try:
             value1 = tuple(Color(value1).rgb)
-        except (ValueError, AttributeError):
+        except:
             pass
     
-    if isinstance(value2, str) and (value2.startswith('#') or value2.lower() in Color.COLOR_NAME_TO_RGB):
+    if isinstance(value2, str):
         try:
             value2 = tuple(Color(value2).rgb)
-        except (ValueError, AttributeError):
+        except:
             pass
             
     # If both are tuples/lists with the same length (e.g., colors)

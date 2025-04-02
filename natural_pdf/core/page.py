@@ -87,6 +87,11 @@ class Page:
         self._layout_analyzer = None 
 
     @property
+    def pdf(self) -> 'PDF':
+        """Provides public access to the parent PDF object."""
+        return self._parent
+
+    @property
     def number(self) -> int:
         """Get page number (1-based)."""
         return self._page.page_number
@@ -1196,10 +1201,13 @@ class Page:
                   end_elements=None,
                   boundary_inclusion='both',
                   y_threshold=5.0,
-                  bounding_box=None) -> List[Region]:
+                  bounding_box=None) -> 'ElementCollection[Region]': # Updated type hint
         """
         Get sections of a page defined by start/end elements.
         Uses the page-level implementation.
+
+        Returns:
+            An ElementCollection containing the found Region objects.
         """
         # Helper function to get bounds from bounding_box parameter
         def get_bounds():
@@ -1232,7 +1240,8 @@ class Page:
             raise ValueError(f"boundary_inclusion must be one of {valid_inclusions}")
         
         if not start_elements:
-            return regions
+            # Return an empty ElementCollection if no start elements
+            return ElementCollection([])
             
         # Combine start and end elements with their type
         all_boundaries = []
@@ -1244,7 +1253,7 @@ class Page:
              all_boundaries.sort(key=lambda x: (x[0].top, x[0].x0))
         except AttributeError as e:
              logger.error(f"Error sorting boundaries: Element missing top/x0 attribute? {e}")
-             return [] # Cannot proceed if elements lack position
+             return ElementCollection([]) # Cannot proceed if elements lack position
 
         # Process sorted boundaries to find sections
         current_start_element = None
@@ -1301,7 +1310,8 @@ class Page:
                  region.is_end_next_start = False
                  regions.append(region)
             
-        return regions
+        # Return the list wrapped in an ElementCollection
+        return ElementCollection(regions)
             
     def __repr__(self) -> str:
         """String representation of the page."""

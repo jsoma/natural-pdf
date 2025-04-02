@@ -134,7 +134,146 @@ class Element:
         """Get the parent page."""
         return self._page
         
-    def above(self, height: Optional[float] = None, width: str = "full", include_element: bool = False, 
+    def _direction(self, direction: str, size: Optional[float] = None,
+                   cross_size: str = "full", include_element: bool = False,
+                   until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Protected helper method to create a region in a specified direction relative to this element.
+
+        Args:
+            direction: 'left', 'right', 'above', or 'below'
+            size: Size in the primary direction (width for horizontal, height for vertical)
+            cross_size: Size in the cross direction ('full' or 'element')
+            include_element: Whether to include this element's area in the region
+            until: Optional selector string to specify a boundary element
+            include_endpoint: Whether to include the boundary element found by 'until'
+            **kwargs: Additional parameters for the 'until' selector search
+
+        Returns:
+            Region object
+        """
+        from natural_pdf.elements.region import Region
+        import math # Use math.inf for infinity
+
+        is_horizontal = direction in ('left', 'right')
+        is_positive = direction in ('right', 'below') # right/below are positive directions
+        pixel_offset = 1 # Offset for excluding elements/endpoints
+
+        # 1. Determine initial boundaries based on direction and include_element
+        if is_horizontal:
+            # Initial cross-boundaries (vertical)
+            y0 = 0 if cross_size == "full" else self.top
+            y1 = self.page.height if cross_size == "full" else self.bottom
+
+            # Initial primary boundaries (horizontal)
+            if is_positive: # right
+                x0_initial = self.x0 if include_element else self.x1 + pixel_offset
+                x1_initial = self.x1 # This edge moves
+            else: # left
+                x0_initial = self.x0 # This edge moves
+                x1_initial = self.x1 if include_element else self.x0 - pixel_offset
+        else: # Vertical
+            # Initial cross-boundaries (horizontal)
+            x0 = 0 if cross_size == "full" else self.x0
+            x1 = self.page.width if cross_size == "full" else self.x1
+
+            # Initial primary boundaries (vertical)
+            if is_positive: # below
+                y0_initial = self.top if include_element else self.bottom + pixel_offset
+                y1_initial = self.bottom # This edge moves
+            else: # above
+                y0_initial = self.top # This edge moves
+                y1_initial = self.bottom if include_element else self.top - pixel_offset
+
+        # 2. Calculate the final primary boundary, considering 'size' or page limits
+        if is_horizontal:
+            if is_positive: # right
+                x1_final = min(self.page.width, x1_initial + (size if size is not None else (self.page.width - x1_initial)))
+                x0_final = x0_initial
+            else: # left
+                x0_final = max(0, x0_initial - (size if size is not None else x0_initial))
+                x1_final = x1_initial
+        else: # Vertical
+            if is_positive: # below
+                y1_final = min(self.page.height, y1_initial + (size if size is not None else (self.page.height - y1_initial)))
+                y0_final = y0_initial
+            else: # above
+                y0_final = max(0, y0_initial - (size if size is not None else y0_initial))
+                y1_final = y1_initial
+
+        # 3. Handle 'until' selector if provided
+        target = None
+        if until:
+            all_matches = self.page.find_all(until, **kwargs)
+            matches_in_direction = []
+
+            # Filter and sort matches based on direction
+            if direction == 'above':
+                matches_in_direction = [m for m in all_matches if m.bottom <= self.top]
+                matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
+            elif direction == 'below':
+                matches_in_direction = [m for m in all_matches if m.top >= self.bottom]
+                matches_in_direction.sort(key=lambda e: e.top)
+            elif direction == 'left':
+                matches_in_direction = [m for m in all_matches if m.x1 <= self.x0]
+                matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
+            elif direction == 'right':
+                matches_in_direction = [m for m in all_matches if m.x0 >= self.x1]
+                matches_in_direction.sort(key=lambda e: e.x0)
+
+            if matches_in_direction:
+                target = matches_in_direction[0]
+
+                # Adjust the primary boundary based on the target
+                if is_horizontal:
+                    if is_positive: # right
+                        x1_final = target.x1 if include_endpoint else target.x0 - pixel_offset
+                    else: # left
+                        x0_final = target.x0 if include_endpoint else target.x1 + pixel_offset
+                else: # Vertical
+                    if is_positive: # below
+                        y1_final = target.bottom if include_endpoint else target.top - pixel_offset
+                    else: # above
+                        y0_final = target.top if include_endpoint else target.bottom + pixel_offset
+
+                # Adjust cross boundaries if cross_size is 'element'
+                if cross_size == "element":
+                    if is_horizontal: # Adjust y0, y1
+                        target_y0 = target.top if include_endpoint else target.bottom # Use opposite boundary if excluding
+                        target_y1 = target.bottom if include_endpoint else target.top
+                        y0 = min(y0, target_y0)
+                        y1 = max(y1, target_y1)
+                    else: # Adjust x0, x1
+                        target_x0 = target.x0 if include_endpoint else target.x1 # Use opposite boundary if excluding
+                        target_x1 = target.x1 if include_endpoint else target.x0
+                        x0 = min(x0, target_x0)
+                        x1 = max(x1, target_x1)
+            # else: No target found, use the 'size'-based boundaries calculated earlier
+
+        # 4. Finalize bbox coordinates
+        if is_horizontal:
+            bbox = (x0_final, y0, x1_final, y1)
+        else:
+            bbox = (x0, y0_final, x1, y1_final)
+
+        # Ensure valid coordinates (x0 <= x1, y0 <= y1)
+        final_x0 = min(bbox[0], bbox[2])
+        final_y0 = min(bbox[1], bbox[3])
+        final_x1 = max(bbox[0], bbox[2])
+        final_y1 = max(bbox[1], bbox[3])
+        final_bbox = (final_x0, final_y0, final_x1, final_y1)
+
+        # 5. Create and return Region
+        region = Region(self.page, final_bbox)
+        region.source_element = self
+        region.includes_source = include_element
+        # Optionally store the boundary element if found
+        if target:
+            region.boundary_element = target
+
+        return region
+
+    def above(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Select region above this element.
@@ -150,55 +289,16 @@ class Element:
         Returns:
             Region object representing the area above
         """
-        from natural_pdf.elements.region import Region
-        
-        # Determine bottom boundary based on include_element
-        bottom = self.bottom if include_element else self.top - 1  # Subtract 1 pixel offset to create a gap
-            
-        # Calculate initial bounding box for region
-        if width == "full":
-            x0 = 0
-            x1 = self.page.width
-        elif width == "element":
-            x0 = self.x0
-            x1 = self.x1
-        else:
-            raise ValueError("Width must be 'full' or 'element'")
-            
-        # If an "until" selector is specified, find the target element
-        if until:
-            # Need to find all matches and find the first one above this element
-            # instead of just page.find() which might return any match
-            all_matches = self.page.find_all(until, **kwargs)
-            
-            # Sort by vertical position (bottom to top)
-            matches_above = [m for m in all_matches if m.bottom <= self.top]
-            matches_above.sort(key=lambda e: e.bottom, reverse=True)
-            
-            if matches_above:
-                # Use the first match above this element (closest one)
-                target = matches_above[0]
-                
-                # Target is above this element - use it for the top boundary
-                top = target.top if include_endpoint else target.bottom + 1  # Add 1 pixel offset when excluding
-                
-                # Use the selector match for width if not using full width
-                if width == "element":
-                    x0 = min(x0, target.x0 if include_endpoint else target.x1)
-                    x1 = max(x1, target.x1 if include_endpoint else target.x0)
-            else:
-                # No targets found above this element - use requested height
-                top = max(0, bottom - (height or bottom))
-        else:
-            # No "until" selector - use requested height
-            top = max(0, bottom - (height or bottom))
-        
-        bbox = (x0, top, x1, bottom)
-        region = Region(self.page, bbox)
-        region.source_element = self  # Reference to element that created this region
-        region.includes_source = include_element  # Whether region includes the source element
-        return region
-    
+        return self._direction(
+            direction='above',
+            size=height,
+            cross_size=width,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
     def below(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
               until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
@@ -215,54 +315,67 @@ class Element:
         Returns:
             Region object representing the area below
         """
-        from natural_pdf.elements.region import Region
+        return self._direction(
+            direction='below',
+            size=height,
+            cross_size=width,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
+    def left(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
+             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region to the left of this element.
         
-        # Determine top boundary based on include_element
-        top = self.top if include_element else self.bottom + 1  # Add 1 pixel offset to create a gap
+        Args:
+            width: Width of the region to the left, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_element: Whether to include this element in the region (default: False)
+            until: Optional selector string to specify a left boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
             
-        # Calculate initial bounding box for region
-        if width == "full":
-            x0 = 0
-            x1 = self.page.width
-        elif width == "element":
-            x0 = self.x0
-            x1 = self.x1
-        else:
-            raise ValueError("Width must be 'full' or 'element'")
-            
-        # If an "until" selector is specified, find the target element
-        if until:
-            # Need to find all matches and find the first one below this element
-            # instead of just page.find() which might return any match
-            all_matches = self.page.find_all(until, **kwargs)
-            
-            # Sort by vertical position (top to bottom)
-            matches_below = [m for m in all_matches if m.top >= self.bottom]
-            matches_below.sort(key=lambda e: e.top)
-            
-            if matches_below:
-                # Use the first match below this element
-                target = matches_below[0]
-                
-                # Target is below this element - use it for the bottom boundary
-                bottom = target.bottom if include_endpoint else target.top - 1  # Subtract 1 pixel offset when excluding
-                
-                # Use the selector match for width if not using full width
-                if width == "element":
-                    x0 = min(x0, target.x0 if include_endpoint else target.x1)
-                    x1 = max(x1, target.x1 if include_endpoint else target.x0)
-            else:
-                # No targets found below this element - use requested height
-                bottom = min(self.page.height, top + (height or (self.page.height - top)))
-        else:
-            # No "until" selector - use requested height
-            bottom = min(self.page.height, top + (height or (self.page.height - top)))
+        Returns:
+            Region object representing the area to the left
+        """
+        return self._direction(
+            direction='left',
+            size=width,
+            cross_size=height,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
+
+    def right(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
+              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
+        """
+        Select region to the right of this element.
         
-        bbox = (x0, top, x1, bottom)
-        region = Region(self.page, bbox)
-        region.source_element = self  # Reference to element that created this region
-        region.includes_source = include_element  # Whether region includes the source element
-        return region
+        Args:
+            width: Width of the region to the right, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_element: Whether to include this element in the region (default: False)
+            until: Optional selector string to specify a right boundary element
+            include_endpoint: Whether to include the boundary element in the region (default: True)
+            **kwargs: Additional parameters
+            
+        Returns:
+            Region object representing the area to the right
+        """
+        return self._direction(
+            direction='right',
+            size=width,
+            cross_size=height,
+            include_element=include_element,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs
+        )
     
     def next(self, selector: Optional[str] = None, limit: int = 10, apply_exclusions: bool = True, **kwargs) -> Optional['Element']:
         """
@@ -522,20 +635,61 @@ class Element:
     def show(self, 
             scale: float = 2.0, 
             labels: bool = True,
-            legend_position: str = 'right') -> Image.Image:
+            legend_position: str = 'right',
+            color: Optional[Union[Tuple, str]] = "red", # Default color for single element
+            label: Optional[str] = None) -> Optional['Image.Image']:
         """
-        Show the page with this element highlighted.
-        
+        Show the page with only this element highlighted temporarily.
+
         Args:
             scale: Scale factor for rendering
-            labels: Whether to include a legend for labels
+            labels: Whether to include a legend for the highlight
             legend_position: Position of the legend
-            
+            color: Color to highlight this element (default: red)
+            label: Optional label for this element in the legend
+
         Returns:
-            PIL Image of the page with this element highlighted
+            PIL Image of the page with only this element highlighted, or None if error.
         """
-        # Get the highlighted image from the page
-        return self.page.show(scale=scale, labels=labels, legend_position=legend_position)
+        if not hasattr(self, 'page') or not self.page:
+            logger.warning(f"Cannot show element, missing 'page' attribute: {self}")
+            return None
+        if not hasattr(self.page, '_highlighter') or not self.page._highlighter:
+             logger.warning(f"Cannot show element, page lacks highlighter service: {self}")
+             return None
+
+        service = self.page._highlighter
+
+        # Determine the label if not provided
+        display_label = label if label is not None else f"{self.__class__.__name__}"
+
+        # Prepare temporary highlight data for just this element
+        temp_highlight_data = {
+            "page_index": self.page.index,
+            "bbox": self.bbox if not self.has_polygon else None,
+            "polygon": self.polygon if self.has_polygon else None,
+            "color": color, # Use provided or default color
+            "label": display_label,
+            "use_color_cycling": False # Explicitly false for single preview
+        }
+
+        # Check if we actually got geometry data
+        if temp_highlight_data['bbox'] is None and temp_highlight_data['polygon'] is None:
+             logger.warning(f"Cannot show element, failed to get bbox or polygon: {self}")
+             return None
+
+        # Use render_preview to show only this highlight
+        try:
+            return service.render_preview(
+                page_index=self.page.index,
+                temporary_highlights=[temp_highlight_data],
+                scale=scale,
+                labels=labels,
+                legend_position=legend_position
+            )
+        except Exception as e:
+            logger.error(f"Error calling render_preview for element {self}: {e}", exc_info=True)
+            return None
     
     def save(self, 
             filename: str, 
@@ -563,3 +717,39 @@ class Element:
     def __repr__(self) -> str:
         """String representation of the element."""
         return f"<{self.__class__.__name__} bbox={self.bbox}>"
+
+    def find(self, selector: str, apply_exclusions=True, **kwargs) -> Optional['Element']:
+        """
+        Find first element within this element's bounds matching the selector.
+        Creates a temporary region to perform the search.
+        
+        Args:
+            selector: CSS-like selector string
+            apply_exclusions: Whether to apply exclusion regions
+            **kwargs: Additional parameters for element filtering
+            
+        Returns:
+            First matching element or None
+        """
+        # Create a temporary region from this element's bounds
+        from natural_pdf.elements.region import Region
+        temp_region = Region(self.page, self.bbox)
+        return temp_region.find(selector, apply_exclusions=apply_exclusions, **kwargs)
+
+    def find_all(self, selector: str, apply_exclusions=True, **kwargs) -> 'ElementCollection':
+        """
+        Find all elements within this element's bounds matching the selector.
+        Creates a temporary region to perform the search.
+        
+        Args:
+            selector: CSS-like selector string
+            apply_exclusions: Whether to apply exclusion regions
+            **kwargs: Additional parameters for element filtering
+            
+        Returns:
+            ElementCollection with matching elements
+        """
+        # Create a temporary region from this element's bounds
+        from natural_pdf.elements.region import Region
+        temp_region = Region(self.page, self.bbox)
+        return temp_region.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)

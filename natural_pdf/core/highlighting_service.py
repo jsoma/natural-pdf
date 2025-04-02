@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Union
 
 from PIL import Image, ImageDraw, ImageFont
+from colour import Color
 
 # Attempt to import Page for type hinting safely
 try:
@@ -95,7 +96,7 @@ class HighlightRenderer:
             if highlight.is_polygon:
                 scaled_polygon = [(p[0] * self.scale, p[1] * self.scale) for p in highlight.polygon]
                 # Draw polygon fill and border
-                draw.polygon(scaled_polygon, fill=highlight.color, outline=highlight.border_color, width=1)
+                draw.polygon(scaled_polygon, fill=highlight.color, outline=highlight.border_color, width=2)
                 self._draw_vertices(draw, scaled_polygon, highlight.border_color)
 
                 # Calculate scaled bbox for attribute drawing
@@ -108,7 +109,7 @@ class HighlightRenderer:
                 x0_s, top_s, x1_s, bottom_s = x0 * self.scale, top * self.scale, x1 * self.scale, bottom * self.scale
                 scaled_bbox = [x0_s, top_s, x1_s, bottom_s]
                 # Draw rectangle fill and border
-                draw.rectangle(scaled_bbox, fill=highlight.color, outline=highlight.border_color, width=1)
+                draw.rectangle(scaled_bbox, fill=highlight.color, outline=highlight.border_color, width=2)
 
                 vertices = [(x0_s, top_s), (x1_s, top_s), (x1_s, bottom_s), (x0_s, bottom_s)]
                 self._draw_vertices(draw, vertices, highlight.border_color)
@@ -330,9 +331,30 @@ class HighlightingService:
                  return None # Invalid length
 
         elif isinstance(color_input, str):
-            # TODO: Implement string color parsing (e.g., 'red', '#FF0000')
-            logger.warning(f"String color input '{color_input}' not yet supported.")
-            return None
+            try:
+                # Convert color name/hex string to RGB tuple (0.0-1.0 floats)
+                from colour import Color # Import here if not at top
+                color_obj = Color(color_input)
+                # Convert floats (0.0-1.0) to integers (0-255)
+                r = int(color_obj.red * 255)
+                g = int(color_obj.green * 255)
+                b = int(color_obj.blue * 255)
+                # Clamp values just in case
+                r = max(0, min(255, r))
+                g = max(0, min(255, g))
+                b = max(0, min(255, b))
+                # Add alpha
+                rgba = (r, g, b, self._color_manager._alpha)
+                return rgba
+            except ImportError:
+                 logger.error("Color utility class not found. Cannot process string colors.")
+                 return None
+            except ValueError:
+                 logger.warning(f"Invalid color string: '{color_input}'")
+                 return None
+            except Exception as e:
+                 logger.error(f"Error processing color string '{color_input}': {e}")
+                 return None
         else:
              logger.warning(f"Invalid color input type: {type(color_input)}")
              return None
@@ -615,27 +637,48 @@ class HighlightingService:
         render_resolution = resolution if resolution is not None else scale * 72
 
         try:
-            # Get base image from pdfplumber
+            # Get base image from pdfplumber using the Page object's underlying _page
             img_object = page._page.to_image(resolution=render_resolution, **kwargs)
             base_image = img_object.annotated if hasattr(img_object, 'annotated') else img_object._repr_png_()
             if isinstance(base_image, bytes):
-                from io import BytesIO
-                base_image = Image.open(BytesIO(base_image))
+                 from io import BytesIO
+                 base_image = Image.open(BytesIO(base_image))
             base_image = base_image.convert("RGB") # Ensure consistent format
 
             # Convert temporary highlight dicts to Highlight objects
-            # Note: Colors/labels are already determined by _prepare_highlight_data
-            preview_highlights = [
-                Highlight(
-                    page_index=h['page_index'],
-                    bbox=h.get('bbox'),
-                    polygon=h.get('polygon'),
-                    color=h['color'],
-                    label=h.get('label'),
-                    attributes=h.get('attributes_to_draw', {})
+            # Note: Colors/labels should be determined *here* for temporary preview
+            preview_highlights = []
+            for hl_data in temporary_highlights:
+                # Determine the final color using the service logic
+                final_color = self._determine_highlight_color(
+                    color_input=hl_data.get('color'),
+                    label=hl_data.get('label'),
+                    use_color_cycling=hl_data.get('use_color_cycling', False)
                 )
-                for h in temporary_highlights if h.get('bbox') or h.get('polygon')
-            ]
+
+                # Extract potential attributes to draw
+                attrs_to_draw = {}
+                element = hl_data.get('element')
+                include_attrs = hl_data.get('include_attrs')
+                if element and include_attrs:
+                    for attr_name in include_attrs:
+                        try:
+                            attr_value = getattr(element, attr_name, None)
+                            if attr_value is not None:
+                                attrs_to_draw[attr_name] = attr_value
+                        except AttributeError:
+                            logger.warning(f"Attribute '{attr_name}' not found on element {element}")
+
+                # Add highlight if geometry exists
+                if hl_data.get('bbox') or hl_data.get('polygon'):
+                    preview_highlights.append(Highlight(
+                        page_index=hl_data['page_index'],
+                        bbox=hl_data.get('bbox'),
+                        polygon=hl_data.get('polygon'),
+                        color=final_color, # Use the determined color
+                        label=hl_data.get('label'),
+                        attributes=attrs_to_draw
+                    ))
 
             # Render only these highlights
             renderer = HighlightRenderer(page, base_image, preview_highlights, scale, render_ocr)
@@ -646,10 +689,12 @@ class HighlightingService:
             if labels:
                 preview_labels = {h.label: h.color for h in preview_highlights if h.label}
                 if preview_labels:
-                     legend = create_legend(preview_labels)
-
-            # Merge with legend if created
-            final_image = merge_images_with_legend(rendered_image, legend, position=legend_position)
+                    legend = create_legend(preview_labels)
+                    final_image = merge_images_with_legend(rendered_image, legend, position=legend_position)
+                else:
+                    final_image = rendered_image # No legend needed
+            else:
+                final_image = rendered_image
 
         except Exception as e:
             logger.error(f"Error rendering preview for page {page_index}: {e}", exc_info=True)

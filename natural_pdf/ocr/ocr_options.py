@@ -105,7 +105,8 @@ class SuryaOCROptions(BaseOCROptions):
     # Add fields here if Surya's RecognitionPredictor or DetectionPredictor
     # constructors accept relevant arguments (e.g., model paths, device settings).
     # For now, it primarily uses the base options like 'languages' and 'min_confidence'.
-    pass # No specific fields added yet based on the example
+    # Configuration like batch sizes are often set via environment variables for Surya.
+    pass
 
 
 # --- Union type for type hinting ---

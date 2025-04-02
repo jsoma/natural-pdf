@@ -6,62 +6,90 @@ Natural PDF includes OCR (Optical Character Recognition) to extract text from sc
 
 Natural PDF supports multiple OCR engines:
 
-| Feature | EasyOCR | PaddleOCR |
-| ------- | ------- | --------- |
-| **Default in Library** | No | Yes |
-| **Performance** | Works better for most Western documents | Excellent for Asian languages |
-| **Speed** | Moderate | Fast |
-| **Memory Usage** | Higher | Efficient |
-| **Paragraph Detection** | Yes | No |
-| **Handwritten Text** | Better support | Limited |
-| **Small Text** | Moderate | Good |
-| **Custom Models** | Limited | Fully supported |
-| **When to Use** | Most general documents, handwritten text | Asian languages, when speed is critical |
+| Feature              | EasyOCR                            | PaddleOCR                                | Surya OCR                             |
+|----------------------|------------------------------------|------------------------------------------|---------------------------------------|
+| **Installation**     | `natural-pdf[easyocr]`             | `natural-pdf[paddle]`                    | `natural-pdf[surya]`                  |
+| **Primary Strength** | Good general performance, simpler  | Excellent Asian language, speed        | High accuracy, multilingual lines     |
+| **Speed**            | Moderate                           | Fast                                     | Moderate (GPU recommended)            |
+| **Memory Usage**     | Higher                             | Efficient                                | Higher (GPU recommended)            |
+| **Paragraph Detect** | Yes (via option)                   | No                                       | No (focuses on lines)                 |
+| **Handwritten**      | Better support                     | Limited                                  | Limited                               |
+| **Small Text**       | Moderate                           | Good                                     | Good                                  |
+| **When to Use**      | General documents, handwritten text| Asian languages, speed-critical tasks    | Highest accuracy needed, line-level   |
 
 ## Basic OCR Usage
 
-To enable OCR:
+Apply OCR directly to a page or region:
 
 ```python
 from natural_pdf import PDF
 
-# Enable OCR when opening the PDF
-pdf = PDF('scanned_document.pdf', ocr=True)
+# Assume 'page' is a Page object from a PDF
+page = pdf.pages[0]
 
-# Extract text (OCR will be applied automatically)
-text = pdf.pages[0].extract_text()
+# Apply OCR using the default engine (or specify one)
+ocr_elements = page.apply_ocr(languages=['en'])
+
+# Extract text (will use the results from apply_ocr if run previously)
+text = page.extract_text()
 print(text)
 ```
 
-## Auto OCR Mode
+## Configuring OCR
 
-In "auto" mode, OCR is only applied when necessary:
-
-```python
-# Enable auto OCR mode
-pdf = PDF('mixed_document.pdf', ocr='auto')
-
-# OCR will only be applied to pages that need it
-for page in pdf.pages:
-    text = page.extract_text()  # OCR applied only if page has little/no text
-    print(f"Page {page.index + 1}: {len(text)} characters extracted")
-```
+Specify the engine and basic options directly:
 
 ## OCR Configuration
 
-You can customize OCR settings:
+```python
+# Use PaddleOCR for Chinese and English
+ocr_elements = page.apply_ocr(engine='paddle', languages=['zh-cn', 'en'])
+
+# Use EasyOCR with a lower confidence threshold
+ocr_elements = page.apply_ocr(engine='easyocr', languages=['en'], min_confidence=0.3)
+```
+
+For advanced, engine-specific settings, use the Options classes:
 
 ```python
-# Set OCR parameters
-pdf = PDF('document.pdf', ocr={
-    'enabled': True,               # Enable OCR
-    'languages': ['en'],           # Language(s) to recognize
-    'min_confidence': 0.5,         # Minimum confidence threshold
-    'paragraph': True,             # Try to group words into paragraphs
-})
+from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions
 
-# Extract text with OCR
-text = pdf.pages[0].extract_text()
+# --- Configure PaddleOCR ---
+paddle_opts = PaddleOCROptions(
+    languages=['en', 'zh-cn'],
+    use_gpu=True,         # Explicitly enable GPU if available
+    use_angle_cls=False,  # Disable text direction classification (if text is upright)
+    det_db_thresh=0.25,   # Lower detection threshold (more boxes, potentially noisy)
+    rec_batch_num=16      # Increase recognition batch size for potential speedup on GPU
+    # rec_char_dict_path='/path/to/custom_dict.txt' # Optional: Path to a custom character dictionary
+    # See PaddleOCROptions documentation or source code for all parameters
+ )
+ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
+
+# --- Configure EasyOCR ---
+easy_opts = EasyOCROptions(
+    languages=['en', 'fr'],
+    gpu=True,            # Explicitly enable GPU if available
+    paragraph=True,      # Group results into paragraphs (if structure is clear)
+    detail=1,            # Ensure bounding boxes are returned (required)
+    text_threshold=0.6,  # Confidence threshold for text detection (adjust based on tuning table)
+    link_threshold=0.4,  # Standard EasyOCR param, uncomment if confirmed in wrapper
+    low_text=0.4,        # Standard EasyOCR param, uncomment if confirmed in wrapper
+    batch_size=8         # Processing batch size (adjust based on memory)
+    # See EasyOCROptions documentation or source code for all parameters
+ )
+ocr_elements = page.apply_ocr(engine='easyocr', options=easy_opts)
+
+# --- Configure Surya OCR ---
+# Surya focuses on line detection and recognition
+surya_opts = SuryaOCROptions(
+    languages=['en', 'de'], # Specify languages for recognition
+    # device='cuda',       # Use GPU ('cuda') or CPU ('cpu') <-- Set via env var TORCH_DEVICE
+    min_confidence=0.4   # Example: Adjust minimum confidence for results
+    # Core Surya options like device, batch size, and thresholds are typically
+    # set via environment variables (see note below).
+)
+ocr_elements = page.apply_ocr(engine='surya', options=surya_opts)
 ```
 
 ## Multiple Languages
@@ -86,40 +114,22 @@ pdf = PDF('multilingual_document.pdf',
 
 ## Applying OCR Directly
 
-You can apply OCR to a page or region on demand:
+The `page.apply_ocr(...)` and `region.apply_ocr(...)` methods are the primary way to run OCR:
 
 ```python
 # Apply OCR to a page and get the OCR elements
-ocr_elements = page.apply_ocr()
+ocr_elements = page.apply_ocr(engine='easyocr')
 print(f"Found {len(ocr_elements)} text elements via OCR")
 
 # Apply OCR to a specific region
 title = page.find('text:contains("Title")')
 content_region = title.below(height=300)
-region_ocr_elements = content_region.apply_ocr()
+region_ocr_elements = content_region.apply_ocr(engine='paddle', languages=['en'])
 ```
 
 ## OCR Engines
 
-You can choose between different OCR engines:
-
-```python
-# Use EasyOCR (default)
-pdf = PDF('document.pdf', ocr_engine='easyocr')
-
-# Use PaddleOCR (often more accurate)
-pdf = PDF('document.pdf', ocr_engine='paddleocr')
-
-# Configure PaddleOCR-specific parameters
-pdf = PDF('document.pdf', 
-          ocr_engine='paddleocr',
-          ocr={
-              'enabled': True,
-              'use_angle_cls': False,  # Disable text direction detection
-              'det_db_thresh': 0.3,    # Text detection threshold
-              'rec_batch_num': 6       # Recognition batch size
-          })
-```
+Choose the engine best suited for your document and language requirements using the `engine` parameter in `apply_ocr`.
 
 ## Finding and Working with OCR Text
 

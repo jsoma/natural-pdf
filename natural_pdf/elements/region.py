@@ -233,7 +233,7 @@ class Region:
             Self for method chaining
         """
         # Access the highlighter service correctly
-        highlighter = self._page._highlighter
+        highlighter = self.page._highlighter
 
         # Prepare common arguments
         highlight_args = {
@@ -301,27 +301,54 @@ class Region:
         
         return region_image
     
-    def show(self, 
-            scale: float = 2.0, 
+    def show(self,
+            scale: float = 2.0,
             labels: bool = True,
-            legend_position: str = 'right') -> 'Image.Image':
+            legend_position: str = 'right',
+            # Add a default color for standalone show
+            color: Optional[Union[Tuple, str]] = "blue",
+            label: Optional[str] = None) -> 'Image.Image':
         """
-        Show the page with this region highlighted.
-        
+        Show the page with just this region highlighted temporarily.
+
         Args:
             scale: Scale factor for rendering
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
-            
+            color: Color to highlight this region (default: blue)
+            label: Optional label for this region in the legend
+
         Returns:
-            PIL Image of the page with this region highlighted
+            PIL Image of the page with only this region highlighted
         """
-        # Highlight this region if not already highlighted
-        self.highlight()
-        
-        # Get and display the highlighted image
-        return self._page.show(scale, labels=labels, legend_position=legend_position)
-        
+        if not self._page:
+            raise ValueError("Region must be associated with a page to show.")
+
+        # Use the highlighting service via the page's property
+        service = self._page._highlighter
+
+        # Determine the label if not provided
+        display_label = label if label is not None else f"Region ({self.type})" if self.type else "Region"
+
+        # Prepare temporary highlight data for just this region
+        temp_highlight_data = {
+            "page_index": self._page.index,
+            "bbox": self.bbox,
+            "polygon": self.polygon if self.has_polygon else None,
+            "color": color, # Use provided or default color
+            "label": display_label,
+            "use_color_cycling": False # Explicitly false for single preview
+        }
+
+        # Use render_preview to show only this highlight
+        return service.render_preview(
+            page_index=self._page.index,
+            temporary_highlights=[temp_highlight_data],
+            scale=scale,
+            labels=labels,
+            legend_position=legend_position
+        )
+
     def save(self, 
             filename: str, 
             scale: float = 2.0, 
@@ -903,7 +930,7 @@ class Region:
         elements = self.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
         return elements[0] if elements else None
     
-    def find_all(self, selector: str, apply_exclusions=True, **kwargs) -> 'ElementCollection':
+    def _find_all(self, selector: str, apply_exclusions=True, **kwargs) -> 'ElementCollection':
         """
         Find all elements in this region matching the selector.
         
@@ -916,7 +943,7 @@ class Region:
             ElementCollection with matching elements
         """
         from natural_pdf.elements.collections import ElementCollection
-        
+
         # If we span multiple pages, filter our elements
         if self._spans_pages and self._multi_page_elements is not None:
             # Parse the selector
@@ -945,7 +972,7 @@ class Region:
                         all_matching_elements.append(element)
             
             return ElementCollection(all_matching_elements)
-            
+
         # Otherwise, get elements from the page and filter by selector and region
         page_elements = self.page.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
         filtered_elements = [e for e in page_elements if self._is_element_in_region(e)]
@@ -1485,7 +1512,7 @@ class Region:
             Collection of matching elements
         """
         # Get direct matches 
-        direct_matches = self.page.find_all(selector, region=self, **kwargs)
+        direct_matches = self._find_all(selector, region=self, **kwargs)
         
         if not recursive or not self.child_regions:
             return direct_matches

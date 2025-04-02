@@ -596,89 +596,98 @@ class ElementCollection(Generic[T]):
             )
         
     def show(self,
-            # --- Visualization Parameters --- 
-            group_by: Optional[str] = None,
-            label: Optional[str] = None,
-            color: Optional[Union[Tuple, str]] = None,
-            label_format: Optional[str] = None,
-            distinct: bool = False,
-            include_attrs: Optional[List[str]] = None,
-            # --- Rendering Parameters --- 
-            scale: float = 2.0,
-            width: Optional[int] = None,
-            show_legend: bool = True, # Renamed from 'labels' for clarity
-            legend_position: str = 'right',
-            render_ocr: bool = False) -> Optional['Image.Image']:
-        """
-        Generates a temporary preview image highlighting elements in this collection,
-        starting from a clean page (ignoring persistent highlights).
+             # --- Visualization Parameters ---
+             group_by: Optional[str] = None,
+             label: Optional[str] = None,
+             color: Optional[Union[Tuple, str]] = None,
+             label_format: Optional[str] = None,
+             distinct: bool = False,
+             include_attrs: Optional[List[str]] = None,
+             # --- Rendering Parameters ---
+             scale: float = 2.0,
+             labels: bool = True, # Use 'labels' consistent with service
+             legend_position: str = 'right',
+             render_ocr: bool = False) -> Optional['Image.Image']:
+         """
+         Generates a temporary preview image highlighting elements in this collection
+         on their page, ignoring any persistent highlights.
 
-        Allows grouping and coloring elements based on attributes, similar to the
-        persistent `highlight()` method, but only for this temporary view.
+         Currently only supports collections where all elements are on the same page.
 
-        Args:
-            group_by: Attribute name to group elements by for distinct colors/labels.
-            label: Explicit label for all elements (overrides group_by).
-            color: Explicit color for all elements (if label used) or base color.
-            label_format: F-string to format group labels if group_by is used.
-            distinct: Highlight each element distinctly (overrides group_by/label).
-            include_attrs: Attributes to display on individual highlights.
-            scale: Scale factor for rendering image.
-            width: Optional width for the output image in pixels.
-            show_legend: Whether to include a legend for the temporary highlights.
-            legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
-            render_ocr: Whether to render OCR text.
+         Allows grouping and coloring elements based on attributes, similar to the
+         persistent `highlight()` method, but only for this temporary view.
 
-        Returns:
-            PIL Image object of the temporary preview, or None if rendering fails.
-        """
-        if not self._elements:
-            logger.warning("Cannot show collection preview: Collection is empty.")
-            return None
+         Args:
+             group_by: Attribute name to group elements by for distinct colors/labels.
+             label: Explicit label for all elements (overrides group_by).
+             color: Explicit color for all elements (if label used) or base color.
+             label_format: F-string to format group labels if group_by is used.
+             distinct: Highlight each element distinctly (overrides group_by/label).
+             include_attrs: Attributes to display on individual highlights.
+             scale: Scale factor for rendering image.
+             labels: Whether to include a legend for the temporary highlights.
+             legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
+             render_ocr: Whether to render OCR text.
 
-        # 1. Prepare temporary highlight data based on grouping parameters
-        # Uses the same internal logic as highlight() but doesn't affect persistent state
-        highlight_data_list = self._prepare_highlight_data(
-            distinct=distinct,
-            label=label,
-            color=color,
-            group_by=group_by,
-            label_format=label_format,
-            include_attrs=include_attrs
-        )
+         Returns:
+             PIL Image object of the temporary preview, or None if rendering fails or
+             elements span multiple pages.
 
-        if not highlight_data_list:
-            logger.warning("No highlight data generated for show().")
-            # Return a clean image of the page maybe?
-            # Or just return None
-            return None
+         Raises:
+             ValueError: If the collection is empty or elements are on different pages.
+         """
+         if not self._elements:
+             raise ValueError("Cannot show an empty collection.")
 
-        # 2. Get the page object from the first element
-        page = self.elements[0].page if hasattr(self.elements[0], 'page') else None
+         # Check if elements are on multiple pages
+         if self._are_on_multiple_pages():
+             raise ValueError("show() currently only supports collections where all elements are on the same page.")
 
-        # 3. If page exists, call page.show_preview (or equivalent)
-        if page:
-            # Ensure page.show_preview exists and accepts the necessary arguments
-            if hasattr(page, 'show_preview') and callable(page.show_preview):
-                 try:
-                     return page.show_preview(
-                          temporary_highlights=highlight_data_list,
-                          scale=scale,
-                          width=width,
-                          labels=show_legend, # Pass renamed arg
-                          legend_position=legend_position,
-                          render_ocr=render_ocr
-                     )
-                 except Exception as e:
-                      logger.error(f"Error calling page.show_preview: {e}", exc_info=True)
-                      return None
-            else:
-                 logger.error("Page object does not have the required 'show_preview' method.")
-                 return None # Cannot generate preview
-        else:
-            logger.warning("Cannot show collection preview: No associated page found.")
-            return None
-        
+         # Get the page and highlighting service from the first element
+         first_element = self._elements[0]
+         if not hasattr(first_element, 'page') or not first_element.page:
+             logger.warning("Cannot show collection: First element has no associated page.")
+             return None
+         page = first_element.page
+         if not hasattr(page, 'pdf') or not page.pdf:
+             logger.warning("Cannot show collection: Page has no associated PDF object.")
+             return None
+
+         service = page._highlighter
+         if not service:
+             logger.warning("Cannot show collection: PDF object has no highlighting service.")
+             return None
+
+         # 1. Prepare temporary highlight data based on grouping parameters
+         # This returns a list of dicts, suitable for render_preview
+         highlight_data_list = self._prepare_highlight_data(
+             distinct=distinct,
+             label=label,
+             color=color,
+             group_by=group_by,
+             label_format=label_format,
+             include_attrs=include_attrs
+         )
+
+         if not highlight_data_list:
+             logger.warning("No highlight data generated for show(). Rendering clean page.")
+             # Render the page without any temporary highlights
+             highlight_data_list = [] 
+
+         # 2. Call render_preview on the HighlightingService
+         try:
+             return service.render_preview(
+                 page_index=page.index,
+                 temporary_highlights=highlight_data_list,
+                 scale=scale,
+                 labels=labels, # Use 'labels'
+                 legend_position=legend_position,
+                 render_ocr=render_ocr
+             )
+         except Exception as e:
+             logger.error(f"Error calling highlighting_service.render_preview: {e}", exc_info=True)
+             return None
+
     def save(self, 
             filename: str, 
             scale: float = 2.0,

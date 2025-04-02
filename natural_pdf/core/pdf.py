@@ -87,6 +87,7 @@ class PDF:
         self._config = {
             'keep_spaces': keep_spaces
         }
+        self.path = path
                 
         self._font_attrs = font_attrs  # Store the font attribute configuration
 
@@ -112,6 +113,11 @@ class PDF:
         # Initialize the Highlighting Service
         self.highlighter = HighlightingService(self) 
         logger.info("Initialized HighlightingService.")
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Access metadata as a dictionary."""
+        return self._pdf.metadata
 
     @property
     def pages(self) -> 'PageCollection':

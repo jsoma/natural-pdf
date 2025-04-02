@@ -2,9 +2,9 @@
 
 Sometimes it's hard to understand what's happening when working with PDFs. Natural PDF provides powerful visual debugging tools to help you see what you're extracting.
 
-## Basic Highlighting
+## Adding Persistent Highlights
 
-The simplest way to highlight elements is with the `highlight()` method:
+Use the `.highlight()` method on `Element` or `ElementCollection` objects to add persistent highlights to a page. These highlights are stored and will appear when viewing the page later.
 
 ```python
 from natural_pdf import PDF
@@ -12,24 +12,42 @@ from natural_pdf import PDF
 pdf = PDF('document.pdf')
 page = pdf.pages[0]
 
-# Find a specific element and highlight it
+# Find a specific element and add a persistent highlight
 title = page.find('text:contains("Summary")')
 title.highlight()
 
-# Show or save the highlighted page
-page.show()  # Returns a PIL Image that displays in notebooks
-page.save_image("highlighted.png")
-```
+## Viewing Highlights
 
-## Customizing Highlights
+You can view persistent highlights in two ways:
 
-You can customize your highlights with colors and labels:
+1. **Interactive Viewer (Jupyter):** Use `.viewer()` on a `Page` object in a Jupyter environment (Notebook, Lab, VS Code). This requires installing `natural-pdf[interactive]`.
+2. **Static Image:** Use `.save_image()` on a `Page` object to save a static PNG file.
 
 ```python
-# Highlight with a specific color (RGBA tuple)
-title.highlight(color=(1, 0, 0, 0.3))  # Red with 30% opacity
+# Add some highlights
+page.find('text:contains("Summary")').highlight(label="Summary Title")
+page.find_all('rect').highlight(color="blue", label="Boxes")
 
-# Add a label to the highlight
+# --- View Interactively (Jupyter) ---
+# Requires: pip install natural-pdf[interactive]
+page.viewer()
+
+# --- Save Static Image ---
+# Include a legend for labeled highlights
+page.save_image("highlighted_page.png", labels=True)
+```
+
+## Customizing Persistent Highlights
+
+Customize the appearance of persistent highlights added with `.highlight()`:
+
+```python
+# Highlight with a specific color (string name, hex, or RGB/RGBA tuple)
+title.highlight(color=(1, 0, 0, 0.3))  # Red with 30% opacity
+title.highlight(color="#FF0000")        # Hex color
+title.highlight(color="red")           # Color name
+
+# Add a label to the highlight (appears in legend)
 title.highlight(label="Title")
 
 # Combine color and label
@@ -37,15 +55,15 @@ table = page.find('rect[width>=400][height>=200]')
 table.highlight(color=(0, 0, 1, 0.2), label="Table")
 
 # Save with a legend that shows the labels
-page.save_image("highlighted_with_legend.png", labels=True)
+page.viewer() # Or view interactively
 ```
 
 ## Highlighting Multiple Elements
 
-You can highlight multiple elements at once:
+Highlighting an `ElementCollection` applies the highlight to all elements within it. By default, all elements in the collection get the same color and a label based on their type.
 
 ```python
-# Find and highlight all headings
+# Find and highlight all headings with a single color/label
 headings = page.find_all('text[size>=14]:bold')
 headings.highlight(color=(0, 0.5, 0, 0.3), label="Headings")
 
@@ -53,29 +71,8 @@ headings.highlight(color=(0, 0.5, 0, 0.3), label="Headings")
 tables = page.find_all('region[type=table]')
 tables.highlight(color=(0, 0, 1, 0.2), label="Tables")
 
-# Save the image with all highlights
-page.save_image("multiple_highlights.png", labels=True)
-```
-
-## Highlight All Elements
-
-The `highlight_all()` method is great for quickly seeing all elements on a page:
-
-```python
-# Highlight all elements on the page
-page.highlight_all()
-
-# Save the image
-page.save_image("all_elements.png", labels=True)
-
-# Highlight only specific types of elements
-page.highlight_all(include_types=['text', 'line'])
-
-# Include text styles in the highlighting
-page.highlight_all(include_text_styles=True)
-
-# Include layout regions in the highlighting
-page.highlight_all(include_layout_regions=True)
+# View the result
+page.viewer()
 ```
 
 ## Highlighting Regions
@@ -134,14 +131,15 @@ text.highlight(include_attrs=['fontname', 'size'])
 
 ## Clearing Highlights
 
-You can clear highlights when needed:
+You can clear persistent highlights from a page:
 
 ```python
-# Clear all highlights
+# Clear all highlights on the page
 page.clear_highlights()
 
 # Apply new highlights
 page.find_all('text:bold').highlight(label="Bold Text")
+page.viewer()
 ```
 
 ## Composite Highlighting
@@ -171,24 +169,26 @@ page.save_image("composite_highlight.png", labels=True)
 Visualize OCR results with confidence levels:
 
 ```python
-# Enable OCR
-pdf = PDF('scanned_document.pdf', ocr=True)
-page = pdf.pages[0]
+# Apply OCR first
+ocr_elements = page.apply_ocr(engine='easyocr')
 
-# Apply OCR
-ocr_elements = page.apply_ocr()
+# Highlight OCR elements by confidence level (using group_by)
+# (This generates a temporary preview image)
+ocr_confidence_preview = page.find_all('text[source=ocr]').show(group_by=lambda el: f"Conf >= {0.8 if el.confidence >= 0.8 else (0.5 if el.confidence >= 0.5 else 0.0):.1f}")
+ocr_confidence_preview
 
-# Highlight OCR elements by confidence level
-high_conf = page.find_all('text[source=ocr][confidence>=0.8]')
-med_conf = page.find_all('text[source=ocr][confidence>=0.5][confidence<0.8]')
-low_conf = page.find_all('text[source=ocr][confidence<0.5]')
+# --- Alternatively, add persistent highlights by confidence ---
+# page.clear_highlights() # Optional: Clear previous highlights
+# high_conf = page.find_all('text[source=ocr][confidence>=0.8]')
+# med_conf = page.find_all('text[source=ocr][confidence>=0.5][confidence<0.8]')
+# low_conf = page.find_all('text[source=ocr][confidence<0.5]')
+# high_conf.highlight(color=(0, 1, 0, 0.3), label="High Confidence")
+# med_conf.highlight(color=(1, 1, 0, 0.3), label="Medium Confidence")
+# low_conf.highlight(color=(1, 0, 0, 0.3), label="Low Confidence")
+# page.viewer()
 
-high_conf.highlight(color=(0, 1, 0, 0.3), label="High Confidence")
-med_conf.highlight(color=(1, 1, 0, 0.3), label="Medium Confidence")
-low_conf.highlight(color=(1, 0, 0, 0.3), label="Low Confidence")
-
-# Save the visualization
-page.save_image("ocr_confidence.png", labels=True)
+# Save the visualization (if using persistent highlights)
+# page.save_image("ocr_confidence.png", labels=True)
 ```
 
 ## Document QA Visualization

@@ -127,44 +127,49 @@ Having OCR problems? [Understand OCR challenges and solutions →](explanations/
 
 ### OCR Support
 
+Natural PDF supports multiple engines (EasyOCR, PaddleOCR, Surya) for extracting text from scanned documents.
+
 ```python
-# Open a scanned document with OCR enabled
-pdf = PDF('scanned_document.pdf', ocr=True)
+# Apply OCR using a specific engine
+ocr_elements = page.apply_ocr(engine='paddle')
 
-# Extract text with automatic OCR
-text = pdf.pages[0].extract_text()
+# Configure engine options
+from natural_pdf.ocr import EasyOCROptions
+opts = EasyOCROptions(languages=['en', 'fr'], min_confidence=0.4)
+ocr_elements = page.apply_ocr(engine='easyocr', options=opts)
 
-# Apply OCR explicitly
-ocr_elements = page.apply_ocr()
-print(f"Found {len(ocr_elements)} OCR text elements")
+# Extract text (will use OCR results if available)
+text = page.extract_text()
 ```
 
 Natural PDF supports both EasyOCR and PaddleOCR engines. PaddleOCR is often more accurate while EasyOCR is simpler to set up. [Explore OCR options →](ocr/index.md)
 
-Got scanned documents or images? [See how to optimize OCR results →](explanations/ocr-challenges.md)
+Having OCR problems? [Understand OCR challenges and solutions →](explanations/ocr-challenges.md)
 
-### Visual Debugging
+## Visual Debugging & Interactive Widget
+
+Visualize element selections and analysis results. Use `.highlight()` to add persistent highlights to elements or collections. View these highlights using `.viewer()` (interactive widget in Jupyter) or `.save_image()` (static file). Use `ElementCollection.show()` to generate temporary previews of specific selections, optionally grouping them by attribute.
 
 ```python
-# Highlight different elements
+# Highlight different elements persistently
 page.find_all('text[size>=14]').highlight(color="red", label="Headings")
 page.find_all('rect').highlight(color="green", label="Boxes")
 page.find_all('line').highlight(color="blue", label="Lines")
 
-# Highlight layout regions
-page.analyze_layout()
-page.find_all('region[type=table]').highlight(color="orange", label="Tables")
-page.find_all('region[type=title]').highlight(color="purple", label="Titles")
-
-# Get the visualization as an image (great for Jupyter notebooks)
-image = page.to_image(labels=True)
-image
+# Launch the interactive viewer (shows persistent highlights)
+# Requires: pip install natural-pdf[interactive]
+page.viewer()
 
 # Or save the image if needed
 # page.save_image("highlighted.png", labels=True)
+
+# Show a temporary preview image of specific elements, grouped by type
+preview_image = page.find_all('region[type*=table]').show(group_by='type')
+# In Jupyter, this image will display automatically
+preview_image
 ```
 
-Visualizing elements helps debug extraction issues and understand document structure. Natural PDF provides color-coding and labels to make it clear what's being detected. [See more visualization options →](visual-debugging/index.md)
+Visualizing elements helps debug extraction issues and understand document structure. [See more visualization options →](visual-debugging/index.md)
 
 Having trouble with PDF extraction? [Understand common PDF challenges →](explanations/pdf-extraction-challenges.md)
 

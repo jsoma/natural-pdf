@@ -4,21 +4,36 @@ Let's get Natural PDF installed and run your first extraction.
 
 ## Installation
 
+The base installation includes the core library and necessary AI dependencies (like PyTorch and Transformers):
+
 ```bash
 pip install natural-pdf
 ```
 
 ### Optional Dependencies
 
-Natural PDF has modular dependencies for different features:
+Natural PDF has modular dependencies for different features. Install them based on your needs:
 
 ```bash
-# Install OCR support with EasyOCR
+# --- OCR Engines ---
+# Install support for EasyOCR
 pip install natural-pdf[easyocr]
 
-# Install PaddleOCR support
+# Install support for PaddleOCR (requires paddlepaddle)
 pip install natural-pdf[paddle]
 
+# Install support for Surya OCR
+pip install natural-pdf[surya]
+
+# --- Layout Detection ---
+# Install support for YOLO layout model
+pip install natural-pdf[layout_yolo]
+
+# --- Interactive Widget ---
+# Install support for the interactive .viewer() widget in Jupyter
+pip install natural-pdf[interactive]
+
+# --- All Features ---
 # Install all optional dependencies
 pip install natural-pdf[all]
 ```

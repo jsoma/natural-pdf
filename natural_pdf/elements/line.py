@@ -59,18 +59,34 @@ class LineElement(Element):
     
     @property
     def width(self) -> float:
-        """Get the line width."""
+        """Get the line thickness (extracted from PDF properties)."""
         return self._obj.get('linewidth', 0)
     
     @property
     def is_horizontal(self) -> bool:
-        """Check if this is a horizontal line."""
-        return self.height < 1 and self.width > 1
+        """Check if this is a horizontal line based on coordinates."""
+        # Calculate absolute difference in coordinates
+        dx = abs(self.x1 - self.x0)
+        dy = abs(self.top - self.bottom)
+        
+        # Define a tolerance for near-horizontal lines (e.g., 1 point)
+        tolerance = 1.0 
+        
+        # Horizontal if y-change is within tolerance and x-change is significant
+        return dy <= tolerance and dx > tolerance
     
     @property
     def is_vertical(self) -> bool:
-        """Check if this is a vertical line."""
-        return self.width < 1 and self.height > 1
+        """Check if this is a vertical line based on coordinates."""
+        # Calculate absolute difference in coordinates
+        dx = abs(self.x1 - self.x0)
+        dy = abs(self.top - self.bottom)
+        
+        # Define a tolerance for near-vertical lines (e.g., 1 point)
+        tolerance = 1.0
+        
+        # Vertical if x-change is within tolerance and y-change is significant
+        return dx <= tolerance and dy > tolerance
     
     def text_above(self, distance: float = 5, **kwargs) -> Any:
         """
