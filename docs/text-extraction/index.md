@@ -1,419 +1,413 @@
-# Text Extraction
+# Text Extraction Guide
 
-Extracting text from PDFs is one of the most common tasks with Natural PDF. This section covers different approaches to text extraction, from basic to advanced.
+This guide demonstrates various ways to extract text from PDFs using Natural PDF, from simple page dumps to targeted extraction based on elements, regions, and styles.
 
-## Basic Text Extraction
+## Setup
 
-The simplest way to extract text is to use the `extract_text()` method:
+First, let's import necessary libraries and load a sample PDF. We'll use `example.pdf` from the tutorials' `pdfs` directory. *Adjust the path if your setup differs.*
 
 ```python
 from natural_pdf import PDF
+from pathlib import Path
 
-pdf = PDF('document.pdf')
+# Path to your sample PDF
+pdf_path = Path("../tutorials/pdfs/example.pdf") # Adjust if needed
+
+# Load the PDF
+pdf = PDF(pdf_path)
+
+# Select the first page for initial examples
 page = pdf.pages[0]
 
-# Extract all text from a page
-text = page.extract_text()
-print(text)
+# Display the first page
+page.show()
+```
 
-# Extract text from the entire document
-all_text = pdf.extract_text()
+## Basic Text Extraction
+
+Get all text from a page or the entire document.
+
+```python
+# Extract all text from the first page
+# Displaying first 500 characters
+page.extract_text()[:500]
+```
+
+```python
+# Extract text from the entire document (may take time)
+# Uncomment to run:
+# pdf.extract_text()[:500]
 ```
 
 ## Extracting Text from Specific Elements
 
-You can extract text from specific elements:
+Use selectors with `find()` or `find_all()` to target specific elements. *Selectors like `:contains("Summary")` are examples; adapt them to your PDF.*
 
 ```python
-# Find a specific element
-title = page.find('text:contains("Summary")')
-if title:
-    # Get just that element's text
-    title_text = title.text
-    print(f"Title: {title_text}")
-    
-# Find multiple elements and extract their text
-headings = page.find_all('text[size>=14]:bold')
-headings_text = headings.extract_text()
+# Find a single element, e.g., a title containing "Summary"
+# Adjust selector as needed
+title_element = page.find('text:contains("Summary")')
+title_element # Display the found element object
+```
+
+```python
+# Highlight the found element on the page
+if title_element:
+    page.highlight(title_element, color="yellow").show()
+```
+
+```python
+# Extract text just from that element
+if title_element:
+    title_element.text
+```
+
+```python
+# Find multiple elements, e.g., bold headings (size >= 14)
+# Adjust selector as needed
+heading_elements = page.find_all('text[size>=14]:bold')
+heading_elements # Shows the list of found elements
+```
+
+```python
+# Highlight all found headings
+if heading_elements:
+    page.highlight_all(heading_elements, color="lightblue").show()
+```
+
+```python
+# Extract their combined text, separated by newlines
+if heading_elements:
+    heading_elements.extract_text(delimiter="\n")
 ```
 
 ## Multi-Word Searches
 
-Natural PDF has enhanced support for multi-word searches:
+Natural PDF handles spaces well, making multi-word searches easy. *Adjust search phrases based on your PDF.*
 
 ```python
-# Search for elements containing full phrases
-annual_report = page.find('text:contains("Annual Report")')
+# Exact phrase (case-sensitive)
+page.find('text:contains("Annual Report")')
+```
 
+```python
 # Case-insensitive search
-financial_statement = page.find('text:contains("financial statement")', case=False)
-
-# Regular expression search
-year_report = page.find('text:contains("\\d{4}\\s+Report")', regex=True)
-
-# Combining options
-summary = page.find('text:contains("executive summary")', regex=True, case=False)
+page.find('text:contains("financial statement")', case=False)
 ```
-
-The multi-word search feature works because Natural PDF preserves spaces in text elements by default. You can control this behavior:
 
 ```python
-# Keep spaces (default behavior)
-pdf = PDF('document.pdf', keep_spaces=True)
-
-# Legacy behavior (break at spaces)
-pdf = PDF('document.pdf', keep_spaces=False)
+# Regular expression (e.g., "YYYY Report")
+page.find('text:contains("\\d{4}\\s+Report")', regex=True)
 ```
+
+```python
+# Highlight one of the findings (e.g., case-insensitive search)
+statement_phrase = page.find('text:contains("financial statement")', case=False)
+if statement_phrase:
+    page.highlight(statement_phrase, color="orange").show()
+```
+
+*You can control space preservation during loading with `PDF(..., keep_spaces=False)`.*
 
 ## Extracting Text from Regions
 
-You can extract text from specific regions of a page:
+Define regions geographically or relative to elements.
 
 ```python
-# Create a region and extract text from it
-title = page.find('text:contains("Introduction")')
-content = title.below()
-intro_text = content.extract_text()
+# Region below an element (e.g., below "Introduction")
+# Adjust selector as needed
+intro_heading = page.find('text:contains("Introduction")')
 
-# Extract text from a region between elements
-start = page.find('text:contains("Method")')
-end = page.find('text:contains("Results")')
-method_section = start.below(until='text:contains("Results")', include_until=False)
-method_text = method_section.extract_text()
+if intro_heading:
+    content_below = intro_heading.below()
+    page.highlight(content_below, color="lightgreen").show()
+```
 
-# Create a region manually
-region = page.create_region(100, 200, 500, 600)  # x0, top, x1, bottom
-region_text = region.extract_text()
+```python
+# Extract text from that 'below' region
+if intro_heading:
+    content_below.extract_text()[:500] # Show sample
+```
+
+```python
+# Region between two elements (e.g., "Methodology" to "Results")
+# Adjust selectors as needed
+start_element = page.find('text:contains("Methodology")')
+end_element = page.find('text:contains("Results")')
+
+if start_element and end_element:
+    method_section = start_element.below(until=end_element, include_until=False)
+    page.highlight(method_section, color="cyan").show()
+```
+
+```python
+# Extract text from the 'between' region
+if start_element and end_element:
+    method_section.extract_text()[:500] # Show sample
+```
+
+```python
+# Manually defined region via coordinates (x0, top, x1, bottom)
+manual_region = page.create_region(100, 200, 500, 600)
+page.highlight(manual_region, color="magenta").show()
+```
+
+```python
+# Extract text from the manual region
+manual_region.extract_text()[:500] # Show sample
 ```
 
 ## Filtering Out Headers and Footers
 
-A common challenge with PDF extraction is filtering out headers and footers. Natural PDF makes this easy with exclusion zones:
+Use Exclusion Zones to remove unwanted content before extraction. *Adjust selectors for typical header/footer content.*
 
 ```python
-# Define header and footer as exclusion zones
-header = page.find('text:contains("Confidential")').above()
-page.add_exclusion(header)
+# Identify potential header/footer areas
+header_content = page.find('text:contains("Confidential Document")') # Adjust
+footer_content = page.find('text:contains("Page")') # Adjust
 
-footer = page.find('text:contains("Page")').below()
-page.add_exclusion(footer)
+# Create regions for exclusion
+exclusions_to_add = []
+header_zone = header_content.bbox.above() if header_content else None
+footer_zone = footer_content.bbox.below() if footer_content else None
 
-# Now extract text without headers and footers
-clean_text = page.extract_text()  # Exclusions are applied by default
+if header_zone: exclusions_to_add.append(header_zone)
+if footer_zone: exclusions_to_add.append(footer_zone)
 
-# You can also disable exclusions if needed
-full_text = page.extract_text(apply_exclusions=False)
-
-# Add exclusions at the PDF level that apply to all pages
-pdf.add_exclusion(
-    lambda page: page.find('text:contains("Confidential")').above(),
-    label="header"
-)
-pdf.add_exclusion(
-    lambda page: page.find_all('line')[-1].below(),
-    label="footer"
-)
-
-# Now extract text from the entire document without headers/footers
-clean_text = pdf.extract_text()
+# Highlight the potential exclusion zones on a copy
+if exclusions_to_add:
+    img = page.copy() # Work on a copy for highlighting only
+    if header_zone: img.highlight(header_zone, color="red", alpha=0.3)
+    if footer_zone: img.highlight(footer_zone, color="red", alpha=0.3)
+    img.show()
+else:
+    "Selectors for header/footer didn't match, skipping highlight."
 ```
-
-### Optimized Exclusion Handling
-
-Natural PDF uses smart region exclusion handling for better performance:
 
 ```python
-# Create a region that intersects with header exclusion
-header_excl = page.add_exclusion(page.find('text:contains("HEADER")').above())
-middle_region = page.create_region(50, page.height * 0.25, page.width - 50, page.height * 0.75)
-
-# Extract text - will automatically use efficient cropping for header exclusion
-middle_text = middle_region.extract_text()
+# Add the exclusions to the actual page object
+# This modifies the page state for subsequent extractions
+if exclusions_to_add:
+    page.add_exclusions(exclusions_to_add)
+    f"Added {len(page.exclusions)} exclusion zones to the page."
+else:
+    "No exclusion zones added."
 ```
 
-The system automatically chooses the best exclusion strategy:
-- No intersection with exclusions: exclusions are ignored entirely
-- Header/footer exclusions: uses efficient cropping approach
-- Complex exclusions: uses element filtering with a warning
+```python
+# Extract text - exclusions applied by default now
+if page.exclusions:
+    clean_text = page.extract_text()
+    clean_text[:500] # Show sample of cleaned text
+```
+
+```python
+# Compare with text extracted *without* applying exclusions
+if page.exclusions:
+    full_text_no_exclusions = page.extract_text(apply_exclusions=False)
+    f"Original length: {len(full_text_no_exclusions)}, Excluded length: {len(clean_text)}"
+```
+
+```python
+# Clean up exclusions if you want to reset the page state
+# page.clear_exclusions()
+# f"Cleared exclusions. Current count: {len(page.exclusions)}"
+```
+
+*Exclusions can also be defined globally at the PDF level using `pdf.add_exclusion()` with a function.*
 
 ## Controlling Whitespace
 
-You can control how whitespace is handled during extraction:
+Manage how spaces and blank lines are handled during extraction using `keep_blank_chars`.
 
 ```python
-# Keep blank characters (default)
-text = page.extract_text(keep_blank_chars=True)
-
-# Remove blank characters
-text = page.extract_text(keep_blank_chars=False)
-
-# Extract with original whitespace preserved
-text = page.extract_text(preserve_whitespace=True)  # Alias for keep_blank_chars
+# Default (keep_blank_chars=True) - Use repr to see whitespace characters
+repr(page.extract_text(keep_blank_chars=True)[:100])
 ```
+
+```python
+# Remove blank characters (keep_blank_chars=False)
+repr(page.extract_text(keep_blank_chars=False)[:100])
+```
+
+*`preserve_whitespace=True` is an alias for `keep_blank_chars=True`.*
 
 ## Font-Aware Text Extraction
 
-Natural PDF groups characters into words based on font attributes to preserve formatting:
+Natural PDF uses font attributes (`fontname`, `size` by default) when grouping characters into words. This helps maintain separation between text with different styling. Change this behavior during loading:
 
 ```python
-# Default: Group by font name and size
-pdf = PDF("document.pdf")  # Default: font_attrs=['fontname', 'size']
+# Default loading (already done):
+# pdf = PDF(pdf_path) # font_attrs=['fontname', 'size']
 
-# Spatial only: Group only by position
-pdf = PDF("document.pdf", font_attrs=[])
+# Load grouping only by spatial proximity:
+# pdf_spatial_only = PDF(pdf_path, font_attrs=[])
 
-# Custom: Group by font name, size, and color
-pdf = PDF("document.pdf", font_attrs=['fontname', 'size', 'non_stroking_color'])
+# Load grouping by font, size, and color:
+# pdf_custom_font = PDF(pdf_path, font_attrs=['fontname', 'size', 'non_stroking_color'])
+
+"PDF loaded with default font settings. See comments for other options."
 ```
-
-This helps preserve text formatting during extraction: changes in font attributes break words, so different styles remain separate.
 
 ### Font Information Access
 
-You can access detailed font information for any text element:
+Inspect font details of text elements.
 
 ```python
-element = page.find('text')
-print(element)  # Shows font name, size, style, etc.
-print(element.font_info())  # Shows all available font properties
+# Find the first text element on the page
+first_text = page.find('text')
+first_text # Display basic info
+```
 
-# Check text style properties
-if element.bold:
-    print("This is bold text")
-if element.italic:
-    print("This is italic text")
+```python
+# Highlight the first text element
+if first_text:
+    page.highlight(first_text).show()
+```
 
-# Get font name and size
-font_name = element.fontname
-font_size = element.size
+```python
+# Get detailed font properties dictionary
+if first_text:
+    first_text.font_info()
+```
 
-# Find elements with specific font attributes
+```python
+# Check specific style properties directly
+if first_text:
+    f"Is Bold: {first_text.bold}, Is Italic: {first_text.italic}, Font: {first_text.fontname}, Size: {first_text.size}"
+```
+
+```python
+# Find elements by font attributes (adjust selectors)
+# Example: Find Arial fonts
 arial_text = page.find_all('text[fontname*=Arial]')
-big_text = page.find_all('text[size>=14]')
+arial_text # Display list of found elements
+```
+
+```python
+# Highlight Arial text found
+if arial_text:
+    page.highlight_all(arial_text, color="purple").show()
+```
+
+```python
+# Example: Find large text (e.g., size >= 16)
+large_text = page.find_all('text[size>=16]')
+large_text
+```
+
+```python
+# Highlight large text found
+if large_text:
+    page.highlight_all(large_text, color="green").show()
 ```
 
 ## Working with Font Styles
 
-Natural PDF can group text by font style, which helps with identifying headings, body text, etc.:
+Analyze and group text elements by their computed font *style*, which combines attributes like font name, size, boldness, etc., into logical groups.
 
 ```python
-# Analyze text styles on the page
+# Analyze styles on the page
+# This returns a dictionary mapping style names to ElementList objects
 text_styles = page.analyze_text_styles()
-
-# Extract text from a specific style
-if "Text Style 1" in text_styles:
-    heading_style = text_styles["Text Style 1"]
-    headings_text = heading_style.extract_text()
-    
-# Visualize the text styles
-page.highlight_text_styles()
-page.save_image("text_styles.png")
-
-# Combine with highlight_all
-page.highlight_all(include_text_styles=True)
+f"Found {len(text_styles)} distinct text styles."
 ```
-
-### Working with Font Variants
-
-Some PDFs use font variants (with prefixes like 'AAAAAB+') to distinguish visually different text:
 
 ```python
-# Find text with a specific font variant
-variant_text = page.find_all('text[font-variant="AAAAAB"]')
-
-# Filter by both font variant and other attributes
-bold_variant = page.find_all('text[font-variant="AAAAAB"][size>=10]:bold')
+# Show the identified style names and the number of elements in each
+{name: len(group) for name, group in text_styles.items()}
 ```
+
+```python
+# Highlight elements belonging to the first identified style
+if text_styles:
+    first_style_name = list(text_styles.keys())[0]
+    first_style_group = text_styles[first_style_name]
+    page.highlight_all(first_style_group, color="teal").show()
+    f"Highlighted style: {first_style_name}"
+```
+
+```python
+# Extract text just from this style group
+if text_styles:
+    first_style_group.extract_text(delimiter=" ")[:500] # Show sample
+```
+
+```python
+# Visualize all text styles with distinct colors automatically assigned
+page.highlight_text_styles().show()
+```
+
+*Font variants (e.g., `AAAAAB+FontName`) are also accessible via the `font-variant` attribute selector: `page.find_all('text[font-variant="AAAAAB"]')`.*
 
 ## Reading Order
 
-Text extraction respects the natural reading order of the document (top-to-bottom, left-to-right by default):
+Text extraction respects the natural reading order (top-to-bottom, left-to-right by default). `page.find_all('text')` returns elements already sorted this way.
 
 ```python
-# Extract with default reading order
-text = page.extract_text()
+# Get first 5 text elements in reading order
+elements_in_order = page.find_all('text')
+elements_in_order[:5]
+```
 
-# Get elements in reading order to process manually
-elements = page.find_all('text')  # Already sorted in reading order
-for element in elements:
-    print(element.text)
+```python
+# Text extracted via page.extract_text() respects this order automatically
+# (Result already shown in Basic Text Extraction section)
+page.extract_text()[:100]
 ```
 
 ## Element Navigation
 
-You can navigate between elements in reading order:
+Move between elements sequentially based on reading order using `.next()` and `.previous()`.
 
 ```python
-# Find the next element in reading order
-element = page.find('text:contains("Introduction")')
-next_element = element.next()  # Next element regardless of type
-next_text = element.next('text')  # Next text element
-next_bold = element.next('text:bold', limit=20)  # Next bold text within 20 elements
+# Find an element to start from (adjust selector)
+start_nav_element = page.find('text:contains("Results")')
 
-# Find the previous element in reading order
-prev_element = element.prev()  # Previous element regardless of type
-prev_heading = element.prev('text[size>=12]')  # Previous large text
+if start_nav_element:
+    page.highlight(start_nav_element, color="yellow").show()
+    f"Starting navigation from: {start_nav_element.text[:30]}..."
+else:
+    "Could not find 'Results' element to start navigation demo."
 
-# Find the nearest element by Euclidean distance
-nearest_element = element.nearest('rect')  # Nearest rectangle
-nearest_with_limit = element.nearest('text:contains("Table")', max_distance=100)  # Within 100 points
-```
-
-## Working with OCR Text
-
-For scanned documents, you can extract text using OCR:
-
-```python
-# Enable OCR when opening the PDF
-pdf = PDF('scanned_document.pdf', ocr=True)
-
-# Extract text with OCR
-text = page.extract_text()  # OCR applied automatically
-
-# Force OCR even if text is present
-ocr_text = page.extract_text(ocr=True)
-
-# Find and extract only OCR text
-ocr_elements = page.find_all('text[source=ocr]')
-ocr_only_text = ocr_elements.extract_text()
-
-# Filter OCR elements by confidence
-high_confidence = page.find_all('text[source=ocr][confidence>=0.8]')
-```
-
-## Complete Text Extraction Example
-
-Here's a complete example that demonstrates various text extraction techniques:
-
-```python
-from natural_pdf import PDF
-import re
-
-# Open a PDF with text extraction options
-pdf = PDF(
-    "document.pdf",
-    keep_spaces=True,  # Enable multi-word searches
-    font_attrs=["fontname", "size", "bold", "italic"]  # Font-aware text extraction
-)
-
-# Add document-wide exclusions for headers and footers
-pdf.add_exclusion(
-    lambda page: page.find('text:contains("Page")').below() if page.find('text:contains("Page")') else None,
-    label="footers"
-)
-
-# Process the first page
-page = pdf.pages[0]
-
-# Analyze text styles
-styles = page.analyze_text_styles()
-print(f"Found {len(styles)} distinct text styles")
-
-# Extract headings (largest text style)
-largest_style = None
-largest_size = 0
-for style_name, elements in styles.items():
-    if elements and hasattr(elements[0], 'size'):
-        if elements[0].size > largest_size:
-            largest_size = elements[0].size
-            largest_style = elements
-
-if largest_style:
-    headings = largest_style
-    print("Headings:")
-    for heading in headings:
-        print(f"  - {heading.text}")
-    
-    # Process sections under each heading
-    for heading in headings:
-        # Find the next heading or end of page
-        next_heading = heading.next('text[size>={size}]'.format(size=largest_size-1))
-        if next_heading:
-            section = heading.below(until=next_heading, include_until=False)
-        else:
-            section = heading.below()
-            
-        print(f"\nSection: {heading.text}")
-        section_text = section.extract_text()
-        print(section_text[:200] + "..." if len(section_text) > 200 else section_text)
-        
-        # Find specific information with regex
-        if "financial" in heading.text.lower():
-            # Look for currency amounts
-            amounts = re.findall(r'\$\d+(?:,\d+)*(?:\.\d+)?', section_text)
-            if amounts:
-                print("Found amounts:", amounts)
-
-# Extract all text without headers/footers
-print("\nFull document text (without headers/footers):")
-all_text = pdf.extract_text()
-print(all_text[:500] + "..." if len(all_text) > 500 else all_text)
-```
-
-## Excluding Headers and Footers
-
-You can exclude specific regions of the page (like headers and footers) from text extraction:
-
-```mermaid
-graph TD
-    subgraph "PDF Content Extraction"
-        subgraph "Original PDF Page"
-            header1[Header Text]
-            content1[Main Content]
-            footer1[Footer Text]
-            
-            header1 --- content1
-            content1 --- footer1
-        end
-        
-        subgraph "After Applying Exclusions"
-            header2[Excluded Header]
-            content2[Extracted Content]
-            footer2[Excluded Footer]
-            
-            header2 -.- content2
-            content2 -.- footer2
-        end
-    end
-    
-    style header1 fill:#ffcccc,stroke:#333
-    style footer1 fill:#ffcccc,stroke:#333
-    style content1 fill:#ccffcc,stroke:#333
-    
-    style header2 fill:#ffcccc,stroke:#333,stroke-dasharray: 5 5
-    style footer2 fill:#ffcccc,stroke:#333,stroke-dasharray: 5 5
-    style content2 fill:#ccffcc,stroke:#333
 ```
 
 ```python
-# Add exclusion zones
-# Exclude header (top of page)
-header = page.find('text:contains("Report Title")')
-if header:
-    page.add_exclusion(header.above())
-    
-# Exclude footer (bottom of page)
-footer = page.find('text:contains("Page")')
-if footer:
-    page.add_exclusion(footer.below())
-    
-# Extract text without headers/footers
-text = page.extract_text()  # Exclusions applied by default
-text = page.extract_text(apply_exclusions=False)  # Ignore exclusions
+# Find the *very next* element (any type)
+if start_nav_element:
+    next_any = start_nav_element.next()
+    if next_any:
+        page.highlight(next_any, color="orange").show()
+        f"Next element (any type): {next_any}"
+```
 
-# PDF-level exclusion with lambdas (applies to all pages)
-pdf.add_exclusion(
-    lambda page: page.find('text:contains("Header")').above() if page.find('text:contains("Header")') else None,
-    label="headers"
-)
+```python
+# Find the next *text* element specifically
+if start_nav_element:
+    next_text = start_nav_element.next('text')
+    if next_text:
+        page.highlight(next_text, color="lightblue").show()
+        f"Next text element: {next_text.text[:50]}..."
+```
 
-pdf.add_exclusion(
-    lambda page: page.find_all('line')[-1].below() if page.find_all('line') else None,
-    label="footers"
-)
+```python
+# Find the *previous* element (any type)
+if start_nav_element:
+    prev_any = start_nav_element.prev()
+    if prev_any:
+        # Highlight on a fresh copy to avoid overlapping highlights
+        page.copy().highlight(start_nav_element, color="yellow").highlight(prev_any, color="pink").show()
+        f"Previous element (any type): {prev_any}"
+```
 
-# Extract text with exclusions
-text = pdf.extract_text()
+```python
+# Find the previous element matching a selector (e.g., large text)
+if start_nav_element:
+    prev_large_text = start_nav_element.prev('text[size>=14]') # Adjust selector/size
+    if prev_large_text:
+        page.copy().highlight(start_nav_element, color="yellow").highlight(prev_large_text, color="lightgreen").show()
+        f"Previous large text element: {prev_large_text.text[:50]}..."
+
 ```
 
 ## Next Steps

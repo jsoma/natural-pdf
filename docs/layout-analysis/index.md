@@ -1,301 +1,281 @@
 # Document Layout Analysis
 
-Natural PDF includes document layout analysis capabilities that can automatically detect the structure of your documents, including headings, paragraphs, tables, and other elements.
+Natural PDF can automatically detect the structure of a document (titles, paragraphs, tables, figures) using layout analysis models. This guide shows how to use this feature.
 
-## Layout Analysis Models Comparison
+## Setup
 
-Natural PDF supports multiple layout analysis models:
-
-| Feature | YOLO Model | PaddleOCR Layout | Table Transformer (TATR) |
-|---------|------------|------------------|--------------------------|
-| **Primary Focus** | General document structure | Text-oriented layout | Table structure |
-| **Region Types** | 10+ types (titles, text, tables, figures, etc.) | 5 types (text, title, list, table, figure) | 4 types (table, row, column, header) |
-| **Table Detection** | Detects tables as a unit | Detects tables as a unit | Detailed table structure |
-| **Speed** | Fast | Medium | Slower |
-| **OCR Integration** | Works independently | Integrated with PaddleOCR | Works independently |
-| **Best For** | General document analysis | Text-heavy documents | Table extraction |
-| **Default in Library** | Yes | No | No |
-
-## Model Selection Guide
-
-```mermaid
-graph LR
-    A{Need?} --> B{Tables?}
-    B -->|Detailed structure| C[TATR]
-    B -->|Just boundaries| D[YOLO]
-    B -->|No tables| E{Document type?}
-    
-    E -->|General| D
-    E -->|Text-heavy| F[PaddleOCR]
-    
-    style C fill:#bbf,stroke:#333
-    style D fill:#bfb,stroke:#333
-    style F fill:#fbf,stroke:#333
-```
-
-## Available Layout Models
-
-Natural PDF supports multiple layout analysis models:
-
-1. **YOLO** (default) - General document layout detection:
-   - `title`: Document titles and headings
-   - `plain-text`: Regular paragraph text
-   - `table`: Tabular data
-   - `figure`: Images and figures
-   - `figure_caption`: Captions for figures
-   - `table_caption`: Captions for tables
-   - And several other specialized region types
-
-2. **Table Transformer (TATR)** - Detailed table structure analysis:
-   - `table`: The complete table
-   - `table-row`: Individual rows
-   - `table-column`: Individual columns
-   - `table-column-header`: Column headers
-
-## Basic Layout Analysis
-
-To analyze the layout of a document:
+We'll use a sample PDF that includes various layout elements.
 
 ```python
 from natural_pdf import PDF
+from pathlib import Path
 
-pdf = PDF('document.pdf')
+# Ensure layout analysis models are installed if needed:
+# !pip install natural-pdf[layout_yolo]  # Default
+# !pip install natural-pdf[layout_paddle] # Optional
+# !pip install natural-pdf[layout_tatr]   # Optional (for tables)
+
+# Path to your sample PDF
+pdf_path = Path("../tutorials/pdfs/01-practice.pdf") # Or another suitable PDF
+
+# Load the PDF
+pdf = PDF(pdf_path)
+
+# Select the first page
 page = pdf.pages[0]
 
-# Analyze the layout
-# Uses the default engine (currently YOLO)
-# Requires natural-pdf[layout_yolo] for default
-page.analyze_layout()
+# Display the page
+page.show()
+```
 
+## Running Basic Layout Analysis
+
+Use the `analyze_layout()` method. By default, it uses the YOLO model.
+
+```python
+# Analyze the layout using the default engine (YOLO)
+# This adds 'region' elements to the page
+page.analyze_layout()
+```
+
+```python
 # Find all detected regions
 regions = page.find_all('region')
-print(f"Found {len(regions)} regions")
+len(regions) # Show how many regions were detected
+```
 
-# Highlight all detected regions
-page.highlight_layout()
-page.save_image("layout_detection.png")
+```python
+# Each region has a 'type' attribute (e.g., 'title', 'plain-text', 'table')
+# and a 'confidence' score.
+if regions:
+    first_region = regions[0]
+    f"First region: type='{first_region.type}', confidence={first_region.confidence:.2f}"
+```
+
+## Visualizing Detected Layout
+
+Use `highlight_all()` or `show()` on the detected regions.
+
+```python
+# Highlight all detected regions, colored by type
+page.highlight_all(
+    regions, # Highlight only the regions we just found
+    group_by='type', # Color-code based on the 'type' attribute
+    label_attribute='type' # Add labels showing the type
+).show(
+    legend_position='right' # Show a legend for the colors
+)
 ```
 
 ## Finding Specific Region Types
 
-You can find specific types of regions:
+Use attribute selectors to find regions of a specific type.
 
 ```python
-# Find titles/headings
+# Find all detected titles
 titles = page.find_all('region[type=title]')
+titles
+```
 
-# Find paragraphs (plain text)
-paragraphs = page.find_all('region[type=plain-text]')
+```python
+# Highlight just the titles
+if titles:
+    page.highlight_all(titles, color="blue", label="Title").show()
+```
 
-# Find tables
+```python
+# Find all detected tables
 tables = page.find_all('region[type=table]')
+tables
+```
 
-# Find figures
-figures = page.find_all('region[type=figure]')
+```python
+# Highlight just the tables
+if tables:
+    page.highlight_all(tables, color="green", label="Table").show()
+```
+
+```python
+# Find plain text regions
+paragraphs = page.find_all('region[type=plain-text]')
+paragraphs
+```
+
+```python
+# Highlight plain text regions
+if paragraphs:
+    page.highlight_all(paragraphs, color="orange", label="Plain Text", alpha=0.3).show()
 ```
 
 ## Working with Layout Regions
 
-Once you have detected regions, you can work with them like any other region:
+Detected regions are like any other `Region` object. You can extract text, find elements within them, etc.
 
 ```python
-# Extract text from a table region
+# Get the first detected table region
 if tables:
-    table = tables[0]
-    table_text = table.extract_text()
-    print(f"Table content: {table_text}")
-    
-    # Highlight the table
-    table.highlight(color=(0, 0, 1, 0.2), label="Table")
-    
-    # Get all text elements within the table
-    table_elements = table.find_all('text')
+    table_region = tables[0]
+
+    # Extract text from the table region
+    table_region.extract_text(layout=True) # Use layout=True for better table formatting
 ```
 
-## Layout Models
-
-Natural PDF supports multiple layout detection models:
-
 ```python
-# Use the default engine (e.g., YOLO)
-page.analyze_layout()
-
-# Use the PaddleOCR layout model (if available)
-page.analyze_layout(engine="paddle")
-
-# Use the Table Transformer model (if available)
-page.analyze_layout(engine="tatr")
+# Extract the table structure using the region
+if tables:
+    table_region.extract_table()
 ```
 
-## Controlling Detection Confidence
-
-You can control the confidence threshold for detection:
-
 ```python
-# Use a higher confidence threshold for more reliable detections
-page.analyze_layout(engine="yolo", confidence=0.5)
-
-# Use a lower threshold to detect more regions
-page.analyze_layout(engine="yolo", confidence=0.2)
+# Find all text elements *inside* the first title region
+if titles:
+    title_region = titles[0]
+    text_in_title = title_region.find_all('text')
+    text_in_title.highlight().show()
 ```
 
-## Visualizing Layout Detection
+## Using Different Layout Models
 
-You can visualize the detected layout:
+Natural PDF supports multiple engines (`yolo`, `paddle`, `tatr`). Specify the engine when calling `analyze_layout`.
+
+*Note: Using different engines requires installing the corresponding extras (e.g., `natural-pdf[layout_paddle]`).* `yolo` is the default.
 
 ```python
-# Find detected regions first
-page.analyze_layout()
-
-# Show temporary preview, colored by region type
-preview = page.find_all('region').show(group_by='type')
-preview # Displays in Jupyter
-
-# Alternatively, color-code persistent highlights by confidence level
-high_conf = page.find_all('region[confidence>=0.8]')
-med_conf = page.find_all('region[confidence>=0.5][confidence<0.8]')
-low_conf = page.find_all('region[confidence<0.5]')
-
-high_conf.highlight(color="green", label="High Confidence")
-med_conf.highlight(color=(1, 1, 0, 0.3), label="Medium Confidence")
-low_conf.highlight(color=(1, 0, 0, 0.3), label="Low Confidence")
-
-# View the persistent highlights
-page.viewer()
+# Analyze using PaddleOCR (if installed)
+try:
+    page.analyze_layout(engine="paddle")
+    paddle_regions = page.find_all('region[model=paddle]')
+    f"Found {len(paddle_regions)} regions using PaddleOCR."
+except Exception as e:
+    f"Paddle engine not available or failed: {e}"
 ```
 
-## Table Structure Detection
-
-The TATR (Table Transformer) model can detect detailed table structure:
-
 ```python
-# Analyze table structure
-page.analyze_layout(engine="tatr")
-
-# Find table structure elements
-tables = page.find_all('region[type=table]')
-rows = page.find_all('region[type=table-row]')
-columns = page.find_all('region[type=table-column]')
-headers = page.find_all('region[type=table-column-header]')
-
-# Highlight table structure
-tables.highlight(color=(0, 0, 1, 0.2), label="Tables")
-rows.highlight(color=(1, 0, 0, 0.2), label="Rows")
-columns.highlight(color=(0, 1, 0, 0.2), label="Columns")
-headers.highlight(color=(0.5, 0, 0.5, 0.2), label="Headers")
-
-# Save the visualization
-page.save_image("table_structure.png", labels=True)
+# Highlight regions detected by Paddle, colored by type
+if 'paddle_regions' in locals() and paddle_regions:
+    page.highlight_all(paddle_regions, group_by='type', label_attribute='type').show()
 ```
 
-## Combined Layout Analysis
+```python
+# Analyze using Table Transformer (TATR) - specialized for tables
+try:
+    page.analyze_layout(engine="tatr")
+    tatr_regions = page.find_all('region[model=tatr]')
+    f"Found {len(tatr_regions)} regions using TATR."
+except Exception as e:
+    f"TATR engine not available or failed: {e}"
 
-You can combine multiple models for more comprehensive analysis:
+```
 
 ```python
-# Find regions generated by a specific engine using the 'model' attribute
-yolo_regions = page.find_all('region[model=yolo]')
-tatr_regions = page.find_all('region[model=tatr]')
+# Highlight TATR regions (table, row, column, header), colored by type
+if 'tatr_regions' in locals() and tatr_regions:
+    page.highlight_all(tatr_regions, group_by='type', label_attribute='type', alpha=0.2).show()
+```
 
-# Show preview colored by model engine
-page.find_all('region').show(group_by='model')
+*Note: Calling `analyze_layout` multiple times (even with the same engine) can add duplicate regions. You might want to use `page.clear_regions()` first, or filter by model using `region[model=yolo]`.* 
+
+## Controlling Confidence Threshold
+
+Filter detections by their confidence score.
+
+```python
+# Re-run YOLO analysis (clearing previous results might be good practice)
+page.clear_regions()
+page.analyze_layout(engine="yolo")
+
+# Find only high-confidence regions (e.g., >= 0.8)
+high_conf_regions = page.find_all('region[confidence>=0.8]')
+len(high_conf_regions)
+```
+
+```python
+# Highlight only high-confidence regions
+if high_conf_regions:
+    page.highlight_all(high_conf_regions, color="darkgreen", label=">80% Conf").show()
+```
+
+```python
+# You can also set the threshold during analysis
+page.clear_regions()
+page.analyze_layout(engine="yolo", confidence=0.8) # Only add regions >= 0.8 confidence
+len(page.find_all('region'))
+```
+
+## Table Structure with TATR
+
+The TATR engine provides detailed table structure elements (`table`, `table-row`, `table-column`, `table-column-header`). This is very useful for precise table extraction.
+
+```python
+# Ensure TATR analysis has been run
+try:
+    page.clear_regions() # Start fresh for clarity
+    page.analyze_layout(engine="tatr")
+    "TATR analysis complete."
+except Exception as e:
+    f"TATR engine not available or failed: {e}"
+```
+
+```python
+# Find different structural elements from TATR
+tables = page.find_all('region[type=table][model=tatr]')
+rows = page.find_all('region[type=table-row][model=tatr]')
+cols = page.find_all('region[type=table-column][model=tatr]')
+hdrs = page.find_all('region[type=table-column-header][model=tatr]')
+
+f"Found: {len(tables)} tables, {len(rows)} rows, {len(cols)} columns, {len(hdrs)} headers (from TATR)"
+```
+
+```python
+# Visualize the detailed structure
+img = page.copy() # Work on a copy
+if tables: img.highlight_all(tables, color=(0, 0, 1, 0.1), label="Table")
+if rows: img.highlight_all(rows, color=(1, 0, 0, 0.1), label="Row")
+if cols: img.highlight_all(cols, color=(0, 1, 0, 0.1), label="Column")
+if hdrs: img.highlight_all(hdrs, color=(1, 0, 1, 0.2), label="Header")
+
+img.show()
+```
+
+### Enhanced Table Extraction with TATR
+
+When a `region[type=table]` comes from the TATR model, `extract_table()` can use the underlying row/column structure for more robust extraction.
+
+```python
+# Find the TATR table region again
+tatr_table = page.find('region[type=table][model=tatr]')
+
+if tatr_table:
+    # This extraction uses the detected rows/columns
+    tatr_table.extract_table()
+else:
+    "TATR table region not found."
 ```
 
 ## OCR + Layout Analysis
 
-For scanned documents, you can combine OCR with layout analysis:
+For scanned documents, combine OCR with layout analysis.
 
 ```python
-# Enable OCR
-pdf = PDF('scanned_document.pdf', ocr=True)
-page = pdf.pages[0]
+# Example with a scanned PDF (if available)
+# pdf_scanned_path = Path("../path/to/scanned.pdf")
+# if pdf_scanned_path.exists():
+#     pdf_scan = PDF(pdf_scanned_path, ocr=True) # Enable OCR on load
+#     scan_page = pdf_scan.pages[0]
+#     scan_page.apply_ocr() # Run OCR explicitly if not done on load
+#     scan_page.analyze_layout() # Now run layout analysis
+#     scan_page.highlight_all(scan_page.find_all('region'), group_by='type').show()
+# else:
+#     "Scanned PDF example skipped."
 
-# Apply OCR first
-page.apply_ocr()
-
-# Then analyze layout
-page.analyze_layout()
-
-# Find text in detected regions
-title_region = page.find('region[type=title]')
-if title_region:
-    title_text = title_region.extract_text()
-    print(f"Title: {title_text}")
+"Example for scanned PDFs commented out."
 ```
-
-## Region Attributes
-
-Layout regions have additional attributes you can access:
-
-```python
-region = page.find('region')
-if region:
-    # Get region type and confidence
-    region_type = region.type
-    confidence = region.confidence
-    model = region.model
-    
-    # Print region info
-    print(f"Region type: {region_type}, Confidence: {confidence:.2f}, Model: {model}")
-```
-
-## Region Images
-
-You can extract images of detected regions:
-
-```python
-# Find a table region
-table = page.find('region[type=table]')
-if table:
-    # Extract an image of just the table
-    table_image = table.to_image(resolution=150)
-    table.save_image("table.png")
-```
-
-## Table Structure Detection
-
-For detailed table analysis, use the Table Transformer (TATR) model:
-
-```python
-# Analyze table structure
-page.analyze_layout(engine="tatr")
-
-# Find table components
-tables = page.find_all('region[type=table]')
-rows = page.find_all('region[type=table-row]')
-columns = page.find_all('region[type=table-column]')
-headers = page.find_all('region[type=table-column-header]')
-
-# Highlight the table structure
-tables.highlight(color="blue", label="Tables")
-rows.highlight(color="red", label="Rows")
-columns.highlight(color="green", label="Columns")
-headers.highlight(color="purple", label="Headers")
-
-# Extract the table data
-if tables:
-    table_data = tables[0].extract_table(method="tatr")
-    print(table_data)
-```
-
-For more details on table extraction, visit the [Tables documentation](../tables/index.md).
-
-## Parameter Tuning Guide
-
-The right confidence threshold improves results:
-
-| Document Type | Recommended Confidence | Notes |
-|---------------|------------------------|-------|
-| Clean, well-structured | 0.5 - 0.7 | Higher threshold for cleaner results |
-| Average quality | 0.3 - 0.5 | Balance between coverage and accuracy |
-| Poor quality/scanned | 0.2 - 0.3 | Lower threshold to catch more regions |
-| Mixed content | 0.3 | Good general-purpose starting point |
 
 ## Next Steps
 
-With layout analysis, you can:
+Layout analysis provides regions that you can use for:
 
-- [Extract tables](../tables/index.md) from your documents
-- [Ask questions](../document-qa/index.md) about specific regions
-- [Work with regions](../regions/index.md) for more precise extraction
-- [Learn about PDF extraction challenges](../explanations/pdf-extraction-challenges.md)
+- [Table Extraction](../tables/index.md): Especially powerful with TATR regions.
+- [Text Extraction](../text-extraction/index.md): Extract text only from specific region types (e.g., paragraphs).
+- [Section Extraction](../section-extraction/index.md): Use detected titles/headings to divide the document.
+- [Document QA](../document-qa/index.md): Focus question answering on specific detected regions.

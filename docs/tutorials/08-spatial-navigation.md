@@ -1,10 +1,10 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 8: Spatial Navigation
+# Spatial Navigation
 
 Spatial navigation lets you work with PDF content based on the physical layout of elements on the page. It's perfect for finding elements relative to each other and extracting information in context.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 from natural_pdf import PDF

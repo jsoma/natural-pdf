@@ -1,10 +1,10 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 9: Section Extraction
+# Section Extraction
 
 Documents are often organized into logical sections like chapters, articles, or content blocks. This tutorial shows how to extract these sections using natural-pdf, using a library weeding log as an example.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 import natural_pdf

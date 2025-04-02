@@ -1,5 +1,32 @@
 /* Natural PDF - Minimal Custom Styling */
 
+.jp-InputPrompt, .jp-OutputPrompt {
+  display: none !important;
+}
+
+.jupyter-wrapper .CodeMirror {
+  font-size: 0.85em !important;
+}
+
+.highlight-ipynb pre {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+
+.CodeMirror pre {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+
+.jp-CodeMirrorEditor {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.jupyter-wrapper{ 
+  --jp-code-font-size: 0.85em !important;
+}
+
 /* Typography improvements */
 .md-typeset h1 {
   font-weight: 400;

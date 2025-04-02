@@ -1,8 +1,8 @@
-```python {"tags": ["remove-for-docs"]}
+# Loading and Basic Text Extraction
+
+```python
 #%pip install "natural-pdf[all]"
 ```
-
-# Tutorial 1: Loading and Basic Text Extraction
 
 In this tutorial, we'll learn how to:
 

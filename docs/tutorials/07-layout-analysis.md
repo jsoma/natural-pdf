@@ -1,12 +1,12 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 7: Layout Analysis
+# Layout Analysis
 
 Beyond simple text and lines, `natural-pdf` can use layout analysis models (like YOLO or DETR) to identify semantic regions within a page, such as paragraphs, tables, figures, headers, etc. This provides a higher-level understanding of the document structure.
 
 Let's analyze the layout of our `01-practice.pdf`.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 from natural_pdf import PDF
@@ -55,9 +55,12 @@ table_data
 
 Layout analysis provides structured `Region` objects. You can filter these regions by their predicted `type` and then perform actions like visualization or extracting text/tables specifically from those regions.
 
-!!! note "Layout Models and Configuration"
+<div class="admonition note">
+<p class="admonition-title">Layout Models and Configuration</p>
+
     *   Layout analysis requires external models. Ensure these are installed.
     *   You can specify different models (`engine='yolo'`, `engine='detr'`, `engine='paddle'`) or configurations (confidence thresholds, specific classes) via arguments to `page.analyze_layout()`. Different models may perform better on different document types.
     *   The detected regions are added to the page and can be found using selectors like `page.find_all('region[type=paragraph]')`.
+</div>
 
 ``` 

@@ -101,7 +101,7 @@ nav:
 
 markdown_extensions:
   - pymdownx.highlight:
-      pygments_style: fruity
+      pygments_style: solarized-light
       use_pygments: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
@@ -125,24 +125,19 @@ plugins:
       ignore:
         - "tutorials/*.md"
       execute: false
-      remove_tag_config:
-        remove_cell_tags:
-          - remove_cell_tags
-        remove_input_tags:
-          - remove_cell_tags
-        remove_output_tags:
-          - "remove_output"  # Tags that will remove just the output
+  - exclude:
+      glob:
+        - tutorials/*.md
   - mkdocstrings:
       default_handler: python
       handlers:
         python:
-          rendering:
+          options:
             show_source: true
             show_category_heading: true
             show_root_heading: true
             show_object_full_path: true
             heading_level: 3
-          selection:
             docstring_style: google
             docstring_options:
               replace_admonitions: true

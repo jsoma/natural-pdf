@@ -1,14 +1,14 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 6: Document Question Answering (QA)
+# Document Question Answering (QA)
 
 Sometimes, instead of searching for specific text patterns, you just want to ask the document a question directly. `natural-pdf` includes an extractive Question Answering feature.
 
 "Extractive" means it finds the literal answer text within the document, rather than generating a new answer or summarizing.
 
 Let's ask our `01-practice.pdf` a few questions.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 from natural_pdf import PDF
@@ -82,7 +82,10 @@ df_results
 
 This shows how you can iterate through questions, collect the answer dictionaries, and then create a structured DataFrame, making it easy to review questions, answers, and their confidence levels together.
 
-!!! note "QA Model and Limitations"
+<div class="admonition note">
+<p class="admonition-title">QA Model and Limitations</p>
+
     *   The QA system relies on underlying transformer models. Performance and confidence scores vary.
     *   It works best for questions where the answer is explicitly stated. It cannot synthesize information or perform calculations (e.g., counting items might fail or return text containing a number rather than the count itself).
-    *   You can potentially specify different QA models via the `model=` argument in `page.ask()` if others are configured. 
+    *   You can potentially specify different QA models via the `model=` argument in `page.ask()` if others are configured.
+</div> 

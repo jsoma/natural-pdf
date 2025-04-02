@@ -1,12 +1,13 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 5: Excluding Content (Headers/Footers)
+# Excluding Content (Headers/Footers)
 
 Often, PDFs have repeating headers or footers on every page that you want to ignore when extracting the main content. `natural-pdf` allows you to define exclusion regions.
 
 We'll use a different PDF for this example, which has a distinct header and footer section: `0500000US42007.pdf`.
+
+```python
+#%pip install "natural-pdf[all]"
+```
+
 
 ```python
 from natural_pdf import PDF
@@ -96,7 +97,10 @@ page.to_image()
 
 This element-based approach is usually more reliable as it adapts to the content's position, but it depends on finding consistent boundary elements (like lines or specific text markers).
 
-!!! note "Applying Exclusions"
+<div class="admonition note">
+<p class="admonition-title">Applying Exclusions</p>
+
     *   `pdf.add_exclusion(func)` applies the exclusion function (which takes a page and returns a region) to *all* pages in the PDF.
     *   `page.add_exclusion(region)` adds an exclusion region only to that specific page.
-    *   `extract_text(use_exclusions=False)` can be used to temporarily disable exclusions. 
+    *   `extract_text(use_exclusions=False)` can be used to temporarily disable exclusions.
+</div> 

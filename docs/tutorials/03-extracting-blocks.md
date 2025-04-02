@@ -1,12 +1,13 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 3: Extracting Text Blocks
+# Extracting Text Blocks
 
 Often, you need a specific section, like a paragraph between two headings. You can find a starting element and select everything below it until an ending element.
 
 Let's extract the "Summary" section from `01-practice.pdf`. It starts after "Summary:" and ends before the thick horizontal line.
+
+```python
+#%pip install "natural-pdf[all]"
+```
+
 
 ```python
 from natural_pdf import PDF
@@ -40,6 +41,8 @@ page.to_image()
 
 This selects the elements using `.below(until=...)` and extracts their text. The second code block displays the page image with the visualized section.
 
-!!! note "Selector Specificity"
+<div class="admonition note">
+<p class="admonition-title">Selector Specificity</p>
 
     We used `line[height > 1]` to find the thick horizontal line. You might need to adjust selectors based on the specific PDF structure. Inspecting element properties can help you find reliable start and end markers.
+</div>

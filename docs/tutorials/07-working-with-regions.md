@@ -1,10 +1,10 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 7: Working with Regions
+# Working with Regions
 
 Regions are rectangular areas on a page that let you focus on specific parts of a document. They're perfect for extracting text from defined areas, finding elements within certain boundaries, and working with document sections.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 from natural_pdf import PDF

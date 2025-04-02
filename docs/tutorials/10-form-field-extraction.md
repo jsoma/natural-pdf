@@ -1,10 +1,10 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 10: Form Field Extraction
+# Form Field Extraction
 
 Business documents like invoices, forms, and applications contain field-value pairs that need to be extracted. This tutorial shows how to identify and extract these form fields.
+
+```python
+#%pip install "natural-pdf[all]"
+```
 
 ```python
 from natural_pdf import PDF

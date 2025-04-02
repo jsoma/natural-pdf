@@ -1,12 +1,13 @@
-```python {"tags": ["remove-for-docs"]}
-#%pip install "natural-pdf[all]"
-```
-
-# Tutorial 2: Finding Specific Elements
+# Finding Specific Elements
 
 Extracting all the text is useful, but often you need specific pieces of information. `natural-pdf` lets you find elements using selectors, similar to CSS.
 
 Let's find the "Site" and "Date" information from our `01-practice.pdf`:
+
+```python
+#%pip install "natural-pdf[all]"
+```
+
 
 ```python
 from natural_pdf import PDF
@@ -112,11 +113,12 @@ important_text = page.find_all('text[size>=12][style~=bold]:contains("Critical")
 highlighted_text = page.find('rect').find_all('text[color~=red]')
 ```
 
-!!! note "Handling Missing Elements"
+<div class="admonition note">
+<p class="admonition-title">Handling Missing Elements</p>
 
     In these examples, we know certain elements exist in the PDF. In real-world scenarios, `page.find()` might not find a match and would return `None`. Production code should check for this:
 
-    ```python
+    ```py
     site_label = page.find('text:contains("Site:")')
     if site_label:
         # Found it! Proceed...
@@ -126,19 +128,22 @@ highlighted_text = page.find('rect').find_all('text[color~=red]')
         # Didn't find it, handle appropriately...
         "Warning: 'Site:' label not found."
     ```
+</div>
 
-!!! tip "Visual Debugging"
+<div class="admonition tip">
+<p class="admonition-title">Visual Debugging</p>
 
     When working with complex selectors, it's helpful to visualize what you're finding:
 
-    ```python
+    ```py
     # Clear any existing highlights
     page.clear_highlights()
-    
+
     # Find and highlight elements
     elements = page.find_all('text[color~=red]')
     elements.highlight(color="red", label="Red Text")
-    
+
     # Display the page to see what was found
     page.to_image(width=800)
-    ``` 
+    ```
+</div> 
