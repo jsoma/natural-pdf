@@ -7,7 +7,8 @@ from PIL import Image
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.region import Region
-    from natural_pdf.elements.base import Element, DirectionalMixin
+    from natural_pdf.elements.base import Element
+    from natural_pdf.elements.collections import ElementCollection
 
 
 class DirectionalMixin:
@@ -17,7 +18,7 @@ class DirectionalMixin:
     
     def _direction(self, direction: str, size: Optional[float] = None,
                    cross_size: str = "full", include_element: bool = False,
-                   until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> Union['Element', 'Region']:
+                   until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Protected helper method to create a region in a specified direction relative to this element/region.
 
@@ -154,7 +155,7 @@ class DirectionalMixin:
         return result
 
     def above(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
-             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> Union['Element', 'Region']:
+             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Select region above this element/region.
         
@@ -180,7 +181,7 @@ class DirectionalMixin:
         )
 
     def below(self, height: Optional[float] = None, width: str = "full", include_element: bool = False,
-              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> Union['Element', 'Region']:
+              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Select region below this element/region.
         
@@ -206,7 +207,7 @@ class DirectionalMixin:
         )
 
     def left(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
-             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> Union['Element', 'Region']:
+             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Select region to the left of this element/region.
         
@@ -232,7 +233,7 @@ class DirectionalMixin:
         )
 
     def right(self, width: Optional[float] = None, height: str = "full", include_element: bool = False,
-              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> Union['Element', 'Region']:
+              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> 'Region':
         """
         Select region to the right of this element/region.
         
@@ -256,6 +257,86 @@ class DirectionalMixin:
             include_endpoint=include_endpoint,
             **kwargs
         )
+
+    def expand(self, 
+              left: float = 0, 
+              right: float = 0, 
+              top_expand: float = 0,  # Renamed to avoid conflict
+              bottom_expand: float = 0,  # Renamed to avoid conflict
+              width_factor: float = 1.0,
+              height_factor: float = 1.0,
+              # Keep original parameter names for backward compatibility
+              top: float = None,
+              bottom: float = None) -> 'Region':
+        """
+        Create a new region expanded from this element/region.
+        
+        Args:
+            left: Amount to expand left edge (positive value expands leftwards)
+            right: Amount to expand right edge (positive value expands rightwards)
+            top_expand: Amount to expand top edge (positive value expands upwards)
+            bottom_expand: Amount to expand bottom edge (positive value expands downwards)
+            width_factor: Factor to multiply width by (applied after absolute expansion)
+            height_factor: Factor to multiply height by (applied after absolute expansion)
+            top: (DEPRECATED, use top_expand) Amount to expand top edge (upward)
+            bottom: (DEPRECATED, use bottom_expand) Amount to expand bottom edge (downward)
+            
+        Returns:
+            New expanded Region object
+        """
+        # Start with current coordinates
+        new_x0 = self.x0
+        new_x1 = self.x1
+        new_top = self.top
+        new_bottom = self.bottom
+        
+        # Handle the deprecated parameter names for backward compatibility
+        if top is not None:
+            top_expand = top
+        if bottom is not None:
+            bottom_expand = bottom
+            
+        # Apply absolute expansions first
+        new_x0 -= left
+        new_x1 += right
+        new_top -= top_expand  # Expand upward (decrease top coordinate)
+        new_bottom += bottom_expand  # Expand downward (increase bottom coordinate)
+        
+        # Apply percentage factors if provided
+        if width_factor != 1.0 or height_factor != 1.0:
+            # Calculate center point *after* absolute expansion
+            center_x = (new_x0 + new_x1) / 2
+            center_y = (new_top + new_bottom) / 2
+            
+            # Calculate current width and height *after* absolute expansion
+            current_width = new_x1 - new_x0
+            current_height = new_bottom - new_top
+            
+            # Calculate new width and height
+            new_width = current_width * width_factor
+            new_height = current_height * height_factor
+            
+            # Adjust coordinates based on the new dimensions, keeping the center
+            new_x0 = center_x - new_width / 2
+            new_x1 = center_x + new_width / 2
+            new_top = center_y - new_height / 2
+            new_bottom = center_y + new_height / 2
+        
+        # Clamp coordinates to page boundaries
+        new_x0 = max(0, new_x0)
+        new_top = max(0, new_top)
+        new_x1 = min(self.page.width, new_x1)
+        new_bottom = min(self.page.height, new_bottom)
+
+        # Ensure coordinates are valid (x0 <= x1, top <= bottom)
+        if new_x0 > new_x1: new_x0 = new_x1 = (new_x0 + new_x1) / 2
+        if new_top > new_bottom: new_top = new_bottom = (new_top + new_bottom) / 2
+
+        # Create new region with expanded bbox
+        from natural_pdf.elements.region import Region
+        new_region = Region(self.page, (new_x0, new_top, new_x1, new_bottom))
+                
+        return new_region
 
 
 class Element(DirectionalMixin):
@@ -415,7 +496,8 @@ class Element(DirectionalMixin):
             candidates = candidates[:limit] if limit else candidates
             
             # Find matching elements
-            matches = self.page.filter_elements(candidates, selector, **kwargs)
+            from natural_pdf.elements.collections import ElementCollection
+            matches = ElementCollection(candidates).find_all(selector, **kwargs)
             return matches[0] if matches else None
         elif idx + 1 < len(all_elements):
             # No selector, just return the next element
@@ -449,16 +531,17 @@ class Element(DirectionalMixin):
             
         # Search for previous matching element
         if selector:
-            # Filter elements before this one
+            # Select elements before this one
             candidates = all_elements[:idx]
-            # Reverse to start from closest to this element
+            # Reverse to search backwards from the current element
             candidates = candidates[::-1]
             # Limit search range for performance
             candidates = candidates[:limit] if limit else candidates
             
-            # Find matching elements
-            matches = self.page.filter_elements(candidates, selector, **kwargs)
-            return matches[0] if matches else None
+            # Find matching elements using ElementCollection
+            from natural_pdf.elements.collections import ElementCollection
+            matches = ElementCollection(candidates).find_all(selector, **kwargs)
+            return matches[0] if matches else None # find_all returns a collection
         elif idx > 0:
             # No selector, just return the previous element
             return all_elements[idx - 1]
@@ -737,8 +820,9 @@ class Element(DirectionalMixin):
         Returns:
             First matching element or None
         """
-        # Create a temporary region from this element's bounds
         from natural_pdf.elements.region import Region
+
+        # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         return temp_region.find(selector, apply_exclusions=apply_exclusions, **kwargs)
 
@@ -755,7 +839,8 @@ class Element(DirectionalMixin):
         Returns:
             ElementCollection with matching elements
         """
-        # Create a temporary region from this element's bounds
         from natural_pdf.elements.region import Region
+
+        # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         return temp_region.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)

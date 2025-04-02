@@ -8,18 +8,14 @@ We'll use a sample PDF that includes various layout elements.
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
 
 # Ensure layout analysis models are installed if needed:
 # !pip install natural-pdf[layout_yolo]  # Default
 # !pip install natural-pdf[layout_paddle] # Optional
 # !pip install natural-pdf[layout_tatr]   # Optional (for tables)
 
-# Path to your sample PDF
-pdf_path = Path("../tutorials/pdfs/01-practice.pdf") # Or another suitable PDF
-
 # Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Select the first page
 page = pdf.pages[0]
@@ -58,10 +54,8 @@ Use `highlight_all()` or `show()` on the detected regions.
 
 ```python
 # Highlight all detected regions, colored by type
-page.highlight_all(
-    regions, # Highlight only the regions we just found
+regions.highlight(
     group_by='type', # Color-code based on the 'type' attribute
-    label_attribute='type' # Add labels showing the type
 ).show(
     legend_position='right' # Show a legend for the colors
 )

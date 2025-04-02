@@ -383,7 +383,7 @@ class HighlightingService:
     def add(
         self,
         page_index: int,
-        bbox: Tuple[float, float, float, float],
+        bbox: Union[Tuple[float, float, float, float], Any], # Relax input type hint
         color: Optional[Union[Tuple, str]] = None,
         label: Optional[str] = None,
         use_color_cycling: bool = False,
@@ -392,9 +392,32 @@ class HighlightingService:
         existing: str = 'append'
     ):
         """Adds a rectangular highlight."""
+        
+        processed_bbox: Tuple[float, float, float, float]
+        # Check if bbox is an object with expected attributes (likely a Region)
+        # Assuming Region object has x0, top, x1, bottom attributes based on error context
+        if (hasattr(bbox, 'x0') and hasattr(bbox, 'top') and
+            hasattr(bbox, 'x1') and hasattr(bbox, 'bottom')):
+             try:
+                # Ensure attributes are numeric before creating tuple
+                processed_bbox = (float(bbox.x0), float(bbox.top), float(bbox.x1), float(bbox.bottom))
+             except (ValueError, TypeError):
+                 logger.error(f"Invalid attribute types in bbox object for page {page_index}: {bbox}. Expected numeric values.")
+                 return
+        elif isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+             try:
+                 # Ensure elements are numeric and convert to tuple
+                 processed_bbox = tuple(float(v) for v in bbox)
+             except (ValueError, TypeError):
+                 logger.error(f"Invalid values in bbox sequence for page {page_index}: {bbox}. Expected numeric values.")
+                 return
+        else:
+            logger.error(f"Invalid bbox type or structure provided for page {page_index}: {type(bbox)} - {bbox}. Expected tuple/list of 4 numbers or Region-like object.")
+            return # Don't proceed if bbox is invalid
+            
         self._add_internal(
             page_index=page_index,
-            bbox=bbox,
+            bbox=processed_bbox, # Use the processed tuple
             polygon=None,
             color_input=color,
             label=label,

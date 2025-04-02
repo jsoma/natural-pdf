@@ -4,21 +4,13 @@ Extracting tables from PDFs can range from straightforward to complex. Natural P
 
 ## Setup
 
-Let's load a PDF containing tables. `02-practice.pdf` has a few examples.
+Let's load a PDF containing tables.
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
-
-# Ensure table-specific models are installed if needed:
-# !pip install natural-pdf[layout_yolo]  # Default layout model
-# !pip install natural-pdf[layout_tatr]   # Advanced table structure model
-
-# Path to your sample PDF
-pdf_path = Path("../tutorials/pdfs/02-practice.pdf") # Contains tables
 
 # Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Select the first page
 page = pdf.pages[0]

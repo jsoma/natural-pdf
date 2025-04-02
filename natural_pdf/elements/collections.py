@@ -2,6 +2,7 @@ import logging
 
 from typing import List, Optional, Dict, Any, Union, Callable, TypeVar, Generic, Iterator, Tuple, TYPE_CHECKING
 from natural_pdf.ocr import OCROptions
+from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
 logger = logging.getLogger(__name__)
 
@@ -881,6 +882,61 @@ class ElementCollection(Generic[T]):
         except Exception as e:
              logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
              return None
+
+    def find_all(self, selector: str, regex: bool = False, case: bool = True, **kwargs) -> 'ElementCollection[T]':
+        """
+        Filter elements within this collection matching the selector.
+
+        Args:
+            selector: CSS-like selector string.
+            regex: Whether to use regex for text search in :contains (default: False).
+            case: Whether to do case-sensitive text search (default: True).
+            **kwargs: Additional filter parameters passed to the selector function.
+
+        Returns:
+            A new ElementCollection containing only the matching elements from this collection.
+        """
+        if not self._elements:
+            return ElementCollection([])
+
+        try:
+            selector_obj = parse_selector(selector)
+        except Exception as e:
+            logger.error(f"Error parsing selector '{selector}': {e}")
+            return ElementCollection([]) # Return empty on parse error
+
+        # Pass regex and case flags to selector function generator
+        kwargs['regex'] = regex
+        kwargs['case'] = case
+
+        try:
+            filter_func = selector_to_filter_func(selector_obj, **kwargs)
+        except Exception as e:
+            logger.error(f"Error creating filter function for selector '{selector}': {e}")
+            return ElementCollection([]) # Return empty on filter creation error
+
+        matching_elements = [element for element in self._elements if filter_func(element)]
+
+        # Note: Unlike Page.find_all, this doesn't re-sort. 
+        # Sorting should be done explicitly on the collection if needed.
+
+        return ElementCollection(matching_elements)
+
+    def find(self, selector: str, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]:
+        """
+        Find the first element within this collection matching the selector.
+
+        Args:
+            selector: CSS-like selector string.
+            regex: Whether to use regex for text search in :contains (default: False).
+            case: Whether to do case-sensitive text search (default: True).
+            **kwargs: Additional filter parameters passed to the selector function.
+
+        Returns:
+            The first matching element or None.
+        """
+        results = self.find_all(selector, regex=regex, case=case, **kwargs)
+        return results.first
 
 class PageCollection(Generic[P]):
     """

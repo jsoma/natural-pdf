@@ -8,19 +8,15 @@ First, let's import necessary libraries and load a sample PDF. We'll use `exampl
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
-
-# Path to your sample PDF
-pdf_path = Path("../tutorials/pdfs/example.pdf") # Adjust if needed
 
 # Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Select the first page for initial examples
 page = pdf.pages[0]
 
 # Display the first page
-page.show()
+page.show(width=700)
 ```
 
 ## Basic Text Extraction
@@ -30,13 +26,15 @@ Get all text from a page or the entire document.
 ```python
 # Extract all text from the first page
 # Displaying first 500 characters
-page.extract_text()[:500]
+print(page.extract_text()[:500])
 ```
+
+You can also preserve layout with `layout=True`.
 
 ```python
 # Extract text from the entire document (may take time)
 # Uncomment to run:
-# pdf.extract_text()[:500]
+print(page.extract_text(layout=True)[:2000])
 ```
 
 ## Extracting Text from Specific Elements
@@ -46,115 +44,92 @@ Use selectors with `find()` or `find_all()` to target specific elements. *Select
 ```python
 # Find a single element, e.g., a title containing "Summary"
 # Adjust selector as needed
-title_element = page.find('text:contains("Summary")')
-title_element # Display the found element object
+date_element = page.find('text:contains("Site")')
+date_element # Display the found element object
 ```
 
 ```python
-# Highlight the found element on the page
-if title_element:
-    page.highlight(title_element, color="yellow").show()
+date_element.show()
 ```
 
 ```python
-# Extract text just from that element
-if title_element:
-    title_element.text
+date_element.text
 ```
 
 ```python
-# Find multiple elements, e.g., bold headings (size >= 14)
-# Adjust selector as needed
-heading_elements = page.find_all('text[size>=14]:bold')
-heading_elements # Shows the list of found elements
+# Find multiple elements, e.g., bold headings (size >= 8)
+heading_elements = page.find_all('text[size>=8]:bold')
+heading_elements 
 ```
 
 ```python
-# Highlight all found headings
-if heading_elements:
-    page.highlight_all(heading_elements, color="lightblue").show()
+page.find_all('text[size>=8]:bold').show()
 ```
 
 ```python
-# Extract their combined text, separated by newlines
-if heading_elements:
-    heading_elements.extract_text(delimiter="\n")
+# Pull out all of their text (why? I don't know!)
+print(heading_elements.extract_text())
 ```
 
-## Multi-Word Searches
-
-Natural PDF handles spaces well, making multi-word searches easy. *Adjust search phrases based on your PDF.*
+## Advanced text searches
 
 ```python
 # Exact phrase (case-sensitive)
-page.find('text:contains("Annual Report")')
+page.find('text:contains("Hazardous Materials")').text
 ```
 
 ```python
-# Case-insensitive search
-page.find('text:contains("financial statement")', case=False)
+# Exact phrase (case-sensitive)
+page.find('text:contains("HAZARDOUS MATERIALS")', case=False).text
 ```
 
 ```python
 # Regular expression (e.g., "YYYY Report")
-page.find('text:contains("\\d{4}\\s+Report")', regex=True)
+regex = "\d+, \d{4}"
+page.find(f'text:contains("{regex}")', regex=True)
 ```
 
 ```python
-# Highlight one of the findings (e.g., case-insensitive search)
-statement_phrase = page.find('text:contains("financial statement")', case=False)
-if statement_phrase:
-    page.highlight(statement_phrase, color="orange").show()
+# Regular expression (e.g., "YYYY Report")
+page.find_all('text[fontname="Helvetica"][size=10]')
 ```
 
-*You can control space preservation during loading with `PDF(..., keep_spaces=False)`.*
-
-## Extracting Text from Regions
-
-Define regions geographically or relative to elements.
+# Regions
 
 ```python
 # Region below an element (e.g., below "Introduction")
 # Adjust selector as needed
-intro_heading = page.find('text:contains("Introduction")')
-
-if intro_heading:
-    content_below = intro_heading.below()
-    page.highlight(content_below, color="lightgreen").show()
+page.find('text:contains("Summary")').below(include_element=True).show()
 ```
 
 ```python
-# Extract text from that 'below' region
-if intro_heading:
-    content_below.extract_text()[:500] # Show sample
+(
+    page
+    .find('text:contains("Summary")')
+    .below(include_element=True)
+    .extract_text()
+    [:500]
+)
 ```
 
 ```python
-# Region between two elements (e.g., "Methodology" to "Results")
-# Adjust selectors as needed
-start_element = page.find('text:contains("Methodology")')
-end_element = page.find('text:contains("Results")')
-
-if start_element and end_element:
-    method_section = start_element.below(until=end_element, include_until=False)
-    page.highlight(method_section, color="cyan").show()
-```
-
-```python
-# Extract text from the 'between' region
-if start_element and end_element:
-    method_section.extract_text()[:500] # Show sample
+(
+    page
+    .find('text:contains("Summary")')
+    .below(include_element=True, until='line:horizontal')
+    .show()
+)
 ```
 
 ```python
 # Manually defined region via coordinates (x0, top, x1, bottom)
-manual_region = page.create_region(100, 200, 500, 600)
-page.highlight(manual_region, color="magenta").show()
+manual_region = page.create_region(30, 60, 600, 300)
+manual_region.show()
 ```
 
 ```python
 # Extract text from the manual region
-manual_region.extract_text()[:500] # Show sample
+manual_region.extract_text()[:500]
 ```
 
 ## Filtering Out Headers and Footers
@@ -162,91 +137,49 @@ manual_region.extract_text()[:500] # Show sample
 Use Exclusion Zones to remove unwanted content before extraction. *Adjust selectors for typical header/footer content.*
 
 ```python
-# Identify potential header/footer areas
-header_content = page.find('text:contains("Confidential Document")') # Adjust
-footer_content = page.find('text:contains("Page")') # Adjust
+header_content = page.find('rect')
+footer_content = page.find_all('line')[-1].below()
 
-# Create regions for exclusion
-exclusions_to_add = []
-header_zone = header_content.bbox.above() if header_content else None
-footer_zone = footer_content.bbox.below() if footer_content else None
-
-if header_zone: exclusions_to_add.append(header_zone)
-if footer_zone: exclusions_to_add.append(footer_zone)
-
-# Highlight the potential exclusion zones on a copy
-if exclusions_to_add:
-    img = page.copy() # Work on a copy for highlighting only
-    if header_zone: img.highlight(header_zone, color="red", alpha=0.3)
-    if footer_zone: img.highlight(footer_zone, color="red", alpha=0.3)
-    img.show()
-else:
-    "Selectors for header/footer didn't match, skipping highlight."
+header_content.highlight()
+footer_content.highlight()
+page.to_image()
 ```
 
 ```python
-# Add the exclusions to the actual page object
-# This modifies the page state for subsequent extractions
-if exclusions_to_add:
-    page.add_exclusions(exclusions_to_add)
-    f"Added {len(page.exclusions)} exclusion zones to the page."
-else:
-    "No exclusion zones added."
+page.extract_text()[:500]
 ```
 
 ```python
-# Extract text - exclusions applied by default now
-if page.exclusions:
-    clean_text = page.extract_text()
-    clean_text[:500] # Show sample of cleaned text
+page.add_exclusion(header_content)
+page.add_exclusion(footer_content)
 ```
 
 ```python
-# Compare with text extracted *without* applying exclusions
-if page.exclusions:
-    full_text_no_exclusions = page.extract_text(apply_exclusions=False)
-    f"Original length: {len(full_text_no_exclusions)}, Excluded length: {len(clean_text)}"
+page.extract_text()[:500]
 ```
 
 ```python
-# Clean up exclusions if you want to reset the page state
-# page.clear_exclusions()
-# f"Cleared exclusions. Current count: {len(page.exclusions)}"
+full_text_no_exclusions = page.extract_text(use_exclusions=False)
+clean_text = page.extract_text()
+f"Original length: {len(full_text_no_exclusions)}, Excluded length: {len(clean_text)}"
+```
+
+```python
+page.clear_exclusions()
 ```
 
 *Exclusions can also be defined globally at the PDF level using `pdf.add_exclusion()` with a function.*
 
 ## Controlling Whitespace
 
-Manage how spaces and blank lines are handled during extraction using `keep_blank_chars`.
+Manage how spaces and blank lines are handled during extraction using `layout`.
 
 ```python
-# Default (keep_blank_chars=True) - Use repr to see whitespace characters
-repr(page.extract_text(keep_blank_chars=True)[:100])
+print(page.extract_text())
 ```
 
 ```python
-# Remove blank characters (keep_blank_chars=False)
-repr(page.extract_text(keep_blank_chars=False)[:100])
-```
-
-*`preserve_whitespace=True` is an alias for `keep_blank_chars=True`.*
-
-## Font-Aware Text Extraction
-
-Natural PDF uses font attributes (`fontname`, `size` by default) when grouping characters into words. This helps maintain separation between text with different styling. Change this behavior during loading:
-
-```python
-# Default loading (already done):
-# pdf = PDF(pdf_path) # font_attrs=['fontname', 'size']
-
-# Load grouping only by spatial proximity:
-# pdf_spatial_only = PDF(pdf_path, font_attrs=[])
-
-# Load grouping by font, size, and color:
-# pdf_custom_font = PDF(pdf_path, font_attrs=['fontname', 'size', 'non_stroking_color'])
-
-"PDF loaded with default font settings. See comments for other options."
+print(page.extract_text(use_exclusions=False, layout=True))
 ```
 
 ### Font Information Access
@@ -255,51 +188,42 @@ Inspect font details of text elements.
 
 ```python
 # Find the first text element on the page
-first_text = page.find('text')
+first_text = page.find_all('text')[1]
 first_text # Display basic info
 ```
 
 ```python
 # Highlight the first text element
-if first_text:
-    page.highlight(first_text).show()
+first_text.show()
 ```
 
 ```python
 # Get detailed font properties dictionary
-if first_text:
-    first_text.font_info()
+first_text.font_info()
 ```
 
 ```python
 # Check specific style properties directly
-if first_text:
-    f"Is Bold: {first_text.bold}, Is Italic: {first_text.italic}, Font: {first_text.fontname}, Size: {first_text.size}"
+f"Is Bold: {first_text.bold}, Is Italic: {first_text.italic}, Font: {first_text.fontname}, Size: {first_text.size}"
 ```
 
 ```python
 # Find elements by font attributes (adjust selectors)
 # Example: Find Arial fonts
-arial_text = page.find_all('text[fontname*=Arial]')
+arial_text = page.find_all('text[fontname*=Helvetica]')
 arial_text # Display list of found elements
 ```
 
 ```python
-# Highlight Arial text found
-if arial_text:
-    page.highlight_all(arial_text, color="purple").show()
-```
-
-```python
 # Example: Find large text (e.g., size >= 16)
-large_text = page.find_all('text[size>=16]')
+large_text = page.find_all('text[size>=12]')
 large_text
 ```
 
 ```python
-# Highlight large text found
-if large_text:
-    page.highlight_all(large_text, color="green").show()
+# Example: Find large text (e.g., size >= 16)
+bold_text = page.find_all('text:bold')
+bold_text
 ```
 
 ## Working with Font Styles
@@ -309,40 +233,27 @@ Analyze and group text elements by their computed font *style*, which combines a
 ```python
 # Analyze styles on the page
 # This returns a dictionary mapping style names to ElementList objects
-text_styles = page.analyze_text_styles()
-f"Found {len(text_styles)} distinct text styles."
+page.analyze_text_styles()
+page.text_style_labels
 ```
 
 ```python
-# Show the identified style names and the number of elements in each
-{name: len(group) for name, group in text_styles.items()}
+page.find_all('text').highlight(group_by='style_label').to_image()
 ```
 
 ```python
-# Highlight elements belonging to the first identified style
-if text_styles:
-    first_style_name = list(text_styles.keys())[0]
-    first_style_group = text_styles[first_style_name]
-    page.highlight_all(first_style_group, color="teal").show()
-    f"Highlighted style: {first_style_name}"
+page.find_all('text[style_label="8.0pt Helvetica"]')
 ```
 
 ```python
-# Extract text just from this style group
-if text_styles:
-    first_style_group.extract_text(delimiter=" ")[:500] # Show sample
-```
-
-```python
-# Visualize all text styles with distinct colors automatically assigned
-page.highlight_text_styles().show()
+page.find_all('text[fontname="Helvetica"][size=8]')
 ```
 
 *Font variants (e.g., `AAAAAB+FontName`) are also accessible via the `font-variant` attribute selector: `page.find_all('text[font-variant="AAAAAB"]')`.*
 
 ## Reading Order
 
-Text extraction respects the natural reading order (top-to-bottom, left-to-right by default). `page.find_all('text')` returns elements already sorted this way.
+Text extraction respects a pathetic attempt at natural reading order (top-to-bottom, left-to-right by default). `page.find_all('text')` returns elements already sorted this way.
 
 ```python
 # Get first 5 text elements in reading order
@@ -361,53 +272,14 @@ page.extract_text()[:100]
 Move between elements sequentially based on reading order using `.next()` and `.previous()`.
 
 ```python
-# Find an element to start from (adjust selector)
-start_nav_element = page.find('text:contains("Results")')
+page.clear_highlights()
 
-if start_nav_element:
-    page.highlight(start_nav_element, color="yellow").show()
-    f"Starting navigation from: {start_nav_element.text[:30]}..."
-else:
-    "Could not find 'Results' element to start navigation demo."
+start = page.find('text:contains("Date")')
+start.highlight(label='Date label')
+start.next().highlight(label='Maybe the date', color='green')
+start.next('text:contains("\d")', regex=True).highlight(label='Probably the date')
 
-```
-
-```python
-# Find the *very next* element (any type)
-if start_nav_element:
-    next_any = start_nav_element.next()
-    if next_any:
-        page.highlight(next_any, color="orange").show()
-        f"Next element (any type): {next_any}"
-```
-
-```python
-# Find the next *text* element specifically
-if start_nav_element:
-    next_text = start_nav_element.next('text')
-    if next_text:
-        page.highlight(next_text, color="lightblue").show()
-        f"Next text element: {next_text.text[:50]}..."
-```
-
-```python
-# Find the *previous* element (any type)
-if start_nav_element:
-    prev_any = start_nav_element.prev()
-    if prev_any:
-        # Highlight on a fresh copy to avoid overlapping highlights
-        page.copy().highlight(start_nav_element, color="yellow").highlight(prev_any, color="pink").show()
-        f"Previous element (any type): {prev_any}"
-```
-
-```python
-# Find the previous element matching a selector (e.g., large text)
-if start_nav_element:
-    prev_large_text = start_nav_element.prev('text[size>=14]') # Adjust selector/size
-    if prev_large_text:
-        page.copy().highlight(start_nav_element, color="yellow").highlight(prev_large_text, color="lightgreen").show()
-        f"Previous large text element: {prev_large_text.text[:50]}..."
-
+page.to_image()
 ```
 
 ## Next Steps

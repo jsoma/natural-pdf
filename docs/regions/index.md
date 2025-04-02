@@ -8,19 +8,15 @@ Let's set up a PDF to experiment with regions.
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
-
-# Path to sample PDF
-pdf_path = Path("../tutorials/pdfs/01-practice.pdf")
 
 # Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Get the first page
 page = pdf.pages[0]
 
 # Display the page
-page.show()
+page.show(width=700)
 ```
 
 ## Creating Regions
@@ -42,10 +38,10 @@ mid_region = page.create_region(
 )
 
 # Highlight the region to see it
-page.highlight(mid_region, color="blue", alpha=0.3).show()
+mid_region.highlight(color="blue").show()
 ```
 
-### Using Element Methods: `above()`, `below()`, `left_of()`, `right_of()`
+### Using Element Methods: `above()`, `below()`, `left()`, `right()`
 
 You can create regions relative to existing elements.
 
@@ -58,9 +54,9 @@ if heading:
     region_below = heading.below()
     
     # Highlight the heading and the region below it
-    page.copy().highlight(heading, color="red")\
-              .highlight(region_below, color="blue", alpha=0.3)\
-              .show()
+    heading.highlight(color="red")
+    region_below.highlight(color="blue")
+    page.show()
 ```
 
 ```python
@@ -69,9 +65,10 @@ if heading:
     # Only include 100px below the heading
     small_region_below = heading.below(height=100)
     
-    page.copy().highlight(heading, color="red")\
-              .highlight(small_region_below, color="green", alpha=0.3)\
-              .show()
+    page.clear_highlights()
+    heading.highlight(color="red")
+    small_region_below.highlight(color="green")
+    page.show()
 ```
 
 ```python
@@ -81,9 +78,10 @@ if line:
     # Create a region above the line
     region_above = line.above()
     
-    page.copy().highlight(line, color="black")\
-              .highlight(region_above, color="purple", alpha=0.3)\
-              .show()
+    page.clear_highlights()
+    line.highlight(color="black")
+    region_above.highlight(color="purple")
+    page.show()
 ```
 
 ### Creating a Region Between Elements with `until()`
@@ -95,13 +93,14 @@ next_heading = first_heading.next('text[size>=11]:bold') if first_heading else N
 
 if first_heading and next_heading:
     # Create a region from the first heading until the next heading
-    section = first_heading.below(until=next_heading, include_until=False)
+    section = first_heading.below(until=next_heading, include_endpoint=False)
     
     # Highlight both elements and the region between them
-    page.copy().highlight(first_heading, color="red")\
-              .highlight(next_heading, color="red")\
-              .highlight(section, color="yellow", alpha=0.3)\
-              .show()
+    page.clear_highlights()
+    first_heading.highlight(color="red")
+    next_heading.highlight(color="red")
+    section.highlight(color="yellow")
+    page.show()
 ```
 
 ## Using Regions
@@ -112,19 +111,21 @@ Once you have a region, here's what you can do with it.
 
 ```python
 # Find a region to work with (e.g., from a title to the next bold text)
-title = page.find('text:contains("Jungle")')  # Adjust if needed
+title = page.find('text:contains("Site")')  # Adjust if needed
 if title:
     # Create a region from title down to the next bold text
-    content_region = title.below(until='text:bold', include_until=False)
+    content_region = title.below(until='line:horizontal', include_endpoint=False)
     
     # Extract text from just this region
     region_text = content_region.extract_text()
     
     # Show the region and the extracted text
-    page.highlight(content_region, color="green", alpha=0.3).show()
+    page.clear_highlights()
+    content_region.highlight(color="green")
+    page.show()
     
     # Displaying the text (first 300 chars if long)
-    region_text[:300] + "..." if len(region_text) > 300 else region_text
+    print(region_text[:300] + "..." if len(region_text) > 300 else region_text)
 ```
 
 ### Find Elements Within a Region
@@ -144,9 +145,10 @@ test_region = page.create_region(
 text_in_region = test_region.find_all('text')
 
 # Display result
-page.copy().highlight(test_region, color="blue", alpha=0.2)\
-          .highlight_all(text_in_region, color="red")\
-          .show()
+page.clear_highlights()
+test_region.highlight(color="blue")
+text_in_region.highlight(color="red")
+page.show()
 
 len(text_in_region)  # Number of text elements found in region
 ```
@@ -164,72 +166,23 @@ region_for_image = page.create_region(
 )
 
 # Generate an image of just this region
-region_for_image.show()  # Shows just the region
-```
-
-### Check Relationships Between Regions and Elements
-
-You can determine if elements are within regions or if regions overlap.
-
-```python
-# Create two regions that may overlap
-region_a = page.create_region(100, 200, 400, 400)
-region_b = page.create_region(300, 300, 600, 500)
-
-# Check if they intersect
-does_intersect = region_a.intersects(region_b)
-
-# Visualize the regions
-img = page.copy()
-img.highlight(region_a, color="red", alpha=0.3, label="Region A")
-img.highlight(region_b, color="blue", alpha=0.3, label="Region B")
-img.show()
-
-f"Do the regions intersect? {does_intersect}"
-```
-
-```python
-# Check if an element is within a region
-element = page.find('text') # Just find any element
-
-if element and region_a:
-    # Check if the element is inside region_a
-    is_inside = region_a.contains(element)
-    
-    # Visualize
-    img = page.copy()
-    img.highlight(region_a, color="green", alpha=0.3, label="Region A")
-    img.highlight(element, color="red" if not is_inside else "blue")
-    img.show()
-    
-    f"Is the element inside Region A? {is_inside}"
+region_for_image.to_image(crop_only=True)  # Shows just the region
 ```
 
 ### Adjust and Expand Regions
 
 ```python
 # Take an existing region and expand it
-if 'region_a' in locals():
-    # Expand by a certain number of points in each direction
-    expanded = region_a.expand(left=20, right=20, top=20, bottom=20)
-    
-    # Visualize original and expanded regions
-    img = page.copy()
-    img.highlight(region_a, color="blue", alpha=0.3, label="Original")
-    img.highlight(expanded, color="red", alpha=0.3, label="Expanded")
-    img.show()
-```
+region_a = page.create_region(200, 200, 400, 400)
 
-```python
-# Expand by a factor (double the width and height)
-if 'region_a' in locals():
-    doubled = region_a.expand(width_factor=2, height_factor=2)
-    
-    # Visualize
-    img = page.copy()
-    img.highlight(region_a, color="blue", alpha=0.3, label="Original")
-    img.highlight(doubled, color="purple", alpha=0.3, label="Doubled")
-    img.show()
+# Expand by a certain number of points in each direction
+expanded = region_a.expand(left=20, right=20, top=20, bottom=20)
+
+# Visualize original and expanded regions
+page.clear_highlights()
+region_a.highlight(color="blue", label="Original")
+expanded.highlight(color="red", label="Expanded")
+page.to_image()
 ```
 
 ## Using Exclusion Zones with Regions
@@ -238,11 +191,11 @@ Exclusion zones are regions that you want to ignore during operations like text 
 
 ```python
 # Create a region for the whole page
-full_page = page.create_region(0, 0, page.width, page.height)
+full_page_region = page.create_region(0, 0, page.width, page.height)
 
 # Extract text without exclusions as baseline
-full_text = full_page.extract_text()
-f"Full page text length: {len(full_text)} characters"
+full_text = full_page_region.extract_text()
+print(f"Full page text length: {len(full_text)} characters")
 ```
 
 ```python
@@ -254,28 +207,29 @@ header_zone = page.create_region(0, 0, page.width, page.height * 0.1)
 page.add_exclusion(header_zone)
 
 # Visualize the exclusion
-page.highlight(header_zone, color="red", alpha=0.3, label="Excluded").show()
+page.clear_highlights()
+header_zone.highlight(color="red", label="Excluded")
+page.show()
 ```
 
 ```python
 # Now extract text again - the header should be excluded
-text_with_exclusion = full_page.extract_text() # Uses apply_exclusions=True by default
+text_with_exclusion = full_page_region.extract_text() # Uses apply_exclusions=True by default
 
 # Compare text lengths
-f"Original text: {len(full_text)} chars\nText with exclusion: {len(text_with_exclusion)} chars"
-f"Difference: {len(full_text) - len(text_with_exclusion)} chars excluded"
+print(f"Original text: {len(full_text)} chars\nText with exclusion: {len(text_with_exclusion)} chars")
+print(f"Difference: {len(full_text) - len(text_with_exclusion)} chars excluded")
 ```
 
 ```python
 # Temporarily bypass exclusions if needed
-text_ignoring_exclusion = full_page.extract_text(apply_exclusions=False)
-f"Text ignoring exclusions: {len(text_ignoring_exclusion)} chars (should match original)"
+text_ignoring_exclusion = full_page_region.extract_text(use_exclusions=False)
+print(f"Text ignoring exclusions: {len(text_ignoring_exclusion)} chars (should match original)")
 ```
 
 ```python
 # When done with this page, clear exclusions
 page.clear_exclusions()
-f"Page now has {len(page.exclusions)} exclusions"
 ```
 
 ## Document-Level Exclusions
@@ -284,16 +238,16 @@ PDF-level exclusions apply to all pages and use functions to adapt to each page.
 
 ```python
 # Define a PDF-level exclusion for headers
-# This will exclude the top 10% of every page
+# This will exclude the top 30% of every page
 pdf.add_exclusion(
-    lambda p: p.create_region(0, 0, p.width, p.height * 0.1),
+    lambda p: p.create_region(0, 0, p.width, p.height * 0.3),
     label="Header zone"
 )
 
 # Define a PDF-level exclusion for footers
-# This will exclude the bottom 10% of every page
+# This will exclude the bottom 20% of every page
 pdf.add_exclusion(
-    lambda p: p.create_region(0, p.height * 0.9, p.width, p.height),
+    lambda p: p.create_region(0, p.height * 0.8, p.width, p.height),
     label="Footer zone"
 )
 
@@ -308,7 +262,7 @@ for i in range(min(3, len(pdf.pages))):
 ```python
 # Clear PDF-level exclusions when done
 pdf.clear_exclusions()
-"Cleared all PDF-level exclusions"
+print("Cleared all PDF-level exclusions")
 ```
 
 ## Working with Layout Analysis Regions
@@ -321,20 +275,20 @@ page.analyze_layout()  # Uses 'yolo' engine by default
 
 # Find all detected regions
 detected_regions = page.find_all('region')
-f"Found {len(detected_regions)} layout regions"
+print(f"Found {len(detected_regions)} layout regions")
 ```
 
 ```python
 # Highlight all detected regions by type
-page.highlight_all(detected_regions, group_by='type', label_attribute='type').show()
+detected_regions.highlight(group_by='region_type').show()
 ```
 
 ```python
 # Extract text from a specific region type (e.g., title)
 title_regions = page.find_all('region[type=title]')
 if title_regions:
-    titles_text = title_regions.extract_text(delimiter="\n")
-    f"Title text: {titles_text}"
+    titles_text = title_regions.extract_text()
+    print(f"Title text: {titles_text}")
 ```
 
 ## Next Steps

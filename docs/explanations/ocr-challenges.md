@@ -59,13 +59,13 @@ Natural PDF supports different OCR engines, each with strengths and weaknesses:
 **Solution**:
 ```python
 # Increase resolution when generating the image for OCR
-page.apply_ocr(resolution=300)  # Default is 200 DPI
+page.apply_ocr(resolution=300)
 
 # For noisy images, adjust preprocessing parameters
 page.apply_ocr(
-    text_threshold=0.6,  # Text detection confidence (default: 0.7)
-    low_text=0.3,        # Text low-bound score (default: 0.4)
-    link_threshold=0.3   # Link confidence threshold (default: 0.4)
+    text_threshold=0.6,
+    low_text=0.3,
+    link_threshold=0.3
 )
 ```
 

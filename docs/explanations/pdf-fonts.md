@@ -35,7 +35,7 @@ Natural PDF can help you understand what fonts are used in your document:
 from natural_pdf import PDF
 from collections import defaultdict
 
-pdf = PDF("document.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Create a dictionary to store fonts
 fonts = defaultdict(int)

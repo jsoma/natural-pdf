@@ -8,13 +8,9 @@ Let's start by loading a sample PDF to experiment with question answering.
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
 
 # Path to sample PDF
-pdf_path = Path("../tutorials/pdfs/02-practice.pdf")
-
-# Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Display the first page 
 page = pdf.pages[0]
@@ -261,14 +257,13 @@ Here's a complete example that walks through the document QA process:
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
 import os
 
 # Create output directory if it doesn't exist
 os.makedirs("qa_results", exist_ok=True)
 
 # Open a PDF
-pdf_path = Path("../tutorials/pdfs/02-practice.pdf")
+pdf_path = Path("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 pdf = PDF(pdf_path)
 
 # First, ask a general question to the entire document

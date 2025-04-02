@@ -7,10 +7,10 @@ Documents are often organized into logical sections like chapters, articles, or 
 ```
 
 ```python
-import natural_pdf
+from natural_pdf import PDF
 
 # Load the PDF using the relative path
-pdf = natural_pdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 
 # Find horizontal lines that separate book entries

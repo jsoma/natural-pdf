@@ -15,6 +15,7 @@ page = pdf.pages[0]
 # Find a specific element and add a persistent highlight
 title = page.find('text:contains("Summary")')
 title.highlight()
+```
 
 ## Viewing Highlights
 

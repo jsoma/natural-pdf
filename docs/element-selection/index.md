@@ -8,13 +8,9 @@ Let's load a sample PDF to work with. We'll use `01-practice.pdf` which has vari
 
 ```python
 from natural_pdf import PDF
-from pathlib import Path
-
-# Path to your sample PDF
-pdf_path = Path("../tutorials/pdfs/01-practice.pdf") # A good example PDF
 
 # Load the PDF
-pdf = PDF(pdf_path)
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Select the first page
 page = pdf.pages[0]

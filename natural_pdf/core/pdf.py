@@ -125,6 +125,17 @@ class PDF:
         from natural_pdf.elements.collections import PageCollection
         return PageCollection(self._pages)
                 
+    def clear_exclusions(self) -> 'PDF':
+        """
+        Clear all exclusion functions from the PDF.
+        
+        Returns:
+            Self for method chaining
+        """
+
+        self._exclusions = []
+        return self
+    
     def add_exclusion(self, exclusion_func: Callable[[Page], Region], label: str = None) -> 'PDF':
         """
         Add an exclusion function to the PDF. Text from these regions will be excluded from extraction.
