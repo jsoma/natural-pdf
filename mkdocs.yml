@@ -83,6 +83,20 @@ nav:
     - PDF Extraction Challenges: explanations/pdf-extraction-challenges.md
     - Understanding PDF Fonts: explanations/pdf-fonts.md
     - OCR Challenges & Solutions: explanations/ocr-challenges.md
+  - Tutorials:
+    - Loading & Extraction: tutorials/01-loading-and-extraction.ipynb
+    - Finding Elements: tutorials/02-finding-elements.ipynb
+    - Extracting Blocks: tutorials/03-extracting-blocks.ipynb
+    - Table Extraction: tutorials/04-table-extraction.ipynb
+    - Excluding Content: tutorials/05-excluding-content.ipynb
+    - Document Q&A: tutorials/06-document-qa.ipynb
+    - Layout Analysis: tutorials/07-layout-analysis.ipynb
+    - Working with Regions: tutorials/07-working-with-regions.ipynb
+    - Spatial Navigation: tutorials/08-spatial-navigation.ipynb
+    - Section Extraction: tutorials/09-section-extraction.ipynb
+    - Form Fields: tutorials/10-form-field-extraction.ipynb
+    - Enhanced Tables: tutorials/11-enhanced-table-processing.ipynb
+    - OCR Integration: tutorials/12-ocr-integration.ipynb
   - API Reference: api/index.md
 
 markdown_extensions:
