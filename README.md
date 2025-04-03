@@ -20,6 +20,8 @@ For optional features like specific OCR engines, layout analysis models, or the 
 ```bash
 # Example: Install with EasyOCR support
 pip install natural-pdf[easyocr]
+pip install natural-pdf[surya]
+pip install natural-pdf[paddle]
 
 # Example: Install with interactive viewer support
 pip install natural-pdf[interactive]

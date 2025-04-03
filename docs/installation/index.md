@@ -57,8 +57,7 @@ print(text)
 
 # Find something specific
 title = page.find('text:bold')
-if title:
-    print(f"Found title: {title.text}")
+print(f"Found title: {title.text}")
 ```
 
 ## What's Next?
