@@ -1,3 +1,0 @@
-"""
-Examples for natural-pdf.
-"""
