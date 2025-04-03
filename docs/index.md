@@ -6,6 +6,8 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 
 - [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb)
 
+<div style="max-width: 400px; margin: auto"><a href="assets/sample-screen.png"><img src="assets/sample-screen.png"></a></div>
+
 ## Quick Example
 
 ```python
@@ -26,258 +28,119 @@ page.add_exclusion(page.find_all('line')[-1].below())
 clean_text = page.extract_text()
 ```
 
-## What can you do with Natural PDF?
+## Key Features
 
-- Find text using CSS-like selectors (like `page.find('text:contains("Revenue"):bold')`)
-- Navigate spatially (like `heading.below()` to get content below a heading)
-- Extract text while automatically excluding headers and footers
-- Visualize what's happening to debug your extraction
-- Apply OCR to scanned documents
-- Detect tables, headings, and other document structures using AI models
-- Ask natural language questions to your documents
+Here are a few highlights of what you can do:
 
-## Core Features
+### Find Elements with Selectors
 
-### CSS-like Selectors
+Use CSS-like selectors to find text, shapes, and more.
 
 ```python
-# Find and extract text from bold elements containing "Revenue"
+# Find bold text containing "Revenue"
 page.find('text:contains("Revenue"):bold').extract_text()
 
-# Extract all large text
+# Find all large text
 page.find_all('text[size>=12]').extract_text()
-
-# Highlight red rectangles
-page.find_all('rect[color~=red]').highlight(color="red")
-
-# Find text with specific font and extract it
-page.find_all('text[fontname*=Arial]').extract_text()
-
-# Highlight high-confidence OCR text
-page.find_all('text[source=ocr][confidence>=0.8]').highlight(label="High Confidence OCR")
 ```
 
-Selectors support attribute matching, pseudo-classes, and content searches. [Learn more about selectors →](element-selection/index.ipynb)
+[Learn more about selectors →](element-selection/index.ipynb)
 
-### Spatial Navigation
+### Navigate Spatially
+
+Move around the page relative to elements, not just coordinates.
 
 ```python
-# Extract text below a heading
+# Extract text below a specific heading
 intro_text = page.find('text:contains("Introduction")').below().extract_text()
 
-# Extract text from one heading to another
+# Extract text from one heading to the next
 methods_text = page.find('text:contains("Methods")').below(
-    until='text:contains("Results")',
-    include_until=False
+    until='text:contains("Results")'
 ).extract_text()
-
-# Extract content above a footer
-main_text = page.find('text:contains("Page 1 of 10")').above().extract_text()
 ```
 
-Navigate PDFs spatially instead of using coordinates. [Explore more navigation methods →](pdf-navigation/index.ipynb)
+[Explore more navigation methods →](pdf-navigation/index.ipynb)
 
-Working with headers and footers? [Learn about exclusion zones →](regions/index.ipynb#exclusion-zones)
+### Extract Clean Text
 
-### Document Layout Analysis
+Easily extract text content, automatically handling common page elements like headers and footers (if exclusions are set).
 
 ```python
-# Detect document structure using AI models
-page.analyze_layout()
+# Extract all text from the page (respecting exclusions)
+page_text = page.extract_text()
 
-# Highlight titles and tables with different colors
-page.find_all('region[type=title]').highlight(color="purple", label="Titles")
-page.find_all('region[type=table]').highlight(color="blue", label="Tables")
-
-# Extract text from paragraphs
-paragraph_text = page.find_all('region[type=plain-text]').extract_text()
-
-# Extract data from the first table as a list of rows
-table_data = page.find('region[type=table]').extract_table()
+# Extract text from a specific region
+some_region = page.find(...)
+region_text = some_region.extract_text()
 ```
 
-Natural PDF supports multiple layout models including YOLO for general document analysis and Table Transformer (TATR) for detailed table structure. [Learn about layout models →](layout-analysis/index.ipynb)
+[Learn about text extraction →](text-extraction/index.ipynb)
+[Learn about exclusion zones →](regions/index.ipynb#exclusion-zones)
 
-Working with tables? [See specialized table extraction methods →](tables/index.ipynb)
+### Apply OCR
 
-### Document Question Answering
-
-```python
-# Ask questions directly to your documents
-result = pdf.ask("What was the company's revenue in 2022?")
-if result.get("found", False):
-    print(f"Answer: {result['answer']}")
-    print(f"Confidence: {result['confidence']:.2f}")
-    
-    # Highlight where the answer was found
-    if "source_elements" in result:
-        for element in result["source_elements"]:
-            element.highlight(color="orange")
-            
-    # Display the answer location
-    image = pdf.pages[result.get('page_num', 0) - 1].to_image()
-    image
-```
-
-Document QA uses LayoutLM models that understand both text content and visual layout. Unlike general LLMs, the answers come directly from your document without hallucinations. [Learn about Document QA →](document-qa/index.ipynb)
-
-### OCR Support
-
-Natural PDF supports multiple engines (EasyOCR, PaddleOCR, Surya) for extracting text from scanned documents.
+Extract text from scanned documents using various OCR engines.
 
 ```python
-# Apply OCR using a specific engine
-ocr_elements = page.apply_ocr(engine='paddle')
-
-# Configure engine options
-from natural_pdf.ocr import EasyOCROptions
-opts = EasyOCROptions(languages=['en', 'fr'], min_confidence=0.4)
-ocr_elements = page.apply_ocr(engine='easyocr', options=opts)
+# Apply OCR using the default engine
+ocr_elements = page.apply_ocr()
 
 # Extract text (will use OCR results if available)
 text = page.extract_text()
 ```
 
-Natural PDF supports both EasyOCR and PaddleOCR engines. PaddleOCR is often more accurate while EasyOCR is simpler to set up. [Explore OCR options →](ocr/index.md)
+[Explore OCR options →](ocr/index.md)
 
-## Visual Debugging & Interactive Widget
+### Analyze Document Layout
 
-Visualize element selections and analysis results. Use `.highlight()` to add persistent highlights to elements or collections. View these highlights using `.viewer()` (interactive widget in Jupyter) or `.save_image()` (static file). Use `ElementCollection.show()` to generate temporary previews of specific selections, optionally grouping them by attribute.
+Use AI models to detect document structures like titles, paragraphs, and tables.
 
 ```python
-# Highlight different elements persistently
-page.find_all('text[size>=14]').highlight(color="red", label="Headings")
-page.find_all('rect').highlight(color="green", label="Boxes")
-page.find_all('line').highlight(color="blue", label="Lines")
+# Detect document structure
+page.analyze_layout()
 
-# Launch the interactive viewer (shows persistent highlights)
+# Highlight titles and tables
+page.find_all('region[type=title]').highlight(color="purple")
+page.find_all('region[type=table]').highlight(color="blue")
+
+# Extract data from the first table
+table_data = page.find('region[type=table]').extract_table()
+```
+
+[Learn about layout models →](layout-analysis/index.ipynb)
+[Working with tables? →](tables/index.ipynb)
+
+### Document Question Answering
+
+Ask natural language questions directly to your documents.
+
+```python
+# Ask a question
+result = pdf.ask("What was the company's revenue in 2022?")
+if result.get("found", False):
+    print(f"Answer: {result['answer']}")
+```
+
+[Learn about Document QA →](document-qa/index.ipynb)
+
+### Visualize Your Work
+
+Debug and understand your extractions visually.
+
+```python
+# Highlight headings
+page.find_all('text[size>=14]').highlight(color="red", label="Headings")
+
+# Launch the interactive viewer (Jupyter)
 # Requires: pip install natural-pdf[interactive]
 page.viewer()
 
-# Or save the image if needed
-# page.save_image("highlighted.png", labels=True)
-
-# Show a temporary preview image of specific elements, grouped by type
-preview_image = page.find_all('region[type*=table]').show(group_by='type')
-# In Jupyter, this image will display automatically
-preview_image
+# Or save an image
+# page.save_image("highlighted.png")
 ```
 
-Visualizing elements helps debug extraction issues and understand document structure. [See more visualization options →](visual-debugging/index.ipynb)
-
-## Page Sections
-
-Here's how to split pages into logical sections for extracting structured content:
-
-```python
-# Simple approach: Get content between headings
-intro_text = page.find('text:contains("Introduction")').below(
-    until='text:contains("Methods")', include_until=False
-).extract_text()
-
-# Get sections based on headings
-sections = page.get_sections(start_elements='text[size>=14]:bold')
-
-# Process each section
-for section in sections:
-    # Extract text from the section
-    section_text = section.extract_text()
-    print(f"Section text: {section_text[:50]}...")
-    
-    # Highlight the section
-    section.highlight()
-    
-# Get sections across multiple pages
-doc_sections = pdf.pages.get_sections(
-    start_elements='text[size>=14]:bold',
-    new_section_on_page_break=True
-)
-```
-
-Sections help break down documents into logical chunks. Use them to extract structured content like chapters, articles, or report sections. [Learn more about sectioning →](regions/index.ipynb#document-sections)
-
-Need to extract specific document components? [See layout analysis for automatic structure detection →](layout-analysis/index.ipynb)
-
-## Advanced Example
-
-Here's a more complex example that uses multiple features:
-
-```python
-from natural_pdf import PDF
-import os
-
-# Create output directory
-os.makedirs("output", exist_ok=True)
-
-# Open a PDF
-pdf = PDF("annual_report.pdf")
-
-# Add exclusion zones for header and footer
-pdf.add_exclusion(
-    lambda page: page.find('text:contains("CONFIDENTIAL")').above() if page.find('text:contains("CONFIDENTIAL")') else None,
-    label="header"
-)
-pdf.add_exclusion(
-    lambda page: page.find('text:contains("Page")').below() if page.find('text:contains("Page")') else None,
-    label="footer"
-)
-
-# Find financial section
-financial_heading = pdf.find('text:contains("Financial Results")')
-if financial_heading:
-    page = financial_heading.page
-    
-    # Run layout analysis
-    page.analyze_layout()
-    
-    # Get the region below the heading
-    financial_section = financial_heading.below(height=300)
-    financial_section.highlight(color="yellow", label="Financial Section")
-    
-    # Find tables in or near this section
-    tables = page.find_all('region[type=table]')
-    tables_in_section = [table for table in tables if financial_section.intersects(table)]
-    
-    if tables_in_section:
-        # Highlight and extract tables
-        for i, table in enumerate(tables_in_section):
-            table.highlight(color="teal", label=f"Table {i+1}")
-            
-            # Extract table data
-            data = table.extract_table()
-            print(f"\nTable {i+1}:")
-            for row in data:
-                print(row)
-    
-    # Ask questions about the financial section
-    questions = [
-        "What was the total revenue?",
-        "What was the net income?",
-        "What was the year-over-year growth?"
-    ]
-    
-    print("\nDocument QA Results:")
-    for question in questions:
-        result = financial_section.ask(question)
-        if result.get("found", False):
-            print(f"Q: {question}")
-            print(f"A: {result['answer']} (confidence: {result['confidence']:.2f})")
-            
-            # Highlight the answer
-            if "source_elements" in result:
-                for elem in result["source_elements"]:
-                    elem.highlight(color="red", label=f"Answer: {question}")
-    
-    # Get the highlighted page as an image
-    image = page.to_image(labels=True)
-    # Just return the image as the last line in a Jupyter cell
-    image
-    
-    # Extract text from the financial section
-    financial_text = financial_section.extract_text()
-    print(f"\nExtracted text from Financial Section ({len(financial_text)} characters):")
-    print(financial_text[:200] + "..." if len(financial_text) > 200 else financial_text)
-```
+[See more visualization options →](visual-debugging/index.ipynb)
 
 ## Documentation Topics
 
