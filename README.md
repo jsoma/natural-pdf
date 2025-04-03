@@ -5,7 +5,7 @@ A friendly library for working with PDFs, built on top of [pdfplumber](https://g
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
 
 - [Complete documentation here](https://jsoma.github.io/natural-pdf)
-- [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb), and [many more here](https://colab.research.google.com/github/jsoma/natural-pdf/)
+- [Live demos here](https://colab.research.google.com/github/jsoma/natural-pdf/)
 
 ## Features
 
@@ -31,18 +31,16 @@ pip install natural-pdf
 
 # Installs the core library along with required AI dependencies (PyTorch, Transformers)
 ```bash
-# Install with support for specific OCR engines
-pip install natural-pdf[easyocr]   # EasyOCR engine
-pip install natural-pdf[paddle]    # PaddleOCR engine (requires paddlepaddle)
-pip install natural-pdf[surya]     # Surya OCR engine
-
-# Install with support for YOLO layout detection model
+# Install with support for specific OCR and layout engines
+pip install natural-pdf[easyocr]
+pip install natural-pdf[paddle]
+pip install natural-pdf[surya]
 pip install natural-pdf[layout_yolo]
 
 # Install with support for the interactive Jupyter widget
 pip install natural-pdf[interactive]
 
-# Install everything
+# Just install everything
 pip install natural-pdf[all]
 ```
 
@@ -75,6 +73,8 @@ page.add_exclusion(page.find_all('line')[-1].below())
 clean_text = page.extract_text()
 print(clean_text)
 ```
+
+- [Complete documentation here](https://jsoma.github.io/natural-pdf)
 
 ## Selectors
 
@@ -142,7 +142,7 @@ Exclusions work efficiently with different region types:
 
 ## OCR Integration
 
-Extract text from scanned documents using OCR, with support for multiple engines (EasyOCR, PaddleOCR, Surya):
+Extract text from scanned documents using OCR, with support for multiple engines ([EasyOCR](https://www.jaided.ai/easyocr/), [PaddleOCR](https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html), [Surya](https://github.com/VikParuchuri/surya)):
 
 ```python
 # Apply OCR using a specific engine (e.g., PaddleOCR)
