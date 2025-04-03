@@ -47,7 +47,7 @@ try:
 except ImportError:
     HAS_QA = False
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 if HAS_QA:
     __all__ = ["PDF", "Page", "Region", "ElementCollection", "configure_logging", "DocumentQA", "get_qa_engine"]
