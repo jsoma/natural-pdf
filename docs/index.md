@@ -59,8 +59,6 @@ page.find_all('text[source=ocr][confidence>=0.8]').highlight(label="High Confide
 
 Selectors support attribute matching, pseudo-classes, and content searches. [Learn more about selectors →](element-selection/index.ipynb)
 
-Curious about those weird font names like 'AAAAAB+Arial'? [Explore PDF font handling →](explanations/pdf-fonts.md)
-
 ### Spatial Navigation
 
 ```python
@@ -123,8 +121,6 @@ if result.get("found", False):
 
 Document QA uses LayoutLM models that understand both text content and visual layout. Unlike general LLMs, the answers come directly from your document without hallucinations. [Learn about Document QA →](document-qa/index.ipynb)
 
-Having OCR problems? [Understand OCR challenges and solutions →](explanations/ocr-challenges.md)
-
 ### OCR Support
 
 Natural PDF supports multiple engines (EasyOCR, PaddleOCR, Surya) for extracting text from scanned documents.
@@ -143,8 +139,6 @@ text = page.extract_text()
 ```
 
 Natural PDF supports both EasyOCR and PaddleOCR engines. PaddleOCR is often more accurate while EasyOCR is simpler to set up. [Explore OCR options →](ocr/index.md)
-
-Having OCR problems? [Understand OCR challenges and solutions →](explanations/ocr-challenges.md)
 
 ## Visual Debugging & Interactive Widget
 
@@ -170,8 +164,6 @@ preview_image
 ```
 
 Visualizing elements helps debug extraction issues and understand document structure. [See more visualization options →](visual-debugging/index.ipynb)
-
-Having trouble with PDF extraction? [Understand common PDF challenges →](explanations/pdf-extraction-challenges.md)
 
 ## Page Sections
 
@@ -302,9 +294,6 @@ Choose what you want to learn about:
 - [Layout Analysis](layout-analysis/index.ipynb): Detect document structure
 - [Tables](tables/index.ipynb): Extract tabular data
 - [Document QA](document-qa/index.ipynb): Ask questions to your documents
-
-### Understanding PDFs
-- [PDF Explanations](explanations/index.md): Deep dives into PDF extraction challenges, fonts, OCR, and more
 
 ### Reference
 - [API Reference](api/index.md): Complete library reference

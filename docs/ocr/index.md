@@ -197,15 +197,6 @@ The debug report shows:
 - Boxes around each detected word
 - Options to sort and filter results
 
-## Troubleshooting OCR
-
-Having problems with OCR? Our [OCR Challenges and Solutions](../explanations/ocr-challenges.md) guide provides detailed information about:
-
-- Comparing EasyOCR and PaddleOCR engines
-- Fixing issues with low-quality scans
-- Handling mixed languages and complex layouts
-- Optimizing OCR parameters for better results
-
 ## OCR Parameter Tuning
 
 ### Parameter Recommendation Table
@@ -228,5 +219,4 @@ With OCR capabilities, you can explore:
 
 - [Layout Analysis](../layout-analysis/index.ipynb) for automatically detecting document structure
 - [Document QA](../document-qa/index.ipynb) for asking questions about your documents
-- [Understanding PDF Fonts](../explanations/pdf-fonts.md) for font-related text extraction issues
 - [Visual Debugging](../visual-debugging/index.ipynb) for visualizing OCR results
