@@ -127,10 +127,10 @@ def create_legend(labels_colors: Dict[str, Tuple[int, int, int, int]],
     # Try to load a font, use default if not available
     try:
         # Use a commonly available font, adjust size
-        font = ImageFont.truetype("DejaVuSans.ttf", 12) 
+        font = ImageFont.truetype("DejaVuSans.ttf", 14) 
     except IOError:
         try:
-             font = ImageFont.truetype("Arial.ttf", 12)
+             font = ImageFont.truetype("Arial.ttf", 14)
         except IOError:
             font = ImageFont.load_default()
     

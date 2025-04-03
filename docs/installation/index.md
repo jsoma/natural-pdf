@@ -65,6 +65,6 @@ if title:
 
 Now that you have Natural PDF installed, you can:
 
-- Learn to [navigate PDFs](../pdf-navigation/index.md)
-- Explore how to [select elements](../element-selection/index.md)
-- See how to [extract text](../text-extraction/index.md)
+- Learn to [navigate PDFs](../pdf-navigation/index.ipynb)
+- Explore how to [select elements](../element-selection/index.ipynb)
+- See how to [extract text](../text-extraction/index.ipynb)

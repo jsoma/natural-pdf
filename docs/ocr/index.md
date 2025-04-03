@@ -226,7 +226,7 @@ Having problems with OCR? Our [OCR Challenges and Solutions](../explanations/ocr
 
 With OCR capabilities, you can explore:
 
-- [Layout Analysis](../layout-analysis/index.md) for automatically detecting document structure
-- [Document QA](../document-qa/index.md) for asking questions about your documents
+- [Layout Analysis](../layout-analysis/index.ipynb) for automatically detecting document structure
+- [Document QA](../document-qa/index.ipynb) for asking questions about your documents
 - [Understanding PDF Fonts](../explanations/pdf-fonts.md) for font-related text extraction issues
-- [Visual Debugging](../visual-debugging/index.md) for visualizing OCR results
+- [Visual Debugging](../visual-debugging/index.ipynb) for visualizing OCR results

@@ -68,16 +68,18 @@ nav:
   - Home: index.md
   - Getting Started: installation/index.md
   - Working with PDFs:
-    - PDF Navigation: pdf-navigation/index.md
-    - Element Selection: element-selection/index.md
-    - Text Extraction: text-extraction/index.md
-    - Working with Regions: regions/index.md
+    - PDF Navigation: pdf-navigation/index.ipynb
+    - Element Selection: element-selection/index.ipynb
+    - Text Extraction: text-extraction/index.ipynb
+    - Text Analysis: text-analysis/index.ipynb
+    - Working with Regions: regions/index.ipynb
   - Advanced Features:
-    - Visual Debugging: visual-debugging/index.md
+    - Visual Debugging: visual-debugging/index.ipynb
+    - Interactive Widget: interactive-widget/index.ipynb
     - OCR: ocr/index.md
-    - Layout Analysis: layout-analysis/index.md
-    - Tables: tables/index.md
-    - Document Q&A: document-qa/index.md
+    - Layout Analysis: layout-analysis/index.ipynb
+    - Tables: tables/index.ipynb
+    - Document Q&A: document-qa/index.ipynb
   - Explanations:
     - Overview: explanations/index.md
     - PDF Extraction Challenges: explanations/pdf-extraction-challenges.md
@@ -128,6 +130,29 @@ plugins:
   - exclude:
       glob:
         - tutorials/*.md
+        - document-qa/index.md
+        - element-selection/index.md
+        - interactive-widget/index.md
+        - layout-analysis/index.md
+        - pdf-navigation/index.md
+        - regions/index.md
+        - tables/index.md
+        - text-analysis/index.md
+        - text-extraction/index.md
+        - tutorials/01-loading-and-extraction.md
+        - tutorials/02-finding-elements.md
+        - tutorials/03-extracting-blocks.md
+        - tutorials/04-table-extraction.md
+        - tutorials/05-excluding-content.md
+        - tutorials/06-document-qa.md
+        - tutorials/07-layout-analysis.md
+        - tutorials/07-working-with-regions.md
+        - tutorials/08-spatial-navigation.md
+        - tutorials/09-section-extraction.md
+        - tutorials/10-form-field-extraction.md
+        - tutorials/11-enhanced-table-processing.md
+        - tutorials/12-ocr-integration.md
+        - visual-debugging/index.md
   - mkdocstrings:
       default_handler: python
       handlers:

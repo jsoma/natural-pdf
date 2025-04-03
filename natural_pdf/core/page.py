@@ -1215,6 +1215,34 @@ class Page:
 
         return ElementCollection(detected_regions)
 
+    def clear_detected_layout_regions(self) -> 'Page':
+        """
+        Removes all regions from this page that were added by layout analysis
+        (i.e., regions where `source` attribute is 'detected').
+
+        This clears the regions both from the page's internal `_regions['detected']` list
+        and from the ElementManager's internal list of regions.
+
+        Returns:
+            Self for method chaining.
+        """
+        if not hasattr(self._element_mgr, 'regions') or not hasattr(self._element_mgr, '_elements') or 'regions' not in self._element_mgr._elements:
+             logger.debug(f"Page {self.index}: No regions found in ElementManager, nothing to clear.")
+             self._regions['detected'] = [] # Ensure page's list is also clear
+             return self
+
+        # Filter ElementManager's list to keep only non-detected regions
+        original_count = len(self._element_mgr.regions)
+        self._element_mgr._elements['regions'] = [r for r in self._element_mgr.regions if getattr(r, 'source', None) != 'detected']
+        new_count = len(self._element_mgr.regions)
+        removed_count = original_count - new_count
+
+        # Clear the page's specific list of detected regions
+        self._regions['detected'] = []
+
+        logger.info(f"Page {self.index}: Cleared {removed_count} detected layout regions.")
+        return self
+
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion='both') -> Optional[Region]: # Return Optional
         """
         Get a section between two elements on this page.

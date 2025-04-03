@@ -217,5 +217,5 @@ If you've thought "why not just feed the text to ChatGPT?", there are good reaso
 ## Further Reading
 
 - [OCR Integration in Natural PDF](../ocr/index.md)
-- [Document QA](../document-qa/index.md)
-- [Layout Analysis](../layout-analysis/index.md)
+- [Document QA](../document-qa/index.ipynb)
+- [Layout Analysis](../layout-analysis/index.ipynb)

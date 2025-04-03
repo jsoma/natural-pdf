@@ -23,6 +23,6 @@ The ins and outs of Optical Character Recognition, comparing OCR engines, and te
 
 ## Further Reading
 
-- [Element Selection](../element-selection/index.md): How to find specific elements in PDFs
-- [Text Extraction](../text-extraction/index.md): Methods for extracting clean text
-- [Document QA](../document-qa/index.md): Ask questions directly to your documents
+- [Element Selection](../element-selection/index.ipynb): How to find specific elements in PDFs
+- [Text Extraction](../text-extraction/index.ipynb): Methods for extracting clean text
+- [Document QA](../document-qa/index.ipynb): Ask questions directly to your documents

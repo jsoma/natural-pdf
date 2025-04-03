@@ -13,26 +13,28 @@ Every `TextElement` (representing characters or words) holds information about i
 ```python
 from natural_pdf import PDF
 
-pdf = PDF('document.pdf')
-page = pdf.pages[0]
+# Load the PDF
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
+# Select the first page
+page = pdf.pages[0]
+```
+
+```python
 # Find the first word element
 word = page.find('word') 
 
-if word:
-    print(f"Text: {word.text}")
-    print(f"Font Name: {word.fontname}") # Font reference (e.g., F1) or name
-    print(f"Real Font Name: {getattr(word, 'real_fontname', 'N/A')}") # Actual font name if resolved
-    print(f"Size: {word.size:.2f} pt")
-    print(f"Color: {getattr(word, 'color', 'N/A')}") # Non-stroking color
-    print(f"Is Bold: {word.bold}")
-    print(f"Is Italic: {word.italic}") 
+print(f"Text:", word.text)
+print(f"Font Name:", word.fontname) # Font reference (e.g., F1) or name
+print(f"Size:", word.size)
+print(f"Color:", word.color) # Non-stroking color
+print(f"Is Bold:", word.bold)
+print(f"Is Italic:", word.italic)
 ```
 
 - `fontname`: Often an internal reference (like 'F1', 'F2') or a basic name.
-- `real_fontname`: The library attempts to resolve `fontname` to the actual font name embedded in the PDF (e.g., 'Arial-BoldMT'). Access using `getattr` as it might not always be present.
 - `size`: Font size in points.
-- `color`: The non-stroking color, typically a tuple representing RGB or Grayscale values (e.g., `(0.0, 0.0, 0.0)` for black). Access using `getattr`.
+- `color`: The non-stroking color, typically a tuple representing RGB or Grayscale values (e.g., `(0.0, 0.0, 0.0)` for black).
 - `bold`, `italic`: Boolean flags indicating if the font style is bold or italic (heuristically determined based on font name conventions).
 
 ## Working with Text Styles
@@ -51,53 +53,53 @@ bold_headings = page.find_all('text:bold[size>=12]')
 
 print(f"Found {len(bold_text)} bold elements.")
 print(f"Found {len(italic_text)} italic elements.")
+print(f"Found {len(bold_headings)} bold headings.")
 ```
 
-## Analyzing Font Usage Across a Page
+## Analyzing Fonts on a Page
 
-You can gather statistics about font usage on a page:
+You can use `analyze_text_styles` to assign labels to text based on font sizes, bold/italic and font names.
 
 ```python
-from collections import Counter
+page.analyze_text_styles()
+page.text_style_labels
+```
 
-all_words = page.find_all('word')
+One they're assigned, you can filter based on `style_label` instead of going bit-by-bit.
 
-# Count occurrences of each font name and size combination
-font_usage = Counter()
-for word in all_words:
-    font_key = (getattr(word, 'real_fontname', word.fontname), word.size)
-    font_usage[font_key] += 1
-
-print("Font Usage Summary:")
-for (font, size), count in font_usage.most_common():
-    print(f"- Font: {font}, Size: {size:.2f}pt, Count: {count}")
-
+```python
+page.find_all('text[style_label="10.0pt Bold Helvetica"]')
 ```
 
 ## Visualizing Text Properties
 
-Use highlighting to visually inspect text properties. Grouping by attributes like `fontname` or `size` can be very insightful.
+Use highlighting to visually inspect text properties. Grouping by attributes like `fontname` or `size` can be very insightful. In the example below we go right to grouping by the `style_label`, which combines font name, size and variant.
 
 ```python
-# Highlight words, grouping by font name
-# Each font will get a different color in the output image/preview
-page.find_all('word').highlight(group_by='fontname', label_format="{fontname}")
-
-# Show a temporary preview grouping by font size category
-def size_category(element):
-    if element.size >= 14: return "Large"
-    if element.size >= 10: return "Medium"
-    return "Small"
-
-# Apply the function to create a temporary 'size_cat' attribute for grouping
-words = page.find_all('word')
-for w in words: w.size_cat = size_category(w) 
-
-# Show preview grouped by the custom category
-words.show(group_by='size_cat') 
-
-# Don't forget to clean up the temporary attribute if needed
-# for w in words: delattr(w, 'size_cat') 
+page.find_all('text').highlight(group_by='style_label', replace=True).to_image(width=700)
 ```
 
 This allows you to quickly see patterns in font usage across the page layout. 
+
+## Weird font names
+
+Oftentimes font names aren't what you're used to – Arial, Helvetica, etc – the PDF has given them weird, weird names. Relax, it's okay, they're normal fonts.
+
+```python
+from natural_pdf import PDF
+
+# Load the PDF
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
+
+# Select the first page
+page = pdf.pages[0]
+page.to_image(width=700)
+```
+
+Look!
+
+```python
+page.find_all('text')[0].fontname
+```
+
+The part before the `+` is the variant – bold, italic, etc – while the part after it is the "real" font name.

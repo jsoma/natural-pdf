@@ -57,7 +57,7 @@ page.find_all('text[fontname*=Arial]').extract_text()
 page.find_all('text[source=ocr][confidence>=0.8]').highlight(label="High Confidence OCR")
 ```
 
-Selectors support attribute matching, pseudo-classes, and content searches. [Learn more about selectors →](element-selection/index.md)
+Selectors support attribute matching, pseudo-classes, and content searches. [Learn more about selectors →](element-selection/index.ipynb)
 
 Curious about those weird font names like 'AAAAAB+Arial'? [Explore PDF font handling →](explanations/pdf-fonts.md)
 
@@ -77,9 +77,9 @@ methods_text = page.find('text:contains("Methods")').below(
 main_text = page.find('text:contains("Page 1 of 10")').above().extract_text()
 ```
 
-Navigate PDFs spatially instead of using coordinates. [Explore more navigation methods →](pdf-navigation/index.md)
+Navigate PDFs spatially instead of using coordinates. [Explore more navigation methods →](pdf-navigation/index.ipynb)
 
-Working with headers and footers? [Learn about exclusion zones →](regions/index.md#exclusion-zones)
+Working with headers and footers? [Learn about exclusion zones →](regions/index.ipynb#exclusion-zones)
 
 ### Document Layout Analysis
 
@@ -98,9 +98,9 @@ paragraph_text = page.find_all('region[type=plain-text]').extract_text()
 table_data = page.find('region[type=table]').extract_table()
 ```
 
-Natural PDF supports multiple layout models including YOLO for general document analysis and Table Transformer (TATR) for detailed table structure. [Learn about layout models →](layout-analysis/index.md)
+Natural PDF supports multiple layout models including YOLO for general document analysis and Table Transformer (TATR) for detailed table structure. [Learn about layout models →](layout-analysis/index.ipynb)
 
-Working with tables? [See specialized table extraction methods →](tables/index.md)
+Working with tables? [See specialized table extraction methods →](tables/index.ipynb)
 
 ### Document Question Answering
 
@@ -121,7 +121,7 @@ if result.get("found", False):
     image
 ```
 
-Document QA uses LayoutLM models that understand both text content and visual layout. Unlike general LLMs, the answers come directly from your document without hallucinations. [Learn about Document QA →](document-qa/index.md)
+Document QA uses LayoutLM models that understand both text content and visual layout. Unlike general LLMs, the answers come directly from your document without hallucinations. [Learn about Document QA →](document-qa/index.ipynb)
 
 Having OCR problems? [Understand OCR challenges and solutions →](explanations/ocr-challenges.md)
 
@@ -169,7 +169,7 @@ preview_image = page.find_all('region[type*=table]').show(group_by='type')
 preview_image
 ```
 
-Visualizing elements helps debug extraction issues and understand document structure. [See more visualization options →](visual-debugging/index.md)
+Visualizing elements helps debug extraction issues and understand document structure. [See more visualization options →](visual-debugging/index.ipynb)
 
 Having trouble with PDF extraction? [Understand common PDF challenges →](explanations/pdf-extraction-challenges.md)
 
@@ -202,9 +202,9 @@ doc_sections = pdf.pages.get_sections(
 )
 ```
 
-Sections help break down documents into logical chunks. Use them to extract structured content like chapters, articles, or report sections. [Learn more about sectioning →](regions/index.md#document-sections)
+Sections help break down documents into logical chunks. Use them to extract structured content like chapters, articles, or report sections. [Learn more about sectioning →](regions/index.ipynb#document-sections)
 
-Need to extract specific document components? [See layout analysis for automatic structure detection →](layout-analysis/index.md)
+Need to extract specific document components? [See layout analysis for automatic structure detection →](layout-analysis/index.ipynb)
 
 ## Advanced Example
 
@@ -293,15 +293,15 @@ Choose what you want to learn about:
 
 ### Task-based Guides
 - [Getting Started](installation/index.md): Install the library and run your first extraction
-- [PDF Navigation](pdf-navigation/index.md): Open PDFs and work with pages
-- [Element Selection](element-selection/index.md): Find text and other elements using selectors
-- [Text Extraction](text-extraction/index.md): Extract clean text from documents
-- [Regions](regions/index.md): Work with specific areas of a page
-- [Visual Debugging](visual-debugging/index.md): See what you're extracting
+- [PDF Navigation](pdf-navigation/index.ipynb): Open PDFs and work with pages
+- [Element Selection](element-selection/index.ipynb): Find text and other elements using selectors
+- [Text Extraction](text-extraction/index.ipynb): Extract clean text from documents
+- [Regions](regions/index.ipynb): Work with specific areas of a page
+- [Visual Debugging](visual-debugging/index.ipynb): See what you're extracting
 - [OCR](ocr/index.md): Extract text from scanned documents
-- [Layout Analysis](layout-analysis/index.md): Detect document structure
-- [Tables](tables/index.md): Extract tabular data
-- [Document QA](document-qa/index.md): Ask questions to your documents
+- [Layout Analysis](layout-analysis/index.ipynb): Detect document structure
+- [Tables](tables/index.ipynb): Extract tabular data
+- [Document QA](document-qa/index.ipynb): Ask questions to your documents
 
 ### Understanding PDFs
 - [PDF Explanations](explanations/index.md): Deep dives into PDF extraction challenges, fonts, OCR, and more

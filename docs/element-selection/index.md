@@ -30,25 +30,19 @@ The basic selector structure is `element_type[attribute_filter]:pseudo_class`.
 ```python
 # Find the first text element containing "Summary"
 summary_text = page.find('text:contains("Summary")')
-summary_text # Display the element object
+summary_text
 ```
 
 ```python
-# Highlight the found element
-if summary_text:
-    page.highlight(summary_text, color="yellow").show()
+# Find all text elements containing "Inadequate"
+contains_inadequate = page.find_all('text:contains("Inadequate")')
+len(contains_inadequate)
 ```
 
 ```python
-# Find all text elements containing "the"
-all_the_text = page.find_all('text:contains("the")')
-len(all_the_text) # Show how many were found
-```
-
-```python
-# Highlight all occurrences of "the"
-if all_the_text:
-    page.highlight_all(all_the_text, color="lightblue").show()
+summary_text.highlight(label='summary')
+contains_inadequate.highlight(label="inadequate")
+page.to_image(width=700)
 ```
 
 ## Selecting by Element Type
@@ -68,24 +62,14 @@ len(all_rects)
 ```
 
 ```python
-# Highlight the first rectangle found
-if all_rects:
-    page.highlight(all_rects[0], color="pink").show()
-```
-
-```python
 # Find all line elements
 all_lines = page.find_all('line')
 len(all_lines)
 ```
 
 ```python
-# Highlight all lines
-if all_lines:
-    page.highlight_all(all_lines, color="lightgreen").show()
+page.find_all('line').show()
 ```
-
-*Note: `image`, `curve`, and `region` (from layout analysis) are other common types.*
 
 ## Filtering by Attributes
 
@@ -104,45 +88,28 @@ Use square brackets `[]` to filter elements by their properties (attributes).
 
 ```python
 # Find large text (size >= 11 points)
-large_text = page.find_all('text[size>=11]')
-large_text # Display the list
-```
-
-```python
-# Highlight large text
-if large_text:
-    page.highlight_all(large_text, color="orange").show()
+page.find_all('text[size>=11]')
 ```
 
 ```python
 # Find text with 'Helvetica' in the font name
-helvetica_text = page.find_all('text[fontname*=Helvetica]')
-helvetica_text
+page.find_all('text[fontname*=Helvetica]')
 ```
 
 ```python
 # Find red text (using approximate color match)
 # This PDF has text with color (0.8, 0.0, 0.0)
 red_text = page.find_all('text[color~=red]')
-red_text
 ```
 
 ```python
-# Highlight the red text
-if red_text:
-    page.highlight(red_text[0], color="red").show() # Highlight just the first match
+# Highlight the red text (ignoring existing highlights)
+red_text.show()
 ```
 
 ```python
 # Find thick lines (width >= 2)
-thick_lines = page.find_all('line[width>=2]')
-thick_lines
-```
-
-```python
-# Highlight the thick lines
-if thick_lines:
-    page.highlight_all(thick_lines, color="purple").show()
+page.find_all('line[width>=2]')
 ```
 
 ## Using Pseudo-Classes
@@ -166,26 +133,12 @@ Use colons `:` for special conditions (pseudo-classes).
 
 ```python
 # Find bold text
-bold_text = page.find_all('text:bold')
-bold_text
-```
-
-```python
-# Highlight bold text
-if bold_text:
-    page.highlight_all(bold_text, color="teal").show()
+page.find_all('text:bold').show()
 ```
 
 ```python
 # Combine attribute and pseudo-class: bold text size >= 11
-large_bold_text = page.find_all('text[size>=11]:bold')
-large_bold_text
-```
-
-```python
-# Highlight large bold text
-if large_bold_text:
-    page.highlight_all(large_bold_text, color="lime").show()
+page.find_all('text[size>=11]:bold')
 ```
 
 ### Spatial Pseudo-Classes Examples
@@ -197,25 +150,6 @@ ref_line = page.find('line[width>=2]')
 # Find text elements strictly above that line
 text_above_line = page.find_all('text:above("line[width>=2]")')
 text_above_line
-```
-
-```python
-# Highlight the line and the text found above it
-if ref_line and text_above_line:
-    page.copy().highlight(ref_line, color="red")\
-               .highlight_all(text_above_line, color="blue")\
-               .show()
-```
-
-```python
-# Find text near the red text element
-# (We found red_text earlier)
-if red_text:
-    nearby_text = page.find_all('text:near("text[color~=red]")')
-    # Highlight the red text and nearby text
-    page.copy().highlight(red_text[0], color="red")\
-               .highlight_all(nearby_text, color="orange", alpha=0.3)\
-               .show()
 ```
 
 ## Advanced Text Searching Options
@@ -264,25 +198,13 @@ lowest = headings.lowest()
 
 ```python
 # Filter the collection further: headings containing "Service"
-service_headings = headings.filter('text:contains("Service")')
+service_headings = headings.find_all('text:contains("Service")')
 service_headings
 ```
 
 ```python
 # Extract text from all elements in the collection
-headings.extract_text(delimiter=" | ")
-```
-
-```python
-# Highlight all elements in the collection (returns the collection)
-headings.highlight(color="magenta", label="Headings")
-page.show() # Show the page with persistent highlights
-```
-
-```python
-# Clear highlights from the page
-page.clear_highlights()
-page.show()
+headings.extract_text()
 ```
 
 *Remember: `.highest()`, `.lowest()`, `.leftmost()`, `.rightmost()` raise errors if the collection spans multiple pages.*
@@ -293,18 +215,15 @@ Sometimes PDFs use font variants (prefixes like `AAAAAB+`) which can be useful f
 
 ```python
 # Find text elements with a specific font variant prefix (if any exist)
-# This example PDF doesn't use variants heavily, but the selector works like this:
-variant_text = page.find_all('text[font-variant=AAAAAB]')
-# If found, you could highlight them:
-# if variant_text: page.highlight_all(variant_text).show()
-len(variant_text)
+# This example PDF doesn't use variants, but the selector works like this:
+page.find_all('text[font-variant=AAAAAB]')
 ```
 
 ## Next Steps
 
 Now that you can find elements, explore:
 
-- [Text Extraction](../text-extraction/index.md): Get text content from found elements.
-- [Spatial Navigation](../pdf-navigation/index.md): Use found elements as anchors to navigate (`.above()`, `.below()`, etc.).
-- [Working with Regions](../regions/index.md): Define areas based on found elements.
-- [Visual Debugging](../visual-debugging/index.md): Techniques for highlighting and visualizing elements.
+- [Text Extraction](../text-extraction/index.ipynb): Get text content from found elements.
+- [Spatial Navigation](../pdf-navigation/index.ipynb): Use found elements as anchors to navigate (`.above()`, `.below()`, etc.).
+- [Working with Regions](../regions/index.ipynb): Define areas based on found elements.
+- [Visual Debugging](../visual-debugging/index.ipynb): Techniques for highlighting and visualizing elements.

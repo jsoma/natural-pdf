@@ -1,3 +1,12 @@
+.notebook_cache.json
+Untitled.ipynb
+conversation.md
+docs/tutorials/pdfs
+install.sh
+notebooks/Examples.md
+transcript.md
+
+
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos,visualstudiocode,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos,visualstudiocode,jupyternotebooks
 

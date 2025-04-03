@@ -199,5 +199,5 @@ Natural PDF makes PDF extraction more intuitive by:
 
 - [Understanding PDF Fonts](pdf-fonts.md)
 - [OCR Challenges and Solutions](ocr-challenges.md)
-- [Working with regions](../regions/index.md)
-- [Document Layout Analysis](../layout-analysis/index.md)
+- [Working with regions](../regions/index.ipynb)
+- [Document Layout Analysis](../layout-analysis/index.ipynb)

@@ -761,8 +761,6 @@ class Region(DirectionalMixin):
             exclusion_regions = self._page._get_exclusion_regions(include_callable=True)
             
             if debug:
-                import logging
-                logger = logging.getLogger("natural_pdf.elements.region")
                 logger.debug(f"Region {self.bbox} with {len(exclusion_regions)} exclusion regions")
         
         # IMPROVEMENT 1: Check if the region intersects with any exclusion zone
@@ -777,16 +775,12 @@ class Region(DirectionalMixin):
                 if overlap:
                     has_intersection = True
                     if debug:
-                        import logging
-                        logger = logging.getLogger("natural_pdf.elements.region")
                         logger.debug(f"  Region intersects with exclusion {i}: {exclusion.bbox}")
                     break
             
             # If no intersection, process without exclusions
             if not has_intersection:
                 if debug:
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"  No intersection with any exclusion, ignoring exclusions")
                 apply_exclusions = False
                 exclusion_regions = []
@@ -809,8 +803,6 @@ class Region(DirectionalMixin):
                              abs(exclusion.x1 - self.page.width) < 5)
                 
                 if debug:
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"  Exclusion {i}: {exclusion.bbox}, full width: {full_width}")
                 
                 if full_width:
@@ -827,8 +819,6 @@ class Region(DirectionalMixin):
                 bottom_bound = self.bottom
                 
                 if debug:
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"  Using cropping approach, initial bounds: ({self.x0}, {top_bound}, {self.x1}, {bottom_bound})")
                 
                 # Process only header/footer exclusions for cropping
@@ -838,8 +828,6 @@ class Region(DirectionalMixin):
                         # Move top bound to exclude the header
                         top_bound = max(top_bound, exclusion.bottom)
                         if debug:
-                            import logging
-                            logger = logging.getLogger("natural_pdf.elements.region")
                             logger.debug(f"  Adjusted top bound to {top_bound} due to header exclusion")
                     
                     # If exclusion is at the bottom of our region
@@ -847,14 +835,10 @@ class Region(DirectionalMixin):
                         # Move bottom bound to exclude the footer
                         bottom_bound = min(bottom_bound, exclusion.top)
                         if debug:
-                            import logging
-                            logger = logging.getLogger("natural_pdf.elements.region")
                             logger.debug(f"  Adjusted bottom bound to {bottom_bound} due to footer exclusion")
                         
                 
                 if debug:
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"  Final bounds after exclusion adjustment: ({self.x0}, {top_bound}, {self.x1}, {bottom_bound})")
                 
                 # If we still have a valid region after exclusions
@@ -865,8 +849,6 @@ class Region(DirectionalMixin):
                     result = cropped.extract_text(keep_blank_chars=keep_blank_chars, **kwargs)
                     
                     if debug:
-                        import logging
-                        logger = logging.getLogger("natural_pdf.elements.region")
                         logger.debug(f"  Successfully extracted text using crop, got {len(result)} characters")
                     
                     # Skip the complex filtering approach
@@ -874,16 +856,12 @@ class Region(DirectionalMixin):
                 else:
                     # This would only happen if the region is entirely inside an exclusion zone
                     # or if both top and bottom of the region are excluded leaving no valid area
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"Region {self.bbox} completely covered by exclusions, returning empty string")
                     return ""
             # We have exclusions, but not all are headers/footers,
             # or we have a non-rectangular region
             else:
                 if debug:
-                    import logging
-                    logger = logging.getLogger("natural_pdf.elements.region")
                     logger.debug(f"  Mixed exclusion types or non-rectangular region, switching to filtering")
                 
                 # Don't use crop for mixed exclusion types
@@ -902,16 +880,13 @@ class Region(DirectionalMixin):
             return result
             
         # For all other cases (complex exclusions, polygons), we use element filtering
-        import warnings
-        import logging
-        logger = logging.getLogger("natural_pdf.elements.region")
-        
         if debug:
             logger.debug(f"Using element filtering approach for region {self.bbox}")
         
-        # Get all elements in this region first
-        all_elements = self.get_elements(apply_exclusions=False)
-        
+        # Get only word elements in this region first (instead of ALL elements)
+        # This prevents duplication from joining both char and word text
+        all_elements = [e for e in self.page.words if self._is_element_in_region(e)]
+
         if apply_exclusions and exclusion_regions:
             if debug:
                 logger.debug(f"Filtering with {len(exclusion_regions)} exclusion zones")

@@ -549,6 +549,7 @@ class HighlightingService:
     ) -> Optional[Image.Image]:
         """
         Renders a specific page with its highlights.
+        Legend is now generated based only on highlights present on this page.
 
         Args:
             page_index: The 0-based index of the page to render.
@@ -568,23 +569,19 @@ class HighlightingService:
             return None
 
         page = self._pdf[page_index]
-        highlights_on_page = self.get_highlights_for_page(page_index)
+        highlights_on_page = self.get_highlights_for_page(page_index) # This list will be empty if clear_page was called
 
         # --- Get Base Image --- 
         try:
             render_resolution = resolution if resolution is not None else scale * 72
-            # Use the underlying pdfplumber page object for base rendering
             img_object = page._page.to_image(resolution=render_resolution, **kwargs)
-            # Access the PIL image directly
-            base_image = img_object.annotated # .annotated usually holds the PIL Image
+            base_image = img_object.annotated
             if not isinstance(base_image, Image.Image):
-                 # Fallback for different pdfplumber versions/outputs
                  png_data = img_object._repr_png_()
                  if png_data:
                       base_image = Image.open(io.BytesIO(png_data)).convert('RGB')
                  else:
                       raise ValueError("Could not extract base PIL image from pdfplumber.")
-            # Convert to RGBA for compositing
             base_image = base_image.convert('RGBA')
             logger.debug(f"Base image for page {page_index} rendered with resolution {render_resolution}.")
         except Exception as e:
@@ -592,6 +589,7 @@ class HighlightingService:
             return None
 
         # --- Render Highlights --- 
+        rendered_image: Image.Image
         if highlights_on_page:
             renderer = HighlightRenderer(
                 page=page,
@@ -602,21 +600,31 @@ class HighlightingService:
             )
             rendered_image = renderer.render()
         else:
-             # If no highlights, still need to potentially render OCR if requested
              if render_ocr:
+                  # Still render OCR even if no highlights
                   renderer = HighlightRenderer(page, base_image, [], scale, True)
-                  rendered_image = renderer.render() # Will only call _render_ocr_text
+                  rendered_image = renderer.render()
              else:
                   rendered_image = base_image # No highlights, no OCR requested
 
-        # --- Add Legend --- 
+        # --- Add Legend (Based ONLY on this page's highlights) --- 
         if labels:
-            label_colors = self.get_labels_and_colors()
-            if label_colors:
-                legend = create_legend(label_colors)
-                rendered_image = merge_images_with_legend(rendered_image, legend, legend_position)
-                logger.debug(f"Added legend with {len(label_colors)} labels to page {page_index}.")
-
+            # CHANGE: Create label_colors map only from highlights_on_page
+            labels_colors_on_page: Dict[str, Tuple[int, int, int, int]] = {}
+            for hl in highlights_on_page:
+                if hl.label and hl.label not in labels_colors_on_page:
+                    labels_colors_on_page[hl.label] = hl.color
+            
+            if labels_colors_on_page: # Only add legend if there are labels on this page
+                legend = create_legend(labels_colors_on_page)
+                if legend: # Ensure create_legend didn't return None
+                     rendered_image = merge_images_with_legend(rendered_image, legend, legend_position)
+                     logger.debug(f"Added legend with {len(labels_colors_on_page)} labels for page {page_index}.")
+                else:
+                     logger.debug(f"Legend creation returned None for page {page_index}.")
+            else:
+                 logger.debug(f"No labels found on page {page_index}, skipping legend.")
+        
         return rendered_image 
 
     def render_preview(

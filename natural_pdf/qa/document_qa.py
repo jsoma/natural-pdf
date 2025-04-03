@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw
 import os
 import tempfile
 import json
+from natural_pdf.elements.collections import ElementCollection
 
 logger = logging.getLogger("natural_pdf.qa.document_qa")
 
@@ -304,8 +305,8 @@ class DocumentQA:
                             # Remove from matched texts to avoid duplicates
                             if element.text in matched_texts:
                                 matched_texts.remove(element.text)
-                    
-                    result["source_elements"] = source_elements
+
+                    result["source_elements"] = ElementCollection(source_elements)
             
             return result
             
@@ -386,7 +387,7 @@ class DocumentQA:
                             if element.text in matched_texts:
                                 matched_texts.remove(element.text)
                     
-                    result["source_elements"] = source_elements
+                    result["source_elements"] = ElementCollection(source_elements)
             
             return result
             

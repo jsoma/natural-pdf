@@ -286,7 +286,7 @@ page.to_image()
 
 Now that you know how to extract text, you might want to explore:
 
-- [Working with regions](../regions/index.md) for more precise extraction
+- [Working with regions](../regions/index.ipynb) for more precise extraction
 - [OCR capabilities](../ocr/index.md) for scanned documents
-- [Document layout analysis](../layout-analysis/index.md) for automatic structure detection
-- [Document QA](../document-qa/index.md) for asking questions directly to your documents
+- [Document layout analysis](../layout-analysis/index.ipynb) for automatic structure detection
+- [Document QA](../document-qa/index.ipynb) for asking questions directly to your documents

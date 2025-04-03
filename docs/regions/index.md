@@ -295,7 +295,6 @@ if title_regions:
 
 Now that you understand regions, you can:
 
-- [Create multi-section documents](../section-extraction/index.md) by dividing a document into regions
-- [Extract tables](../tables/index.md) from table regions
-- [Ask questions](../document-qa/index.md) about specific regions
+- [Extract tables](../tables/index.ipynb) from table regions
+- [Ask questions](../document-qa/index.ipynb) about specific regions
 - [Exclude content](../text-extraction/index.md#filtering-out-headers-and-footers) from extraction
