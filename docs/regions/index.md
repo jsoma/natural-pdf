@@ -222,12 +222,6 @@ print(f"Difference: {len(full_text) - len(text_with_exclusion)} chars excluded")
 ```
 
 ```python
-# Temporarily bypass exclusions if needed
-text_ignoring_exclusion = full_page_region.extract_text(use_exclusions=False)
-print(f"Text ignoring exclusions: {len(text_ignoring_exclusion)} chars (should match original)")
-```
-
-```python
 # When done with this page, clear exclusions
 page.clear_exclusions()
 ```
@@ -253,10 +247,11 @@ pdf.add_exclusion(
 
 # PDF-level exclusions are used whenever you extract text
 # Let's try on the first three pages
-for i in range(min(3, len(pdf.pages))):
+for page in pdf.pages[:3]:
     page_i = pdf.pages[i]
     text = page_i.extract_text()
-    print(f"Page {i+1}: {len(text)} characters after exclusions")
+    text_original = page_i.extract_text(use_exclusions=False)
+    print(f"Page {page.number} – Before: {len(text_original)} After: {len(text)}")
 ```
 
 ```python

@@ -23,12 +23,12 @@ page = pdf.pages[0]
 full_text_unfiltered = page.extract_text()
 
 # Show the last 200 characters (likely containing footer text)
-"Unfiltered text (last 200 chars): " + full_text_unfiltered[-200:]
+full_text_unfiltered[-200:]
 ```
 
 ## Approach 1: Excluding a Fixed Area
 
-A simple way to exclude headers or footers is to define a fixed region based on page coordinates. Let's exclude the bottom 50 points of the page.
+A simple way to exclude headers or footers is to define a fixed region based on page coordinates. Let's exclude the bottom 200 pixels of the page.
 
 ```python
 from natural_pdf import PDF
@@ -36,24 +36,27 @@ from natural_pdf import PDF
 pdf_url = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/0500000US42007.pdf"
 pdf = PDF(pdf_url)
 
-# Define the exclusion region directly using a lambda function
-footer_height = 50
+# Define the exclusion region on every page using a lambda function
+footer_height = 200
 pdf.add_exclusion(
     lambda page: page.region(top=page.height - footer_height),
-    label="Bottom 50pt Footer"
+    label="Bottom 200pt Footer"
 )
 
 # Now extract text from the first page again, exclusions are active by default
 page = pdf.pages[0]
-filtered_text = page.extract_text() # use_exclusions=True is default
-
-# Show the last 200 chars with footer area excluded
-"Fixed Area Excluded (last 200 chars): " + filtered_text[-200:]
 
 # Visualize the excluded area
 footer_region_viz = page.region(top=page.height - footer_height)
-footer_region_viz.show(label="Excluded Footer Area")
+footer_region_viz.highlight(label="Excluded Footer Area")
 page.to_image()
+```
+
+```python
+filtered_text = page.extract_text() # use_exclusions=True is default
+
+# Show the last 200 chars with footer area excluded
+filtered_text[-200:]
 ```
 
 This method is simple but might cut off content if the footer height varies or content extends lower on some pages.
