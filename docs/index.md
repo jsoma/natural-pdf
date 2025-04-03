@@ -8,6 +8,14 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 
 <div style="max-width: 400px; margin: auto"><a href="assets/sample-screen.png"><img src="assets/sample-screen.png"></a></div>
 
+## Installation
+
+```
+pip install natural_pdf
+# All the extras
+pip install "natural_pdf[all]"
+```
+
 ## Quick Example
 
 ```python
