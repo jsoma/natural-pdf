@@ -34,7 +34,7 @@ class TATRLayoutOptions(BaseLayoutOptions):
     max_detection_size: int = 800
     max_structure_size: int = 1000
     # Whether to create cell regions (can be slow)
-    create_cells: bool = False # Keep the flag for cell creation control
+    create_cells: bool = True
 
 # --- Paddle Specific Options ---
 @dataclass
@@ -51,10 +51,8 @@ class PaddleLayoutOptions(BaseLayoutOptions):
 @dataclass
 class SuryaLayoutOptions(BaseLayoutOptions):
     """Options specific to Surya layout detection."""
-    # Surya doesn't seem to have many config options based on the example,
-    # but we can add placeholders if needed. Device is handled by BaseLayoutOptions.
     model_name: str = "default" # Placeholder if different models become available
-    verbose: bool = False # Verbose logging for the detector class
+    recognize_table_structure: bool = True # Automatically run table structure recognition?
 
 # --- Docling Specific Options ---
 @dataclass

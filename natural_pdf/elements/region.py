@@ -1514,48 +1514,75 @@ class Region(DirectionalMixin):
         
     def create_cells(self):
         """
-        Create cell regions for a TATR-detected table.
+        Create cell regions for a detected table by intersecting its
+        row and column regions, and add them to the page.
         
+        Assumes child row and column regions are already present on the page.
+
         Returns:
-            List of cell regions
+            Self for method chaining.
         """
-        if not (self.region_type == 'table' and self.model == 'tatr'):
-            raise ValueError("Only works for TATR-detected table regions")
+        # Ensure this is called on a table region
+        if self.region_type not in ('table', 'tableofcontents'): # Allow for ToC which might have structure
+            raise ValueError(f"create_cells should be called on a 'table' or 'tableofcontents' region, not '{self.region_type}'")
         
-        # Find rows and columns that belong to this table
-        rows = self.page.find_all(f'region[type=table-row][model=tatr]')
-        columns = self.page.find_all(f'region[type=table-column][model=tatr]')
+        # Find rows and columns associated with this page
+        # Remove the model-specific filter
+        rows = self.page.find_all('region[type=table-row]')
+        columns = self.page.find_all('region[type=table-column]')
         
-        # Filter to only include those that overlap with this table
+        # Filter to only include those that overlap with this table region
         def is_in_table(element):
-            element_center_x = (element.x0 + element.x1) / 2
-            element_center_y = (element.top + element.bottom) / 2
-            return (self.x0 <= element_center_x <= self.x1 and
-                    self.top <= element_center_y <= self.bottom)
+            # Use a simple overlap check (more robust than just center point)
+            # Check if element's bbox overlaps with self.bbox
+            return (element.x0 < self.x1 and element.x1 > self.x0 and
+                    element.top < self.bottom and element.bottom > self.top)
         
         table_rows = [r for r in rows if is_in_table(r)]
         table_columns = [c for c in columns if is_in_table(c)]
         
+        if not table_rows or not table_columns:
+            self._page.logger.warning(f"Region {self.bbox}: Cannot create cells. No overlapping row or column regions found.")
+            return self # Return self even if no cells created
+            
         # Sort rows and columns
         table_rows.sort(key=lambda r: r.top)
         table_columns.sort(key=lambda c: c.x0)
         
-        # Create cells
-        cells = []
+        # Create cells and add them to the page's element manager
+        created_count = 0
         for row in table_rows:
             for column in table_columns:
-                # Create cell region at the intersection
-                cell = self.page.create_region(
-                    column.x0, row.top, column.x1, row.bottom
-                )
-                # Set minimal metadata
-                cell.source = 'derived'
-                cell.region_type = 'table-cell'
-                cell.model = 'tatr'
-                
-                cells.append(cell)
+                # Calculate intersection bbox for the cell
+                cell_x0 = max(row.x0, column.x0)
+                cell_y0 = max(row.top, column.top)
+                cell_x1 = min(row.x1, column.x1)
+                cell_y1 = min(row.bottom, column.bottom)
+
+                # Only create a cell if the intersection is valid (positive width/height)
+                if cell_x1 > cell_x0 and cell_y1 > cell_y0:
+                    # Create cell region at the intersection
+                    cell = self.page.create_region(
+                        cell_x0, cell_y0, cell_x1, cell_y1
+                    )
+                    # Set metadata
+                    cell.source = 'derived'
+                    cell.region_type = 'table-cell' # Explicitly set type
+                    cell.normalized_type = 'table-cell' # And normalized type
+                    # Inherit model from the parent table region
+                    cell.model = self.model 
+                    cell.parent_region = self # Link cell to parent table region
+                    
+                    # Add the cell region to the page's element manager
+                    self.page._element_mgr.add_region(cell)
+                    created_count += 1
         
-        return cells
+        # Optional: Add created cells to the table region's children
+        # self.child_regions.extend(cells_created_in_this_call) # Needs list management
+
+        self._page.logger.info(f"Region {self.bbox} (Model: {self.model}): Created and added {created_count} cell regions.")
+
+        return self # Return self for chaining
         
     def ask(self, question: str, min_confidence: float = 0.1, model: str = None, debug: bool = False, **kwargs) -> Dict[str, Any]:
         """

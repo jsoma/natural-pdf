@@ -120,9 +120,10 @@ class LayoutManager:
 
         # --- Determine Options and Engine ---
         if options is not None:
-            # Advanced Mode
-            logger.debug(f"LayoutManager: Using advanced mode with options object: {type(options).__name__}")
-            final_options = copy.deepcopy(options) # Use copy
+            # Advanced Mode: An options object was provided directly (or constructed by LayoutAnalyzer)
+            # Use this object directly, do not deep copy or reconstruct.
+            logger.debug(f"LayoutManager: Using provided options object: {type(options).__name__}")
+            final_options = options # Use the provided object directly
             found_engine = False
             for name, registry_entry in self.ENGINE_REGISTRY.items():
                 if isinstance(options, registry_entry['options_class']):
@@ -131,12 +132,14 @@ class LayoutManager:
                     break
             if not found_engine:
                  raise TypeError(f"Provided options object type '{type(options).__name__}' does not match any registered layout engine options.")
+            # Ignore simple kwargs if options object is present
             if kwargs:
-                logger.warning(f"Keyword arguments {list(kwargs.keys())} were provided alongside 'options' and will be ignored.")
+                logger.warning(f"Keyword arguments {list(kwargs.keys())} were provided alongside an 'options' object and will be ignored.")
         else:
-            # Simple Mode
+            # Simple Mode: No options object provided initially. 
+            # Determine engine from kwargs or default, then construct options.
             selected_engine_name = default_engine.lower()
-            logger.debug(f"LayoutManager: Using simple mode with engine: '{selected_engine_name}' and kwargs: {kwargs}")
+            logger.debug(f"LayoutManager: Using simple mode. Engine: '{selected_engine_name}', kwargs: {kwargs}")
 
             if selected_engine_name not in self.ENGINE_REGISTRY:
                  raise ValueError(f"Unknown or unavailable layout engine: '{selected_engine_name}'. Available: {available_engines}")
