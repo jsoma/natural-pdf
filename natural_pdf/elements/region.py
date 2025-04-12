@@ -18,7 +18,7 @@ class Region(DirectionalMixin):
     Represents a rectangular region on a page.
     """
     
-    def __init__(self, page: 'Page', bbox: Tuple[float, float, float, float], polygon: List[Tuple[float, float]] = None, parent=None):
+    def __init__(self, page: 'Page', bbox: Tuple[float, float, float, float], polygon: List[Tuple[float, float]] = None, parent=None, label: Optional[str] = None):
         """
         Initialize a region.
         
@@ -27,6 +27,7 @@ class Region(DirectionalMixin):
             bbox: Bounding box as (x0, top, x1, bottom)
             polygon: Optional list of coordinate points [(x1,y1), (x2,y2), ...] for non-rectangular regions
             parent: Optional parent region (for hierarchical document structure)
+            label: Optional label for the region (e.g., for exclusions)
         """
         self._page = page
         self._bbox = bbox
@@ -49,6 +50,7 @@ class Region(DirectionalMixin):
         # Region management attributes
         self.name = None
         self.source = None  # Will be set by creation methods
+        self.label = label
         
         # Hierarchy support for nested document structure
         self.parent_region = parent

@@ -166,4 +166,36 @@ for i, page in enumerate(pdf.pages):
 all_text
 ```
 
+## Saving PDFs with Searchable Text
+
+After applying OCR to the pages of a PDF (e.g., using `pdf.apply_ocr_to_pages()`), you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
+
+Use the `save_searchable()` method on the `PDF` object:
+
+```python
+from natural_pdf import PDF
+
+input_pdf_path = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"
+output_pdf_path = "needs-ocr-searchable.pdf"
+
+# Load the PDF
+pdf = PDF(input_pdf_path)
+
+# Apply OCR to all pages (this generates the text elements needed for saving)
+# Replace 'easyocr' with 'paddle' or 'surya' if desired
+print("Applying OCR...")
+pdf.apply_ocr_to_pages(engine='easyocr') 
+
+# Save the searchable version
+print(f"Saving searchable PDF to {output_pdf_path}...")
+pdf.save_searchable(output_pdf_path)
+
+print("Done. Check needs-ocr-searchable.pdf")
+
+# Optional: Close the original PDF
+pdf.close()
+```
+
+This creates `needs-ocr-searchable.pdf`, which looks identical to the original but now has a text layer corresponding to the OCR results. You can adjust the rendering resolution used during saving with the `dpi` parameter (default is 300).
+
 OCR integration enables you to work with scanned documents, historical archives, and image-based PDFs that don't have embedded text. By combining OCR with natural-pdf's layout analysis capabilities, you can turn any document into structured, searchable data. 

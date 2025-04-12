@@ -26,6 +26,9 @@ pip install natural-pdf[paddle]
 # Example: Install with interactive viewer support
 pip install natural-pdf[interactive]
 
+# Example: Install with semantic search support (Haystack)
+pip install natural-pdf[haystack]
+
 # Install everything
 pip install natural-pdf[all]
 ```
@@ -74,6 +77,7 @@ Natural PDF offers a range of features for working with PDFs:
 *   **OCR Integration:** Extract text from scanned documents using engines like EasyOCR, PaddleOCR, or Surya.
 *   **Layout Analysis:** Detect document structures (titles, paragraphs, tables) using AI models.
 *   **Document QA:** Ask natural language questions about your document's content.
+*   **Semantic Search:** Index PDFs and find relevant pages or documents based on semantic meaning using Haystack.
 *   **Visual Debugging:** Highlight elements and use an interactive viewer or save images to understand your selections.
 
 ## Learn More

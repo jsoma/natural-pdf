@@ -7,6 +7,8 @@ from PIL import Image
 import base64
 import io
 import json
+import re
+import hashlib
 
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
@@ -97,6 +99,11 @@ class Page:
         return self._page.page_number
     
     @property
+    def page_number(self) -> int:
+        """Get page number (1-based)."""
+        return self._page.page_number
+
+    @property
     def index(self) -> int:
         """Get page index (0-based)."""
         return self._index
@@ -127,7 +134,7 @@ class Page:
         self._exclusions = []
         return self
 
-    def add_exclusion(self, exclusion_func_or_region: Union[Callable[['Page'], Region], Region, Any]) -> 'Page':
+    def add_exclusion(self, exclusion_func_or_region: Union[Callable[['Page'], Region], Region, Any], label: Optional[str] = None) -> 'Page':
         """
         Add an exclusion to the page. Text from these regions will be excluded from extraction.
         Ensures non-callable items are stored as Region objects if possible.
@@ -135,6 +142,7 @@ class Page:
         Args:
             exclusion_func_or_region: Either a callable function returning a Region,
                                       a Region object, or another object with a valid .bbox attribute.
+            label: Optional label for this exclusion (e.g., 'header', 'footer').
             
         Returns:
             Self for method chaining
@@ -142,28 +150,36 @@ class Page:
         Raises:
             TypeError: If a non-callable, non-Region object without a valid bbox is provided.
         """
+        exclusion_data = None # Initialize exclusion data
+
         if callable(exclusion_func_or_region):
-            # Store callable functions directly
-            self._exclusions.append(exclusion_func_or_region)
-            logger.debug(f"Page {self.index}: Added callable exclusion: {exclusion_func_or_region}")
+            # Store callable functions along with their label
+            exclusion_data = (exclusion_func_or_region, label)
+            logger.debug(f"Page {self.index}: Added callable exclusion '{label}': {exclusion_func_or_region}")
         elif isinstance(exclusion_func_or_region, Region):
-            # Store Region objects directly
-            self._exclusions.append(exclusion_func_or_region)
-            logger.debug(f"Page {self.index}: Added Region exclusion: {exclusion_func_or_region}")
+            # Store Region objects directly, assigning the label
+            exclusion_func_or_region.label = label # Assign label
+            exclusion_data = (exclusion_func_or_region, label) # Store as tuple for consistency
+            logger.debug(f"Page {self.index}: Added Region exclusion '{label}': {exclusion_func_or_region}")
         elif hasattr(exclusion_func_or_region, 'bbox') and isinstance(getattr(exclusion_func_or_region, 'bbox', None), (tuple, list)) and len(exclusion_func_or_region.bbox) == 4:
             # Convert objects with a valid bbox to a Region before storing
             try:
                 bbox_coords = tuple(float(v) for v in exclusion_func_or_region.bbox)
-                region_to_add = Region(self, bbox_coords)
-                self._exclusions.append(region_to_add)
-                logger.debug(f"Page {self.index}: Added exclusion converted to Region from {type(exclusion_func_or_region)}: {region_to_add}")
+                # Pass the label to the Region constructor
+                region_to_add = Region(self, bbox_coords, label=label)
+                exclusion_data = (region_to_add, label) # Store as tuple
+                logger.debug(f"Page {self.index}: Added exclusion '{label}' converted to Region from {type(exclusion_func_or_region)}: {region_to_add}")
             except (ValueError, TypeError, Exception) as e:
                 # Raise an error if conversion fails
                 raise TypeError(f"Failed to convert exclusion object {exclusion_func_or_region} with bbox {getattr(exclusion_func_or_region, 'bbox', 'N/A')} to Region: {e}") from e
         else:
             # Reject invalid types
             raise TypeError(f"Invalid exclusion type: {type(exclusion_func_or_region)}. Must be callable, Region, or have a valid .bbox attribute.")
-            
+
+        # Append the stored data (tuple of object/callable and label)
+        if exclusion_data:
+            self._exclusions.append(exclusion_data)
+
         return self
         
     def add_region(self, region: Region, name: Optional[str] = None) -> 'Page':
@@ -222,75 +238,66 @@ class Page:
     def _get_exclusion_regions(self, include_callable=True, debug=False) -> List[Region]:
         """
         Get all exclusion regions for this page.
-        Assumes self._exclusions contains only callables or Region objects.
+        Assumes self._exclusions contains tuples of (callable/Region, label).
         
         Args:
             include_callable: Whether to evaluate callable exclusion functions
             debug: Enable verbose debug logging for exclusion evaluation
             
         Returns:
-            List of Region objects to exclude
+            List of Region objects to exclude, with labels assigned.
         """
         regions = []
         
-        # Track exclusion results for debugging
         if debug:
             print(f"\nPage {self.index}: Evaluating {len(self._exclusions)} exclusions")
-            
-        for i, exclusion in enumerate(self._exclusions):
-            # Get exclusion label if it's a tuple from PDF level
-            exclusion_label = f"exclusion {i}"
-            original_exclusion = exclusion # Keep track for debugging
 
-            # Check if it's a tuple from PDF.add_exclusion (should still be handled if PDF adds labels)
-            if isinstance(exclusion, tuple) and len(exclusion) == 2 and callable(exclusion[0]):
-                exclusion_func, label = exclusion
-                if label:
-                    exclusion_label = label
-                exclusion = exclusion_func # Use the function part
-            
+        for i, exclusion_data in enumerate(self._exclusions):
+            # Unpack the exclusion object/callable and its label
+            exclusion_item, label = exclusion_data
+            exclusion_label = label if label else f"exclusion {i}"
+
             # Process callable exclusion functions
-            if callable(exclusion) and include_callable:
-                # It's a function, call it with this page
+            if callable(exclusion_item) and include_callable:
                 try:
                     if debug:
-                        print(f"  - Evaluating callable {exclusion_label}...")
-                    
-                    # Temporarily clear exclusions to avoid potential recursion if the callable uses exclusions itself
-                    # This might be overly cautious depending on use case, but safer.
+                        print(f"  - Evaluating callable '{exclusion_label}'...")
+
+                    # Temporarily clear exclusions (consider if really needed)
                     temp_original_exclusions = self._exclusions
-                    self._exclusions = [] 
-                    
+                    self._exclusions = []
+
                     # Call the function - Expects it to return a Region or None
-                    region_result = exclusion(self)
-                    
+                    region_result = exclusion_item(self)
+
                     # Restore exclusions
                     self._exclusions = temp_original_exclusions
-                    
+
                     if isinstance(region_result, Region):
+                        # Assign the label to the returned region
+                        region_result.label = label
                         regions.append(region_result)
                         if debug:
-                            print(f"    ✓ Added region from callable: {region_result}")
+                            print(f"    ✓ Added region from callable '{label}': {region_result}")
                     elif region_result:
-                         # Log warning if callable returned something other than Region/None
-                         logger.warning(f"Callable exclusion {exclusion_label} returned non-Region object: {type(region_result)}. Skipping.")
+                         logger.warning(f"Callable exclusion '{exclusion_label}' returned non-Region object: {type(region_result)}. Skipping.")
                          if debug:
                              print(f"    ✗ Callable returned non-Region/None: {type(region_result)}")
                     else:
                         if debug:
-                            print(f"    ✗ Callable returned None, no region added")
-                            
+                            print(f"    ✗ Callable '{exclusion_label}' returned None, no region added")
+
                 except Exception as e:
-                    error_msg = f"Error evaluating callable exclusion {exclusion_label} for page {self.index}: {e}"
+                    error_msg = f"Error evaluating callable exclusion '{exclusion_label}' for page {self.index}: {e}"
                     print(error_msg)
                     import traceback
                     print(f"    Traceback: {traceback.format_exc().splitlines()[-3:]}")
-            
-            # Process direct Region objects (already validated by add_exclusion)
-            elif isinstance(exclusion, Region):
-                regions.append(exclusion)
+
+            # Process direct Region objects (label was assigned in add_exclusion)
+            elif isinstance(exclusion_item, Region):
+                regions.append(exclusion_item) # Label is already on the Region object
                 if debug:
-                    print(f"  - Added direct region: {exclusion}")
+                    print(f"  - Added direct region '{label}': {exclusion_item}")
             # No else needed, add_exclusion should prevent invalid types
         
         if debug:
@@ -1485,25 +1492,46 @@ class Page:
             RuntimeError: If required dependencies (ipywidgets) are missing.
             ValueError: If image rendering or data preparation fails within from_page.
         """
-        # Import the widget class (might need to be moved to top if used elsewhere)
-        from natural_pdf.widgets.viewer import SimpleInteractiveViewerWidget
-
-        logger.info(f"Generating interactive viewer for Page {self.number} using SimpleInteractiveViewerWidget.from_page...")
-
+        # Dynamically import here if needed, or ensure it's globally available
         try:
-            # Delegate creation entirely to the from_page class method
-            viewer_widget = SimpleInteractiveViewerWidget.from_page(self)
-            if viewer_widget is None:
-                 # This case might happen if from_page had error handling to return None, though we removed most.
-                 # Keeping a check here just in case.
-                 raise RuntimeError("SimpleInteractiveViewerWidget.from_page returned None, indicating an issue during widget creation.")
+            from natural_pdf.widgets.viewer import SimpleInteractiveViewerWidget
+        except ImportError:
+            logger.error("Interactive viewer requires optional dependencies. Install with `pip install natural-pdf[widgets]`")
+            raise
+            
+        # Pass self (the Page object) to the factory method
+        return SimpleInteractiveViewerWidget.from_page(self)
 
-            logger.info("Interactive viewer widget created successfully.")
-            return viewer_widget
-        except ImportError as e:
-            logger.error("Failed to import SimpleInteractiveViewerWidget. Ensure natural_pdf.widgets and ipywidgets are installed.")
-            raise RuntimeError("Widget class not found. ipywidgets or natural_pdf.widgets might be missing or setup incorrect.") from e
-        except Exception as e:
-            logger.error(f"Failed to create interactive viewer: {e}", exc_info=True)
-            # Re-raise the exception to make it visible to the user
-            raise RuntimeError(f"Failed to create interactive viewer: {e}") from e
+    # --- Indexable Protocol Methods ---
+    def get_id(self) -> str:
+        """Returns a unique identifier for the page (required by Indexable protocol)."""
+        # Ensure path is safe for use in IDs (replace problematic chars)
+        safe_path = re.sub(r'[^a-zA-Z0-9_-]', '_', str(self.pdf.path))
+        return f"pdf_{safe_path}_page_{self.page_number}"
+
+    def get_metadata(self) -> Dict[str, Any]:
+        """Returns metadata associated with the page (required by Indexable protocol)."""
+        # Add content hash here for sync
+        metadata = {
+            "pdf_path": str(self.pdf.path),
+            "page_number": self.page_number,
+            "width": self.width,
+            "height": self.height,
+            "content_hash": self.get_content_hash() # Include the hash
+        }
+        return metadata
+
+    def get_content(self) -> 'Page':
+        """
+        Returns the primary content object (self) for indexing (required by Indexable protocol).
+        SearchService implementations decide how to process this (e.g., call extract_text).
+        """
+        return self # Return the Page object itself
+
+    def get_content_hash(self) -> str:
+        """Returns a SHA256 hash of the extracted text content (required by Indexable for sync)."""
+        # Hash the extracted text (without exclusions for consistency)
+        # Consider if exclusions should be part of the hash? For now, hash raw text.
+        # Using extract_text directly might be slow if called repeatedly. Cache? TODO: Optimization
+        text_content = self.extract_text(use_exclusions=False, preserve_whitespace=False) # Normalize whitespace?
+        return hashlib.sha256(text_content.encode('utf-8')).hexdigest()

@@ -53,3 +53,35 @@ if HAS_QA:
     __all__ = ["PDF", "Page", "Region", "ElementCollection", "configure_logging", "DocumentQA", "get_qa_engine"]
 else:
     __all__ = ["PDF", "Page", "Region", "ElementCollection", "configure_logging"]
+
+# Core classes
+from .core.pdf import PDF
+from .collections.pdf_collection import PDFCollection
+from .elements.region import Region
+
+# Search options (if extras installed)
+try:
+    from .search.search_options import TextSearchOptions, MultiModalSearchOptions, BaseSearchOptions
+except ImportError:
+    # Define dummy classes if extras not installed, so imports don't break
+    # but using them will raise the ImportError from check_haystack_availability
+    class TextSearchOptions:
+        def __init__(self, *args, **kwargs): pass
+    class MultiModalSearchOptions:
+        def __init__(self, *args, **kwargs): pass
+    class BaseSearchOptions:
+        def __init__(self, *args, **kwargs): pass
+
+# Expose logging setup? (Optional)
+# from . import logging_config
+# logging_config.setup_logging()
+
+# Explicitly define what gets imported with 'from natural_pdf import *'
+__all__ = [
+    'PDF',
+    'PDFCollection',
+    'Region',
+    'TextSearchOptions',       # Include search options
+    'MultiModalSearchOptions',
+    'BaseSearchOptions'
+]

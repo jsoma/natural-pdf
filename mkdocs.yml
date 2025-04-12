@@ -94,6 +94,7 @@ nav:
     - Form Fields: tutorials/10-form-field-extraction.ipynb
     - Enhanced Tables: tutorials/11-enhanced-table-processing.ipynb
     - OCR Integration: tutorials/12-ocr-integration.ipynb
+    - Semantic Search: tutorials/13-semantic-search.ipynb
   - API Reference: api/index.md
 
 markdown_extensions:
@@ -147,6 +148,7 @@ plugins:
         - tutorials/10-form-field-extraction.md
         - tutorials/11-enhanced-table-processing.md
         - tutorials/12-ocr-integration.md
+        - tutorials/13-semantic-search.md
         - visual-debugging/index.md
   - mkdocstrings:
       default_handler: python

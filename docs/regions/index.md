@@ -248,9 +248,8 @@ pdf.add_exclusion(
 # PDF-level exclusions are used whenever you extract text
 # Let's try on the first three pages
 for page in pdf.pages[:3]:
-    page_i = pdf.pages[i]
-    text = page_i.extract_text()
-    text_original = page_i.extract_text(use_exclusions=False)
+    text = page.extract_text()
+    text_original = page.extract_text(use_exclusions=False)
     print(f"Page {page.number} – Before: {len(text_original)} After: {len(text)}")
 ```
 
