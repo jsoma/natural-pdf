@@ -1074,19 +1074,19 @@ class Page:
         device: Optional[str] = None,
     ) -> List[TextElement]:
         """
-        Apply OCR to THIS page and add results to page elements via PDF.apply_ocr_to_pages.
+        Apply OCR to THIS page and add results to page elements via PDF.apply_ocr.
         
         Returns:
             List of created TextElements derived from OCR results for this page.
         """
-        if not hasattr(self._parent, 'apply_ocr_to_pages'):
-             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr_to_pages'. Cannot apply OCR.")
+        if not hasattr(self._parent, 'apply_ocr'):
+             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
              return []
 
-        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr_to_pages.")
+        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         try:
             # Delegate to parent PDF, targeting only this page's index
-            self._parent.apply_ocr_to_pages(
+            self._parent.apply_ocr(
                 pages=[self.index],
                 engine=engine, options=options, languages=languages,
                 min_confidence=min_confidence, device=device

@@ -40,7 +40,6 @@ haystack = [
     "haystack-ai",   # Core Haystack 2.0 beta (adjust version as needed)
     "chroma-haystack",       # ChromaDB integration
     "sentence-transformers", # Default text embedder
-    # Add multimodal embedder deps if needed later, e.g. CLIP
 ]
 easyocr = ["easyocr"]
 paddle = ["paddlepaddle", "paddleocr"]

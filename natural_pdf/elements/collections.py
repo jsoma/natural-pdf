@@ -1009,8 +1009,7 @@ class PageCollection(Generic[P]):
         """
         Applies OCR to all pages within this collection using batch processing.
 
-        This delegates the work to the parent PDF object's `apply_ocr_to_pages`
-        method for efficiency. The OCR results (TextElements) are added directly
+        This delegates the work to the parent PDF object's `apply_ocr` method for efficiency. The OCR results (TextElements) are added directly
         to the respective Page objects within this collection.
 
         Args:
@@ -1028,8 +1027,8 @@ class PageCollection(Generic[P]):
         Raises:
             RuntimeError: If pages in the collection lack a parent PDF object
                           or if the parent PDF object lacks the required
-                          `apply_ocr_to_pages` method.
-            (Propagates exceptions from PDF.apply_ocr_to_pages)
+                          `apply_ocr` method.
+            (Propagates exceptions from PDF.apply_ocr)
         """
         if not self.pages:
             logger.warning("Cannot apply OCR to an empty PageCollection.")
@@ -1042,16 +1041,17 @@ class PageCollection(Generic[P]):
 
         parent_pdf = first_page._parent
 
-        if not hasattr(parent_pdf, 'apply_ocr_to_pages') or not callable(parent_pdf.apply_ocr_to_pages):
-             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr_to_pages' method.")
+        # Updated check for renamed method
+        if not hasattr(parent_pdf, 'apply_ocr') or not callable(parent_pdf.apply_ocr):
+             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
 
         # Get the 0-based indices of the pages in this collection
         page_indices = [p.index for p in self.pages]
 
         logger.info(f"Applying OCR via parent PDF to page indices: {page_indices} in collection.")
 
-        # Delegate the batch call to the parent PDF object
-        parent_pdf.apply_ocr_to_pages(
+        # Delegate the batch call to the parent PDF object (using renamed method)
+        parent_pdf.apply_ocr(
             pages=page_indices,
             engine=engine,
             options=options,

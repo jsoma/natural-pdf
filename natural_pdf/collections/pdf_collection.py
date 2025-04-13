@@ -215,8 +215,8 @@ class PDFCollection(SearchableMixin): # Inherit from the mixin
          """Returns the list of PDF objects held by the collection."""
          return self._pdfs
 
-    # --- Other Methods (e.g., apply_ocr_to_pages - could leverage service in future?) ---
-    def apply_ocr_to_pages(self, *args, **kwargs):
+    # --- Other Methods (e.g., apply_ocr - could leverage service in future?) ---
+    def apply_ocr(self, *args, **kwargs):
         PDF = self._get_pdf_class()
         # Delegate to individual PDF objects
         logger.info("Applying OCR to relevant PDFs in collection...")
@@ -225,8 +225,8 @@ class PDFCollection(SearchableMixin): # Inherit from the mixin
              # We need to figure out which pages belong to which PDF if batching here
              # For now, simpler to call on each PDF
              try:
-                 # Assume apply_ocr_to_pages exists on PDF and accepts similar args
-                 pdf.apply_ocr_to_pages(*args, **kwargs)
+                 # Assume apply_ocr exists on PDF and accepts similar args
+                 pdf.apply_ocr(*args, **kwargs)
              except Exception as e:
                  logger.error(f"Failed applying OCR to {pdf.path}: {e}", exc_info=True)
         return self

@@ -198,7 +198,7 @@ class PDF:
 
         return self
 
-    def apply_ocr_to_pages(
+    def apply_ocr(
         self,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         engine: Optional[str] = None,
@@ -598,7 +598,7 @@ class PDF:
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
         Note: OCR must have been applied to the pages beforehand
-              (e.g., using pdf.apply_ocr_to_pages()).
+              (e.g., using pdf.apply_ocr()).
 
         Args:
             output_path: Path to save the searchable PDF.
@@ -614,7 +614,7 @@ class PDF:
         # For now, we pass through and let the exporter handle pages without OCR elements.
         # if not any(page.get_elements(source='ocr') for page in self.pages):
         #      logger.warning("No OCR elements found on pages. "
-        #                   "Ensure apply_ocr_to_pages() was called. "
+        #                   "Ensure apply_ocr() was called. "
         #                   "Output PDF might not be searchable.")
 
         # Convert pathlib.Path to string if necessary
