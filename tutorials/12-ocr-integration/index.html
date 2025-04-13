@@ -16,7 +16,7 @@
         <link rel="prev" href="../11-enhanced-table-processing/">
       
       
-        <link rel="next" href="../../api/">
+        <link rel="next" href="../13-semantic-search/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -697,6 +697,8 @@
       
         
       
+        
+      
     
     
     
@@ -1137,10 +1139,42 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#saving-pdfs-with-searchable-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saving PDFs with Searchable Text
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-semantic-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Semantic Search Across Multiple Documents
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1268,6 +1302,15 @@
   <a href="#working-with-multiple-pages" class="md-nav__link">
     <span class="md-ellipsis">
       Working with Multiple Pages
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saving-pdfs-with-searchable-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saving PDFs with Searchable Text
     </span>
   </a>
   
@@ -1728,7 +1771,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8b5c0c4a">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a6e80a28">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1739,7 +1782,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=8e4fde61">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=13b84f8a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1766,7 +1809,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a919835f">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=244d1ce4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1821,7 +1864,7 @@ f"Without OCR: {len(text_without_ocr)} characters extracted"</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3bae7b04">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=14277fb5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1832,7 +1875,7 @@ f"Without OCR: {len(text_without_ocr)} characters extracted"</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=116cbbae">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=44149012">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1885,7 +1928,7 @@ text_with_ocr[:200] + "..." if len(text_with_ocr) &gt; 200 else text_with_ocr</d
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=00690e77">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=394653b2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1896,7 +1939,7 @@ text_with_ocr[:200] + "..." if len(text_with_ocr) &gt; 200 else text_with_ocr</d
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5f29a656">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=d27e8be3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1944,7 +1987,14 @@ text_elements.highlight()</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[2025-04-03 10:51:08,951] [ WARNING] easyocr.py:71 - Using CPU. Note: This module is much faster with a GPU.
+<pre>2025-04-13T11:48:37.271539Z [<span class="ansi-yellow-intense-fg ansi-bold">warning  </span>] <span class="ansi-bold">Using CPU. Note: This module is much faster with a GPU.</span> <span class="ansi-cyan-fg">lineno</span>=<span class="ansi-magenta-fg">71</span> <span class="ansi-cyan-fg">module</span>=<span class="ansi-magenta-fg">easyocr.easyocr</span>
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>[2025-04-13 13:48:37,271] [ WARNING] easyocr.py:71 - Using CPU. Note: This module is much faster with a GPU.
 </pre>
 </div>
 </div>
@@ -1958,7 +2008,7 @@ text_elements.highlight()</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4f89f9f9">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dbbfa444">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1969,7 +2019,7 @@ text_elements.highlight()</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=6583ede8">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=70ee0019">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2028,7 +2078,7 @@ improved_text[:200] + "..." if len(improved_text) &gt; 200 else improved_text</d
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=520a7ed6">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1de28a2c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2039,7 +2089,7 @@ improved_text[:200] + "..." if len(improved_text) &gt; 200 else improved_text</d
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5e992f18">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c8f04a79">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2094,7 +2144,7 @@ multilang_text[:200]</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=25b0047c">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=466d1901">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2105,7 +2155,7 @@ multilang_text[:200]</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=90419fc9">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=44975135">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2174,14 +2224,14 @@ else:
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpal0uk3e1/temp_layout_image.png: 1024x800 2 titles, 2 plain texts, 3 abandons, 1 table, 1688.9ms
+<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpdtf16bnu/temp_layout_image.png: 1024x800 2 titles, 2 plain texts, 3 abandons, 1 table, 1675.0ms
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Speed: 9.4ms preprocess, 1688.9ms inference, 0.8ms postprocess per image at shape (1, 3, 1024, 800)
+<pre>Speed: 5.2ms preprocess, 1675.0ms inference, 0.8ms postprocess per image at shape (1, 3, 1024, 800)
 </pre>
 </div>
 </div>
@@ -2189,7 +2239,7 @@ else:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1e4c3d07">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5a7027b4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2200,7 +2250,7 @@ else:
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=033d65c1">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=98b095f1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2279,7 +2329,7 @@ form_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0180f3da">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c118a5de">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2290,7 +2340,7 @@ form_data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0d89768b">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e04ac551">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2365,14 +2415,14 @@ document_outline</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpy9c702ef/temp_layout_image.png: 1024x800 2 titles, 2 plain texts, 3 abandons, 1 table, 1611.3ms
+<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpvn6u02y_/temp_layout_image.png: 1024x800 2 titles, 2 plain texts, 3 abandons, 1 table, 1609.8ms
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Speed: 6.4ms preprocess, 1611.3ms inference, 1.3ms postprocess per image at shape (1, 3, 1024, 800)
+<pre>Speed: 4.5ms preprocess, 1609.8ms inference, 0.8ms postprocess per image at shape (1, 3, 1024, 800)
 </pre>
 </div>
 </div>
@@ -2386,7 +2436,7 @@ document_outline</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cdd15a33">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1de0e30f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2397,7 +2447,7 @@ document_outline</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=46961a5c">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5122adca">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2464,12 +2514,100 @@ all_text</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0a9d51e5">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6bbbe135">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="saving-pdfs-with-searchable-text">Saving PDFs with Searchable Text<a class="anchor-link" href="#saving-pdfs-with-searchable-text">¶</a></h2><p>After applying OCR to a PDF, you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.</p>
+<p>Use the <code>save_searchable()</code> method on the <code>PDF</code> object:</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=39053275">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="CodeMirror cm-s-jupyter">
+<div class="zeroclipboard-container">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-11">
+<div>
+<span class="notice" hidden="">Copied!</span>
+<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
+<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+</clipboard-copy>
+</div>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">input_pdf_path</span> <span class="o">=</span> <span class="s2">"https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="n">input_pdf_path</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span> 
+
+<span class="n">pdf</span><span class="o">.</span><span class="n">save_searchable</span><span class="p">(</span><span class="s2">"needs-ocr-searchable.pdf"</span><span class="p">)</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-11">from natural_pdf import PDF
+
+input_pdf_path = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"
+
+pdf = PDF(input_pdf_path)
+pdf.apply_ocr() 
+
+pdf.save_searchable("needs-ocr-searchable.pdf")</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>2025-04-13T11:48:51.998243Z [<span class="ansi-yellow-intense-fg ansi-bold">warning  </span>] <span class="ansi-bold">Using CPU. Note: This module is much faster with a GPU.</span> <span class="ansi-cyan-fg">lineno</span>=<span class="ansi-magenta-fg">71</span> <span class="ansi-cyan-fg">module</span>=<span class="ansi-magenta-fg">easyocr.easyocr</span>
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>[2025-04-13 13:48:51,998] [ WARNING] easyocr.py:71 - Using CPU. Note: This module is much faster with a GPU.
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>2025-04-13T11:49:02.131991Z [<span class="ansi-yellow-intense-fg ansi-bold">warning  </span>] <span class="ansi-bold">Page 1 has no OCR elements (text[source=ocr]) to generate hOCR from.</span> <span class="ansi-cyan-fg">lineno</span>=<span class="ansi-magenta-fg">86</span> <span class="ansi-cyan-fg">module</span>=<span class="ansi-magenta-fg">natural_pdf.exporters.searchable_pdf</span> <span class="ansi-cyan-fg">pageno</span>=<span class="ansi-magenta-fg">None</span>
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>[2025-04-13 13:49:02,131] [ WARNING] searchable_pdf.py:86 - Page 1 has no OCR elements (text[source=ocr]) to generate hOCR from.
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8d9e1c9d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>This creates <code>needs-ocr-searchable.pdf</code>, which looks identical to the original but now has a text layer corresponding to the OCR results. You can adjust the rendering resolution used during saving with the <code>dpi</code> parameter (default is 300).</p>
 <p>OCR integration enables you to work with scanned documents, historical archives, and image-based PDFs that don't have embedded text. By combining OCR with natural-pdf's layout analysis capabilities, you can turn any document into structured, searchable data.</p>
 </div>
 </div>
