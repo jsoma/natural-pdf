@@ -40,12 +40,28 @@ haystack = [
     "haystack-ai",   # Core Haystack 2.0 beta (adjust version as needed)
     "chroma-haystack",       # ChromaDB integration
     "sentence-transformers", # Default text embedder
+    "protobuf<4",         # Pin protobuf for compatibility with dependencies
 ]
 easyocr = ["easyocr"]
 paddle = ["paddlepaddle", "paddleocr"]
 layout_yolo = ["doclayout_yolo"]
 surya = ["surya-ocr"]
 qa = []  # Uses transformers from dependencies
+# Add test dependencies
+test = [
+    "pytest",
+]
+# Add development tools
+dev = [
+    "black",
+    "isort",
+    "mypy",
+    "pytest",  # Often included here too, or rely on [test]
+    "nox",
+    "nox-uv",  # Make sure nox uses uv
+    "build",   # For building packages
+    "uv",      # Include uv itself for uv pip sync etc.
+]
 all = [
     "ipywidgets>=7.0.0,<9.0.0",
     "easyocr",
@@ -55,7 +71,9 @@ all = [
     "surya-ocr",
     "haystack-ai",
     "chroma-haystack",
-    "sentence-transformers"
+    "sentence-transformers",
+    "protobuf<4",         # Pin protobuf for compatibility here too
+    "pytest", # Add pytest to 'all'
 ]
 
 [project.urls]
@@ -87,4 +105,10 @@ minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.setuptools]
-packages = ["natural_pdf"]
+# Remove the incorrect line below
+# packages = find:
+
+[tool.setuptools.packages.find]
+where = ["."]  # Look in the root directory (where natural_pdf/ is)
+# Optional: exclude tests if they are accidentally found
+# exclude = ["tests", "tests.*"]

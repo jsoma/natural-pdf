@@ -1,13 +1,15 @@
 # ocr_engine_base.py
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from PIL import Image
 
 # Assuming ocr_options defines BaseOCROptions
 from .ocr_options import BaseOCROptions
 
 logger = logging.getLogger(__name__)
+
 
 class OCREngine(ABC):
     """Abstract Base Class for OCR engines."""
@@ -16,14 +18,14 @@ class OCREngine(ABC):
         """Initializes the base OCR engine."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.info(f"Initializing {self.__class__.__name__}")
-        self._reader_cache = {} # Cache for initialized models/readers
+        self._reader_cache = {}  # Cache for initialized models/readers
 
     @abstractmethod
     def process_image(
         self,
-        images: Union[Image.Image, List[Image.Image]], # Accept single or list
-        options: BaseOCROptions
-    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]: # Return single or list of lists
+        images: Union[Image.Image, List[Image.Image]],  # Accept single or list
+        options: BaseOCROptions,
+    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:  # Return single or list of lists
         """
         Processes a single image or a batch of images using the specific engine and options.
 
@@ -80,10 +82,18 @@ class OCREngine(ABC):
             Tuple[float, float, float, float] or None if conversion fails.
         """
         try:
-            if isinstance(bbox, (list, tuple)) and len(bbox) == 4 and all(isinstance(n, (int, float)) for n in bbox):
+            if (
+                isinstance(bbox, (list, tuple))
+                and len(bbox) == 4
+                and all(isinstance(n, (int, float)) for n in bbox)
+            ):
                 # Already in (x0, y0, x1, y1) format (or similar)
                 return tuple(float(c) for c in bbox[:4])
-            elif isinstance(bbox, (list, tuple)) and len(bbox) > 0 and isinstance(bbox[0], (list, tuple)):
+            elif (
+                isinstance(bbox, (list, tuple))
+                and len(bbox) > 0
+                and isinstance(bbox[0], (list, tuple))
+            ):
                 # Polygon format [[x1,y1],[x2,y2],...]
                 x_coords = [float(point[0]) for point in bbox]
                 y_coords = [float(point[1]) for point in bbox]
@@ -101,4 +111,3 @@ class OCREngine(ABC):
         self.logger.info(f"Cleaning up {self.__class__.__name__} resources.")
         # Clear reader cache to free up memory/GPU resources
         self._reader_cache.clear()
-

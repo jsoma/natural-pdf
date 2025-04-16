@@ -4,454 +4,533 @@ Element Manager for natural-pdf.
 This class handles the loading, creation, and management of PDF elements like
 characters, words, rectangles, and lines extracted from a page.
 """
-import logging
-from typing import List, Dict, Any, Optional, Union, Tuple
-from itertools import groupby
-import re
 
-from natural_pdf.elements.text import TextElement
-from natural_pdf.elements.rect import RectangleElement
+import logging
+import re
+from itertools import groupby
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from pdfplumber.utils.text import WordExtractor
+
 from natural_pdf.elements.line import LineElement
+from natural_pdf.elements.rect import RectangleElement
+from natural_pdf.elements.text import TextElement
 
 logger = logging.getLogger(__name__)
+
+
+class NaturalWordExtractor(WordExtractor):
+    """
+    Custom WordExtractor that splits words based on specified character attributes
+    in addition to pdfplumber's default spatial logic.
+    """
+
+    def __init__(self, word_split_attributes: List[str], extra_attrs: List[str], *args, **kwargs):
+        """
+        Initialize the extractor.
+
+        Args:
+            word_split_attributes: List of character attributes (keys in char dict)
+                                   that should trigger a word split if they differ
+                                   between adjacent characters.
+            extra_attrs: List of character attributes (keys in char dict)
+                         to copy from the first char of a word into the
+                         resulting word dictionary.
+            *args: Positional arguments passed to WordExtractor parent.
+            **kwargs: Keyword arguments passed to WordExtractor parent.
+        """
+        self.word_split_attributes = word_split_attributes or []
+        # Remove our custom arg before passing to parent
+        # (Though WordExtractor likely ignores unknown kwargs)
+        # Ensure it's removed if it exists in kwargs
+        if "word_split_attributes" in kwargs:
+            del kwargs["word_split_attributes"]
+        # Pass extra_attrs to the parent constructor
+        kwargs["extra_attrs"] = extra_attrs
+        super().__init__(*args, **kwargs)
+
+    def char_begins_new_word(
+        self,
+        prev_char: Dict[str, Any],
+        curr_char: Dict[str, Any],
+        direction: str,
+        x_tolerance: float,
+        y_tolerance: float,
+    ) -> bool:
+        """
+        Determine if curr_char begins a new word, considering spatial and
+        attribute differences.
+        """
+        # 1. Check pdfplumber's spatial logic first
+        spatial_split = super().char_begins_new_word(
+            prev_char, curr_char, direction, x_tolerance, y_tolerance
+        )
+        if spatial_split:
+            return True
+
+        # 2. Check for differences in specified attributes
+        if self.word_split_attributes:
+            for attr in self.word_split_attributes:
+                # Use .get() for safety, although _prepare_char_dicts should ensure presence
+                if prev_char.get(attr) != curr_char.get(attr):
+                    logger.debug(
+                        f"Splitting word due to attribute mismatch on '{attr}': {prev_char.get(attr)} != {curr_char.get(attr)}"
+                    )
+                    return True  # Attribute mismatch forces a new word
+
+        # If both spatial and attribute checks pass, it's the same word
+        return False
+
 
 class ElementManager:
     """
     Manages the loading, creation, and retrieval of elements from a PDF page.
-    
+
     This class centralizes the element management functionality previously
     contained in the Page class, providing better separation of concerns.
     """
-    
+
     def __init__(self, page, font_attrs=None):
         """
         Initialize the ElementManager.
-        
+
         Args:
             page: The parent Page object
             font_attrs: Font attributes to consider when grouping characters into words.
-                       Default: ['fontname', 'size'] (Group by font name and size)
+                       Default: ['fontname', 'size', 'bold', 'italic']
                        None: Only consider spatial relationships
-                       List: Custom attributes to consider (e.g., ['fontname', 'size', 'color'])
+                       List: Custom attributes to consider
         """
         self._page = page
         self._elements = None  # Lazy-loaded
-        # Default to grouping by fontname and size if not specified
-        self._font_attrs = ['fontname', 'size'] if font_attrs is None else font_attrs
-        
+        # Default to splitting by fontname, size, bold, italic if not specified
+        # Renamed internal variable for clarity
+        self._word_split_attributes = (
+            ["fontname", "size", "bold", "italic"] if font_attrs is None else font_attrs
+        )
+
     def load_elements(self):
         """
         Load all elements from the page (lazy loading).
+        Uses NaturalWordExtractor for word grouping.
         """
-        if self._elements is None:
-            # Create character elements with font information
-            chars = self._create_char_elements()
-            
-            # Get keep_spaces setting from PDF config or default to True
-            keep_spaces = self._page._parent._config.get('keep_spaces', True)
-            
-            # Group characters into words
-            words = self._group_chars_into_words(keep_spaces, self._font_attrs)
-            
-            # Create the elements dictionary with all element types
-            self._elements = {
-                'chars': chars,
-                'words': words,
-                'rects': [RectangleElement(r, self._page) for r in self._page._page.rects],
-                'lines': [LineElement(l, self._page) for l in self._page._page.lines],
-                # Add other element types as needed
-            }
-            
-            # Add regions if they exist
-            if hasattr(self._page, '_regions') and ('detected' in self._page._regions or 'named' in self._page._regions):
-                regions = []
-                if 'detected' in self._page._regions:
-                    regions.extend(self._page._regions['detected'])
-                if 'named' in self._page._regions:
-                    regions.extend(self._page._regions['named'].values())
-                self._elements['regions'] = regions
-    
-    def _create_char_elements(self):
-        """
-        Create TextElement objects from page characters with enhanced font information.
-        
-        Returns:
-            List of TextElement objects for characters
-        """
-        chars = []
-        for c in self._page._page.chars:
-            # Process font reference information
-            self._process_font_information(c)
-            
-            # Add source attribute for native text elements
-            c['source'] = 'native'
-            chars.append(TextElement(c, self._page))
-            
-        return chars
-    
-    def _process_font_information(self, char_dict):
-        """
-        Process font information for a character dict, adding real_fontname when possible.
-        
-        Args:
-            char_dict: Character dictionary to process
-        """
-        # Check for font references (F0, F1, etc.) and map to actual fonts
-        if char_dict.get('fontname', '').startswith('F') and len(char_dict['fontname']) <= 3:
-            # Access the PDF resource info to get actual font name
-            font_ref = char_dict['fontname']
-            try:
-                # Try to get font info from resources
-                if self._page._page.page_obj.get('Resources', {}).get('Font', {}):
-                    fonts = self._page._page.page_obj['Resources']['Font']
-                    if font_ref in fonts:
-                        font_obj = fonts[font_ref]
-                        if font_obj.get('BaseFont'):
-                            char_dict['real_fontname'] = font_obj['BaseFont']
-            except (KeyError, AttributeError, TypeError):
-                pass
-    
-    def _group_chars_into_words(self, keep_spaces=True, font_attrs=None):
-        """
-        Group characters into words based on font attributes and spatial relationships.
-        
-        Args:
-            keep_spaces: Whether to keep spaces in words or use them as word separators
-            font_attrs: Font attributes to consider when grouping characters
-            
-        Returns:
-            List of TextElement word objects
-        """
-        # Sort chars by y-position (line) and then x-position
-        sorted_chars = sorted(self._page._page.chars, key=lambda c: (round(c['top']), c['x0']))
-        
-        # Group chars by line (similar y-position)
-        line_groups = []
-        for _, line_chars in groupby(sorted_chars, key=lambda c: round(c['top'])):
-            line_chars = list(line_chars)
-            
-            # Process each line of characters into words
-            words = self._process_line_into_words(line_chars, keep_spaces, font_attrs)
-            line_groups.extend(words)
-        
-        return line_groups
-    
-    def _process_line_into_words(self, line_chars, keep_spaces, font_attrs):
-        """
-        Process a single line of characters into words.
-        
-        Args:
-            line_chars: List of characters in the line
-            keep_spaces: Whether to keep spaces in words
-            font_attrs: Font attributes to consider for word breaks
-            
-        Returns:
-            List of TextElement word objects for this line
-        """
-        words = []
-        current_word = []
-        
-        for i, char in enumerate(line_chars):
-            # Handle whitespace characters differently based on keep_spaces setting
-            if char['text'].isspace():
-                if keep_spaces:
-                    # Include spaces in words when keep_spaces is enabled
-                    if current_word:
-                        current_word.append(char)
-                    else:
-                        # Skip leading spaces at the start of a line
-                        continue
-                else:
-                    # Original behavior: Skip whitespace and close current word
-                    if current_word:
-                        # Create word and add to words list
-                        word = self._create_word_element(current_word, font_attrs)
-                        words.append(word)
-                        current_word = []
-                    continue
-            
-            # If this is a new word, start it
-            if not current_word:
-                current_word.append(char)
-            else:
-                # Check if this char is part of the current word or a new word
-                prev_char = current_word[-1]
-                
-                # Check if font attributes match for this character
-                font_attrs_match = self._check_font_attributes_match(char, prev_char, font_attrs)
-                
-                # If font attributes don't match, it's a new word
-                if not font_attrs_match:
-                    # Complete current word
-                    word = self._create_word_element(current_word, font_attrs)
-                    words.append(word)
-                    current_word = [char]
-                # If the gap between chars is larger than a threshold, it's a new word
-                # Use a wider threshold when keep_spaces is enabled to allow for natural spaces
-                elif char['x0'] - prev_char['x1'] > prev_char['width'] * (1.5 if keep_spaces else 0.5):
-                    # Complete current word
-                    word = self._create_word_element(current_word, font_attrs)
-                    words.append(word)
-                    current_word = [char]
-                else:
-                    # Continue current word
-                    current_word.append(char)
-        
-        # Handle the last word if there is one
-        if current_word:
-            word = self._create_word_element(current_word, font_attrs)
-            words.append(word)
-        
-        return words
-    
-    def _check_font_attributes_match(self, char, prev_char, font_attrs):
-        """
-        Check if two characters have matching font attributes.
-        
-        Args:
-            char: Current character
-            prev_char: Previous character
-            font_attrs: List of font attributes to check
-            
-        Returns:
-            Boolean indicating whether font attributes match
-        """
-        # Default to match if no font attributes specified
-        if not font_attrs:
-            return True
-            
-        # Check each font attribute
-        for attr in font_attrs:
-            # If attribute doesn't match or isn't present in both chars, they don't match
-            if attr not in char or attr not in prev_char or char[attr] != prev_char[attr]:
-                return False
-                
-        return True
-    
-    def _create_word_element(self, chars, font_attrs):
-        """
-        Create a word element from a list of character dictionaries.
-        
-        Args:
-            chars: List of character dictionaries
-            font_attrs: Font attributes to copy to the word
-            
-        Returns:
-            TextElement representing the word
-        """
-        # Combine text from characters and normalize spaces
-        text = ''.join(c['text'] for c in chars)
-        
-        # Collapse multiple consecutive spaces into a single space
-        text = re.sub(r'\s+', ' ', text)
-        
-        # Create a combined word object
-        word_obj = {
-            'text': text,
-            'x0': min(c['x0'] for c in chars),
-            'x1': max(c['x1'] for c in chars),
-            'top': min(c['top'] for c in chars),
-            'bottom': max(c['bottom'] for c in chars),
-            'fontname': chars[0].get('fontname', ''),
-            'size': chars[0].get('size', 0),
-            'object_type': 'word',
-            'page_number': chars[0]['page_number']
+        if self._elements is not None:
+            return
+
+        logger.debug(f"Page {self._page.number}: Loading elements...")
+
+        # 1. Prepare character dictionaries (native + OCR) with necessary attributes
+        prepared_char_dicts = self._prepare_char_dicts()
+        logger.debug(
+            f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
+        )
+
+        # 2. Instantiate the custom word extractor
+        # Get config settings from the parent PDF or use defaults
+        pdf_config = getattr(self._page._parent, "_config", {})
+        xt = pdf_config.get("x_tolerance", 3)
+        yt = pdf_config.get("y_tolerance", 3)
+        use_flow = pdf_config.get("use_text_flow", False)
+
+        # Define which attributes to preserve on the merged word object
+        # Should include split attributes + any others needed for filtering (like color)
+        attributes_to_preserve = list(set(self._word_split_attributes + ["non_stroking_color"]))
+
+        # Pass our configured attributes for splitting
+        extractor = NaturalWordExtractor(
+            word_split_attributes=self._word_split_attributes,
+            extra_attrs=attributes_to_preserve,
+            x_tolerance=xt,
+            y_tolerance=yt,
+            keep_blank_chars=True,
+            use_text_flow=use_flow,
+            # Assuming default directions are okay, configure if needed
+            # line_dir=..., char_dir=...
+        )
+
+        # 3. Generate words using the extractor
+        generated_words = []
+        if prepared_char_dicts:
+            # Sort chars primarily by upright status, then page reading order
+            # Grouping by upright is crucial for WordExtractor's direction logic
+            sorted_chars_for_extraction = sorted(
+                prepared_char_dicts,
+                key=lambda c: (c.get("upright", True), round(c.get("top", 0)), c.get("x0", 0)),
+            )
+
+            word_tuples = extractor.iter_extract_tuples(sorted_chars_for_extraction)
+            for word_dict, char_list in word_tuples:
+                # Convert the generated word_dict to a TextElement
+                word_dict["_char_dicts"] = char_list
+                word_element = self._create_word_element(word_dict)
+                generated_words.append(word_element)
+        logger.debug(
+            f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
+        )
+
+        # 4. Load other elements (rects, lines)
+        rect_elements = [RectangleElement(r, self._page) for r in self._page._page.rects]
+        line_elements = [LineElement(l, self._page) for l in self._page._page.lines]
+        logger.debug(
+            f"Page {self._page.number}: Loaded {len(rect_elements)} rects, {len(line_elements)} lines."
+        )
+
+        # 5. Create the final elements dictionary
+        self._elements = {
+            # Store original char elements if needed (e.g., for visualization/debugging)
+            # We re-create them here from the prepared dicts
+            "chars": [TextElement(c_dict, self._page) for c_dict in prepared_char_dicts],
+            "words": generated_words,
+            "rects": rect_elements,
+            "lines": line_elements,
         }
-        
-        # Handle real fontname if available
-        if 'real_fontname' in chars[0]:
-            word_obj['real_fontname'] = chars[0]['real_fontname']
-            
-        # Handle color - use the first char's color
-        if 'non_stroking_color' in chars[0]:
-            word_obj['non_stroking_color'] = chars[0]['non_stroking_color']
-        
-        # Copy any additional font attributes
-        if font_attrs:
-            for attr in font_attrs:
-                if attr in chars[0]:
-                    word_obj[attr] = chars[0][attr]
-        
-        # Add source attribute for native text elements
-        word_obj['source'] = 'native'
-        
-        return TextElement(word_obj, self._page)
-    
-    def create_text_elements_from_ocr(self, ocr_results, image_width=None, image_height=None):
+
+        # Add regions if they exist
+        if hasattr(self._page, "_regions") and (
+            "detected" in self._page._regions or "named" in self._page._regions
+        ):
+            regions = []
+            if "detected" in self._page._regions:
+                regions.extend(self._page._regions["detected"])
+            if "named" in self._page._regions:
+                regions.extend(self._page._regions["named"].values())
+            self._elements["regions"] = regions
+            logger.debug(f"Page {self._page.number}: Added {len(regions)} regions.")
+        else:
+            self._elements["regions"] = []  # Ensure key exists
+
+        logger.debug(f"Page {self._page.number}: Element loading complete.")
+
+    def _prepare_char_dicts(self) -> List[Dict[str, Any]]:
         """
-        Convert OCR results to TextElement objects.
-        
-        Args:
-            ocr_results: List of OCR results with text, bbox, and confidence
-            image_width: Width of the source image (for coordinate scaling)
-            image_height: Height of the source image (for coordinate scaling)
-            
+        Prepares a list of character dictionaries from native PDF characters,
+        augmenting them with necessary attributes like bold/italic flags.
+        This method focuses ONLY on native characters. OCR results are
+        handled separately by create_text_elements_from_ocr.
+
         Returns:
-            List of created TextElement objects
+            List of augmented native character dictionaries.
         """
-        elements = []
-        
-        # Calculate scale factors to convert from image coordinates to PDF coordinates
-        # Default to 1.0 if not provided (assume coordinates are already in PDF space)
-        scale_x = 1.0
-        scale_y = 1.0
-        
-        if image_width and image_height:
-            scale_x = self._page.width / image_width
-            scale_y = self._page.height / image_height
-        
+        prepared_dicts = []
+        processed_native_ids = set()  # To track processed native chars
+
+        # 1. Process Native PDF Characters
+        native_chars = self._page._page.chars or []
+        logger.debug(f"Page {self._page.number}: Preparing {len(native_chars)} native char dicts.")
+        for i, char_dict in enumerate(native_chars):
+            # Create a temporary TextElement for analysis ONLY
+            # We need to ensure the char_dict has necessary keys first
+            if not all(k in char_dict for k in ["x0", "top", "x1", "bottom", "text"]):
+                logger.warning(f"Skipping native char dict due to missing keys: {char_dict}")
+                continue
+
+            temp_element = TextElement(char_dict, self._page)
+
+            # Augment the original dictionary
+            augmented_dict = char_dict.copy()  # Work on a copy
+            augmented_dict["bold"] = temp_element.bold
+            augmented_dict["italic"] = temp_element.italic
+            augmented_dict["source"] = "native"
+            # Copy color if it exists
+            if "non_stroking_color" in char_dict:
+                augmented_dict["non_stroking_color"] = char_dict["non_stroking_color"]
+            # Ensure basic required keys are present
+            augmented_dict.setdefault("upright", True)
+            augmented_dict.setdefault("fontname", "Unknown")
+            augmented_dict.setdefault("size", 0)
+
+            prepared_dicts.append(augmented_dict)
+            # Use a unique identifier if available (e.g., tuple of key properties)
+            # Simple approach: use index for now, assuming list order is stable here
+            processed_native_ids.add(i)
+
+        # 2. Remove OCR Processing from this method
+        # OCR results will be added later via create_text_elements_from_ocr
+
+        logger.debug(
+            f"Page {self._page.number}: Total prepared native char dicts: {len(prepared_dicts)}"
+        )
+        return prepared_dicts
+
+    def _create_word_element(self, word_dict: Dict[str, Any]) -> TextElement:
+        """
+        Create a TextElement (type 'word') from a word dictionary generated
+        by NaturalWordExtractor/pdfplumber.
+
+        Args:
+            word_dict: Dictionary representing the word, including geometry,
+                       text, and attributes copied from the first char
+                       (e.g., fontname, size, bold, italic).
+
+        Returns:
+            TextElement representing the word.
+        """
+        # word_dict already contains calculated geometry (x0, top, x1, bottom, etc.)
+        # and text content. We just need to ensure our required fields exist
+        # and potentially set the source.
+
+        # Start with a copy of the word_dict
+        element_data = word_dict.copy()
+
+        # Ensure required TextElement fields are present or add defaults
+        element_data.setdefault("object_type", "word")  # Set type to 'word'
+        element_data.setdefault("page_number", self._page.number)
+        # Determine source based on attributes present (e.g., if 'confidence' exists, it's likely OCR)
+        # This assumes the word_dict carries over some hint from its chars.
+        # A simpler approach: assume 'native' unless fontname is 'OCR'.
+        element_data.setdefault(
+            "source", "ocr" if element_data.get("fontname") == "OCR" else "native"
+        )
+        element_data.setdefault(
+            "confidence", 1.0 if element_data["source"] == "native" else 0.0
+        )  # Default confidence
+
+        # Bold/italic should already be in word_dict if they were split attributes,
+        # copied from the first (representative) char by pdfplumber's merge_chars.
+        # Ensure they exist for TextElement initialization.
+        element_data.setdefault("bold", False)
+        element_data.setdefault("italic", False)
+
+        # Ensure fontname and size exist
+        element_data.setdefault("fontname", "Unknown")
+        element_data.setdefault("size", 0)
+
+        # Store the constituent char dicts (passed alongside word_dict from extractor)
+        # We need to modify the caller (load_elements) to pass this.
+        # For now, assume it might be passed in word_dict for placeholder.
+        element_data["_char_dicts"] = word_dict.get("_char_dicts", [])  # Store char list
+
+        return TextElement(element_data, self._page)
+
+    def create_text_elements_from_ocr(self, ocr_results, scale_x=None, scale_y=None):
+        """
+        Convert OCR results to TextElement objects AND adds them to the manager's
+        'words' and 'chars' lists.
+
+        This method should be called AFTER initial elements (native) might have
+        been loaded, as it appends to the existing lists.
+
+        Args:
+            ocr_results: List of OCR results dictionaries with 'text', 'bbox', 'confidence'.
+            scale_x: Factor to convert image x-coordinates to PDF coordinates.
+            scale_y: Factor to convert image y-coordinates to PDF coordinates.
+
+        Returns:
+            List of created TextElement word objects that were added.
+        """
+        added_word_elements = []
+        if self._elements is None:
+            # Trigger loading of native elements if not already done
+            logger.debug(
+                f"Page {self._page.number}: create_text_elements_from_ocr triggering initial load_elements."
+            )
+            self.load_elements()
+
+        # Ensure scales are valid numbers
+        scale_x = float(scale_x) if scale_x is not None else 1.0
+        scale_y = float(scale_y) if scale_y is not None else 1.0
+
+        logger.debug(
+            f"Page {self._page.number}: Adding {len(ocr_results)} OCR results as elements. Scale: x={scale_x:.2f}, y={scale_y:.2f}"
+        )
+
+        # Ensure the target lists exist in the _elements dict
+        if self._elements is None:
+            logger.error(
+                f"Page {self._page.number}: _elements dictionary is None after load_elements call in create_text_elements_from_ocr. Cannot add OCR elements."
+            )
+            return []  # Cannot proceed
+
+        if "words" not in self._elements:
+            self._elements["words"] = []
+        if "chars" not in self._elements:
+            self._elements["chars"] = []
+
         for result in ocr_results:
-            # Convert numpy int32 to float if needed and scale to PDF coordinates
-            x0 = float(result['bbox'][0]) * scale_x
-            top = float(result['bbox'][1]) * scale_y
-            x1 = float(result['bbox'][2]) * scale_x
-            bottom = float(result['bbox'][3]) * scale_y
-            
-            # Create a TextElement object with additional required fields for highlighting
-            element_data = {
-                'text': result['text'],
-                'x0': x0,
-                'top': top,
-                'x1': x1,
-                'bottom': bottom,
-                'width': x1 - x0,
-                'height': bottom - top,
-                'object_type': 'text',
-                'source': 'ocr',
-                'confidence': result['confidence'],
-                # Add default font information to work with existing expectations
-                'fontname': 'OCR-detected',
-                'size': 10.0,
-                'page_number': self._page.number
-            }
-            
-            elem = TextElement(element_data, self._page)
-            elements.append(elem)
-            
-            # Add to page's elements
-            if self._elements is not None:
-                # Add to words list to make it accessible via standard API
-                if 'words' in self._elements:
-                    self._elements['words'].append(elem)
-                else:
-                    self._elements['words'] = [elem]
-                
-        return elements
-    
-    def add_element(self, element, element_type='words'):
+            try:
+                x0_img, top_img, x1_img, bottom_img = map(float, result["bbox"])
+                height_img = bottom_img - top_img
+                pdf_x0 = x0_img * scale_x
+                pdf_top = top_img * scale_y
+                pdf_x1 = x1_img * scale_x
+                pdf_bottom = bottom_img * scale_y
+                pdf_height = (bottom_img - top_img) * scale_y
+
+                # Create the TextElement for the word
+                word_element_data = {
+                    "text": result["text"],
+                    "x0": pdf_x0,
+                    "top": pdf_top,
+                    "x1": pdf_x1,
+                    "bottom": pdf_bottom,
+                    "width": (x1_img - x0_img) * scale_x,
+                    "height": pdf_height,
+                    "object_type": "word",  # Treat OCR results as whole words
+                    "source": "ocr",
+                    "confidence": float(result.get("confidence", 0.0)),
+                    "fontname": "OCR",  # Use consistent OCR fontname
+                    "size": (
+                        round(pdf_height) if pdf_height > 0 else 10.0
+                    ),  # Use calculated PDF height for size
+                    "page_number": self._page.number,
+                    "bold": False,
+                    "italic": False,
+                    "upright": True,
+                    "doctop": pdf_top + self._page._page.initial_doctop,
+                }
+
+                # Create the representative char dict for this OCR word
+                ocr_char_dict = word_element_data.copy()
+                ocr_char_dict["object_type"] = "char"
+                ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
+
+                # Add the char dict list to the word data before creating TextElement
+                word_element_data["_char_dicts"] = [ocr_char_dict]
+
+                word_elem = TextElement(word_element_data, self._page)
+                added_word_elements.append(word_elem)
+
+                # Append the word element to the manager's list
+                self._elements["words"].append(word_elem)
+
+                # Also create and append a representative character dictionary
+                # for consistency if someone iterates through manager.chars later.
+                # This char dict represents the entire OCR word as a single 'char'.
+                char_dict_data = ocr_char_dict  # Use the one we already created
+                char_dict_data["object_type"] = "char"  # Mark as char type
+                # pdfplumber char dicts don't typically have width/height/doctop,
+                # but keeping them won't hurt WordExtractor if it encounters them.
+                char_dict_data.setdefault("adv", char_dict_data.get("width", 0))
+
+                self._elements["chars"].append(char_dict_data)  # Append the dictionary
+
+            except (KeyError, ValueError, TypeError) as e:
+                logger.error(f"Failed to process OCR result: {result}. Error: {e}", exc_info=True)
+                continue
+
+        logger.info(
+            f"Page {self._page.number}: Appended {len(added_word_elements)} TextElements (words) and corresponding char dicts from OCR results."
+        )
+        return added_word_elements
+
+    def add_element(self, element, element_type="words"):
         """
         Add an element to the managed elements.
-        
+
         Args:
             element: The element to add
             element_type: The type of element ('words', 'chars', etc.)
-            
+
         Returns:
             True if added successfully, False otherwise
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         # Add to the appropriate list
         if element_type in self._elements:
-            self._elements[element_type].append(element)
-            return True
-        
+            # Avoid adding duplicates
+            if element not in self._elements[element_type]:
+                self._elements[element_type].append(element)
+                return True
+            else:
+                # logger.debug(f"Element already exists in {element_type}: {element}")
+                return False  # Indicate it wasn't newly added
+
         return False
-    
+
     def add_region(self, region, name=None):
         """
         Add a region to the managed elements.
-        
+
         Args:
             region: The region to add
             name: Optional name for the region
-            
+
         Returns:
             True if added successfully, False otherwise
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         # Make sure regions is in _elements
-        if 'regions' not in self._elements:
-            self._elements['regions'] = []
-            
+        if "regions" not in self._elements:
+            self._elements["regions"] = []
+
         # Add to elements for selector queries
-        if region not in self._elements['regions']:
-            self._elements['regions'].append(region)
+        if region not in self._elements["regions"]:
+            self._elements["regions"].append(region)
             return True
-            
+
         return False
-    
+
     def get_elements(self, element_type=None):
         """
         Get all elements of the specified type, or all elements if type is None.
-        
+
         Args:
-            element_type: Optional element type ('words', 'chars', 'rects', 'lines', etc.)
-            
+            element_type: Optional element type ('words', 'chars', 'rects', 'lines', 'regions' etc.)
+
         Returns:
             List of elements
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         if element_type:
             return self._elements.get(element_type, [])
-        
+
         # Combine all element types
         all_elements = []
         for elements in self._elements.values():
             all_elements.extend(elements)
-        
+
         return all_elements
-    
+
     def get_all_elements(self):
         """
         Get all elements from all types.
-        
+
         Returns:
             List of all elements
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         # Combine all element types
         all_elements = []
-        for elements in self._elements.values():
-            all_elements.extend(elements)
-        
+        if self._elements:  # Ensure _elements is not None
+            for elements in self._elements.values():
+                if isinstance(elements, list):  # Ensure we only extend lists
+                    all_elements.extend(elements)
         return all_elements
-        
+
     @property
     def chars(self):
         """Get all character elements."""
         self.load_elements()
-        return self._elements['chars']
-    
+        return self._elements.get("chars", [])
+
     @property
     def words(self):
         """Get all word elements."""
         self.load_elements()
-        return self._elements['words']
-    
+        return self._elements.get("words", [])
+
     @property
     def rects(self):
         """Get all rectangle elements."""
         self.load_elements()
-        return self._elements['rects']
-    
+        return self._elements.get("rects", [])
+
     @property
     def lines(self):
         """Get all line elements."""
         self.load_elements()
-        return self._elements['lines']
-    
+        return self._elements.get("lines", [])
+
     @property
     def regions(self):
         """Get all region elements."""
         self.load_elements()
-        if 'regions' not in self._elements:
-            self._elements['regions'] = []
-        return self._elements['regions'] 
+        return self._elements.get("regions", [])

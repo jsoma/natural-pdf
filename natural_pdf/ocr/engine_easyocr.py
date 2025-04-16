@@ -1,22 +1,24 @@
 # ocr_engine_easyocr.py
-import logging
 import importlib.util
-from typing import Dict, List, Any, Optional, Tuple, Union
+import inspect  # Used for dynamic parameter passing
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 from PIL import Image
-import inspect # Used for dynamic parameter passing
 
 from .engine import OCREngine
-from .ocr_options import EasyOCROptions, BaseOCROptions
+from .ocr_options import BaseOCROptions, EasyOCROptions
 
 logger = logging.getLogger(__name__)
+
 
 class EasyOCREngine(OCREngine):
     """EasyOCR engine implementation."""
 
     def __init__(self):
         super().__init__()
-        self._easyocr = None # Lazy load easyocr module
+        self._easyocr = None  # Lazy load easyocr module
 
     def _lazy_import_easyocr(self):
         """Imports easyocr only when needed."""
@@ -25,6 +27,7 @@ class EasyOCREngine(OCREngine):
                 raise ImportError("EasyOCR is not installed or available.")
             try:
                 import easyocr
+
                 self._easyocr = easyocr
                 logger.info("EasyOCR module imported successfully.")
             except ImportError as e:
@@ -56,15 +59,18 @@ class EasyOCREngine(OCREngine):
 
         constructor_sig = inspect.signature(easyocr.Reader.__init__)
         constructor_args = {}
-        constructor_args['lang_list'] = options.languages
-        constructor_args['gpu'] = 'cuda' in str(options.device).lower() or 'mps' in str(options.device).lower()
+        constructor_args["lang_list"] = options.languages
+        constructor_args["gpu"] = (
+            "cuda" in str(options.device).lower() or "mps" in str(options.device).lower()
+        )
 
         for field_name, param in constructor_sig.parameters.items():
-            if field_name in ['self', 'lang_list', 'gpu']: continue
+            if field_name in ["self", "lang_list", "gpu"]:
+                continue
             if hasattr(options, field_name):
-                 constructor_args[field_name] = getattr(options, field_name)
+                constructor_args[field_name] = getattr(options, field_name)
             elif field_name in options.extra_args:
-                 constructor_args[field_name] = options.extra_args[field_name]
+                constructor_args[field_name] = options.extra_args[field_name]
 
         logger.debug(f"EasyOCR Reader constructor args: {constructor_args}")
         try:
@@ -81,22 +87,29 @@ class EasyOCREngine(OCREngine):
         readtext_sig = inspect.signature(reader.readtext)
         readtext_args = {}
         for field_name, param in readtext_sig.parameters.items():
-             if field_name == 'image': continue
-             if hasattr(options, field_name):
-                 readtext_args[field_name] = getattr(options, field_name)
-             elif field_name in options.extra_args:
-                 readtext_args[field_name] = options.extra_args[field_name]
+            if field_name == "image":
+                continue
+            if hasattr(options, field_name):
+                readtext_args[field_name] = getattr(options, field_name)
+            elif field_name in options.extra_args:
+                readtext_args[field_name] = options.extra_args[field_name]
         logger.debug(f"EasyOCR readtext args: {readtext_args}")
         return readtext_args
 
-    def _standardize_results(self, raw_results: List[Any], options: EasyOCROptions) -> List[Dict[str, Any]]:
+    def _standardize_results(
+        self, raw_results: List[Any], options: EasyOCROptions
+    ) -> List[Dict[str, Any]]:
         """Standardizes raw results from EasyOCR's readtext."""
         standardized_results = []
         min_confidence = options.min_confidence
 
         for detection in raw_results:
             try:
-                if options.detail == 1 and isinstance(detection, (list, tuple)) and len(detection) >= 3:
+                if (
+                    options.detail == 1
+                    and isinstance(detection, (list, tuple))
+                    and len(detection) >= 3
+                ):
                     bbox_raw = detection[0]
                     text = str(detection[1])
                     confidence = float(detection[2])
@@ -104,38 +117,40 @@ class EasyOCREngine(OCREngine):
                     if confidence >= min_confidence:
                         bbox = self._standardize_bbox(bbox_raw)
                         if bbox:
-                            standardized_results.append({
-                                'bbox': bbox, 'text': text, 'confidence': confidence, 'source': 'ocr'
-                            })
+                            standardized_results.append(
+                                {
+                                    "bbox": bbox,
+                                    "text": text,
+                                    "confidence": confidence,
+                                    "source": "ocr",
+                                }
+                            )
                         else:
-                             logger.warning(f"Skipping result due to invalid bbox: {bbox_raw}")
+                            logger.warning(f"Skipping result due to invalid bbox: {bbox_raw}")
 
                 elif options.detail == 0 and isinstance(detection, str):
-                     standardized_results.append({
-                         'bbox': None, 'text': detection, 'confidence': 1.0, 'source': 'ocr'
-                     })
+                    standardized_results.append(
+                        {"bbox": None, "text": detection, "confidence": 1.0, "source": "ocr"}
+                    )
             except (IndexError, ValueError, TypeError) as e:
-                 logger.warning(f"Skipping invalid detection format: {detection}. Error: {e}")
-                 continue
+                logger.warning(f"Skipping invalid detection format: {detection}. Error: {e}")
+                continue
         return standardized_results
 
-
     def process_image(
-        self,
-        images: Union[Image.Image, List[Image.Image]],
-        options: BaseOCROptions
+        self, images: Union[Image.Image, List[Image.Image]], options: BaseOCROptions
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """Processes a single image or a batch of images with EasyOCR."""
 
         if not isinstance(options, EasyOCROptions):
-             logger.warning("Received BaseOCROptions, expected EasyOCROptions. Using defaults.")
-             # Create default EasyOCR options if base was passed, preserving base settings
-             options = EasyOCROptions(
-                 languages=options.languages,
-                 min_confidence=options.min_confidence,
-                 device=options.device,
-                 extra_args=options.extra_args # Pass along any extra args
-             )
+            logger.warning("Received BaseOCROptions, expected EasyOCROptions. Using defaults.")
+            # Create default EasyOCR options if base was passed, preserving base settings
+            options = EasyOCROptions(
+                languages=options.languages,
+                min_confidence=options.min_confidence,
+                device=options.device,
+                extra_args=options.extra_args,  # Pass along any extra args
+            )
 
         reader = self._get_reader(options)
         readtext_args = self._prepare_readtext_args(options, reader)
@@ -147,9 +162,9 @@ class EasyOCREngine(OCREngine):
             logger.info(f"Processing batch of {len(images)} images with EasyOCR (iteratively)...")
             for i, img in enumerate(images):
                 if not isinstance(img, Image.Image):
-                     logger.warning(f"Item at index {i} in batch is not a PIL Image. Skipping.")
-                     all_results.append([])
-                     continue
+                    logger.warning(f"Item at index {i} in batch is not a PIL Image. Skipping.")
+                    all_results.append([])
+                    continue
                 img_array = np.array(img)
                 try:
                     logger.debug(f"Processing image {i+1}/{len(images)} in batch.")
@@ -157,10 +172,12 @@ class EasyOCREngine(OCREngine):
                     standardized = self._standardize_results(raw_results, options)
                     all_results.append(standardized)
                 except Exception as e:
-                    logger.error(f"Error processing image {i+1} in EasyOCR batch: {e}", exc_info=True)
-                    all_results.append([]) # Append empty list for failed image
+                    logger.error(
+                        f"Error processing image {i+1} in EasyOCR batch: {e}", exc_info=True
+                    )
+                    all_results.append([])  # Append empty list for failed image
             logger.info(f"Finished processing batch with EasyOCR.")
-            return all_results # Return List[List[Dict]]
+            return all_results  # Return List[List[Dict]]
 
         elif isinstance(images, Image.Image):
             # --- Single Image Processing ---
@@ -170,10 +187,9 @@ class EasyOCREngine(OCREngine):
                 raw_results = reader.readtext(img_array, **readtext_args)
                 standardized = self._standardize_results(raw_results, options)
                 logger.info(f"Finished processing single image. Found {len(standardized)} results.")
-                return standardized # Return List[Dict]
+                return standardized  # Return List[Dict]
             except Exception as e:
                 logger.error(f"Error processing single image with EasyOCR: {e}", exc_info=True)
-                return [] # Return empty list on failure
+                return []  # Return empty list on failure
         else:
             raise TypeError("Input 'images' must be a PIL Image or a list of PIL Images.")
-

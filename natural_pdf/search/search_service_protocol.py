@@ -1,15 +1,18 @@
 """Defines the protocol for a search service."""
-from typing import Protocol, List, Dict, Any, Optional, Union, Iterable
+
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Union
+
 from PIL import Image
+
+# Forward declare SearchOptions to avoid circular import if needed,
+# or import if structure allows (assuming it's safe here)
+from natural_pdf.search.search_options import BaseSearchOptions, SearchOptions
 
 # Use typing_extensions for Python < 3.8 compatibility if needed,
 # otherwise, typing.Protocol is fine for >= 3.8
 # from typing_extensions import Protocol
 
-# Forward declare SearchOptions to avoid circular import if needed,
-# or import if structure allows (assuming it's safe here)
-from natural_pdf.search.search_options import SearchOptions, BaseSearchOptions
 
 # Use Dict as placeholder for external Haystack Document type
 HaystackDocument = Dict[str, Any]
@@ -17,12 +20,14 @@ HaystackDocument = Dict[str, Any]
 
 class IndexConfigurationError(RuntimeError):
     """Custom exception for configuration mismatches during indexing."""
+
     pass
 
 
 # Add new exception for sync/init safety
 class IndexExistsError(RuntimeError):
     """Raised when attempting to index implicitly to an existing persistent index without force_reindex=True."""
+
     pass
 
 
@@ -66,6 +71,7 @@ class SearchServiceProtocol(Protocol):
     with a chosen search backend (e.g., Haystack with ChromaDB, Haystack In-Memory).
     An instance of a service implementing this protocol is tied to a specific collection name.
     """
+
     collection_name: str
     # Removed internal state hints (_persist, _embedding_model) - implementation detail
 
@@ -98,7 +104,7 @@ class SearchServiceProtocol(Protocol):
 
     def search(
         self,
-        query: Any, # Allow any query type, service implementation handles it
+        query: Any,  # Allow any query type, service implementation handles it
         options: BaseSearchOptions,
     ) -> List[Dict[str, Any]]:
         """
@@ -186,4 +192,4 @@ class SearchServiceProtocol(Protocol):
         ...
 
     # Optional: Add methods for getting index stats, etc.
-    # def get_index_stats(self, collection_name: str) -> Dict[str, Any]: ... 
+    # def get_index_stats(self, collection_name: str) -> Dict[str, Any]: ...
