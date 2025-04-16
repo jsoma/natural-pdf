@@ -25,9 +25,8 @@ try:
     from natural_pdf.search.searchable_mixin import SearchableMixin
 except ImportError as e:
     logger_init = logging.getLogger(__name__)
-    logger_init.error(
-        f"Failed to import search components. Search functionality disabled. Error: {e}",
-        exc_info=True,
+    logger_init.warning(
+        f"Failed to import Haystack components. Semantic search functionality disabled.",
     )
 
     # Dummy definitions
