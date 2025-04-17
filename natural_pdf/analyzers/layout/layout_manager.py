@@ -108,8 +108,22 @@ class LayoutManager:
             detector_instance = engine_class()  # Instantiate
             if not detector_instance.is_available():
                 # Check availability before storing
+                # Construct helpful error message with install hint
+                install_hint = ""
+                if engine_name == "yolo":
+                    install_hint = "pip install 'natural-pdf[layout_yolo]'"
+                elif engine_name == "tatr":
+                    install_hint = "pip install 'natural-pdf[core-ml]'"
+                elif engine_name == "paddle":
+                    install_hint = "pip install 'natural-pdf[paddle]'"
+                elif engine_name == "surya":
+                    install_hint = "pip install 'natural-pdf[surya]'"
+                # Add other engines like docling if they become optional extras
+                else:
+                    install_hint = f"(Check installation requirements for {engine_name})"
+
                 raise RuntimeError(
-                    f"Layout engine '{engine_name}' is not available. Please check dependencies."
+                    f"Layout engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
                 )
             self._detector_instances[engine_name] = detector_instance  # Store if available
 

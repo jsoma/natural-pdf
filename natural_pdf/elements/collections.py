@@ -1279,25 +1279,39 @@ class PageCollection(Generic[P]):
 
         return ElementCollection(all_elements)
 
-    # def debug_ocr(self, output_path):
-    #     """
-    #     Generate an interactive HTML debug report for OCR results.
+    def debug_ocr_to_html(self, output_path: Optional[str] = None):
+        """
+        Generate an interactive HTML debug report for OCR results.
 
-    #     This creates a single-file HTML report with:
-    #     - Side-by-side view of image regions and OCR text
-    #     - Confidence scores with color coding
-    #     - Editable correction fields
-    #     - Filtering and sorting options
-    #     - Export functionality for corrected text
+        This creates a single-file HTML report with:
+        - Side-by-side view of image regions and OCR text
+        - Confidence scores with color coding
+        - Editable correction fields
+        - Filtering and sorting options
+        - Export functionality for corrected text
 
-    #     Args:
-    #         output_path: Path to save the HTML report
+        Requires OCR elements (source='ocr') to be present on the pages.
 
-    #     Returns:
-    #         Path to the generated HTML file
-    #     """
-    #     from natural_pdf.utils.ocr import debug_ocr_to_html
-    #     return debug_ocr_to_html(self.pages, output_path)
+        Args:
+            output_path: Path to save the HTML report. If None, returns HTML string.
+
+        Returns:
+            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
+        """
+        # Import the function from the new location
+        try:
+            from natural_pdf.utils.debug import debug_ocr_to_html as generate_debug_report
+            return generate_debug_report(self.pages, output_path)
+        except ImportError:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("Could not import debug_ocr_to_html from natural_pdf.utils.debug. Is it implemented?")
+            return "Error: Debug function not found."
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error generating OCR debug report: {e}", exc_info=True)
+            return f"Error generating report: {e}"
 
     def get_sections(
         self,

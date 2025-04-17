@@ -1914,7 +1914,7 @@ class Page:
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
         Note: OCR must have been applied to the pages beforehand
-              (e.g., using pdf.apply_ocr()).
+              (e.g., pdf.apply_ocr()).
 
         Args:
             output_path: Path to save the searchable PDF.
@@ -1929,3 +1929,24 @@ class Page:
 
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
+
+    def debug_ocr_to_html(self, output_path: Optional[str] = None):
+        """
+        Generate an interactive HTML debug report for OCR results for this page.
+
+        Args:
+            output_path: Path to save the HTML report. If None, returns HTML string.
+
+        Returns:
+            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
+        """
+        # Create a temporary PageCollection containing only this page
+        from natural_pdf.elements.collections import PageCollection
+        page_collection = PageCollection([self])
+
+        # Delegate to the PageCollection's method
+        if hasattr(page_collection, 'debug_ocr_to_html'):
+            return page_collection.debug_ocr_to_html(output_path=output_path)
+        else:
+            logger.error("PageCollection does not have the required 'debug_ocr_to_html' method.")
+            return "Error: PageCollection is missing the debug method."

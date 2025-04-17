@@ -19,17 +19,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pdfplumber",       # Base PDF parsing
-    "Pillow",           # Image processing
-    "colour",           # Color name/hex/RGB conversion for selectors
-    "numpy",           # Required for image processing
-    "urllib3",         # For handling URL downloads
-    "torch",            # Required for AI models
-    "torchvision",     # Required for AI models
-    "transformers",    # Used for TATR and document QA
-    "huggingface_hub", # For downloading models
-    "ocrmypdf",        # For creating searchable PDFs from OCR
-    "pikepdf",         # For PDF manipulation (merging in searchable PDF export)
+    "pdfplumber",
+    "Pillow",
+    "colour",
+    "numpy",
+    "urllib3",
 ]
 
 [project.optional-dependencies]
@@ -41,39 +35,68 @@ haystack = [
     "chroma-haystack",       # ChromaDB integration
     "sentence-transformers", # Default text embedder
     "protobuf<4",         # Pin protobuf for compatibility with dependencies
+    "natural-pdf[core-ml]", # Add dependency on core ML packages
 ]
-easyocr = ["easyocr"]
+easyocr = [
+    "easyocr",
+    "natural-pdf[core-ml]", # Add dependency on core ML packages
+]
 paddle = ["paddlepaddle", "paddleocr"]
-layout_yolo = ["doclayout_yolo"]
-surya = ["surya-ocr"]
-qa = []  # Uses transformers from dependencies
-# Add test dependencies
+layout_yolo = [
+    "doclayout_yolo",
+    "natural-pdf[core-ml]",
+]
+surya = [
+    "surya-ocr",
+    "natural-pdf[core-ml]",
+]
+qa = [
+    "natural-pdf[core-ml]",
+]
+
+docling = [
+    "docling", 
+    "natural-pdf[core-ml]",
+]
+
 test = [
     "pytest",
 ]
-# Add development tools
+
 dev = [
     "black",
     "isort",
     "mypy",
-    "pytest",  # Often included here too, or rely on [test]
+    "pytest",
     "nox",
-    "nox-uv",  # Make sure nox uses uv
-    "build",   # For building packages
-    "uv",      # Include uv itself for uv pip sync etc.
+    "nox-uv",
+    "build",
+    "uv",
+    "pipdeptree",
 ]
 all = [
-    "ipywidgets>=7.0.0,<9.0.0",
-    "easyocr",
-    "paddlepaddle",
-    "paddleocr",
-    "doclayout_yolo",
-    "surya-ocr",
-    "haystack-ai",
-    "chroma-haystack",
-    "sentence-transformers",
-    "protobuf<4",         # Pin protobuf for compatibility here too
-    "pytest", # Add pytest to 'all'
+    "natural-pdf[interactive]",
+    "natural-pdf[haystack]",
+    "natural-pdf[easyocr]",
+    "natural-pdf[paddle]",
+    "natural-pdf[layout_yolo]",
+    "natural-pdf[surya]",
+    "natural-pdf[qa]",
+    "natural-pdf[ocr-export]",
+    "natural-pdf[docling]",
+    "natural-pdf[test]"
+]
+
+core-ml = [
+    "torch", 
+    "torchvision",
+    "transformers",
+    "huggingface_hub",
+]
+
+ocr-export = [
+    "ocrmypdf",
+    "pikepdf", 
 ]
 
 [project.urls]
@@ -105,10 +128,8 @@ minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.setuptools]
-# Remove the incorrect line below
-# packages = find:
+# Why this is here I do not know
 
 [tool.setuptools.packages.find]
-where = ["."]  # Look in the root directory (where natural_pdf/ is)
-# Optional: exclude tests if they are accidentally found
-# exclude = ["tests", "tests.*"]
+where = ["."]
+exclude = ["tests", "tests.*"]

@@ -967,6 +967,52 @@ class PDF:
         """Context manager exit."""
         self.close()
 
+    def debug_ocr_to_html(self, output_path: Optional[str] = None, pages: Optional[Union[Iterable[int], range, slice]] = None):
+        """
+        Generate an interactive HTML debug report for OCR results for specified pages.
+
+        Args:
+            output_path: Path to save the HTML report. If None, returns HTML string.
+            pages: An iterable of 0-based page indices (list, range, tuple),
+                   a slice object, or None to process all pages.
+
+        Returns:
+            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
+        """
+        # Determine which pages to include
+        if pages is None:
+            target_page_collection = self.pages # Use the full PageCollection
+        elif isinstance(pages, slice):
+            target_page_collection = self.pages[pages]
+        elif hasattr(pages, '__iter__'):
+            try:
+                # Need to create a temporary PageCollection from indices
+                selected_pages = [self._pages[i] for i in pages]
+                from natural_pdf.elements.collections import PageCollection
+                target_page_collection = PageCollection(selected_pages)
+            except IndexError:
+                raise ValueError("Invalid page index provided in 'pages' iterable.")
+            except TypeError:
+                raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+        else:
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+
+        if not target_page_collection or len(target_page_collection) == 0:
+            logger.warning("No pages selected for OCR debug report.")
+            return "<html><body><h1>OCR Debug Report</h1><p>No pages selected.</p></body></html>"
+
+        # Delegate to the PageCollection's method
+        if hasattr(target_page_collection, 'debug_ocr_to_html'):
+            return target_page_collection.debug_ocr_to_html(output_path=output_path)
+        else:
+            logger.error("PageCollection does not have the required 'debug_ocr_to_html' method.")
+            return "Error: PageCollection is missing the debug method."
+
+
+    # --- Indexable Protocol Methods --- Needed for search/sync
+    def get_id(self) -> str:
+        return self.path
+
 
 # --- Added TYPE_CHECKING import (if not already present) ---
 if TYPE_CHECKING:

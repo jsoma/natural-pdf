@@ -12,6 +12,7 @@ results
 docs/tutorials/needs-ocr-searchable.pdf
 sample.py
 sample2.py
+requirements.lock
 pdfs/hidden
 *.hocr
 

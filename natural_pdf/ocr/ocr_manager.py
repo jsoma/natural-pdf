@@ -9,8 +9,8 @@ from PIL import Image
 from .engine import OCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
-from .engine_surya import SuryaOCREngine  # <-- Import Surya Engine
-from .ocr_options import OCROptions  # <-- Import Surya Options
+from .engine_surya import SuryaOCREngine
+from .ocr_options import OCROptions
 from .ocr_options import BaseOCROptions, EasyOCROptions, PaddleOCROptions, SuryaOCROptions
 
 logger = logging.getLogger(__name__)
@@ -49,16 +49,18 @@ class OCRManager:
                 f"Unknown OCR engine: '{engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
             )
 
-        # Surya engine might manage its own predictor state, consider if caching instance is always right
-        # For now, we cache the engine instance itself.
         if engine_name not in self._engine_instances:
             logger.info(f"Creating instance of engine: {engine_name}")
             engine_class = self.ENGINE_REGISTRY[engine_name]["class"]
             engine_instance = engine_class()  # Instantiate first
             if not engine_instance.is_available():
                 # Check availability before storing
+                # Construct helpful error message with install hint
+                install_hint = f"pip install 'natural-pdf[{engine_name}]'"
+                # Handle potential special cases if extra name differs from engine name (none currently)
+                # if engine_name == 'some_engine': install_hint = "pip install 'natural-pdf[some_extra]'"
                 raise RuntimeError(
-                    f"Engine '{engine_name}' is not available. Please check dependencies."
+                    f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
                 )
             self._engine_instances[engine_name] = engine_instance  # Store if available
 

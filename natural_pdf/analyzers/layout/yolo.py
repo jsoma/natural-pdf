@@ -91,7 +91,9 @@ class YOLODocLayoutDetector(LayoutDetector):
     def _load_model_from_options(self, options: YOLOLayoutOptions) -> Any:
         """Load the YOLOv10 model based on options."""
         if not self.is_available():
-            raise RuntimeError("YOLO dependencies (doclayout_yolo, huggingface_hub) not installed.")
+            raise RuntimeError(
+                "YOLO dependencies not installed. Please run: pip install 'natural-pdf[layout_yolo]'"
+            )
         self.logger.info(f"Loading YOLO model: {options.model_repo}/{options.model_file}")
         try:
             model_path = hf_hub_download(repo_id=options.model_repo, filename=options.model_file)
@@ -105,7 +107,9 @@ class YOLODocLayoutDetector(LayoutDetector):
     def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
         """Detect layout elements in an image using YOLO."""
         if not self.is_available():
-            raise RuntimeError("YOLO dependencies (doclayout_yolo, huggingface_hub) not installed.")
+            raise RuntimeError(
+                "YOLO dependencies not installed. Please run: pip install 'natural-pdf[layout_yolo]'"
+            )
 
         # Ensure options are the correct type, falling back to defaults if base type passed
         if not isinstance(options, YOLOLayoutOptions):
