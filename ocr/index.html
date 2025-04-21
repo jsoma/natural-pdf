@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -654,15 +654,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multiple-languages" class="md-nav__link">
-    <span class="md-ellipsis">
-      Multiple Languages
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#applying-ocr-directly" class="md-nav__link">
     <span class="md-ellipsis">
       Applying OCR Directly
@@ -699,35 +690,20 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ocr-debugging" class="md-nav__link">
+  <a href="#detect-llm-ocr" class="md-nav__link">
     <span class="md-ellipsis">
-      OCR Debugging
+      Detect + LLM OCR
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#ocr-parameter-tuning" class="md-nav__link">
+  <a href="#debugging-ocr" class="md-nav__link">
     <span class="md-ellipsis">
-      OCR Parameter Tuning
+      Debugging OCR
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="OCR Parameter Tuning">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#parameter-recommendation-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      Parameter Recommendation Table
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1314,15 +1290,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#multiple-languages" class="md-nav__link">
-    <span class="md-ellipsis">
-      Multiple Languages
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#applying-ocr-directly" class="md-nav__link">
     <span class="md-ellipsis">
       Applying OCR Directly
@@ -1359,35 +1326,20 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ocr-debugging" class="md-nav__link">
+  <a href="#detect-llm-ocr" class="md-nav__link">
     <span class="md-ellipsis">
-      OCR Debugging
+      Detect + LLM OCR
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#ocr-parameter-tuning" class="md-nav__link">
+  <a href="#debugging-ocr" class="md-nav__link">
     <span class="md-ellipsis">
-      OCR Parameter Tuning
+      Debugging OCR
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="OCR Parameter Tuning">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#parameter-recommendation-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      Parameter Recommendation Table
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1546,22 +1498,6 @@
 <span class="p">)</span>
 <span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">surya_opts</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="multiple-languages">Multiple Languages</h2>
-<p>OCR supports multiple languages:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Recognize English and Spanish text</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s1">&#39;multilingual.pdf&#39;</span><span class="p">,</span> <span class="n">ocr</span><span class="o">=</span><span class="p">{</span>
-    <span class="s1">&#39;enabled&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="s1">&#39;languages&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">,</span> <span class="s1">&#39;es&#39;</span><span class="p">]</span>
-<span class="p">})</span>
-
-<span class="c1"># Multiple languages with PaddleOCR</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s1">&#39;multilingual_document.pdf&#39;</span><span class="p">,</span> 
-          <span class="n">ocr_engine</span><span class="o">=</span><span class="s1">&#39;paddleocr&#39;</span><span class="p">,</span>
-          <span class="n">ocr</span><span class="o">=</span><span class="p">{</span>
-              <span class="s1">&#39;enabled&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-              <span class="s1">&#39;languages&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;zh&#39;</span><span class="p">,</span> <span class="s1">&#39;ja&#39;</span><span class="p">,</span> <span class="s1">&#39;ko&#39;</span><span class="p">,</span> <span class="s1">&#39;en&#39;</span><span class="p">]</span>  <span class="c1"># Chinese, Japanese, Korean, English</span>
-          <span class="p">})</span>
-</code></pre></div>
 <h2 id="applying-ocr-directly">Applying OCR Directly</h2>
 <p>The <code>page.apply_ocr(...)</code> and <code>region.apply_ocr(...)</code> methods are the primary way to run OCR:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR to a page and get the OCR elements</span>
@@ -1615,97 +1551,39 @@
 <span class="n">high_conf</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.8]&#39;</span><span class="p">)</span>
 <span class="n">high_conf</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;High Confidence OCR&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="ocr-debugging">OCR Debugging</h2>
-<p>For troubleshooting OCR problems:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create an interactive HTML debug report</span>
-<span class="n">pdf</span><span class="o">.</span><span class="n">debug_ocr</span><span class="p">(</span><span class="s2">&quot;ocr_debug.html&quot;</span><span class="p">)</span>
+<h2 id="detect-llm-ocr">Detect + LLM OCR</h2>
+<p>Sometimes you have a difficult piece of content where you need to use a local model to identify the content, then send it off in pieces to be identified by the LLM. You can do this with Natural PDF!</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.ocr.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">direct_ocr_llm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">openai</span>
 
-<span class="c1"># Specify which pages to include</span>
-<span class="n">pdf</span><span class="o">.</span><span class="n">debug_ocr</span><span class="p">(</span><span class="s2">&quot;ocr_debug.html&quot;</span><span class="p">,</span> <span class="n">pages</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;needs-ocr.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Detect</span>
+<span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="s1">&#39;paddle&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">detect_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Build the framework</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">openai</span><span class="o">.</span><span class="n">OpenAI</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://api.anthropic.com/v1/&quot;</span><span class="p">,</span>  <span class="n">api_key</span><span class="o">=</span><span class="s1">&#39;sk-XXXXX&#39;</span><span class="p">)</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;OCR this image. Return only the exact text from the image. Include misspellings,</span>
+<span class="s2">punctuation, etc. Do not surround it with quotation marks. Do not include translations or comments.</span>
+<span class="s2">The text is from a Greek spreadsheet, so most likely content is Modern Greek or numeric.&quot;&quot;&quot;</span>
+
+<span class="c1"># This returns the cleaned-up text</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">correct</span><span class="p">(</span><span class="n">region</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">direct_ocr_llm</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;claude-3-5-haiku-20241022&quot;</span><span class="p">)</span>
+
+<span class="c1"># Run &#39;correct&#39; on each text element</span>
+<span class="n">page</span><span class="o">.</span><span class="n">correct_ocr</span><span class="p">(</span><span class="n">correct</span><span class="p">)</span>
+
+<span class="c1"># You&#39;re done!</span>
 </code></pre></div>
-<p>The debug report shows:
-- The original image
-- Text found with confidence scores
-- Boxes around each detected word
-- Options to sort and filter results</p>
-<h2 id="ocr-parameter-tuning">OCR Parameter Tuning</h2>
-<h3 id="parameter-recommendation-table">Parameter Recommendation Table</h3>
-<table>
-<thead>
-<tr>
-<th>Issue</th>
-<th>Engine</th>
-<th>Parameter</th>
-<th>Recommended Value</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Missing text</td>
-<td>EasyOCR</td>
-<td><code>text_threshold</code></td>
-<td>0.1 - 0.3 (default: 0.7)</td>
-<td>Lower values detect more text but may increase false positives</td>
-</tr>
-<tr>
-<td>Missing text</td>
-<td>PaddleOCR</td>
-<td><code>det_db_thresh</code></td>
-<td>0.1 - 0.3 (default: 0.3)</td>
-<td>Lower values detect more text areas</td>
-</tr>
-<tr>
-<td>Low quality scan</td>
-<td>EasyOCR</td>
-<td><code>contrast_ths</code></td>
-<td>0.05 - 0.1 (default: 0.1)</td>
-<td>Lower values help with low contrast documents</td>
-</tr>
-<tr>
-<td>Low quality scan</td>
-<td>PaddleOCR</td>
-<td><code>det_limit_side_len</code></td>
-<td>1280 - 2560 (default: 960)</td>
-<td>Higher values improve detail detection</td>
-</tr>
-<tr>
-<td>Accuracy vs. speed</td>
-<td>EasyOCR</td>
-<td><code>decoder</code></td>
-<td>"wordbeamsearch" (accuracy)<br>"greedy" (speed)</td>
-<td>Word beam search is more accurate but slower</td>
-</tr>
-<tr>
-<td>Accuracy vs. speed</td>
-<td>PaddleOCR</td>
-<td><code>rec_batch_num</code></td>
-<td>1 (accuracy)<br>8+ (speed)</td>
-<td>Larger batches process faster but use more memory</td>
-</tr>
-<tr>
-<td>Small text</td>
-<td>Both</td>
-<td><code>min_confidence</code></td>
-<td>0.3 - 0.4 (default: 0.5)</td>
-<td>Lower confidence threshold to capture small/blurry text</td>
-</tr>
-<tr>
-<td>Text orientation</td>
-<td>PaddleOCR</td>
-<td><code>use_angle_cls</code></td>
-<td><code>True</code></td>
-<td>Enable angle classification for rotated text</td>
-</tr>
-<tr>
-<td>Asian languages</td>
-<td>PaddleOCR</td>
-<td><code>lang</code></td>
-<td>"ch", "japan", "korea"</td>
-<td>Use PaddleOCR for Asian languages</td>
-</tr>
-</tbody>
-</table>
+<h2 id="debugging-ocr">Debugging OCR</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.utils.packaging</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_correction_task_package</span>
+
+<span class="n">create_correction_task_package</span><span class="p">(</span><span class="n">pdf</span><span class="p">,</span> <span class="s2">&quot;original.zip&quot;</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>This will at <em>some point</em> be official-ized, but for now you can look at <code>templates/spa</code> and see the correction package.</p>
 <h2 id="next-steps">Next Steps</h2>
 <p>With OCR capabilities, you can explore:</p>
 <ul>
