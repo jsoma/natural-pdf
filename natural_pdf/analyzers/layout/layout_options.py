@@ -80,6 +80,16 @@ class DoclingLayoutOptions(BaseLayoutOptions):
     # Other kwargs like 'device', 'batch_size' can go in extra_args
 
 
+# --- Gemini Specific Options ---
+@dataclass
+class GeminiLayoutOptions(BaseLayoutOptions):
+    """Options specific to Gemini-based layout detection (using OpenAI compatibility)."""
+
+    model_name: str = "gemini-2.0-flash"
+    # Removed: prompt_template, temperature, top_p, max_output_tokens
+    # These are typically passed directly to the chat completion call or via extra_args
+
+
 # --- Union Type ---
 LayoutOptions = Union[
     YOLOLayoutOptions,
@@ -87,5 +97,6 @@ LayoutOptions = Union[
     PaddleLayoutOptions,
     SuryaLayoutOptions,
     DoclingLayoutOptions,
+    GeminiLayoutOptions,
     BaseLayoutOptions,  # Include base for typing flexibility
 ]

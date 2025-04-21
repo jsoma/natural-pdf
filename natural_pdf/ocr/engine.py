@@ -11,35 +11,137 @@ from .ocr_options import BaseOCROptions
 logger = logging.getLogger(__name__)
 
 
+class TextRegion:
+    """Standard representation of an OCR text region."""
+    
+    def __init__(self, bbox: Tuple[float, float, float, float], text: str, confidence: float, source: str = "ocr"):
+        """
+        Initialize a text region.
+        
+        Args:
+            bbox: Tuple of (x0, y0, x1, y1) coordinates
+            text: The recognized text
+            confidence: Confidence score (0.0-1.0)
+            source: Source of the text region (default: "ocr")
+        """
+        self.bbox = bbox
+        self.text = text
+        self.confidence = confidence
+        self.source = source
+    
+    @classmethod
+    def from_polygon(cls, polygon: List[List[float]], text: str, confidence: float):
+        """Create from polygon coordinates [[x1,y1], [x2,y2], ...]"""
+        x_coords = [float(point[0]) for point in polygon]
+        y_coords = [float(point[1]) for point in polygon]
+        bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+        return cls(bbox, text, confidence)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation for compatibility."""
+        return {
+            "bbox": self.bbox,
+            "text": self.text,
+            "confidence": self.confidence,
+            "source": self.source
+        }
+
+
 class OCREngine(ABC):
     """Abstract Base Class for OCR engines."""
+    
+    # Default values as class constants
+    DEFAULT_MIN_CONFIDENCE = 0.2
+    DEFAULT_LANGUAGES = ['en']
+    DEFAULT_DEVICE = 'cpu'
 
     def __init__(self):
         """Initializes the base OCR engine."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.info(f"Initializing {self.__class__.__name__}")
+        self._model = None
+        self._initialized = False
         self._reader_cache = {}  # Cache for initialized models/readers
 
-    @abstractmethod
     def process_image(
         self,
-        images: Union[Image.Image, List[Image.Image]],  # Accept single or list
-        options: BaseOCROptions,
-    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:  # Return single or list of lists
+        images: Union[Image.Image, List[Image.Image]],
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        detect_only: bool = False,
+        options: Optional[BaseOCROptions] = None,
+    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
-        Processes a single image or a batch of images using the specific engine and options.
-
+        Process a single image or batch of images with OCR.
+        
         Args:
-            images: A single PIL Image or a list of PIL Images.
-            options: An instance of a dataclass inheriting from BaseOCROptions
-                     containing configuration for this run.
-
+            images: A single PIL Image or a list of PIL Images
+            languages: List of languages to use (default: ['en'])
+            min_confidence: Minimum confidence threshold (default: 0.2)
+            device: Device to use for processing (default: 'cpu')
+            detect_only: Whether to only detect text regions without recognition
+            options: Engine-specific options
+            
         Returns:
-            If input is a single image: List of result dictionaries.
-            If input is a list of images: List of lists of result dictionaries,
-                                          corresponding to each input image.
-                                          An empty list indicates failure for that image.
+            For a single image: List of text region dictionaries
+            For a batch: List of lists of text region dictionaries
         """
+        # Convert single image to batch format
+        single_image = not isinstance(images, list)
+        image_batch = [images] if single_image else images
+        
+        # Use default values where parameters are not provided
+        effective_languages = languages or self.DEFAULT_LANGUAGES
+        effective_confidence = min_confidence if min_confidence is not None else self.DEFAULT_MIN_CONFIDENCE
+        effective_device = device or self.DEFAULT_DEVICE
+        
+        # Ensure the model is initialized
+        self._ensure_initialized(effective_languages, effective_device, options)
+        
+        # Process each image in the batch
+        results = []
+        for img in image_batch:
+            # Preprocess the image for the specific engine
+            processed_img = self._preprocess_image(img)
+            
+            # Process the image with the engine-specific implementation
+            raw_results = self._process_single_image(processed_img, detect_only, options)
+            
+            # Convert results to standardized format
+            text_regions = self._standardize_results(raw_results, effective_confidence, detect_only)
+            
+            # Convert TextRegion objects to dictionaries for backward compatibility
+            region_dicts = [region.to_dict() for region in text_regions]
+            results.append(region_dicts)
+        
+        # Return results in the appropriate format
+        return results[0] if single_image else results
+
+    def _ensure_initialized(self, languages: List[str], device: str, options: Optional[BaseOCROptions]):
+        """Ensure the model is initialized with the correct parameters."""
+        if not self._initialized:
+            self._initialize_model(languages, device, options)
+            self._initialized = True
+            
+    @abstractmethod
+    def _initialize_model(self, languages: List[str], device: str, options: Optional[BaseOCROptions]):
+        """Initialize the OCR model with the given parameters."""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    def _preprocess_image(self, image: Image.Image) -> Any:
+        """Convert PIL Image to engine-specific format."""
+        raise NotImplementedError("Subclasses must implement this method")
+        
+    @abstractmethod
+    def _process_single_image(self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]) -> Any:
+        """Process a single image with the initialized model."""
+        raise NotImplementedError("Subclasses must implement this method")
+        
+    @abstractmethod
+    def _standardize_results(self, raw_results: Any, min_confidence: float, detect_only: bool) -> List[TextRegion]:
+        """Convert engine-specific results to standardized TextRegion objects."""
         raise NotImplementedError("Subclasses must implement this method")
 
     @abstractmethod
@@ -63,48 +165,41 @@ class OCREngine(ABC):
         Returns:
             A string cache key.
         """
-        # Basic key includes languages and device
-        lang_key = "-".join(sorted(options.languages))
-        device_key = str(options.device).lower()
+        lang_key = "-".join(sorted(getattr(options, "languages", self.DEFAULT_LANGUAGES)))
+        device_key = str(getattr(options, "device", self.DEFAULT_DEVICE)).lower()
         return f"{self.__class__.__name__}_{lang_key}_{device_key}"
 
-    def _standardize_bbox(self, bbox: Any) -> Optional[Tuple[float, float, float, float]]:
-        """
-        Helper to standardize bounding boxes to (x0, y0, x1, y1) format.
-
-        Args:
-            bbox: The bounding box in the engine's native format.
-                  Expected formats:
-                  - List/Tuple of 4 numbers: (x0, y0, x1, y1)
-                  - List of points: [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] (polygon)
-
-        Returns:
-            Tuple[float, float, float, float] or None if conversion fails.
-        """
-        try:
-            if (
-                isinstance(bbox, (list, tuple))
-                and len(bbox) == 4
-                and all(isinstance(n, (int, float)) for n in bbox)
-            ):
-                # Already in (x0, y0, x1, y1) format (or similar)
+    def _standardize_bbox(self, bbox: Any) -> Tuple[float, float, float, float]:
+        """Standardizes bounding boxes to (x0, y0, x1, y1) format. Raises ValueError if standardization fails."""
+        # Check if it's already in the correct tuple/list format
+        if (
+            isinstance(bbox, (list, tuple))
+            and len(bbox) == 4
+            and all(isinstance(n, (int, float)) for n in bbox)
+        ):
+            try:
                 return tuple(float(c) for c in bbox[:4])
-            elif (
-                isinstance(bbox, (list, tuple))
-                and len(bbox) > 0
-                and isinstance(bbox[0], (list, tuple))
-            ):
-                # Polygon format [[x1,y1],[x2,y2],...]
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid number format in bbox: {bbox}") from e
+        
+        # Check if it's in polygon format [[x1,y1],[x2,y2],...]
+        elif (
+            isinstance(bbox, (list, tuple))
+            and len(bbox) > 0
+            and isinstance(bbox[0], (list, tuple))
+            and len(bbox[0]) == 2 # Ensure points are pairs
+        ):
+            try:
                 x_coords = [float(point[0]) for point in bbox]
                 y_coords = [float(point[1]) for point in bbox]
-                x0 = min(x_coords)
-                y0 = min(y_coords)
-                x1 = max(x_coords)
-                y1 = max(y_coords)
-                return (x0, y0, x1, y1)
-        except Exception as e:
-            self.logger.warning(f"Could not standardize bounding box: {bbox}. Error: {e}")
-        return None
+                if not x_coords or not y_coords: # Handle empty polygon case
+                    raise ValueError("Empty polygon provided")
+                return (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+            except (ValueError, TypeError, IndexError) as e:
+                raise ValueError(f"Invalid polygon format or values: {bbox}") from e
+        
+        # If it's neither format, raise an error
+        raise ValueError(f"Could not standardize bounding box from unexpected format: {bbox}")
 
     def __del__(self):
         """Cleanup resources when the engine is deleted."""

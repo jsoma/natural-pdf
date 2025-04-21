@@ -81,8 +81,8 @@ tight_region = page.create_region(
 expanded_region = tight_region.expand(
     left=10,       # Expand 10 points to the left
     right=200,     # Expand 200 points to the right
-    top_expand=5,  # Expand 5 points above
-    bottom_expand=100  # Expand 100 points below
+    top=5,  # Expand 5 points above
+    bottom=100  # Expand 100 points below
 )
 
 # Visualize both regions

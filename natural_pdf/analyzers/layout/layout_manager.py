@@ -37,9 +37,15 @@ try:
 except ImportError:
     DoclingLayoutDetector = None
 
+try:
+    from .gemini import GeminiLayoutDetector
+except ImportError:
+    GeminiLayoutDetector = None
+
 from .layout_options import (
     BaseLayoutOptions,
     DoclingLayoutOptions,
+    GeminiLayoutOptions,
     LayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
@@ -81,6 +87,13 @@ class LayoutManager:
         ENGINE_REGISTRY["docling"] = {
             "class": DoclingLayoutDetector,
             "options_class": DoclingLayoutOptions,
+        }
+
+    # Add Gemini entry if available
+    if GeminiLayoutDetector:
+        ENGINE_REGISTRY["gemini"] = {
+            "class": GeminiLayoutDetector,
+            "options_class": GeminiLayoutOptions,
         }
 
     # Define the limited set of kwargs allowed for the simple analyze_layout call

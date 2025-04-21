@@ -41,6 +41,11 @@ class TextElement(Element):
         """Get the text content."""
         return self._obj.get("text", "")
 
+    @text.setter
+    def text(self, value: str):
+        """Set the text content."""
+        self._obj["text"] = value
+
     @property
     def source(self) -> str:
         """Get the source of this text element (pdf or ocr)."""

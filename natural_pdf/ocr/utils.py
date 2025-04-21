@@ -1,0 +1,98 @@
+import io
+import base64
+import logging
+from typing import TYPE_CHECKING, Callable, Iterable, Optional, Any
+from natural_pdf.elements.text import TextElement
+from tqdm.auto import tqdm
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.base import Element
+
+logger = logging.getLogger(__name__)
+
+def _apply_ocr_correction_to_elements(
+    elements: Iterable["Element"],
+    correction_callback: Callable[[Any], Optional[str]],
+) -> None:
+    """
+    Applies correction callback to a list of elements in place,
+    showing a progress bar.
+
+    Iterates through elements, calls the callback, and updates
+    element.text if a new string is returned.
+    
+    Args:
+        elements: An iterable of Element objects.
+        correction_callback: A function accepting an element and returning
+                             Optional[str] (new text or None).
+    """
+    corrections_applied = 0
+    elements_checked = 0
+
+    # Prepare the iterable with tqdm
+    element_iterable = tqdm(elements, desc=f"Correcting OCR", unit="element")
+
+    for element in element_iterable:
+        # Check if the element is likely from OCR and has text attribute
+        element_source = getattr(element, 'source', None)
+        if isinstance(element_source, str) and element_source.startswith('ocr') and hasattr(element, 'text'):
+            elements_checked += 1
+            current_text = getattr(element, 'text') 
+
+            new_text = correction_callback(element)
+
+            if new_text is not None:
+                if new_text != current_text:
+                    element.text = new_text 
+                    corrections_applied += 1
+
+    logger.info(f"OCR correction finished. Checked: {elements_checked}, Applied: {corrections_applied}")
+
+
+def direct_ocr_llm(element,
+                   client,
+                   model="",
+                   resolution=150,
+                   prompt="OCR this image. Return only the exact text from the image. Include misspellings, punctuation, etc.",
+                   padding=2) -> str:
+    """Convenience method to directly OCR a region of the page."""
+
+    if isinstance(element, TextElement):
+        region = element.expand(left=padding, right=padding, top=padding, bottom=padding)
+    else:
+        region = element
+
+    buffered = io.BytesIO()
+    region_img = region.to_image(resolution=resolution, include_highlights=False)
+    region_img.save(buffered, format="PNG")
+    base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an expert OCR engineer. You will be given an image of a region of a page. You will return the exact text from the image."
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_image}"
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+    
+    corrected = response.choices[0].message.content
+    logger.debug(f"Corrected {region.extract_text()} to {corrected}")
+
+    return corrected

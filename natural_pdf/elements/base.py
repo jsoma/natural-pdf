@@ -306,17 +306,19 @@ class DirectionalMixin:
             **kwargs,
         )
 
+    def to_region(
+        self
+    ):
+        return self.expand()
+
     def expand(
         self,
         left: float = 0,
         right: float = 0,
-        top_expand: float = 0,  # Renamed to avoid conflict
-        bottom_expand: float = 0,  # Renamed to avoid conflict
+        top: float = 0,
+        bottom: float = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
-        # Keep original parameter names for backward compatibility
-        top: float = None,
-        bottom: float = None,
     ) -> "Region":
         """
         Create a new region expanded from this element/region.
@@ -324,12 +326,10 @@ class DirectionalMixin:
         Args:
             left: Amount to expand left edge (positive value expands leftwards)
             right: Amount to expand right edge (positive value expands rightwards)
-            top_expand: Amount to expand top edge (positive value expands upwards)
-            bottom_expand: Amount to expand bottom edge (positive value expands downwards)
+            top: Amount to expand top edge (positive value expands upwards)
+            bottom: Amount to expand bottom edge (positive value expands downwards)
             width_factor: Factor to multiply width by (applied after absolute expansion)
             height_factor: Factor to multiply height by (applied after absolute expansion)
-            top: (DEPRECATED, use top_expand) Amount to expand top edge (upward)
-            bottom: (DEPRECATED, use bottom_expand) Amount to expand bottom edge (downward)
 
         Returns:
             New expanded Region object
@@ -340,17 +340,11 @@ class DirectionalMixin:
         new_top = self.top
         new_bottom = self.bottom
 
-        # Handle the deprecated parameter names for backward compatibility
-        if top is not None:
-            top_expand = top
-        if bottom is not None:
-            bottom_expand = bottom
-
         # Apply absolute expansions first
         new_x0 -= left
         new_x1 += right
-        new_top -= top_expand  # Expand upward (decrease top coordinate)
-        new_bottom += bottom_expand  # Expand downward (increase bottom coordinate)
+        new_top -= top  # Expand upward (decrease top coordinate)
+        new_bottom += bottom  # Expand downward (increase bottom coordinate)
 
         # Apply percentage factors if provided
         if width_factor != 1.0 or height_factor != 1.0:

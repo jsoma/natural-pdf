@@ -18,19 +18,6 @@ text_without_ocr = page.extract_text()
 f"Without OCR: {len(text_without_ocr)} characters extracted"
 ```
 
-## Enabling OCR
-
-```python
-# Enable OCR for text extraction
-page.use_ocr = True
-
-# Extract text with OCR enabled
-text_with_ocr = page.extract_text()
-
-# Preview the extracted text
-text_with_ocr[:200] + "..." if len(text_with_ocr) > 200 else text_with_ocr
-```
-
 ## Finding Text Elements with OCR
 
 ```python

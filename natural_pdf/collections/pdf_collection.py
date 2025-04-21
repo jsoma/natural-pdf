@@ -267,6 +267,27 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         # Implementation requires integrating with classification models or logic
         raise NotImplementedError("categorize requires classification implementation.")
 
+    def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
+        """
+        Exports OCR results from all PDFs in this collection into a single
+        correction task package (zip file).
+
+        Args:
+            output_zip_path: The path to save the output zip file.
+            **kwargs: Additional arguments passed to create_correction_task_package
+                      (e.g., image_render_scale, overwrite).
+        """
+        try:
+            from natural_pdf.utils.packaging import create_correction_task_package
+            # Pass the collection itself (self) as the source
+            create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
+        except ImportError:
+            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
+            # Or raise
+        except Exception as e:
+            logger.error(f"Failed to export correction task for collection: {e}", exc_info=True)
+            raise # Re-raise the exception from the utility function
+
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:
         """Yields Page objects from the collection, conforming to Indexable."""

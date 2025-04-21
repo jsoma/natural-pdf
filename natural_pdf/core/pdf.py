@@ -17,6 +17,8 @@ from typing import (  # Added Iterable and TYPE_CHECKING
     Type,
     Union,
 )
+from pathlib import Path
+
 
 import pdfplumber
 from PIL import Image
@@ -235,11 +237,16 @@ class PDF:
         self,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         engine: Optional[str] = None,
-        options: Optional["OCROptions"] = None,
+        # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
+        min_confidence: Optional[float] = None, # Min confidence threshold
         device: Optional[str] = None,
-        # Add other simple mode args if needed
+        resolution: Optional[int] = None, # DPI for rendering before OCR
+        apply_exclusions: bool = True, # New parameter
+        detect_only: bool = False,
+        # --- Engine-Specific Options --- Use 'options=' for this
+        options: Optional[Any] = None, # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
+        # **kwargs: Optional[Dict[str, Any]] = None # Allow potential extra args?
     ) -> "PDF":
         """
         Applies OCR to specified pages (or all pages) of the PDF using batch processing.
@@ -250,20 +257,30 @@ class PDF:
         Args:
             pages: An iterable of 0-based page indices (list, range, tuple),
                    a slice object, or None to process all pages.
-            engine: Name of the engine (e.g., 'easyocr', 'paddleocr', 'surya').
-                    Uses manager's default if None. Ignored if 'options' is provided.
-            options: An specific Options object (e.g., EasyOCROptions) for
-                     advanced configuration. Overrides simple arguments.
-            languages: List of language codes for simple mode.
-            min_confidence: Minimum confidence threshold for simple mode.
-            device: Device string ('cpu', 'cuda', etc.) for simple mode.
+            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr', 'surya').
+                    Uses manager's default ('easyocr') if None.
+            languages: List of language codes (e.g., ['en', 'fr'], ['en', 'ch_sim']).
+                       **Must be codes understood by the specific selected engine.**
+                       No mapping is performed. Overrides manager/engine default.
+            min_confidence: Minimum confidence threshold for detected text (0.0 to 1.0).
+                            Overrides manager/engine default.
+            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps').
+                    Overrides manager/engine default.
+            resolution: DPI resolution to render page images before OCR (e.g., 150, 300).
+                        Affects input quality for OCR. Defaults to 150 if not set.
+            apply_exclusions: If True (default), render page image for OCR with
+                              excluded areas masked (whited out). If False, OCR
+                              the raw page image without masking exclusions.
+            detect_only: If True, only detect text bounding boxes, don't perform OCR.
+            options: An engine-specific options object (e.g., EasyOCROptions) or dict
+                     containing parameters specific to the chosen engine.
 
         Returns:
             Self for method chaining.
 
         Raises:
-            ValueError: If page indices are invalid or the engine name is invalid.
-            TypeError: If unexpected keyword arguments are provided in simple mode.
+            ValueError: If page indices are invalid.
+            TypeError: If 'options' is not compatible with the engine.
             RuntimeError: If the OCRManager or selected engine is not available.
         """
         if not self._ocr_manager:
@@ -271,7 +288,7 @@ class PDF:
             # Or raise RuntimeError("OCRManager not initialized.")
             return self
 
-        # --- Determine Target Pages ---
+        # --- Determine Target Pages (unchanged) ---
         target_pages: List[Page] = []
         if pages is None:
             target_pages = self._pages
@@ -295,44 +312,63 @@ class PDF:
 
         page_numbers = [p.number for p in target_pages]
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
+        # --- Determine Rendering Resolution ---
+        # Priority: 1. direct `resolution` arg, 2. PDF config, 3. default 150
+        final_resolution = resolution # Use direct arg if provided
+        if final_resolution is None:
+            final_resolution = getattr(self, "_config", {}).get("resolution", 150)
+
+        logger.debug(f"Using OCR image rendering resolution: {final_resolution} DPI")
 
         # --- Render Images for Batch ---
         images_pil: List[Image.Image] = []
         page_image_map: List[Tuple[Page, Image.Image]] = []  # Store page and its image
-        logger.info(f"Rendering {len(target_pages)} pages to images...")
+        logger.info(f"Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})...")
         failed_page_num = "unknown"  # Keep track of potentially failing page
         try:
-            ocr_scale = getattr(self, "_config", {}).get("ocr_image_scale", 2.0)
             for i, page in enumerate(target_pages):
                 failed_page_num = page.number  # Update current page number in case of error
                 logger.debug(f"  Rendering page {page.number} (index {page.index})...")
-                # Use page.to_image but ensure highlights are off for OCR base image
-                img = page.to_image(scale=ocr_scale, include_highlights=False)
+                # Use the determined final_resolution and apply exclusions if requested
+                to_image_kwargs = {
+                    "resolution": final_resolution,
+                    "include_highlights": False,
+                    "exclusions": "mask" if apply_exclusions else None,
+                }
+                img = page.to_image(**to_image_kwargs)
+                if img is None:
+                    logger.error(f"  Failed to render page {page.number} to image.")
+                    # Decide how to handle: skip page, raise error? For now, skip.
+                    continue # Skip this page if rendering failed
                 images_pil.append(img)
                 page_image_map.append((page, img))  # Store pair
         except Exception as e:
             logger.error(f"Failed to render one or more pages for batch OCR: {e}", exc_info=True)
             raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
 
-        if not images_pil:
+        if not images_pil or not page_image_map:
             logger.error("No images were successfully rendered for batch OCR.")
             return self
 
         # --- Prepare Arguments for Manager ---
-        manager_args = {"images": images_pil, "options": options, "engine": engine}
-        simple_args = {}
-        if languages is not None:
-            simple_args["languages"] = languages
-        if min_confidence is not None:
-            simple_args["min_confidence"] = min_confidence
-        if device is not None:
-            simple_args["device"] = device
-        manager_args.update(simple_args)  # Add simple args if options not provided
+        # Pass common args directly, engine-specific via options
+        manager_args = {
+            "images": images_pil,
+            "engine": engine,
+            "languages": languages,
+            "min_confidence": min_confidence, # Use the renamed parameter
+            "device": device,
+            "options": options,
+            "detect_only": detect_only,
+            # Note: resolution is used for rendering, not passed to OCR manager directly
+        }
+        # Filter out None values so manager can use its defaults
+        manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         # --- Call OCR Manager for Batch Processing ---
-        logger.info(f"Calling OCR Manager for batch processing {len(images_pil)} images...")
+        logger.info(f"Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k!='images'} } ...")
         try:
-            # The manager's apply_ocr handles the batch input and returns List[List[Dict]]
+            # Manager's apply_ocr signature needs to accept common args directly
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
             if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
@@ -341,16 +377,15 @@ class PDF:
                     f"Expected list of length {len(images_pil)}, got {type(batch_results)} "
                     f"with length {len(batch_results) if isinstance(batch_results, list) else 'N/A'}."
                 )
-                # Handle error - maybe return early or try processing valid parts?
-                return self  # Return self without adding elements
+                return self
 
             logger.info("OCR Manager batch processing complete.")
 
         except Exception as e:
             logger.error(f"Batch OCR processing failed: {e}", exc_info=True)
-            return self  # Return self without adding elements
+            return self
 
-        # --- Distribute Results and Add Elements to Pages ---
+        # --- Distribute Results and Add Elements to Pages (unchanged) ---
         logger.info("Adding OCR results to respective pages...")
         total_elements_added = 0
         for i, (page, img) in enumerate(page_image_map):
@@ -362,10 +397,7 @@ class PDF:
                 continue
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
-            # Use the page's element manager to create elements from its results
-            # Changed from page._create_text_elements_from_ocr to use element_mgr
             try:
-                # Calculate scale factors based on rendered image vs page dims
                 img_scale_x = page.width / img.width if img.width > 0 else 1
                 img_scale_y = page.height / img.height if img.height > 0 else 1
                 elements = page._element_mgr.create_text_elements_from_ocr(
@@ -373,7 +405,6 @@ class PDF:
                 )
 
                 if elements:
-                    # Note: element_mgr.create_text_elements_from_ocr already adds them
                     total_elements_added += len(elements)
                     logger.debug(f"  Added {len(elements)} OCR TextElements to page {page.number}.")
                 else:
@@ -382,7 +413,6 @@ class PDF:
                 logger.error(
                     f"  Error adding OCR elements to page {page.number}: {e}", exc_info=True
                 )
-                # Continue to next page
 
         logger.info(
             f"Finished adding OCR results. Total elements added across {len(target_pages)} pages: {total_elements_added}"
@@ -907,6 +937,80 @@ class PDF:
                 f"Search within index failed for PDF '{self.path}'. See logs for details."
             ) from e
 
+    def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
+        """
+        Exports OCR results from this PDF into a correction task package (zip file).
+
+        Args:
+            output_zip_path: The path to save the output zip file.
+            **kwargs: Additional arguments passed to create_correction_task_package
+                      (e.g., image_render_scale, overwrite).
+        """
+        try:
+            from natural_pdf.utils.packaging import create_correction_task_package
+            create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
+        except ImportError:
+            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
+            # Or raise
+        except Exception as e:
+            logger.error(f"Failed to export correction task for {self.path}: {e}", exc_info=True)
+            raise # Re-raise the exception from the utility function
+
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+    ) -> "PDF": # Return self for chaining
+        """
+        Applies corrections to OCR-generated text elements using a callback function,
+        delegating the core work to the `Page.correct_ocr` method.
+
+        Args:
+            correction_callback: A function that accepts a single argument (an element
+                                object) and returns `Optional[str]`. It returns the
+                                corrected text string if an update is needed, otherwise None.
+            pages: Optional page indices/slice to limit the scope of correction
+                (default: all pages).
+
+        Returns:
+            Self for method chaining.
+        """
+        # Determine target pages
+        target_page_indices: List[int] = []
+        if pages is None:
+            target_page_indices = list(range(len(self._pages)))
+        elif isinstance(pages, slice):
+            target_page_indices = list(range(*pages.indices(len(self._pages))))
+        elif hasattr(pages, "__iter__"):
+            try:
+                target_page_indices = [int(i) for i in pages]
+                # Validate indices
+                for idx in target_page_indices:
+                    if not (0 <= idx < len(self._pages)):
+                        raise IndexError(f"Page index {idx} out of range (0-{len(self._pages)-1}).")
+            except (IndexError, TypeError, ValueError) as e:
+                raise ValueError(f"Invalid page index or type provided in 'pages': {pages}. Error: {e}") from e
+        else:
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+
+        if not target_page_indices:
+            logger.warning("No pages selected for OCR correction.")
+            return self
+
+        logger.info(f"Starting OCR correction process via Page delegation for pages: {target_page_indices}")
+
+        # Iterate through target pages and call their correct_ocr method
+        for page_idx in target_page_indices:
+            page = self._pages[page_idx]
+            try:
+                page.correct_ocr(correction_callback=correction_callback)
+            except Exception as e:
+                logger.error(f"Error during correct_ocr on page {page_idx}: {e}", exc_info=True)
+                # Optionally re-raise or just log and continue
+
+        logger.info(f"OCR correction process finished for requested pages.")
+        return self
+
     def __len__(self) -> int:
         """Return the number of pages in the PDF."""
         # Ensure _pages is initialized
@@ -967,53 +1071,8 @@ class PDF:
         """Context manager exit."""
         self.close()
 
-    def debug_ocr_to_html(self, output_path: Optional[str] = None, pages: Optional[Union[Iterable[int], range, slice]] = None):
-        """
-        Generate an interactive HTML debug report for OCR results for specified pages.
-
-        Args:
-            output_path: Path to save the HTML report. If None, returns HTML string.
-            pages: An iterable of 0-based page indices (list, range, tuple),
-                   a slice object, or None to process all pages.
-
-        Returns:
-            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
-        """
-        # Determine which pages to include
-        if pages is None:
-            target_page_collection = self.pages # Use the full PageCollection
-        elif isinstance(pages, slice):
-            target_page_collection = self.pages[pages]
-        elif hasattr(pages, '__iter__'):
-            try:
-                # Need to create a temporary PageCollection from indices
-                selected_pages = [self._pages[i] for i in pages]
-                from natural_pdf.elements.collections import PageCollection
-                target_page_collection = PageCollection(selected_pages)
-            except IndexError:
-                raise ValueError("Invalid page index provided in 'pages' iterable.")
-            except TypeError:
-                raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
-        else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
-
-        if not target_page_collection or len(target_page_collection) == 0:
-            logger.warning("No pages selected for OCR debug report.")
-            return "<html><body><h1>OCR Debug Report</h1><p>No pages selected.</p></body></html>"
-
-        # Delegate to the PageCollection's method
-        if hasattr(target_page_collection, 'debug_ocr_to_html'):
-            return target_page_collection.debug_ocr_to_html(output_path=output_path)
-        else:
-            logger.error("PageCollection does not have the required 'debug_ocr_to_html' method.")
-            return "Error: PageCollection is missing the debug method."
-
 
     # --- Indexable Protocol Methods --- Needed for search/sync
     def get_id(self) -> str:
         return self.path
 
-
-# --- Added TYPE_CHECKING import (if not already present) ---
-if TYPE_CHECKING:
-    from pathlib import Path  # Assuming Path is used for type hint

@@ -21,6 +21,7 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from natural_pdf.elements.text import TextElement  # Needed for isinstance check
 from natural_pdf.ocr import OCROptions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements # Import the new utility
 
 logger = logging.getLogger(__name__)
 
@@ -1118,6 +1119,42 @@ class ElementCollection(Generic[T]):
         results = self.find_all(selector, regex=regex, case=case, **kwargs)
         return results.first
 
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+    ) -> "ElementCollection":
+        """
+        Applies corrections to OCR-generated text elements within this collection
+        using a user-provided callback function.
+
+        Iterates through elements currently in the collection. If an element's
+        'source' attribute starts with 'ocr', it calls the `correction_callback`
+        for that element, passing the element itself.
+
+        The `correction_callback` should contain the logic to:
+        1. Determine if the element needs correction.
+        2. Perform the correction (e.g., call an LLM).
+        3. Return the new text (`str`) or `None`.
+
+        If the callback returns a string, the element's `.text` is updated in place.
+        Metadata updates (source, confidence, etc.) should happen within the callback.
+        Elements without a source starting with 'ocr' are skipped.
+
+        Args:
+            correction_callback: A function accepting an element and returning
+                                 `Optional[str]` (new text or None).
+
+        Returns:
+            Self for method chaining.
+        """
+        # Delegate to the utility function
+        _apply_ocr_correction_to_elements(
+            elements=self._elements,
+            correction_callback=correction_callback,
+            caller_info=f"ElementCollection(len={len(self._elements)})", # Pass caller info
+        )
+        return self # Return self for chaining
+
 
 class PageCollection(Generic[P]):
     """
@@ -1178,33 +1215,38 @@ class PageCollection(Generic[P]):
     def apply_ocr(
         self,
         engine: Optional[str] = None,
-        options: Optional[OCROptions] = None,
+        # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
+        min_confidence: Optional[float] = None, # Min confidence threshold
         device: Optional[str] = None,
+        resolution: Optional[int] = None, # DPI for rendering
+        apply_exclusions: bool = True, # New parameter
+        # --- Engine-Specific Options ---
+        options: Optional[Any] = None, # e.g., EasyOCROptions(...)
     ) -> "PageCollection[P]":
         """
         Applies OCR to all pages within this collection using batch processing.
 
-        This delegates the work to the parent PDF object's `apply_ocr` method for efficiency. The OCR results (TextElements) are added directly
-        to the respective Page objects within this collection.
+        This delegates the work to the parent PDF object's `apply_ocr` method.
 
         Args:
-            engine: Name of the engine (e.g., 'easyocr', 'paddleocr', 'surya').
-                    Uses manager's default if None. Ignored if 'options' is provided.
-            options: An specific Options object (e.g., EasyOCROptions) for
-                     advanced configuration. Overrides simple arguments.
-            languages: List of language codes for simple mode.
-            min_confidence: Minimum confidence threshold for simple mode.
-            device: Device string ('cpu', 'cuda', etc.) for simple mode.
+            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr').
+            languages: List of language codes (e.g., ['en', 'fr'], ['en', 'ch']).
+                       **Must be codes understood by the specific selected engine.**
+                       No mapping is performed.
+            min_confidence: Minimum confidence threshold for detected text (0.0 to 1.0).
+            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps').
+            resolution: DPI resolution to render page images before OCR (e.g., 150, 300).
+            apply_exclusions: If True (default), render page images for OCR with
+                              excluded areas masked (whited out). If False, OCR
+                              the raw page images without masking exclusions.
+            options: An engine-specific options object (e.g., EasyOCROptions) or dict.
 
         Returns:
             Self for method chaining.
 
         Raises:
-            RuntimeError: If pages in the collection lack a parent PDF object
-                          or if the parent PDF object lacks the required
-                          `apply_ocr` method.
+            RuntimeError: If pages lack a parent PDF or parent lacks `apply_ocr`.
             (Propagates exceptions from PDF.apply_ocr)
         """
         if not self.pages:
@@ -1218,7 +1260,6 @@ class PageCollection(Generic[P]):
 
         parent_pdf = first_page._parent
 
-        # Updated check for renamed method
         if not hasattr(parent_pdf, "apply_ocr") or not callable(parent_pdf.apply_ocr):
             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
 
@@ -1227,15 +1268,16 @@ class PageCollection(Generic[P]):
 
         logger.info(f"Applying OCR via parent PDF to page indices: {page_indices} in collection.")
 
-        # Delegate the batch call to the parent PDF object (using renamed method)
+        # Delegate the batch call to the parent PDF object, passing direct args and apply_exclusions
         parent_pdf.apply_ocr(
             pages=page_indices,
             engine=engine,
-            options=options,
             languages=languages,
-            min_confidence=min_confidence,
+            min_confidence=min_confidence, # Pass the renamed parameter
             device=device,
-            # Pass any other relevant simple_kwargs here if added
+            resolution=resolution,
+            apply_exclusions=apply_exclusions, # Pass down
+            options=options,
         )
         # The PDF method modifies the Page objects directly by adding elements.
 
@@ -1279,39 +1321,45 @@ class PageCollection(Generic[P]):
 
         return ElementCollection(all_elements)
 
-    def debug_ocr_to_html(self, output_path: Optional[str] = None):
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+    ) -> "PageCollection[P]":
         """
-        Generate an interactive HTML debug report for OCR results.
+        Applies corrections to OCR-generated text elements across all pages
+        in this collection using a user-provided callback function.
 
-        This creates a single-file HTML report with:
-        - Side-by-side view of image regions and OCR text
-        - Confidence scores with color coding
-        - Editable correction fields
-        - Filtering and sorting options
-        - Export functionality for corrected text
-
-        Requires OCR elements (source='ocr') to be present on the pages.
+        This method delegates to the parent PDF's `correct_ocr` method,
+        targeting all pages within this collection.
 
         Args:
-            output_path: Path to save the HTML report. If None, returns HTML string.
+            correction_callback: A function that accepts a single argument (an element
+                                 object) and returns `Optional[str]` (new text or None).
 
         Returns:
-            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
+            A dictionary containing aggregate statistics for the process across all pages:
+            {'elements_checked': total_checked, 'corrections_applied': total_applied}
+
+        Raises:
+            RuntimeError: If the collection is empty, pages lack a parent PDF reference,
+                          or the parent PDF lacks the `correct_ocr` method.
         """
-        # Import the function from the new location
-        try:
-            from natural_pdf.utils.debug import debug_ocr_to_html as generate_debug_report
-            return generate_debug_report(self.pages, output_path)
-        except ImportError:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error("Could not import debug_ocr_to_html from natural_pdf.utils.debug. Is it implemented?")
-            return "Error: Debug function not found."
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error generating OCR debug report: {e}", exc_info=True)
-            return f"Error generating report: {e}"
+        if not self.pages:
+            logger.warning("Cannot correct OCR for an empty PageCollection.")
+
+        # Assume all pages share the same parent PDF object
+        parent_pdf = self.pages[0]._parent
+
+        page_indices = [p.index for p in self.pages]
+        logger.info(f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices}.")
+
+        # Delegate the call to the parent PDF object for the relevant pages
+        parent_pdf.correct_ocr(
+            correction_callback=correction_callback,
+            pages=page_indices
+        )
+
+        return self
 
     def get_sections(
         self,

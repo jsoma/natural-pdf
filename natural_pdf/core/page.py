@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import pdfplumber
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
@@ -42,6 +42,9 @@ from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.widgets import InteractiveViewerWidget
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveViewerWidget
+
+from natural_pdf.qa import DocumentQA, get_qa_engine
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 
 logger = logging.getLogger(__name__)
 
@@ -1230,6 +1233,7 @@ class Page:
         render_ocr: bool = False,
         resolution: Optional[float] = None,
         include_highlights: bool = True,
+        exclusions: Optional[str] = None, # New parameter
         **kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -1244,27 +1248,29 @@ class Page:
             render_ocr: Whether to render OCR text on highlights.
             resolution: Resolution in DPI for base page image (default: scale * 72).
             include_highlights: Whether to render highlights.
+            exclusions: If 'mask', excluded regions will be whited out on the image.
+                        (default: None).
             **kwargs: Additional parameters for pdfplumber.to_image.
 
         Returns:
             PIL Image of the page, or None if rendering fails.
         """
         image = None
+        render_resolution = resolution if resolution is not None else scale * 72
         try:
             if include_highlights:
                 # Delegate rendering to the central service
                 image = self._highlighter.render_page(
                     page_index=self.index,
-                    scale=scale,
+                    scale=scale, # Note: scale is used by highlighter internally for drawing
                     labels=labels,
                     legend_position=legend_position,
                     render_ocr=render_ocr,
-                    resolution=resolution,
+                    resolution=render_resolution, # Pass the calculated resolution
                     **kwargs,
                 )
             else:
                 # Get the base page image directly from pdfplumber if no highlights needed
-                render_resolution = resolution if resolution is not None else scale * 72
                 # Use the underlying pdfplumber page object
                 img_object = self._page.to_image(resolution=render_resolution, **kwargs)
                 # Access the PIL image directly (assuming pdfplumber structure)
@@ -1286,6 +1292,48 @@ class Page:
 
         if image is None:
             return None
+
+        # --- Apply exclusion masking if requested ---
+        if exclusions == "mask" and self._exclusions:
+            try:
+                # Ensure image is mutable (RGB or RGBA)
+                if image.mode not in ("RGB", "RGBA"):
+                    image = image.convert("RGB")
+
+                exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=False)
+                if exclusion_regions:
+                    draw = ImageDraw.Draw(image)
+                    # Calculate the scaling factor used for the image
+                    # Base image was rendered at render_resolution (DPI)
+                    # pdfplumber default is 72 DPI
+                    # Scale factor = (pixels / inch) / (points / inch) = DPI / 72
+                    img_scale = render_resolution / 72.0
+
+                    for region in exclusion_regions:
+                        # Convert PDF points (x0, top, x1, bottom) to image pixels
+                        img_x0 = region.x0 * img_scale
+                        img_top = region.top * img_scale
+                        img_x1 = region.x1 * img_scale
+                        img_bottom = region.bottom * img_scale
+
+                        # Draw a white rectangle over the excluded area
+                        # Ensure coordinates are within image bounds (though region should be)
+                        img_coords = (
+                            max(0, img_x0),
+                            max(0, img_top),
+                            min(image.width, img_x1),
+                            min(image.height, img_bottom)
+                        )
+                        if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
+                           draw.rectangle(img_coords, fill="white")
+                        else:
+                             logger.warning(f"Skipping invalid exclusion rect for masking: {img_coords}")
+
+                    del draw # Release drawing context
+            except Exception as mask_error:
+                logger.error(f"Error applying exclusion mask to page {self.index}: {mask_error}", exc_info=True)
+                # Decide if you want to return None or continue without mask
+                # For now, continue without mask
 
         # Resize the final image if width is provided
         if width is not None and width > 0 and image.width > 0:
@@ -1328,20 +1376,34 @@ class Page:
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        detect_only: bool = False,
+        apply_exclusions: bool = True,
     ) -> "Page":
         """
         Apply OCR to THIS page and add results to page elements via PDF.apply_ocr.
+
+        Args:
+            engine: Name of the OCR engine.
+            options: Engine-specific options object or dict.
+            languages: List of engine-specific language codes.
+            min_confidence: Minimum confidence threshold.
+            device: Device to run OCR on.
+            resolution: DPI resolution for rendering page image before OCR.
+            apply_exclusions: If True (default), render page image for OCR
+                              with excluded areas masked (whited out).
 
         Returns:
             List of created TextElements derived from OCR results for this page.
         """
         if not hasattr(self._parent, "apply_ocr"):
             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
-            return []
+            return [] # Return empty list for consistency
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         try:
             # Delegate to parent PDF, targeting only this page's index
+            # Pass all relevant parameters through, including apply_exclusions
             self._parent.apply_ocr(
                 pages=[self.index],
                 engine=engine,
@@ -1349,17 +1411,21 @@ class Page:
                 languages=languages,
                 min_confidence=min_confidence,
                 device=device,
+                resolution=resolution,
+                detect_only=detect_only,
+                apply_exclusions=apply_exclusions,
             )
         except Exception as e:
             logger.error(f"Page {self.number}: Error during delegated OCR call: {e}", exc_info=True)
             return []
 
         # Return the OCR elements specifically added to this page
-        # Use element manager to retrieve them
         ocr_elements = [el for el in self.words if getattr(el, "source", None) == "ocr"]
         logger.debug(
             f"Page {self.number}: apply_ocr completed. Found {len(ocr_elements)} OCR elements."
         )
+        # Note: The method is typed to return Page for chaining, but the log indicates
+        # finding elements. Let's stick to returning self for chaining consistency.
         return self
 
     def extract_ocr_elements(
@@ -1369,10 +1435,22 @@ class Page:
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
+        resolution: Optional[int] = None,
     ) -> List[TextElement]:
         """
         Extract text elements using OCR *without* adding them to the page's elements.
         Uses the shared OCRManager instance.
+
+        Args:
+            engine: Name of the OCR engine.
+            options: Engine-specific options object or dict.
+            languages: List of engine-specific language codes.
+            min_confidence: Minimum confidence threshold.
+            device: Device to run OCR on.
+            resolution: DPI resolution for rendering page image before OCR.
+
+        Returns:
+            List of created TextElement objects derived from OCR results for this page.
         """
         if not self._ocr_manager:
             logger.error(
@@ -1381,10 +1459,14 @@ class Page:
             return []
 
         logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
+        
+        # Determine rendering resolution
+        final_resolution = resolution if resolution is not None else 150 # Default to 150 DPI
+        logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
+        
         try:
-            ocr_scale = getattr(self._parent, "_config", {}).get("ocr_image_scale", 2.0)
-            # Get base image without highlights
-            image = self.to_image(scale=ocr_scale, include_highlights=False)
+            # Get base image without highlights using the determined resolution
+            image = self.to_image(resolution=final_resolution, include_highlights=False)
             if not image:
                 logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
                 return []
@@ -1393,13 +1475,16 @@ class Page:
             logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
 
-        manager_args = {"images": image, "options": options, "engine": engine}
-        if languages is not None:
-            manager_args["languages"] = languages
-        if min_confidence is not None:
-            manager_args["min_confidence"] = min_confidence
-        if device is not None:
-            manager_args["device"] = device
+        # Prepare arguments for the OCR Manager call
+        manager_args = {
+             "images": image, 
+             "engine": engine,
+             "languages": languages,
+             "min_confidence": min_confidence,
+             "device": device, 
+             "options": options
+        }
+        manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         logger.debug(
             f"  Calling OCR Manager (extract only) with args: { {k:v for k,v in manager_args.items() if k != 'images'} }"
@@ -1415,7 +1500,6 @@ class Page:
                 and isinstance(results_list[0], list)
                 else results_list
             )
-
             if not isinstance(results, list):
                 logger.error(f"  OCR Manager returned unexpected type: {type(results)}")
                 results = []
@@ -1426,28 +1510,30 @@ class Page:
 
         # Convert results but DO NOT add to ElementManager
         logger.debug(f"  Converting OCR results to TextElements (extract only)...")
-        # Use a temporary method to create elements without adding them globally
         temp_elements = []
         scale_x = self.width / image.width if image.width else 1
         scale_y = self.height / image.height if image.height else 1
         for result in results:
-            x0, top, x1, bottom = [float(c) for c in result["bbox"]]
-            elem_data = {
-                "text": result["text"],
-                "confidence": result["confidence"],
-                "x0": x0 * scale_x,
-                "top": top * scale_y,
-                "x1": x1 * scale_x,
-                "bottom": bottom * scale_y,
-                "width": (x1 - x0) * scale_x,
-                "height": (bottom - top) * scale_y,
-                "object_type": "text",
-                "source": "ocr",
-                "fontname": "OCR-temp",
-                "size": 10.0,
-                "page_number": self.number,
-            }
-            temp_elements.append(TextElement(elem_data, self))
+            try: # Added try-except around result processing
+                x0, top, x1, bottom = [float(c) for c in result["bbox"]]
+                elem_data = {
+                    "text": result["text"],
+                    "confidence": result["confidence"],
+                    "x0": x0 * scale_x,
+                    "top": top * scale_y,
+                    "x1": x1 * scale_x,
+                    "bottom": bottom * scale_y,
+                    "width": (x1 - x0) * scale_x,
+                    "height": (bottom - top) * scale_y,
+                    "object_type": "text", # Using text for temporary elements
+                    "source": "ocr",
+                    "fontname": "OCR-extract", # Different name for clarity
+                    "size": 10.0,
+                    "page_number": self.number,
+                }
+                temp_elements.append(TextElement(elem_data, self))
+            except (KeyError, ValueError, TypeError) as convert_err:
+                 logger.warning(f"  Skipping invalid OCR result during conversion: {result}. Error: {convert_err}")
 
         logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
         return temp_elements
@@ -1930,23 +2016,45 @@ class Page:
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
 
-    def debug_ocr_to_html(self, output_path: Optional[str] = None):
+    # --- Added correct_ocr method ---
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+    ) -> "Page": # Return self for chaining
         """
-        Generate an interactive HTML debug report for OCR results for this page.
+        Applies corrections to OCR-generated text elements on this page
+        using a user-provided callback function.
+
+        Finds text elements on this page whose 'source' attribute starts
+        with 'ocr' and calls the `correction_callback` for each, passing the
+        element itself.
+
+        The `correction_callback` should contain the logic to:
+        1. Determine if the element needs correction.
+        2. Perform the correction (e.g., call an LLM).
+        3. Return the new text (`str`) or `None`.
+
+        If the callback returns a string, the element's `.text` is updated.
+        Metadata updates (source, confidence, etc.) should happen within the callback.
 
         Args:
-            output_path: Path to save the HTML report. If None, returns HTML string.
+            correction_callback: A function accepting an element and returning
+                                 `Optional[str]` (new text or None).
 
         Returns:
-            Path to the generated HTML file if output_path is provided, otherwise the HTML string.
+            Self for method chaining.
         """
-        # Create a temporary PageCollection containing only this page
-        from natural_pdf.elements.collections import PageCollection
-        page_collection = PageCollection([self])
+        logger.info(f"Page {self.number}: Starting OCR correction process using callback '{correction_callback.__name__}'")
 
-        # Delegate to the PageCollection's method
-        if hasattr(page_collection, 'debug_ocr_to_html'):
-            return page_collection.debug_ocr_to_html(output_path=output_path)
-        else:
-            logger.error("PageCollection does not have the required 'debug_ocr_to_html' method.")
-            return "Error: PageCollection is missing the debug method."
+        # Find OCR elements specifically on this page
+        # Note: We typically want to correct even if the element falls in an excluded area
+        target_elements = self.find_all(selector="text[source^=ocr]", apply_exclusions=False)
+
+        # Delegate to the utility function
+        _apply_ocr_correction_to_elements(
+            elements=target_elements, # Pass the ElementCollection directly
+            correction_callback=correction_callback,
+            caller_info=f"Page({self.number})", # Pass caller info
+        )
+
+        return self # Return self for chaining

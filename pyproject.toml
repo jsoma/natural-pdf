@@ -24,6 +24,7 @@ dependencies = [
     "colour",
     "numpy",
     "urllib3",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
@@ -59,6 +60,11 @@ docling = [
     "natural-pdf[core-ml]",
 ]
 
+llm = [
+    "openai>=1.0", # For OpenAI compatibility layer / general LLM API interaction
+    "pydantic",    # For response schema definition / structured output
+]
+
 test = [
     "pytest",
 ]
@@ -73,6 +79,9 @@ dev = [
     "build",
     "uv",
     "pipdeptree",
+    "nbformat",
+    "jupytext",
+    "nbclient"
 ]
 all = [
     "natural-pdf[interactive]",
@@ -84,6 +93,7 @@ all = [
     "natural-pdf[qa]",
     "natural-pdf[ocr-export]",
     "natural-pdf[docling]",
+    "natural-pdf[llm]",
     "natural-pdf[test]"
 ]
 

@@ -25,7 +25,8 @@ CACHE_FILE = Path(".notebook_cache.json")
 EXCLUDE_PATTERNS = [
     "installation/index.md",
     "ocr/index.md",
-    "explanations" "api/index.md",
+    "explanations",
+    "api/index.md",
 ]
 MAX_WORKERS = os.cpu_count()
 
@@ -171,7 +172,7 @@ def process_notebook(md_file_path_str: str, log_level: int) -> Dict[str, Any]:
 
         cwd = md_file_path.parent
         client = NotebookClient(
-            notebook, timeout=600, kernel_name="python3", resources={"metadata": {"path": str(cwd)}}
+            notebook, timeout=600, kernel_name="natural-pdf-venv", resources={"metadata": {"path": str(cwd)}}
         )
         client.execute()  # Modifies 'notebook' object
 

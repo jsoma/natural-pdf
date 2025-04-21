@@ -12,17 +12,16 @@ logger = logging.getLogger("natural_pdf")
 logger.addHandler(logging.NullHandler())
 
 
-# Utility function for users to easily configure logging
 def configure_logging(level=logging.INFO, handler=None):
-    """Configure Natural PDF's logging.
+    """Configure logging for the natural_pdf package.
 
     Args:
-        level: The logging level (e.g., logging.INFO, logging.DEBUG)
-        handler: A custom handler, or None to use StreamHandler
+        level: Logging level (e.g., logging.INFO, logging.DEBUG)
+        handler: Optional custom handler. Defaults to a StreamHandler.
     """
-    # Remove NullHandler if present
-    if logger.handlers and isinstance(logger.handlers[0], logging.NullHandler):
-        logger.removeHandler(logger.handlers[0])
+    # Avoid adding duplicate handlers
+    if any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        return
 
     if handler is None:
         handler = logging.StreamHandler()
@@ -32,11 +31,7 @@ def configure_logging(level=logging.INFO, handler=None):
     logger.addHandler(handler)
     logger.setLevel(level)
 
-    # Propagate level to all child loggers
-    for name in logging.root.manager.loggerDict:
-        if name.startswith("natural_pdf."):
-            logging.getLogger(name).setLevel(level)
-
+    logger.propagate = False
 
 from natural_pdf.core.page import Page
 from natural_pdf.core.pdf import PDF
@@ -53,18 +48,21 @@ except ImportError:
 
 __version__ = "0.1.1"
 
+__all__ = [
+    "PDF",
+    "PDFCollection",
+    "Page",
+    "Region",
+    "ElementCollection",
+    "TextSearchOptions",
+    "MultiModalSearchOptions",
+    "BaseSearchOptions",
+    "configure_logging",
+]
+
 if HAS_QA:
-    __all__ = [
-        "PDF",
-        "Page",
-        "Region",
-        "ElementCollection",
-        "configure_logging",
-        "DocumentQA",
-        "get_qa_engine",
-    ]
-else:
-    __all__ = ["PDF", "Page", "Region", "ElementCollection", "configure_logging"]
+    __all__.extend(["DocumentQA", "get_qa_engine"])
+
 
 from .collections.pdf_collection import PDFCollection
 

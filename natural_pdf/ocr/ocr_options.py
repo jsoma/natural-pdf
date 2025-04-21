@@ -13,10 +13,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 @dataclass
 class BaseOCROptions:
     """Base class for OCR engine options."""
-
-    languages: List[str] = field(default_factory=lambda: ["en"])
-    min_confidence: float = 0.5
-    device: Optional[str] = "cpu"  # Suggestion, actual device usage depends on engine impl.
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -24,7 +20,6 @@ class BaseOCROptions:
 @dataclass
 class EasyOCROptions(BaseOCROptions):
     """Specific options for the EasyOCR engine."""
-
     model_storage_directory: Optional[str] = None
     user_network_directory: Optional[str] = None
     recog_network: str = "english_g2"
@@ -69,7 +64,6 @@ class EasyOCROptions(BaseOCROptions):
 @dataclass
 class PaddleOCROptions(BaseOCROptions):
     """Specific options for the PaddleOCR engine."""
-
     use_angle_cls: bool = True
     use_gpu: Optional[bool] = None
     gpu_mem: int = 500
@@ -95,24 +89,20 @@ class PaddleOCROptions(BaseOCROptions):
     cls: Optional[bool] = None
 
     def __post_init__(self):
-        if self.use_gpu is None:
-            if self.device and "cuda" in self.device.lower():
-                self.use_gpu = True
-            else:
-                self.use_gpu = False
-        # logger.debug(f"Initialized PaddleOCROptions: {self}")
+        pass
+    #     if self.use_gpu is None:
+    #         if self.device and "cuda" in self.device.lower():
+    #             self.use_gpu = True
+    #         else:
+    #             self.use_gpu = False
+    #     # logger.debug(f"Initialized PaddleOCROptions: {self}")
 
 
 # --- Surya Specific Options ---
 @dataclass
 class SuryaOCROptions(BaseOCROptions):
     """Specific options for the Surya OCR engine."""
-
     # Currently, Surya example shows languages passed at prediction time.
-    # Add fields here if Surya's RecognitionPredictor or DetectionPredictor
-    # constructors accept relevant arguments (e.g., model paths, device settings).
-    # For now, it primarily uses the base options like 'languages' and 'min_confidence'.
-    # Configuration like batch sizes are often set via environment variables for Surya.
     pass
 
 

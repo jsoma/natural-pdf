@@ -27,15 +27,6 @@ class OCRManager:
         # Add other engines here
     }
 
-    # Define the limited set of kwargs allowed for the simple apply_ocr call
-    SIMPLE_MODE_ALLOWED_KWARGS = {
-        "engine",
-        "languages",
-        "min_confidence",
-        "device",
-        # Add image pre-processing args like 'resolution', 'width' if handled here
-    }
-
     def __init__(self):
         """Initializes the OCR Manager."""
         self._engine_instances: Dict[str, OCREngine] = {}  # Cache for engine instances
@@ -57,8 +48,6 @@ class OCRManager:
                 # Check availability before storing
                 # Construct helpful error message with install hint
                 install_hint = f"pip install 'natural-pdf[{engine_name}]'"
-                # Handle potential special cases if extra name differs from engine name (none currently)
-                # if engine_name == 'some_engine': install_hint = "pip install 'natural-pdf[some_extra]'"
                 raise RuntimeError(
                     f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
                 )
@@ -68,106 +57,87 @@ class OCRManager:
 
     def apply_ocr(
         self,
-        images: Union[Image.Image, List[Image.Image]],  # Accept single or list
-        engine: Optional[str] = "easyocr",  # Default engine
-        options: Optional[OCROptions] = None,
-        **kwargs,
-    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:  # Return single or list of lists
+        images: Union[Image.Image, List[Image.Image]],
+        # --- Explicit Common Parameters ---
+        engine: Optional[str] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        detect_only: bool = False,
+        # --- Engine-Specific Options ---
+        options: Optional[Any] = None, # e.g. EasyOCROptions(), PaddleOCROptions()
+    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
-        Applies OCR to a single image or a batch of images using either simple
-        keyword arguments or an options object.
+        Applies OCR to a single image or a batch of images.
 
         Args:
             images: A single PIL Image or a list of PIL Images to process.
-            engine: Name of the engine to use (e.g., 'easyocr', 'paddle', 'surya').
-                    Ignored if 'options' object is provided. Defaults to 'easyocr'.
-            options: An instance of EasyOCROptions, PaddleOCROptions, or SuryaOCROptions
-                     for detailed configuration. If provided, simple kwargs (languages, etc.)
-                     and the 'engine' arg are ignored.
-            **kwargs: For simple mode, accepts: 'languages', 'min_confidence', 'device'.
-                      Other kwargs will raise a TypeError unless 'options' is provided.
+            engine: Name of the engine (e.g., 'easyocr', 'paddle', 'surya').
+                    Defaults to 'easyocr' if not specified.
+            languages: List of language codes (e.g., ['en', 'fr'], ['en', 'german']).
+                       **Passed directly to the engine.** Must be codes understood
+                       by the specific engine. No mapping is performed by the manager.
+            min_confidence: Minimum confidence threshold (0.0-1.0).
+                            Passed directly to the engine.
+            device: Device string (e.g., 'cpu', 'cuda').
+                    Passed directly to the engine.
+            detect_only: If True, only detect text regions, do not perform OCR.
+            options: An engine-specific options object (e.g., EasyOCROptions) or dict
+                     containing additional parameters specific to the chosen engine.
+                     Passed directly to the engine.
 
         Returns:
             If input is a single image: List of result dictionaries.
-            If input is a list of images: List of lists of result dictionaries,
-                                          corresponding to each input image.
+            If input is a list of images: List of lists of result dictionaries.
 
         Raises:
             ValueError: If the engine name is invalid.
-            TypeError: If unexpected keyword arguments are provided in simple mode,
-                       or if input 'images' is not a PIL Image or list of PIL Images.
-            RuntimeError: If the selected engine is not available.
+            TypeError: If input 'images' is not valid or options type is incompatible.
+            RuntimeError: If the selected engine is not available or processing fails.
         """
-        final_options: BaseOCROptions
-        selected_engine_name: str
-
         # --- Validate input type ---
         is_batch = isinstance(images, list)
         if not is_batch and not isinstance(images, Image.Image):
             raise TypeError("Input 'images' must be a PIL Image or a list of PIL Images.")
-        # Allow engines to handle non-PIL images in list if they support it/log warnings
-        # if is_batch and not all(isinstance(img, Image.Image) for img in images):
-        #     logger.warning("Batch may contain items that are not PIL Images.")
 
-        # --- Determine Options and Engine ---
-        if options is not None:
-            # Advanced Mode
-            logger.debug(f"Using advanced mode with options object: {type(options).__name__}")
-            final_options = copy.deepcopy(options)  # Prevent modification of original
-            found_engine = False
-            for name, registry_entry in self.ENGINE_REGISTRY.items():
-                # Check if options object is an instance of the registered options class
-                if isinstance(options, registry_entry["options_class"]):
-                    selected_engine_name = name
-                    found_engine = True
-                    break
-            if not found_engine:
-                raise TypeError(
-                    f"Provided options object type '{type(options).__name__}' does not match any registered engine options."
-                )
-            if kwargs:
-                logger.warning(
-                    f"Keyword arguments {list(kwargs.keys())} were provided alongside 'options' and will be ignored."
-                )
-        else:
-            # Simple Mode
-            selected_engine_name = engine.lower() if engine else "easyocr"  # Fallback default
-            logger.debug(
-                f"Using simple mode with engine: '{selected_engine_name}' and kwargs: {kwargs}"
+        # --- Determine Engine --- 
+        selected_engine_name = (engine or "easyocr").lower()
+        if selected_engine_name not in self.ENGINE_REGISTRY:
+            raise ValueError(
+                f"Unknown OCR engine: '{selected_engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
             )
+        logger.debug(f"Selected engine: '{selected_engine_name}'")
 
-            if selected_engine_name not in self.ENGINE_REGISTRY:
-                raise ValueError(
-                    f"Unknown OCR engine: '{selected_engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
-                )
+        # --- Prepare Options --- 
+        final_options = copy.deepcopy(options) if options is not None else None
+        
+        # Type check options object if provided
+        if final_options is not None:
+            options_class = self.ENGINE_REGISTRY[selected_engine_name].get("options_class", BaseOCROptions)
+            if not isinstance(final_options, options_class):
+                 # Allow dicts to be passed directly too, assuming engine handles them
+                if not isinstance(final_options, dict):
+                     raise TypeError(
+                        f"Provided options type '{type(final_options).__name__}' is not compatible with engine '{selected_engine_name}'. Expected '{options_class.__name__}' or dict."
+                    )
 
-            unexpected_kwargs = set(kwargs.keys()) - self.SIMPLE_MODE_ALLOWED_KWARGS
-            if unexpected_kwargs:
-                raise TypeError(
-                    f"Got unexpected keyword arguments in simple mode: {list(unexpected_kwargs)}. Use the 'options' parameter for detailed configuration."
-                )
-
-            # Get the *correct* options class for the selected engine
-            options_class = self.ENGINE_REGISTRY[selected_engine_name]["options_class"]
-
-            # Create options instance using provided simple kwargs or defaults
-            simple_args = {
-                "languages": kwargs.get("languages", ["en"]),
-                "min_confidence": kwargs.get("min_confidence", 0.5),
-                "device": kwargs.get("device", "cpu"),
-                # Note: 'extra_args' isn't populated in simple mode
-            }
-            final_options = options_class(**simple_args)
-            logger.debug(f"Constructed options for simple mode: {final_options}")
-
-        # --- Get Engine Instance and Process ---
+        # --- Get Engine Instance and Process --- 
         try:
             engine_instance = self._get_engine_instance(selected_engine_name)
             processing_mode = "batch" if is_batch else "single image"
             logger.info(f"Processing {processing_mode} with engine '{selected_engine_name}'...")
+            logger.debug(f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}")
 
-            # Call the engine's process_image, passing single image or list
-            results = engine_instance.process_image(images, final_options)
+            # Call the engine's process_image, passing common args and options object
+            # **ASSUMPTION**: Engine process_image signatures are updated to accept these common args.
+            results = engine_instance.process_image(
+                images=images, 
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                detect_only=detect_only,
+                options=final_options
+            )
 
             # Log result summary based on mode
             if is_batch:

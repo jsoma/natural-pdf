@@ -11,6 +11,8 @@ from natural_pdf.elements.base import DirectionalMixin
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements # Import utility
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.text import TextElement
@@ -1082,12 +1084,18 @@ class Region(DirectionalMixin):
         filtered_elements = [e for e in page_elements if self._is_element_in_region(e)]
         return ElementCollection(filtered_elements)
 
-    def apply_ocr(self, **ocr_params) -> List["TextElement"]:  # Return type hint updated
+    def apply_ocr(self, **ocr_params) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
 
         Args:
-            **ocr_params: OCR parameters to override defaults (passed to OCRManager)
+            **ocr_params: Keyword arguments passed to the OCR Manager.
+                          Common parameters like `engine`, `languages`, `min_confidence`,
+                          `device`, and `resolution` (for image rendering) should be
+                          provided here. **The `languages` list must contain codes
+                          understood by the specific engine selected.** No mapping
+                          is performed. Engine-specific settings can be passed in
+                          an `options` object (e.g., `options=EasyOCROptions(...)`).
 
         Returns:
             List of created TextElement objects representing OCR words/lines.
@@ -1098,20 +1106,20 @@ class Region(DirectionalMixin):
             return []
         ocr_mgr = self.page._parent._ocr_manager
 
-        # Get OCR configuration from kwargs or PDF defaults if needed
-        # We'll mostly rely on passing ocr_params directly to the manager
-        # For rendering, use a reasonable default scale
-        ocr_image_scale = self.page._parent._config.get("ocr_image_scale", 2.0)
-
+        # Determine rendering resolution from parameters
+        final_resolution = ocr_params.get("resolution")
+        if final_resolution is None and hasattr(self.page, '_parent') and self.page._parent:
+            final_resolution = getattr(self.page._parent, "_config", {}).get("resolution", 150)
+        elif final_resolution is None:
+            final_resolution = 150
         logger.debug(
-            f"Region {self.bbox}: Applying OCR with scale {ocr_image_scale} and params: {ocr_params}"
+            f"Region {self.bbox}: Applying OCR with resolution {final_resolution} DPI and params: {ocr_params}"
         )
 
-        # Render the page region to an image
+        # Render the page region to an image using the determined resolution
         try:
-            # Crop the page image to this region's bbox
             region_image = self.to_image(
-                scale=ocr_image_scale, include_highlights=False, crop_only=True
+                resolution=final_resolution, include_highlights=False, crop_only=True
             )
             if not region_image:
                 logger.error("Failed to render region to image for OCR.")
@@ -1121,12 +1129,21 @@ class Region(DirectionalMixin):
             logger.error(f"Error rendering region to image for OCR: {e}", exc_info=True)
             return []
 
+        # Prepare args for the OCR Manager
+        manager_args = {
+            "images": region_image,
+            "engine": ocr_params.get("engine"),
+            "languages": ocr_params.get("languages"),
+            "min_confidence": ocr_params.get("min_confidence"),
+            "device": ocr_params.get("device"),
+            "options": ocr_params.get("options"),
+            "detect_only": ocr_params.get("detect_only"),
+        }
+        manager_args = {k: v for k, v in manager_args.items() if v is not None}
+
         # Run OCR on this region's image using the manager
         try:
-            # Pass the single image and any specific options/kwargs
-            # The manager handles engine selection based on ocr_params or defaults
-            results = ocr_mgr.apply_ocr(images=region_image, **ocr_params)
-            # apply_ocr returns List[Dict] for single image
+            results = ocr_mgr.apply_ocr(**manager_args)
             if not isinstance(results, list):
                 logger.error(
                     f"OCRManager returned unexpected type for single region image: {type(results)}"
@@ -1137,25 +1154,19 @@ class Region(DirectionalMixin):
             logger.error(f"Error during OCRManager processing for region: {e}", exc_info=True)
             return []
 
-        # Convert results to TextElements, scaling coordinates relative to the page
-        # Calculate scaling factors based on the region image vs the region PDF coords
+        # Convert results to TextElements
         scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
         scale_y = self.height / region_image.height if region_image.height > 0 else 1.0
         logger.debug(f"Region OCR scaling factors (PDF/Img): x={scale_x:.2f}, y={scale_y:.2f}")
-
         created_elements = []
         for result in results:
             try:
                 img_x0, img_top, img_x1, img_bottom = map(float, result["bbox"])
                 pdf_height = (img_bottom - img_top) * scale_y
-
-                # Convert IMAGE coordinates (relative to region crop) to PAGE coordinates
                 page_x0 = self.x0 + (img_x0 * scale_x)
                 page_top = self.top + (img_top * scale_y)
                 page_x1 = self.x0 + (img_x1 * scale_x)
                 page_bottom = self.top + (img_bottom * scale_y)
-
-                # Create element data using PAGE coordinates
                 element_data = {
                     "text": result["text"],
                     "x0": page_x0,
@@ -1164,45 +1175,33 @@ class Region(DirectionalMixin):
                     "bottom": page_bottom,
                     "width": page_x1 - page_x0,
                     "height": page_bottom - page_top,
-                    "object_type": "word",  # Treat as word
+                    "object_type": "word",
                     "source": "ocr",
                     "confidence": float(result.get("confidence", 0.0)),
                     "fontname": "OCR",
-                    "size": round(pdf_height) if pdf_height > 0 else 10.0,  # Size based on height
+                    "size": round(pdf_height) if pdf_height > 0 else 10.0,
                     "page_number": self.page.number,
                     "bold": False,
                     "italic": False,
                     "upright": True,
                     "doctop": page_top + self.page._page.initial_doctop,
                 }
-
-                # Create the representative char dict
                 ocr_char_dict = element_data.copy()
                 ocr_char_dict["object_type"] = "char"
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
-
-                # Add char dicts to word data
                 element_data["_char_dicts"] = [ocr_char_dict]
-
-                # Create the TextElement word
-                from natural_pdf.elements.text import TextElement  # Local import ok here
-
+                from natural_pdf.elements.text import TextElement
                 elem = TextElement(element_data, self.page)
                 created_elements.append(elem)
-
-                # Add the element to the page's element manager
                 self.page._element_mgr.add_element(elem, element_type="words")
-                # Add the char dict to the manager's char list
                 self.page._element_mgr.add_element(ocr_char_dict, element_type="chars")
-
             except Exception as e:
                 logger.error(
                     f"Failed to convert region OCR result to element: {result}. Error: {e}",
                     exc_info=True,
                 )
-
         logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
-        return created_elements
+        return self
 
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion="both"):
         """
@@ -1689,3 +1688,43 @@ class Region(DirectionalMixin):
         type_info = f" type='{self.region_type}'" if self.region_type else ""
         source_info = f" source='{self.source}'" if self.source else ""
         return f"<Region{name_info}{type_info}{source_info} bbox={self.bbox}{poly_info}>"
+
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+    ) -> "Region": # Return self for chaining
+        """
+        Applies corrections to OCR-generated text elements within this region
+        using a user-provided callback function.
+
+        Finds text elements within this region whose 'source' attribute starts
+        with 'ocr' and calls the `correction_callback` for each, passing the
+        element itself.
+
+        The `correction_callback` should contain the logic to:
+        1. Determine if the element needs correction.
+        2. Perform the correction (e.g., call an LLM).
+        3. Return the new text (`str`) or `None`.
+
+        If the callback returns a string, the element's `.text` is updated.
+        Metadata updates (source, confidence, etc.) should happen within the callback.
+
+        Args:
+            correction_callback: A function accepting an element and returning
+                                 `Optional[str]` (new text or None).
+
+        Returns:
+            Self for method chaining.
+        """
+        # Find OCR elements specifically within this region
+        # Note: We typically want to correct even if the element falls in an excluded area
+        target_elements = self.find_all(selector="text[source^=ocr]", apply_exclusions=False)
+
+        # Delegate to the utility function
+        _apply_ocr_correction_to_elements(
+            elements=target_elements, # Pass the ElementCollection directly
+            correction_callback=correction_callback,
+            caller_info=f"Region({self.bbox})", # Pass caller info
+        )
+
+        return self # Return self for chaining

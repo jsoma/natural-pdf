@@ -213,7 +213,7 @@ region = page.create_region(50, 50, page.width - 50, page.height - 50)
 sections = region.get_sections(start_elements='text:bold')
 
 # Expand the region around a section
-expanded_section = sections[0].expand(left=20, right=20, top_expand=10, bottom_expand=30)
+expanded_section = sections[0].expand(left=20, right=20, top=10, bottom=30)
 
 # Use percentage-based expansion
 expanded_section = sections[0].expand(width_factor=1.5, height_factor=1.2)  # 50% wider, 20% taller

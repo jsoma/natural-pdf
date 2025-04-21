@@ -92,26 +92,6 @@ surya_opts = SuryaOCROptions(
 ocr_elements = page.apply_ocr(engine='surya', options=surya_opts)
 ```
 
-## Multiple Languages
-
-OCR supports multiple languages:
-
-```python
-# Recognize English and Spanish text
-pdf = PDF('multilingual.pdf', ocr={
-    'enabled': True,
-    'languages': ['en', 'es']
-})
-
-# Multiple languages with PaddleOCR
-pdf = PDF('multilingual_document.pdf', 
-          ocr_engine='paddleocr',
-          ocr={
-              'enabled': True,
-              'languages': ['zh', 'ja', 'ko', 'en']  # Chinese, Japanese, Korean, English
-          })
-```
-
 ## Applying OCR Directly
 
 The `page.apply_ocr(...)` and `region.apply_ocr(...)` methods are the primary way to run OCR:
@@ -179,39 +159,46 @@ high_conf = page.find_all('text[source=ocr][confidence>=0.8]')
 high_conf.highlight(color="green", label="High Confidence OCR")
 ```
 
-## OCR Debugging
+## Detect + LLM OCR
 
-For troubleshooting OCR problems:
+Sometimes you have a difficult piece of content where you need to use a local model to identify the content, then send it off in pieces to be identified by the LLM. You can do this with Natural PDF!
 
 ```python
-# Create an interactive HTML debug report
-pdf.debug_ocr("ocr_debug.html")
+from natural_pdf import PDF
+from natural_pdf.ocr.utils import direct_ocr_llm
+import openai
 
-# Specify which pages to include
-pdf.debug_ocr("ocr_debug.html", pages=[0, 1, 2])
+pdf = PDF("needs-ocr.pdf")
+page = pdf.pages[0]
+
+# Detect
+page.apply_ocr('paddle', resolution=120, detect_only=True)
+
+# Build the framework
+client = openai.OpenAI(base_url="https://api.anthropic.com/v1/",  api_key='sk-XXXXX')
+prompt = """OCR this image. Return only the exact text from the image. Include misspellings,
+punctuation, etc. Do not surround it with quotation marks. Do not include translations or comments.
+The text is from a Greek spreadsheet, so most likely content is Modern Greek or numeric."""
+
+# This returns the cleaned-up text
+def correct(region):
+    return direct_ocr_llm(region, client, prompt=prompt, resolution=300, model="claude-3-5-haiku-20241022")
+
+# Run 'correct' on each text element
+page.correct_ocr(correct)
+
+# You're done!
 ```
 
-The debug report shows:
-- The original image
-- Text found with confidence scores
-- Boxes around each detected word
-- Options to sort and filter results
+## Debugging OCR
 
-## OCR Parameter Tuning
+```python
+from natural_pdf.utils.packaging import create_correction_task_package
 
-### Parameter Recommendation Table
+create_correction_task_package(pdf, "original.zip", overwrite=True)
+```
 
-| Issue | Engine | Parameter | Recommended Value | Effect |
-|-------|--------|-----------|-------------------|--------|
-| Missing text | EasyOCR | `text_threshold` | 0.1 - 0.3 (default: 0.7) | Lower values detect more text but may increase false positives |
-| Missing text | PaddleOCR | `det_db_thresh` | 0.1 - 0.3 (default: 0.3) | Lower values detect more text areas |
-| Low quality scan | EasyOCR | `contrast_ths` | 0.05 - 0.1 (default: 0.1) | Lower values help with low contrast documents |
-| Low quality scan | PaddleOCR | `det_limit_side_len` | 1280 - 2560 (default: 960) | Higher values improve detail detection |
-| Accuracy vs. speed | EasyOCR | `decoder` | "wordbeamsearch" (accuracy)<br>"greedy" (speed) | Word beam search is more accurate but slower |
-| Accuracy vs. speed | PaddleOCR | `rec_batch_num` | 1 (accuracy)<br>8+ (speed) | Larger batches process faster but use more memory |
-| Small text | Both | `min_confidence` | 0.3 - 0.4 (default: 0.5) | Lower confidence threshold to capture small/blurry text |
-| Text orientation | PaddleOCR | `use_angle_cls` | `True` | Enable angle classification for rotated text |
-| Asian languages | PaddleOCR | `lang` | "ch", "japan", "korea" | Use PaddleOCR for Asian languages |
+This will at *some point* be official-ized, but for now you can look at `templates/spa` and see the correction package.
 
 ## Next Steps
 
