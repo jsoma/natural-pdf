@@ -87,10 +87,14 @@ PRETRAINED_MODEL_DIR = PRETRAINED_MODEL_DIR[0]
 print(f"Using Pretrained Model Dir: {PRETRAINED_MODEL_DIR}")
 ```
 
+Depending on how you train, you may or may not need to know how many characters are in your alphabet.
+
 ```python
 num_classes = len([line for line in open("finetune_data/dict.txt", encoding="utf-8")])
 num_classes
 ```
+
+You need to set a maximum length for your pieces of text – if you plan ahead you can cut them up in other ways, but the easiest route is to pick the 99th or 99.9th percentile to avoid outliers. In my first test the 95th percentile was 17, 99.9th was 41, and absolute max was 138! It would have wasted a lot of memory and energy if we'd centered everything around 138-character words.
 
 ```python
 lengths = []
@@ -139,17 +143,22 @@ else:
   print("Found 0 long lines")
 ```
 
+You'll also notice it catches a lot of "Sorry, I can't process the image. Please upload the image again." and the like.
+
+**And now it's configuration time!** We ignore almost all of the [suggestions from PaddleOCR's documentation](https://paddlepaddle.github.io/PaddleOCR/latest/en/ppocr/model_train/finetune.html) because for some reason they get me ~40% while copying the [PPOCRv3 yml](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/configs/rec/PP-OCRv3/multi_language/latin_PP-OCRv3_rec.yml) gets me up to ~80%.
+
+This creates a `finetune_rec.yml` file that controls how the training process will go.
+
 ```python
-# Training configuration for PaddleOCR Recognition Fine-tuning
 yaml_content = f"""
 Global:
   use_gpu: true
-  epoch_num: 100
+  epoch_num: 120
   log_smooth_window: 20
   print_batch_step: 50
   save_model_dir: ./output/finetune_rec/
   save_epoch_step: 5
-  eval_batch_step: [0, 200]
+  eval_batch_step: [0, 200]  # Evaluate every 200 steps
   cal_metric_during_train: true
   pretrained_model: {PRETRAINED_MODEL_DIR}/best_accuracy
   checkpoints: null
@@ -168,7 +177,7 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.00005   # 5e-5 for batch_size=64
+    learning_rate: 0.00005
     warmup_epoch: 3
   regularizer:
     name: L2
@@ -176,27 +185,35 @@ Optimizer:
 
 Architecture:
   model_type: rec
-  algorithm: SVTR
+  algorithm: SVTR_LCNet
   Transform: null
   Backbone:
     name: MobileNetV1Enhance
     scale: 0.5
     last_conv_stride: [1, 2]
     last_pool_type: avg
-  Neck:
-    name: SequenceEncoder
-    encoder_type: svtr
-    dims: 64
-    depth: 2
-    hidden_dims: 120
-    use_guide: False
+    last_pool_kernel_size: [2, 2]
   Head:
-    name: CTCHead
-    fc_decay: 0.00001
-    out_channels: {num_classes + 1}
+    name: MultiHead
+    head_list:
+      - CTCHead:
+          Neck:
+            name: svtr
+            dims: 64
+            depth: 2
+            hidden_dims: 120
+            use_guide: True
+          Head:
+            fc_decay: 0.00001
+      - SARHead:
+          enc_dim: 512
+          max_text_length: {buffered_max_length}
 
 Loss:
-  name: CTCLoss
+  name: MultiLoss
+  loss_config_list:
+    - CTCLoss:
+    - SARLoss:
 
 PostProcess:
   name: CTCLabelDecode
@@ -204,22 +221,22 @@ PostProcess:
 Metric:
   name: RecMetric
   main_indicator: acc
+  ignore_space: false
 
 Train:
   dataset:
     name: SimpleDataSet
     data_dir: ./finetune_data/
     label_file_list: ["./finetune_data/train.txt"]
-    ratio_list: [1.0]
     transforms:
       - DecodeImage:
           img_mode: BGR
           channel_first: False
-      - CTCLabelEncode:
+      - MultiLabelEncode:
       - SVTRRecResizeImg:
           image_shape: [3, 48, 320]
       - KeepKeys:
-          keep_keys: ['image', 'label', 'length']
+          keep_keys: ["image", "label_ctc", "label_sar", "length", "valid_ratio"]
   loader:
     shuffle: true
     batch_size_per_card: 64
@@ -231,16 +248,15 @@ Eval:
     name: SimpleDataSet
     data_dir: ./finetune_data/
     label_file_list: ["./finetune_data/val.txt"]
-    ratio_list: [1.0]
     transforms:
       - DecodeImage:
           img_mode: BGR
           channel_first: False
-      - CTCLabelEncode:
+      - MultiLabelEncode:
       - SVTRRecResizeImg:
           image_shape: [3, 48, 320]
       - KeepKeys:
-          keep_keys: ['image', 'label', 'length']
+          keep_keys: ["image", "label_ctc", "label_sar", "length", "valid_ratio"]
   loader:
     shuffle: false
     drop_last: false
@@ -249,12 +265,12 @@ Eval:
 """
 
 with open("finetune_rec.yml", "w", encoding="utf-8") as fp:
-  fp.write(yaml_content)
+    fp.write(yaml_content)
 ```
 
 ## 4. Clone PaddleOCR Repository and Start Training
 
-We need the PaddleOCR repository for its training scripts.
+We need the PaddleOCR repository for its training scripts. Once we have it we'll point it at our `finetune_rec.yml` and set it in action.
 
 ```python
 # Clone the PaddleOCR repository (using main branch)
@@ -262,17 +278,20 @@ We need the PaddleOCR repository for its training scripts.
 ```
 
 ```python
+# Remove any existing trained model
+!rm -rf output
+
 # Start training!
 # -c points to our config file
 # -o Override specific config options if needed (e.g., Global.epoch_num=10)
 !python paddleocr_repo/tools/train.py -c ../finetune_rec.yml
 ```
 
-Training will begin, printing logs and saving checkpoints to the directory specified in `Global.save_model_dir` (`./output/finetune_rec/` in the example). Monitor the accuracy (`acc`) and loss on the training and validation sets. Stop training early if validation accuracy plateaus or starts to decrease.
+Training will begin, printing logs and saving checkpoints to the directory specified in `Global.save_model_dir` (`./output/finetune_rec/` in the example). Monitor the accuracy (`acc`) and loss on the training and validation sets. You can stop training early if validation accuracy plateaus or starts to decrease.
 
 ## 5. Export Best Model for Inference
 
-Once training is complete, find the best checkpoint (usually named `best_accuracy.pdparams`) in the output directory and convert it into an inference model.
+Once training is complete, find the best checkpoint (usually named `best_accuracy.pdparams`) in the output directory and convert it into an inference model. The line below should automatically find the best model.
 
 ```python
 # Find the best model checkpoint
@@ -323,6 +342,74 @@ print(f"Pred: {prediction}")
 
 Compare the predicted text with the ground truth in your label file.
 
----
+## 7. Package and Distribute Your Model
 
-You now have a fine-tuned PaddleOCR recognition model tailored to your data! You can download the `inference_model` directory from Colab for use in your applications. 
+Once you have successfully fine-tuned and tested your model, you'll want to package it for easy distribution and use. A properly packaged model should include all necessary files to use it with Natural PDF:
+
+````python
+import shutil
+import os
+
+# Create a distribution directory
+dist_dir = "my_paddleocr_model_distribution"
+os.makedirs(dist_dir, exist_ok=True)
+
+# Copy the inference model
+shutil.copytree("inference_model", os.path.join(dist_dir, "inference_model"))
+
+# Copy the dictionary file (critical for text recognition)
+shutil.copy("finetune_data/dict.txt", os.path.join(dist_dir, "dict.txt"))
+
+# Create a simple README
+with open(os.path.join(dist_dir, "README.md"), "w") as f:
+    f.write("""# Custom PaddleOCR Model
+
+## Model Information
+- Trained for: [describe your document type/language]
+- Base model: [e.g., "PaddleOCR v3 Latin"]
+- Training date: [date]
+- Epochs trained: [number of epochs]
+- Final accuracy: [accuracy percentage]
+
+## Usage with Natural PDF
+
+    from natural_pdf import PDF
+    from natural_pdf.ocr import PaddleOCROptions
+
+    # Configure OCR with this model
+    paddle_opts = PaddleOCROptions(
+        rec_model_dir="path/to/inference_model",
+        rec_char_dict_path="path/to/dict.txt",
+    )
+
+    # Use in your PDF processing
+    pdf = PDF("your-document.pdf")
+    page = pdf.pages[0]
+    ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
+""")
+
+# Zip everything up
+
+shutil.make_archive(dist_dir, 'zip', dist_dir)
+print(f"Model distribution package created: {dist_dir}.zip")
+````
+
+### Essential Components
+
+Your distribution package must include:
+
+1. **Inference Model Directory**: Contains the trained model files (`inference.pdmodel`, `inference.pdiparams`, etc.)
+2. **Character Dictionary**: The `dict.txt` file used during training that maps character IDs to actual characters
+3. **Documentation**: A README with usage instructions and model information
+
+### Usage Notes
+
+When sharing your model with others, advise them to:
+
+1. Extract all files while maintaining the directory structure
+2. Use the `PaddleOCROptions` class to configure Natural PDF with the model paths
+3. Understand model limitations (specific languages, document types, etc.)
+
+You now have a fine-tuned PaddleOCR recognition model tailored to your data! The model can be distributed and used to improve OCR accuracy on similar documents in your application.
+
+--- 
