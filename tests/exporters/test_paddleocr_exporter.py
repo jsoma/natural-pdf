@@ -11,14 +11,16 @@ from natural_pdf.exporters import PaddleOCRRecognitionExporter
 # Adjust if your tests run from a different context
 TEST_PDF_PATH = Path("pdfs/01-practice.pdf")
 
+
 @pytest.fixture
 def temp_output_dir():
     """Creates a temporary directory for test output."""
     temp_dir = tempfile.mkdtemp()
-    print(f"Created temp dir: {temp_dir}") # For debugging
+    print(f"Created temp dir: {temp_dir}")  # For debugging
     yield temp_dir
-    print(f"Removing temp dir: {temp_dir}") # For debugging
+    print(f"Removing temp dir: {temp_dir}")  # For debugging
     shutil.rmtree(temp_dir)
+
 
 def test_paddleocr_export_basic(temp_output_dir):
     """Test basic export functionality with default settings."""
@@ -32,9 +34,9 @@ def test_paddleocr_export_basic(temp_output_dir):
         pytest.fail(f"Failed to load test PDF: {e}")
 
     exporter = PaddleOCRRecognitionExporter(
-        split_ratio=0.8, # Use a specific split for predictability
-        include_guide=False, # Don't need the guide for this test
-        random_seed=42 # Ensure reproducible split
+        split_ratio=0.8,  # Use a specific split for predictability
+        include_guide=False,  # Don't need the guide for this test
+        random_seed=42,  # Ensure reproducible split
     )
 
     try:
@@ -66,7 +68,7 @@ def test_paddleocr_export_basic(temp_output_dir):
     expected_elements = []
     for el in all_elements:
         # Apply the same checks as the exporter
-        if not (hasattr(el, 'page') and hasattr(el, 'text') and hasattr(el, 'expand')):
+        if not (hasattr(el, "page") and hasattr(el, "text") and hasattr(el, "expand")):
             continue
         if not el.text or not isinstance(el.text, str):
             continue
@@ -77,18 +79,20 @@ def test_paddleocr_export_basic(temp_output_dir):
 
     exported_images = list(images_dir.glob("*.png"))
     num_exported_images = len(exported_images)
-    assert num_exported_images == num_expected_elements, \
-        f"Number of exported images ({num_exported_images}) should match processable text elements ({num_expected_elements})"
+    assert (
+        num_exported_images == num_expected_elements
+    ), f"Number of exported images ({num_exported_images}) should match processable text elements ({num_expected_elements})"
 
     # 3. Check label file entries count
-    with open(train_file, 'r', encoding='utf-8') as f:
+    with open(train_file, "r", encoding="utf-8") as f:
         train_lines = f.readlines()
-    with open(val_file, 'r', encoding='utf-8') as f:
+    with open(val_file, "r", encoding="utf-8") as f:
         val_lines = f.readlines()
 
     total_label_lines = len(train_lines) + len(val_lines)
-    assert total_label_lines == num_exported_images, \
-        f"Total lines in label files ({total_label_lines}) should match exported images ({num_exported_images})"
+    assert (
+        total_label_lines == num_exported_images
+    ), f"Total lines in label files ({total_label_lines}) should match exported images ({num_exported_images})"
 
     # Check split ratio (approximate due to integer split)
     expected_train_count = int(num_exported_images * 0.8)
@@ -100,9 +104,11 @@ def test_paddleocr_export_basic(temp_output_dir):
     # 4. Check label file format (first line of train)
     if train_lines:
         first_line = train_lines[0].strip()
-        assert '\t' in first_line, "Label line should be tab-separated"
-        img_part, text_part = first_line.split('\t', 1)
-        assert img_part.startswith("images/") and img_part.endswith(".png"), "Image path format incorrect"
+        assert "\t" in first_line, "Label line should be tab-separated"
+        img_part, text_part = first_line.split("\t", 1)
+        assert img_part.startswith("images/") and img_part.endswith(
+            ".png"
+        ), "Image path format incorrect"
         assert len(text_part) > 0, "Text part should not be empty"
 
     # 5. Check dictionary content
@@ -116,10 +122,12 @@ def test_paddleocr_export_basic(temp_output_dir):
     dict_chars_raw = []
     dict_chars_processed = []
     try:
-        with open(dict_file, 'r', encoding='utf-8') as f:
-            dict_chars_raw = f.readlines() # Read raw lines including \n
+        with open(dict_file, "r", encoding="utf-8") as f:
+            dict_chars_raw = f.readlines()  # Read raw lines including \n
             # Use rstrip to remove only the trailing newline, preserving the character itself
-            dict_chars_processed = [line.rstrip('\n') for line in dict_chars_raw if line.rstrip('\n')]
+            dict_chars_processed = [
+                line.rstrip("\n") for line in dict_chars_raw if line.rstrip("\n")
+            ]
 
     except FileNotFoundError:
         # Let the assertion below fail clearly
@@ -128,4 +136,4 @@ def test_paddleocr_export_basic(temp_output_dir):
     assert dict_chars_processed == expected_chars, "Dictionary content mismatch"
 
     # Cleanup handled by the fixture
-    pdf.close() 
+    pdf.close()

@@ -11,7 +11,7 @@ from natural_pdf.elements.base import DirectionalMixin
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements # Import utility
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -1108,7 +1108,7 @@ class Region(DirectionalMixin):
 
         # Determine rendering resolution from parameters
         final_resolution = ocr_params.get("resolution")
-        if final_resolution is None and hasattr(self.page, '_parent') and self.page._parent:
+        if final_resolution is None and hasattr(self.page, "_parent") and self.page._parent:
             final_resolution = getattr(self.page._parent, "_config", {}).get("resolution", 150)
         elif final_resolution is None:
             final_resolution = 150
@@ -1191,6 +1191,7 @@ class Region(DirectionalMixin):
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
                 element_data["_char_dicts"] = [ocr_char_dict]
                 from natural_pdf.elements.text import TextElement
+
                 elem = TextElement(element_data, self.page)
                 created_elements.append(elem)
                 self.page._element_mgr.add_element(elem, element_type="words")
@@ -1692,7 +1693,7 @@ class Region(DirectionalMixin):
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
-    ) -> "Region": # Return self for chaining
+    ) -> "Region":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements within this region
         using a user-provided callback function.
@@ -1722,9 +1723,9 @@ class Region(DirectionalMixin):
 
         # Delegate to the utility function
         _apply_ocr_correction_to_elements(
-            elements=target_elements, # Pass the ElementCollection directly
+            elements=target_elements,  # Pass the ElementCollection directly
             correction_callback=correction_callback,
-            caller_info=f"Region({self.bbox})", # Pass caller info
+            caller_info=f"Region({self.bbox})",  # Pass caller info
         )
 
-        return self # Return self for chaining
+        return self  # Return self for chaining

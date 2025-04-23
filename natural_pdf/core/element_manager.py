@@ -359,8 +359,10 @@ class ElementManager:
 
                 # Handle potential None confidence
                 raw_confidence = result.get("confidence")
-                confidence_value = float(raw_confidence) if raw_confidence is not None else None # Keep None if it was None
-                ocr_text = result.get("text") # Get text, will be None if detect_only
+                confidence_value = (
+                    float(raw_confidence) if raw_confidence is not None else None
+                )  # Keep None if it was None
+                ocr_text = result.get("text")  # Get text, will be None if detect_only
 
                 # Create the TextElement for the word
                 word_element_data = {
@@ -373,7 +375,7 @@ class ElementManager:
                     "height": pdf_height,
                     "object_type": "word",  # Treat OCR results as whole words
                     "source": "ocr",
-                    "confidence": confidence_value, # Use the handled confidence
+                    "confidence": confidence_value,  # Use the handled confidence
                     "fontname": "OCR",  # Use consistent OCR fontname
                     "size": (
                         round(pdf_height) if pdf_height > 0 else 10.0
@@ -391,7 +393,7 @@ class ElementManager:
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
 
                 # Add the char dict list to the word data before creating TextElement
-                word_element_data["_char_dicts"] = [ocr_char_dict] # Store itself as its only char
+                word_element_data["_char_dicts"] = [ocr_char_dict]  # Store itself as its only char
 
                 word_elem = TextElement(word_element_data, self._page)
                 added_word_elements.append(word_elem)

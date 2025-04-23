@@ -131,27 +131,29 @@ def generate_text_layout(
     Returns:
         String representation of the text.
     """
-    # --- Filter out invalid char dicts early --- 
+    # --- Filter out invalid char dicts early ---
     initial_count = len(char_dicts)
     valid_char_dicts = [c for c in char_dicts if isinstance(c.get("text"), str)]
     filtered_count = initial_count - len(valid_char_dicts)
     if filtered_count > 0:
-        logger.debug(f"generate_text_layout: Filtered out {filtered_count} char dicts with non-string/None text.")
-    
-    if not valid_char_dicts: # Return empty if no valid chars remain
+        logger.debug(
+            f"generate_text_layout: Filtered out {filtered_count} char dicts with non-string/None text."
+        )
+
+    if not valid_char_dicts:  # Return empty if no valid chars remain
         logger.debug("generate_text_layout: No valid character dicts found after filtering.")
         return ""
-    
+
     # Prepare layout arguments
     layout_kwargs = _get_layout_kwargs(layout_context_bbox, user_kwargs)
-    use_layout = layout_kwargs.pop("layout", True) # Extract layout flag, default True
+    use_layout = layout_kwargs.pop("layout", True)  # Extract layout flag, default True
 
     if not use_layout:
         # Simple join if layout=False
         logger.debug("generate_text_layout: Using simple join (layout=False requested).")
         # Sort before joining if layout is off
         valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
-        result = "".join(c.get("text", "") for c in valid_char_dicts) # Use valid chars
+        result = "".join(c.get("text", "") for c in valid_char_dicts)  # Use valid chars
         return result
 
     try:
@@ -168,6 +170,6 @@ def generate_text_layout(
         )
         # Fallback already has sorted characters if layout was attempted
         # Need to use the valid_char_dicts here too
-        result = "".join(c.get("text", "") for c in valid_char_dicts) 
+        result = "".join(c.get("text", "") for c in valid_char_dicts)
 
     return result

@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 @dataclass
 class BaseOCROptions:
     """Base class for OCR engine options."""
+
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -20,6 +21,7 @@ class BaseOCROptions:
 @dataclass
 class EasyOCROptions(BaseOCROptions):
     """Specific options for the EasyOCR engine."""
+
     model_storage_directory: Optional[str] = None
     user_network_directory: Optional[str] = None
     recog_network: str = "english_g2"
@@ -64,6 +66,7 @@ class EasyOCROptions(BaseOCROptions):
 @dataclass
 class PaddleOCROptions(BaseOCROptions):
     """Specific options for the PaddleOCR engine."""
+
     use_angle_cls: bool = True
     use_gpu: Optional[bool] = None
     gpu_mem: int = 500
@@ -90,6 +93,7 @@ class PaddleOCROptions(BaseOCROptions):
 
     def __post_init__(self):
         pass
+
     #     if self.use_gpu is None:
     #         if self.device and "cuda" in self.device.lower():
     #             self.use_gpu = True
@@ -102,6 +106,7 @@ class PaddleOCROptions(BaseOCROptions):
 @dataclass
 class SuryaOCROptions(BaseOCROptions):
     """Specific options for the Surya OCR engine."""
+
     # Currently, Surya example shows languages passed at prediction time.
     pass
 

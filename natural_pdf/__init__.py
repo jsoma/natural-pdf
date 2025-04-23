@@ -33,6 +33,7 @@ def configure_logging(level=logging.INFO, handler=None):
 
     logger.propagate = False
 
+
 from natural_pdf.core.page import Page
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.collections import ElementCollection

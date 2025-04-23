@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class FinetuneExporter(abc.ABC):
     """
     Abstract base class for exporting data suitable for fine-tuning models.
@@ -21,12 +22,7 @@ class FinetuneExporter(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def export(
-        self,
-        source: Union['PDF', 'PDFCollection', List['PDF']],
-        output_dir: str,
-        **kwargs
-    ):
+    def export(self, source: Union["PDF", "PDFCollection", List["PDF"]], output_dir: str, **kwargs):
         """
         Exports the data from the source PDF(s) to the specified output directory
         in a format suitable for fine-tuning a specific model type.
@@ -39,16 +35,15 @@ class FinetuneExporter(abc.ABC):
         pass
 
     def _resolve_source_pdfs(
-        self,
-        source: Union['PDF', 'PDFCollection', List['PDF']]
-    ) -> List['PDF']:
+        self, source: Union["PDF", "PDFCollection", List["PDF"]]
+    ) -> List["PDF"]:
         """
         Helper to consistently resolve the input source to a list of PDF objects.
         """
-        from natural_pdf.core.pdf import PDF # Avoid circular import at module level
-        from natural_pdf.collections.pdf_collection import PDFCollection # Avoid circular import
+        from natural_pdf.core.pdf import PDF  # Avoid circular import at module level
+        from natural_pdf.collections.pdf_collection import PDFCollection  # Avoid circular import
 
-        pdfs_to_process: List['PDF'] = []
+        pdfs_to_process: List["PDF"] = []
         if isinstance(source, PDF):
             pdfs_to_process = [source]
         elif isinstance(source, PDFCollection):
@@ -63,4 +58,4 @@ class FinetuneExporter(abc.ABC):
         if not pdfs_to_process:
             logger.warning("No PDF documents provided in the source.")
 
-        return pdfs_to_process 
+        return pdfs_to_process

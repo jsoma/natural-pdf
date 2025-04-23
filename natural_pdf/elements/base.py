@@ -306,9 +306,7 @@ class DirectionalMixin:
             **kwargs,
         )
 
-    def to_region(
-        self
-    ):
+    def to_region(self):
         return self.expand()
 
     def expand(

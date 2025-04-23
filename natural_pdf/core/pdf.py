@@ -239,13 +239,13 @@ class PDF:
         engine: Optional[str] = None,
         # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None, # Min confidence threshold
+        min_confidence: Optional[float] = None,  # Min confidence threshold
         device: Optional[str] = None,
-        resolution: Optional[int] = None, # DPI for rendering before OCR
-        apply_exclusions: bool = True, # New parameter
+        resolution: Optional[int] = None,  # DPI for rendering before OCR
+        apply_exclusions: bool = True,  # New parameter
         detect_only: bool = False,
         # --- Engine-Specific Options --- Use 'options=' for this
-        options: Optional[Any] = None, # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
+        options: Optional[Any] = None,  # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
         # **kwargs: Optional[Dict[str, Any]] = None # Allow potential extra args?
     ) -> "PDF":
         """
@@ -314,7 +314,7 @@ class PDF:
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
         # --- Determine Rendering Resolution ---
         # Priority: 1. direct `resolution` arg, 2. PDF config, 3. default 150
-        final_resolution = resolution # Use direct arg if provided
+        final_resolution = resolution  # Use direct arg if provided
         if final_resolution is None:
             final_resolution = getattr(self, "_config", {}).get("resolution", 150)
 
@@ -323,7 +323,9 @@ class PDF:
         # --- Render Images for Batch ---
         images_pil: List[Image.Image] = []
         page_image_map: List[Tuple[Page, Image.Image]] = []  # Store page and its image
-        logger.info(f"Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})...")
+        logger.info(
+            f"Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})..."
+        )
         failed_page_num = "unknown"  # Keep track of potentially failing page
         try:
             for i, page in enumerate(target_pages):
@@ -339,7 +341,7 @@ class PDF:
                 if img is None:
                     logger.error(f"  Failed to render page {page.number} to image.")
                     # Decide how to handle: skip page, raise error? For now, skip.
-                    continue # Skip this page if rendering failed
+                    continue  # Skip this page if rendering failed
                 images_pil.append(img)
                 page_image_map.append((page, img))  # Store pair
         except Exception as e:
@@ -356,7 +358,7 @@ class PDF:
             "images": images_pil,
             "engine": engine,
             "languages": languages,
-            "min_confidence": min_confidence, # Use the renamed parameter
+            "min_confidence": min_confidence,  # Use the renamed parameter
             "device": device,
             "options": options,
             "detect_only": detect_only,
@@ -366,7 +368,9 @@ class PDF:
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         # --- Call OCR Manager for Batch Processing ---
-        logger.info(f"Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k!='images'} } ...")
+        logger.info(
+            f"Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k!='images'} } ..."
+        )
         try:
             # Manager's apply_ocr signature needs to accept common args directly
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
@@ -948,19 +952,22 @@ class PDF:
         """
         try:
             from natural_pdf.utils.packaging import create_correction_task_package
+
             create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
         except ImportError:
-            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
+            logger.error(
+                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
+            )
             # Or raise
         except Exception as e:
             logger.error(f"Failed to export correction task for {self.path}: {e}", exc_info=True)
-            raise # Re-raise the exception from the utility function
+            raise  # Re-raise the exception from the utility function
 
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
         pages: Optional[Union[Iterable[int], range, slice]] = None,
-    ) -> "PDF": # Return self for chaining
+    ) -> "PDF":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements using a callback function,
         delegating the core work to the `Page.correct_ocr` method.
@@ -989,7 +996,9 @@ class PDF:
                     if not (0 <= idx < len(self._pages)):
                         raise IndexError(f"Page index {idx} out of range (0-{len(self._pages)-1}).")
             except (IndexError, TypeError, ValueError) as e:
-                raise ValueError(f"Invalid page index or type provided in 'pages': {pages}. Error: {e}") from e
+                raise ValueError(
+                    f"Invalid page index or type provided in 'pages': {pages}. Error: {e}"
+                ) from e
         else:
             raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
 
@@ -997,7 +1006,9 @@ class PDF:
             logger.warning("No pages selected for OCR correction.")
             return self
 
-        logger.info(f"Starting OCR correction process via Page delegation for pages: {target_page_indices}")
+        logger.info(
+            f"Starting OCR correction process via Page delegation for pages: {target_page_indices}"
+        )
 
         # Iterate through target pages and call their correct_ocr method
         for page_idx in target_page_indices:
@@ -1071,8 +1082,6 @@ class PDF:
         """Context manager exit."""
         self.close()
 
-
     # --- Indexable Protocol Methods --- Needed for search/sync
     def get_id(self) -> str:
         return self.path
-

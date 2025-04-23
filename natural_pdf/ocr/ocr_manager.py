@@ -65,7 +65,7 @@ class OCRManager:
         device: Optional[str] = None,
         detect_only: bool = False,
         # --- Engine-Specific Options ---
-        options: Optional[Any] = None, # e.g. EasyOCROptions(), PaddleOCROptions()
+        options: Optional[Any] = None,  # e.g. EasyOCROptions(), PaddleOCROptions()
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
         Applies OCR to a single image or a batch of images.
@@ -100,7 +100,7 @@ class OCRManager:
         if not is_batch and not isinstance(images, Image.Image):
             raise TypeError("Input 'images' must be a PIL Image or a list of PIL Images.")
 
-        # --- Determine Engine --- 
+        # --- Determine Engine ---
         selected_engine_name = (engine or "easyocr").lower()
         if selected_engine_name not in self.ENGINE_REGISTRY:
             raise ValueError(
@@ -108,35 +108,39 @@ class OCRManager:
             )
         logger.debug(f"Selected engine: '{selected_engine_name}'")
 
-        # --- Prepare Options --- 
+        # --- Prepare Options ---
         final_options = copy.deepcopy(options) if options is not None else None
-        
+
         # Type check options object if provided
         if final_options is not None:
-            options_class = self.ENGINE_REGISTRY[selected_engine_name].get("options_class", BaseOCROptions)
+            options_class = self.ENGINE_REGISTRY[selected_engine_name].get(
+                "options_class", BaseOCROptions
+            )
             if not isinstance(final_options, options_class):
-                 # Allow dicts to be passed directly too, assuming engine handles them
+                # Allow dicts to be passed directly too, assuming engine handles them
                 if not isinstance(final_options, dict):
-                     raise TypeError(
+                    raise TypeError(
                         f"Provided options type '{type(final_options).__name__}' is not compatible with engine '{selected_engine_name}'. Expected '{options_class.__name__}' or dict."
                     )
 
-        # --- Get Engine Instance and Process --- 
+        # --- Get Engine Instance and Process ---
         try:
             engine_instance = self._get_engine_instance(selected_engine_name)
             processing_mode = "batch" if is_batch else "single image"
             logger.info(f"Processing {processing_mode} with engine '{selected_engine_name}'...")
-            logger.debug(f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}")
+            logger.debug(
+                f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}"
+            )
 
             # Call the engine's process_image, passing common args and options object
             # **ASSUMPTION**: Engine process_image signatures are updated to accept these common args.
             results = engine_instance.process_image(
-                images=images, 
+                images=images,
                 languages=languages,
                 min_confidence=min_confidence,
                 device=device,
                 detect_only=detect_only,
-                options=final_options
+                options=final_options,
             )
 
             # Log result summary based on mode

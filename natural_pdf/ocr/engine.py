@@ -13,11 +13,17 @@ logger = logging.getLogger(__name__)
 
 class TextRegion:
     """Standard representation of an OCR text region."""
-    
-    def __init__(self, bbox: Tuple[float, float, float, float], text: str, confidence: float, source: str = "ocr"):
+
+    def __init__(
+        self,
+        bbox: Tuple[float, float, float, float],
+        text: str,
+        confidence: float,
+        source: str = "ocr",
+    ):
         """
         Initialize a text region.
-        
+
         Args:
             bbox: Tuple of (x0, y0, x1, y1) coordinates
             text: The recognized text
@@ -28,7 +34,7 @@ class TextRegion:
         self.text = text
         self.confidence = confidence
         self.source = source
-    
+
     @classmethod
     def from_polygon(cls, polygon: List[List[float]], text: str, confidence: float):
         """Create from polygon coordinates [[x1,y1], [x2,y2], ...]"""
@@ -36,24 +42,24 @@ class TextRegion:
         y_coords = [float(point[1]) for point in polygon]
         bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
         return cls(bbox, text, confidence)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation for compatibility."""
         return {
             "bbox": self.bbox,
             "text": self.text,
             "confidence": self.confidence,
-            "source": self.source
+            "source": self.source,
         }
 
 
 class OCREngine(ABC):
     """Abstract Base Class for OCR engines."""
-    
+
     # Default values as class constants
     DEFAULT_MIN_CONFIDENCE = 0.2
-    DEFAULT_LANGUAGES = ['en']
-    DEFAULT_DEVICE = 'cpu'
+    DEFAULT_LANGUAGES = ["en"]
+    DEFAULT_DEVICE = "cpu"
 
     def __init__(self):
         """Initializes the base OCR engine."""
@@ -74,7 +80,7 @@ class OCREngine(ABC):
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
         Process a single image or batch of images with OCR.
-        
+
         Args:
             images: A single PIL Image or a list of PIL Images
             languages: List of languages to use (default: ['en'])
@@ -82,7 +88,7 @@ class OCREngine(ABC):
             device: Device to use for processing (default: 'cpu')
             detect_only: Whether to only detect text regions without recognition
             options: Engine-specific options
-            
+
         Returns:
             For a single image: List of text region dictionaries
             For a batch: List of lists of text region dictionaries
@@ -90,42 +96,48 @@ class OCREngine(ABC):
         # Convert single image to batch format
         single_image = not isinstance(images, list)
         image_batch = [images] if single_image else images
-        
+
         # Use default values where parameters are not provided
         effective_languages = languages or self.DEFAULT_LANGUAGES
-        effective_confidence = min_confidence if min_confidence is not None else self.DEFAULT_MIN_CONFIDENCE
+        effective_confidence = (
+            min_confidence if min_confidence is not None else self.DEFAULT_MIN_CONFIDENCE
+        )
         effective_device = device or self.DEFAULT_DEVICE
-        
+
         # Ensure the model is initialized
         self._ensure_initialized(effective_languages, effective_device, options)
-        
+
         # Process each image in the batch
         results = []
         for img in image_batch:
             # Preprocess the image for the specific engine
             processed_img = self._preprocess_image(img)
-            
+
             # Process the image with the engine-specific implementation
             raw_results = self._process_single_image(processed_img, detect_only, options)
-            
+
             # Convert results to standardized format
             text_regions = self._standardize_results(raw_results, effective_confidence, detect_only)
-            
+
             # Convert TextRegion objects to dictionaries for backward compatibility
             region_dicts = [region.to_dict() for region in text_regions]
             results.append(region_dicts)
-        
+
         # Return results in the appropriate format
         return results[0] if single_image else results
 
-    def _ensure_initialized(self, languages: List[str], device: str, options: Optional[BaseOCROptions]):
+    def _ensure_initialized(
+        self, languages: List[str], device: str, options: Optional[BaseOCROptions]
+    ):
         """Ensure the model is initialized with the correct parameters."""
         if not self._initialized:
             self._initialize_model(languages, device, options)
             self._initialized = True
-            
+
     @abstractmethod
-    def _initialize_model(self, languages: List[str], device: str, options: Optional[BaseOCROptions]):
+    def _initialize_model(
+        self, languages: List[str], device: str, options: Optional[BaseOCROptions]
+    ):
         """Initialize the OCR model with the given parameters."""
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -133,14 +145,18 @@ class OCREngine(ABC):
     def _preprocess_image(self, image: Image.Image) -> Any:
         """Convert PIL Image to engine-specific format."""
         raise NotImplementedError("Subclasses must implement this method")
-        
+
     @abstractmethod
-    def _process_single_image(self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]) -> Any:
+    def _process_single_image(
+        self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
+    ) -> Any:
         """Process a single image with the initialized model."""
         raise NotImplementedError("Subclasses must implement this method")
-        
+
     @abstractmethod
-    def _standardize_results(self, raw_results: Any, min_confidence: float, detect_only: bool) -> List[TextRegion]:
+    def _standardize_results(
+        self, raw_results: Any, min_confidence: float, detect_only: bool
+    ) -> List[TextRegion]:
         """Convert engine-specific results to standardized TextRegion objects."""
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -181,23 +197,23 @@ class OCREngine(ABC):
                 return tuple(float(c) for c in bbox[:4])
             except (ValueError, TypeError) as e:
                 raise ValueError(f"Invalid number format in bbox: {bbox}") from e
-        
+
         # Check if it's in polygon format [[x1,y1],[x2,y2],...]
         elif (
             isinstance(bbox, (list, tuple))
             and len(bbox) > 0
             and isinstance(bbox[0], (list, tuple))
-            and len(bbox[0]) == 2 # Ensure points are pairs
+            and len(bbox[0]) == 2  # Ensure points are pairs
         ):
             try:
                 x_coords = [float(point[0]) for point in bbox]
                 y_coords = [float(point[1]) for point in bbox]
-                if not x_coords or not y_coords: # Handle empty polygon case
+                if not x_coords or not y_coords:  # Handle empty polygon case
                     raise ValueError("Empty polygon provided")
                 return (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
             except (ValueError, TypeError, IndexError) as e:
                 raise ValueError(f"Invalid polygon format or values: {bbox}") from e
-        
+
         # If it's neither format, raise an error
         raise ValueError(f"Could not standardize bounding box from unexpected format: {bbox}")
 

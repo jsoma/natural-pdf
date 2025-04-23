@@ -1233,7 +1233,7 @@ class Page:
         render_ocr: bool = False,
         resolution: Optional[float] = None,
         include_highlights: bool = True,
-        exclusions: Optional[str] = None, # New parameter
+        exclusions: Optional[str] = None,  # New parameter
         **kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -1262,11 +1262,11 @@ class Page:
                 # Delegate rendering to the central service
                 image = self._highlighter.render_page(
                     page_index=self.index,
-                    scale=scale, # Note: scale is used by highlighter internally for drawing
+                    scale=scale,  # Note: scale is used by highlighter internally for drawing
                     labels=labels,
                     legend_position=legend_position,
                     render_ocr=render_ocr,
-                    resolution=render_resolution, # Pass the calculated resolution
+                    resolution=render_resolution,  # Pass the calculated resolution
                     **kwargs,
                 )
             else:
@@ -1322,16 +1322,21 @@ class Page:
                             max(0, img_x0),
                             max(0, img_top),
                             min(image.width, img_x1),
-                            min(image.height, img_bottom)
+                            min(image.height, img_bottom),
                         )
                         if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
-                           draw.rectangle(img_coords, fill="white")
+                            draw.rectangle(img_coords, fill="white")
                         else:
-                             logger.warning(f"Skipping invalid exclusion rect for masking: {img_coords}")
+                            logger.warning(
+                                f"Skipping invalid exclusion rect for masking: {img_coords}"
+                            )
 
-                    del draw # Release drawing context
+                    del draw  # Release drawing context
             except Exception as mask_error:
-                logger.error(f"Error applying exclusion mask to page {self.index}: {mask_error}", exc_info=True)
+                logger.error(
+                    f"Error applying exclusion mask to page {self.index}: {mask_error}",
+                    exc_info=True,
+                )
                 # Decide if you want to return None or continue without mask
                 # For now, continue without mask
 
@@ -1398,7 +1403,7 @@ class Page:
         """
         if not hasattr(self._parent, "apply_ocr"):
             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
-            return [] # Return empty list for consistency
+            return []  # Return empty list for consistency
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         try:
@@ -1459,11 +1464,11 @@ class Page:
             return []
 
         logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
-        
+
         # Determine rendering resolution
-        final_resolution = resolution if resolution is not None else 150 # Default to 150 DPI
+        final_resolution = resolution if resolution is not None else 150  # Default to 150 DPI
         logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
-        
+
         try:
             # Get base image without highlights using the determined resolution
             image = self.to_image(resolution=final_resolution, include_highlights=False)
@@ -1477,12 +1482,12 @@ class Page:
 
         # Prepare arguments for the OCR Manager call
         manager_args = {
-             "images": image, 
-             "engine": engine,
-             "languages": languages,
-             "min_confidence": min_confidence,
-             "device": device, 
-             "options": options
+            "images": image,
+            "engine": engine,
+            "languages": languages,
+            "min_confidence": min_confidence,
+            "device": device,
+            "options": options,
         }
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
@@ -1514,7 +1519,7 @@ class Page:
         scale_x = self.width / image.width if image.width else 1
         scale_y = self.height / image.height if image.height else 1
         for result in results:
-            try: # Added try-except around result processing
+            try:  # Added try-except around result processing
                 x0, top, x1, bottom = [float(c) for c in result["bbox"]]
                 elem_data = {
                     "text": result["text"],
@@ -1525,15 +1530,17 @@ class Page:
                     "bottom": bottom * scale_y,
                     "width": (x1 - x0) * scale_x,
                     "height": (bottom - top) * scale_y,
-                    "object_type": "text", # Using text for temporary elements
+                    "object_type": "text",  # Using text for temporary elements
                     "source": "ocr",
-                    "fontname": "OCR-extract", # Different name for clarity
+                    "fontname": "OCR-extract",  # Different name for clarity
                     "size": 10.0,
                     "page_number": self.number,
                 }
                 temp_elements.append(TextElement(elem_data, self))
             except (KeyError, ValueError, TypeError) as convert_err:
-                 logger.warning(f"  Skipping invalid OCR result during conversion: {result}. Error: {convert_err}")
+                logger.warning(
+                    f"  Skipping invalid OCR result during conversion: {result}. Error: {convert_err}"
+                )
 
         logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
         return temp_elements
@@ -2020,7 +2027,7 @@ class Page:
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
-    ) -> "Page": # Return self for chaining
+    ) -> "Page":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements on this page
         using a user-provided callback function.
@@ -2044,7 +2051,9 @@ class Page:
         Returns:
             Self for method chaining.
         """
-        logger.info(f"Page {self.number}: Starting OCR correction process using callback '{correction_callback.__name__}'")
+        logger.info(
+            f"Page {self.number}: Starting OCR correction process using callback '{correction_callback.__name__}'"
+        )
 
         # Find OCR elements specifically on this page
         # Note: We typically want to correct even if the element falls in an excluded area
@@ -2052,9 +2061,9 @@ class Page:
 
         # Delegate to the utility function
         _apply_ocr_correction_to_elements(
-            elements=target_elements, # Pass the ElementCollection directly
+            elements=target_elements,  # Pass the ElementCollection directly
             correction_callback=correction_callback,
-            caller_info=f"Page({self.number})", # Pass caller info
+            caller_info=f"Page({self.number})",  # Pass caller info
         )
 
-        return self # Return self for chaining
+        return self  # Return self for chaining

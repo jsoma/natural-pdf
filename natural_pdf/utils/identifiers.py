@@ -1,9 +1,11 @@
 """
 Utilities for generating consistent identifiers.
 """
+
 import hashlib
 import base64
 import os
+
 
 def generate_short_path_hash(path_str: str, length: int = 8) -> str:
     """
@@ -18,12 +20,14 @@ def generate_short_path_hash(path_str: str, length: int = 8) -> str:
     """
     # Ensure consistency by using the absolute path
     normalized_path = os.path.abspath(path_str)
-    path_bytes = normalized_path.encode('utf-8')
+    path_bytes = normalized_path.encode("utf-8")
     # Use SHA-256 for good collision resistance
-    full_hash = hashlib.sha256(path_bytes).digest() # Get binary hash
+    full_hash = hashlib.sha256(path_bytes).digest()  # Get binary hash
     # Encode using URL-safe Base64 and remove padding '=' characters
-    b64_encoded = base64.urlsafe_b64encode(full_hash).decode('ascii').rstrip('=')
+    b64_encoded = base64.urlsafe_b64encode(full_hash).decode("ascii").rstrip("=")
     # Return the first 'length' characters
     if length <= 0 or length > len(b64_encoded):
-        raise ValueError(f"Invalid length specified: {length}. Must be between 1 and {len(b64_encoded)}.")
-    return b64_encoded[:length] 
+        raise ValueError(
+            f"Invalid length specified: {length}. Must be between 1 and {len(b64_encoded)}."
+        )
+    return b64_encoded[:length]

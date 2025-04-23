@@ -1,6 +1,7 @@
 """
 OCR debug utilities for natural-pdf.
 """
+
 import base64
 import io
 import json
@@ -16,7 +17,8 @@ from PIL import Image
 try:
     from natural_pdf.core.page import Page
 except ImportError:
-    Page = Any # Placeholder
+    Page = Any  # Placeholder
+
 
 def _get_page_image_base64(page: Page) -> str:
     """Generate a base64 encoded image of the page."""
@@ -29,4 +31,4 @@ def _get_page_image_base64(page: Page) -> str:
     # Convert to base64
     buffered = io.BytesIO()
     img.save(buffered, format="PNG")
-    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}" 
+    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"

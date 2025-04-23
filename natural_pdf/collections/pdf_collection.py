@@ -279,14 +279,17 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         """
         try:
             from natural_pdf.utils.packaging import create_correction_task_package
+
             # Pass the collection itself (self) as the source
             create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
         except ImportError:
-            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
+            logger.error(
+                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
+            )
             # Or raise
         except Exception as e:
             logger.error(f"Failed to export correction task for collection: {e}", exc_info=True)
-            raise # Re-raise the exception from the utility function
+            raise  # Re-raise the exception from the utility function
 
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:

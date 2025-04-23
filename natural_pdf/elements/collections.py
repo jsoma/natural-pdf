@@ -21,7 +21,7 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from natural_pdf.elements.text import TextElement  # Needed for isinstance check
 from natural_pdf.ocr import OCROptions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements # Import the new utility
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import the new utility
 
 logger = logging.getLogger(__name__)
 
@@ -1151,9 +1151,9 @@ class ElementCollection(Generic[T]):
         _apply_ocr_correction_to_elements(
             elements=self._elements,
             correction_callback=correction_callback,
-            caller_info=f"ElementCollection(len={len(self._elements)})", # Pass caller info
+            caller_info=f"ElementCollection(len={len(self._elements)})",  # Pass caller info
         )
-        return self # Return self for chaining
+        return self  # Return self for chaining
 
 
 class PageCollection(Generic[P]):
@@ -1217,12 +1217,12 @@ class PageCollection(Generic[P]):
         engine: Optional[str] = None,
         # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None, # Min confidence threshold
+        min_confidence: Optional[float] = None,  # Min confidence threshold
         device: Optional[str] = None,
-        resolution: Optional[int] = None, # DPI for rendering
-        apply_exclusions: bool = True, # New parameter
+        resolution: Optional[int] = None,  # DPI for rendering
+        apply_exclusions: bool = True,  # New parameter
         # --- Engine-Specific Options ---
-        options: Optional[Any] = None, # e.g., EasyOCROptions(...)
+        options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
     ) -> "PageCollection[P]":
         """
         Applies OCR to all pages within this collection using batch processing.
@@ -1273,10 +1273,10 @@ class PageCollection(Generic[P]):
             pages=page_indices,
             engine=engine,
             languages=languages,
-            min_confidence=min_confidence, # Pass the renamed parameter
+            min_confidence=min_confidence,  # Pass the renamed parameter
             device=device,
             resolution=resolution,
-            apply_exclusions=apply_exclusions, # Pass down
+            apply_exclusions=apply_exclusions,  # Pass down
             options=options,
         )
         # The PDF method modifies the Page objects directly by adding elements.
@@ -1351,13 +1351,12 @@ class PageCollection(Generic[P]):
         parent_pdf = self.pages[0]._parent
 
         page_indices = [p.index for p in self.pages]
-        logger.info(f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices}.")
+        logger.info(
+            f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices}."
+        )
 
         # Delegate the call to the parent PDF object for the relevant pages
-        parent_pdf.correct_ocr(
-            correction_callback=correction_callback,
-            pages=page_indices
-        )
+        parent_pdf.correct_ocr(correction_callback=correction_callback, pages=page_indices)
 
         return self
 
