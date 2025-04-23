@@ -27,6 +27,7 @@ EXCLUDE_PATTERNS = [
     "ocr/index.md",
     "explanations",
     "api/index.md",
+    "finetuning/index.md",
 ]
 MAX_WORKERS = os.cpu_count()
 
