@@ -116,80 +116,58 @@ def filter_chars_spatially(
 
 def generate_text_layout(
     char_dicts: List[Dict[str, Any]],
-    layout_context_bbox: Tuple[float, float, float, float],
-    user_kwargs: Dict[str, Any],
+    layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
+    user_kwargs: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
-    Takes a list of filtered character dictionaries and generates
-    text output using pdfplumber's layout engine.
+    Generates a string representation of text from character dictionaries,
+    attempting to reconstruct layout using pdfplumber's utilities.
 
     Args:
-        char_dicts: The final list of character dictionaries to include.
-        layout_context_bbox: The bounding box (x0, top, x1, bottom) to use for
-                             calculating default layout width/height/shifts.
-        user_kwargs: Dictionary of user-provided keyword arguments.
+        char_dicts: List of character dictionary objects.
+        layout_context_bbox: Optional bounding box for layout context.
+        user_kwargs: User-provided kwargs, potentially overriding defaults.
 
     Returns:
-        The formatted text string.
+        String representation of the text.
     """
-    if not char_dicts:
-        logger.debug("generate_text_layout: No characters provided.")
+    # --- Filter out invalid char dicts early --- 
+    initial_count = len(char_dicts)
+    valid_char_dicts = [c for c in char_dicts if isinstance(c.get("text"), str)]
+    filtered_count = initial_count - len(valid_char_dicts)
+    if filtered_count > 0:
+        logger.debug(f"generate_text_layout: Filtered out {filtered_count} char dicts with non-string/None text.")
+    
+    if not valid_char_dicts: # Return empty if no valid chars remain
+        logger.debug("generate_text_layout: No valid character dicts found after filtering.")
         return ""
+    
+    # Prepare layout arguments
+    layout_kwargs = _get_layout_kwargs(layout_context_bbox, user_kwargs)
+    use_layout = layout_kwargs.pop("layout", True) # Extract layout flag, default True
 
-    # Prepare layout kwargs, prioritizing user input
-    layout_kwargs = {}
-    allowed_keys = set(WORD_EXTRACTOR_KWARGS) | set(TEXTMAP_KWARGS)
-    for key, value in user_kwargs.items():
-        if key in allowed_keys:
-            layout_kwargs[key] = value
-
-    # Default to layout=True unless explicitly False
-    use_layout = layout_kwargs.get("layout", True)  # Default to layout if called
-    layout_kwargs["layout"] = use_layout
-
-    if use_layout:
-        ctx_x0, ctx_top, ctx_x1, ctx_bottom = layout_context_bbox
-        ctx_width = ctx_x1 - ctx_x0
-        ctx_height = ctx_bottom - ctx_top
-
-        # Set layout defaults based on context_bbox if not overridden by user
-        if "layout_bbox" not in layout_kwargs:
-            layout_kwargs["layout_bbox"] = layout_context_bbox
-        # Only set default layout_width if neither width specifier is present
-        if "layout_width_chars" not in layout_kwargs and "layout_width" not in layout_kwargs:
-            layout_kwargs["layout_width"] = ctx_width
-        if "layout_height" not in layout_kwargs:
-            layout_kwargs["layout_height"] = ctx_height
-        # Adjust shift based on context's top-left corner
-        if "x_shift" not in layout_kwargs:
-            layout_kwargs["x_shift"] = ctx_x0
-        if "y_shift" not in layout_kwargs:
-            layout_kwargs["y_shift"] = ctx_top
-
-        logger.debug(
-            f"generate_text_layout: Calling chars_to_textmap with {len(char_dicts)} chars and kwargs: {layout_kwargs}"
-        )
-        try:
-            # Sort final list by reading order before passing to textmap
-            # TODO: Make sorting key dynamic based on layout_kwargs directions?
-            char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
-            textmap = chars_to_textmap(char_dicts, **layout_kwargs)
-            result = textmap.as_string
-        except Exception as e:
-            logger.error(
-                f"generate_text_layout: Error calling chars_to_textmap: {e}", exc_info=True
-            )
-            logger.warning(
-                "generate_text_layout: Falling back to simple character join due to layout error."
-            )
-            # Ensure chars are sorted before fallback join
-            fallback_chars = sorted(char_dicts, key=lambda c: (c.get("top", 0), c.get("x0", 0)))
-            result = "".join(c.get("text", "") for c in fallback_chars)
-    else:
+    if not use_layout:
         # Simple join if layout=False
-        logger.debug("generate_text_layout: Using simple join (layout=False).")
-        # Sort by document order for simple join as well
-        char_dicts.sort(key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0)))
-        result = "".join(c.get("text", "") for c in char_dicts)
+        logger.debug("generate_text_layout: Using simple join (layout=False requested).")
+        # Sort before joining if layout is off
+        valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
+        result = "".join(c.get("text", "") for c in valid_char_dicts) # Use valid chars
+        return result
+
+    try:
+        # Sort chars primarily by top, then x0 before layout analysis
+        # This helps pdfplumber group lines correctly
+        valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
+        textmap = chars_to_textmap(valid_char_dicts, **layout_kwargs)
+        result = textmap.as_string
+    except Exception as e:
+        # Fallback to simple join on error
+        logger.error(f"generate_text_layout: Error calling chars_to_textmap: {e}", exc_info=False)
+        logger.warning(
+            "generate_text_layout: Falling back to simple character join due to layout error."
+        )
+        # Fallback already has sorted characters if layout was attempted
+        # Need to use the valid_char_dicts here too
+        result = "".join(c.get("text", "") for c in valid_char_dicts) 
 
     return result

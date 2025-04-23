@@ -13,40 +13,51 @@ logger = logging.getLogger(__name__)
 def _apply_ocr_correction_to_elements(
     elements: Iterable["Element"],
     correction_callback: Callable[[Any], Optional[str]],
+    caller_info: str = "Utility",
 ) -> None:
     """
-    Applies correction callback to a list of elements in place,
+    Applies OCR correction callback to a list of elements in place,
     showing a progress bar.
 
-    Iterates through elements, calls the callback, and updates
-    element.text if a new string is returned.
-    
+    Iterates through elements, checks if source starts with 'ocr', calls
+    the callback, and updates element.text if a new string is returned.
+
     Args:
         elements: An iterable of Element objects.
         correction_callback: A function accepting an element and returning
                              Optional[str] (new text or None).
+        caller_info: String identifying the calling context for logs.
     """
+    if not callable(correction_callback):
+        # Raise error here so individual methods don't need to repeat the check
+        raise TypeError("`correction_callback` must be a callable function.")
+
+    if not elements:
+        logger.warning(f"{caller_info}: No elements provided for correction.")
+        return
+
     corrections_applied = 0
     elements_checked = 0
 
     # Prepare the iterable with tqdm
-    element_iterable = tqdm(elements, desc=f"Correcting OCR", unit="element")
+    element_iterable = tqdm(elements, desc=f"Correcting OCR ({caller_info})", unit="element")
 
     for element in element_iterable:
         # Check if the element is likely from OCR and has text attribute
         element_source = getattr(element, 'source', None)
         if isinstance(element_source, str) and element_source.startswith('ocr') and hasattr(element, 'text'):
             elements_checked += 1
-            current_text = getattr(element, 'text') 
+            current_text = getattr(element, 'text') # Already checked hasattr
 
             new_text = correction_callback(element)
 
             if new_text is not None:
                 if new_text != current_text:
-                    element.text = new_text 
+                    element.text = new_text # Update in place
                     corrections_applied += 1
 
-    logger.info(f"OCR correction finished. Checked: {elements_checked}, Applied: {corrections_applied}")
+    logger.info(f"{caller_info}: OCR correction finished. Checked: {elements_checked}, Applied: {corrections_applied}")
+    # No return value needed, modifies elements in place
 
 
 def direct_ocr_llm(element,

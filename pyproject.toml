@@ -35,7 +35,6 @@ haystack = [
     "haystack-ai",   # Core Haystack 2.0 beta (adjust version as needed)
     "chroma-haystack",       # ChromaDB integration
     "sentence-transformers", # Default text embedder
-    "protobuf<4",         # Pin protobuf for compatibility with dependencies
     "natural-pdf[core-ml]", # Add dependency on core ML packages
 ]
 easyocr = [
@@ -100,13 +99,18 @@ all = [
 core-ml = [
     "torch", 
     "torchvision",
-    "transformers",
+    "transformers[sentencepiece]",
     "huggingface_hub",
 ]
 
 ocr-export = [
     "ocrmypdf",
     "pikepdf", 
+]
+
+export-extras = [
+    "jupytext",
+    "nbformat",
 ]
 
 [project.urls]
@@ -136,6 +140,14 @@ disallow_incomplete_defs = false
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
+filterwarnings = [
+    # Ignore specific deprecation warnings from dependencies
+    "ignore:The distutils package is deprecated:DeprecationWarning:thop.profile",
+    "ignore:Support for class-based `config` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic._internal._config",
+    "ignore:`min_items` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic.fields",
+    "ignore:`max_items` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic.fields",
+    "ignore:deprecated:DeprecationWarning:docling_core.types.doc.document",
+]
 
 [tool.setuptools]
 # Why this is here I do not know

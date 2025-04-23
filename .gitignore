@@ -15,6 +15,7 @@ sample2.py
 requirements.lock
 pdfs/hidden
 *.hocr
+my_paddleocr_finetune_data/
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos,visualstudiocode,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos,visualstudiocode,jupyternotebooks
