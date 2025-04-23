@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/installation/">
+        <link rel="canonical" href="https://jsoma.github.io/natural-pdf/finetuning/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../ocr/">
       
       
-        <link rel="next" href="../pdf-navigation/">
+        <link rel="next" href="../layout-analysis/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Getting Started - Natural PDF</title>
+        <title>OCR Fine-tuning - Natural PDF</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#getting-started-with-natural-pdf" class="md-skip">
+        <a href="#ocr-fine-tuning" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting Started
+              OCR Fine-tuning
             
           </span>
         </div>
@@ -283,32 +283,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Getting Started
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
         
   
   
@@ -319,68 +297,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      Optional Dependencies
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#your-first-pdf-extraction" class="md-nav__link">
-    <span class="md-ellipsis">
-      Your First PDF Extraction
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      What's Next?
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -556,6 +472,8 @@
       
   
   
+    
+  
   
   
     
@@ -586,13 +504,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -615,7 +531,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Advanced Features
@@ -674,10 +590,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../finetuning/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    OCR Fine-tuning
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -688,6 +626,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-fine-tune" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Fine-tune?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategy-detect-llm-correct-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Strategy: Detect + LLM Correct + Export
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-fine-tuning-for-greek-spreadsheet-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Fine-tuning for Greek Spreadsheet Text
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-fine-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Fine-tuning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-fine-tuned-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the Fine-tuned Model
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1222,42 +1225,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
+  <a href="#why-fine-tune" class="md-nav__link">
     <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#optional-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      Optional Dependencies
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#your-first-pdf-extraction" class="md-nav__link">
-    <span class="md-ellipsis">
-      Your First PDF Extraction
+      Why Fine-tune?
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#whats-next" class="md-nav__link">
+  <a href="#strategy-detect-llm-correct-export" class="md-nav__link">
     <span class="md-ellipsis">
-      What's Next?
+      Strategy: Detect + LLM Correct + Export
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-fine-tuning-for-greek-spreadsheet-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Fine-tuning for Greek Spreadsheet Text
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-fine-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Fine-tuning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-fine-tuned-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the Fine-tuned Model
     </span>
   </a>
   
@@ -1282,61 +1288,171 @@
   
 
 
-<h1 id="getting-started-with-natural-pdf">Getting Started with Natural PDF</h1>
-<p>Let's get Natural PDF installed and run your first extraction.</p>
-<h2 id="installation">Installation</h2>
-<p>The base installation includes the core library and necessary AI dependencies (like PyTorch and Transformers):</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>natural-pdf
+<h1 id="ocr-fine-tuning">OCR Fine-tuning</h1>
+<p>While the built-in OCR engines (EasyOCR, PaddleOCR, Surya) offer good general performance, you might encounter situations where their accuracy isn't sufficient for your specific needs. This is often the case with:</p>
+<ul>
+<li><strong>Unique Fonts:</strong> Documents using unusual or stylized fonts.</li>
+<li><strong>Specific Languages:</strong> Languages or scripts not perfectly covered by the default models.</li>
+<li><strong>Low Quality Scans:</strong> Noisy or degraded document images.</li>
+<li><strong>Specialized Layouts:</strong> Text within complex tables, forms, or unusual arrangements.</li>
+</ul>
+<p>Fine-tuning allows you to adapt a pre-trained OCR recognition model to your specific data, significantly improving its accuracy on documents similar to those used for training.</p>
+<h2 id="why-fine-tune">Why Fine-tune?</h2>
+<ul>
+<li><strong>Higher Accuracy:</strong> Achieve better text extraction results on your specific document types.</li>
+<li><strong>Adaptability:</strong> Train the model to recognize domain-specific terms, symbols, or layouts.</li>
+<li><strong>Reduced Errors:</strong> Minimize downstream errors in data extraction and processing pipelines.</li>
+</ul>
+<h2 id="strategy-detect-llm-correct-export">Strategy: Detect + LLM Correct + Export</h2>
+<p>Training an OCR model requires accurate ground truth: images of text snippets paired with their correct transcriptions. Manually creating this data is tedious. A powerful alternative leverages the strengths of different models:</p>
+<ol>
+<li><strong>Detect Text Regions:</strong> Use a robust local OCR engine (like Surya or PaddleOCR) primarily for its <em>detection</em> capabilities (<code>detect_only=True</code>). This identifies the <em>locations</em> of text on the page, even if the initial <em>recognition</em> isn't perfect. You can combine this with layout analysis or region selections (<code>.region()</code>, <code>.below()</code>, <code>.add_exclusion()</code>) to focus on the specific areas you care about.</li>
+<li><strong>Correct with LLM:</strong> For each detected text region, send the image snippet to a powerful Large Language Model (LLM) with multimodal capabilities (like GPT-4o, Claude 3.5 Sonnet/Haiku) using the <code>direct_ocr_llm</code> utility. The LLM performs high-accuracy OCR on the snippet, providing a "ground truth" transcription.</li>
+<li><strong>Export for Fine-tuning:</strong> Use the <code>PaddleOCRRecognitionExporter</code> to package the original image snippets (from step 1) along with their corresponding LLM-generated text labels (from step 2) into the specific format required by PaddleOCR for fine-tuning its <em>recognition</em> model.</li>
+</ol>
+<p>This approach combines the efficient spatial detection of local models with the superior text recognition of large generative models to create a high-quality fine-tuning dataset with minimal manual effort.</p>
+<h2 id="example-fine-tuning-for-greek-spreadsheet-text">Example: Fine-tuning for Greek Spreadsheet Text</h2>
+<p>Let's walk through an example of preparing data to fine-tune PaddleOCR for text from a scanned Greek spreadsheet, adapting the process described above.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># --- 1. Setup and Load PDF ---</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.ocr.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">direct_ocr_llm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.exporters</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaddleOCRRecognitionExporter</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">openai</span> <span class="c1"># Or your preferred LLM client library</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="c1"># Ensure your LLM API key is set (using environment variables is recommended)</span>
+<span class="c1"># os.environ[&quot;OPENAI_API_KEY&quot;] = &quot;sk-...&quot; </span>
+<span class="c1"># os.environ[&quot;ANTHROPIC_API_KEY&quot;] = &quot;sk-...&quot; </span>
+
+<span class="c1"># pdf_path = &quot;path/to/your/document.pdf&quot; </span>
+<span class="n">pdf_path</span> <span class="o">=</span> <span class="s2">&quot;pdfs/hidden/the-bad-one.pdf&quot;</span> <span class="c1"># Replace with your PDF path</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">)</span>
+
+<span class="c1"># --- 2. (Optional) Exclude Irrelevant Areas ---</span>
+<span class="c1"># If the document has consistent headers, footers, or margins you want to ignore</span>
+<span class="c1"># Use exclusions *before* detection</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="n">page</span><span class="o">.</span><span class="n">region</span><span class="p">(</span><span class="n">right</span><span class="o">=</span><span class="mi">45</span><span class="p">))</span> <span class="c1"># Exclude left margin/line numbers</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="n">page</span><span class="o">.</span><span class="n">region</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">500</span><span class="p">))</span> <span class="c1"># Exclude right margin</span>
+
+<span class="c1"># --- 3. Detect Text Regions ---</span>
+<span class="c1"># Use a good detection engine. Surya is often robust for line detection.</span>
+<span class="c1"># We only want the bounding boxes, not the initial (potentially inaccurate) OCR text.</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Detecting text regions...&quot;</span><span class="p">)</span>
+<span class="c1"># Process only a subset of pages for demonstration if needed</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+    <span class="c1"># Use a moderate resolution for detection; higher res used for LLM correction later</span>
+    <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">detect_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> 
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detection complete for </span><span class="si">{</span><span class="n">num_pages_to_process</span><span class="si">}</span><span class="s2"> pages.&quot;</span><span class="p">)</span>
+
+<span class="c1"># (Optional) Visualize detected boxes on a sample page</span>
+<span class="c1"># pdf.pages[9].find_all(&#39;text[source=ocr]&#39;).show() </span>
+
+<span class="c1"># --- 4. Correct with LLM ---</span>
+<span class="c1"># Configure your LLM client (example using OpenAI client, adaptable for others)</span>
+<span class="c1"># For Anthropic: client = openai.OpenAI(base_url=&quot;https://api.anthropic.com/v1/&quot;, api_key=os.environ.get(&quot;ANTHROPIC_API_KEY&quot;))</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">openai</span><span class="o">.</span><span class="n">OpenAI</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">))</span> 
+
+<span class="c1"># Craft a clear prompt for the LLM</span>
+<span class="c1"># Be as specific as possible! If it&#39;s in a specific language, what kinds</span>
+<span class="c1"># of characters, etc.</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;OCR this image patch. Return only the exact text content visible in the image. </span>
+<span class="s2">Preserve original spelling, capitalization, punctuation, and symbols. </span>
+<span class="s2">Do not add any explanatory text, translations, comments, or quotation marks around the result.</span>
+<span class="s2">The text is likely from a Greek document, potentially a spreadsheet, containing Modern Greek words or numbers.&quot;&quot;&quot;</span>
+
+<span class="c1"># Define the correction function using direct_ocr_llm</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">correct_text_region</span><span class="p">(</span><span class="n">region</span><span class="p">):</span>
+    <span class="c1"># Use a high resolution for the LLM call for best accuracy</span>
+    <span class="k">return</span> <span class="n">direct_ocr_llm</span><span class="p">(</span>
+        <span class="n">region</span><span class="p">,</span> 
+        <span class="n">client</span><span class="p">,</span> 
+        <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span> 
+        <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> 
+        <span class="c1"># model=&quot;claude-3-5-sonnet-20240620&quot; # Example Anthropic model</span>
+        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span> <span class="c1"># Example OpenAI model</span>
+    <span class="p">)</span>
+
+<span class="c1"># Apply the correction function to the detected text regions</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Applying LLM correction to detected regions...&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[:</span><span class="n">num_pages_to_process</span><span class="p">]:</span>
+    <span class="c1"># This finds elements added by apply_ocr and passes their regions to &#39;correct_text_region&#39;</span>
+    <span class="c1"># The returned text from the LLM replaces the original OCR text for these elements</span>
+    <span class="c1"># The source attribute is updated (e.g., to &#39;ocr-llm-corrected&#39;)</span>
+    <span class="n">page</span><span class="o">.</span><span class="n">correct_ocr</span><span class="p">(</span><span class="n">correct_text_region</span><span class="p">)</span> 
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;LLM correction complete.&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- 5. Export for PaddleOCR Fine-tuning ---</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Configuring exporter...&quot;</span><span class="p">)</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">PaddleOCRRecognitionExporter</span><span class="p">(</span>
+    <span class="c1"># Select all of the non-blank OCR text</span>
+    <span class="c1"># Hopefully it&#39;s all been LLM-corrected! </span>
+    <span class="n">selector</span><span class="o">=</span><span class="s2">&quot;text[source^=ocr][text!=&#39;&#39;]&quot;</span><span class="p">,</span> 
+    <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>     <span class="c1"># Resolution for the exported image crops</span>
+    <span class="n">padding</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>          <span class="c1"># Add slight padding around text boxes</span>
+    <span class="n">split_ratio</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>    <span class="c1"># 90% for training, 10% for validation</span>
+    <span class="n">random_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>     <span class="c1"># For reproducible train/val split</span>
+    <span class="n">include_guide</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Include the Colab fine-tuning notebook</span>
+<span class="p">)</span>
+
+<span class="c1"># Define the output directory</span>
+<span class="n">output_directory</span> <span class="o">=</span> <span class="s2">&quot;./my_paddleocr_finetune_data&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Exporting data to </span><span class="si">{</span><span class="n">output_directory</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+
+<span class="c1"># Run the export process</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">pdf</span><span class="p">,</span> <span class="n">output_directory</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Export complete.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset ready for fine-tuning in: </span><span class="si">{</span><span class="n">output_directory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Next step: Upload &#39;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_directory</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;fine_tune_paddleocr.ipynb&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; and the rest of the contents to Google Colab.&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- Cleanup ---</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
 </code></pre></div>
-<h3 id="optional-dependencies">Optional Dependencies</h3>
-<p>Natural PDF has modular dependencies for different features. Install them based on your needs:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># --- OCR Engines ---</span>
-<span class="c1"># Install support for EasyOCR</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>easyocr<span class="o">]</span>
-
-<span class="c1"># Install support for PaddleOCR (requires paddlepaddle)</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>paddle<span class="o">]</span>
-
-<span class="c1"># Install support for Surya OCR</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>surya<span class="o">]</span>
-
-<span class="c1"># --- Layout Detection ---</span>
-<span class="c1"># Install support for YOLO layout model</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>layout_yolo<span class="o">]</span>
-
-<span class="c1"># --- Interactive Widget ---</span>
-<span class="c1"># Install support for the interactive .viewer() widget in Jupyter</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>interactive<span class="o">]</span>
-
-<span class="c1"># --- All Features ---</span>
-<span class="c1"># Install all optional dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>all<span class="o">]</span>
-</code></pre></div>
-<h2 id="your-first-pdf-extraction">Your First PDF Extraction</h2>
-<p>Here's a quick example to make sure everything is working:</p>
+<h2 id="running-the-fine-tuning">Running the Fine-tuning</h2>
+<p>The <code>PaddleOCRRecognitionExporter</code> automatically includes a Jupyter Notebook (<code>fine_tune_paddleocr.ipynb</code>) in the output directory. This notebook is pre-configured to guide you through the fine-tuning process on Google Colab (which offers free GPU access):</p>
+<ol>
+<li><strong>Upload:</strong> Upload the entire output directory (e.g., <code>my_paddleocr_finetune_data</code>) to your Google Drive or directly to your Colab instance.</li>
+<li><strong>Open Notebook:</strong> Open the <code>fine_tune_paddleocr.ipynb</code> notebook in Google Colab.</li>
+<li><strong>Set Runtime:</strong> Ensure the Colab runtime is set to use a GPU (Runtime -&gt; Change runtime type -&gt; GPU).</li>
+<li><strong>Run Cells:</strong> Execute the cells in the notebook sequentially. It will:<ul>
+<li>Install necessary libraries (PaddlePaddle, PaddleOCR).</li>
+<li>Point the training configuration to your uploaded dataset (<code>images/</code>, <code>train.txt</code>, <code>val.txt</code>, <code>dict.txt</code>).</li>
+<li>Download a pre-trained PaddleOCR model (usually a multilingual one).</li>
+<li>Start the fine-tuning process using your data.</li>
+<li>Save the fine-tuned model checkpoints.</li>
+<li>Export the best model into an "inference format" suitable for use with <code>natural-pdf</code>.</li>
+</ul>
+</li>
+<li><strong>Download Model:</strong> Download the resulting <code>inference_model</code> directory from Colab.</li>
+</ol>
+<h2 id="using-the-fine-tuned-model">Using the Fine-tuned Model</h2>
+<p>Once you have the <code>inference_model</code> directory, you can instruct <code>natural-pdf</code> to use it for OCR:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.ocr</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaddleOCROptions</span>
 
-<span class="c1"># Open a PDF</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s1">&#39;your_document.pdf&#39;</span><span class="p">)</span>
+<span class="c1"># Path to the directory you downloaded from Colab</span>
+<span class="n">finetuned_model_dir</span> <span class="o">=</span> <span class="s2">&quot;/path/to/your/downloaded/inference_model&quot;</span> 
 
-<span class="c1"># Get the first page</span>
+<span class="c1"># Specify the path in PaddleOCROptions</span>
+<span class="n">paddle_opts</span> <span class="o">=</span> <span class="n">PaddleOCROptions</span><span class="p">(</span>
+    <span class="n">rec_model_dir</span><span class="o">=</span><span class="n">finetuned_model_dir</span><span class="p">,</span>
+    <span class="n">rec_char_dict_path</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">finetuned_model_dir</span><span class="p">,</span> <span class="s1">&#39;your_dict.txt&#39;</span><span class="p">)</span> <span class="c1"># Or wherever your dict is</span>
+    <span class="n">use_gpu</span><span class="o">=</span><span class="kc">True</span> <span class="c1"># If using GPU locally</span>
+<span class="p">)</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;another-similar-document.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="c1"># Extract all text</span>
-<span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+<span class="c1"># Apply OCR using your fine-tuned model</span>
+<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">paddle_opts</span><span class="p">)</span>
+
+<span class="c1"># Extract text using the improved results</span>
+<span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span> 
 <span class="nb">print</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 
-<span class="c1"># Find something specific</span>
-<span class="n">title</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found title: </span><span class="si">{</span><span class="n">title</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </code></pre></div>
-<h2 id="whats-next">What's Next?</h2>
-<p>Now that you have Natural PDF installed, you can:</p>
-<ul>
-<li>Learn to <a href="../pdf-navigation/">navigate PDFs</a></li>
-<li>Explore how to <a href="../element-selection/">select elements</a></li>
-<li>See how to <a href="../text-extraction/">extract text</a></li>
-</ul>
+<p>By following this process, you can significantly enhance OCR performance on your specific documents using the power of fine-tuning. </p>
 
 
 
