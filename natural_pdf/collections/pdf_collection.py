@@ -244,19 +244,85 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
 
-    def apply_ocr(self, *args, **kwargs):
-        PDF = self._get_pdf_class()
-        # Delegate to individual PDF objects
-        logger.info("Applying OCR to relevant PDFs in collection...")
-        results = []
+    def find_all(self, selector: str, **kwargs) -> "ElementCollection":
+        """
+        Find all elements matching the selector across all PDFs in the collection.
+        
+        This creates an ElementCollection that can span multiple PDFs. Note that
+        some ElementCollection methods have limitations when spanning PDFs.
+        
+        Args:
+            selector: CSS-like selector string to query elements
+            **kwargs: Additional keyword arguments passed to the find_all method of each PDF
+            
+        Returns:
+            ElementCollection containing all matching elements across all PDFs
+        """
+        from natural_pdf.elements.collections import ElementCollection
+        
+        # Collect elements from all PDFs
+        all_elements = []
         for pdf in self._pdfs:
-            # We need to figure out which pages belong to which PDF if batching here
-            # For now, simpler to call on each PDF
             try:
-                # Assume apply_ocr exists on PDF and accepts similar args
-                pdf.apply_ocr(*args, **kwargs)
+                elements = pdf.find_all(selector, **kwargs)
+                all_elements.extend(elements.elements)
+            except Exception as e:
+                logger.error(f"Error finding elements in {pdf.path}: {e}", exc_info=True)
+                
+        return ElementCollection(all_elements)
+
+    def apply_ocr(
+        self,
+        engine: Optional[str] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+        apply_exclusions: bool = True,
+        detect_only: bool = False,
+        replace: bool = True,
+        options: Optional[Any] = None,
+        pages: Optional[Union[slice, List[int]]] = None,
+    ) -> "PDFCollection":
+        """
+        Apply OCR to all PDFs in the collection.
+
+        Args:
+            engine: OCR engine to use (e.g., 'easyocr', 'paddleocr', 'surya')
+            languages: List of language codes for OCR
+            min_confidence: Minimum confidence threshold for text detection
+            device: Device to use for OCR (e.g., 'cpu', 'cuda')
+            resolution: DPI resolution for page rendering
+            apply_exclusions: Whether to apply exclusion regions
+            detect_only: If True, only detect text regions without extracting text
+            replace: If True, replace existing OCR elements
+            options: Engine-specific options
+            pages: Specific pages to process (None for all pages)
+
+        Returns:
+            Self for method chaining
+        """
+        PDF = self._get_pdf_class()
+        # Delegate to individual PDF objects with named parameters
+        logger.info("Applying OCR to PDFs in collection...")
+        
+        for pdf in self._pdfs:
+            try:
+                pdf.apply_ocr(
+                    pages=pages,
+                    engine=engine,
+                    languages=languages,
+                    min_confidence=min_confidence,
+                    device=device,
+                    resolution=resolution,
+                    apply_exclusions=apply_exclusions,
+                    detect_only=detect_only,
+                    replace=replace,
+                    options=options
+                )
             except Exception as e:
                 logger.error(f"Failed applying OCR to {pdf.path}: {e}", exc_info=True)
+                
         return self
 
     # --- Advanced Method Placeholders ---

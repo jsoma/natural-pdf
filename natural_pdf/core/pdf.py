@@ -235,7 +235,6 @@ class PDF:
 
     def apply_ocr(
         self,
-        pages: Optional[Union[Iterable[int], range, slice]] = None,
         engine: Optional[str] = None,
         # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
@@ -247,6 +246,7 @@ class PDF:
         replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options --- Use 'options=' for this
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
         # **kwargs: Optional[Dict[str, Any]] = None # Allow potential extra args?
     ) -> "PDF":
         """
@@ -256,8 +256,6 @@ class PDF:
         to the OCRManager, and adds the resulting TextElements to each respective page.
 
         Args:
-            pages: An iterable of 0-based page indices (list, range, tuple),
-                   a slice object, or None to process all pages.
             engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr', 'surya').
                     Uses manager's default ('easyocr') if None.
             languages: List of language codes (e.g., ['en', 'fr'], ['en', 'ch_sim']).
@@ -277,6 +275,8 @@ class PDF:
                     adding new ones. If False, add new OCR elements to existing ones.
             options: An engine-specific options object (e.g., EasyOCROptions) or dict
                      containing parameters specific to the chosen engine.
+            pages: An iterable of 0-based page indices (list, range, tuple),
+                   a slice object, or None to process all pages.
 
         Returns:
             Self for method chaining.

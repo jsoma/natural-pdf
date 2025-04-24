@@ -83,82 +83,6 @@ class ElementCollection(Generic[T]):
         """Get the last element in the collection."""
         return self._elements[-1] if self._elements else None
 
-    def highest(self) -> Optional["Element"]:
-        """
-        Get element with the smallest top y-coordinate (highest on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with smallest top value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine highest element across multiple pages")
-
-        return min(self._elements, key=lambda e: e.top)
-
-    def lowest(self) -> Optional["Element"]:
-        """
-        Get element with the largest bottom y-coordinate (lowest on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with largest bottom value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine lowest element across multiple pages")
-
-        return max(self._elements, key=lambda e: e.bottom)
-
-    def leftmost(self) -> Optional["Element"]:
-        """
-        Get element with the smallest x0 coordinate (leftmost on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with smallest x0 value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine leftmost element across multiple pages")
-
-        return min(self._elements, key=lambda e: e.x0)
-
-    def rightmost(self) -> Optional["Element"]:
-        """
-        Get element with the largest x1 coordinate (rightmost on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with largest x1 value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine rightmost element across multiple pages")
-
-        return max(self._elements, key=lambda e: e.x1)
-
     def _are_on_multiple_pages(self) -> bool:
         """
         Check if elements in this collection span multiple pages.
@@ -177,6 +101,114 @@ class ElementCollection(Generic[T]):
 
         # Check if any element is on a different page
         return any(hasattr(e, "page") and e.page.index != first_page_idx for e in self._elements)
+
+    def _are_on_multiple_pdfs(self) -> bool:
+        """
+        Check if elements in this collection span multiple PDFs.
+
+        Returns:
+            True if elements are from different PDFs, False otherwise
+        """
+        if not self._elements:
+            return False
+
+        # Get the PDF of the first element
+        if not hasattr(self._elements[0], "page") or not hasattr(self._elements[0].page, "pdf"):
+            return False
+
+        first_pdf = self._elements[0].page.pdf
+
+        # Check if any element is from a different PDF
+        return any(
+            hasattr(e, "page") and 
+            hasattr(e.page, "pdf") and 
+            e.page.pdf is not first_pdf
+            for e in self._elements
+        )
+
+    def highest(self) -> Optional["Element"]:
+        """
+        Get element with the smallest top y-coordinate (highest on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages or multiple PDFs
+
+        Returns:
+            Element with smallest top value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages or PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError("Cannot determine highest element across multiple PDFs")
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine highest element across multiple pages")
+
+        return min(self._elements, key=lambda e: e.top)
+
+    def lowest(self) -> Optional["Element"]:
+        """
+        Get element with the largest bottom y-coordinate (lowest on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages or multiple PDFs
+
+        Returns:
+            Element with largest bottom value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages or PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError("Cannot determine lowest element across multiple PDFs")
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine lowest element across multiple pages")
+
+        return max(self._elements, key=lambda e: e.bottom)
+
+    def leftmost(self) -> Optional["Element"]:
+        """
+        Get element with the smallest x0 coordinate (leftmost on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages or multiple PDFs
+
+        Returns:
+            Element with smallest x0 value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages or PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError("Cannot determine leftmost element across multiple PDFs")
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine leftmost element across multiple pages")
+
+        return min(self._elements, key=lambda e: e.x0)
+
+    def rightmost(self) -> Optional["Element"]:
+        """
+        Get element with the largest x1 coordinate (rightmost on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages or multiple PDFs
+
+        Returns:
+            Element with largest x1 value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages or PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError("Cannot determine rightmost element across multiple PDFs")
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine rightmost element across multiple pages")
+
+        return max(self._elements, key=lambda e: e.x1)
 
     def exclude_regions(self, regions: List["Region"]) -> "ElementCollection":
         """
@@ -359,6 +391,9 @@ class ElementCollection(Generic[T]):
 
         Uses grouping logic based on parameters (defaulting to grouping by type).
 
+        Note: Elements must be from the same PDF for this operation to work properly,
+        as each PDF has its own highlighting service.
+
         Args:
             label: Optional explicit label for the entire collection. If provided,
                    all elements are highlighted as a single group with this label,
@@ -389,8 +424,12 @@ class ElementCollection(Generic[T]):
             AttributeError: If 'group_by' is provided but the attribute doesn't exist
                             on some elements.
             ValueError: If 'label_format' is provided but contains invalid keys for
-                        element attributes.
+                        element attributes, or if elements span multiple PDFs.
         """
+        # Check if elements span multiple PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError("highlight() does not support elements from multiple PDFs")
+
         # 1. Prepare the highlight data based on parameters
         highlight_data_list = self._prepare_highlight_data(
             distinct=distinct,
@@ -761,7 +800,8 @@ class ElementCollection(Generic[T]):
         Generates a temporary preview image highlighting elements in this collection
         on their page, ignoring any persistent highlights.
 
-        Currently only supports collections where all elements are on the same page.
+        Currently only supports collections where all elements are on the same page
+        of the same PDF.
 
         Allows grouping and coloring elements based on attributes, similar to the
         persistent `highlight()` method, but only for this temporary view.
@@ -780,13 +820,19 @@ class ElementCollection(Generic[T]):
 
         Returns:
             PIL Image object of the temporary preview, or None if rendering fails or
-            elements span multiple pages.
+            elements span multiple pages/PDFs.
 
         Raises:
-            ValueError: If the collection is empty or elements are on different pages.
+            ValueError: If the collection is empty or elements are on different pages/PDFs.
         """
         if not self._elements:
             raise ValueError("Cannot show an empty collection.")
+
+        # Check if elements are on multiple PDFs
+        if self._are_on_multiple_pdfs():
+            raise ValueError(
+                "show() currently only supports collections where all elements are from the same PDF."
+            )
 
         # Check if elements are on multiple pages
         if self._are_on_multiple_pages():
