@@ -244,6 +244,7 @@ class PDF:
         resolution: Optional[int] = None,  # DPI for rendering before OCR
         apply_exclusions: bool = True,  # New parameter
         detect_only: bool = False,
+        replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options --- Use 'options=' for this
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
         # **kwargs: Optional[Dict[str, Any]] = None # Allow potential extra args?
@@ -272,6 +273,8 @@ class PDF:
                               excluded areas masked (whited out). If False, OCR
                               the raw page image without masking exclusions.
             detect_only: If True, only detect text bounding boxes, don't perform OCR.
+            replace: If True (default), remove any existing OCR elements before
+                    adding new ones. If False, add new OCR elements to existing ones.
             options: An engine-specific options object (e.g., EasyOCROptions) or dict
                      containing parameters specific to the chosen engine.
 
@@ -362,7 +365,6 @@ class PDF:
             "device": device,
             "options": options,
             "detect_only": detect_only,
-            # Note: resolution is used for rendering, not passed to OCR manager directly
         }
         # Filter out None values so manager can use its defaults
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
@@ -402,6 +404,10 @@ class PDF:
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
             try:
+                # Remove existing OCR elements if replace is True
+                if manager_args.get("replace", True) and hasattr(page, "_element_mgr"):
+                    page._element_mgr.remove_ocr_elements()
+                
                 img_scale_x = page.width / img.width if img.width > 0 else 1
                 img_scale_y = page.height / img.height if img.height > 0 else 1
                 elements = page._element_mgr.create_text_elements_from_ocr(

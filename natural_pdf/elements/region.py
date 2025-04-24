@@ -1084,11 +1084,14 @@ class Region(DirectionalMixin):
         filtered_elements = [e for e in page_elements if self._is_element_in_region(e)]
         return ElementCollection(filtered_elements)
 
-    def apply_ocr(self, **ocr_params) -> "Region":
+    def apply_ocr(self, replace=True, **ocr_params) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
 
         Args:
+            replace: If True (default), removes existing OCR elements in the region
+                    before adding new ones. If False, adds new OCR elements without 
+                    removing existing ones.
             **ocr_params: Keyword arguments passed to the OCR Manager.
                           Common parameters like `engine`, `languages`, `min_confidence`,
                           `device`, and `resolution` (for image rendering) should be
@@ -1098,12 +1101,28 @@ class Region(DirectionalMixin):
                           an `options` object (e.g., `options=EasyOCROptions(...)`).
 
         Returns:
-            List of created TextElement objects representing OCR words/lines.
+            Self for method chaining.
         """
         # Ensure OCRManager is available
         if not hasattr(self.page._parent, "_ocr_manager") or self.page._parent._ocr_manager is None:
             logger.error("OCRManager not available on parent PDF. Cannot apply OCR to region.")
-            return []
+            return self
+
+        # If replace is True, find and remove existing OCR elements in this region
+        if replace:
+            logger.info(f"Region {self.bbox}: Removing existing OCR elements before applying new OCR.")
+            # Find all OCR elements in this region
+            ocr_selector = "text[source=ocr]"
+            ocr_elements = self.find_all(ocr_selector)
+            
+            if ocr_elements:
+                logger.info(f"Region {self.bbox}: Found {len(ocr_elements)} existing OCR elements to remove.")
+                # Remove these elements from their page
+                removed_count = ocr_elements.remove()
+                logger.info(f"Region {self.bbox}: Removed {removed_count} OCR elements.")
+            else:
+                logger.info(f"Region {self.bbox}: No existing OCR elements found to remove.")
+
         ocr_mgr = self.page._parent._ocr_manager
 
         # Determine rendering resolution from parameters
@@ -1123,11 +1142,11 @@ class Region(DirectionalMixin):
             )
             if not region_image:
                 logger.error("Failed to render region to image for OCR.")
-                return []
+                return self
             logger.debug(f"Region rendered to image size: {region_image.size}")
         except Exception as e:
             logger.error(f"Error rendering region to image for OCR: {e}", exc_info=True)
-            return []
+            return self
 
         # Prepare args for the OCR Manager
         manager_args = {
@@ -1148,11 +1167,11 @@ class Region(DirectionalMixin):
                 logger.error(
                     f"OCRManager returned unexpected type for single region image: {type(results)}"
                 )
-                return []
+                return self
             logger.debug(f"Region OCR processing returned {len(results)} results.")
         except Exception as e:
             logger.error(f"Error during OCRManager processing for region: {e}", exc_info=True)
-            return []
+            return self
 
         # Convert results to TextElements
         scale_x = self.width / region_image.width if region_image.width > 0 else 1.0

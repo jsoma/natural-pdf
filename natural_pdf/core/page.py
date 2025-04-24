@@ -1384,6 +1384,7 @@ class Page:
         resolution: Optional[int] = None,
         detect_only: bool = False,
         apply_exclusions: bool = True,
+        replace: bool = True,
     ) -> "Page":
         """
         Apply OCR to THIS page and add results to page elements via PDF.apply_ocr.
@@ -1397,13 +1398,21 @@ class Page:
             resolution: DPI resolution for rendering page image before OCR.
             apply_exclusions: If True (default), render page image for OCR
                               with excluded areas masked (whited out).
+            detect_only: If True, only detect text bounding boxes, don't perform OCR.
+            replace: If True (default), remove any existing OCR elements before
+                    adding new ones. If False, add new OCR elements to existing ones.
 
         Returns:
-            List of created TextElements derived from OCR results for this page.
+            Self for method chaining.
         """
         if not hasattr(self._parent, "apply_ocr"):
             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
-            return []  # Return empty list for consistency
+            return self  # Return self for chaining
+
+        # Remove existing OCR elements if replace is True
+        if replace and hasattr(self, "_element_mgr"):
+            logger.info(f"Page {self.number}: Removing existing OCR elements before applying new OCR.")
+            self._element_mgr.remove_ocr_elements()
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         try:
@@ -1419,18 +1428,13 @@ class Page:
                 resolution=resolution,
                 detect_only=detect_only,
                 apply_exclusions=apply_exclusions,
+                replace=replace,  # Pass the replace parameter to PDF.apply_ocr
             )
         except Exception as e:
             logger.error(f"Page {self.number}: Error during delegated OCR call: {e}", exc_info=True)
-            return []
+            return self  # Return self for chaining
 
-        # Return the OCR elements specifically added to this page
-        ocr_elements = [el for el in self.words if getattr(el, "source", None) == "ocr"]
-        logger.debug(
-            f"Page {self.number}: apply_ocr completed. Found {len(ocr_elements)} OCR elements."
-        )
-        # Note: The method is typed to return Page for chaining, but the log indicates
-        # finding elements. Let's stick to returning self for chaining consistency.
+        # Return self for chaining
         return self
 
     def extract_ocr_elements(

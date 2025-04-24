@@ -1155,6 +1155,51 @@ class ElementCollection(Generic[T]):
         )
         return self  # Return self for chaining
 
+    def remove(self) -> int:
+        """
+        Remove all elements in this collection from their respective pages.
+        
+        This method removes elements from the page's _element_mgr storage.
+        It's particularly useful for removing OCR elements before applying new OCR.
+        
+        Returns:
+            int: Number of elements successfully removed
+        """
+        if not self._elements:
+            return 0
+            
+        removed_count = 0
+        
+        for element in self._elements:
+            # Each element should have a reference to its page
+            if hasattr(element, "page") and hasattr(element.page, "_element_mgr"):
+                element_mgr = element.page._element_mgr
+                
+                # Determine element type
+                element_type = getattr(element, "object_type", None)
+                if element_type:
+                    # Convert to plural form expected by element_mgr
+                    if element_type == "word":
+                        element_type = "words"
+                    elif element_type == "char":
+                        element_type = "chars"
+                    elif element_type == "rect":
+                        element_type = "rects"
+                    elif element_type == "line":
+                        element_type = "lines"
+                    
+                    # Try to remove from the element manager
+                    if hasattr(element_mgr, "remove_element"):
+                        success = element_mgr.remove_element(element, element_type)
+                        if success:
+                            removed_count += 1
+                    else:
+                        logger.warning("ElementManager does not have remove_element method")
+            else:
+                logger.warning(f"Element has no page or page has no _element_mgr: {element}")
+                
+        return removed_count
+
 
 class PageCollection(Generic[P]):
     """
@@ -1221,6 +1266,7 @@ class PageCollection(Generic[P]):
         device: Optional[str] = None,
         resolution: Optional[int] = None,  # DPI for rendering
         apply_exclusions: bool = True,  # New parameter
+        replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options ---
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
     ) -> "PageCollection[P]":
@@ -1240,6 +1286,8 @@ class PageCollection(Generic[P]):
             apply_exclusions: If True (default), render page images for OCR with
                               excluded areas masked (whited out). If False, OCR
                               the raw page images without masking exclusions.
+            replace: If True (default), remove any existing OCR elements before
+                    adding new ones. If False, add new OCR elements to existing ones.
             options: An engine-specific options object (e.g., EasyOCROptions) or dict.
 
         Returns:
@@ -1277,6 +1325,7 @@ class PageCollection(Generic[P]):
             device=device,
             resolution=resolution,
             apply_exclusions=apply_exclusions,  # Pass down
+            replace=replace,  # Pass the replace parameter
             options=options,
         )
         # The PDF method modifies the Page objects directly by adding elements.
