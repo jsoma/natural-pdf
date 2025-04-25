@@ -115,10 +115,8 @@ buffered_max_length
 ```
 
 ```python
-import shutil
-from datetime import datetime
-
 MAX_ALLOWED = buffered_max_length
+MIN_ALLOWED = 3
 removed = 0
 cleaned_lines = []
 
@@ -130,6 +128,12 @@ for i, line in enumerate(original_lines):
   if len(parts) == 2 and len(parts[1]) > MAX_ALLOWED:
     removed += 1
     print(f"⚠️ Line {i} exceeds max_text_length: {len(parts[1])} chars: {parts[1]}")
+  elif len(parts[1]) < MIN_ALLOWED:
+    removed += 1
+    print(f"⚠️ Line {i} under min_text_length: {len(parts[1])} chars: {parts[1]}")
+  elif "Sorry, I can't" in parts[1]:
+    removed += 1
+    print(f"⚠️ Line {i} was not OCR'd correctly")
   else:
     cleaned_lines.append(line)
 
@@ -284,7 +288,7 @@ We need the PaddleOCR repository for its training scripts. Once we have it we'll
 # Start training!
 # -c points to our config file
 # -o Override specific config options if needed (e.g., Global.epoch_num=10)
-!python paddleocr_repo/tools/train.py -c ../finetune_rec.yml
+!python paddleocr_repo/tools/train.py -c finetune_rec.yml
 ```
 
 Training will begin, printing logs and saving checkpoints to the directory specified in `Global.save_model_dir` (`./output/finetune_rec/` in the example). Monitor the accuracy (`acc`) and loss on the training and validation sets. You can stop training early if validation accuracy plateaus or starts to decrease.
@@ -329,10 +333,11 @@ ocr = PaddleOCR(
 with open("finetune_data/val.txt", encoding="utf-8") as f:
     line = random.choice([l.strip() for l in f if l.strip()])
 img_path, ground_truth = line.split(maxsplit=1)
+img_path = "finetune_data/" + img_path
 
 # Run inference
 result = ocr.ocr(img_path, det=False)
-prediction = result[0][0][1]['text'] if result else '[No result]'
+prediction = result[0][0][1] if result else '[No result]'
 
 # Display
 display(Image(filename=img_path))

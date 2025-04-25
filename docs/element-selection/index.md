@@ -141,6 +141,26 @@ page.find_all('text:bold').show()
 page.find_all('text[size>=11]:bold')
 ```
 
+### Negation Pseudo-class (`:not()`)
+
+You can exclude elements that match a certain selector using the `:not()` pseudo-class. It takes another simple selector as its argument.
+
+```python
+# Find all text elements that are NOT bold
+non_bold_text = page.find_all('text:not(:bold)')
+
+# Find all elements that are NOT regions of type 'table'
+not_tables = page.find_all(':not(region[type=table])')
+
+# Find text elements that do not contain "Total" (case-insensitive)
+relevant_text = page.find_all('text:not(:contains("Total"))', case=False)
+
+# Find text elements that are not empty
+non_empty_text = page.find_all('text:not(:empty)')
+```
+
+**Note:** The selector inside `:not()` follows the same rules as regular selectors but currently does not support combinators (like `>`, `+`, `~`, or descendant space) within `:not()`. You can nest basic type, attribute, and other pseudo-class selectors.
+
 ### Spatial Pseudo-Classes Examples
 
 ```python

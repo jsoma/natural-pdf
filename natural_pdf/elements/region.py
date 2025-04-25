@@ -600,6 +600,18 @@ class Region(DirectionalMixin):
         x1 = int(self.x1 * scale_factor)
         bottom = int(self.bottom * scale_factor)
 
+        # Ensure coords are valid for cropping (left < right, top < bottom)
+        if x0 >= x1:
+             logger.warning(
+                 f"Region {self.bbox} resulted in non-positive width after scaling ({x0} >= {x1}). Cannot create image."
+             )
+             return None
+        if top >= bottom:
+             logger.warning(
+                 f"Region {self.bbox} resulted in non-positive height after scaling ({top} >= {bottom}). Cannot create image."
+             )
+             return None
+
         # Crop the image to just this region
         region_image = page_image.crop((x0, top, x1, bottom))
 
@@ -1738,7 +1750,7 @@ class Region(DirectionalMixin):
         """
         # Find OCR elements specifically within this region
         # Note: We typically want to correct even if the element falls in an excluded area
-        target_elements = self.find_all(selector="text[source^=ocr]", apply_exclusions=False)
+        target_elements = self.find_all(selector="text[source=ocr]", apply_exclusions=False)
 
         # Delegate to the utility function
         _apply_ocr_correction_to_elements(

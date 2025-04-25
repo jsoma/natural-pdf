@@ -1168,10 +1168,12 @@ class ElementCollection(Generic[T]):
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
+        max_workers: Optional[int] = None,
     ) -> "ElementCollection":
         """
         Applies corrections to OCR-generated text elements within this collection
-        using a user-provided callback function.
+        using a user-provided callback function, executed
+        in parallel if `max_workers` is specified.
 
         Iterates through elements currently in the collection. If an element's
         'source' attribute starts with 'ocr', it calls the `correction_callback`
@@ -1189,6 +1191,8 @@ class ElementCollection(Generic[T]):
         Args:
             correction_callback: A function accepting an element and returning
                                  `Optional[str]` (new text or None).
+            max_workers: The maximum number of worker threads to use for parallel
+                         correction on each page. If None, defaults are used.
 
         Returns:
             Self for method chaining.
@@ -1198,6 +1202,7 @@ class ElementCollection(Generic[T]):
             elements=self._elements,
             correction_callback=correction_callback,
             caller_info=f"ElementCollection(len={len(self._elements)})",  # Pass caller info
+            max_workers=max_workers,
         )
         return self  # Return self for chaining
 
@@ -1419,10 +1424,12 @@ class PageCollection(Generic[P]):
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
+        max_workers: Optional[int] = None,
     ) -> "PageCollection[P]":
         """
         Applies corrections to OCR-generated text elements across all pages
-        in this collection using a user-provided callback function.
+        in this collection using a user-provided callback function, executed
+        in parallel if `max_workers` is specified.
 
         This method delegates to the parent PDF's `correct_ocr` method,
         targeting all pages within this collection.
@@ -1430,10 +1437,11 @@ class PageCollection(Generic[P]):
         Args:
             correction_callback: A function that accepts a single argument (an element
                                  object) and returns `Optional[str]` (new text or None).
+            max_workers: The maximum number of worker threads to use for parallel
+                         correction on each page. If None, defaults are used.
 
         Returns:
-            A dictionary containing aggregate statistics for the process across all pages:
-            {'elements_checked': total_checked, 'corrections_applied': total_applied}
+            Self for method chaining.
 
         Raises:
             RuntimeError: If the collection is empty, pages lack a parent PDF reference,
@@ -1441,17 +1449,28 @@ class PageCollection(Generic[P]):
         """
         if not self.pages:
             logger.warning("Cannot correct OCR for an empty PageCollection.")
+            # Return self even if empty to maintain chaining consistency
+            return self
 
         # Assume all pages share the same parent PDF object
         parent_pdf = self.pages[0]._parent
+        if not parent_pdf or not hasattr(parent_pdf, 'correct_ocr') or not callable(parent_pdf.correct_ocr):
+             raise RuntimeError(
+                 "Parent PDF reference not found or parent PDF lacks the required 'correct_ocr' method."
+             )
 
         page_indices = [p.index for p in self.pages]
         logger.info(
-            f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices}."
+            f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices} with max_workers={max_workers}."
         )
 
         # Delegate the call to the parent PDF object for the relevant pages
-        parent_pdf.correct_ocr(correction_callback=correction_callback, pages=page_indices)
+        # Pass the max_workers parameter down
+        parent_pdf.correct_ocr(
+            correction_callback=correction_callback,
+            pages=page_indices,
+            max_workers=max_workers # Pass it here
+        )
 
         return self
 

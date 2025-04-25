@@ -48,7 +48,7 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
             selector: CSS-like selector to filter which TextElements to export.
                       If None and corrected_only is False, all 'text' elements are considered.
             corrected_only: If True, overrides selector and exports only elements likely
-                            originating from a correction manifest (selector="text[source^=manifest]").
+                            originating from a correction manifest (selector="text[source=manifest]").
                             (default: False).
             split_ratio: Ratio for splitting data into training/validation sets (e.g., 0.9 for 90% train).
                          If None, creates a single `label.txt` file (default: 0.9).

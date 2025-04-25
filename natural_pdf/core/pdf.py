@@ -4,6 +4,8 @@ import os
 import re
 import tempfile
 import urllib.request
+import time # Import time for logging
+import threading # Import threading
 from pathlib import Path  # Added Path
 from typing import (  # Added Iterable and TYPE_CHECKING
     TYPE_CHECKING,
@@ -18,7 +20,7 @@ from typing import (  # Added Iterable and TYPE_CHECKING
     Union,
 )
 from pathlib import Path
-
+from natural_pdf.utils.tqdm_utils import get_tqdm # Import the new utility
 
 import pdfplumber
 from PIL import Image
@@ -64,6 +66,8 @@ except ImportError:
 # Set up logger early
 logger = logging.getLogger("natural_pdf.core.pdf")
 
+# Get the appropriate tqdm class once
+tqdm = get_tqdm()
 
 class PDF:
     """
@@ -243,7 +247,7 @@ class PDF:
         resolution: Optional[int] = None,  # DPI for rendering before OCR
         apply_exclusions: bool = True,  # New parameter
         detect_only: bool = False,
-        replace: bool = True,  # Whether to replace existing OCR elements
+        replace: bool = True,  # Whether to replace existing OCR elements before
         # --- Engine-Specific Options --- Use 'options=' for this
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
         pages: Optional[Union[Iterable[int], range, slice]] = None,
@@ -291,6 +295,8 @@ class PDF:
             # Or raise RuntimeError("OCRManager not initialized.")
             return self
 
+        thread_id = threading.current_thread().name
+        logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
         # --- Determine Target Pages (unchanged) ---
         target_pages: List[Page] = []
         if pages is None:
@@ -327,11 +333,13 @@ class PDF:
         images_pil: List[Image.Image] = []
         page_image_map: List[Tuple[Page, Image.Image]] = []  # Store page and its image
         logger.info(
-            f"Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})..."
+            f"[{thread_id}] Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})..."
         )
         failed_page_num = "unknown"  # Keep track of potentially failing page
+        render_start_time = time.monotonic()
         try:
-            for i, page in enumerate(target_pages):
+            # Wrap page rendering loop with the selected tqdm class for inner progress, leave=False for nesting
+            for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
                 failed_page_num = page.number  # Update current page number in case of error
                 logger.debug(f"  Rendering page {page.number} (index {page.index})...")
                 # Use the determined final_resolution and apply exclusions if requested
@@ -350,6 +358,8 @@ class PDF:
         except Exception as e:
             logger.error(f"Failed to render one or more pages for batch OCR: {e}", exc_info=True)
             raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
+        render_end_time = time.monotonic()
+        logger.debug(f"[{thread_id}] Finished rendering {len(images_pil)} images for {self.path} (Duration: {render_end_time - render_start_time:.2f}s)")
 
         if not images_pil or not page_image_map:
             logger.error("No images were successfully rendered for batch OCR.")
@@ -370,9 +380,11 @@ class PDF:
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         # --- Call OCR Manager for Batch Processing ---
+        ocr_call_args = {k:v for k,v in manager_args.items() if k!='images'}
         logger.info(
-            f"Calling OCR Manager with args: { {k:v for k,v in manager_args.items() if k!='images'} } ..."
+            f"[{thread_id}] Calling OCR Manager for {self.path} with args: { ocr_call_args } ..."
         )
+        ocr_start_time = time.monotonic()
         try:
             # Manager's apply_ocr signature needs to accept common args directly
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
@@ -390,6 +402,8 @@ class PDF:
         except Exception as e:
             logger.error(f"Batch OCR processing failed: {e}", exc_info=True)
             return self
+        ocr_end_time = time.monotonic()
+        logger.debug(f"[{thread_id}] OCR Manager call finished for {self.path} (Duration: {ocr_end_time - ocr_start_time:.2f}s)")
 
         # --- Distribute Results and Add Elements to Pages (unchanged) ---
         logger.info("Adding OCR results to respective pages...")
@@ -427,6 +441,7 @@ class PDF:
         logger.info(
             f"Finished adding OCR results. Total elements added across {len(target_pages)} pages: {total_elements_added}"
         )
+        logger.debug(f"[{thread_id}] PDF.apply_ocr finished for {self.path}")
         return self
 
     def add_region(
@@ -973,10 +988,13 @@ class PDF:
         self,
         correction_callback: Callable[[Any], Optional[str]],
         pages: Optional[Union[Iterable[int], range, slice]] = None,
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None,
     ) -> "PDF":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements using a callback function,
-        delegating the core work to the `Page.correct_ocr` method.
+        delegating the core work to the `Page.correct_ocr` method, potentially
+        in parallel if `max_workers` is specified for the Page.
 
         Args:
             correction_callback: A function that accepts a single argument (an element
@@ -984,6 +1002,10 @@ class PDF:
                                 corrected text string if an update is needed, otherwise None.
             pages: Optional page indices/slice to limit the scope of correction
                 (default: all pages).
+            max_workers: The maximum number of threads to use for parallel execution
+                         *within each page's* `correct_ocr` call. If None, the Page default is used.
+            progress_callback: Optional callback function to call after processing each element
+                               (used for updating a shared progress bar).
 
         Returns:
             Self for method chaining.
@@ -1013,14 +1035,20 @@ class PDF:
             return self
 
         logger.info(
-            f"Starting OCR correction process via Page delegation for pages: {target_page_indices}"
+            f"Starting OCR correction process via Page delegation for pages: {target_page_indices} with max_workers={max_workers}"
         )
 
         # Iterate through target pages and call their correct_ocr method
+        # The parallelism happens *inside* page.correct_ocr
         for page_idx in target_page_indices:
             page = self._pages[page_idx]
             try:
-                page.correct_ocr(correction_callback=correction_callback)
+                # Pass the max_workers parameter down to the page method
+                page.correct_ocr(
+                    correction_callback=correction_callback,
+                    max_workers=max_workers,
+                    progress_callback=progress_callback,
+                )
             except Exception as e:
                 logger.error(f"Error during correct_ocr on page {page_idx}: {e}", exc_info=True)
                 # Optionally re-raise or just log and continue

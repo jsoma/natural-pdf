@@ -143,11 +143,13 @@ class EasyOCREngine(OCREngine):
         standardized_regions = []
 
         if detect_only:
+            results = raw_results[0]
             # In detect_only mode, raw_results is already a list of bounding boxes
             # Each bbox is in [x_min, x_max, y_min, y_max] format
-            if isinstance(raw_results, list):
-                for detection in raw_results:
+            if isinstance(results, list):
+                for detection in results:
                     try:
+                        # This block expects 'detection' to be a list/tuple of 4 numbers
                         if isinstance(detection, (list, tuple)) and len(detection) == 4:
                             x_min, x_max, y_min, y_max = detection
                             # Convert to standardized (x0, y0, x1, y1) format
@@ -161,6 +163,7 @@ class EasyOCREngine(OCREngine):
                                     f"Invalid number format in EasyOCR detect bbox: {detection}"
                                 ) from e
                         else:
+                            # This is where the error is raised if 'detection' is not a list/tuple of 4 numbers
                             raise ValueError(f"Invalid detection format from EasyOCR: {detection}")
                     except ValueError as e:
                         # Re-raise any value errors from standardization or format checks
@@ -172,7 +175,7 @@ class EasyOCREngine(OCREngine):
                         ) from e
             else:
                 raise ValueError(
-                    f"Expected list of bounding boxes in detect_only mode, got: {raw_results}"
+                    f"Expected list of bounding boxes in detect_only mode, got: {type(raw_results)}"
                 )
 
             return standardized_regions

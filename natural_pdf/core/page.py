@@ -6,14 +6,19 @@ import logging
 import os
 import re
 import tempfile
+import time # Import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+import concurrent.futures # Added import
+from tqdm.auto import tqdm # Added tqdm import
+import threading
 
 import pdfplumber
 from PIL import Image, ImageDraw
 
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
+from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 
 if TYPE_CHECKING:
     import pdfplumber
@@ -1257,38 +1262,48 @@ class Page:
         """
         image = None
         render_resolution = resolution if resolution is not None else scale * 72
+        thread_id = threading.current_thread().name
+        logger.debug(f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image...")
+        lock_wait_start = time.monotonic()
         try:
-            if include_highlights:
-                # Delegate rendering to the central service
-                image = self._highlighter.render_page(
-                    page_index=self.index,
-                    scale=scale,  # Note: scale is used by highlighter internally for drawing
-                    labels=labels,
-                    legend_position=legend_position,
-                    render_ocr=render_ocr,
-                    resolution=render_resolution,  # Pass the calculated resolution
-                    **kwargs,
-                )
-            else:
-                # Get the base page image directly from pdfplumber if no highlights needed
-                # Use the underlying pdfplumber page object
-                img_object = self._page.to_image(resolution=render_resolution, **kwargs)
-                # Access the PIL image directly (assuming pdfplumber structure)
-                image = (
-                    img_object.annotated
-                    if hasattr(img_object, "annotated")
-                    else img_object._repr_png_()
-                )
-                if isinstance(image, bytes):  # Handle cases where it returns bytes
-                    from io import BytesIO
+            # Acquire the global PDF rendering lock
+            with pdf_render_lock:
+                lock_acquired_time = time.monotonic()
+                logger.debug(f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render...")
+                if include_highlights:
+                    # Delegate rendering to the central service
+                    image = self._highlighter.render_page(
+                        page_index=self.index,
+                        scale=scale,  # Note: scale is used by highlighter internally for drawing
+                        labels=labels,
+                        legend_position=legend_position,
+                        render_ocr=render_ocr,
+                        resolution=render_resolution,  # Pass the calculated resolution
+                        **kwargs,
+                    )
+                else:
+                    # Get the base page image directly from pdfplumber if no highlights needed
+                    # Use the underlying pdfplumber page object
+                    img_object = self._page.to_image(resolution=render_resolution, **kwargs)
+                    # Access the PIL image directly (assuming pdfplumber structure)
+                    image = (
+                        img_object.annotated
+                        if hasattr(img_object, "annotated")
+                        else img_object._repr_png_()
+                    )
+                    if isinstance(image, bytes):  # Handle cases where it returns bytes
+                        from io import BytesIO
 
-                    image = Image.open(BytesIO(image)).convert(
-                        "RGB"
-                    )  # Convert to RGB for consistency
+                        image = Image.open(BytesIO(image)).convert(
+                            "RGB"
+                        )  # Convert to RGB for consistency
 
         except Exception as e:
             logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
             return None  # Return None on error
+        finally:
+            render_end_time = time.monotonic()
+            logger.debug(f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s")
 
         if image is None:
             return None
@@ -1475,11 +1490,13 @@ class Page:
 
         try:
             # Get base image without highlights using the determined resolution
-            image = self.to_image(resolution=final_resolution, include_highlights=False)
-            if not image:
-                logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
-                return []
-            logger.debug(f"  Rendered image size: {image.width}x{image.height}")
+            # Use the global PDF rendering lock
+            with pdf_render_lock:
+                image = self.to_image(resolution=final_resolution, include_highlights=False)
+                if not image:
+                    logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
+                    return []
+                logger.debug(f"  Rendered image size: {image.width}x{image.height}")
         except Exception as e:
             logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
@@ -2031,43 +2048,121 @@ class Page:
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None, # Added progress callback
     ) -> "Page":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements on this page
-        using a user-provided callback function.
+        using a user-provided callback function, potentially in parallel.
 
         Finds text elements on this page whose 'source' attribute starts
         with 'ocr' and calls the `correction_callback` for each, passing the
-        element itself.
-
-        The `correction_callback` should contain the logic to:
-        1. Determine if the element needs correction.
-        2. Perform the correction (e.g., call an LLM).
-        3. Return the new text (`str`) or `None`.
-
-        If the callback returns a string, the element's `.text` is updated.
-        Metadata updates (source, confidence, etc.) should happen within the callback.
+        element itself. Updates the element's text if the callback returns
+        a new string.
 
         Args:
             correction_callback: A function accepting an element and returning
                                  `Optional[str]` (new text or None).
+            max_workers: The maximum number of threads to use for parallel execution.
+                         If None or 0 or 1, runs sequentially.
+            progress_callback: Optional callback function to call after processing each element.
 
         Returns:
             Self for method chaining.
         """
         logger.info(
-            f"Page {self.number}: Starting OCR correction process using callback '{correction_callback.__name__}'"
+            f"Page {self.number}: Starting OCR correction with callback '{correction_callback.__name__}' (max_workers={max_workers})"
         )
 
-        # Find OCR elements specifically on this page
-        # Note: We typically want to correct even if the element falls in an excluded area
-        target_elements = self.find_all(selector="text[source^=ocr]", apply_exclusions=False)
+        target_elements_collection = self.find_all(
+            selector="text[source=ocr]", apply_exclusions=False
+        )
+        target_elements = target_elements_collection.elements # Get the list
 
-        # Delegate to the utility function
-        _apply_ocr_correction_to_elements(
-            elements=target_elements,  # Pass the ElementCollection directly
-            correction_callback=correction_callback,
-            caller_info=f"Page({self.number})",  # Pass caller info
+        if not target_elements:
+            logger.info(f"Page {self.number}: No OCR elements found to correct.")
+            return self
+
+        processed_count = 0
+        updated_count = 0
+        error_count = 0
+
+        # Define the task to be run by the worker thread or sequentially
+        def _process_element_task(element):
+            try:
+                current_text = getattr(element, 'text', None)
+                # Call the user-provided callback
+                corrected_text = correction_callback(element)
+
+                # Validate result type
+                if corrected_text is not None and not isinstance(corrected_text, str):
+                    logger.warning(f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update.")
+                    return element, None, None # Treat as no correction
+
+                return element, corrected_text, None  # Return element, result, no error
+            except Exception as e:
+                logger.error(
+                    f"Page {self.number}: Error applying correction callback to element '{getattr(element, 'text', '')[:30]}...' ({element.bbox}): {e}",
+                    exc_info=False # Keep log concise
+                )
+                return element, None, e # Return element, no result, error
+            finally:
+                # --- Call progress callback here --- #
+                if progress_callback:
+                    try:
+                        progress_callback()
+                    except Exception as cb_e:
+                        # Log error in callback itself, but don't stop processing
+                        logger.error(f"Page {self.number}: Error executing progress_callback: {cb_e}", exc_info=False)
+
+        # Choose execution strategy based on max_workers
+        if max_workers is not None and max_workers > 1:
+            # --- Parallel execution --- #
+            logger.info(f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers.")
+            futures = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all tasks
+                future_to_element = {executor.submit(_process_element_task, element): element for element in target_elements}
+
+                # Process results as they complete (progress_callback called by worker)
+                for future in concurrent.futures.as_completed(future_to_element):
+                    processed_count += 1
+                    try:
+                        element, corrected_text, error = future.result()
+                        if error:
+                            error_count += 1
+                            # Error already logged in worker
+                        elif corrected_text is not None:
+                            # Apply correction if text changed
+                            current_text = getattr(element, 'text', None)
+                            if corrected_text != current_text:
+                                element.text = corrected_text
+                                updated_count += 1
+                    except Exception as exc:
+                        # Catch errors from future.result() itself
+                        element = future_to_element[future] # Find original element
+                        logger.error(f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}", exc_info=True)
+                        error_count += 1
+                        # Note: progress_callback was already called in the worker's finally block
+
+        else:
+            # --- Sequential execution --- #
+            logger.info(f"Page {self.number}: Running OCR correction sequentially.")
+            for element in target_elements:
+                 # Call the task function directly (it handles progress_callback)
+                 processed_count += 1
+                 _element, corrected_text, error = _process_element_task(element)
+                 if error:
+                     error_count += 1
+                 elif corrected_text is not None:
+                     # Apply correction if text changed
+                     current_text = getattr(_element, 'text', None)
+                     if corrected_text != current_text:
+                         _element.text = corrected_text
+                         updated_count += 1
+
+        logger.info(
+             f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
         )
 
-        return self  # Return self for chaining
+        return self # Return self for chaining

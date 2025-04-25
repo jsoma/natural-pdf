@@ -274,9 +274,12 @@ class TextElement(Element):
 
         return False
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:            
         """String representation of the text element."""
-        preview = self.text[:10] + "..." if len(self.text) > 10 else self.text
+        if self.text:
+            preview = self.text[:10] + "..." if len(self.text) > 10 else self.text
+        else:
+            preview = "..."
         font_style = []
         if self.bold:
             font_style.append("bold")

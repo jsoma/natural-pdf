@@ -4,12 +4,24 @@ import logging
 import os
 import re  # Added for safe path generation
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union, Callable
+import concurrent.futures # Import concurrent.futures
+import time # Import time for logging timestamps
+import threading # Import threading for logging thread information
 
 from PIL import Image
 from tqdm import tqdm
+from tqdm.auto import tqdm as auto_tqdm
+from tqdm.notebook import tqdm as notebook_tqdm
+
+from natural_pdf.utils.tqdm_utils import get_tqdm
+
+# Get the appropriate tqdm class once
+tqdm = get_tqdm()
 
 # Set up logger early
+# Configure logging to include thread information
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 from natural_pdf.core.pdf import PDF
@@ -244,7 +256,14 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
 
-    def find_all(self, selector: str, **kwargs) -> "ElementCollection":
+    def find_all(
+        self, 
+        selector: str, 
+        apply_exclusions: bool = True,  # Added explicit parameter
+        regex: bool = False,            # Added explicit parameter
+        case: bool = True,             # Added explicit parameter
+        **kwargs
+    ) -> "ElementCollection":
         """
         Find all elements matching the selector across all PDFs in the collection.
         
@@ -253,6 +272,9 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         
         Args:
             selector: CSS-like selector string to query elements
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
+            regex: Whether to use regex for text search in :contains (default: False)
+            case: Whether to do case-sensitive text search (default: True)
             **kwargs: Additional keyword arguments passed to the find_all method of each PDF
             
         Returns:
@@ -264,7 +286,14 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         all_elements = []
         for pdf in self._pdfs:
             try:
-                elements = pdf.find_all(selector, **kwargs)
+                # Explicitly pass the relevant arguments down
+                elements = pdf.find_all(
+                    selector,
+                    apply_exclusions=apply_exclusions,
+                    regex=regex,
+                    case=case,
+                    **kwargs
+                )
                 all_elements.extend(elements.elements)
             except Exception as e:
                 logger.error(f"Error finding elements in {pdf.path}: {e}", exc_info=True)
@@ -283,9 +312,10 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         replace: bool = True,
         options: Optional[Any] = None,
         pages: Optional[Union[slice, List[int]]] = None,
+        max_workers: Optional[int] = None,
     ) -> "PDFCollection":
         """
-        Apply OCR to all PDFs in the collection.
+        Apply OCR to all PDFs in the collection, potentially in parallel.
 
         Args:
             engine: OCR engine to use (e.g., 'easyocr', 'paddleocr', 'surya')
@@ -298,17 +328,24 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
             replace: If True, replace existing OCR elements
             options: Engine-specific options
             pages: Specific pages to process (None for all pages)
+            max_workers: Maximum number of threads to process PDFs concurrently. 
+                         If None or 1, processing is sequential. (default: None)
 
         Returns:
             Self for method chaining
         """
         PDF = self._get_pdf_class()
-        # Delegate to individual PDF objects with named parameters
-        logger.info("Applying OCR to PDFs in collection...")
-        
-        for pdf in self._pdfs:
+        logger.info(f"Applying OCR to {len(self._pdfs)} PDFs in collection (max_workers={max_workers})...")
+
+        # Worker function takes PDF object again
+        def _process_pdf(pdf: PDF):
+            """Helper function to apply OCR to a single PDF, handling errors."""
+            thread_id = threading.current_thread().name # Get thread name for logging
+            pdf_path = pdf.path # Get path for logging
+            logger.debug(f"[{thread_id}] Starting OCR process for: {pdf_path}")
+            start_time = time.monotonic()
             try:
-                pdf.apply_ocr(
+                pdf.apply_ocr( # Call apply_ocr on the original PDF object
                     pages=pages,
                     engine=engine,
                     languages=languages,
@@ -318,15 +355,108 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                     apply_exclusions=apply_exclusions,
                     detect_only=detect_only,
                     replace=replace,
-                    options=options
+                    options=options,
+                    # Note: We might want a max_workers here too for page rendering?
+                    # For now, PDF.apply_ocr doesn't have it.
                 )
+                end_time = time.monotonic()
+                logger.debug(f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)")
+                return pdf_path, None
             except Exception as e:
-                logger.error(f"Failed applying OCR to {pdf.path}: {e}", exc_info=True)
-                
+                end_time = time.monotonic()
+                logger.error(f"[{thread_id}] Failed OCR process for {pdf_path} after {end_time - start_time:.2f}s: {e}", exc_info=False)
+                return pdf_path, e # Return path and error
+
+        # Use ThreadPoolExecutor for parallel processing if max_workers > 1
+        if max_workers is not None and max_workers > 1:
+            futures = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="OCRWorker") as executor:
+                for pdf in self._pdfs:
+                    # Submit the PDF object to the worker function
+                    futures.append(executor.submit(_process_pdf, pdf))
+
+            # Use the selected tqdm class with as_completed for progress tracking
+            progress_bar = tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(self._pdfs),
+                desc="Applying OCR (Parallel)",
+                unit="pdf"
+            )
+            
+            for future in progress_bar:
+                pdf_path, error = future.result() # Get result (or exception)
+                if error:
+                    progress_bar.set_postfix_str(f"Error: {pdf_path}", refresh=True)
+                # Progress is updated automatically by tqdm
+
+        else: # Sequential processing (max_workers is None or 1)
+            logger.info("Applying OCR sequentially...")
+            # Use the selected tqdm class for sequential too for consistency
+            # Iterate over PDF objects directly for sequential
+            for pdf in tqdm(self._pdfs, desc="Applying OCR (Sequential)", unit="pdf"):
+                _process_pdf(pdf) # Call helper directly with PDF object
+        
+        logger.info("Finished applying OCR across the collection.")
         return self
 
-    # --- Advanced Method Placeholders ---
-    # Placeholder for categorize removed as find_relevant is now implemented
+    def correct_ocr(
+        self,
+        correction_callback: Callable[[Any], Optional[str]],
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None,
+    ) -> "PDFCollection":
+        """
+        Apply OCR correction to all relevant elements across all pages and PDFs
+        in the collection using a single progress bar.
+
+        Args:
+            correction_callback: Function to apply to each OCR element.
+                                 It receives the element and should return
+                                 the corrected text (str) or None.
+            max_workers: Max threads to use for parallel execution within each page.
+            progress_callback: Optional callback function to call after processing each element.
+
+        Returns:
+            Self for method chaining.
+        """
+        PDF = self._get_pdf_class() # Ensure PDF class is available
+        if not callable(correction_callback):
+            raise TypeError("`correction_callback` must be a callable function.")
+
+        logger.info(f"Gathering OCR elements from {len(self._pdfs)} PDFs for correction...")
+
+        # 1. Gather all target elements using the collection's find_all
+        #    Crucially, set apply_exclusions=False to include elements in headers/footers etc.
+        all_ocr_elements = self.find_all("text[source=ocr]", apply_exclusions=False).elements
+
+        if not all_ocr_elements:
+            logger.info("No OCR elements found in the collection to correct.")
+            return self
+
+        total_elements = len(all_ocr_elements)
+        logger.info(f"Found {total_elements} OCR elements across the collection. Starting correction process...")
+
+        # 2. Initialize the progress bar
+        progress_bar = tqdm(total=total_elements, desc="Correcting OCR Elements", unit="element")
+
+        # 3. Iterate through PDFs and delegate to PDF.correct_ocr
+        #    PDF.correct_ocr handles page iteration and passing the progress callback down.
+        for pdf in self._pdfs:
+            if not pdf.pages:
+                continue
+            try:
+                pdf.correct_ocr(
+                    correction_callback=correction_callback,
+                    max_workers=max_workers,
+                    progress_callback=progress_bar.update # Pass the bar's update method
+                )
+            except Exception as e:
+                 logger.error(f"Error occurred during correction process for PDF {pdf.path}: {e}", exc_info=True)
+                 # Decide if we should stop or continue? For now, continue.
+
+        progress_bar.close()
+
+        return self
 
     def categorize(self, categories: List[str], **kwargs):
         """Categorizes PDFs in the collection based on content or features."""

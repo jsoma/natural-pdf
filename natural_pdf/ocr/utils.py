@@ -8,6 +8,9 @@ from tqdm.auto import tqdm
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
 
+# Import the global PDF render lock from dedicated locks module
+from natural_pdf.utils.locks import pdf_render_lock
+
 logger = logging.getLogger(__name__)
 
 
@@ -72,7 +75,7 @@ def direct_ocr_llm(
     client,
     model="",
     resolution=150,
-    prompt="OCR this image. Return only the exact text from the image. Include misspellings, punctuation, etc.",
+    prompt="OCR this image. Return only the exact text from the image. Include misspellings, punctuation, etc. If you cannot see any text, return an empty string.",
     padding=2,
 ) -> str:
     """Convenience method to directly OCR a region of the page."""
@@ -83,7 +86,15 @@ def direct_ocr_llm(
         region = element
 
     buffered = io.BytesIO()
-    region_img = region.to_image(resolution=resolution, include_highlights=False)
+    # Use the global PDF render lock when rendering images
+    with pdf_render_lock:
+        region_img = region.to_image(resolution=resolution, include_highlights=False)
+
+    # Handle cases where image creation might fail (e.g., zero-dim region)
+    if region_img is None:
+        logger.warning(f"Could not generate image for region {region.bbox}, skipping OCR.")
+        return "" # Return empty string if image creation failed
+
     region_img.save(buffered, format="PNG")
     base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
@@ -107,7 +118,7 @@ def direct_ocr_llm(
         ],
     )
 
-    corrected = response.choices[0].message.content
+    corrected = response.choices[0].message.content.strip()
     logger.debug(f"Corrected {region.extract_text()} to {corrected}")
 
     return corrected

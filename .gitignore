@@ -13,6 +13,7 @@ docs/tutorials/needs-ocr-searchable.pdf
 sample.py
 sample2.py
 requirements.lock
+hidden
 pdfs/hidden
 *.hocr
 my_paddleocr_finetune_data/
