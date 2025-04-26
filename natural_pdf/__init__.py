@@ -3,6 +3,8 @@ Natural PDF - A more intuitive interface for working with PDFs.
 """
 
 import logging
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Create library logger
 logger = logging.getLogger("natural_pdf")

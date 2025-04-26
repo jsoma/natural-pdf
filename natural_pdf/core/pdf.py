@@ -1,13 +1,13 @@
-import copy  # Add import for deepcopy
+import copy
 import logging
 import os
 import re
 import tempfile
 import urllib.request
-import time # Import time for logging
-import threading # Import threading
-from pathlib import Path  # Added Path
-from typing import (  # Added Iterable and TYPE_CHECKING
+import time
+import threading
+from pathlib import Path
+from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
@@ -20,28 +20,26 @@ from typing import (  # Added Iterable and TYPE_CHECKING
     Union,
 )
 from pathlib import Path
-from natural_pdf.utils.tqdm_utils import get_tqdm # Import the new utility
+from natural_pdf.utils.tqdm_utils import get_tqdm
 
 import pdfplumber
 from PIL import Image
 
-from natural_pdf.analyzers.layout.layout_manager import (  # Import the new LayoutManager
-    LayoutManager,
-)
-from natural_pdf.core.highlighting_service import HighlightingService  # <-- Import the new service
+from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.page import Page
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
 
-# Import the flag directly - this should always work
+from natural_pdf.classification.manager import ClassificationManager
+from natural_pdf.classification.manager import ClassificationError
 
-# --- Add Search Service Imports (needed for new methods) ---
 try:
-    from typing import Any as TypingAny  # Import Any if not already
+    from typing import Any as TypingAny
 
-    from natural_pdf.search import TextSearchOptions  # Keep for ask default
+    from natural_pdf.search import TextSearchOptions
     from natural_pdf.search import (
         BaseSearchOptions,
         SearchOptions,
@@ -49,24 +47,16 @@ try:
         get_search_service,
     )
 except ImportError:
-    # Define dummies if needed for type hints within the class
     SearchServiceProtocol = object
     SearchOptions, TextSearchOptions, BaseSearchOptions = object, object, object
     TypingAny = object
 
-    # Dummy factory needed for default arg in methods
     def get_search_service(**kwargs) -> SearchServiceProtocol:
         raise ImportError(
             "Search dependencies are not installed. Install with: pip install natural-pdf[search]"
         )
 
-
-# --- End Search Service Imports ---
-
-# Set up logger early
 logger = logging.getLogger("natural_pdf.core.pdf")
-
-# Get the appropriate tqdm class once
 tqdm = get_tqdm()
 
 class PDF:
@@ -90,35 +80,25 @@ class PDF:
         Args:
             path_or_url: Path to the PDF file or a URL to a PDF
             reading_order: Whether to use natural reading order
-            font_attrs: Font attributes to consider when grouping characters into words.
-                       Default: ['fontname', 'size'] (Group by font name and size)
-                       None: Only consider spatial relationships
-                       List: Custom attributes to consider (e.g., ['fontname', 'size', 'color'])
-            keep_spaces: Whether to include spaces in word elements (default: True).
-                       True: Spaces are part of words, better for multi-word searching
-                       False: Break text at spaces, each word is separate (legacy behavior)
+            font_attrs: Font attributes for grouping characters into words
+            keep_spaces: Whether to include spaces in word elements
         """
-        # Check if the input is a URL
         is_url = path_or_url.startswith("http://") or path_or_url.startswith("https://")
 
-        # Initialize path-related attributes
         self._original_path = path_or_url
         self._temp_file = None
-        self._resolved_path = None  # Store the actual path used by pdfplumber
+        self._resolved_path = None
 
         if is_url:
             logger.info(f"Downloading PDF from URL: {path_or_url}")
             try:
-                # Create a temporary file to store the downloaded PDF
                 self._temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
 
-                # Download the PDF
                 with urllib.request.urlopen(path_or_url) as response:
                     self._temp_file.write(response.read())
                     self._temp_file.flush()
                     self._temp_file.close()
 
-                # Use the temporary file path
                 self._resolved_path = self._temp_file.name
                 logger.info(f"PDF downloaded to temporary file: {self._resolved_path}")
             except Exception as e:
@@ -130,7 +110,6 @@ class PDF:
                 logger.error(f"Failed to download PDF from URL: {e}")
                 raise ValueError(f"Failed to download PDF from URL: {e}")
         else:
-            # Use the provided path directly
             self._resolved_path = path_or_url
 
         logger.info(f"Initializing PDF from {self._resolved_path}")
@@ -145,34 +124,30 @@ class PDF:
                 f"Failed to open PDF with pdfplumber: {self._resolved_path}. Error: {e}",
                 exc_info=True,
             )
-            # Clean up temp file if creation failed
             self.close()
             raise IOError(f"Failed to open PDF file/URL: {path_or_url}") from e
 
-        self._path = self._resolved_path  # Keep original path too?
-        self.path = self._resolved_path  # Public attribute for the resolved path
-        self.source_path = self._original_path  # Public attribute for the user-provided path/URL
+        self._path = self._resolved_path
+        self.path = self._resolved_path
+        self.source_path = self._original_path
 
         self._reading_order = reading_order
         self._config = {"keep_spaces": keep_spaces}
+        self._font_attrs = font_attrs
 
-        self._font_attrs = font_attrs  # Store the font attribute configuration
-
-        # Initialize Managers and Services (conditionally available)
         self._ocr_manager = OCRManager() if OCRManager else None
         self._layout_manager = LayoutManager() if LayoutManager else None
         self.highlighter = HighlightingService(self)
+        self._classification_manager = ClassificationManager()
 
-        # Initialize pages last, passing necessary refs
         self._pages = [
             Page(p, parent=self, index=i, font_attrs=font_attrs)
             for i, p in enumerate(self._pdf.pages)
         ]
 
-        # Other state
         self._element_cache = {}
-        self._exclusions = []  # List to store exclusion functions/regions
-        self._regions = []  # List to store region functions/definitions
+        self._exclusions = []
+        self._regions = []
 
         logger.info("Initialized HighlightingService.")
         logger.info(f"PDF '{self.source_path}' initialized with {len(self._pages)} pages.")
@@ -240,70 +215,47 @@ class PDF:
     def apply_ocr(
         self,
         engine: Optional[str] = None,
-        # --- Common OCR Parameters (Direct Arguments) ---
         languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,  # Min confidence threshold
+        min_confidence: Optional[float] = None,
         device: Optional[str] = None,
-        resolution: Optional[int] = None,  # DPI for rendering before OCR
-        apply_exclusions: bool = True,  # New parameter
+        resolution: Optional[int] = None,
+        apply_exclusions: bool = True,
         detect_only: bool = False,
-        replace: bool = True,  # Whether to replace existing OCR elements before
-        # --- Engine-Specific Options --- Use 'options=' for this
-        options: Optional[Any] = None,  # e.g., EasyOCROptions(...), PaddleOCROptions(...), or dict
+        replace: bool = True,
+        options: Optional[Any] = None,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
-        # **kwargs: Optional[Dict[str, Any]] = None # Allow potential extra args?
     ) -> "PDF":
         """
         Applies OCR to specified pages (or all pages) of the PDF using batch processing.
 
-        This method renders the specified pages to images, sends them as a batch
-        to the OCRManager, and adds the resulting TextElements to each respective page.
-
         Args:
-            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr', 'surya').
-                    Uses manager's default ('easyocr') if None.
-            languages: List of language codes (e.g., ['en', 'fr'], ['en', 'ch_sim']).
-                       **Must be codes understood by the specific selected engine.**
-                       No mapping is performed. Overrides manager/engine default.
-            min_confidence: Minimum confidence threshold for detected text (0.0 to 1.0).
-                            Overrides manager/engine default.
-            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps').
-                    Overrides manager/engine default.
-            resolution: DPI resolution to render page images before OCR (e.g., 150, 300).
-                        Affects input quality for OCR. Defaults to 150 if not set.
-            apply_exclusions: If True (default), render page image for OCR with
-                              excluded areas masked (whited out). If False, OCR
-                              the raw page image without masking exclusions.
-            detect_only: If True, only detect text bounding boxes, don't perform OCR.
-            replace: If True (default), remove any existing OCR elements before
-                    adding new ones. If False, add new OCR elements to existing ones.
-            options: An engine-specific options object (e.g., EasyOCROptions) or dict
-                     containing parameters specific to the chosen engine.
-            pages: An iterable of 0-based page indices (list, range, tuple),
-                   a slice object, or None to process all pages.
+            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr', 'surya')
+            languages: List of language codes for the selected engine
+            min_confidence: Minimum confidence threshold for detected text
+            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps')
+            resolution: DPI resolution to render page images before OCR
+            apply_exclusions: Whether to mask excluded areas for OCR
+            detect_only: If True, only detect text bounding boxes, don't OCR
+            replace: Whether to replace existing OCR elements
+            options: Engine-specific options object or dict
+            pages: Page indices to process or None for all pages
 
         Returns:
             Self for method chaining.
-
-        Raises:
-            ValueError: If page indices are invalid.
-            TypeError: If 'options' is not compatible with the engine.
-            RuntimeError: If the OCRManager or selected engine is not available.
         """
         if not self._ocr_manager:
             logger.error("OCRManager not available. Cannot apply OCR.")
-            # Or raise RuntimeError("OCRManager not initialized.")
             return self
 
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
-        # --- Determine Target Pages (unchanged) ---
+        
         target_pages: List[Page] = []
         if pages is None:
             target_pages = self._pages
         elif isinstance(pages, slice):
             target_pages = self._pages[pages]
-        elif hasattr(pages, "__iter__"):  # Check if it's iterable (list, range, tuple, etc.)
+        elif hasattr(pages, "__iter__"):
             try:
                 target_pages = [self._pages[i] for i in pages]
             except IndexError:
@@ -321,28 +273,24 @@ class PDF:
 
         page_numbers = [p.number for p in target_pages]
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
-        # --- Determine Rendering Resolution ---
-        # Priority: 1. direct `resolution` arg, 2. PDF config, 3. default 150
-        final_resolution = resolution  # Use direct arg if provided
+        
+        final_resolution = resolution
         if final_resolution is None:
             final_resolution = getattr(self, "_config", {}).get("resolution", 150)
 
         logger.debug(f"Using OCR image rendering resolution: {final_resolution} DPI")
 
-        # --- Render Images for Batch ---
         images_pil: List[Image.Image] = []
-        page_image_map: List[Tuple[Page, Image.Image]] = []  # Store page and its image
+        page_image_map: List[Tuple[Page, Image.Image]] = []
         logger.info(
             f"[{thread_id}] Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})..."
         )
-        failed_page_num = "unknown"  # Keep track of potentially failing page
+        failed_page_num = "unknown"
         render_start_time = time.monotonic()
         try:
-            # Wrap page rendering loop with the selected tqdm class for inner progress, leave=False for nesting
             for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
-                failed_page_num = page.number  # Update current page number in case of error
+                failed_page_num = page.number
                 logger.debug(f"  Rendering page {page.number} (index {page.index})...")
-                # Use the determined final_resolution and apply exclusions if requested
                 to_image_kwargs = {
                     "resolution": final_resolution,
                     "include_highlights": False,
@@ -351,10 +299,9 @@ class PDF:
                 img = page.to_image(**to_image_kwargs)
                 if img is None:
                     logger.error(f"  Failed to render page {page.number} to image.")
-                    # Decide how to handle: skip page, raise error? For now, skip.
-                    continue  # Skip this page if rendering failed
+                    continue
                 images_pil.append(img)
-                page_image_map.append((page, img))  # Store pair
+                page_image_map.append((page, img))
         except Exception as e:
             logger.error(f"Failed to render one or more pages for batch OCR: {e}", exc_info=True)
             raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
@@ -365,28 +312,23 @@ class PDF:
             logger.error("No images were successfully rendered for batch OCR.")
             return self
 
-        # --- Prepare Arguments for Manager ---
-        # Pass common args directly, engine-specific via options
         manager_args = {
             "images": images_pil,
             "engine": engine,
             "languages": languages,
-            "min_confidence": min_confidence,  # Use the renamed parameter
+            "min_confidence": min_confidence,
             "device": device,
             "options": options,
             "detect_only": detect_only,
         }
-        # Filter out None values so manager can use its defaults
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
-        # --- Call OCR Manager for Batch Processing ---
         ocr_call_args = {k:v for k,v in manager_args.items() if k!='images'}
         logger.info(
             f"[{thread_id}] Calling OCR Manager for {self.path} with args: { ocr_call_args } ..."
         )
         ocr_start_time = time.monotonic()
         try:
-            # Manager's apply_ocr signature needs to accept common args directly
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
             if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
@@ -405,7 +347,6 @@ class PDF:
         ocr_end_time = time.monotonic()
         logger.debug(f"[{thread_id}] OCR Manager call finished for {self.path} (Duration: {ocr_end_time - ocr_start_time:.2f}s)")
 
-        # --- Distribute Results and Add Elements to Pages (unchanged) ---
         logger.info("Adding OCR results to respective pages...")
         total_elements_added = 0
         for i, (page, img) in enumerate(page_image_map):
@@ -418,7 +359,6 @@ class PDF:
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
             try:
-                # Remove existing OCR elements if replace is True
                 if manager_args.get("replace", True) and hasattr(page, "_element_mgr"):
                     page._element_mgr.remove_ocr_elements()
                 
@@ -457,21 +397,16 @@ class PDF:
         Returns:
             Self for method chaining
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
-        # Store region with its name at PDF level
         region_data = (region_func, name)
         self._regions.append(region_data)
 
-        # Apply this region to all pages
         for page in self._pages:
             try:
-                # Call the function to get the region for this specific page
                 region_instance = region_func(page)
                 if region_instance and isinstance(region_instance, Region):
-                    # If a valid region is returned, add it to the page
                     page.add_region(region_instance, name=name, source="named")
                 elif region_instance is not None:
                     logger.warning(
@@ -724,31 +659,23 @@ class PDF:
             # Would need logic to detect and merge related tables
         return all_tables
 
-    # --- New Method: save_searchable ---
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
         """
         Saves the PDF with an OCR text layer, making content searchable.
 
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
-        Note: OCR must have been applied to the pages beforehand
-              (e.g., using pdf.apply_ocr()).
-
         Args:
             output_path: Path to save the searchable PDF.
             dpi: Resolution for rendering and OCR overlay (default 300).
             **kwargs: Additional keyword arguments passed to the exporter.
         """
-        # Import moved here, assuming it's always available now
         from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 
-        # Convert pathlib.Path to string if necessary
         output_path_str = str(output_path)
 
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
-
-    # --- End New Method ---
 
     def ask(
         self,
@@ -1058,23 +985,18 @@ class PDF:
 
     def __len__(self) -> int:
         """Return the number of pages in the PDF."""
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
-            # Return 0 or raise error if not fully initialized? Let's return 0.
             return 0
         return len(self._pages)
 
-    def __getitem__(self, key) -> Union[Page, "PageCollection"]:  # Return PageCollection for slice
+    def __getitem__(self, key) -> Union[Page, "PageCollection"]:
         """Access pages by index or slice."""
-        # Check if self._pages has been initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not initialized yet.")
         if isinstance(key, slice):
-            # Return a PageCollection slice
             from natural_pdf.elements.collections import PageCollection
-
             return PageCollection(self._pages[key])
-        # Check index bounds before accessing
+            
         if isinstance(key, int):
             if 0 <= key < len(self._pages):
                 return self._pages[key]
@@ -1094,7 +1016,6 @@ class PDF:
             finally:
                 self._pdf = None
 
-        # Clean up temporary file if it exists
         if hasattr(self, "_temp_file") and self._temp_file is not None:
             temp_file_path = None
             try:
@@ -1119,3 +1040,112 @@ class PDF:
     # --- Indexable Protocol Methods --- Needed for search/sync
     def get_id(self) -> str:
         return self.path
+
+    # --- Classification Methods --- #
+
+    def classify_pages(
+        self,
+        categories: List[str],
+        model: str = "text",
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        **kwargs,
+    ) -> "PDF":
+        """
+        Classifies specified pages (or all pages) of the PDF using batch processing.
+
+        Args:
+            categories: A list of string category names.
+            model: Model identifier ('text', 'vision', or specific HF ID).
+            pages: An iterable of 0-based page indices, slice, or None for all pages.
+            **kwargs: Additional arguments passed to the ClassificationManager.
+
+        Returns:
+            Self for method chaining.
+        """
+        if not categories:
+            raise ValueError("Categories list cannot be empty.")
+
+        manager = self._classification_manager
+        if not manager:
+             try:
+                 from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
+                 if not _CLASSIFICATION_AVAILABLE:
+                     raise ImportError("Classification dependencies missing.")
+             except ImportError:
+                  raise ImportError(
+                     "Classification dependencies missing. "
+                     "Install with: pip install \"natural-pdf[classification]\""
+                  )
+             raise ClassificationError("ClassificationManager not initialized on PDF object.")
+
+        target_pages: List[Page] = []
+        if pages is None:
+            target_pages = self._pages
+        elif isinstance(pages, slice):
+            target_pages = self._pages[pages]
+        elif hasattr(pages, "__iter__"):
+            try:
+                target_pages = [self._pages[i] for i in pages]
+            except IndexError:
+                raise ValueError("Invalid page index provided in 'pages' iterable.")
+            except TypeError:
+                 raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+        else:
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+
+        if not target_pages:
+            logger.warning("No pages selected for classification.")
+            return self
+
+        engine_type = manager.infer_engine_type(model)
+        logger.info(f"Classifying {len(target_pages)} PDF pages using model '{model}' (engine: {engine_type})")
+
+        page_contents = []
+        pages_to_classify = []
+        logger.debug(f"Gathering content for {len(target_pages)} pages...")
+        for page in target_pages:
+            try:
+                content = page._get_classification_content(engine_type, **kwargs)
+                page_contents.append(content)
+                pages_to_classify.append(page)
+            except ValueError as e:
+                logger.warning(f"Skipping page {page.number}: Cannot get content for classification - {e}")
+            except Exception as e:
+                logger.warning(f"Skipping page {page.number}: Error getting classification content - {e}")
+
+        if not page_contents:
+             logger.warning("No content could be gathered from pages for batch classification.")
+             return self
+        logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
+
+        min_confidence = kwargs.pop('min_confidence', 0.0)
+
+        try:
+            batch_results = manager.classify_batch(
+                item_contents=page_contents,
+                categories=categories,
+                model_id=model,
+                engine_type=engine_type,
+                min_confidence=min_confidence,
+                **kwargs,
+            )
+        except Exception as e:
+             logger.error(f"Batch classification failed: {e}", exc_info=False)
+             raise ClassificationError(f"Batch classification failed: {e}") from e
+
+        if len(batch_results) != len(pages_to_classify):
+             logger.error(f"Mismatch between number of results ({len(batch_results)}) and classified pages ({len(pages_to_classify)}). Cannot reliably assign results.")
+             return self
+
+        logger.debug(f"Distributing {len(batch_results)} results to pages...")
+        for page, result_dict in zip(pages_to_classify, batch_results):
+             try:
+                 metadata = page._get_metadata_storage()
+                 metadata['classification'] = result_dict
+             except Exception as e:
+                 logger.warning(f"Failed to store classification results in metadata for page {page.number}: {e}")
+
+        logger.info("Finished classifying selected PDF pages using batch processing.")
+        return self
+
+    # --- End Classification Methods --- #

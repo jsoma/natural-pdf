@@ -132,6 +132,25 @@ if result.get("found", False):
 
 [Learn about Document QA →](document-qa/index.ipynb)
 
+### Classify Pages and Regions
+
+Categorize pages or specific regions based on their content using text or vision models.
+
+**Note:** Requires `pip install "natural-pdf[classification]"`
+
+```python
+# Classify a page based on text
+categories = ["invoice", "scientific article", "presentation"]
+page.classify(categories=categories, model="text")
+print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
+
+
+# Classify a page based on what it looks like
+categories = ["invoice", "scientific article", "presentation"]
+page.classify(categories=categories, model="vision")
+print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
+```
+
 ### Visualize Your Work
 
 Debug and understand your extractions visually.

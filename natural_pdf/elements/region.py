@@ -13,6 +13,11 @@ from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_t
 
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 
+# --- Classification Imports --- #
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager # Keep for type hint
+# --- End Classification Imports --- #
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.text import TextElement
@@ -27,7 +32,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Region(DirectionalMixin):
+class Region(DirectionalMixin, ClassificationMixin):
     """
     Represents a rectangular region on a page.
     """
@@ -56,6 +61,10 @@ class Region(DirectionalMixin):
         self._page_range = None
         self.start_element = None
         self.end_element = None
+
+        # --- ADDED --- Metadata store for mixins
+        self.metadata: Dict[str, Any] = {}
+        # --- END ADDED ---
 
         # Standard attributes for all elements
         self.object_type = "region"  # For selector compatibility
@@ -1760,3 +1769,62 @@ class Region(DirectionalMixin):
         )
 
         return self  # Return self for chaining
+
+    # --- Classification Mixin Implementation --- #
+    def _get_classification_manager(self) -> "ClassificationManager":
+        if not hasattr(self.page, 'pdf') or not hasattr(self.page.pdf, '_classification_manager'):
+            raise AttributeError("ClassificationManager not accessible via page.pdf._classification_manager")
+        return self.page.pdf._classification_manager
+
+    def _get_classification_content(self, model_type: str) -> Union[str, "Image"]: # Use "Image" for lazy import
+        if model_type == 'text':
+            text_content = self.extract_text(layout=False) # Simple join for classification
+            if not text_content or text_content.isspace():
+                raise ValueError("Cannot classify region with 'text' model: No text content found.")
+            return text_content
+        elif model_type == 'vision':
+            # Get resolution from manager/kwargs if possible, else default
+            # We access manager via the method to ensure it's available
+            manager = self._get_classification_manager()
+            default_resolution = 150 # Manager doesn't store default res, set here
+            # Note: classify() passes resolution via **kwargs if user specifies
+            resolution = kwargs.get('resolution', default_resolution) if 'kwargs' in locals() else default_resolution
+
+            img = self.to_image(
+                resolution=resolution,
+                include_highlights=False, # No highlights for classification input
+                crop_only=True # Just the region content
+            )
+            if img is None:
+                raise ValueError("Cannot classify region with 'vision' model: Failed to render image.")
+            return img
+        else:
+            raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    def _get_metadata_storage(self) -> Dict[str, Any]:
+        # Ensure metadata exists
+        if not hasattr(self, 'metadata') or self.metadata is None:
+            self.metadata = {}
+        return self.metadata
+
+    @property
+    def category(self) -> Optional[str]:
+        """Returns the top category label from the most recent classification, or None."""
+        results = self.classification_results
+        if results and results.get('scores'):
+            return results['scores'][0].get('label')
+        return None
+
+    @property
+    def category_confidence(self) -> Optional[float]:
+        """Returns the top category confidence score from the most recent classification, or None."""
+        results = self.classification_results
+        if results and results.get('scores'):
+            return results['scores'][0].get('confidence')
+        return None
+
+    @property
+    def classification_results(self) -> Optional[Dict]:
+        """Returns the full results dictionary from the most recent classification, or None."""
+        return self._get_metadata_storage().get('classification')
+    # --- End Classification Mixin Implementation --- #

@@ -1251,6 +1251,83 @@ class ElementCollection(Generic[T]):
                 
         return removed_count
 
+    # --- Classification Method --- #
+    def classify_all(
+        self,
+        categories: List[str],
+        model: str = "text",
+        # Note: max_workers for element processing is complex due to potential GIL issues
+        #       and overhead. Sequential processing is often sufficient here.
+        # max_workers: Optional[int] = None,
+        **kwargs,
+    ) -> "ElementCollection":
+        """
+        Classify all elements in the collection that support classification.
+
+        This method uses the unified `classify_all` approach, iterating through
+        elements and calling `element.classify()` if available.
+        It displays a progress bar tracking individual elements.
+
+        Args:
+            categories: A list of string category names.
+            model: Model identifier ('text', 'vision', or specific HF ID).
+            **kwargs: Additional arguments passed down to `element.classify()`
+                      (e.g., device, confidence_threshold, resolution).
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If categories list is empty.
+            ClassificationError: If classification fails for any element (will stop processing).
+            ImportError: If classification dependencies are missing.
+        """
+        if not categories:
+            raise ValueError("Categories list cannot be empty.")
+
+        # Identify classifiable elements
+        classifiable_elements = [
+            el for el in self._elements if hasattr(el, 'classify') and callable(el.classify)
+        ]
+
+        if not classifiable_elements:
+            logger.warning("No classifiable elements (Page, Region) found in this collection.")
+            return self
+
+        logger.info(f"Starting classification for {len(classifiable_elements)} elements in collection (model: '{model}')...")
+
+        # Initialize progress bar
+        progress_bar = tqdm(
+            total=len(classifiable_elements),
+            desc=f"Classifying Elements (model: {model})",
+            unit="element"
+        )
+
+        # Process elements sequentially
+        try:
+            for element in classifiable_elements:
+                try:
+                    element.classify(categories=categories, model=model, **kwargs)
+                    progress_bar.update(1)
+                except Exception as e:
+                    # Error logged by mixin/manager, log context here
+                    logger.error(f"Failed to classify element {element!r}: {e}", exc_info=False)
+                    progress_bar.close() # Stop progress on error
+                    # Re-raise to halt the process
+                    raise # Keep original error type (ValueError, ImportError, ClassificationError)
+
+            logger.info("Finished classifying elements in the collection.")
+
+        finally:
+             # Ensure progress bar is closed
+             if not progress_bar.disable and progress_bar.n < progress_bar.total:
+                 progress_bar.close()
+             elif progress_bar.disable is False:
+                  progress_bar.close()
+
+        return self
+    # --- End Classification Method --- #
+
 
 class PageCollection(Generic[P]):
     """

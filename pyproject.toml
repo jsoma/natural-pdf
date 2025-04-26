@@ -64,6 +64,12 @@ llm = [
     "pydantic",    # For response schema definition / structured output
 ]
 
+classification = [
+    "sentence-transformers", # Explicitly add for text models
+    "timm",                # Often needed for vision models via transformers
+    "natural-pdf[core-ml]", # Include torch, transformers, etc.
+]
+
 test = [
     "pytest",
 ]
@@ -93,6 +99,7 @@ all = [
     "natural-pdf[ocr-export]",
     "natural-pdf[docling]",
     "natural-pdf[llm]",
+    "natural-pdf[classification]",
     "natural-pdf[test]"
 ]
 

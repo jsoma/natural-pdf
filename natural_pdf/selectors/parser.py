@@ -100,11 +100,20 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     selector = selector.strip()
 
+    # --- NEW: Handle wildcard selector explicitly ---
+    if selector == "*":
+        # Wildcard matches any type, already the default.
+        # Clear selector so the loop doesn't run and error out.
+        selector = "" 
+    # --- END NEW ---
+
     # 1. Extract type (optional, at the beginning)
-    type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
-    if type_match:
-        result["type"] = type_match.group(1).lower()
-        selector = selector[len(type_match.group(0)):].strip()
+    # Only run if selector wasn't '*'
+    if selector: 
+        type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
+        if type_match:
+            result["type"] = type_match.group(1).lower()
+            selector = selector[len(type_match.group(0)):].strip()
 
     # Regexes for parts at the START of the remaining string
     # Attribute: Starts with [, ends with ], content is non-greedy non-] chars

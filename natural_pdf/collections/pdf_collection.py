@@ -505,3 +505,111 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 #     logger.debug(f"Skipping empty page {page.page_number} from PDF '{pdf.path}'.")
                 #     continue
                 yield page
+
+    # --- Classification Method --- #
+    def classify_all(
+        self,
+        categories: List[str],
+        model: str = "text",
+        max_workers: Optional[int] = None,
+        **kwargs,
+    ) -> "PDFCollection":
+        """
+        Classify all pages across all PDFs in the collection, potentially in parallel.
+
+        This method uses the unified `classify_all` approach, delegating page
+        classification to each PDF's `classify_pages` method.
+        It displays a progress bar tracking individual pages.
+
+        Args:
+            categories: A list of string category names.
+            model: Model identifier ('text', 'vision', or specific HF ID).
+            max_workers: Maximum number of threads to process PDFs concurrently.
+                         If None or 1, processing is sequential.
+            **kwargs: Additional arguments passed down to `pdf.classify_pages` and
+                      subsequently to `page.classify` (e.g., device,
+                      confidence_threshold, resolution).
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If categories list is empty.
+            ClassificationError: If classification fails for any page (will stop processing).
+            ImportError: If classification dependencies are missing.
+        """
+        PDF = self._get_pdf_class()
+        if not categories:
+            raise ValueError("Categories list cannot be empty.")
+
+        logger.info(f"Starting classification for {len(self._pdfs)} PDFs in collection (model: '{model}')...")
+
+        # Calculate total pages for the progress bar
+        total_pages = sum(len(pdf.pages) for pdf in self._pdfs if pdf.pages)
+        if total_pages == 0:
+            logger.warning("No pages found in the PDF collection to classify.")
+            return self
+
+        progress_bar = tqdm(
+            total=total_pages,
+            desc=f"Classifying Pages (model: {model})",
+            unit="page"
+        )
+
+        # Worker function
+        def _process_pdf_classification(pdf: PDF):
+            thread_id = threading.current_thread().name
+            pdf_path = pdf.path
+            logger.debug(f"[{thread_id}] Starting classification process for: {pdf_path}")
+            start_time = time.monotonic()
+            try:
+                # Call classify_pages on the PDF, passing the progress callback
+                pdf.classify_pages(
+                    categories=categories,
+                    model=model,
+                    progress_callback=progress_bar.update,
+                    **kwargs
+                )
+                end_time = time.monotonic()
+                logger.debug(f"[{thread_id}] Finished classification for: {pdf_path} (Duration: {end_time - start_time:.2f}s)")
+                return pdf_path, None # Return path and no error
+            except Exception as e:
+                end_time = time.monotonic()
+                # Error is logged within classify_pages, but log summary here
+                logger.error(f"[{thread_id}] Failed classification process for {pdf_path} after {end_time - start_time:.2f}s: {e}", exc_info=False)
+                # Close progress bar immediately on error to avoid hanging
+                progress_bar.close()
+                # Re-raise the exception to stop the entire collection processing
+                raise
+
+        # Use ThreadPoolExecutor for parallel processing if max_workers > 1
+        try:
+            if max_workers is not None and max_workers > 1:
+                logger.info(f"Classifying PDFs in parallel with {max_workers} workers.")
+                futures = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="ClassifyWorker") as executor:
+                    for pdf in self._pdfs:
+                        futures.append(executor.submit(_process_pdf_classification, pdf))
+
+                    # Wait for all futures to complete (progress updated by callback)
+                    # Exceptions are raised by future.result() if worker failed
+                    for future in concurrent.futures.as_completed(futures):
+                         future.result() # Raise exception if worker failed
+
+            else: # Sequential processing
+                logger.info("Classifying PDFs sequentially.")
+                for pdf in self._pdfs:
+                    _process_pdf_classification(pdf)
+
+            logger.info("Finished classification across the collection.")
+
+        finally:
+             # Ensure progress bar is closed even if errors occurred elsewhere
+             if not progress_bar.disable and progress_bar.n < progress_bar.total:
+                 progress_bar.close()
+             elif progress_bar.disable is False:
+                  progress_bar.close()
+
+        return self
+
+    # --- End Classification Method --- #

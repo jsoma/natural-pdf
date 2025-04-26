@@ -51,10 +51,15 @@ from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveV
 from natural_pdf.qa import DocumentQA, get_qa_engine
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 
+# --- Classification Imports --- #
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager # For type hint
+# --- End Classification Imports --- #
+
 logger = logging.getLogger(__name__)
 
 
-class Page:
+class Page(ClassificationMixin):
     """
     Enhanced Page wrapper built on top of pdfplumber.Page.
 
@@ -77,6 +82,10 @@ class Page:
         self._index = index
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
+
+        # --- ADDED --- Metadata store for mixins
+        self.metadata: Dict[str, Any] = {}
+        # --- END ADDED ---
 
         # Region management
         self._regions = {
@@ -2166,3 +2175,41 @@ class Page:
         )
 
         return self # Return self for chaining
+
+    # --- Classification Mixin Implementation --- #
+    def _get_classification_manager(self) -> "ClassificationManager":
+        if not hasattr(self.pdf, '_classification_manager'):
+            raise AttributeError("ClassificationManager not accessible via pdf._classification_manager")
+        return self.pdf._classification_manager
+
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
+        if model_type == 'text':
+            text_content = self.extract_text(layout=False, use_exclusions=False) # Simple join, ignore exclusions for classification
+            if not text_content or text_content.isspace():
+                raise ValueError("Cannot classify page with 'text' model: No text content found.")
+            return text_content
+        elif model_type == 'vision':
+            # Get resolution from manager/kwargs if possible, else default
+            manager = self._get_classification_manager()
+            default_resolution = 150
+            # Access kwargs passed to classify method if needed
+            resolution = kwargs.get('resolution', default_resolution) if 'kwargs' in locals() else default_resolution
+
+            # Use to_image, ensuring no highlights interfere
+            img = self.to_image(
+                resolution=resolution,
+                include_highlights=False,
+                labels=False,
+                exclusions=None # Don't mask exclusions for classification input image
+            )
+            if img is None:
+                raise ValueError("Cannot classify page with 'vision' model: Failed to render image.")
+            return img
+        else:
+            raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    def _get_metadata_storage(self) -> Dict[str, Any]:
+        # Ensure metadata exists
+        if not hasattr(self, 'metadata') or self.metadata is None:
+            self.metadata = {}
+        return self.metadata

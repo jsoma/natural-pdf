@@ -6,16 +6,16 @@ Natural PDF includes OCR (Optical Character Recognition) to extract text from sc
 
 Natural PDF supports multiple OCR engines:
 
-| Feature              | EasyOCR                            | PaddleOCR                                | Surya OCR                             |
-|----------------------|------------------------------------|------------------------------------------|---------------------------------------|
-| **Installation**     | `natural-pdf[easyocr]`             | `natural-pdf[paddle]`                    | `natural-pdf[surya]`                  |
-| **Primary Strength** | Good general performance, simpler  | Excellent Asian language, speed        | High accuracy, multilingual lines     |
-| **Speed**            | Moderate                           | Fast                                     | Moderate (GPU recommended)            |
-| **Memory Usage**     | Higher                             | Efficient                                | Higher (GPU recommended)            |
-| **Paragraph Detect** | Yes (via option)                   | No                                       | No (focuses on lines)                 |
-| **Handwritten**      | Better support                     | Limited                                  | Limited                               |
-| **Small Text**       | Moderate                           | Good                                     | Good                                  |
-| **When to Use**      | General documents, handwritten text| Asian languages, speed-critical tasks    | Highest accuracy needed, line-level   |
+| Feature              | EasyOCR                            | PaddleOCR                                | Surya OCR                             | Gemini (Layout + potential OCR)      |
+|----------------------|------------------------------------|------------------------------------------|---------------------------------------|--------------------------------------|
+| **Installation**     | `natural-pdf[easyocr]`             | `natural-pdf[paddle]`                    | `natural-pdf[surya]`                  | `natural-pdf[gemini]`                |
+| **Primary Strength** | Good general performance, simpler  | Excellent Asian language, speed        | High accuracy, multilingual lines     | Advanced layout analysis (via API) |
+| **Speed**            | Moderate                           | Fast                                     | Moderate (GPU recommended)            | API Latency                          |
+| **Memory Usage**     | Higher                             | Efficient                                | Higher (GPU recommended)            | N/A (API)                            |
+| **Paragraph Detect** | Yes (via option)                   | No                                       | No (focuses on lines)                 | Yes (Layout model)                 |
+| **Handwritten**      | Better support                     | Limited                                  | Limited                               | Potentially (API model dependent)    |
+| **Small Text**       | Moderate                           | Good                                     | Good                                  | Potentially (API model dependent)    |
+| **When to Use**      | General documents, handwritten text| Asian languages, speed-critical tasks    | Highest accuracy needed, line-level   | Complex layouts, API integration     |
 
 ## Basic OCR Usage
 
@@ -53,6 +53,7 @@ For advanced, engine-specific settings, use the Options classes:
 
 ```python
 from natural_pdf.ocr import PaddleOCROptions, EasyOCROptions, SuryaOCROptions
+from natural_pdf.analyzers.layout import GeminiOptions # Note: Gemini is primarily layout
 
 # --- Configure PaddleOCR ---
 paddle_opts = PaddleOCROptions(
@@ -90,6 +91,25 @@ surya_opts = SuryaOCROptions(
     # set via environment variables (see note below).
 )
 ocr_elements = page.apply_ocr(engine='surya', options=surya_opts)
+
+# --- Configure Gemini (as layout analyzer, can be used with OCR) ---
+# Gemini requires API key (GOOGLE_API_KEY environment variable)
+# Note: Gemini is used via apply_layout, but its options can influence OCR if used together
+gemini_opts = GeminiOptions(
+    prompt="Extract text content and identify document elements.",
+    # model_name="gemini-1.5-flash-latest" # Specify a model if needed
+    # See GeminiOptions documentation for more parameters
+)
+# Typically used like this (layout first, then potentially OCR on regions)
+layout_elements = page.apply_layout(engine='gemini', options=gemini_opts)
+# If Gemini also performed OCR or you want to OCR layout regions:
+# ocr_elements = some_region.apply_ocr(...)
+
+# It can sometimes be used directly if the model supports it, but less common:
+# try:
+#     ocr_elements = page.apply_ocr(engine='gemini', options=gemini_opts)
+# except Exception as e:
+#     print(f"Gemini might not be configured for direct OCR via apply_ocr: {e}")
 ```
 
 ## Applying OCR Directly
@@ -105,6 +125,9 @@ print(f"Found {len(ocr_elements)} text elements via OCR")
 title = page.find('text:contains("Title")')
 content_region = title.below(height=300)
 region_ocr_elements = content_region.apply_ocr(engine='paddle', languages=['en'])
+
+# Note: Re-applying OCR to the same page or region will remove any
+# previously generated OCR elements for that area before adding the new ones.
 ```
 
 ## OCR Engines
@@ -190,15 +213,39 @@ page.correct_ocr(correct)
 # You're done!
 ```
 
-## Debugging OCR
+## Interactive OCR Correction / Debugging
 
-```python
-from natural_pdf.utils.packaging import create_correction_task_package
+Natural PDF includes a utility to package a PDF and its detected elements, along with an interactive web application (SPA) for reviewing and correcting OCR results.
 
-create_correction_task_package(pdf, "original.zip", overwrite=True)
-```
+1.  **Package the data:**
+    Use the `create_correction_task_package` function to create a zip file containing the necessary data for the SPA.
 
-This will at *some point* be official-ized, but for now you can look at `templates/spa` and see the correction package.
+    ```python
+    from natural_pdf.utils.packaging import create_correction_task_package
+    
+    # Assuming 'pdf' is your loaded PDF object after running apply_ocr or apply_layout
+    create_correction_task_package(pdf, "correction_package.zip", overwrite=True)
+    ```
+
+2.  **Run the SPA:**
+    The correction SPA is bundled with the library. You need to run a simple web server from the directory containing the SPA's files. The location of these files might depend on your installation, but you can typically find them within the installed `natural_pdf` package directory under `templates/spa`.
+
+    *Example using Python's built-in server (run from your terminal):*
+
+    ```bash
+    # Find the path to the installed natural_pdf package
+    # (This command might vary depending on your environment)
+    NATURAL_PDF_PATH=$(python -c "import site; print(site.getsitepackages()[0])")/natural_pdf
+    
+    # Navigate to the SPA directory
+    cd $NATURAL_PDF_PATH/templates/spa
+    
+    # Start the web server (e.g., on port 8000)
+    python -m http.server 8000
+    ```
+
+3.  **Use the SPA:**
+    Open your web browser to `http://localhost:8000`. The SPA should load, allowing you to drag and drop the `correction_package.zip` file you created into the application to view and edit the OCR results.
 
 ## Next Steps
 
