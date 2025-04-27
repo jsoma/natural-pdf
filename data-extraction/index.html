@@ -766,9 +766,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#applying-to-regions-and-collections" class="md-nav__link">
+  <a href="#text-vs-vision" class="md-nav__link">
     <span class="md-ellipsis">
-      Applying to Regions and Collections
+      Text vs vision
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batch-and-bulk-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Batch and bulk extraction
     </span>
   </a>
   
@@ -1293,9 +1302,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#applying-to-regions-and-collections" class="md-nav__link">
+  <a href="#text-vs-vision" class="md-nav__link">
     <span class="md-ellipsis">
-      Applying to Regions and Collections
+      Text vs vision
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batch-and-bulk-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Batch and bulk extraction
     </span>
   </a>
   
@@ -1321,39 +1339,52 @@
 
 
 <h1 id="structured-data-extraction">Structured Data Extraction</h1>
-<p>Extracting specific, structured information (like invoice numbers, dates, or addresses) from documents often requires more than simple text extraction. Natural PDF integrates with Large Language Models (LLMs) via Pydantic schemas to achieve this.</p>
+<p>Extracting specific, structured information (like invoice numbers, dates, or addresses) from documents often requires more than simple text extraction. Natural PDF integrates with LLMs to pull out <a href="https://platform.openai.com/docs/guides/structured-outputs">structured data</a>.</p>
+<p>You need to install more than just the tiny baby default <code>natural_pdf</code> for this:
+<div class="highlight"><pre><span></span><code># Install just the LLM portions
+pip install &quot;natural_pdf[llm]&quot;
+
+# Install eeeeeverything
+pip install &quot;natural_pdf[all]&quot;
+</code></pre></div></p>
 <h2 id="introduction">Introduction</h2>
 <p>This feature allows you to define the exact data structure you want using a Pydantic model and then instruct an LLM to populate that structure based on the content of a PDF element (like a <code>Page</code> or <code>Region</code>).</p>
+<blockquote>
+<p>Not sure how to write a Pydantic schema? Just ask an LLM! "Write me a Pydantic schema to pull out an invoice number (an integer), a company name (string) and a date (string)." It'll go fine.</p>
+</blockquote>
 <h2 id="basic-extraction">Basic Extraction</h2>
 <ol>
 <li><strong>Define a Schema:</strong> Create a Pydantic model for your desired data.</li>
-<li><strong>Extract:</strong> Use the <code>.extract()</code> method on a <code>PDF</code>, <code>Page</code>, or <code>Region</code> object.</li>
-<li><strong>Access:</strong> Use the <code>.extracted()</code> method to retrieve the results.</li>
+<li><strong>Extract:</strong> Use <code>.extract()</code> on a <code>PDF</code>, <code>Page</code>, or <code>Region</code> object.</li>
+<li><strong>Access:</strong> Use <code>.extracted()</code> to retrieve the results.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span> <span class="c1"># Example client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
 
-<span class="c1"># Example: Initialize your LLM client</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span> 
+<span class="c1"># Initialize your LLM client</span>
+<span class="c1"># Anything OpenAI-compatible works!</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;ANTHROPIC_API_KEY&quot;</span><span class="p">,</span>  <span class="c1"># Your Anthropic API key</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://api.anthropic.com/v1/&quot;</span>  <span class="c1"># Anthropic&#39;s API endpoint</span>
+<span class="p">)</span>
 
 <span class="c1"># Load the PDF</span>
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;path/to/your/document.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="c1"># 1. Define your schema</span>
+<span class="c1"># Define your schema</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvoiceInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">invoice_number</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;The main invoice identifier&quot;</span><span class="p">)</span>
     <span class="n">total_amount</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;The final amount due&quot;</span><span class="p">)</span>
     <span class="n">company_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The name of the issuing company&quot;</span><span class="p">)</span>
 
-<span class="c1"># 2. Extract data (using default analysis_key=&quot;default-structured&quot;)</span>
+<span class="c1"># Extract data</span>
 <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="n">InvoiceInfo</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span> 
 
-<span class="c1"># 3. Access the results</span>
 <span class="c1"># Access the full result object</span>
 <span class="n">full_data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extracted</span><span class="p">()</span> 
-<span class="nb">print</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span> 
+<span class="nb">print</span><span class="p">(</span><span class="n">full_data</span><span class="p">)</span>
 
 <span class="c1"># Access a single field</span>
 <span class="n">inv_num</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="s1">&#39;invoice_number&#39;</span><span class="p">)</span>
@@ -1366,14 +1397,20 @@
 <li>Attempting to extract using an existing <code>analysis_key</code> will raise an error unless <code>overwrite=True</code> is specified.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="c1"># Extract using a specific key</span>
-<span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">InvoiceInfo</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;invoice_header&quot;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">InvoiceInfo</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;invoice_header&quot;</span><span class="p">)</span>
 
 <span class="c1"># Access using the specific key</span>
 <span class="n">header_data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;invoice_header&quot;</span><span class="p">)</span> 
 <span class="n">company</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="s1">&#39;company_name&#39;</span><span class="p">,</span> <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;invoice_header&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="applying-to-regions-and-collections">Applying to Regions and Collections</h2>
-<p>The <code>.extract()</code> and <code>.extracted()</code> methods work identically on <code>Region</code> objects, allowing you to target specific areas of a page for structured data extraction.</p>
+<h2 id="text-vs-vision">Text vs vision</h2>
+<p>When sending a page (or a region or etc) to an LLM, you can choose either <code>using='text'</code> (default) or <code>using='vision'</code>.</p>
+<ul>
+<li><code>text</code> sends the text, somewhat respecting layout using <code>.extract_text(layout=True)</code></li>
+<li><code>vision</code> sends an image of the page with <code>.to_image(resolution=72)</code> (no highlights or labels)</li>
+</ul>
+<h2 id="batch-and-bulk-extraction">Batch and bulk extraction</h2>
+<p>If you have a lot of pages or a lot of PDFs or a lot of anything, the <code>.extract()</code> and <code>.extracted()</code> methods work identically on most parts of a PDF - regions, pages, collections of pdfs, etc, allowing a lot of flexibility in what you analyze.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Assuming &#39;header_region&#39; is a Region object you defined</span>
 <span class="n">header_region</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">InvoiceInfo</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
 <span class="n">company</span> <span class="o">=</span> <span class="n">header_region</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="s1">&#39;company_name&#39;</span><span class="p">)</span>
@@ -1381,15 +1418,16 @@
 <p>Furthermore, you can apply extraction to collections of elements (like <code>pdf.pages</code>, or the result of <code>pdf.find_all(...)</code>) using the <code>.apply()</code> method. This iterates through the collection and calls <code>.extract()</code> on each item.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Example: Extract InvoiceInfo from the first 5 pages</span>
 <span class="n">results</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-    <span class="s1">&#39;extract&#39;</span><span class="p">,</span> 
-    <span class="n">schema</span><span class="o">=</span><span class="n">InvoiceInfo</span><span class="p">,</span> 
-    <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> 
-    <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;page_invoice_info&quot;</span><span class="p">,</span> <span class="c1"># Use a specific key for batch results</span>
-    <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span> <span class="c1"># Allow overwriting if run multiple times</span>
+    <span class="k">lambda</span> <span class="n">page</span><span class="p">:</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span>
+        <span class="n">schema</span><span class="o">=</span><span class="n">InvoiceInfo</span><span class="p">,</span> 
+        <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">,</span> 
+        <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;page_invoice_info&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="p">)</span>
 
 <span class="c1"># Access results for the first page in the collection</span>
-<span class="n">first_page_company</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="s1">&#39;company_name&#39;</span><span class="p">,</span> <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;page_invoice_info&quot;</span><span class="p">)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">extracted</span><span class="p">(</span><span class="s1">&#39;company_name&#39;</span><span class="p">,</span> <span class="n">analysis_key</span><span class="o">=</span><span class="s2">&quot;page_invoice_info&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p>This provides a powerful way to turn unstructured PDF content into structured, usable data.</p>
 
