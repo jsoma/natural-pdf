@@ -64,6 +64,8 @@ class Region(DirectionalMixin, ClassificationMixin):
 
         # --- ADDED --- Metadata store for mixins
         self.metadata: Dict[str, Any] = {}
+        # --- NEW --- Central registry for analysis results
+        self.analyses: Dict[str, Any] = {} 
         # --- END ADDED ---
 
         # Standard attributes for all elements
@@ -1772,11 +1774,16 @@ class Region(DirectionalMixin, ClassificationMixin):
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
-        if not hasattr(self.page, 'pdf') or not hasattr(self.page.pdf, '_classification_manager'):
-            raise AttributeError("ClassificationManager not accessible via page.pdf._classification_manager")
-        return self.page.pdf._classification_manager
+        if not hasattr(self, 'page') or not hasattr(self.page, 'pdf') or not hasattr(self.page.pdf, 'get_manager'):
+             raise AttributeError("ClassificationManager cannot be accessed: Parent Page, PDF, or get_manager method missing.")
+        try:
+             # Use the PDF's manager registry accessor via page
+             return self.page.pdf.get_manager('classification')
+        except (ValueError, RuntimeError, AttributeError) as e:
+             # Wrap potential errors from get_manager for clarity
+             raise AttributeError(f"Failed to get ClassificationManager from PDF via Page: {e}") from e
 
-    def _get_classification_content(self, model_type: str) -> Union[str, "Image"]: # Use "Image" for lazy import
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
         if model_type == 'text':
             text_content = self.extract_text(layout=False) # Simple join for classification
             if not text_content or text_content.isspace():
@@ -1807,24 +1814,4 @@ class Region(DirectionalMixin, ClassificationMixin):
             self.metadata = {}
         return self.metadata
 
-    @property
-    def category(self) -> Optional[str]:
-        """Returns the top category label from the most recent classification, or None."""
-        results = self.classification_results
-        if results and results.get('scores'):
-            return results['scores'][0].get('label')
-        return None
-
-    @property
-    def category_confidence(self) -> Optional[float]:
-        """Returns the top category confidence score from the most recent classification, or None."""
-        results = self.classification_results
-        if results and results.get('scores'):
-            return results['scores'][0].get('confidence')
-        return None
-
-    @property
-    def classification_results(self) -> Optional[Dict]:
-        """Returns the full results dictionary from the most recent classification, or None."""
-        return self._get_metadata_storage().get('classification')
     # --- End Classification Mixin Implementation --- #

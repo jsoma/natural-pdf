@@ -36,8 +36,8 @@ print(f"Confidence: {page.category_confidence:.3f}")
 *   `model` (optional): Specifies which classification model or strategy to use. Defaults to `"text"`.
     *   `"text"`: Uses a text-based model (default: `facebook/bart-large-mnli`) suitable for classifying based on language content.
     *   `"vision"`: Uses a vision-based model (default: `openai/clip-vit-base-patch32`) suitable for classifying based on visual layout and appearance.
-    *   Specific Model ID: You can provide a Hugging Face model ID (e.g., `"google/siglip-base-patch16-224"`, `"MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"`) compatible with zero-shot text or image classification. The library attempts to infer whether it's text or vision, but you might need `engine_type`.
-*   `engine_type` (optional): Explicitly set to `"text"` or `"vision"` if the automatic inference based on the `model` ID fails or is ambiguous.
+    *   Specific Model ID: You can provide a Hugging Face model ID (e.g., `"google/siglip-base-patch16-224"`, `"MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"`) compatible with zero-shot text or image classification. The library attempts to infer whether it's text or vision, but you might need `using`.
+*   `using` (optional): Explicitly set to `"text"` or `"vision"` if the automatic inference based on the `model` ID fails or is ambiguous.
 *   `min_confidence` (optional): A float between 0.0 and 1.0. Only categories with a confidence score greater than or equal to this threshold will be included in the results (default: 0.0).
 
 ## Text vs. Vision Classification

@@ -1,145 +1,149 @@
 import logging
-import time
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
-from PIL.Image import Image
+# Assuming PIL is installed as it's needed for vision
+try:
+     from PIL import Image
+except ImportError:
+     Image = None # type: ignore
+
+# Import result classes
+from .results import ClassificationResult # Assuming results.py is in the same dir
 
 if TYPE_CHECKING:
-    from natural_pdf.classification.manager import ClassificationManager
+    # Avoid runtime import cycle
+    from natural_pdf.core.page import Page
+    from natural_pdf.elements.region import Region
+    from .manager import ClassificationManager
 
 logger = logging.getLogger(__name__)
 
-class ClassificationError(Exception):
-    """Custom exception for classification failures."""
-    pass
-
-class ClassificationMixin(ABC):
+class ClassificationMixin:
     """
     Mixin class providing classification capabilities to Page and Region objects.
+    Relies on a ClassificationManager being accessible, typically via the parent PDF.
     """
 
-    @abstractmethod
+    # --- Abstract methods/properties required by the host class --- #
+    # These must be implemented by classes using this mixin (Page, Region)
+
     def _get_classification_manager(self) -> "ClassificationManager":
-        """Return the ClassificationManager instance."""
-        pass
+        """Should return the ClassificationManager instance."""
+        raise NotImplementedError
 
-    @abstractmethod
-    def _get_classification_content(self, model_type: str) -> Union[str, Image]:
-        """
-        Get the content suitable for the specified model type ('text' or 'vision').
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]:
+        """Should return the text content (str) or image (PIL.Image) for classification."""
+        raise NotImplementedError
 
-        Raises:
-            ValueError: If content cannot be generated.
-        """
-        pass
+    # Host class needs 'analyses' attribute initialized as Dict[str, Any]
+    # analyses: Dict[str, Any]
 
-    @abstractmethod
-    def _get_metadata_storage(self) -> Dict[str, Any]:
-        """Return the dictionary where classification results should be stored."""
-        pass
+    # --- End Abstract --- # 
 
     def classify(
         self,
         categories: List[str],
-        model: str = "text",
-        engine_type: Optional[str] = None,
+        model: Optional[str] = None, # Default handled by manager
+        using: Optional[str] = None, # Renamed parameter
         min_confidence: float = 0.0,
-        **kwargs,
-    ) -> Dict[str, Any]:
+        analysis_key: str = 'classification', # Default key
+        multi_label: bool = False,
+        **kwargs
+    ) -> "ClassificationMixin": # Return self for chaining
         """
-        Classify this object (Page or Region) into one of the provided categories.
+        Classifies this item (Page or Region) using the configured manager.
+
+        Stores the result in self.analyses[analysis_key]. If analysis_key is not
+        provided, it defaults to 'classification' and overwrites any previous
+        result under that key.
 
         Args:
             categories: A list of string category names.
-            model: Model identifier ('text', 'vision', or specific Hugging Face model ID).
-            engine_type: Explicitly specify 'text' or 'vision'. If None, it's inferred.
-            min_confidence: Minimum confidence score for a category to be included.
-            **kwargs: Additional keyword arguments passed to the ClassificationManager.
+            model: Model identifier (e.g., 'text', 'vision', HF ID). Defaults handled by manager.
+            using: Optional processing mode ('text' or 'vision'). If None, inferred by manager.
+            min_confidence: Minimum confidence threshold for results (0.0-1.0).
+            analysis_key: Key under which to store the result in `self.analyses`.
+                          Defaults to 'classification'.
+            multi_label: Whether to allow multiple labels (passed to HF pipeline).
+            **kwargs: Additional arguments passed to the ClassificationManager.
 
         Returns:
-            A dictionary containing the classification results.
-
-        Raises:
-            ImportError: If required classification dependencies are not installed.
-            ValueError: If categories list is empty, or content generation fails.
-            ClassificationError: If model loading or inference fails.
+            Self for method chaining.
         """
-        if not categories:
-            raise ValueError("Categories list cannot be empty.")
+        # Ensure analyses dict exists
+        if not hasattr(self, 'analyses') or self.analyses is None:
+             logger.warning("'analyses' attribute not found or is None. Initializing as empty dict.")
+             self.analyses = {}
 
         try:
             manager = self._get_classification_manager()
-        except AttributeError as e:
-             raise ClassificationError("Could not access classification manager.") from e
+            
+            # Determine the effective model ID and engine type
+            effective_model_id = model
+            inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
 
-        if not manager:
-             try:
-                 from natural_pdf.classification.manager import ClassificationManager
-                 raise ClassificationError("ClassificationManager is not available.")
-             except ImportError:
-                  raise ImportError(
-                     "Classification dependencies missing. "
-                     "Install with: pip install \"natural-pdf[classification]\""
-                  )
+            # If model was not provided, use the manager's default for the inferred engine type
+            if effective_model_id is None:
+                effective_model_id = manager.DEFAULT_TEXT_MODEL if inferred_using == 'text' else manager.DEFAULT_VISION_MODEL
+                logger.debug(f"No model provided, using default for mode '{inferred_using}': '{effective_model_id}'")
+            
+            # Get content based on the *final* determined engine type
+            content = self._get_classification_content(model_type=inferred_using, **kwargs)
 
-        if engine_type is None:
-            engine_type = manager.infer_engine_type(model)
-        elif engine_type not in ["text", "vision"]:
-            raise ValueError("engine_type must be 'text' or 'vision' if specified.")
+            # Manager now returns a ClassificationResult object
+            result_obj: ClassificationResult = manager.classify_item(
+                item_content=content,
+                categories=categories,
+                model_id=effective_model_id, # Pass the resolved model ID
+                using=inferred_using, # Pass renamed argument
+                min_confidence=min_confidence,
+                multi_label=multi_label,
+                **kwargs
+            )
 
-        logger.info(f"Classifying {self!r} using model '{model}' (engine: {engine_type}) with categories: {categories}")
+            # Store the structured result object under the specified key
+            self.analyses[analysis_key] = result_obj
+            logger.debug(f"Stored classification result under key '{analysis_key}': {result_obj}")
 
-        try:
-            content = self._get_classification_content(engine_type)
-        except ValueError as e:
-            raise ClassificationError(f"Cannot classify: {e}") from e
+        except NotImplementedError as nie:
+             logger.error(f"Classification cannot proceed: {nie}")
+             raise
         except Exception as e:
-            raise ClassificationError(f"Error getting classification content: {e}") from e
+            logger.error(f"Classification failed: {e}", exc_info=True)
+            # Optionally re-raise or just log and return self
+            # raise
 
-        result_dict = manager.get_classification_result(
-            item_content=content,
-            categories=categories,
-            model_id=model,
-            engine_type=engine_type,
-            min_confidence=min_confidence,
-            **kwargs,
-        )
+        return self
 
-        try:
-            metadata = self._get_metadata_storage()
-            metadata['classification'] = result_dict
-            logger.debug(f"Stored classification results in metadata for {self!r}")
-        except Exception as e:
-            logger.warning(f"Failed to store classification results in metadata for {self!r}: {e}")
-
-        return result_dict
+    @property
+    def classification_results(self) -> Optional[ClassificationResult]:
+        """Returns the ClassificationResult from the *default* ('classification') key, or None."""
+        if not hasattr(self, 'analyses') or self.analyses is None:
+            return None
+        # Return the result object directly from the default key
+        return self.analyses.get('classification')
 
     @property
     def category(self) -> Optional[str]:
-        """Returns the top category label from the most recent classification, or None."""
-        results = self.classification_results
-        if results and results.get('scores'):
-            return results['scores'][0].get('label')
-        return None
+        """Returns the top category label from the *default* ('classification') key, or None."""
+        result_obj = self.classification_results # Uses the property above
+        # Access the property on the result object
+        return result_obj.top_category if result_obj else None
 
     @property
     def category_confidence(self) -> Optional[float]:
-        """Returns the top category confidence score from the most recent classification, or None."""
-        results = self.classification_results
-        if results and results.get('scores'):
-            return results['scores'][0].get('confidence')
-        return None
+        """Returns the top category confidence from the *default* ('classification') key, or None."""
+        result_obj = self.classification_results # Uses the property above
+        # Access the property on the result object
+        return result_obj.top_confidence if result_obj else None
 
-    @property
-    def classification_results(self) -> Optional[Dict]:
-        """Returns the full results dictionary from the most recent classification, or None."""
-        try:
-            metadata = self._get_metadata_storage()
-            return metadata.get('classification')
-        except AttributeError:
-             logger.error(f"Object {self!r} missing expected metadata storage.")
+    # Maybe add a helper to get results by specific key?
+    def get_classification_result(self, analysis_key: str = 'classification') -> Optional[ClassificationResult]:
+         """Gets a classification result object stored under a specific key."""
+         if not hasattr(self, 'analyses') or self.analyses is None:
              return None
-        except Exception as e:
-             logger.error(f"Error accessing classification results for {self!r}: {e}")
-             return None 
+         result = self.analyses.get(analysis_key)
+         if result is not None and not isinstance(result, ClassificationResult):
+              logger.warning(f"Item found under key '{analysis_key}' is not a ClassificationResult (type: {type(result)}). Returning None.")
+              return None
+         return result

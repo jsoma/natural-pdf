@@ -48,9 +48,11 @@ except ImportError as e:
     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
 
 from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
+# Import the ApplyMixin
+from natural_pdf.collections.mixins import ApplyMixin
 
 
-class PDFCollection(SearchableMixin):  # Inherit from the mixin
+class PDFCollection(SearchableMixin, ApplyMixin):  # Inherit from ApplyMixin
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -249,7 +251,7 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
 
     def __repr__(self) -> str:
         # Removed search status
-        return f"<PDFCollection(count={len(self)})>"
+        return f"<PDFCollection(count={len(self._pdfs)})>"
 
     @property
     def pdfs(self) -> List["PDF"]:

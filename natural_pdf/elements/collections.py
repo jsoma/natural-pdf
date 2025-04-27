@@ -11,17 +11,22 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    Iterable,
 )
 
 from pdfplumber.utils.geometry import objects_to_bbox
+from tqdm.auto import tqdm
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
-from natural_pdf.elements.text import TextElement  # Needed for isinstance check
+from natural_pdf.elements.text import TextElement
 from natural_pdf.ocr import OCROptions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import the new utility
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager
+from natural_pdf.collections.mixins import ApplyMixin
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +38,7 @@ T = TypeVar("T")
 P = TypeVar("P", bound="Page")
 
 
-class ElementCollection(Generic[T]):
+class ElementCollection(Generic[T], ApplyMixin):
     """
     Collection of PDF elements with batch operations.
     """
@@ -1255,81 +1260,116 @@ class ElementCollection(Generic[T]):
     def classify_all(
         self,
         categories: List[str],
-        model: str = "text",
-        # Note: max_workers for element processing is complex due to potential GIL issues
-        #       and overhead. Sequential processing is often sufficient here.
-        # max_workers: Optional[int] = None,
-        **kwargs,
-    ) -> "ElementCollection":
-        """
-        Classify all elements in the collection that support classification.
-
-        This method uses the unified `classify_all` approach, iterating through
-        elements and calling `element.classify()` if available.
-        It displays a progress bar tracking individual elements.
+        model: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        analysis_key: str = 'classification',
+        multi_label: bool = False,
+        batch_size: int = 8,
+        max_workers: Optional[int] = None,
+        progress_bar: bool = True,
+        **kwargs
+    ):
+        """Classifies all elements in the collection in batch.
 
         Args:
-            categories: A list of string category names.
-            model: Model identifier ('text', 'vision', or specific HF ID).
-            **kwargs: Additional arguments passed down to `element.classify()`
-                      (e.g., device, confidence_threshold, resolution).
-
-        Returns:
-            Self for method chaining.
-
-        Raises:
-            ValueError: If categories list is empty.
-            ClassificationError: If classification fails for any element (will stop processing).
-            ImportError: If classification dependencies are missing.
+            categories: List of category labels.
+            model: Model ID (or alias 'text', 'vision').
+            using: Optional processing mode ('text' or 'vision'). Inferred if None.
+            min_confidence: Minimum confidence threshold.
+            analysis_key: Key for storing results in element.analyses.
+            multi_label: Allow multiple labels per item.
+            batch_size: Size of batches passed to the inference pipeline.
+            max_workers: (Not currently used for classification batching which is
+                         handled by the underlying pipeline).
+            progress_bar: Display a progress bar.
+            **kwargs: Additional arguments for the ClassificationManager.
         """
-        if not categories:
-            raise ValueError("Categories list cannot be empty.")
-
-        # Identify classifiable elements
-        classifiable_elements = [
-            el for el in self._elements if hasattr(el, 'classify') and callable(el.classify)
-        ]
-
-        if not classifiable_elements:
-            logger.warning("No classifiable elements (Page, Region) found in this collection.")
+        if not self.elements:
+            logger.info("ElementCollection is empty, skipping classification.")
             return self
 
-        logger.info(f"Starting classification for {len(classifiable_elements)} elements in collection (model: '{model}')...")
+        # Requires access to the PDF's manager. Assume first element has it.
+        first_element = self.elements[0]
+        manager_source = None
+        if hasattr(first_element, 'page') and hasattr(first_element.page, 'pdf'):
+             manager_source = first_element.page.pdf
+        elif hasattr(first_element, 'pdf'): # Maybe it's a PageCollection?
+             manager_source = first_element.pdf
+        
+        if not manager_source or not hasattr(manager_source, 'get_manager'):
+             raise RuntimeError("Cannot access ClassificationManager via elements.")
 
-        # Initialize progress bar
-        progress_bar = tqdm(
-            total=len(classifiable_elements),
-            desc=f"Classifying Elements (model: {model})",
-            unit="element"
+        try:
+            manager = manager_source.get_manager('classification')
+        except Exception as e:
+             raise RuntimeError(f"Failed to get ClassificationManager: {e}") from e
+
+        if not manager or not manager.is_available():
+             raise RuntimeError("ClassificationManager is not available.")
+
+        # Determine engine type early for content gathering
+        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
+
+        # Gather content from all elements
+        items_to_classify: List[Tuple[Any, Union[str, Image.Image]]] = []
+        original_elements: List[Any] = []
+        logger.info(f"Gathering content for {len(self.elements)} elements for batch classification...")
+        for element in self.elements:
+             if not isinstance(element, ClassificationMixin):
+                 logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
+                 continue
+             try:
+                 # Delegate content fetching to the element itself
+                 content = element._get_classification_content(model_type=inferred_using, **kwargs)
+                 items_to_classify.append(content)
+                 original_elements.append(element)
+             except (ValueError, NotImplementedError) as e:
+                 logger.warning(f"Skipping element {element!r}: Cannot get content for classification - {e}")
+             except Exception as e:
+                  logger.warning(f"Skipping element {element!r}: Error getting classification content - {e}")
+
+        if not items_to_classify:
+             logger.warning("No content could be gathered from elements for batch classification.")
+             return self
+
+        logger.info(f"Collected content for {len(items_to_classify)} elements. Running batch classification...")
+
+        # Call manager's batch classify
+        batch_results: List[ClassificationResult] = manager.classify_batch(
+            item_contents=items_to_classify,
+            categories=categories,
+            model_id=model,
+            using=inferred_using,
+            min_confidence=min_confidence,
+            multi_label=multi_label,
+            batch_size=batch_size,
+            progress_bar=progress_bar,
+            **kwargs
         )
 
-        # Process elements sequentially
-        try:
-            for element in classifiable_elements:
-                try:
-                    element.classify(categories=categories, model=model, **kwargs)
-                    progress_bar.update(1)
-                except Exception as e:
-                    # Error logged by mixin/manager, log context here
-                    logger.error(f"Failed to classify element {element!r}: {e}", exc_info=False)
-                    progress_bar.close() # Stop progress on error
-                    # Re-raise to halt the process
-                    raise # Keep original error type (ValueError, ImportError, ClassificationError)
-
-            logger.info("Finished classifying elements in the collection.")
-
-        finally:
-             # Ensure progress bar is closed
-             if not progress_bar.disable and progress_bar.n < progress_bar.total:
-                 progress_bar.close()
-             elif progress_bar.disable is False:
-                  progress_bar.close()
+        # Assign results back to elements
+        if len(batch_results) != len(original_elements):
+             logger.error(
+                 f"Batch classification result count ({len(batch_results)}) mismatch "
+                 f"with elements processed ({len(original_elements)}). Cannot assign results."
+             )
+             # Decide how to handle mismatch - maybe store errors?
+        else:
+             logger.info(f"Assigning {len(batch_results)} results to elements under key '{analysis_key}'.")
+             for element, result_obj in zip(original_elements, batch_results):
+                 try:
+                     if not hasattr(element, 'analyses') or element.analyses is None:
+                          element.analyses = {}
+                     element.analyses[analysis_key] = result_obj
+                 except Exception as e:
+                      logger.warning(f"Failed to store classification result for {element!r}: {e}")
 
         return self
     # --- End Classification Method --- #
 
 
-class PageCollection(Generic[P]):
+class PageCollection(Generic[P], ApplyMixin):
     """
     A collection of PDF pages with cross-page operations.
 

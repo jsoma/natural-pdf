@@ -93,8 +93,11 @@ class Page(ClassificationMixin):
             "named": {},  # Named regions (name -> region)
         }
 
-        # Initialize ElementManager
-        self._element_mgr = ElementManager(self, font_attrs)
+        # Initialize ElementManager, passing font_attrs
+        self._element_mgr = ElementManager(self, font_attrs=font_attrs)
+        # self._highlighter = HighlightingService(self) # REMOVED - Use property accessor
+        # --- NEW --- Central registry for analysis results
+        self.analyses: Dict[str, Any] = {}
 
         # --- Get OCR Manager Instance ---
         if (
@@ -128,6 +131,8 @@ class Page(ClassificationMixin):
 
         # Initialize the internal variable with a single underscore
         self._layout_analyzer = None
+
+        self._load_elements()
 
     @property
     def pdf(self) -> "PDF":
@@ -2178,9 +2183,14 @@ class Page(ClassificationMixin):
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
-        if not hasattr(self.pdf, '_classification_manager'):
-            raise AttributeError("ClassificationManager not accessible via pdf._classification_manager")
-        return self.pdf._classification_manager
+        if not hasattr(self, 'pdf') or not hasattr(self.pdf, 'get_manager'):
+             raise AttributeError("ClassificationManager cannot be accessed: Parent PDF or get_manager method missing.")
+        try:
+             # Use the PDF's manager registry accessor
+             return self.pdf.get_manager('classification')
+        except (ValueError, RuntimeError, AttributeError) as e:
+            # Wrap potential errors from get_manager for clarity
+            raise AttributeError(f"Failed to get ClassificationManager from PDF: {e}") from e
 
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
         if model_type == 'text':

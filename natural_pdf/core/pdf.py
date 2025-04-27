@@ -35,6 +35,7 @@ from natural_pdf.selectors.parser import parse_selector
 
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.manager import ClassificationError
+from natural_pdf.classification.results import ClassificationResult
 
 try:
     from typing import Any as TypingAny
@@ -138,7 +139,8 @@ class PDF:
         self._ocr_manager = OCRManager() if OCRManager else None
         self._layout_manager = LayoutManager() if LayoutManager else None
         self.highlighter = HighlightingService(self)
-        self._classification_manager = ClassificationManager()
+        self._classification_manager_instance = ClassificationManager()
+        self._manager_registry: Dict[str, Any] = {}
 
         self._pages = [
             Page(p, parent=self, index=i, font_attrs=font_attrs)
@@ -1037,6 +1039,77 @@ class PDF:
         """Context manager exit."""
         self.close()
 
+    def get_manager(self, manager_type: str, engine: Optional[str] = None, **kwargs) -> Any:
+        """Gets or initializes a manager instance from the registry.
+
+        Args:
+            manager_type: The type of manager ('classification', 'ner', 'ocr', 'layout', etc.).
+            engine: Optional engine name to specify for managers that support multiple engines.
+            **kwargs: Additional arguments for manager initialization.
+
+        Returns:
+            The manager instance.
+
+        Raises:
+            ValueError: If the manager type is unknown or dependencies are missing.
+            RuntimeError: If the manager fails to initialize.
+        """
+        # Key construction could include engine if relevant for that manager type
+        # For now, use manager_type as the primary key
+        registry_key = manager_type # Simple key for now
+
+        if registry_key not in self._manager_registry:
+            logger.info(f"Initializing manager: '{manager_type}' (engine: {engine})...")
+            manager_instance = None
+            try:
+                if manager_type == 'classification':
+                    # Assumes ClassificationManager is imported in the file scope
+                    if not self._classification_manager_instance:
+                         self._classification_manager_instance = ClassificationManager(**kwargs)
+                    manager_instance = self._classification_manager_instance # Reuse existing instance for now
+                    # TODO: Future: Allow different classification managers?
+                elif manager_type == 'layout':
+                    # Assumes LayoutManager is imported
+                    if not self._layout_manager:
+                         self._layout_manager = LayoutManager(**kwargs) # Assumes LayoutManager takes kwargs
+                    manager_instance = self._layout_manager
+                elif manager_type == 'ocr':
+                    # Assumes OCRManager is imported
+                    if not self._ocr_manager:
+                         self._ocr_manager = OCRManager(**kwargs) # Assumes OCRManager takes kwargs
+                    manager_instance = self._ocr_manager
+                # --- Add other managers like 'ner', 'translation' here --- #
+                # elif manager_type == 'ner':
+                #     from natural_pdf.ner.manager import NERManager # Example dynamic import
+                #     manager_instance = NERManager(**kwargs)
+                else:
+                    raise ValueError(f"Unknown manager type: '{manager_type}'")
+
+                # Check availability *after* potential instantiation
+                if hasattr(manager_instance, 'is_available') and not manager_instance.is_available():
+                     # Attempt to provide helpful install hints
+                     hint = ""
+                     if manager_type == 'classification':
+                         hint = " Install with: pip install \"natural-pdf[classification]\""
+                     elif manager_type == 'layout':
+                         hint = " Check layout engine dependencies (e.g., pip install \"natural-pdf[layout_yolo]\")"
+                     elif manager_type == 'ocr':
+                         hint = " Check OCR engine dependencies (e.g., pip install \"natural-pdf[ocr]\")"
+                     
+                     raise ValueError(f"Manager '{manager_type}' is not available. Dependencies might be missing.{hint}")
+
+                self._manager_registry[registry_key] = manager_instance
+                logger.info(f"Manager '{manager_type}' initialized and added to registry.")
+
+            except ImportError as e:
+                logger.error(f"Failed to import manager for type '{manager_type}': {e}")
+                raise ValueError(f"Dependencies missing for manager type '{manager_type}'. {e}") from e
+            except Exception as e:
+                logger.error(f"Failed to initialize manager '{manager_type}': {e}", exc_info=True)
+                raise RuntimeError(f"Failed to initialize manager '{manager_type}'.") from e
+
+        return self._manager_registry[registry_key]
+
     # --- Indexable Protocol Methods --- Needed for search/sync
     def get_id(self) -> str:
         return self.path
@@ -1046,8 +1119,10 @@ class PDF:
     def classify_pages(
         self,
         categories: List[str],
-        model: str = "text",
+        model: Optional[str] = None,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
+        analysis_key: str = "classification",
+        using: Optional[str] = None,
         **kwargs,
     ) -> "PDF":
         """
@@ -1057,7 +1132,11 @@ class PDF:
             categories: A list of string category names.
             model: Model identifier ('text', 'vision', or specific HF ID).
             pages: An iterable of 0-based page indices, slice, or None for all pages.
-            **kwargs: Additional arguments passed to the ClassificationManager.
+            analysis_key: Key under which to store results in each page's `.analyses` dict.
+                          Defaults to 'classification'.
+            using: Optional processing mode ('text' or 'vision'). Inferred if None.
+            **kwargs: Additional arguments passed to the ClassificationManager's batch method
+                      (e.g., `min_confidence`, `batch_size`).
 
         Returns:
             Self for method chaining.
@@ -1065,8 +1144,16 @@ class PDF:
         if not categories:
             raise ValueError("Categories list cannot be empty.")
 
-        manager = self._classification_manager
-        if not manager:
+        # Use the manager registry
+        try:
+            manager = self.get_manager('classification')
+        except (ValueError, RuntimeError) as e:
+             # Reraise as ClassificationError for consistency?
+             raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
+
+        # manager = self._classification_manager_instance # OLD WAY
+        if not manager or not manager.is_available():
+             # This check might be redundant if get_manager handles it, but keep for safety
              try:
                  from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
                  if not _CLASSIFICATION_AVAILABLE:
@@ -1076,7 +1163,7 @@ class PDF:
                      "Classification dependencies missing. "
                      "Install with: pip install \"natural-pdf[classification]\""
                   )
-             raise ClassificationError("ClassificationManager not initialized on PDF object.")
+             raise ClassificationError("ClassificationManager not initialized or available on PDF object.")
 
         target_pages: List[Page] = []
         if pages is None:
@@ -1097,15 +1184,16 @@ class PDF:
             logger.warning("No pages selected for classification.")
             return self
 
-        engine_type = manager.infer_engine_type(model)
-        logger.info(f"Classifying {len(target_pages)} PDF pages using model '{model}' (engine: {engine_type})")
+        # Infer engine type based on the model (manager handles default if model is None)
+        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
+        logger.info(f"Classifying {len(target_pages)} PDF pages using model '{model or '(default)'}' (mode: {inferred_using}) with key '{analysis_key}'")
 
         page_contents = []
         pages_to_classify = []
         logger.debug(f"Gathering content for {len(target_pages)} pages...")
         for page in target_pages:
             try:
-                content = page._get_classification_content(engine_type, **kwargs)
+                content = page._get_classification_content(model_type=inferred_using, **kwargs)
                 page_contents.append(content)
                 pages_to_classify.append(page)
             except ValueError as e:
@@ -1118,15 +1206,12 @@ class PDF:
              return self
         logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
 
-        min_confidence = kwargs.pop('min_confidence', 0.0)
-
         try:
             batch_results = manager.classify_batch(
                 item_contents=page_contents,
                 categories=categories,
                 model_id=model,
-                engine_type=engine_type,
-                min_confidence=min_confidence,
+                using=inferred_using,
                 **kwargs,
             )
         except Exception as e:
@@ -1135,17 +1220,20 @@ class PDF:
 
         if len(batch_results) != len(pages_to_classify):
              logger.error(f"Mismatch between number of results ({len(batch_results)}) and classified pages ({len(pages_to_classify)}). Cannot reliably assign results.")
-             return self
+             return self # Return self even if results are mismatched
 
-        logger.debug(f"Distributing {len(batch_results)} results to pages...")
-        for page, result_dict in zip(pages_to_classify, batch_results):
+        logger.debug(f"Distributing {len(batch_results)} results to pages under key '{analysis_key}'...")
+        for page, result_obj in zip(pages_to_classify, batch_results):
              try:
-                 metadata = page._get_metadata_storage()
-                 metadata['classification'] = result_dict
+                 # Ensure analyses dict exists
+                 if not hasattr(page, 'analyses') or page.analyses is None:
+                      page.analyses = {}
+                 # Store using analysis_key
+                 page.analyses[analysis_key] = result_obj
              except Exception as e:
-                 logger.warning(f"Failed to store classification results in metadata for page {page.number}: {e}")
+                 logger.warning(f"Failed to store classification results in metadata for page {page.number} under key '{analysis_key}': {e}")
 
-        logger.info("Finished classifying selected PDF pages using batch processing.")
+        logger.info(f"Finished classifying selected PDF pages using batch processing.")
         return self
 
     # --- End Classification Methods --- #

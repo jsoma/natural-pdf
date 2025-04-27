@@ -1,318 +1,333 @@
 import logging
-import threading
-from typing import Any, Dict, List, Optional, Union
 import time
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from PIL.Image import Image
-
-# Try importing optional dependencies
-_CLASSIFICATION_AVAILABLE = False
-
-ClassificationError = ImportError # Default to ImportError if deps missing
-
+# Use try-except for robustness if dependencies are missing
 try:
     import torch
-    from transformers import pipeline, AutoConfig
-    from transformers.pipelines.base import PipelineException
+    from PIL import Image
+    from transformers import pipeline, AutoTokenizer, AutoModelForZeroShotImageClassification, AutoModelForSequenceClassification
     _CLASSIFICATION_AVAILABLE = True
-
-    # Redefine error if dependencies are available
-    class ClassificationError(Exception):
-        """Custom exception for classification failures."""
-        pass
-
-    class ModelNotFoundError(ClassificationError):
-        """Raised when a specified model cannot be loaded."""
-        pass
-
 except ImportError:
-    pass
+    _CLASSIFICATION_AVAILABLE = False
+    # Define dummy types for type hinting if imports fail
+    Image = type("Image", (), {})
+    pipeline = object
+    AutoTokenizer = object
+    AutoModelForZeroShotImageClassification = object
+    AutoModelForSequenceClassification = object
+    torch = None
+
+# Import result classes
+from .results import ClassificationResult, CategoryScore
+from natural_pdf.utils.tqdm_utils import get_tqdm
+
+if TYPE_CHECKING:
+    from transformers import Pipeline
+
 
 logger = logging.getLogger(__name__)
 
-# Default Model Aliases
-DEFAULT_TEXT_MODEL = "facebook/bart-large-mnli"
-DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch32"
+# Global cache for models/pipelines
+_PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
+_TOKENIZER_CACHE: Dict[str, Any] = {}
+_MODEL_CACHE: Dict[str, Any] = {}
+
+class ClassificationError(Exception):
+    """Custom exception for classification errors."""
+    pass
+
 
 class ClassificationManager:
-    """
-    Manages loading and running text and vision classification models.
-    Handles model caching and device management.
-    """
-    def __init__(self):
-        if not _CLASSIFICATION_AVAILABLE:
-             logger.warning(
-                 "Classification dependencies (torch, transformers) not found. "
-                 "Classification features will be unavailable. "
-                 "Install with: pip install \"natural-pdf[classification]\""
-             )
-        self._loaded_models = {}
-        self._model_locks = {}
-        self._lock = threading.Lock()
+    """Manages classification models and execution."""
 
-    def _get_model_lock(self, model_id: str) -> threading.Lock:
-        """Get or create a lock specific to a model ID."""
-        with self._lock:
-            if model_id not in self._model_locks:
-                self._model_locks[model_id] = threading.Lock()
-            return self._model_locks[model_id]
+    DEFAULT_TEXT_MODEL = "facebook/bart-large-mnli"
+    DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch32"
 
-    def _get_pipeline(self, model_id: str, engine_type: str, device: Optional[Union[str, int]] = None, **kwargs):
-        """Loads and returns a cached Hugging Face pipeline."""
+    def __init__(self, device: Optional[str] = None):
         if not _CLASSIFICATION_AVAILABLE:
             raise ImportError(
-                "Classification dependencies missing. Install with: pip install \"natural-pdf[classification]\""
+                "Classification dependencies missing. "
+                "Install with: pip install \"natural-pdf[classification]\""
             )
 
-        # Resolve aliases
-        if model_id == 'text':
-            resolved_model_id = DEFAULT_TEXT_MODEL
-            task = "zero-shot-classification"
-        elif model_id == 'vision':
-            resolved_model_id = DEFAULT_VISION_MODEL
-            task = "zero-shot-image-classification"
+        if device is None:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
-            resolved_model_id = model_id
-            # Determine task based on engine_type
-            if engine_type == 'text':
-                task = "zero-shot-classification"
-            elif engine_type == 'vision':
-                task = "zero-shot-image-classification"
-            else:
-                 raise ValueError(f"Invalid engine_type: {engine_type}")
+            self.device = device
+        logger.info(f"ClassificationManager initialized on device: {self.device}")
 
-        cache_key = (resolved_model_id, task, device)
+    def is_available(self) -> bool:
+        """Check if required dependencies are installed."""
+        return _CLASSIFICATION_AVAILABLE
 
-        # Check cache first
-        if cache_key in self._loaded_models:
-            logger.debug(f"Using cached classification pipeline for key: {cache_key}")
-            return self._loaded_models[cache_key]
-
-        # Acquire model-specific lock before loading
-        model_lock = self._get_model_lock(resolved_model_id)
-        with model_lock:
-            # Double-check cache after acquiring lock
-            if cache_key in self._loaded_models:
-                logger.debug(f"Using cached classification pipeline for key (post-lock): {cache_key}")
-                return self._loaded_models[cache_key]
-
-            logger.info(f"Loading classification pipeline: task='{task}', model='{resolved_model_id}', device='{device}'")
+    def _get_pipeline(self, model_id: str, using: str) -> "Pipeline":
+        """Get or create a classification pipeline."""
+        cache_key = f"{model_id}_{using}_{self.device}"
+        if cache_key not in _PIPELINE_CACHE:
+            logger.info(f"Loading {using} classification pipeline for model '{model_id}' on device '{self.device}'...")
+            start_time = time.time()
             try:
-                pipeline_kwargs = {k: v for k, v in kwargs.items() if k in ['trust_remote_code']}
-                loaded_pipeline = pipeline(
-                    task,
-                    model=resolved_model_id,
-                    device=device,
-                    **pipeline_kwargs
+                task = (
+                    "zero-shot-classification"
+                    if using == "text"
+                    else "zero-shot-image-classification"
                 )
-                logger.info(f"Successfully loaded pipeline '{resolved_model_id}' on device '{loaded_pipeline.device}'")
-
-                self._loaded_models[cache_key] = loaded_pipeline
-                return loaded_pipeline
-
-            except PipelineException as e:
-                logger.error(f"Hugging Face pipeline error for model '{resolved_model_id}': {e}", exc_info=False)
-                raise ClassificationError(f"Pipeline error for model '{resolved_model_id}': {e}") from e
+                _PIPELINE_CACHE[cache_key] = pipeline(
+                    task,
+                    model=model_id,
+                    device=self.device
+                )
+                end_time = time.time()
+                logger.info(f"Pipeline for '{model_id}' loaded in {end_time - start_time:.2f} seconds.")
             except Exception as e:
-                 logger.error(f"Failed to load model '{resolved_model_id}': {e}", exc_info=False)
-                 if "not found" in str(e) or isinstance(e, OSError):
-                     raise ModelNotFoundError(f"Could not find or load model '{resolved_model_id}'. Ensure it exists and dependencies are installed.") from e
-                 else:
-                     raise ClassificationError(f"Failed to load model '{resolved_model_id}': {e}") from e
+                logger.error(f"Failed to load pipeline for model '{model_id}' (using: {using}): {e}", exc_info=True)
+                raise ClassificationError(f"Failed to load pipeline for model '{model_id}'. Ensure the model ID is correct and supports the {task} task.") from e
+        return _PIPELINE_CACHE[cache_key]
 
-    def infer_engine_type(self, model_id: str) -> str:
-        """Infers whether a model ID refers to a text or vision model."""
-        if model_id == 'text': return 'text'
-        if model_id == 'vision': return 'vision'
+    def infer_using(self, model_id: str, using: Optional[str] = None) -> str:
+        """Infers processing mode ('text' or 'vision') if not provided."""
+        if using in ["text", "vision"]:
+            return using
 
-        if not _CLASSIFICATION_AVAILABLE:
-             raise ImportError("Classification dependencies are required to infer model type.")
+        # Simple inference based on common model names
+        normalized_model_id = model_id.lower()
+        if "clip" in normalized_model_id or "vit" in normalized_model_id or "siglip" in normalized_model_id:
+             logger.debug(f"Inferred using='vision' for model '{model_id}'")
+             return "vision"
+        if "bart" in normalized_model_id or "bert" in normalized_model_id or "mnli" in normalized_model_id or "xnli" in normalized_model_id or "deberta" in normalized_model_id:
+             logger.debug(f"Inferred using='text' for model '{model_id}'")
+             return "text"
 
-        logger.debug(f"Inferring engine type for model: {model_id}")
+        # Fallback or raise error? Let's try loading text first, then vision.
+        logger.warning(f"Could not reliably infer mode for '{model_id}'. Trying text, then vision pipeline loading.")
         try:
-            config = AutoConfig.from_pretrained(model_id)
-            model_type = getattr(config, "model_type", "").lower()
-            architectures = [arch.lower() for arch in getattr(config, "architectures", [])]
-            config_dict = config.to_dict()
+            self._get_pipeline(model_id, "text")
+            logger.info(f"Successfully loaded '{model_id}' as a text model.")
+            return "text"
+        except Exception:
+             logger.warning(f"Failed to load '{model_id}' as text model. Trying vision.")
+             try:
+                 self._get_pipeline(model_id, "vision")
+                 logger.info(f"Successfully loaded '{model_id}' as a vision model.")
+                 return "vision"
+             except Exception as e_vision:
+                 logger.error(f"Failed to load '{model_id}' as either text or vision model.", exc_info=True)
+                 raise ClassificationError(f"Cannot determine mode for model '{model_id}'. Please specify `using='text'` or `using='vision'`. Error: {e_vision}")
 
-            is_vision_type = any(vis_type in model_type for vis_type in ["clip", "vit", "beit", "swin", "resnet", "convnext", "siglip"])
-            has_vision_architecture = any(
-                any(arch.endswith(suffix) for suffix in ["visionmodel", "forimageclassification"])
-                or arch == "vision-encoder-decoder"
-                for arch in architectures
-            )
-            has_vision_config_key = "vision_config" in config_dict
+    def classify_item(
+        self,
+        item_content: Union[str, Image.Image],
+        categories: List[str],
+        model_id: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        multi_label: bool = False,
+        **kwargs
+    ) -> ClassificationResult: # Return ClassificationResult
+        """Classifies a single item (text or image)."""
 
-            if is_vision_type or has_vision_architecture or has_vision_config_key:
-                logger.debug(f"Inferred engine type for '{model_id}' as 'vision' (type: {is_vision_type}, arch: {has_vision_architecture}, key: {has_vision_config_key})")
-                return "vision"
+        # Determine model and engine type
+        effective_using = using
+        if model_id is None:
+             # Try inferring based on content type
+             if isinstance(item_content, str):
+                 effective_using = "text"
+                 model_id = self.DEFAULT_TEXT_MODEL
+             elif isinstance(item_content, Image.Image):
+                 effective_using = "vision"
+                 model_id = self.DEFAULT_VISION_MODEL
+             else:
+                 raise TypeError(f"Unsupported item_content type: {type(item_content)}")
+        else:
+             # Infer engine type if not given
+             effective_using = self.infer_using(model_id, using)
+             # Set default model if needed (though should usually be provided if engine known)
+             if model_id is None:
+                  model_id = self.DEFAULT_TEXT_MODEL if effective_using == "text" else self.DEFAULT_VISION_MODEL
+
+        if not categories:
+             raise ValueError("Categories list cannot be empty.")
+
+        pipeline_instance = self._get_pipeline(model_id, effective_using)
+        timestamp = datetime.now()
+        parameters = { # Store parameters used for this run
+            'categories': categories,
+            'model_id': model_id,
+            'using': effective_using,
+            'min_confidence': min_confidence,
+            'multi_label': multi_label,
+            **kwargs
+        }
+
+        logger.debug(f"Classifying content (type: {type(item_content).__name__}) with model '{model_id}'")
+        try:
+            # Handle potential kwargs for specific pipelines if needed
+            # The zero-shot pipelines expect `candidate_labels`
+            result_raw = pipeline_instance(item_content, candidate_labels=categories, multi_label=multi_label, **kwargs)
+            logger.debug(f"Raw pipeline result: {result_raw}")
+
+            # --- Process raw result into ClassificationResult --- # 
+            scores_list: List[CategoryScore] = []
+            
+            # Handle text pipeline format (dict with 'labels' and 'scores')
+            if isinstance(result_raw, dict) and 'labels' in result_raw and 'scores' in result_raw:
+                for label, score_val in zip(result_raw['labels'], result_raw['scores']):
+                     if score_val >= min_confidence:
+                          try:
+                              scores_list.append(CategoryScore(label=label, confidence=score_val))
+                          except (ValueError, TypeError) as score_err:
+                               logger.warning(f"Skipping invalid score from text pipeline: label='{label}', score={score_val}. Error: {score_err}")
+            # Handle vision pipeline format (list of dicts with 'label' and 'score')
+            elif isinstance(result_raw, list) and all(isinstance(item, dict) and 'label' in item and 'score' in item for item in result_raw):
+                 for item in result_raw:
+                      score_val = item['score']
+                      label = item['label']
+                      if score_val >= min_confidence:
+                           try:
+                               scores_list.append(CategoryScore(label=label, confidence=score_val))
+                           except (ValueError, TypeError) as score_err:
+                                logger.warning(f"Skipping invalid score from vision pipeline: label='{label}', score={score_val}. Error: {score_err}")
             else:
-                logger.debug(f"Inferred engine type for '{model_id}' as 'text' (default). Type: '{model_type}', Arch: {architectures}")
-                return "text"
+                 logger.warning(f"Unexpected raw result format from pipeline for model '{model_id}': {type(result_raw)}. Cannot extract scores.")
+                 # Return empty result?
+                 # scores_list = []
+
+            return ClassificationResult(
+                model_id=model_id,
+                using=effective_using,
+                timestamp=timestamp,
+                parameters=parameters,
+                scores=scores_list
+            )
+            # --- End Processing --- #
 
         except Exception as e:
-            logger.warning(f"Could not automatically determine engine type for model '{model_id}': {e}. Defaulting to 'text'. Specify 'engine_type' manually if this is incorrect.")
-            return "text"
-
-    def _run_inference(
-        self,
-        item_content: Union[str, Image],
-        categories: List[str],
-        model_id: str,
-        engine_type: str,
-        **kwargs,
-    ) -> List[Dict[str, Union[str, float]]]:
-        """Runs the inference using the appropriate pipeline, returns raw scores."""
-        pipe = self._get_pipeline(model_id, engine_type, device=kwargs.get('device'), **kwargs)
-
-        pipeline_input = item_content
-    
-        logger.debug(f"Running classification inference with pipeline: {pipe.model.name_or_path} on device {pipe.device}")
-        if engine_type == 'text':
-            logger.debug("Calling text pipeline for inference...")
-            result = pipe(pipeline_input, candidate_labels=categories, multi_label=False)
-            logger.debug("Text pipeline inference call completed.")
-            output_scores = [{"label": label, "confidence": score} for label, score in zip(result['labels'], result['scores'])]
-        elif engine_type == 'vision':
-            logger.debug("Calling vision pipeline for inference...")
-            result = pipe(pipeline_input, candidate_labels=categories)
-            logger.debug("Vision pipeline inference call completed.")
-            output_scores = [{"label": r["label"], "confidence": r["score"]} for r in result]
-        else:
-            raise ValueError(f"Unsupported engine_type: {engine_type}")
-
-        # Sort scores
-        output_scores.sort(key=lambda x: x['confidence'], reverse=True)
-        return output_scores
-
-    def get_classification_result(
-        self,
-        item_content: Union[str, Image],
-        categories: List[str],
-        model_id: str,
-        engine_type: str,
-        min_confidence: float = 0.0,
-        **kwargs,
-    ) -> Dict[str, Any]:
-        """
-        Performs classification, filters results, and returns the formatted result dictionary.
-
-        Args:
-            item_content: The text (str) or image (PIL.Image) to classify.
-            categories: List of candidate category labels.
-            model_id: Model identifier (alias or HF ID).
-            engine_type: 'text' or 'vision'.
-            min_confidence: Minimum confidence score for inclusion.
-            **kwargs: Additional arguments for the pipeline (e.g., device).
-
-        Returns:
-            The structured classification result dictionary.
-        """
-        raw_scores = self._run_inference(
-            item_content=item_content,
-            categories=categories,
-            model_id=model_id,
-            engine_type=engine_type,
-            **kwargs
-        )
-
-        # Filter scores based on threshold
-        filtered_scores = [
-            score for score in raw_scores
-            if score['confidence'] >= min_confidence
-        ]
-
-        result_dict = {
-            'model': model_id,
-            'engine_type': engine_type,
-            'categories_used': categories,
-            'scores': filtered_scores,
-            'timestamp': time.time()
-        }
-        return result_dict
+             logger.error(f"Classification failed for model '{model_id}': {e}", exc_info=True)
+             # Return an empty result object on failure?
+             # return ClassificationResult(model_id=model_id, engine_type=engine_type, timestamp=timestamp, parameters=parameters, scores=[])
+             raise ClassificationError(f"Classification failed using model '{model_id}'. Error: {e}") from e
 
     def classify_batch(
         self,
-        item_contents: List[Union[str, Image]],
+        item_contents: List[Union[str, Image.Image]],
         categories: List[str],
-        model_id: str,
-        engine_type: str,
+        model_id: Optional[str] = None,
+        using: Optional[str] = None,
         min_confidence: float = 0.0,
-        **kwargs,
-    ) -> List[Dict[str, Any]]:
-        """
-        Performs batch classification on homogeneous items (all text or all images).
+        multi_label: bool = False,
+        batch_size: int = 8,
+        progress_bar: bool = True,
+        **kwargs
+    ) -> List[ClassificationResult]: # Return list of ClassificationResult
+        """Classifies a batch of items (text or image) using the pipeline's batching."""
+        if not item_contents:
+             return []
 
-        Args:
-            item_contents: List of text (str) or images (PIL.Image) to classify.
-            categories: List of candidate category labels.
-            model_id: Model identifier (alias or HF ID).
-            engine_type: 'text' or 'vision'.
-            min_confidence: Minimum confidence score for inclusion in results.
-            **kwargs: Additional arguments for the pipeline (e.g., device).
+        # Determine model and engine type (assuming uniform type in batch)
+        first_item = item_contents[0]
+        effective_using = using
+        if model_id is None:
+             if isinstance(first_item, str):
+                 effective_using = "text"
+                 model_id = self.DEFAULT_TEXT_MODEL
+             elif isinstance(first_item, Image.Image):
+                 effective_using = "vision"
+                 model_id = self.DEFAULT_VISION_MODEL
+             else:
+                 raise TypeError(f"Unsupported item_content type in batch: {type(first_item)}")
+        else:
+             effective_using = self.infer_using(model_id, using)
+             if model_id is None:
+                  model_id = self.DEFAULT_TEXT_MODEL if effective_using == "text" else self.DEFAULT_VISION_MODEL
 
-        Returns:
-            A list of structured classification result dictionaries, one for each item.
-        """
-        if not isinstance(item_contents, list) or not item_contents:
-             raise TypeError("item_contents must be a non-empty list.")
-        
-        # Basic type check
-        if engine_type == 'text' and not all(isinstance(item, str) for item in item_contents):
-             logger.warning("Batch contains non-string items but engine_type is 'text'.")
-        elif engine_type == 'vision' and not all(isinstance(item, Image) for item in item_contents):
-             logger.warning("Batch contains non-Image items but engine_type is 'vision'.")
+        if not categories:
+             raise ValueError("Categories list cannot be empty.")
 
-        pipe = self._get_pipeline(model_id, engine_type, device=kwargs.get('device'), **kwargs)
-        current_timestamp = time.time()
+        pipeline_instance = self._get_pipeline(model_id, effective_using)
+        timestamp = datetime.now() # Single timestamp for the batch run
+        parameters = { # Parameters for the whole batch
+            'categories': categories,
+            'model_id': model_id,
+            'using': effective_using,
+            'min_confidence': min_confidence,
+            'multi_label': multi_label,
+            'batch_size': batch_size,
+            **kwargs
+        }
 
-        logger.debug(f"Running BATCH classification inference ({len(item_contents)} items) with pipeline: {pipe.model.name_or_path} on device {pipe.device}")
+        logger.info(f"Classifying batch of {len(item_contents)} items with model '{model_id}' (batch size: {batch_size})")
+        batch_results_list: List[ClassificationResult] = []
 
         try:
-            if engine_type == 'text':
-                batch_results = pipe(item_contents, candidate_labels=categories, multi_label=False)
-            elif engine_type == 'vision':
-                batch_results = pipe(item_contents, candidate_labels=categories)
-            else:
-                raise ValueError(f"Unsupported engine_type: {engine_type}")
-        except Exception as e:
-             logger.error(f"Error during batch pipeline execution for model '{model_id}': {e}", exc_info=True)
-             raise ClassificationError(f"Error during batch inference for model '{model_id}': {e}") from e
-
-        logger.debug("Batch inference call completed.")
-
-        final_results = []
-        for i, item_result in enumerate(batch_results):
-            if engine_type == 'text':
-                raw_scores = [{"label": label, "confidence": score}
-                              for label, score in zip(item_result['labels'], item_result['scores'])]
-            elif engine_type == 'vision':
-                 raw_scores = [{"label": r["label"], "confidence": r["score"]} for r in item_result]
+            # Use pipeline directly for batching
+            results_iterator = pipeline_instance(
+                item_contents,
+                candidate_labels=categories,
+                multi_label=multi_label,
+                batch_size=batch_size,
+                **kwargs
+            )
             
-            # Sort and filter individual item scores
-            raw_scores.sort(key=lambda x: x['confidence'], reverse=True)
-            filtered_scores = [
-                score for score in raw_scores
-                if score['confidence'] >= min_confidence
-            ]
+            # Wrap with tqdm for progress if requested
+            total_items = len(item_contents)
+            if progress_bar:
+                 # Get the appropriate tqdm class
+                 tqdm_class = get_tqdm()
+                 results_iterator = tqdm_class(
+                      results_iterator, 
+                      total=total_items, 
+                      desc=f"Classifying batch ({model_id})",
+                      leave=False # Don't leave progress bar hanging
+                 )
 
-            result_dict = {
-                'model': model_id,
-                'engine_type': engine_type,
-                'categories_used': categories,
-                'scores': filtered_scores,
-                'timestamp': current_timestamp
-            }
-            final_results.append(result_dict)
+            for raw_result in results_iterator:
+                # --- Process each raw result (which corresponds to ONE input item) --- # 
+                scores_list: List[CategoryScore] = []
+                try:
+                    # Check for text format (dict with 'labels' and 'scores')
+                    if isinstance(raw_result, dict) and 'labels' in raw_result and 'scores' in raw_result:
+                        for label, score_val in zip(raw_result['labels'], raw_result['scores']):
+                             if score_val >= min_confidence:
+                                 try:
+                                     scores_list.append(CategoryScore(label=label, confidence=score_val))
+                                 except (ValueError, TypeError) as score_err:
+                                      logger.warning(f"Skipping invalid score from text pipeline batch: label='{label}', score={score_val}. Error: {score_err}")
+                    # Check for vision format (list of dicts with 'label' and 'score')
+                    elif isinstance(raw_result, list):
+                         for item in raw_result:
+                              try:
+                                  score_val = item['score']
+                                  label = item['label']
+                                  if score_val >= min_confidence:
+                                      scores_list.append(CategoryScore(label=label, confidence=score_val))
+                              except (KeyError, ValueError, TypeError) as item_err:
+                                   logger.warning(f"Skipping invalid item in vision result list from batch: {item}. Error: {item_err}")
+                    else:
+                         logger.warning(f"Unexpected raw result format in batch item from model '{model_id}': {type(raw_result)}. Cannot extract scores.")
+                
+                except Exception as proc_err:
+                     logger.error(f"Error processing result item in batch: {proc_err}", exc_info=True)
+                     # scores_list remains empty for this item
 
-        return final_results
+                # Append result object for this item
+                batch_results_list.append(ClassificationResult(
+                     model_id=model_id,
+                     using=effective_using,
+                     timestamp=timestamp, # Use same timestamp for batch
+                     parameters=parameters, # Use same params for batch
+                     scores=scores_list
+                ))
+                # --- End Processing --- #
 
-    # --- Batch classification (Placeholder - can be complex) ---
-    # For now, the mixin/collection calls classify_item repeatedly.
-    # True batching would require gathering all content first,
-    # then calling the pipeline with a list, and mapping results back.
-    # This adds complexity around handling mixed text/image batches, etc.
-    # Let's defer optimizing batching within the manager itself.
+            if len(batch_results_list) != total_items:
+                 logger.warning(f"Batch classification returned {len(batch_results_list)} results, but expected {total_items}. Results might be incomplete or misaligned.")
 
-    # def classify_batch(...):
-    #     pass 
+            return batch_results_list
+
+        except Exception as e:
+             logger.error(f"Batch classification failed for model '{model_id}': {e}", exc_info=True)
+             # Return list of empty results?
+             # return [ClassificationResult(model_id=model_id, s=engine_type, timestamp=timestamp, parameters=parameters, scores=[]) for _ in item_contents]
+             raise ClassificationError(f"Batch classification failed using model '{model_id}'. Error: {e}") from e
