@@ -56,10 +56,15 @@ from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.classification.manager import ClassificationManager # For type hint
 # --- End Classification Imports --- #
 
+from natural_pdf.utils.locks import pdf_render_lock # Import the lock
+from natural_pdf.elements.base import Element # Import base element
+from natural_pdf.classification.mixin import ClassificationMixin # Import classification mixin
+from natural_pdf.extraction.mixin import ExtractionMixin # Import extraction mixin
+
 logger = logging.getLogger(__name__)
 
 
-class Page(ClassificationMixin):
+class Page(ClassificationMixin, ExtractionMixin):
     """
     Enhanced Page wrapper built on top of pdfplumber.Page.
 
@@ -2223,3 +2228,5 @@ class Page(ClassificationMixin):
         if not hasattr(self, 'metadata') or self.metadata is None:
             self.metadata = {}
         return self.metadata
+
+    # --- Content Extraction ---

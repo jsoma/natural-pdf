@@ -78,8 +78,10 @@ nav:
     - Interactive Widget: interactive-widget/index.ipynb
     - OCR: ocr/index.md
     - OCR Fine-tuning: finetuning/index.md
-    - Layout Analysis: layout-analysis/index.ipynb
     - Tables: tables/index.ipynb
+    - Layout Analysis: layout-analysis/index.ipynb
+    - Categorizing Documents: categorizing-documents/index.md
+    - Data extraction: data-extraction/index.md
     - Document Q&A: document-qa/index.ipynb
   - Tutorials:
     - Loading & Extraction: tutorials/01-loading-and-extraction.ipynb

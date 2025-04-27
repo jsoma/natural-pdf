@@ -19,7 +19,6 @@ from typing import (
     Type,
     Union,
 )
-from pathlib import Path
 from natural_pdf.utils.tqdm_utils import get_tqdm
 
 import pdfplumber
@@ -36,6 +35,12 @@ from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.results import ClassificationResult
+from natural_pdf.extraction.manager import StructuredDataManager
+
+from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.elements.base import Element
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.extraction.mixin import ExtractionMixin
 
 try:
     from typing import Any as TypingAny
@@ -60,7 +65,12 @@ except ImportError:
 logger = logging.getLogger("natural_pdf.core.pdf")
 tqdm = get_tqdm()
 
-class PDF:
+DEFAULT_MANAGERS = {
+    "classification": ClassificationManager,
+    "structured_data": StructuredDataManager,
+}
+
+class PDF(ExtractionMixin):
     """
     Enhanced PDF wrapper built on top of pdfplumber.
 
@@ -94,12 +104,10 @@ class PDF:
             logger.info(f"Downloading PDF from URL: {path_or_url}")
             try:
                 self._temp_file = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-
                 with urllib.request.urlopen(path_or_url) as response:
                     self._temp_file.write(response.read())
                     self._temp_file.flush()
                     self._temp_file.close()
-
                 self._resolved_path = self._temp_file.name
                 logger.info(f"PDF downloaded to temporary file: {self._resolved_path}")
             except Exception as e:
@@ -121,10 +129,7 @@ class PDF:
         try:
             self._pdf = pdfplumber.open(self._resolved_path)
         except Exception as e:
-            logger.error(
-                f"Failed to open PDF with pdfplumber: {self._resolved_path}. Error: {e}",
-                exc_info=True,
-            )
+            logger.error(f"Failed to open PDF: {e}", exc_info=True)
             self.close()
             raise IOError(f"Failed to open PDF file/URL: {path_or_url}") from e
 
@@ -140,7 +145,7 @@ class PDF:
         self._layout_manager = LayoutManager() if LayoutManager else None
         self.highlighter = HighlightingService(self)
         self._classification_manager_instance = ClassificationManager()
-        self._manager_registry: Dict[str, Any] = {}
+        self._manager_registry = {}
 
         self._pages = [
             Page(p, parent=self, index=i, font_attrs=font_attrs)
@@ -151,8 +156,40 @@ class PDF:
         self._exclusions = []
         self._regions = []
 
-        logger.info("Initialized HighlightingService.")
         logger.info(f"PDF '{self.source_path}' initialized with {len(self._pages)} pages.")
+
+        self._initialize_managers()
+        self._initialize_highlighter()
+
+    def _initialize_managers(self):
+        """Initialize manager instances based on DEFAULT_MANAGERS."""
+        self._managers = {}
+        for key, manager_class in DEFAULT_MANAGERS.items():
+            try:
+                self._managers[key] = manager_class()
+                logger.debug(f"Initialized manager for key '{key}': {manager_class.__name__}")
+            except Exception as e:
+                logger.error(f"Failed to initialize manager {manager_class.__name__}: {e}")
+                self._managers[key] = None
+
+    def get_manager(self, key: str) -> Any:
+        """Retrieve a manager instance by its key."""
+        if key not in self._managers:
+            raise KeyError(f"No manager registered for key '{key}'. Available: {list(self._managers.keys())}")
+        
+        manager_instance = self._managers.get(key)
+        
+        if manager_instance is None:
+             manager_class = DEFAULT_MANAGERS.get(key)
+             if manager_class:
+                  raise RuntimeError(f"Manager '{key}' ({manager_class.__name__}) failed to initialize previously.")
+             else:
+                  raise RuntimeError(f"Manager '{key}' failed to initialize (class not found).")
+
+        return manager_instance
+
+    def _initialize_highlighter(self):
+        pass
 
     @property
     def metadata(self) -> Dict[str, Any]:
@@ -164,7 +201,6 @@ class PDF:
         """Access pages as a PageCollection object."""
         from natural_pdf.elements.collections import PageCollection
 
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
         return PageCollection(self._pages)
@@ -176,12 +212,10 @@ class PDF:
         Returns:
             Self for method chaining
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
         self._exclusions = []
-        # Also clear from pages
         for page in self._pages:
             page.clear_exclusions()
         return self
@@ -193,23 +227,19 @@ class PDF:
         Add an exclusion function to the PDF. Text from these regions will be excluded from extraction.
 
         Args:
-            exclusion_func: A function that takes a Page and returns a Region to exclude, or None.
+            exclusion_func: A function that takes a Page and returns a Region to exclude, or None
             label: Optional label for this exclusion
 
         Returns:
             Self for method chaining
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
-        # Store exclusion with its label at PDF level
         exclusion_data = (exclusion_func, label)
         self._exclusions.append(exclusion_data)
 
-        # Apply this exclusion to all pages
         for page in self._pages:
-            # We pass the original function, Page.add_exclusion handles calling it
             page.add_exclusion(exclusion_func, label=label)
 
         return self
@@ -228,22 +258,22 @@ class PDF:
         pages: Optional[Union[Iterable[int], range, slice]] = None,
     ) -> "PDF":
         """
-        Applies OCR to specified pages (or all pages) of the PDF using batch processing.
+        Applies OCR to specified pages of the PDF using batch processing.
 
         Args:
-            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr', 'surya')
-            languages: List of language codes for the selected engine
-            min_confidence: Minimum confidence threshold for detected text
-            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps')
-            resolution: DPI resolution to render page images before OCR
-            apply_exclusions: Whether to mask excluded areas for OCR
-            detect_only: If True, only detect text bounding boxes, don't OCR
+            engine: Name of the OCR engine
+            languages: List of language codes
+            min_confidence: Minimum confidence threshold 
+            device: Device to run OCR on
+            resolution: DPI resolution for page images
+            apply_exclusions: Whether to mask excluded areas
+            detect_only: If True, only detect text boxes
             replace: Whether to replace existing OCR elements
-            options: Engine-specific options object or dict
+            options: Engine-specific options
             pages: Page indices to process or None for all pages
 
         Returns:
-            Self for method chaining.
+            Self for method chaining
         """
         if not self._ocr_manager:
             logger.error("OCRManager not available. Cannot apply OCR.")
@@ -252,7 +282,7 @@ class PDF:
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
         
-        target_pages: List[Page] = []
+        target_pages = []
         if pages is None:
             target_pages = self._pages
         elif isinstance(pages, slice):
@@ -263,11 +293,9 @@ class PDF:
             except IndexError:
                 raise ValueError("Invalid page index provided in 'pages' iterable.")
             except TypeError:
-                raise TypeError(
-                    "'pages' must be None, a slice, or an iterable of page indices (int)."
-                )
+                raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
         else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
 
         if not target_pages:
             logger.warning("No pages selected for OCR processing.")
@@ -276,19 +304,15 @@ class PDF:
         page_numbers = [p.number for p in target_pages]
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
         
-        final_resolution = resolution
-        if final_resolution is None:
-            final_resolution = getattr(self, "_config", {}).get("resolution", 150)
+        final_resolution = resolution or getattr(self, "_config", {}).get("resolution", 150)
+        logger.debug(f"Using OCR image resolution: {final_resolution} DPI")
 
-        logger.debug(f"Using OCR image rendering resolution: {final_resolution} DPI")
-
-        images_pil: List[Image.Image] = []
-        page_image_map: List[Tuple[Page, Image.Image]] = []
-        logger.info(
-            f"[{thread_id}] Rendering {len(target_pages)} pages to images at {final_resolution} DPI (apply_exclusions={apply_exclusions})..."
-        )
+        images_pil = []
+        page_image_map = []
+        logger.info(f"[{thread_id}] Rendering {len(target_pages)} pages...")
         failed_page_num = "unknown"
         render_start_time = time.monotonic()
+        
         try:
             for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
                 failed_page_num = page.number
@@ -305,10 +329,11 @@ class PDF:
                 images_pil.append(img)
                 page_image_map.append((page, img))
         except Exception as e:
-            logger.error(f"Failed to render one or more pages for batch OCR: {e}", exc_info=True)
+            logger.error(f"Failed to render pages for batch OCR: {e}")
             raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
+            
         render_end_time = time.monotonic()
-        logger.debug(f"[{thread_id}] Finished rendering {len(images_pil)} images for {self.path} (Duration: {render_end_time - render_start_time:.2f}s)")
+        logger.debug(f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)")
 
         if not images_pil or not page_image_map:
             logger.error("No images were successfully rendered for batch OCR.")
@@ -326,37 +351,31 @@ class PDF:
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         ocr_call_args = {k:v for k,v in manager_args.items() if k!='images'}
-        logger.info(
-            f"[{thread_id}] Calling OCR Manager for {self.path} with args: { ocr_call_args } ..."
-        )
+        logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
         ocr_start_time = time.monotonic()
+        
         try:
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
             if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
-                logger.error(
-                    f"OCR Manager returned unexpected result format or length for batch processing. "
-                    f"Expected list of length {len(images_pil)}, got {type(batch_results)} "
-                    f"with length {len(batch_results) if isinstance(batch_results, list) else 'N/A'}."
-                )
+                logger.error(f"OCR Manager returned unexpected result format or length.")
                 return self
 
             logger.info("OCR Manager batch processing complete.")
-
         except Exception as e:
-            logger.error(f"Batch OCR processing failed: {e}", exc_info=True)
+            logger.error(f"Batch OCR processing failed: {e}")
             return self
+            
         ocr_end_time = time.monotonic()
-        logger.debug(f"[{thread_id}] OCR Manager call finished for {self.path} (Duration: {ocr_end_time - ocr_start_time:.2f}s)")
+        logger.debug(f"[{thread_id}] OCR processing finished (Duration: {ocr_end_time - ocr_start_time:.2f}s)")
 
         logger.info("Adding OCR results to respective pages...")
         total_elements_added = 0
+        
         for i, (page, img) in enumerate(page_image_map):
             results_for_page = batch_results[i]
             if not isinstance(results_for_page, list):
-                logger.warning(
-                    f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}"
-                )
+                logger.warning(f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}")
                 continue
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
@@ -376,24 +395,19 @@ class PDF:
                 else:
                     logger.debug(f"  No valid TextElements created for page {page.number}.")
             except Exception as e:
-                logger.error(
-                    f"  Error adding OCR elements to page {page.number}: {e}", exc_info=True
-                )
+                logger.error(f"  Error adding OCR elements to page {page.number}: {e}")
 
-        logger.info(
-            f"Finished adding OCR results. Total elements added across {len(target_pages)} pages: {total_elements_added}"
-        )
-        logger.debug(f"[{thread_id}] PDF.apply_ocr finished for {self.path}")
+        logger.info(f"Finished adding OCR results. Total elements added: {total_elements_added}")
         return self
 
     def add_region(
         self, region_func: Callable[["Page"], Optional[Region]], name: str = None
     ) -> "PDF":
         """
-        Add a region function to the PDF. This creates regions on all pages using the provided function.
+        Add a region function to the PDF.
 
         Args:
-            region_func: A function that takes a Page and returns a Region, or None.
+            region_func: A function that takes a Page and returns a Region, or None
             name: Optional name for the region
 
         Returns:
@@ -411,14 +425,9 @@ class PDF:
                 if region_instance and isinstance(region_instance, Region):
                     page.add_region(region_instance, name=name, source="named")
                 elif region_instance is not None:
-                    logger.warning(
-                        f"Region function did not return a valid Region object for page {page.number}. Got: {type(region_instance)}"
-                    )
+                    logger.warning(f"Region function did not return a valid Region for page {page.number}")
             except Exception as e:
-                logger.error(
-                    f"Error executing or adding region function for page {page.number}: {e}",
-                    exc_info=True,
-                )
+                logger.error(f"Error adding region for page {page.number}: {e}")
 
         return self
 
@@ -429,22 +438,19 @@ class PDF:
         Find the first element matching the selector.
 
         Args:
-            selector: CSS-like selector string (e.g., 'text:contains("Annual Report")')
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            regex: Whether to use regex for text search in :contains (default: False)
-            case: Whether to do case-sensitive text search (default: True)
+            selector: CSS-like selector string
+            apply_exclusions: Whether to exclude elements in exclusion regions
+            regex: Whether to use regex for text search
+            case: Whether to do case-sensitive text search
             **kwargs: Additional filter parameters
 
         Returns:
             Element object or None if not found
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
         selector_obj = parse_selector(selector)
-
-        # Pass regex and case flags to selector function
         kwargs["regex"] = regex
         kwargs["case"] = case
 
@@ -460,22 +466,19 @@ class PDF:
         Find all elements matching the selector.
 
         Args:
-            selector: CSS-like selector string (e.g., 'text[color=(1,0,0)]')
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            regex: Whether to use regex for text search in :contains (default: False)
-            case: Whether to do case-sensitive text search (default: True)
+            selector: CSS-like selector string
+            apply_exclusions: Whether to exclude elements in exclusion regions
+            regex: Whether to use regex for text search
+            case: Whether to do case-sensitive text search
             **kwargs: Additional filter parameters
 
         Returns:
             ElementCollection with matching elements
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
         selector_obj = parse_selector(selector)
-
-        # Pass regex and case flags to selector function
         kwargs["regex"] = regex
         kwargs["case"] = case
 
@@ -492,8 +495,8 @@ class PDF:
 
         Args:
             selector_obj: Parsed selector dictionary
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            first_only: If True, stop searching after the first match is found.
+            apply_exclusions: Whether to exclude elements in exclusion regions
+            first_only: If True, stop searching after the first match is found
             **kwargs: Additional filter parameters
 
         Returns:
@@ -501,57 +504,45 @@ class PDF:
         """
         from natural_pdf.elements.collections import ElementCollection
 
-        # Determine page range to search
         page_indices = kwargs.get("pages", range(len(self._pages)))
         if isinstance(page_indices, int):
             page_indices = [page_indices]
         elif isinstance(page_indices, slice):
             page_indices = range(*page_indices.indices(len(self._pages)))
 
-        # Check for cross-page pseudo-classes (currently not supported)
         for pseudo in selector_obj.get("pseudo_classes", []):
             if pseudo.get("name") in ("spans", "continues"):
                 logger.warning("Cross-page selectors ('spans', 'continues') are not yet supported.")
                 return ElementCollection([])
 
-        # Regular case: collect elements from each page
         all_elements = []
         for page_idx in page_indices:
             if 0 <= page_idx < len(self._pages):
                 page = self._pages[page_idx]
-                # Pass first_only down to page._apply_selector
                 page_elements_collection = page._apply_selector(
                     selector_obj, apply_exclusions=apply_exclusions, first_only=first_only, **kwargs
                 )
                 if page_elements_collection:
                     page_elements = page_elements_collection.elements
                     all_elements.extend(page_elements)
-                    # If we only need the first match overall, and we found one on this page, stop
                     if first_only and page_elements:
-                        break  # Stop iterating through pages
+                        break
             else:
                 logger.warning(f"Page index {page_idx} out of range (0-{len(self._pages)-1}).")
 
-        # Create a combined collection
         combined = ElementCollection(all_elements)
 
-        # Sort in document order if requested and not first_only (already sorted by page)
         if not first_only and kwargs.get("document_order", True):
-            # Check if elements have page, top, x0 before sorting
             if all(
                 hasattr(el, "page") and hasattr(el, "top") and hasattr(el, "x0")
                 for el in combined.elements
             ):
                 combined.sort(key=lambda el: (el.page.index, el.top, el.x0))
             else:
-                # Elements might be Regions without inherent sorting order yet
-                # Attempt sorting by page index if possible
                 try:
                     combined.sort(key=lambda el: el.page.index)
                 except AttributeError:
-                    logger.warning(
-                        "Cannot sort elements in document order: Missing required attributes (e.g., page)."
-                    )
+                    logger.warning("Cannot sort elements in document order: Missing required attributes.")
 
         return combined
 
@@ -568,24 +559,21 @@ class PDF:
 
         Args:
             selector: Optional selector to filter elements
-            preserve_whitespace: Whether to keep blank characters (default: True)
-            use_exclusions: Whether to apply exclusion regions (default: True)
-            debug_exclusions: Whether to output detailed debugging for exclusions (default: False)
+            preserve_whitespace: Whether to keep blank characters
+            use_exclusions: Whether to apply exclusion regions
+            debug_exclusions: Whether to output detailed debugging for exclusions
             **kwargs: Additional extraction parameters
 
         Returns:
             Extracted text as string
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
-        # If selector is provided, find elements first
         if selector:
             elements = self.find_all(selector, apply_exclusions=use_exclusions, **kwargs)
             return elements.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
 
-        # Otherwise extract from all pages
         if debug_exclusions:
             print(f"PDF: Extracting text with exclusions from {len(self.pages)} pages")
             print(f"PDF: Found {len(self._exclusions)} document-level exclusions")
@@ -606,25 +594,6 @@ class PDF:
 
         return "\n".join(texts)
 
-    def extract(self, selector: str, preserve_whitespace=True, **kwargs) -> str:
-        """
-        Shorthand for finding elements and extracting their text.
-
-        Args:
-            selector: CSS-like selector string
-            preserve_whitespace: Whether to keep blank characters (default: True)
-            **kwargs: Additional extraction parameters
-
-        Returns:
-            Extracted text from matching elements
-        """
-        # Ensure _pages is initialized
-        if not hasattr(self, "_pages"):
-            raise AttributeError("PDF pages not yet initialized.")
-        return self.extract_text(
-            selector, preserve_whitespace=preserve_whitespace, use_exclusions=True, **kwargs
-        )  # apply_exclusions is handled by find_all in extract_text
-
     def extract_tables(
         self, selector: Optional[str] = None, merge_across_pages: bool = False, **kwargs
     ) -> List[Any]:
@@ -639,26 +608,24 @@ class PDF:
         Returns:
             List of extracted tables
         """
-        # Ensure _pages is initialized
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
-        # TODO: Implement table extraction
+            
         logger.warning("PDF.extract_tables is not fully implemented yet.")
         all_tables = []
+        
         for page in self.pages:
-            # Assuming page.extract_tables(**kwargs) exists or is added
             if hasattr(page, "extract_tables"):
                 all_tables.extend(page.extract_tables(**kwargs))
             else:
                 logger.debug(f"Page {page.number} does not have extract_tables method.")
-        # Placeholder filtering
+                
         if selector:
             logger.warning("Filtering extracted tables by selector is not implemented.")
-            # Would need to parse selector and filter the list `all_tables`
-        # Placeholder merging
+            
         if merge_across_pages:
             logger.warning("Merging tables across pages is not implemented.")
-            # Would need logic to detect and merge related tables
+            
         return all_tables
 
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
@@ -668,14 +635,13 @@ class PDF:
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
         Args:
-            output_path: Path to save the searchable PDF.
-            dpi: Resolution for rendering and OCR overlay (default 300).
-            **kwargs: Additional keyword arguments passed to the exporter.
+            output_path: Path to save the searchable PDF
+            dpi: Resolution for rendering and OCR overlay
+            **kwargs: Additional keyword arguments passed to the exporter
         """
         from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 
         output_path_str = str(output_path)
-
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
 
@@ -700,27 +666,21 @@ class PDF:
             **kwargs: Additional parameters passed to the QA engine
 
         Returns:
-            A dictionary containing the answer, confidence, and other metadata.
-            Result will have an 'answer' key containing the answer text.
+            A dictionary containing the answer, confidence, and other metadata
         """
         from natural_pdf.qa import get_qa_engine
 
-        # Initialize or get QA engine
         qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
 
-        # Determine which pages to query
         if pages is None:
             target_pages = list(range(len(self.pages)))
         elif isinstance(pages, int):
-            # Single page
             target_pages = [pages]
         elif isinstance(pages, (list, range)):
-            # List or range of pages
             target_pages = pages
         else:
             raise ValueError(f"Invalid pages parameter: {pages}")
 
-        # Actually query each page and gather results
         results = []
         for page_idx in target_pages:
             if 0 <= page_idx < len(self.pages):
@@ -729,189 +689,127 @@ class PDF:
                     page=page, question=question, min_confidence=min_confidence, **kwargs
                 )
 
-                # Add to results if it found an answer
                 if page_result and page_result.get("found", False):
                     results.append(page_result)
 
-        # Sort results by confidence
         results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
 
-        # Return the best result, or a default result if none found
         if results:
             return results[0]
         else:
-            # Return a structure indicating no answer found
             return {
                 "answer": None,
                 "confidence": 0.0,
                 "found": False,
-                "page_num": None,  # Or maybe the pages searched?
+                "page_num": None,
                 "source_elements": [],
             }
 
     def search_within_index(
         self,
         query: Union[str, Path, Image.Image, Region],
-        search_service: SearchServiceProtocol,  # Now required
+        search_service: SearchServiceProtocol,
         options: Optional[SearchOptions] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Finds relevant documents specifically originating from THIS PDF document
-        within a search index managed by the provided SearchService.
-
-        This method uses a pre-configured SearchService instance and adds
-        a filter to the search query to scope results only to pages from
-        this specific PDF object (based on its resolved path).
+        Finds relevant documents from this PDF within a search index.
 
         Args:
-            query: The search query (text, image path, PIL Image, Region).
-            search_service: A pre-configured SearchService instance pointing to the
-                            index where this PDF's content (or related content)
-                            is expected to be found.
-            options: Optional SearchOptions to configure the query (top_k, filters, etc.).
-                     Any existing filters in `options` will be combined with the
-                     PDF-scoping filter using an 'AND' condition.
+            query: The search query (text, image path, PIL Image, Region)
+            search_service: A pre-configured SearchService instance
+            options: Optional SearchOptions to configure the query
 
         Returns:
-            A list of result dictionaries, sorted by relevance, containing only
-            results originating from this PDF's pages.
+            A list of result dictionaries, sorted by relevance
 
         Raises:
-            ImportError: If search dependencies are not installed.
-            ValueError: If search_service is None.
-            TypeError: If search_service does not conform to the protocol.
-            FileNotFoundError: If the collection managed by the service does not exist.
-            RuntimeError: For other search failures.
+            ImportError: If search dependencies are not installed
+            ValueError: If search_service is None
+            TypeError: If search_service does not conform to the protocol
+            FileNotFoundError: If the collection managed by the service does not exist
+            RuntimeError: For other search failures
         """
         if not search_service:
             raise ValueError("A configured SearchServiceProtocol instance must be provided.")
-        # Optional stricter check:
-        # if not isinstance(search_service, SearchServiceProtocol):
-        #     raise TypeError("Provided search_service does not conform to SearchServiceProtocol.")
 
-        # Get collection name from service for logging
         collection_name = getattr(search_service, "collection_name", "<Unknown Collection>")
-        logger.info(
-            f"Searching within index '{collection_name}' (via provided service) for content from PDF '{self.path}'. Query type: {type(query).__name__}."
-        )
+        logger.info(f"Searching within index '{collection_name}' for content from PDF '{self.path}'")
 
-        # --- 1. Get Search Service Instance --- (REMOVED - provided directly)
-        # service: SearchServiceProtocol
-        # if search_service:
-        #     service = search_service
-        # else:
-        #     logger.debug(f"Getting SearchService instance via factory (persist={persist}, collection={collection_name})...")
-        #     factory_args = {**kwargs, 'collection_name': collection_name, 'persist': persist}
-        #     # TODO: Pass embedding model from options/pdf config if needed?
-        #     service = get_search_service(**factory_args)
-        service = search_service  # Use validated provided service
+        service = search_service
 
-        # --- 2. Prepare Query and Options ---
         query_input = query
-        # Resolve options (use default TextSearch if none provided)
         effective_options = copy.deepcopy(options) if options is not None else TextSearchOptions()
 
-        # Handle Region query - extract text for now
         if isinstance(query, Region):
             logger.debug("Query is a Region object. Extracting text.")
             if not isinstance(effective_options, TextSearchOptions):
-                logger.warning(
-                    "Querying with Region image requires MultiModalSearchOptions (Not fully implemented). Falling back to text extraction."
-                )
+                logger.warning("Querying with Region image requires MultiModalSearchOptions. Falling back to text extraction.")
             query_input = query.extract_text()
             if not query_input or query_input.isspace():
                 logger.error("Region has no extractable text for query.")
                 return []
 
-        # --- 3. Add Filter to Scope Search to THIS PDF ---
-        # Assume metadata field 'pdf_path' stores the resolved path used during indexing
+        # Add filter to scope search to THIS PDF
         pdf_scope_filter = {
-            "field": "pdf_path",  # Or potentially "source_path" depending on indexing metadata
+            "field": "pdf_path",
             "operator": "eq",
-            "value": self.path,  # Use the resolved path of this PDF instance
+            "value": self.path,
         }
         logger.debug(f"Applying filter to scope search to PDF: {pdf_scope_filter}")
 
         # Combine with existing filters in options (if any)
         if effective_options.filters:
-            logger.debug(
-                f"Combining PDF scope filter with existing filters: {effective_options.filters}"
-            )
-            # Assume filters are compatible with the underlying search service
-            # If existing filters aren't already in an AND block, wrap them
-            if (
-                isinstance(effective_options.filters, dict)
-                and effective_options.filters.get("operator") == "AND"
-            ):
-                # Already an AND block, just append the condition
+            logger.debug(f"Combining PDF scope filter with existing filters")
+            if isinstance(effective_options.filters, dict) and effective_options.filters.get("operator") == "AND":
                 effective_options.filters["conditions"].append(pdf_scope_filter)
             elif isinstance(effective_options.filters, list):
-                # Assume list represents implicit AND conditions
                 effective_options.filters = {
                     "operator": "AND",
                     "conditions": effective_options.filters + [pdf_scope_filter],
                 }
-            elif isinstance(effective_options.filters, dict):  # Single filter dict
+            elif isinstance(effective_options.filters, dict):
                 effective_options.filters = {
                     "operator": "AND",
                     "conditions": [effective_options.filters, pdf_scope_filter],
                 }
             else:
-                logger.warning(
-                    f"Unsupported format for existing filters: {type(effective_options.filters)}. Overwriting with PDF scope filter."
-                )
+                logger.warning(f"Unsupported format for existing filters. Overwriting with PDF scope filter.")
                 effective_options.filters = pdf_scope_filter
         else:
             effective_options.filters = pdf_scope_filter
 
         logger.debug(f"Final filters for service search: {effective_options.filters}")
 
-        # --- 4. Call SearchService ---
         try:
-            # Call the service's search method (no collection_name needed)
             results = service.search(
                 query=query_input,
                 options=effective_options,
             )
-            logger.info(
-                f"SearchService returned {len(results)} results scoped to PDF '{self.path}' within collection '{collection_name}'."
-            )
+            logger.info(f"SearchService returned {len(results)} results from PDF '{self.path}'")
             return results
         except FileNotFoundError as fnf:
-            logger.error(
-                f"Search failed: Collection '{collection_name}' not found by service. Error: {fnf}"
-            )
-            raise  # Re-raise specific error
+            logger.error(f"Search failed: Collection not found. Error: {fnf}")
+            raise
         except Exception as e:
-            logger.error(
-                f"SearchService search failed for PDF '{self.path}' in collection '{collection_name}': {e}",
-                exc_info=True,
-            )
-            raise RuntimeError(
-                f"Search within index failed for PDF '{self.path}'. See logs for details."
-            ) from e
+            logger.error(f"SearchService search failed: {e}")
+            raise RuntimeError(f"Search within index failed. See logs for details.") from e
 
     def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
         """
-        Exports OCR results from this PDF into a correction task package (zip file).
+        Exports OCR results from this PDF into a correction task package.
 
         Args:
-            output_zip_path: The path to save the output zip file.
+            output_zip_path: The path to save the output zip file
             **kwargs: Additional arguments passed to create_correction_task_package
-                      (e.g., image_render_scale, overwrite).
         """
         try:
             from natural_pdf.utils.packaging import create_correction_task_package
-
             create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
         except ImportError:
-            logger.error(
-                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
-            )
-            # Or raise
+            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
         except Exception as e:
-            logger.error(f"Failed to export correction task for {self.path}: {e}", exc_info=True)
-            raise  # Re-raise the exception from the utility function
+            logger.error(f"Failed to export correction task: {e}")
+            raise
 
     def correct_ocr(
         self,
@@ -919,28 +817,20 @@ class PDF:
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,
-    ) -> "PDF":  # Return self for chaining
+    ) -> "PDF":
         """
-        Applies corrections to OCR-generated text elements using a callback function,
-        delegating the core work to the `Page.correct_ocr` method, potentially
-        in parallel if `max_workers` is specified for the Page.
+        Applies corrections to OCR text elements using a callback function.
 
         Args:
-            correction_callback: A function that accepts a single argument (an element
-                                object) and returns `Optional[str]`. It returns the
-                                corrected text string if an update is needed, otherwise None.
+            correction_callback: Function that takes an element and returns corrected text or None
             pages: Optional page indices/slice to limit the scope of correction
-                (default: all pages).
-            max_workers: The maximum number of threads to use for parallel execution
-                         *within each page's* `correct_ocr` call. If None, the Page default is used.
-            progress_callback: Optional callback function to call after processing each element
-                               (used for updating a shared progress bar).
+            max_workers: Maximum number of threads to use for parallel execution
+            progress_callback: Optional callback function for progress updates
 
         Returns:
-            Self for method chaining.
+            Self for method chaining
         """
-        # Determine target pages
-        target_page_indices: List[int] = []
+        target_page_indices = []
         if pages is None:
             target_page_indices = list(range(len(self._pages)))
         elif isinstance(pages, slice):
@@ -948,41 +838,32 @@ class PDF:
         elif hasattr(pages, "__iter__"):
             try:
                 target_page_indices = [int(i) for i in pages]
-                # Validate indices
                 for idx in target_page_indices:
                     if not (0 <= idx < len(self._pages)):
                         raise IndexError(f"Page index {idx} out of range (0-{len(self._pages)-1}).")
             except (IndexError, TypeError, ValueError) as e:
-                raise ValueError(
-                    f"Invalid page index or type provided in 'pages': {pages}. Error: {e}"
-                ) from e
+                raise ValueError(f"Invalid page index in 'pages': {pages}. Error: {e}") from e
         else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
 
         if not target_page_indices:
             logger.warning("No pages selected for OCR correction.")
             return self
 
-        logger.info(
-            f"Starting OCR correction process via Page delegation for pages: {target_page_indices} with max_workers={max_workers}"
-        )
+        logger.info(f"Starting OCR correction for pages: {target_page_indices}")
 
-        # Iterate through target pages and call their correct_ocr method
-        # The parallelism happens *inside* page.correct_ocr
         for page_idx in target_page_indices:
             page = self._pages[page_idx]
             try:
-                # Pass the max_workers parameter down to the page method
                 page.correct_ocr(
                     correction_callback=correction_callback,
                     max_workers=max_workers,
                     progress_callback=progress_callback,
                 )
             except Exception as e:
-                logger.error(f"Error during correct_ocr on page {page_idx}: {e}", exc_info=True)
-                # Optionally re-raise or just log and continue
+                logger.error(f"Error during correct_ocr on page {page_idx}: {e}")
 
-        logger.info(f"OCR correction process finished for requested pages.")
+        logger.info("OCR correction process finished.")
         return self
 
     def __len__(self) -> int:
@@ -995,6 +876,7 @@ class PDF:
         """Access pages by index or slice."""
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not initialized yet.")
+            
         if isinstance(key, slice):
             from natural_pdf.elements.collections import PageCollection
             return PageCollection(self._pages[key])
@@ -1012,7 +894,7 @@ class PDF:
         if hasattr(self, "_pdf") and self._pdf is not None:
             try:
                 self._pdf.close()
-                logger.debug(f"Closed underlying pdfplumber PDF object for {self.source_path}")
+                logger.debug(f"Closed pdfplumber PDF object for {self.source_path}")
             except Exception as e:
                 logger.warning(f"Error closing pdfplumber object: {e}")
             finally:
@@ -1027,7 +909,7 @@ class PDF:
                         os.unlink(temp_file_path)
                         logger.debug(f"Removed temporary PDF file: {temp_file_path}")
             except Exception as e:
-                logger.warning(f"Failed to clean up temporary PDF file '{temp_file_path}': {e}")
+                logger.warning(f"Failed to clean up temporary file '{temp_file_path}': {e}")
             finally:
                 self._temp_file = None
 
@@ -1039,79 +921,8 @@ class PDF:
         """Context manager exit."""
         self.close()
 
-    def get_manager(self, manager_type: str, engine: Optional[str] = None, **kwargs) -> Any:
-        """Gets or initializes a manager instance from the registry.
-
-        Args:
-            manager_type: The type of manager ('classification', 'ner', 'ocr', 'layout', etc.).
-            engine: Optional engine name to specify for managers that support multiple engines.
-            **kwargs: Additional arguments for manager initialization.
-
-        Returns:
-            The manager instance.
-
-        Raises:
-            ValueError: If the manager type is unknown or dependencies are missing.
-            RuntimeError: If the manager fails to initialize.
-        """
-        # Key construction could include engine if relevant for that manager type
-        # For now, use manager_type as the primary key
-        registry_key = manager_type # Simple key for now
-
-        if registry_key not in self._manager_registry:
-            logger.info(f"Initializing manager: '{manager_type}' (engine: {engine})...")
-            manager_instance = None
-            try:
-                if manager_type == 'classification':
-                    # Assumes ClassificationManager is imported in the file scope
-                    if not self._classification_manager_instance:
-                         self._classification_manager_instance = ClassificationManager(**kwargs)
-                    manager_instance = self._classification_manager_instance # Reuse existing instance for now
-                    # TODO: Future: Allow different classification managers?
-                elif manager_type == 'layout':
-                    # Assumes LayoutManager is imported
-                    if not self._layout_manager:
-                         self._layout_manager = LayoutManager(**kwargs) # Assumes LayoutManager takes kwargs
-                    manager_instance = self._layout_manager
-                elif manager_type == 'ocr':
-                    # Assumes OCRManager is imported
-                    if not self._ocr_manager:
-                         self._ocr_manager = OCRManager(**kwargs) # Assumes OCRManager takes kwargs
-                    manager_instance = self._ocr_manager
-                # --- Add other managers like 'ner', 'translation' here --- #
-                # elif manager_type == 'ner':
-                #     from natural_pdf.ner.manager import NERManager # Example dynamic import
-                #     manager_instance = NERManager(**kwargs)
-                else:
-                    raise ValueError(f"Unknown manager type: '{manager_type}'")
-
-                # Check availability *after* potential instantiation
-                if hasattr(manager_instance, 'is_available') and not manager_instance.is_available():
-                     # Attempt to provide helpful install hints
-                     hint = ""
-                     if manager_type == 'classification':
-                         hint = " Install with: pip install \"natural-pdf[classification]\""
-                     elif manager_type == 'layout':
-                         hint = " Check layout engine dependencies (e.g., pip install \"natural-pdf[layout_yolo]\")"
-                     elif manager_type == 'ocr':
-                         hint = " Check OCR engine dependencies (e.g., pip install \"natural-pdf[ocr]\")"
-                     
-                     raise ValueError(f"Manager '{manager_type}' is not available. Dependencies might be missing.{hint}")
-
-                self._manager_registry[registry_key] = manager_instance
-                logger.info(f"Manager '{manager_type}' initialized and added to registry.")
-
-            except ImportError as e:
-                logger.error(f"Failed to import manager for type '{manager_type}': {e}")
-                raise ValueError(f"Dependencies missing for manager type '{manager_type}'. {e}") from e
-            except Exception as e:
-                logger.error(f"Failed to initialize manager '{manager_type}': {e}", exc_info=True)
-                raise RuntimeError(f"Failed to initialize manager '{manager_type}'.") from e
-
-        return self._manager_registry[registry_key]
-
-    # --- Indexable Protocol Methods --- Needed for search/sync
     def get_id(self) -> str:
+        """Get unique identifier for this PDF."""
         return self.path
 
     # --- Classification Methods --- #
@@ -1126,46 +937,40 @@ class PDF:
         **kwargs,
     ) -> "PDF":
         """
-        Classifies specified pages (or all pages) of the PDF using batch processing.
+        Classifies specified pages of the PDF.
 
         Args:
-            categories: A list of string category names.
-            model: Model identifier ('text', 'vision', or specific HF ID).
-            pages: An iterable of 0-based page indices, slice, or None for all pages.
-            analysis_key: Key under which to store results in each page's `.analyses` dict.
-                          Defaults to 'classification'.
-            using: Optional processing mode ('text' or 'vision'). Inferred if None.
-            **kwargs: Additional arguments passed to the ClassificationManager's batch method
-                      (e.g., `min_confidence`, `batch_size`).
+            categories: List of category names
+            model: Model identifier ('text', 'vision', or specific HF ID)
+            pages: Page indices, slice, or None for all pages
+            analysis_key: Key to store results in page's analyses dict
+            using: Processing mode ('text' or 'vision')
+            **kwargs: Additional arguments for the ClassificationManager
 
         Returns:
-            Self for method chaining.
+            Self for method chaining
         """
         if not categories:
             raise ValueError("Categories list cannot be empty.")
 
-        # Use the manager registry
         try:
             manager = self.get_manager('classification')
         except (ValueError, RuntimeError) as e:
-             # Reraise as ClassificationError for consistency?
-             raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
+            raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
 
-        # manager = self._classification_manager_instance # OLD WAY
         if not manager or not manager.is_available():
-             # This check might be redundant if get_manager handles it, but keep for safety
-             try:
-                 from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
-                 if not _CLASSIFICATION_AVAILABLE:
-                     raise ImportError("Classification dependencies missing.")
-             except ImportError:
-                  raise ImportError(
-                     "Classification dependencies missing. "
-                     "Install with: pip install \"natural-pdf[classification]\""
-                  )
-             raise ClassificationError("ClassificationManager not initialized or available on PDF object.")
+            try:
+                from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
+                if not _CLASSIFICATION_AVAILABLE:
+                    raise ImportError("Classification dependencies missing.")
+            except ImportError:
+                raise ImportError(
+                    "Classification dependencies missing. "
+                    "Install with: pip install \"natural-pdf[classification]\""
+                )
+            raise ClassificationError("ClassificationManager not available.")
 
-        target_pages: List[Page] = []
+        target_pages = []
         if pages is None:
             target_pages = self._pages
         elif isinstance(pages, slice):
@@ -1174,36 +979,37 @@ class PDF:
             try:
                 target_pages = [self._pages[i] for i in pages]
             except IndexError:
-                raise ValueError("Invalid page index provided in 'pages' iterable.")
+                raise ValueError("Invalid page index provided.")
             except TypeError:
-                 raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+                raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
         else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices (int).")
+            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
 
         if not target_pages:
             logger.warning("No pages selected for classification.")
             return self
 
-        # Infer engine type based on the model (manager handles default if model is None)
         inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
-        logger.info(f"Classifying {len(target_pages)} PDF pages using model '{model or '(default)'}' (mode: {inferred_using}) with key '{analysis_key}'")
+        logger.info(f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})")
 
         page_contents = []
         pages_to_classify = []
         logger.debug(f"Gathering content for {len(target_pages)} pages...")
+        
         for page in target_pages:
             try:
                 content = page._get_classification_content(model_type=inferred_using, **kwargs)
                 page_contents.append(content)
                 pages_to_classify.append(page)
             except ValueError as e:
-                logger.warning(f"Skipping page {page.number}: Cannot get content for classification - {e}")
+                logger.warning(f"Skipping page {page.number}: Cannot get content - {e}")
             except Exception as e:
-                logger.warning(f"Skipping page {page.number}: Error getting classification content - {e}")
+                logger.warning(f"Skipping page {page.number}: Error getting content - {e}")
 
         if not page_contents:
-             logger.warning("No content could be gathered from pages for batch classification.")
-             return self
+            logger.warning("No content could be gathered for batch classification.")
+            return self
+            
         logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
 
         try:
@@ -1215,25 +1021,76 @@ class PDF:
                 **kwargs,
             )
         except Exception as e:
-             logger.error(f"Batch classification failed: {e}", exc_info=False)
-             raise ClassificationError(f"Batch classification failed: {e}") from e
+            logger.error(f"Batch classification failed: {e}")
+            raise ClassificationError(f"Batch classification failed: {e}") from e
 
         if len(batch_results) != len(pages_to_classify):
-             logger.error(f"Mismatch between number of results ({len(batch_results)}) and classified pages ({len(pages_to_classify)}). Cannot reliably assign results.")
-             return self # Return self even if results are mismatched
+            logger.error(f"Mismatch between number of results ({len(batch_results)}) and pages ({len(pages_to_classify)})")
+            return self
 
         logger.debug(f"Distributing {len(batch_results)} results to pages under key '{analysis_key}'...")
         for page, result_obj in zip(pages_to_classify, batch_results):
-             try:
-                 # Ensure analyses dict exists
-                 if not hasattr(page, 'analyses') or page.analyses is None:
-                      page.analyses = {}
-                 # Store using analysis_key
-                 page.analyses[analysis_key] = result_obj
-             except Exception as e:
-                 logger.warning(f"Failed to store classification results in metadata for page {page.number} under key '{analysis_key}': {e}")
+            try:
+                if not hasattr(page, 'analyses') or page.analyses is None:
+                    page.analyses = {}
+                page.analyses[analysis_key] = result_obj
+            except Exception as e:
+                logger.warning(f"Failed to store classification results for page {page.number}: {e}")
 
-        logger.info(f"Finished classifying selected PDF pages using batch processing.")
+        logger.info(f"Finished classifying PDF pages.")
         return self
 
     # --- End Classification Methods --- #
+
+    # --- Extraction Support --- #
+    def _get_extraction_content(self, using: str = 'text', **kwargs) -> Any:
+        """
+        Retrieves the content for the entire PDF.
+
+        Args:
+            using: 'text' or 'vision'
+            **kwargs: Additional arguments passed to extract_text or page.to_image
+
+        Returns:
+            str: Extracted text if using='text'
+            List[PIL.Image.Image]: List of page images if using='vision'
+            None: If content cannot be retrieved
+        """
+        if using == 'text':
+            try:
+                layout = kwargs.pop('layout', True)
+                return self.extract_text(layout=layout, **kwargs)
+            except Exception as e:
+                logger.error(f"Error extracting text from PDF: {e}")
+                return None
+        elif using == 'vision':
+            page_images = []
+            logger.info(f"Rendering {len(self.pages)} pages to images...")
+            
+            resolution = kwargs.pop('resolution', 72)
+            include_highlights = kwargs.pop('include_highlights', False)
+            labels = kwargs.pop('labels', False)
+            
+            try:
+                for page in tqdm(self.pages, desc="Rendering Pages"):
+                    img = page.to_image(
+                        resolution=resolution,
+                        include_highlights=include_highlights,
+                        labels=labels,
+                        **kwargs
+                    )
+                    if img:
+                        page_images.append(img)
+                    else:
+                        logger.warning(f"Failed to render page {page.number}, skipping.")
+                if not page_images:
+                    logger.error("Failed to render any pages.")
+                    return None
+                return page_images
+            except Exception as e:
+                logger.error(f"Error rendering pages: {e}")
+                return None
+        else:
+            logger.error(f"Unsupported value for 'using': {using}")
+            return None
+    # --- End Extraction Support --- #

@@ -1,7 +1,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Tuple
 
 # Use try-except for robustness if dependencies are missing
 try:
@@ -43,19 +43,29 @@ class ClassificationManager:
     """Manages classification models and execution."""
 
     DEFAULT_TEXT_MODEL = "facebook/bart-large-mnli"
-    DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch32"
+    DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch16"
 
-    def __init__(self, device: Optional[str] = None):
+    def __init__(
+        self,
+        model_mapping: Optional[Dict[str, str]] = None,
+        default_device: Optional[str] = None,
+    ):
+        """
+        Initialize the ClassificationManager.
+
+        Args:
+            model_mapping: Optional dictionary mapping aliases ('text', 'vision') to model IDs.
+            default_device: Default device ('cpu', 'cuda') if not specified in classify calls.
+        """
         if not _CLASSIFICATION_AVAILABLE:
             raise ImportError(
                 "Classification dependencies missing. "
                 "Install with: pip install \"natural-pdf[classification]\""
             )
 
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
+        self.pipelines: Dict[Tuple[str, str], "Pipeline"] = {} # Cache: (model_id, device) -> pipeline
+
+        self.device = default_device
         logger.info(f"ClassificationManager initialized on device: {self.device}")
 
     def is_available(self) -> bool:

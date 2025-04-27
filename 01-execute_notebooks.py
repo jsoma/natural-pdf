@@ -28,6 +28,8 @@ EXCLUDE_PATTERNS = [
     "explanations",
     "api/index.md",
     "finetuning/index.md",
+    "categorizing-documents/index.md",
+    "data-extraction/index.md",
 ]
 MAX_WORKERS = os.cpu_count()
 

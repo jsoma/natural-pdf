@@ -17,7 +17,10 @@ This installs necessary libraries like `torch`, `transformers`, and others.
 The primary way to perform categorization is using the `.classify()` method available on `Page` and `Region` objects.
 
 ```python
+from natural_pdf import PDF
+
 # Example: Classify a Page
+pdf = PDF("pdfs/01-practice.pdf")
 page = pdf.pages[0]
 categories = ["invoice", "letter", "report cover", "data table"]
 results = page.classify(categories=categories, model="text")

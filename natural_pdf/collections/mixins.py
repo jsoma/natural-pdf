@@ -7,23 +7,23 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T") # Generic type for items in the collection
 
 class ApplyMixin:
-    \"\"\"
+    """
     Mixin class providing an `.apply()` method for collections.
 
     Assumes the inheriting class implements `__iter__` and `__len__` appropriately
     for the items to be processed by `apply`.
-    \"\"\"
+    """
     def _get_items_for_apply(self) -> Iterable[Any]:
-        \"\"\"
+        """
         Returns the iterable of items to apply the function to.
         Defaults to iterating over `self`. Subclasses should override this
         if the default iteration is not suitable for the apply operation.
-        \"\"\"
+        """
         # Default to standard iteration over the collection itself
         return iter(self)
 
     def apply(self: Any, func: Callable[[Any, ...], Any], *args, **kwargs) -> None:
-        \"\"\"
+        """
         Applies a function to each item in the collection.
 
         Args:
@@ -33,7 +33,7 @@ class ApplyMixin:
             **kwargs: Additional keyword arguments to pass to func.
                       A special keyword argument 'show_progress' (bool, default=False)
                       can be used to display a progress bar.
-        \"\"\"
+        """
         show_progress = kwargs.pop('show_progress', False)
         # Derive unit name from class name
         unit_name = self.__class__.__name__.lower()

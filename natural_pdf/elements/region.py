@@ -18,6 +18,9 @@ from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.classification.manager import ClassificationManager # Keep for type hint
 # --- End Classification Imports --- #
 
+from natural_pdf.utils.locks import pdf_render_lock # Import the lock
+from natural_pdf.extraction.mixin import ExtractionMixin # Import extraction mixin
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.text import TextElement
@@ -32,7 +35,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Region(DirectionalMixin, ClassificationMixin):
+class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
     """
     Represents a rectangular region on a page.
     """
@@ -799,11 +802,6 @@ class Region(DirectionalMixin, ClassificationMixin):
         debug = kwargs.get("debug", debug or kwargs.get("debug_exclusions", False))
         logger.debug(f"Region {self.bbox}: extract_text called with kwargs: {kwargs}")
 
-        # --- Handle Docling source (priority) --- DEPRECATED or Adapt?
-        # For now, let's bypass this and always use the standard extraction flow
-        # based on contained elements to ensure consistency.
-        # if self.model == 'docling' or hasattr(self, 'text_content'): ...
-
         # 1. Get Word Elements potentially within this region (initial broad phase)
         # Optimization: Could use spatial query if page elements were indexed
         page_words = self.page.words  # Get all words from the page
@@ -852,7 +850,7 @@ class Region(DirectionalMixin, ClassificationMixin):
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=self.bbox,  # Use region's bbox for context
-            user_kwargs=kwargs,
+            user_kwargs=kwargs, # Pass original kwargs to layout generator
         )
 
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
