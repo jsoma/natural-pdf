@@ -1,5 +1,9 @@
 import logging
+<<<<<<< HEAD
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, overload
+=======
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
 
@@ -11,9 +15,23 @@ from natural_pdf.elements.base import DirectionalMixin
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
+<<<<<<< HEAD
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 
+# --- Classification Imports --- #
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager # Keep for type hint
+# --- End Classification Imports --- #
+
+from natural_pdf.utils.locks import pdf_render_lock # Import the lock
+from natural_pdf.extraction.mixin import ExtractionMixin # Import extraction mixin
+
+from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 if TYPE_CHECKING:
+    from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.core.page import Page
     from natural_pdf.elements.text import TextElement
 
@@ -25,9 +43,13 @@ except ImportError:
     pass
 
 logger = logging.getLogger(__name__)
+<<<<<<< HEAD
+=======
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 
-class Region(DirectionalMixin):
+class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
     """
     Represents a rectangular region on a page.
     """
@@ -57,6 +79,15 @@ class Region(DirectionalMixin):
         self.start_element = None
         self.end_element = None
 
+<<<<<<< HEAD
+        # --- ADDED --- Metadata store for mixins
+        self.metadata: Dict[str, Any] = {}
+        # --- NEW --- Central registry for analysis results
+        self.analyses: Dict[str, Any] = {} 
+        # --- END ADDED ---
+
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # Standard attributes for all elements
         self.object_type = "region"  # For selector compatibility
 
@@ -504,6 +535,96 @@ class Region(DirectionalMixin):
         # If we have multi-page elements cached, check if the element is in the list
         if self._spans_pages and self._multi_page_elements is not None:
             return element in self._multi_page_elements
+<<<<<<< HEAD
+
+        # Check if element is on the same page
+        if not hasattr(element, "page") or element.page != self._page:
+            return False
+
+        return self.intersects(element)
+
+    def contains(self, element: "Element") -> bool:
+        """
+        Check if this region completely contains an element.
+        
+        Args:
+            element: Element to check
+            
+        Returns:
+            True if the element is completely contained within the region, False otherwise
+        """
+        # Check if element is on the same page
+        if not hasattr(element, "page") or element.page != self._page:
+            return False
+            
+        # Ensure element has necessary attributes
+        if not all(hasattr(element, attr) for attr in ["x0", "x1", "top", "bottom"]):
+            return False  # Cannot determine position
+            
+        # For rectangular regions, check if element's bbox is fully inside region's bbox
+        if not self.has_polygon:
+            return (self.x0 <= element.x0 and element.x1 <= self.x1 and 
+                    self.top <= element.top and element.bottom <= self.bottom)
+                    
+        # For polygon regions, check if all corners of the element are inside the polygon
+        element_corners = [
+            (element.x0, element.top),     # top-left
+            (element.x1, element.top),     # top-right
+            (element.x1, element.bottom),  # bottom-right
+            (element.x0, element.bottom)   # bottom-left
+        ]
+        
+        return all(self.is_point_inside(x, y) for x, y in element_corners)
+    
+    def intersects(self, element: "Element") -> bool:
+        """
+        Check if this region intersects with an element (any overlap).
+        
+        Args:
+            element: Element to check
+            
+        Returns:
+            True if the element overlaps with the region at all, False otherwise
+        """
+        # Check if element is on the same page
+        if not hasattr(element, "page") or element.page != self._page:
+            return False
+            
+        # Ensure element has necessary attributes
+        if not all(hasattr(element, attr) for attr in ["x0", "x1", "top", "bottom"]):
+            return False  # Cannot determine position
+            
+        # For rectangular regions, check for bbox overlap
+        if not self.has_polygon:
+            return (self.x0 < element.x1 and self.x1 > element.x0 and
+                    self.top < element.bottom and self.bottom > element.top)
+        
+        # For polygon regions, check if any corner of the element is inside the polygon
+        element_corners = [
+            (element.x0, element.top),     # top-left
+            (element.x1, element.top),     # top-right
+            (element.x1, element.bottom),  # bottom-right
+            (element.x0, element.bottom)   # bottom-left
+        ]
+        
+        # First check if any element corner is inside the polygon
+        if any(self.is_point_inside(x, y) for x, y in element_corners):
+            return True
+            
+        # Also check if any polygon corner is inside the element's rectangle
+        for x, y in self.polygon:
+            if element.x0 <= x <= element.x1 and element.top <= y <= element.bottom:
+                return True
+                
+        # Also check if any polygon edge intersects with any rectangle edge
+        # This is a simplification - for complex cases, we'd need a full polygon-rectangle
+        # intersection algorithm
+        
+        # For now, return True if bounding boxes overlap (approximation for polygon-rectangle case)
+        return (self.x0 < element.x1 and self.x1 > element.x0 and
+                self.top < element.bottom and self.bottom > element.top)
+    
+=======
 
         # Check if element is on the same page
         if not hasattr(element, "page") or element.page != self._page:
@@ -520,6 +641,7 @@ class Region(DirectionalMixin):
         # Check if center point is inside the region's geometry
         return self.is_point_inside(element_center_x, element_center_y)
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def highlight(
         self,
         label: Optional[str] = None,
@@ -600,6 +722,7 @@ class Region(DirectionalMixin):
         x1 = int(self.x1 * scale_factor)
         bottom = int(self.bottom * scale_factor)
 
+<<<<<<< HEAD
         # Ensure coords are valid for cropping (left < right, top < bottom)
         if x0 >= x1:
              logger.warning(
@@ -612,6 +735,8 @@ class Region(DirectionalMixin):
              )
              return None
 
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # Crop the image to just this region
         region_image = page_image.crop((x0, top, x1, bottom))
 
@@ -788,11 +913,14 @@ class Region(DirectionalMixin):
         debug = kwargs.get("debug", debug or kwargs.get("debug_exclusions", False))
         logger.debug(f"Region {self.bbox}: extract_text called with kwargs: {kwargs}")
 
+<<<<<<< HEAD
+=======
         # --- Handle Docling source (priority) --- DEPRECATED or Adapt?
         # For now, let's bypass this and always use the standard extraction flow
         # based on contained elements to ensure consistency.
         # if self.model == 'docling' or hasattr(self, 'text_content'): ...
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # 1. Get Word Elements potentially within this region (initial broad phase)
         # Optimization: Could use spatial query if page elements were indexed
         page_words = self.page.words  # Get all words from the page
@@ -841,7 +969,11 @@ class Region(DirectionalMixin):
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=self.bbox,  # Use region's bbox for context
+<<<<<<< HEAD
+            user_kwargs=kwargs, # Pass original kwargs to layout generator
+=======
             user_kwargs=kwargs,
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         )
 
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
@@ -1043,6 +1175,36 @@ class Region(DirectionalMixin):
 
         return table_data
 
+<<<<<<< HEAD
+    @overload
+    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
+
+    @overload
+    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
+
+    def find(
+        self,
+        selector: Optional[str] = None, # Now optional
+        *,
+        text: Optional[str] = None,     # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+    ) -> Optional["Element"]:
+        """
+        Find the first element in this region matching the selector OR text content.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
+        Args:
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional parameters for element filtering.
+=======
     def find(self, selector: str, apply_exclusions=True, **kwargs) -> Optional["Element"]:
         """
         Find the first element in this region matching the selector.
@@ -1051,10 +1213,52 @@ class Region(DirectionalMixin):
             selector: CSS-like selector string
             apply_exclusions: Whether to apply exclusion regions
             **kwargs: Additional parameters for element filtering
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
-            First matching element or None
+            First matching element or None.
         """
+<<<<<<< HEAD
+        # Delegate validation and selector construction to find_all
+        elements = self.find_all(
+            selector=selector,
+            text=text,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            **kwargs
+        )
+        return elements.first if elements else None
+
+    @overload
+    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    @overload
+    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None, # Now optional
+        *,
+        text: Optional[str] = None,     # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+    ) -> "ElementCollection":
+        """
+        Find all elements in this region matching the selector OR text content.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
+        Args:
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional parameters for element filtering.
+=======
         elements = self.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
         return elements.first if elements else None  # Use .first property
 
@@ -1068,21 +1272,44 @@ class Region(DirectionalMixin):
             selector: CSS-like selector string
             apply_exclusions: Whether to apply exclusion regions
             **kwargs: Additional parameters for element filtering
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
-            ElementCollection with matching elements
+            ElementCollection with matching elements.
         """
-        from natural_pdf.elements.collections import ElementCollection
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+             raise ValueError("Provide either 'selector' or 'text'.")
+
+        # Construct selector if 'text' is provided
+        effective_selector = ""
+        if text is not None:
+             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+             effective_selector = f'text:contains("{escaped_text}")'
+             logger.debug(f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')")
+        elif selector is not None:
+             effective_selector = selector
+        else:
+             raise ValueError("Internal error: No selector or text provided.")
 
         # If we span multiple pages, filter our elements
         # TODO: Revisit multi-page region logic
         if self._spans_pages and self._multi_page_elements is not None:
             logger.warning("find_all on multi-page regions is not fully implemented.")
             # Temporary: Apply filter directly to cached elements
+<<<<<<< HEAD
+            try:
+                selector_obj = parse_selector(effective_selector)
+                # Pass regex/case flags down
+                kwargs["regex"] = regex
+                kwargs["case"] = case
+=======
             from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
             try:
                 selector_obj = parse_selector(selector)
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                 filter_func = selector_to_filter_func(selector_obj, **kwargs)
                 matching = [el for el in self._multi_page_elements if filter_func(el)]
                 return ElementCollection(matching)
@@ -1090,17 +1317,59 @@ class Region(DirectionalMixin):
                 logger.error(f"Error applying selector to multi-page region elements: {e}")
                 return ElementCollection([])
 
+<<<<<<< HEAD
+        # Normal case: Region is on a single page
+        try:
+            # Parse the final selector string
+            selector_obj = parse_selector(effective_selector)
+
+            # Get all potentially relevant elements from the page
+            # Let the page handle its exclusion logic if needed
+            potential_elements = self.page.find_all(
+                selector=effective_selector,
+                apply_exclusions=False, # Apply exclusions LATER based on region bbox
+                regex=regex,
+                case=case,
+                **kwargs
+            )
+
+            # Filter these elements to those strictly within the region's bounds
+            region_bbox = self.bbox
+            matching_elements = [
+                el
+                for el in potential_elements
+                if el.x0 >= region_bbox[0]
+                and el.top >= region_bbox[1]
+                and el.x1 <= region_bbox[2]
+                and el.bottom <= region_bbox[3]
+            ]
+
+            # Apply region-specific exclusions if requested
+            if apply_exclusions and self._exclusions:
+                 matching_elements = self._filter_elements_by_exclusions(matching_elements)
+
+
+            return ElementCollection(matching_elements)
+
+        except Exception as e:
+            logger.error(f"Error during find_all in region: {e}", exc_info=True)
+            return ElementCollection([])
+
+    def apply_ocr(self, replace=True, **ocr_params) -> "Region":
+=======
         # Otherwise, get elements from the page and filter by selector and region
         page_elements = self.page.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
         # Use the precise _is_element_in_region check
         filtered_elements = [e for e in page_elements if self._is_element_in_region(e)]
         return ElementCollection(filtered_elements)
 
-    def apply_ocr(self, replace=True, **ocr_params) -> "Region":
+    def apply_ocr(self, **ocr_params) -> List["TextElement"]:  # Return type hint updated
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Apply OCR to this region and return the created text elements.
 
         Args:
+<<<<<<< HEAD
             replace: If True (default), removes existing OCR elements in the region
                     before adding new ones. If False, adds new OCR elements without 
                     removing existing ones.
@@ -1114,10 +1383,17 @@ class Region(DirectionalMixin):
 
         Returns:
             Self for method chaining.
+=======
+            **ocr_params: OCR parameters to override defaults (passed to OCRManager)
+
+        Returns:
+            List of created TextElement objects representing OCR words/lines.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         # Ensure OCRManager is available
         if not hasattr(self.page._parent, "_ocr_manager") or self.page._parent._ocr_manager is None:
             logger.error("OCRManager not available on parent PDF. Cannot apply OCR to region.")
+<<<<<<< HEAD
             return self
 
         # If replace is True, find and remove existing OCR elements in this region
@@ -1175,10 +1451,45 @@ class Region(DirectionalMixin):
         # Run OCR on this region's image using the manager
         try:
             results = ocr_mgr.apply_ocr(**manager_args)
+=======
+            return []
+        ocr_mgr = self.page._parent._ocr_manager
+
+        # Get OCR configuration from kwargs or PDF defaults if needed
+        # We'll mostly rely on passing ocr_params directly to the manager
+        # For rendering, use a reasonable default scale
+        ocr_image_scale = self.page._parent._config.get("ocr_image_scale", 2.0)
+
+        logger.debug(
+            f"Region {self.bbox}: Applying OCR with scale {ocr_image_scale} and params: {ocr_params}"
+        )
+
+        # Render the page region to an image
+        try:
+            # Crop the page image to this region's bbox
+            region_image = self.to_image(
+                scale=ocr_image_scale, include_highlights=False, crop_only=True
+            )
+            if not region_image:
+                logger.error("Failed to render region to image for OCR.")
+                return []
+            logger.debug(f"Region rendered to image size: {region_image.size}")
+        except Exception as e:
+            logger.error(f"Error rendering region to image for OCR: {e}", exc_info=True)
+            return []
+
+        # Run OCR on this region's image using the manager
+        try:
+            # Pass the single image and any specific options/kwargs
+            # The manager handles engine selection based on ocr_params or defaults
+            results = ocr_mgr.apply_ocr(images=region_image, **ocr_params)
+            # apply_ocr returns List[Dict] for single image
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             if not isinstance(results, list):
                 logger.error(
                     f"OCRManager returned unexpected type for single region image: {type(results)}"
                 )
+<<<<<<< HEAD
                 return self
             logger.debug(f"Region OCR processing returned {len(results)} results.")
         except Exception as e:
@@ -1189,15 +1500,39 @@ class Region(DirectionalMixin):
         scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
         scale_y = self.height / region_image.height if region_image.height > 0 else 1.0
         logger.debug(f"Region OCR scaling factors (PDF/Img): x={scale_x:.2f}, y={scale_y:.2f}")
+=======
+                return []
+            logger.debug(f"Region OCR processing returned {len(results)} results.")
+        except Exception as e:
+            logger.error(f"Error during OCRManager processing for region: {e}", exc_info=True)
+            return []
+
+        # Convert results to TextElements, scaling coordinates relative to the page
+        # Calculate scaling factors based on the region image vs the region PDF coords
+        scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
+        scale_y = self.height / region_image.height if region_image.height > 0 else 1.0
+        logger.debug(f"Region OCR scaling factors (PDF/Img): x={scale_x:.2f}, y={scale_y:.2f}")
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         created_elements = []
         for result in results:
             try:
                 img_x0, img_top, img_x1, img_bottom = map(float, result["bbox"])
                 pdf_height = (img_bottom - img_top) * scale_y
+<<<<<<< HEAD
+=======
+
+                # Convert IMAGE coordinates (relative to region crop) to PAGE coordinates
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                 page_x0 = self.x0 + (img_x0 * scale_x)
                 page_top = self.top + (img_top * scale_y)
                 page_x1 = self.x0 + (img_x1 * scale_x)
                 page_bottom = self.top + (img_bottom * scale_y)
+<<<<<<< HEAD
+=======
+
+                # Create element data using PAGE coordinates
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                 element_data = {
                     "text": result["text"],
                     "x0": page_x0,
@@ -1206,17 +1541,26 @@ class Region(DirectionalMixin):
                     "bottom": page_bottom,
                     "width": page_x1 - page_x0,
                     "height": page_bottom - page_top,
+<<<<<<< HEAD
                     "object_type": "word",
                     "source": "ocr",
                     "confidence": float(result.get("confidence", 0.0)),
                     "fontname": "OCR",
                     "size": round(pdf_height) if pdf_height > 0 else 10.0,
+=======
+                    "object_type": "word",  # Treat as word
+                    "source": "ocr",
+                    "confidence": float(result.get("confidence", 0.0)),
+                    "fontname": "OCR",
+                    "size": round(pdf_height) if pdf_height > 0 else 10.0,  # Size based on height
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                     "page_number": self.page.number,
                     "bold": False,
                     "italic": False,
                     "upright": True,
                     "doctop": page_top + self.page._page.initial_doctop,
                 }
+<<<<<<< HEAD
                 ocr_char_dict = element_data.copy()
                 ocr_char_dict["object_type"] = "char"
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
@@ -1227,13 +1571,41 @@ class Region(DirectionalMixin):
                 created_elements.append(elem)
                 self.page._element_mgr.add_element(elem, element_type="words")
                 self.page._element_mgr.add_element(ocr_char_dict, element_type="chars")
+=======
+
+                # Create the representative char dict
+                ocr_char_dict = element_data.copy()
+                ocr_char_dict["object_type"] = "char"
+                ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
+
+                # Add char dicts to word data
+                element_data["_char_dicts"] = [ocr_char_dict]
+
+                # Create the TextElement word
+                from natural_pdf.elements.text import TextElement  # Local import ok here
+
+                elem = TextElement(element_data, self.page)
+                created_elements.append(elem)
+
+                # Add the element to the page's element manager
+                self.page._element_mgr.add_element(elem, element_type="words")
+                # Add the char dict to the manager's char list
+                self.page._element_mgr.add_element(ocr_char_dict, element_type="chars")
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             except Exception as e:
                 logger.error(
                     f"Failed to convert region OCR result to element: {result}. Error: {e}",
                     exc_info=True,
                 )
+<<<<<<< HEAD
         logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
         return self
+=======
+
+        logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
+        return created_elements
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion="both"):
         """
@@ -1652,8 +2024,11 @@ class Region(DirectionalMixin):
             return self.child_regions
 
         # Use existing selector parser to filter
+<<<<<<< HEAD
+=======
         from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         try:
             selector_obj = parse_selector(selector)
             filter_func = selector_to_filter_func(selector_obj)  # Removed region=self
@@ -1694,8 +2069,11 @@ class Region(DirectionalMixin):
 
         # Filter by selector if provided
         if selector is not None:
+<<<<<<< HEAD
+=======
             from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             try:
                 selector_obj = parse_selector(selector)
                 filter_func = selector_to_filter_func(selector_obj)  # Removed region=self
@@ -1708,11 +2086,14 @@ class Region(DirectionalMixin):
 
         return all_descendants
 
+<<<<<<< HEAD
+=======
     # Removed recursive=True, find_all on region shouldn't be recursive by default
     # Renamed _find_all back to find_all
     # def find_all(self, selector, apply_exclusions=True, **kwargs):
     # See implementation above near get_elements
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def __repr__(self) -> str:
         """String representation of the region."""
         poly_info = " (Polygon)" if self.has_polygon else ""
@@ -1720,6 +2101,7 @@ class Region(DirectionalMixin):
         type_info = f" type='{self.region_type}'" if self.region_type else ""
         source_info = f" source='{self.source}'" if self.source else ""
         return f"<Region{name_info}{type_info}{source_info} bbox={self.bbox}{poly_info}>"
+<<<<<<< HEAD
 
     def correct_ocr(
         self,
@@ -1760,3 +2142,49 @@ class Region(DirectionalMixin):
         )
 
         return self  # Return self for chaining
+
+    # --- Classification Mixin Implementation --- #
+    def _get_classification_manager(self) -> "ClassificationManager":
+        if not hasattr(self, 'page') or not hasattr(self.page, 'pdf') or not hasattr(self.page.pdf, 'get_manager'):
+             raise AttributeError("ClassificationManager cannot be accessed: Parent Page, PDF, or get_manager method missing.")
+        try:
+             # Use the PDF's manager registry accessor via page
+             return self.page.pdf.get_manager('classification')
+        except (ValueError, RuntimeError, AttributeError) as e:
+             # Wrap potential errors from get_manager for clarity
+             raise AttributeError(f"Failed to get ClassificationManager from PDF via Page: {e}") from e
+
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
+        if model_type == 'text':
+            text_content = self.extract_text(layout=False) # Simple join for classification
+            if not text_content or text_content.isspace():
+                raise ValueError("Cannot classify region with 'text' model: No text content found.")
+            return text_content
+        elif model_type == 'vision':
+            # Get resolution from manager/kwargs if possible, else default
+            # We access manager via the method to ensure it's available
+            manager = self._get_classification_manager()
+            default_resolution = 150 # Manager doesn't store default res, set here
+            # Note: classify() passes resolution via **kwargs if user specifies
+            resolution = kwargs.get('resolution', default_resolution) if 'kwargs' in locals() else default_resolution
+
+            img = self.to_image(
+                resolution=resolution,
+                include_highlights=False, # No highlights for classification input
+                crop_only=True # Just the region content
+            )
+            if img is None:
+                raise ValueError("Cannot classify region with 'vision' model: Failed to render image.")
+            return img
+        else:
+            raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    def _get_metadata_storage(self) -> Dict[str, Any]:
+        # Ensure metadata exists
+        if not hasattr(self, 'metadata') or self.metadata is None:
+            self.metadata = {}
+        return self.metadata
+
+    # --- End Classification Mixin Implementation --- #
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

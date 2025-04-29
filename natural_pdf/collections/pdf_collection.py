@@ -4,10 +4,14 @@ import logging
 import os
 import re  # Added for safe path generation
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union, Callable
+<<<<<<< HEAD
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union, Callable, Generic, Iterator, TypeVar, overload
 import concurrent.futures # Import concurrent.futures
 import time # Import time for logging timestamps
 import threading # Import threading for logging thread information
+=======
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from PIL import Image
 from tqdm import tqdm
@@ -26,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.region import Region
+<<<<<<< HEAD
+from natural_pdf.export.mixin import ExportMixin
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 # --- Search Imports ---
 try:
@@ -37,8 +45,14 @@ try:
     from natural_pdf.search.searchable_mixin import SearchableMixin
 except ImportError as e:
     logger_init = logging.getLogger(__name__)
+<<<<<<< HEAD
     logger_init.warning(
         f"Failed to import Haystack components. Semantic search functionality disabled.",
+=======
+    logger_init.error(
+        f"Failed to import search components. Search functionality disabled. Error: {e}",
+        exc_info=True,
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     )
 
     # Dummy definitions
@@ -48,9 +62,17 @@ except ImportError as e:
     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
 
 from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
+<<<<<<< HEAD
+# Import the ApplyMixin
+from natural_pdf.collections.mixins import ApplyMixin
+
+
+class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixin
+=======
 
 
 class PDFCollection(SearchableMixin):  # Inherit from the mixin
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -249,46 +271,59 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
 
     def __repr__(self) -> str:
         # Removed search status
-        return f"<PDFCollection(count={len(self)})>"
+        return f"<PDFCollection(count={len(self._pdfs)})>"
 
     @property
     def pdfs(self) -> List["PDF"]:
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
 
+<<<<<<< HEAD
+    @overload
+    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    @overload
+    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
     def find_all(
-        self, 
-        selector: str, 
-        apply_exclusions: bool = True,  # Added explicit parameter
-        regex: bool = False,            # Added explicit parameter
-        case: bool = True,             # Added explicit parameter
+        self,
+        selector: Optional[str] = None, # Now optional
+        *,
+        text: Optional[str] = None,     # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
         **kwargs
     ) -> "ElementCollection":
         """
-        Find all elements matching the selector across all PDFs in the collection.
-        
+        Find all elements matching the selector OR text across all PDFs in the collection.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
         This creates an ElementCollection that can span multiple PDFs. Note that
         some ElementCollection methods have limitations when spanning PDFs.
-        
+
         Args:
-            selector: CSS-like selector string to query elements
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            regex: Whether to use regex for text search in :contains (default: False)
-            case: Whether to do case-sensitive text search (default: True)
-            **kwargs: Additional keyword arguments passed to the find_all method of each PDF
-            
+            selector: CSS-like selector string to query elements.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional keyword arguments passed to the find_all method of each PDF.
+
         Returns:
-            ElementCollection containing all matching elements across all PDFs
+            ElementCollection containing all matching elements across all PDFs.
         """
-        from natural_pdf.elements.collections import ElementCollection
-        
+        # Validation happens within pdf.find_all
+
         # Collect elements from all PDFs
         all_elements = []
         for pdf in self._pdfs:
             try:
-                # Explicitly pass the relevant arguments down
+                # Pass the relevant arguments down to each PDF's find_all
                 elements = pdf.find_all(
-                    selector,
+                    selector=selector,
+                    text=text,
                     apply_exclusions=apply_exclusions,
                     regex=regex,
                     case=case,
@@ -297,7 +332,7 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 all_elements.extend(elements.elements)
             except Exception as e:
                 logger.error(f"Error finding elements in {pdf.path}: {e}", exc_info=True)
-                
+
         return ElementCollection(all_elements)
 
     def apply_ocr(
@@ -397,6 +432,21 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 _process_pdf(pdf) # Call helper directly with PDF object
         
         logger.info("Finished applying OCR across the collection.")
+=======
+    def apply_ocr(self, *args, **kwargs):
+        PDF = self._get_pdf_class()
+        # Delegate to individual PDF objects
+        logger.info("Applying OCR to relevant PDFs in collection...")
+        results = []
+        for pdf in self._pdfs:
+            # We need to figure out which pages belong to which PDF if batching here
+            # For now, simpler to call on each PDF
+            try:
+                # Assume apply_ocr exists on PDF and accepts similar args
+                pdf.apply_ocr(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Failed applying OCR to {pdf.path}: {e}", exc_info=True)
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         return self
 
     def correct_ocr(
@@ -463,6 +513,7 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         # Implementation requires integrating with classification models or logic
         raise NotImplementedError("categorize requires classification implementation.")
 
+<<<<<<< HEAD
     def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
         """
         Exports OCR results from all PDFs in this collection into a single
@@ -487,6 +538,8 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
             logger.error(f"Failed to export correction task for collection: {e}", exc_info=True)
             raise  # Re-raise the exception from the utility function
 
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:
         """Yields Page objects from the collection, conforming to Indexable."""
@@ -505,3 +558,161 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 #     logger.debug(f"Skipping empty page {page.page_number} from PDF '{pdf.path}'.")
                 #     continue
                 yield page
+<<<<<<< HEAD
+
+    # --- Classification Method --- #
+    def classify_all(
+        self,
+        categories: List[str],
+        model: str = "text",
+        max_workers: Optional[int] = None,
+        **kwargs,
+    ) -> "PDFCollection":
+        """
+        Classify all pages across all PDFs in the collection, potentially in parallel.
+
+        This method uses the unified `classify_all` approach, delegating page
+        classification to each PDF's `classify_pages` method.
+        It displays a progress bar tracking individual pages.
+
+        Args:
+            categories: A list of string category names.
+            model: Model identifier ('text', 'vision', or specific HF ID).
+            max_workers: Maximum number of threads to process PDFs concurrently.
+                         If None or 1, processing is sequential.
+            **kwargs: Additional arguments passed down to `pdf.classify_pages` and
+                      subsequently to `page.classify` (e.g., device,
+                      confidence_threshold, resolution).
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If categories list is empty.
+            ClassificationError: If classification fails for any page (will stop processing).
+            ImportError: If classification dependencies are missing.
+        """
+        PDF = self._get_pdf_class()
+        if not categories:
+            raise ValueError("Categories list cannot be empty.")
+
+        logger.info(f"Starting classification for {len(self._pdfs)} PDFs in collection (model: '{model}')...")
+
+        # Calculate total pages for the progress bar
+        total_pages = sum(len(pdf.pages) for pdf in self._pdfs if pdf.pages)
+        if total_pages == 0:
+            logger.warning("No pages found in the PDF collection to classify.")
+            return self
+
+        progress_bar = tqdm(
+            total=total_pages,
+            desc=f"Classifying Pages (model: {model})",
+            unit="page"
+        )
+
+        # Worker function
+        def _process_pdf_classification(pdf: PDF):
+            thread_id = threading.current_thread().name
+            pdf_path = pdf.path
+            logger.debug(f"[{thread_id}] Starting classification process for: {pdf_path}")
+            start_time = time.monotonic()
+            try:
+                # Call classify_pages on the PDF, passing the progress callback
+                pdf.classify_pages(
+                    categories=categories,
+                    model=model,
+                    progress_callback=progress_bar.update,
+                    **kwargs
+                )
+                end_time = time.monotonic()
+                logger.debug(f"[{thread_id}] Finished classification for: {pdf_path} (Duration: {end_time - start_time:.2f}s)")
+                return pdf_path, None # Return path and no error
+            except Exception as e:
+                end_time = time.monotonic()
+                # Error is logged within classify_pages, but log summary here
+                logger.error(f"[{thread_id}] Failed classification process for {pdf_path} after {end_time - start_time:.2f}s: {e}", exc_info=False)
+                # Close progress bar immediately on error to avoid hanging
+                progress_bar.close()
+                # Re-raise the exception to stop the entire collection processing
+                raise
+
+        # Use ThreadPoolExecutor for parallel processing if max_workers > 1
+        try:
+            if max_workers is not None and max_workers > 1:
+                logger.info(f"Classifying PDFs in parallel with {max_workers} workers.")
+                futures = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="ClassifyWorker") as executor:
+                    for pdf in self._pdfs:
+                        futures.append(executor.submit(_process_pdf_classification, pdf))
+
+                    # Wait for all futures to complete (progress updated by callback)
+                    # Exceptions are raised by future.result() if worker failed
+                    for future in concurrent.futures.as_completed(futures):
+                         future.result() # Raise exception if worker failed
+
+            else: # Sequential processing
+                logger.info("Classifying PDFs sequentially.")
+                for pdf in self._pdfs:
+                    _process_pdf_classification(pdf)
+
+            logger.info("Finished classification across the collection.")
+
+        finally:
+             # Ensure progress bar is closed even if errors occurred elsewhere
+             if not progress_bar.disable and progress_bar.n < progress_bar.total:
+                 progress_bar.close()
+             elif progress_bar.disable is False:
+                  progress_bar.close()
+
+        return self
+
+    # --- End Classification Method --- #
+
+    def _gather_analysis_data(
+        self,
+        analysis_keys: List[str],
+        include_content: bool,
+        include_images: bool,
+        image_dir: Optional[Path],
+        image_format: str,
+        image_resolution: int,
+    ) -> List[Dict[str, Any]]:
+        """
+        Gather analysis data from all PDFs in the collection.
+        
+        Args:
+            analysis_keys: Keys in the analyses dictionary to export
+            include_content: Whether to include extracted text
+            include_images: Whether to export images
+            image_dir: Directory to save images
+            image_format: Format to save images
+            image_resolution: Resolution for exported images
+            
+        Returns:
+            List of dictionaries containing analysis data
+        """
+        if not self._pdfs:
+            logger.warning("No PDFs found in collection")
+            return []
+            
+        all_data = []
+        
+        for pdf in tqdm(self._pdfs, desc="Gathering PDF data", leave=False):
+            # PDF level data
+            pdf_data = {
+                "pdf_path": pdf.path,
+                "pdf_filename": Path(pdf.path).name,
+                "total_pages": len(pdf.pages) if hasattr(pdf, "pages") else 0,
+            }
+            
+            # Add metadata if available
+            if hasattr(pdf, "metadata") and pdf.metadata:
+                for k, v in pdf.metadata.items():
+                    if v:  # Only add non-empty metadata
+                        pdf_data[f"metadata.{k}"] = str(v)
+            
+            all_data.append(pdf_data)
+        
+        return all_data
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

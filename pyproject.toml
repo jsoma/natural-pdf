@@ -35,6 +35,12 @@ haystack = [
     "haystack-ai",   # Core Haystack 2.0 beta (adjust version as needed)
     "chroma-haystack",       # ChromaDB integration
     "sentence-transformers", # Default text embedder
+<<<<<<< HEAD
+    "natural-pdf[core-ml]", # Add dependency on core ML packages
+]
+easyocr = [
+=======
+    "protobuf<4",         # Pin protobuf for compatibility with dependencies
     "natural-pdf[core-ml]", # Add dependency on core ML packages
 ]
 easyocr = [
@@ -59,9 +65,55 @@ docling = [
     "natural-pdf[core-ml]",
 ]
 
+test = [
+    "pytest",
+]
+
+dev = [
+    "black",
+    "isort",
+    "mypy",
+    "pytest",
+    "nox",
+    "nox-uv",
+    "build",
+    "uv",
+    "pipdeptree",
+]
+all = [
+    "ipywidgets>=7.0.0,<9.0.0",
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
+    "easyocr",
+    "natural-pdf[core-ml]", # Add dependency on core ML packages
+]
+paddle = ["paddlepaddle", "paddleocr"]
+layout_yolo = [
+    "doclayout_yolo",
+    "natural-pdf[core-ml]",
+]
+surya = [
+    "surya-ocr",
+<<<<<<< HEAD
+    "natural-pdf[core-ml]",
+]
+qa = [
+    "natural-pdf[core-ml]",
+]
+
+docling = [
+    "docling", 
+    "natural-pdf[core-ml]",
+]
+
 llm = [
     "openai>=1.0", # For OpenAI compatibility layer / general LLM API interaction
     "pydantic",    # For response schema definition / structured output
+]
+
+classification = [
+    "sentence-transformers", # Explicitly add for text models
+    "timm",                # Often needed for vision models via transformers
+    "natural-pdf[core-ml]", # Include torch, transformers, etc.
 ]
 
 test = [
@@ -82,6 +134,12 @@ dev = [
     "jupytext",
     "nbclient"
 ]
+
+deskew = [
+    "deskew>=1.5",
+    "img2pdf"
+]
+
 all = [
     "natural-pdf[interactive]",
     "natural-pdf[haystack]",
@@ -93,6 +151,8 @@ all = [
     "natural-pdf[ocr-export]",
     "natural-pdf[docling]",
     "natural-pdf[llm]",
+    "natural-pdf[classification]",
+    "natural-pdf[deskew]",
     "natural-pdf[test]"
 ]
 
@@ -111,6 +171,13 @@ ocr-export = [
 export-extras = [
     "jupytext",
     "nbformat",
+=======
+    "haystack-ai",
+    "chroma-haystack",
+    "sentence-transformers",
+    "protobuf<4",         # Pin protobuf for compatibility here too
+    "pytest", # Add pytest to 'all'
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 ]
 
 [project.urls]
@@ -150,8 +217,18 @@ filterwarnings = [
 ]
 
 [tool.setuptools]
+<<<<<<< HEAD
 # Why this is here I do not know
 
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests", "tests.*"]
+=======
+# Remove the incorrect line below
+# packages = find:
+
+[tool.setuptools.packages.find]
+where = ["."]  # Look in the root directory (where natural_pdf/ is)
+# Optional: exclude tests if they are accidentally found
+# exclude = ["tests", "tests.*"]
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

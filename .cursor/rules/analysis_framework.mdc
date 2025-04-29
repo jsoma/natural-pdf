@@ -1,0 +1,58 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+\
+# Analysis Framework Guide
+
+This document outlines the agreed-upon structure for adding and managing machine learning analysis results (like classification, NER, summarization) on `Page` and `Region` objects within the `natural-pdf` library.
+
+## Summary of Framework (Implemented for Classification)
+
+1.  **Central Registry (`element.analyses`)**:
+    *   A dictionary attribute named `analyses` exists on [natural_pdf/core/page.py](mdc:natural_pdf/core/page.py) (`Page`) and [natural_pdf/elements/region.py](mdc:natural_pdf/elements/region.py) (`Region`) objects.
+    *   It stores results from different analysis types, keyed by an `analysis_key` string.
+    *   Example: `page.analyses = {'classification': <ClassificationResult...>, 'ner_run_1': <NERResult...>}`
+
+2.  **Structured Result Objects**:
+    *   Each analysis type should have a dedicated `Result` class (e.g., [natural_pdf/classification/results.py](mdc:natural_pdf/classification/results.py) contains `ClassificationResult`, `CategoryScore`).
+    *   These objects store structured findings and metadata (model used, parameters, timestamp, `using` mode).
+    *   Stored as values in the `analyses` dictionary.
+
+3.  **Manager Registry (`PDF.get_manager`)**:
+    *   The [natural_pdf/core/pdf.py](mdc:natural_pdf/core/pdf.py) `PDF` class has a `get_manager(manager_type)` method.
+    *   This handles lazy initialization and retrieval of specific analysis managers (e.g., `ClassificationManager` from [natural_pdf/classification/manager.py](mdc:natural_pdf/classification/manager.py)).
+    *   Managers encapsulate ML model interaction and result processing.
+
+4.  **Invocation Methods (`element.classify`, etc.)**:
+    *   Methods are added to `Page`/`Region` (often via Mixins like [natural_pdf/classification/mixin.py](mdc:natural_pdf/classification/mixin.py)).
+    *   They accept an optional `analysis_key: str` parameter.
+        *   **Default:** If omitted, uses a standard key (e.g., `'classification'`) and *overwrites* previous results under that key.
+        *   **Custom:** If provided, stores the result under the custom key, allowing multiple results of the same type to coexist.
+    *   They use the `PDF.get_manager` to get the appropriate manager, call it, and store the returned `Result` object in `element.analyses[analysis_key]`.
+
+5.  **Parameter Renaming**:
+    *   The parameter specifying text vs. vision analysis has been standardized to `using=` (e.g., `using='text'`, `using='vision'`).
+
+6.  **Convenience Accessors**:
+    *   Simple properties/methods (e.g., `element.category`, `element.category_confidence`) provide easy access to results.
+    *   These *always* read from the **default** key in the `analyses` registry (e.g., `analyses['classification']`).
+
+## TODO List for New Analysis Features
+
+*   [ ] **NER**: Create `NERManager`, `NERResult`, `Entity`, `element.apply_ner()`, `element.entities` property. Implement optional `source_elements` mapping.
+*   [ ] **Summarization**: Create `SummarizationManager`, `SummarizationResult`, `element.summarize()`, `element.summary` property.
+*   [ ] **Translation**: Create `TranslationManager`, `TranslationResult`, `element.translate()`, `element.translated_text()` method.
+*   [ ] **Structured Data Extraction**: Create `StructuredDataManager`, `StructuredDataResult`, `element.extract_structured_data()`.
+*   [ ] **Ad-hoc Analysis**: Implement `element.run_custom_analysis()` or similar.
+*   [ ] **Documentation**: Update user docs for the framework.
+
+## Coding Conventions for New Analyses
+
+1.  **Manager**: New `Manager` class in `natural_pdf/<task>/manager.py`. Handles ML logic.
+2.  **Registration**: Update `PDF.get_manager` to initialize the new manager. Check `is_available()`.
+3.  **Result Object**: New `Result` class(es) in `natural_pdf/<task>/results.py`. Stores params and findings.
+4.  **Element Method**: Add method to `Page`/`Region` (via Mixin?). Must take `analysis_key` (defaulting to standard task name). Calls manager, stores result in `analyses[analysis_key]`.
+5.  **Accessor**: Add convenience property/method accessing `analyses[DEFAULT_KEY]`.
+6.  **Dependencies**: Use `try...except ImportError` and extras in `pyproject.toml`.

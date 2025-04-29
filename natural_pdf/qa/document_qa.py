@@ -58,10 +58,13 @@ class DocumentQA:
             import torch
             from transformers import pipeline
 
+<<<<<<< HEAD
+=======
             # Determine device
             if device is None:
                 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             logger.info(f"Initializing DocumentQA with model {model_name} on {device}")
 
             # Initialize the pipeline

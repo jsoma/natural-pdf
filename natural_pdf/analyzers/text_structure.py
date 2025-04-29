@@ -6,17 +6,26 @@ import logging
 import re
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+<<<<<<< HEAD
+
+from natural_pdf.analyzers.text_options import TextStyleOptions
+=======
 
 from natural_pdf.analyzers.text_options import TextStyleOptions
 
 # Import ElementCollection and TextStyleOptions
 from natural_pdf.elements.collections import ElementCollection
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 if TYPE_CHECKING:
+    from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
+<<<<<<< HEAD
+=======
 
     # Remove ElementCollection from here if imported above
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +77,8 @@ class TextStyleAnalyzer:
             ElementCollection containing all processed text elements (typically words)
             with added 'style_label', 'style_key', and 'style_properties' attributes.
         """
+        from natural_pdf.elements.collections import ElementCollection
+
         current_options = options or self.options
         logger.info(
             f"Starting text style analysis for page {page.number} with options: {current_options}"

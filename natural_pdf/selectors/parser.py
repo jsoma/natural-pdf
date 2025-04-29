@@ -4,7 +4,11 @@ CSS-like selector parser for natural-pdf.
 
 import ast
 import re
+<<<<<<< HEAD
 from typing import Any, Dict, List, Optional, Tuple, Union, Callable
+=======
+from typing import Any, Dict, List, Optional, Tuple, Union
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from colour import Color
 import logging
@@ -75,11 +79,18 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     """
     Parse a CSS-like selector string into a structured selector object.
 
+<<<<<<< HEAD
     Handles:
     - Element types (e.g., 'text', 'rect')
     - Attribute presence (e.g., '[data-id]')
     - Attribute value checks with various operators (e.g., '[count=5]', '[name*="bold"]'')
     - Pseudo-classes (e.g., ':contains("Total")', ':empty', ':not(...)')
+=======
+    Examples:
+    - 'text:contains("Revenue")'
+    - 'table:below("Financial Data")'
+    - 'rect[fill=(1,0,0)]'
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     Args:
         selector: CSS-like selector string
@@ -88,6 +99,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         Dict representing the parsed selector
     """
     result = {
+<<<<<<< HEAD
         "type": "any",
         "attributes": {},
         "pseudo_classes": [],
@@ -100,11 +112,21 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     selector = selector.strip()
 
+    # --- Handle wildcard selector explicitly ---
+    if selector == "*":
+        # Wildcard matches any type, already the default.
+        # Clear selector so the loop doesn't run and error out.
+        selector = "" 
+    # --- END NEW ---
+
     # 1. Extract type (optional, at the beginning)
-    type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
-    if type_match:
-        result["type"] = type_match.group(1).lower()
-        selector = selector[len(type_match.group(0)):].strip()
+    # Only run if selector wasn't '*'
+    if selector: 
+        type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
+        if type_match:
+            result["type"] = type_match.group(1).lower()
+            selector = selector[len(type_match.group(0)):].strip()
+
 
     # Regexes for parts at the START of the remaining string
     # Attribute: Starts with [, ends with ], content is non-greedy non-] chars
@@ -202,6 +224,51 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         # If we reach here and the selector string is not empty, something is wrong
         if not processed_chunk and selector:
             raise ValueError(f"Invalid or unexpected syntax near '{selector[:30]}...'. Full selector: '{original_selector_for_error}'")
+=======
+        "type": "any",  # Default to any element type
+        "filters": [],
+        "attributes": {},
+        "pseudo_classes": [],
+    }
+
+    # Check if empty or None
+    if not selector or not isinstance(selector, str):
+        return result
+
+    # Parse element type
+    type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
+    if type_match:
+        result["type"] = type_match.group(1).lower()
+        selector = selector[len(type_match.group(0)) :]
+
+    # Parse attributes (e.g., [color=(1,0,0)])
+    attr_pattern = r"\[([a-zA-Z_]+)(>=|<=|>|<|[*~]?=)([^\]]+)\]"
+    attr_matches = re.findall(attr_pattern, selector)
+    for name, op, value in attr_matches:
+        # Handle special parsing for color attributes
+        if name in ["color", "non_stroking_color", "fill", "stroke", "strokeColor", "fillColor"]:
+            value = safe_parse_color(value)
+        else:
+            # Safe parsing for other attributes
+            value = safe_parse_value(value)
+
+        # Store attribute with operator
+        result["attributes"][name] = {"op": op, "value": value}
+
+    # Parse pseudo-classes (e.g., :contains("text"))
+    pseudo_pattern = r":([a-zA-Z_]+)(?:\(([^)]+)\))?"
+    pseudo_matches = re.findall(pseudo_pattern, selector)
+    for name, args in pseudo_matches:
+        # Process arguments
+        processed_args = args
+        if args:
+            if name in ["color", "background"]:
+                processed_args = safe_parse_color(args)
+            else:
+                processed_args = safe_parse_value(args)
+
+        result["pseudo_classes"].append({"name": name, "args": processed_args})
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     return result
 
@@ -256,12 +323,20 @@ PSEUDO_CLASS_FUNCTIONS = {
     "italic": lambda el: hasattr(el, "italic") and el.italic,
     "first-child": lambda el: hasattr(el, "parent")
     and el.parent
+<<<<<<< HEAD
     and el.parent.children[0] == el, 
     "last-child": lambda el: hasattr(el, "parent")
     and el.parent
     and el.parent.children[-1] == el,
     "empty": lambda el: not el.text,
     "not-empty": lambda el: el.text,
+=======
+    and el.parent.children[0] == el,  # Example placeholder
+    "last-child": lambda el: hasattr(el, "parent")
+    and el.parent
+    and el.parent.children[-1] == el,  # Example placeholder
+    # Add the new pseudo-classes for negation
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     "not-bold": lambda el: hasattr(el, "bold") and not el.bold,
     "not-italic": lambda el: hasattr(el, "italic") and not el.italic,
 }
@@ -269,13 +344,18 @@ PSEUDO_CLASS_FUNCTIONS = {
 
 def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
     """
+<<<<<<< HEAD
     Convert a parsed selector to a list of named filter functions.
+=======
+    Convert a parsed selector to a filter function.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     Args:
         selector: Parsed selector dictionary
         **kwargs: Additional filter parameters including:
                  - regex: Whether to use regex for text search
                  - case: Whether to do case-sensitive text search
+<<<<<<< HEAD
 
     Returns:
         List of dictionaries, each with 'name' (str) and 'func' (callable).
@@ -525,3 +605,213 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
     
     return _assemble_filter_func(filter_list)
 
+=======
+
+    Returns:
+        Function that takes an element and returns True if it matches
+    """
+
+    def filter_func(element):
+        # Check element type
+        if selector["type"] != "any":
+            # Special handling for 'text' type to match both 'text', 'char', and 'word'
+            if selector["type"] == "text":
+                if element.type not in ["text", "char", "word"]:
+                    return False
+            # Special handling for 'region' type to check for detected layout regions
+            elif selector["type"] == "region":
+                # Check if this is a Region with region_type property
+                if not hasattr(element, "region_type"):
+                    return False
+
+                # If 'type' attribute specified, it will be checked in the attributes section
+            # Check for Docling-specific types (section-header, etc.)
+            elif (
+                hasattr(element, "normalized_type") and element.normalized_type == selector["type"]
+            ):
+                # This is a direct match with a Docling region type
+                pass
+            # Otherwise, require exact match with the element's type attribute
+            elif not hasattr(element, "type") or element.type != selector["type"]:
+                return False
+
+        # Check attributes
+        for name, attr_info in selector["attributes"].items():
+            op = attr_info["op"]
+            value = attr_info["value"]
+
+            # Special case for fontname attribute - allow matching part of the name
+            if name == "fontname" and op == "*=":
+                element_value = getattr(element, name, None)
+                if element_value is None or value.lower() not in element_value.lower():
+                    return False
+                continue
+
+            # Convert hyphenated attribute names to underscore for Python properties
+            python_name = name.replace("-", "_")
+
+            # Special case for region attributes
+            if selector["type"] == "region":
+                if name == "type":
+                    # Use normalized_type for comparison if available
+                    if hasattr(element, "normalized_type") and element.normalized_type:
+                        element_value = element.normalized_type
+                    else:
+                        # Convert spaces to hyphens for consistency with the normalized format
+                        element_value = (
+                            getattr(element, "region_type", "").lower().replace(" ", "_")
+                        )
+                elif name == "model":
+                    # Special handling for model attribute in regions
+                    element_value = getattr(element, "model", None)
+                else:
+                    # Get the attribute value from the element normally
+                    element_value = getattr(element, python_name, None)
+            else:
+                # Get the attribute value from the element normally for non-region elements
+                element_value = getattr(element, python_name, None)
+
+            if element_value is None:
+                return False
+
+            # Apply operator
+            if op == "=":
+                if element_value != value:
+                    return False
+            elif op == "~=":
+                # Approximate match (e.g., for colors)
+                if not _is_approximate_match(element_value, value):
+                    return False
+            elif op == ">=":
+                # Greater than or equal (element value must be >= specified value)
+                if not (
+                    isinstance(element_value, (int, float))
+                    and isinstance(value, (int, float))
+                    and element_value >= value
+                ):
+                    return False
+            elif op == "<=":
+                # Less than or equal (element value must be <= specified value)
+                if not (
+                    isinstance(element_value, (int, float))
+                    and isinstance(value, (int, float))
+                    and element_value <= value
+                ):
+                    return False
+            elif op == ">":
+                # Greater than (element value must be > specified value)
+                if not (
+                    isinstance(element_value, (int, float))
+                    and isinstance(value, (int, float))
+                    and element_value > value
+                ):
+                    return False
+            elif op == "<":
+                # Less than (element value must be < specified value)
+                if not (
+                    isinstance(element_value, (int, float))
+                    and isinstance(value, (int, float))
+                    and element_value < value
+                ):
+                    return False
+
+        # Check pseudo-classes
+        for pseudo in selector["pseudo_classes"]:
+            name = pseudo["name"]
+            args = pseudo["args"]
+
+            # Handle various pseudo-classes
+            if name == "contains" and hasattr(element, "text"):
+                use_regex = kwargs.get("regex", False)
+                ignore_case = not kwargs.get("case", True)
+
+                if use_regex:
+                    import re
+
+                    if not element.text:
+                        return False
+                    try:
+                        pattern = re.compile(args, re.IGNORECASE if ignore_case else 0)
+                        if not pattern.search(element.text):
+                            return False
+                    except re.error:
+                        # If regex is invalid, fall back to literal text search
+                        element_text = element.text
+                        search_text = args
+
+                        if ignore_case:
+                            element_text = element_text.lower()
+                            search_text = search_text.lower()
+
+                        if search_text not in element_text:
+                            return False
+                else:
+                    # String comparison with case sensitivity option
+                    if not element.text:
+                        return False
+
+                    element_text = element.text
+                    search_text = args
+
+                    if ignore_case:
+                        element_text = element_text.lower()
+                        search_text = search_text.lower()
+
+                    if search_text not in element_text:
+                        return False
+            elif name == "starts-with" and hasattr(element, "text"):
+                if not element.text or not element.text.startswith(args):
+                    return False
+            elif name == "ends-with" and hasattr(element, "text"):
+                if not element.text or not element.text.endswith(args):
+                    return False
+            elif name == "bold":
+                if not (hasattr(element, "bold") and element.bold):
+                    return False
+            elif name == "italic":
+                if not (hasattr(element, "italic") and element.italic):
+                    return False
+            elif name == "horizontal":
+                if not (hasattr(element, "is_horizontal") and element.is_horizontal):
+                    return False
+            elif name == "vertical":
+                if not (hasattr(element, "is_vertical") and element.is_vertical):
+                    return False
+            else:
+                # Check pseudo-classes (basic ones like :bold, :italic)
+                if name in PSEUDO_CLASS_FUNCTIONS:
+                    if not PSEUDO_CLASS_FUNCTIONS[name](element):
+                        return False
+                elif name == "contains":
+                    if not hasattr(element, "text") or not element.text:
+                        return False
+                    text_to_check = element.text
+                    search_term = args
+                    if not kwargs.get("case", True):  # Check case flag from kwargs
+                        text_to_check = text_to_check.lower()
+                        search_term = search_term.lower()
+
+                    if kwargs.get("regex", False):  # Check regex flag from kwargs
+                        try:
+                            if not re.search(search_term, text_to_check):
+                                return False
+                        except re.error as e:
+                            logger.warning(
+                                f"Invalid regex in :contains selector '{search_term}': {e}"
+                            )
+                            return False  # Invalid regex cannot match
+                    else:
+                        if search_term not in text_to_check:
+                            return False
+                # Skip complex pseudo-classes like :near, :above here, handled later
+                elif name in ("above", "below", "near", "left-of", "right-of"):
+                    pass  # Handled separately after initial filtering
+                else:
+                    # Optionally log unknown pseudo-classes
+                    # logger.warning(f"Unknown pseudo-class: {name}")
+                    pass
+
+        return True  # Element passes all attribute and simple pseudo-class filters
+
+    return filter_func
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

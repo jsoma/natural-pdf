@@ -3,6 +3,8 @@ Natural PDF - A more intuitive interface for working with PDFs.
 """
 
 import logging
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Create library logger
 logger = logging.getLogger("natural_pdf")
@@ -12,16 +14,28 @@ logger = logging.getLogger("natural_pdf")
 logger.addHandler(logging.NullHandler())
 
 
+<<<<<<< HEAD
 def configure_logging(level=logging.INFO, handler=None):
     """Configure logging for the natural_pdf package.
+=======
+# Utility function for users to easily configure logging
+def configure_logging(level=logging.INFO, handler=None):
+    """Configure Natural PDF's logging.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     Args:
         level: Logging level (e.g., logging.INFO, logging.DEBUG)
         handler: Optional custom handler. Defaults to a StreamHandler.
     """
+<<<<<<< HEAD
     # Avoid adding duplicate handlers
     if any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
         return
+=======
+    # Remove NullHandler if present
+    if logger.handlers and isinstance(logger.handlers[0], logging.NullHandler):
+        logger.removeHandler(logger.handlers[0])
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     if handler is None:
         handler = logging.StreamHandler()
@@ -30,9 +44,18 @@ def configure_logging(level=logging.INFO, handler=None):
 
     logger.addHandler(handler)
     logger.setLevel(level)
+<<<<<<< HEAD
 
     logger.propagate = False
 
+=======
+
+    # Propagate level to all child loggers
+    for name in logging.root.manager.loggerDict:
+        if name.startswith("natural_pdf."):
+            logging.getLogger(name).setLevel(level)
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from natural_pdf.core.page import Page
 from natural_pdf.core.pdf import PDF
@@ -62,8 +85,24 @@ __all__ = [
 ]
 
 if HAS_QA:
+<<<<<<< HEAD
     __all__.extend(["DocumentQA", "get_qa_engine"])
 
+
+from .collections.pdf_collection import PDFCollection
+=======
+    __all__ = [
+        "PDF",
+        "Page",
+        "Region",
+        "ElementCollection",
+        "configure_logging",
+        "DocumentQA",
+        "get_qa_engine",
+    ]
+else:
+    __all__ = ["PDF", "Page", "Region", "ElementCollection", "configure_logging"]
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from .collections.pdf_collection import PDFCollection
 

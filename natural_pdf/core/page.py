@@ -6,19 +6,28 @@ import logging
 import os
 import re
 import tempfile
+<<<<<<< HEAD
 import time # Import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, overload # Added overload
 import concurrent.futures # Added import
 from tqdm.auto import tqdm # Added tqdm import
 import threading
 
 import pdfplumber
 from PIL import Image, ImageDraw
+=======
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+
+import pdfplumber
+from PIL import Image
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
+from natural_pdf.selectors.parser import parse_selector
 
 if TYPE_CHECKING:
     import pdfplumber
@@ -47,14 +56,41 @@ from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.widgets import InteractiveViewerWidget
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveViewerWidget
+<<<<<<< HEAD
 
 from natural_pdf.qa import DocumentQA, get_qa_engine
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 
+# --- Classification Imports --- #
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager # For type hint
+# --- End Classification Imports --- #
+
+from natural_pdf.utils.locks import pdf_render_lock # Import the lock
+from natural_pdf.elements.base import Element # Import base element
+from natural_pdf.classification.mixin import ClassificationMixin # Import classification mixin
+from natural_pdf.extraction.mixin import ExtractionMixin # Import extraction mixin
+
+# Deskew Imports (Conditional)
+import numpy as np
+try:
+    from deskew import determine_skew
+    DESKEW_AVAILABLE = True
+except ImportError:
+    DESKEW_AVAILABLE = False
+    determine_skew = None
+# End Deskew Imports
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
+
 logger = logging.getLogger(__name__)
 
 
+<<<<<<< HEAD
+class Page(ClassificationMixin, ExtractionMixin):
+=======
 class Page:
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     """
     Enhanced Page wrapper built on top of pdfplumber.Page.
 
@@ -77,6 +113,14 @@ class Page:
         self._index = index
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
+<<<<<<< HEAD
+        self._skew_angle: Optional[float] = None # Stores detected skew angle
+
+        # --- ADDED --- Metadata store for mixins
+        self.metadata: Dict[str, Any] = {}
+        # --- END ADDED ---
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # Region management
         self._regions = {
@@ -84,8 +128,16 @@ class Page:
             "named": {},  # Named regions (name -> region)
         }
 
+<<<<<<< HEAD
+        # Initialize ElementManager, passing font_attrs
+        self._element_mgr = ElementManager(self, font_attrs=font_attrs)
+        # self._highlighter = HighlightingService(self) # REMOVED - Use property accessor
+        # --- NEW --- Central registry for analysis results
+        self.analyses: Dict[str, Any] = {}
+=======
         # Initialize ElementManager
         self._element_mgr = ElementManager(self, font_attrs)
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # --- Get OCR Manager Instance ---
         if (
@@ -119,6 +171,11 @@ class Page:
 
         # Initialize the internal variable with a single underscore
         self._layout_analyzer = None
+<<<<<<< HEAD
+
+        self._load_elements()
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     @property
     def pdf(self) -> "PDF":
@@ -417,25 +474,69 @@ class Page:
 
         return filtered_elements
 
-    def find(self, selector: str, apply_exclusions=True, regex=False, case=True, **kwargs) -> Any:
+    @overload
+    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
+
+    @overload
+    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
+
+    def find(
+        self,
+        selector: Optional[str] = None, # Now optional
+        *,                     # Force subsequent args to be keyword-only
+        text: Optional[str] = None,     # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+    ) -> Optional[Any]:
         """
-        Find first element on this page matching selector.
+        Find first element on this page matching selector OR text content.
+
+        Provide EITHER `selector` OR `text`, but not both.
 
         Args:
-            selector: CSS-like selector string
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            regex: Whether to use regex for text search in :contains (default: False)
-            case: Whether to do case-sensitive text search (default: True)
-            **kwargs: Additional filter parameters
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional filter parameters.
 
         Returns:
-            Element object or None if not found
+            Element object or None if not found.
         """
+<<<<<<< HEAD
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+             raise ValueError("Provide either 'selector' or 'text'.")
+
+        # Construct selector if 'text' is provided
+        effective_selector = ""
+        if text is not None:
+             # Escape quotes within the text for the selector string
+             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+             # Default to 'text:contains(...)'
+             effective_selector = f'text:contains("{escaped_text}")'
+             # Note: regex/case handled by kwargs passed down
+             logger.debug(f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')")
+        elif selector is not None:
+             effective_selector = selector
+        else:
+             # Should be unreachable due to checks above
+             raise ValueError("Internal error: No selector or text provided.")
+
+        selector_obj = parse_selector(effective_selector)
+
+        # Pass regex and case flags to selector function via kwargs
+=======
         from natural_pdf.selectors.parser import parse_selector
 
         selector_obj = parse_selector(selector)
 
         # Pass regex and case flags to selector function
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         kwargs["regex"] = regex
         kwargs["case"] = case
 
@@ -455,27 +556,84 @@ class Page:
         else:
             return None
 
+<<<<<<< HEAD
+    @overload
+    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    @overload
+    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None, # Now optional
+        *,                     # Force subsequent args to be keyword-only
+        text: Optional[str] = None,     # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+=======
     def find_all(
         self, selector: str, apply_exclusions=True, regex=False, case=True, **kwargs
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     ) -> "ElementCollection":
         """
-        Find all elements on this page matching selector.
+        Find all elements on this page matching selector OR text content.
+
+        Provide EITHER `selector` OR `text`, but not both.
 
         Args:
+<<<<<<< HEAD
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional filter parameters.
+=======
             selector: CSS-like selector string
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
             regex: Whether to use regex for text search in :contains (default: False)
             case: Whether to do case-sensitive text search (default: True)
             **kwargs: Additional filter parameters
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
-            ElementCollection with matching elements
+            ElementCollection with matching elements.
         """
+<<<<<<< HEAD
+        from natural_pdf.elements.collections import ElementCollection # Import here for type hint
+        
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+             raise ValueError("Provide either 'selector' or 'text'.")
+
+        # Construct selector if 'text' is provided
+        effective_selector = ""
+        if text is not None:
+             # Escape quotes within the text for the selector string
+             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+             # Default to 'text:contains(...)'
+             effective_selector = f'text:contains("{escaped_text}")'
+             logger.debug(f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')")
+        elif selector is not None:
+             effective_selector = selector
+        else:
+            # Should be unreachable due to checks above
+            raise ValueError("Internal error: No selector or text provided.")
+
+
+        selector_obj = parse_selector(effective_selector)
+
+        # Pass regex and case flags to selector function via kwargs
+=======
         from natural_pdf.selectors.parser import parse_selector
 
         selector_obj = parse_selector(selector)
 
         # Pass regex and case flags to selector function
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         kwargs["regex"] = regex
         kwargs["case"] = case
 
@@ -1238,7 +1396,10 @@ class Page:
         render_ocr: bool = False,
         resolution: Optional[float] = None,
         include_highlights: bool = True,
+<<<<<<< HEAD
         exclusions: Optional[str] = None,  # New parameter
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         **kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -1266,6 +1427,7 @@ class Page:
         logger.debug(f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image...")
         lock_wait_start = time.monotonic()
         try:
+<<<<<<< HEAD
             # Acquire the global PDF rendering lock
             with pdf_render_lock:
                 lock_acquired_time = time.monotonic()
@@ -1297,10 +1459,41 @@ class Page:
                         image = Image.open(BytesIO(image)).convert(
                             "RGB"
                         )  # Convert to RGB for consistency
+=======
+            if include_highlights:
+                # Delegate rendering to the central service
+                image = self._highlighter.render_page(
+                    page_index=self.index,
+                    scale=scale,
+                    labels=labels,
+                    legend_position=legend_position,
+                    render_ocr=render_ocr,
+                    resolution=resolution,
+                    **kwargs,
+                )
+            else:
+                # Get the base page image directly from pdfplumber if no highlights needed
+                render_resolution = resolution if resolution is not None else scale * 72
+                # Use the underlying pdfplumber page object
+                img_object = self._page.to_image(resolution=render_resolution, **kwargs)
+                # Access the PIL image directly (assuming pdfplumber structure)
+                image = (
+                    img_object.annotated
+                    if hasattr(img_object, "annotated")
+                    else img_object._repr_png_()
+                )
+                if isinstance(image, bytes):  # Handle cases where it returns bytes
+                    from io import BytesIO
+
+                    image = Image.open(BytesIO(image)).convert(
+                        "RGB"
+                    )  # Convert to RGB for consistency
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         except Exception as e:
             logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
             return None  # Return None on error
+<<<<<<< HEAD
         finally:
             render_end_time = time.monotonic()
             logger.debug(f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s")
@@ -1354,6 +1547,11 @@ class Page:
                 )
                 # Decide if you want to return None or continue without mask
                 # For now, continue without mask
+=======
+
+        if image is None:
+            return None
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # Resize the final image if width is provided
         if width is not None and width > 0 and image.width > 0:
@@ -1396,14 +1594,18 @@ class Page:
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
+<<<<<<< HEAD
         resolution: Optional[int] = None,
         detect_only: bool = False,
         apply_exclusions: bool = True,
         replace: bool = True,
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     ) -> "Page":
         """
         Apply OCR to THIS page and add results to page elements via PDF.apply_ocr.
 
+<<<<<<< HEAD
         Args:
             engine: Name of the OCR engine.
             options: Engine-specific options object or dict.
@@ -1417,17 +1619,23 @@ class Page:
             replace: If True (default), remove any existing OCR elements before
                     adding new ones. If False, add new OCR elements to existing ones.
 
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         Returns:
             Self for method chaining.
         """
         if not hasattr(self._parent, "apply_ocr"):
             logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
+<<<<<<< HEAD
             return self  # Return self for chaining
 
         # Remove existing OCR elements if replace is True
         if replace and hasattr(self, "_element_mgr"):
             logger.info(f"Page {self.number}: Removing existing OCR elements before applying new OCR.")
             self._element_mgr.remove_ocr_elements()
+=======
+            return []
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         try:
@@ -1440,6 +1648,7 @@ class Page:
                 languages=languages,
                 min_confidence=min_confidence,
                 device=device,
+<<<<<<< HEAD
                 resolution=resolution,
                 detect_only=detect_only,
                 apply_exclusions=apply_exclusions,
@@ -1452,6 +1661,21 @@ class Page:
         # Return self for chaining
         return self
 
+=======
+            )
+        except Exception as e:
+            logger.error(f"Page {self.number}: Error during delegated OCR call: {e}", exc_info=True)
+            return []
+
+        # Return the OCR elements specifically added to this page
+        # Use element manager to retrieve them
+        ocr_elements = [el for el in self.words if getattr(el, "source", None) == "ocr"]
+        logger.debug(
+            f"Page {self.number}: apply_ocr completed. Found {len(ocr_elements)} OCR elements."
+        )
+        return self
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def extract_ocr_elements(
         self,
         engine: Optional[str] = None,
@@ -1489,6 +1713,7 @@ class Page:
         logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
 
         try:
+<<<<<<< HEAD
             # Get base image without highlights using the determined resolution
             # Use the global PDF rendering lock
             with pdf_render_lock:
@@ -1497,10 +1722,20 @@ class Page:
                     logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
                     return []
                 logger.debug(f"  Rendered image size: {image.width}x{image.height}")
+=======
+            ocr_scale = getattr(self._parent, "_config", {}).get("ocr_image_scale", 2.0)
+            # Get base image without highlights
+            image = self.to_image(scale=ocr_scale, include_highlights=False)
+            if not image:
+                logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
+                return []
+            logger.debug(f"  Rendered image size: {image.width}x{image.height}")
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         except Exception as e:
             logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
 
+<<<<<<< HEAD
         # Prepare arguments for the OCR Manager call
         manager_args = {
             "images": image,
@@ -1511,6 +1746,15 @@ class Page:
             "options": options,
         }
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
+=======
+        manager_args = {"images": image, "options": options, "engine": engine}
+        if languages is not None:
+            manager_args["languages"] = languages
+        if min_confidence is not None:
+            manager_args["min_confidence"] = min_confidence
+        if device is not None:
+            manager_args["device"] = device
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         logger.debug(
             f"  Calling OCR Manager (extract only) with args: { {k:v for k,v in manager_args.items() if k != 'images'} }"
@@ -1526,6 +1770,10 @@ class Page:
                 and isinstance(results_list[0], list)
                 else results_list
             )
+<<<<<<< HEAD
+=======
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             if not isinstance(results, list):
                 logger.error(f"  OCR Manager returned unexpected type: {type(results)}")
                 results = []
@@ -1540,6 +1788,7 @@ class Page:
         scale_x = self.width / image.width if image.width else 1
         scale_y = self.height / image.height if image.height else 1
         for result in results:
+<<<<<<< HEAD
             try:  # Added try-except around result processing
                 x0, top, x1, bottom = [float(c) for c in result["bbox"]]
                 elem_data = {
@@ -1562,6 +1811,25 @@ class Page:
                 logger.warning(
                     f"  Skipping invalid OCR result during conversion: {result}. Error: {convert_err}"
                 )
+=======
+            x0, top, x1, bottom = [float(c) for c in result["bbox"]]
+            elem_data = {
+                "text": result["text"],
+                "confidence": result["confidence"],
+                "x0": x0 * scale_x,
+                "top": top * scale_y,
+                "x1": x1 * scale_x,
+                "bottom": bottom * scale_y,
+                "width": (x1 - x0) * scale_x,
+                "height": (bottom - top) * scale_y,
+                "object_type": "text",
+                "source": "ocr",
+                "fontname": "OCR-temp",
+                "size": 10.0,
+                "page_number": self.number,
+            }
+            temp_elements.append(TextElement(elem_data, self))
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
         return temp_elements
@@ -1680,14 +1948,34 @@ class Page:
             )
             return None
 
+<<<<<<< HEAD
+    def split(self, divider, **kwargs) -> "ElementCollection[Region]":
+        """
+        Divides the page into sections based on the provided divider elements.
+        """
+        sections = self.get_sections(start_elements=divider, **kwargs)
+        top = self.region(0, 0, self.width, sections[0].top)
+        sections.append(top)
+
+        return sections
+
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def get_sections(
         self,
         start_elements=None,
         end_elements=None,
+<<<<<<< HEAD
+        boundary_inclusion="start",
+        y_threshold=5.0,
+        bounding_box=None,
+    ) -> "ElementCollection[Region]":
+=======
         boundary_inclusion="both",
         y_threshold=5.0,
         bounding_box=None,
     ) -> "ElementCollection[Region]":  # Updated type hint
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Get sections of a page defined by start/end elements.
         Uses the page-level implementation.
@@ -2028,7 +2316,11 @@ class Page:
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
         Note: OCR must have been applied to the pages beforehand
+<<<<<<< HEAD
               (e.g., pdf.apply_ocr()).
+=======
+              (e.g., using pdf.apply_ocr()).
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Args:
             output_path: Path to save the searchable PDF.
@@ -2043,6 +2335,7 @@ class Page:
 
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
+<<<<<<< HEAD
 
     # --- Added correct_ocr method ---
     def correct_ocr(
@@ -2166,3 +2459,189 @@ class Page:
         )
 
         return self # Return self for chaining
+
+    # --- Classification Mixin Implementation --- #
+    def _get_classification_manager(self) -> "ClassificationManager":
+        if not hasattr(self, 'pdf') or not hasattr(self.pdf, 'get_manager'):
+             raise AttributeError("ClassificationManager cannot be accessed: Parent PDF or get_manager method missing.")
+        try:
+             # Use the PDF's manager registry accessor
+             return self.pdf.get_manager('classification')
+        except (ValueError, RuntimeError, AttributeError) as e:
+            # Wrap potential errors from get_manager for clarity
+            raise AttributeError(f"Failed to get ClassificationManager from PDF: {e}") from e
+
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
+        if model_type == 'text':
+            text_content = self.extract_text(layout=False, use_exclusions=False) # Simple join, ignore exclusions for classification
+            if not text_content or text_content.isspace():
+                raise ValueError("Cannot classify page with 'text' model: No text content found.")
+            return text_content
+        elif model_type == 'vision':
+            # Get resolution from manager/kwargs if possible, else default
+            manager = self._get_classification_manager()
+            default_resolution = 150
+            # Access kwargs passed to classify method if needed
+            resolution = kwargs.get('resolution', default_resolution) if 'kwargs' in locals() else default_resolution
+
+            # Use to_image, ensuring no highlights interfere
+            img = self.to_image(
+                resolution=resolution,
+                include_highlights=False,
+                labels=False,
+                exclusions=None # Don't mask exclusions for classification input image
+            )
+            if img is None:
+                raise ValueError("Cannot classify page with 'vision' model: Failed to render image.")
+            return img
+        else:
+            raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    def _get_metadata_storage(self) -> Dict[str, Any]:
+        # Ensure metadata exists
+        if not hasattr(self, 'metadata') or self.metadata is None:
+            self.metadata = {}
+        return self.metadata
+
+    # --- Content Extraction ---
+
+    # --- Skew Detection and Correction --- #
+
+    @property
+    def skew_angle(self) -> Optional[float]:
+        """Get the detected skew angle for this page (if calculated)."""
+        return self._skew_angle
+
+    def detect_skew_angle(
+        self,
+        resolution: int = 72,
+        grayscale: bool = True,
+        force_recalculate: bool = False,
+        **deskew_kwargs
+    ) -> Optional[float]:
+        """
+        Detects the skew angle of the page image and stores it.
+
+        Args:
+            resolution: DPI resolution for rendering the page image for detection.
+            grayscale: Whether to convert the image to grayscale before detection.
+            force_recalculate: If True, recalculate even if an angle exists.
+            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
+                             (e.g., `max_angle`, `num_peaks`).
+
+        Returns:
+            The detected skew angle in degrees, or None if detection failed.
+
+        Raises:
+            ImportError: If the 'deskew' library is not installed.
+        """
+        if not DESKEW_AVAILABLE:
+            raise ImportError("Deskew library not found. Install with: pip install natural-pdf[deskew]")
+
+        if self._skew_angle is not None and not force_recalculate:
+            logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle:.2f}")
+            return self._skew_angle
+
+        logger.debug(f"Page {self.number}: Detecting skew angle (resolution={resolution} DPI)...")
+        try:
+            # Render the page at the specified detection resolution
+            img = self.to_image(resolution=resolution, include_highlights=False)
+            if not img:
+                logger.warning(f"Page {self.number}: Failed to render image for skew detection.")
+                self._skew_angle = None
+                return None
+
+            # Convert to numpy array
+            img_np = np.array(img)
+
+            # Convert to grayscale if needed
+            if grayscale:
+                if len(img_np.shape) == 3 and img_np.shape[2] >= 3:
+                    gray_np = np.mean(img_np[:, :, :3], axis=2).astype(np.uint8)
+                elif len(img_np.shape) == 2:
+                    gray_np = img_np # Already grayscale
+                else:
+                     logger.warning(f"Page {self.number}: Unexpected image shape {img_np.shape} for grayscale conversion.")
+                     gray_np = img_np # Try using it anyway
+            else:
+                gray_np = img_np # Use original if grayscale=False
+
+            # Determine skew angle using the deskew library
+            angle = determine_skew(gray_np, **deskew_kwargs)
+            self._skew_angle = angle
+            logger.debug(f"Page {self.number}: Detected skew angle = {angle}")
+            return angle
+
+        except Exception as e:
+            logger.warning(f"Page {self.number}: Failed during skew detection: {e}", exc_info=True)
+            self._skew_angle = None
+            return None
+
+    def deskew(
+        self,
+        resolution: int = 300,
+        angle: Optional[float] = None,
+        detection_resolution: int = 72,
+        **deskew_kwargs
+    ) -> Optional[Image.Image]:
+        """
+        Creates and returns a deskewed PIL image of the page.
+
+        If `angle` is not provided, it will first try to detect the skew angle
+        using `detect_skew_angle` (or use the cached angle if available).
+
+        Args:
+            resolution: DPI resolution for the output deskewed image.
+            angle: The specific angle (in degrees) to rotate by. If None, detects automatically.
+            detection_resolution: DPI resolution used for detection if `angle` is None.
+            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
+                             if automatic detection is performed.
+
+        Returns:
+            A deskewed PIL.Image.Image object, or None if rendering/rotation fails.
+
+        Raises:
+            ImportError: If the 'deskew' library is not installed.
+        """
+        if not DESKEW_AVAILABLE:
+            raise ImportError("Deskew library not found. Install with: pip install natural-pdf[deskew]")
+
+        # Determine the angle to use
+        rotation_angle = angle
+        if rotation_angle is None:
+            # Detect angle (or use cached) if not explicitly provided
+            rotation_angle = self.detect_skew_angle(resolution=detection_resolution, **deskew_kwargs)
+
+        logger.debug(f"Page {self.number}: Preparing to deskew (output resolution={resolution} DPI). Using angle: {rotation_angle}")
+
+        try:
+            # Render the original page at the desired output resolution
+            img = self.to_image(resolution=resolution, include_highlights=False)
+            if not img:
+                logger.error(f"Page {self.number}: Failed to render image for deskewing.")
+                return None
+
+            # Rotate if a significant angle was found/provided
+            if rotation_angle is not None and abs(rotation_angle) > 0.05:
+                logger.debug(f"Page {self.number}: Rotating by {rotation_angle:.2f} degrees.")
+                # Determine fill color based on image mode
+                fill = (255, 255, 255) if img.mode == 'RGB' else 255 # White background
+                # Rotate the image using PIL
+                rotated_img = img.rotate(
+                    rotation_angle, # deskew provides angle, PIL rotates counter-clockwise
+                    resample=Image.Resampling.BILINEAR,
+                    expand=True, # Expand image to fit rotated content
+                    fillcolor=fill
+                )
+                return rotated_img
+            else:
+                logger.debug(f"Page {self.number}: No significant rotation needed (angle={rotation_angle}). Returning original render.")
+                return img # Return the original rendered image if no rotation needed
+
+        except Exception as e:
+            logger.error(f"Page {self.number}: Error during deskewing image generation: {e}", exc_info=True)
+            return None
+
+    # --- End Skew Detection and Correction --- #
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

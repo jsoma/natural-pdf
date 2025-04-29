@@ -11,17 +11,41 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+<<<<<<< HEAD
+    Iterable,
+    Type,
+    overload,
+    Sequence,
 )
 
 from pdfplumber.utils.geometry import objects_to_bbox
+from tqdm.auto import tqdm
+from collections.abc import MutableSequence
+=======
+)
+
+from pdfplumber.utils.geometry import objects_to_bbox
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
+<<<<<<< HEAD
+from natural_pdf.elements.text import TextElement
+=======
 from natural_pdf.elements.text import TextElement  # Needed for isinstance check
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 from natural_pdf.ocr import OCROptions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import the new utility
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.manager import ClassificationManager
+from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
+from natural_pdf.export.mixin import ExportMixin
+from pathlib import Path
+from natural_pdf.elements.base import Element
+from natural_pdf.elements.region import Region
+from natural_pdf.core.pdf import PDF
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +55,13 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Page")
+<<<<<<< HEAD
+=======
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 
-class ElementCollection(Generic[T]):
+class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollectionMixin, MutableSequence):
     """
     Collection of PDF elements with batch operations.
     """
@@ -55,10 +83,13 @@ class ElementCollection(Generic[T]):
         """Get an element by index."""
         return self._elements[index]
 
+<<<<<<< HEAD
+=======
     def __iter__(self):
         """Iterate over elements."""
         return iter(self._elements)
 
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def __repr__(self) -> str:
         """Return a string representation showing the element count."""
         element_type = "Mixed"
@@ -68,6 +99,23 @@ class ElementCollection(Generic[T]):
                 element_type = types.pop()
         return f"<ElementCollection[{element_type}](count={len(self)})>"
 
+<<<<<<< HEAD
+    def __add__(self, other: "ElementCollection") -> "ElementCollection":
+        if not isinstance(other, ElementCollection):
+            return NotImplemented
+        return ElementCollection(self._elements + other._elements)
+
+    def __setitem__(self, index, value):
+        self._elements[index] = value
+
+    def __delitem__(self, index):
+        del self._elements[index]
+
+    def insert(self, index, value):
+        self._elements.insert(index, value)
+
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     @property
     def elements(self) -> List["Element"]:
         """Get the elements in this collection."""
@@ -83,6 +131,85 @@ class ElementCollection(Generic[T]):
         """Get the last element in the collection."""
         return self._elements[-1] if self._elements else None
 
+<<<<<<< HEAD
+=======
+    def highest(self) -> Optional["Element"]:
+        """
+        Get element with the smallest top y-coordinate (highest on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages
+
+        Returns:
+            Element with smallest top value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine highest element across multiple pages")
+
+        return min(self._elements, key=lambda e: e.top)
+
+    def lowest(self) -> Optional["Element"]:
+        """
+        Get element with the largest bottom y-coordinate (lowest on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages
+
+        Returns:
+            Element with largest bottom value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine lowest element across multiple pages")
+
+        return max(self._elements, key=lambda e: e.bottom)
+
+    def leftmost(self) -> Optional["Element"]:
+        """
+        Get element with the smallest x0 coordinate (leftmost on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages
+
+        Returns:
+            Element with smallest x0 value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine leftmost element across multiple pages")
+
+        return min(self._elements, key=lambda e: e.x0)
+
+    def rightmost(self) -> Optional["Element"]:
+        """
+        Get element with the largest x1 coordinate (rightmost on page).
+
+        Raises:
+            ValueError: If elements are on multiple pages
+
+        Returns:
+            Element with largest x1 value or None if empty
+        """
+        if not self._elements:
+            return None
+
+        # Check if elements are on multiple pages
+        if self._are_on_multiple_pages():
+            raise ValueError("Cannot determine rightmost element across multiple pages")
+
+        return max(self._elements, key=lambda e: e.x1)
+
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def _are_on_multiple_pages(self) -> bool:
         """
         Check if elements in this collection span multiple pages.
@@ -102,6 +229,7 @@ class ElementCollection(Generic[T]):
         # Check if any element is on a different page
         return any(hasattr(e, "page") and e.page.index != first_page_idx for e in self._elements)
 
+<<<<<<< HEAD
     def _are_on_multiple_pdfs(self) -> bool:
         """
         Check if elements in this collection span multiple PDFs.
@@ -210,6 +338,8 @@ class ElementCollection(Generic[T]):
 
         return max(self._elements, key=lambda e: e.x1)
 
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def exclude_regions(self, regions: List["Region"]) -> "ElementCollection":
         """
         Remove elements that are within any of the specified regions.
@@ -800,8 +930,12 @@ class ElementCollection(Generic[T]):
         Generates a temporary preview image highlighting elements in this collection
         on their page, ignoring any persistent highlights.
 
+<<<<<<< HEAD
         Currently only supports collections where all elements are on the same page
         of the same PDF.
+=======
+        Currently only supports collections where all elements are on the same page.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Allows grouping and coloring elements based on attributes, similar to the
         persistent `highlight()` method, but only for this temporary view.
@@ -820,20 +954,30 @@ class ElementCollection(Generic[T]):
 
         Returns:
             PIL Image object of the temporary preview, or None if rendering fails or
+<<<<<<< HEAD
             elements span multiple pages/PDFs.
 
         Raises:
             ValueError: If the collection is empty or elements are on different pages/PDFs.
+=======
+            elements span multiple pages.
+
+        Raises:
+            ValueError: If the collection is empty or elements are on different pages.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         if not self._elements:
             raise ValueError("Cannot show an empty collection.")
 
+<<<<<<< HEAD
         # Check if elements are on multiple PDFs
         if self._are_on_multiple_pdfs():
             raise ValueError(
                 "show() currently only supports collections where all elements are from the same PDF."
             )
 
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # Check if elements are on multiple pages
         if self._are_on_multiple_pages():
             raise ValueError(
@@ -1108,62 +1252,29 @@ class ElementCollection(Generic[T]):
             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
             return None
 
+<<<<<<< HEAD
+    def find(
+            self, selector: str, **kwargs
+    ) -> "ElementCollection":
+=======
     def find_all(
         self, selector: str, regex: bool = False, case: bool = True, **kwargs
     ) -> "ElementCollection[T]":
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
-        Filter elements within this collection matching the selector.
+        Find elements in this collection matching the selector.
 
         Args:
-            selector: CSS-like selector string.
-            regex: Whether to use regex for text search in :contains (default: False).
-            case: Whether to do case-sensitive text search (default: True).
-            **kwargs: Additional filter parameters passed to the selector function.
-
-        Returns:
-            A new ElementCollection containing only the matching elements from this collection.
+            selector: CSS-like selector string
+            apply_exclusions: Whether to exclude elements in exclusion regions
         """
-        if not self._elements:
-            return ElementCollection([])
+        return self.apply(lambda element: element.find(selector, **kwargs))
 
-        try:
-            selector_obj = parse_selector(selector)
-        except Exception as e:
-            logger.error(f"Error parsing selector '{selector}': {e}")
-            return ElementCollection([])  # Return empty on parse error
-
-        # Pass regex and case flags to selector function generator
-        kwargs["regex"] = regex
-        kwargs["case"] = case
-
-        try:
-            filter_func = selector_to_filter_func(selector_obj, **kwargs)
-        except Exception as e:
-            logger.error(f"Error creating filter function for selector '{selector}': {e}")
-            return ElementCollection([])  # Return empty on filter creation error
-
-        matching_elements = [element for element in self._elements if filter_func(element)]
-
-        # Note: Unlike Page.find_all, this doesn't re-sort.
-        # Sorting should be done explicitly on the collection if needed.
-
-        return ElementCollection(matching_elements)
-
-    def find(self, selector: str, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]:
+    def extract_each_text(self, **kwargs) -> List[str]:
         """
-        Find the first element within this collection matching the selector.
-
-        Args:
-            selector: CSS-like selector string.
-            regex: Whether to use regex for text search in :contains (default: False).
-            case: Whether to do case-sensitive text search (default: True).
-            **kwargs: Additional filter parameters passed to the selector function.
-
-        Returns:
-            The first matching element or None.
+        Extract text from each element in this region.
         """
-        results = self.find_all(selector, regex=regex, case=case, **kwargs)
-        return results.first
+        return self.apply(lambda element: element.extract_text(**kwargs) if element is not None else None)
 
     def correct_ocr(
         self,
@@ -1251,8 +1362,270 @@ class ElementCollection(Generic[T]):
                 
         return removed_count
 
+<<<<<<< HEAD
+    # --- Classification Method --- #
+    def classify_all(
+        self,
+        categories: List[str],
+        model: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        analysis_key: str = 'classification',
+        multi_label: bool = False,
+        batch_size: int = 8,
+        max_workers: Optional[int] = None,
+        progress_bar: bool = True,
+        **kwargs
+    ):
+        """Classifies all elements in the collection in batch.
+=======
+        try:
+            selector_obj = parse_selector(selector)
+        except Exception as e:
+            logger.error(f"Error parsing selector '{selector}': {e}")
+            return ElementCollection([])  # Return empty on parse error
+
+        # Pass regex and case flags to selector function generator
+        kwargs["regex"] = regex
+        kwargs["case"] = case
+
+        try:
+            filter_func = selector_to_filter_func(selector_obj, **kwargs)
+        except Exception as e:
+            logger.error(f"Error creating filter function for selector '{selector}': {e}")
+            return ElementCollection([])  # Return empty on filter creation error
+
+        matching_elements = [element for element in self._elements if filter_func(element)]
+
+        # Note: Unlike Page.find_all, this doesn't re-sort.
+        # Sorting should be done explicitly on the collection if needed.
+
+        return ElementCollection(matching_elements)
+
+    def find(self, selector: str, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]:
+        """
+        Find the first element within this collection matching the selector.
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
+
+        Args:
+            categories: List of category labels.
+            model: Model ID (or alias 'text', 'vision').
+            using: Optional processing mode ('text' or 'vision'). Inferred if None.
+            min_confidence: Minimum confidence threshold.
+            analysis_key: Key for storing results in element.analyses.
+            multi_label: Allow multiple labels per item.
+            batch_size: Size of batches passed to the inference pipeline.
+            max_workers: (Not currently used for classification batching which is
+                         handled by the underlying pipeline).
+            progress_bar: Display a progress bar.
+            **kwargs: Additional arguments for the ClassificationManager.
+        """
+        if not self.elements:
+            logger.info("ElementCollection is empty, skipping classification.")
+            return self
+
+<<<<<<< HEAD
+        # Requires access to the PDF's manager. Assume first element has it.
+        first_element = self.elements[0]
+        manager_source = None
+        if hasattr(first_element, 'page') and hasattr(first_element.page, 'pdf'):
+             manager_source = first_element.page.pdf
+        elif hasattr(first_element, 'pdf'): # Maybe it's a PageCollection?
+             manager_source = first_element.pdf
+        
+        if not manager_source or not hasattr(manager_source, 'get_manager'):
+             raise RuntimeError("Cannot access ClassificationManager via elements.")
+
+        try:
+            manager = manager_source.get_manager('classification')
+        except Exception as e:
+             raise RuntimeError(f"Failed to get ClassificationManager: {e}") from e
+
+        if not manager or not manager.is_available():
+             raise RuntimeError("ClassificationManager is not available.")
+
+        # Determine engine type early for content gathering
+        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
+
+        # Gather content from all elements
+        items_to_classify: List[Tuple[Any, Union[str, Image.Image]]] = []
+        original_elements: List[Any] = []
+        logger.info(f"Gathering content for {len(self.elements)} elements for batch classification...")
+        for element in self.elements:
+             if not isinstance(element, ClassificationMixin):
+                 logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
+                 continue
+             try:
+                 # Delegate content fetching to the element itself
+                 content = element._get_classification_content(model_type=inferred_using, **kwargs)
+                 items_to_classify.append(content)
+                 original_elements.append(element)
+             except (ValueError, NotImplementedError) as e:
+                 logger.warning(f"Skipping element {element!r}: Cannot get content for classification - {e}")
+             except Exception as e:
+                  logger.warning(f"Skipping element {element!r}: Error getting classification content - {e}")
+
+        if not items_to_classify:
+             logger.warning("No content could be gathered from elements for batch classification.")
+             return self
+
+        logger.info(f"Collected content for {len(items_to_classify)} elements. Running batch classification...")
+
+        # Call manager's batch classify
+        batch_results: List[ClassificationResult] = manager.classify_batch(
+            item_contents=items_to_classify,
+            categories=categories,
+            model_id=model,
+            using=inferred_using,
+            min_confidence=min_confidence,
+            multi_label=multi_label,
+            batch_size=batch_size,
+            progress_bar=progress_bar,
+            **kwargs
+        )
+
+        # Assign results back to elements
+        if len(batch_results) != len(original_elements):
+             logger.error(
+                 f"Batch classification result count ({len(batch_results)}) mismatch "
+                 f"with elements processed ({len(original_elements)}). Cannot assign results."
+             )
+             # Decide how to handle mismatch - maybe store errors?
+        else:
+             logger.info(f"Assigning {len(batch_results)} results to elements under key '{analysis_key}'.")
+             for element, result_obj in zip(original_elements, batch_results):
+                 try:
+                     if not hasattr(element, 'analyses') or element.analyses is None:
+                          element.analyses = {}
+                     element.analyses[analysis_key] = result_obj
+                 except Exception as e:
+                      logger.warning(f"Failed to store classification result for {element!r}: {e}")
+
+        return self
+    # --- End Classification Method --- #
+
+    def _gather_analysis_data(
+        self,
+        analysis_keys: List[str],
+        include_content: bool,
+        include_images: bool,
+        image_dir: Optional[Path],
+        image_format: str,
+        image_resolution: int,
+    ) -> List[Dict[str, Any]]:
+        """
+        Gather analysis data from all elements in the collection.
+        
+        Args:
+            analysis_keys: Keys in the analyses dictionary to export
+            include_content: Whether to include extracted text
+            include_images: Whether to export images
+            image_dir: Directory to save images
+            image_format: Format to save images
+            image_resolution: Resolution for exported images
+            
+        Returns:
+            List of dictionaries containing analysis data
+        """
+        if not self.elements:
+            logger.warning("No elements found in collection")
+            return []
+            
+        all_data = []
+        
+        for i, element in enumerate(self.elements):
+            # Base element information
+            element_data = {
+                "element_index": i,
+                "element_type": getattr(element, "type", type(element).__name__),
+            }
+            
+            # Add geometry if available
+            for attr in ["x0", "top", "x1", "bottom", "width", "height"]:
+                if hasattr(element, attr):
+                    element_data[attr] = getattr(element, attr)
+            
+            # Add page information if available
+            if hasattr(element, "page"):
+                page = element.page
+                if page:
+                    element_data["page_number"] = getattr(page, "number", None)
+                    element_data["pdf_path"] = getattr(page.pdf, "path", None) if hasattr(page, "pdf") else None
+            
+            # Include extracted text if requested
+            if include_content and hasattr(element, "extract_text"):
+                try:
+                    element_data["content"] = element.extract_text(preserve_whitespace=True)
+                except Exception as e:
+                    logger.error(f"Error extracting text from element {i}: {e}")
+                    element_data["content"] = ""
+            
+            # Save image if requested
+            if include_images and hasattr(element, "to_image"):
+                try:
+                    # Create identifier for the element
+                    pdf_name = "unknown"
+                    page_num = "unknown"
+                    
+                    if hasattr(element, "page") and element.page:
+                        page_num = element.page.number
+                        if hasattr(element.page, "pdf") and element.page.pdf:
+                            pdf_name = Path(element.page.pdf.path).stem
+                    
+                    # Create image filename
+                    element_type = element_data.get("element_type", "element").lower()
+                    image_filename = f"{pdf_name}_page{page_num}_{element_type}_{i}.{image_format}"
+                    image_path = image_dir / image_filename
+                    
+                    # Save image
+                    element.to_image(
+                        path=str(image_path),
+                        resolution=image_resolution,
+                        include_highlights=True
+                    )
+                    
+                    # Add relative path to data
+                    element_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
+                except Exception as e:
+                    logger.error(f"Error saving image for element {i}: {e}")
+                    element_data["image_path"] = None
+            
+            # Add analyses data
+            if hasattr(element, "analyses"):
+                for key in analysis_keys:
+                    if key not in element.analyses:
+                        # Skip this key if it doesn't exist - elements might have different analyses
+                        logger.warning(f"Analysis key '{key}' not found in element {i}")
+                        continue
+                    
+                    # Get the analysis result
+                    analysis_result = element.analyses[key]
+                    
+                    # If the result has a to_dict method, use it
+                    if hasattr(analysis_result, "to_dict"):
+                        analysis_data = analysis_result.to_dict()
+                    else:
+                        # Otherwise, use the result directly if it's dict-like
+                        try:
+                            analysis_data = dict(analysis_result)
+                        except (TypeError, ValueError):
+                            # Last resort: convert to string
+                            analysis_data = {"raw_result": str(analysis_result)}
+                    
+                    # Add analysis data to element data with the key as prefix
+                    for k, v in analysis_data.items():
+                        element_data[f"{key}.{k}"] = v
+            
+            all_data.append(element_data)
+        
+        return all_data
+
+
+class PageCollection(Generic[P], ApplyMixin):
+=======
 
 class PageCollection(Generic[P]):
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     """
     A collection of PDF pages with cross-page operations.
 
@@ -1315,11 +1688,14 @@ class PageCollection(Generic[P]):
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,  # Min confidence threshold
         device: Optional[str] = None,
+<<<<<<< HEAD
         resolution: Optional[int] = None,  # DPI for rendering
         apply_exclusions: bool = True,  # New parameter
         replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options ---
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     ) -> "PageCollection[P]":
         """
         Applies OCR to all pages within this collection using batch processing.
@@ -1359,6 +1735,10 @@ class PageCollection(Generic[P]):
 
         parent_pdf = first_page._parent
 
+<<<<<<< HEAD
+=======
+        # Updated check for renamed method
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         if not hasattr(parent_pdf, "apply_ocr") or not callable(parent_pdf.apply_ocr):
             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
 
@@ -1372,35 +1752,108 @@ class PageCollection(Generic[P]):
             pages=page_indices,
             engine=engine,
             languages=languages,
+<<<<<<< HEAD
             min_confidence=min_confidence,  # Pass the renamed parameter
             device=device,
             resolution=resolution,
             apply_exclusions=apply_exclusions,  # Pass down
             replace=replace,  # Pass the replace parameter
             options=options,
+=======
+            min_confidence=min_confidence,
+            device=device,
+            # Pass any other relevant simple_kwargs here if added
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
         )
         # The PDF method modifies the Page objects directly by adding elements.
 
         return self  # Return self for chaining
 
-    def find(self, selector: str, apply_exclusions=True, **kwargs) -> Optional[T]:
+    @overload
+    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]: ...
+
+    @overload
+    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]: ...
+
+    def find(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+    ) -> Optional[T]:
         """
+<<<<<<< HEAD
+        Find the first element matching the selector OR text across all pages in the collection.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
+        Args:
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional filter parameters.
+=======
         Find the first element matching the selector across all pages.
 
         Args:
             selector: CSS-like selector string
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
             **kwargs: Additional filter parameters
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
-            First matching element or None
+            First matching element or None.
         """
+        # Input validation happens within page.find
         for page in self.pages:
-            element = page.find(selector, apply_exclusions=apply_exclusions, **kwargs)
+            element = page.find(
+                selector=selector,
+                text=text,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                **kwargs
+            )
             if element:
                 return element
         return None
 
+<<<<<<< HEAD
+    @overload
+    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    @overload
+    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs
+    ) -> "ElementCollection":
+        """
+        Find all elements matching the selector OR text across all pages in the collection.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
+        Args:
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional filter parameters.
+=======
     def find_all(self, selector: str, apply_exclusions=True, **kwargs) -> ElementCollection:
         """
         Find all elements matching the selector across all pages.
@@ -1409,18 +1862,28 @@ class PageCollection(Generic[P]):
             selector: CSS-like selector string
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
             **kwargs: Additional filter parameters
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
-            ElementCollection with matching elements from all pages
+            ElementCollection with matching elements from all pages.
         """
         all_elements = []
+        # Input validation happens within page.find_all
         for page in self.pages:
-            elements = page.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
+            elements = page.find_all(
+                selector=selector,
+                text=text,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                **kwargs
+            )
             if elements:
                 all_elements.extend(elements.elements)
 
         return ElementCollection(all_elements)
 
+<<<<<<< HEAD
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
@@ -1473,6 +1936,29 @@ class PageCollection(Generic[P]):
         )
 
         return self
+=======
+    # def debug_ocr(self, output_path):
+    #     """
+    #     Generate an interactive HTML debug report for OCR results.
+
+        This creates a single-file HTML report with:
+        - Side-by-side view of image regions and OCR text
+        - Confidence scores with color coding
+        - Editable correction fields
+        - Filtering and sorting options
+        - Export functionality for corrected text
+
+        Requires OCR elements (source='ocr') to be present on the pages.
+
+        Args:
+            output_path: Path to save the HTML report. If None, returns HTML string.
+
+    #     Returns:
+    #         Path to the generated HTML file
+    #     """
+    #     from natural_pdf.utils.ocr import debug_ocr_to_html
+    #     return debug_ocr_to_html(self.pages, output_path)
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     def get_sections(
         self,
@@ -1774,3 +2260,179 @@ class PageCollection(Generic[P]):
                 sections.append(region)
 
         return sections
+<<<<<<< HEAD
+
+    def _gather_analysis_data(
+        self,
+        analysis_keys: List[str],
+        include_content: bool,
+        include_images: bool,
+        image_dir: Optional[Path],
+        image_format: str,
+        image_resolution: int,
+    ) -> List[Dict[str, Any]]:
+        """
+        Gather analysis data from all pages in the collection.
+        
+        Args:
+            analysis_keys: Keys in the analyses dictionary to export
+            include_content: Whether to include extracted text
+            include_images: Whether to export images
+            image_dir: Directory to save images
+            image_format: Format to save images
+            image_resolution: Resolution for exported images
+            
+        Returns:
+            List of dictionaries containing analysis data
+        """
+        if not self.elements:
+            logger.warning("No pages found in collection")
+            return []
+            
+        all_data = []
+        
+        for page in self.elements:
+            # Basic page information
+            page_data = {
+                "page_number": page.number,
+                "page_index": page.index,
+                "width": page.width,
+                "height": page.height,
+            }
+            
+            # Add PDF information if available
+            if hasattr(page, "pdf") and page.pdf:
+                page_data["pdf_path"] = page.pdf.path
+                page_data["pdf_filename"] = Path(page.pdf.path).name
+            
+            # Include extracted text if requested
+            if include_content:
+                try:
+                    page_data["content"] = page.extract_text(preserve_whitespace=True)
+                except Exception as e:
+                    logger.error(f"Error extracting text from page {page.number}: {e}")
+                    page_data["content"] = ""
+            
+            # Save image if requested
+            if include_images:
+                try:
+                    # Create image filename
+                    pdf_name = "unknown"
+                    if hasattr(page, "pdf") and page.pdf:
+                        pdf_name = Path(page.pdf.path).stem
+                        
+                    image_filename = f"{pdf_name}_page_{page.number}.{image_format}"
+                    image_path = image_dir / image_filename
+                    
+                    # Save image
+                    page.save_image(
+                        str(image_path),
+                        resolution=image_resolution,
+                        include_highlights=True
+                    )
+                    
+                    # Add relative path to data
+                    page_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
+                except Exception as e:
+                    logger.error(f"Error saving image for page {page.number}: {e}")
+                    page_data["image_path"] = None
+            
+            # Add analyses data
+            if hasattr(page, "analyses") and page.analyses:
+                for key in analysis_keys:
+                    if key not in page.analyses:
+                        raise KeyError(f"Analysis key '{key}' not found in page {page.number}")
+                    
+                    # Get the analysis result
+                    analysis_result = page.analyses[key]
+                    
+                    # If the result has a to_dict method, use it
+                    if hasattr(analysis_result, "to_dict"):
+                        analysis_data = analysis_result.to_dict()
+                    else:
+                        # Otherwise, use the result directly if it's dict-like
+                        try:
+                            analysis_data = dict(analysis_result)
+                        except (TypeError, ValueError):
+                            # Last resort: convert to string
+                            analysis_data = {"raw_result": str(analysis_result)}
+                    
+                    # Add analysis data to page data with the key as prefix
+                    for k, v in analysis_data.items():
+                        page_data[f"{key}.{k}"] = v
+            
+            all_data.append(page_data)
+        
+        return all_data
+
+    # --- Deskew Method --- #
+
+    def deskew(
+        self,
+        resolution: int = 300,
+        detection_resolution: int = 72,
+        force_overwrite: bool = False,
+        **deskew_kwargs
+    ) -> "PDF": # Changed return type
+        """
+        Creates a new, in-memory PDF object containing deskewed versions of the pages
+        in this collection.
+
+        This method delegates the actual processing to the parent PDF object's
+        `deskew` method.
+
+        Important: The returned PDF is image-based. Any existing text, OCR results,
+        annotations, or other elements from the original pages will *not* be carried over.
+
+        Args:
+            resolution: DPI resolution for rendering the output deskewed pages.
+            detection_resolution: DPI resolution used for skew detection if angles are not
+                                  already cached on the page objects.
+            force_overwrite: If False (default), raises a ValueError if any target page
+                             already contains processed elements (text, OCR, regions) to
+                             prevent accidental data loss. Set to True to proceed anyway.
+            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
+                             during automatic detection (e.g., `max_angle`, `num_peaks`).
+
+        Returns:
+            A new PDF object representing the deskewed document.
+
+        Raises:
+            ImportError: If 'deskew' or 'img2pdf' libraries are not installed (raised by PDF.deskew).
+            ValueError: If `force_overwrite` is False and target pages contain elements (raised by PDF.deskew),
+                        or if the collection is empty.
+            RuntimeError: If pages lack a parent PDF reference, or the parent PDF lacks the `deskew` method.
+        """
+        if not self.pages:
+            logger.warning("Cannot deskew an empty PageCollection.")
+            raise ValueError("Cannot deskew an empty PageCollection.")
+
+        # Assume all pages share the same parent PDF object
+        # Need to hint the type of _parent for type checkers
+        if TYPE_CHECKING:
+            parent_pdf: "natural_pdf.core.pdf.PDF" = self.pages[0]._parent
+        else:
+            parent_pdf = self.pages[0]._parent
+
+        if not parent_pdf or not hasattr(parent_pdf, 'deskew') or not callable(parent_pdf.deskew):
+            raise RuntimeError(
+                "Parent PDF reference not found or parent PDF lacks the required 'deskew' method."
+            )
+
+        # Get the 0-based indices of the pages in this collection
+        page_indices = [p.index for p in self.pages]
+        logger.info(f"PageCollection: Delegating deskew to parent PDF for page indices: {page_indices}")
+
+        # Delegate the call to the parent PDF object for the relevant pages
+        # Pass all relevant arguments through (no output_path anymore)
+        return parent_pdf.deskew(
+            pages=page_indices,
+            resolution=resolution,
+            detection_resolution=detection_resolution,
+            force_overwrite=force_overwrite,
+            **deskew_kwargs
+        )
+
+    # --- End Deskew Method --- #
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

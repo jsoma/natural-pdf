@@ -312,7 +312,10 @@ class ElementManager:
 
         Args:
             ocr_results: List of OCR results dictionaries with 'text', 'bbox', 'confidence'.
+<<<<<<< HEAD
                          Confidence can be None for detection-only results.
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
             scale_x: Factor to convert image x-coordinates to PDF coordinates.
             scale_y: Factor to convert image y-coordinates to PDF coordinates.
 
@@ -357,6 +360,7 @@ class ElementManager:
                 pdf_bottom = bottom_img * scale_y
                 pdf_height = (bottom_img - top_img) * scale_y
 
+<<<<<<< HEAD
                 # Handle potential None confidence
                 raw_confidence = result.get("confidence")
                 confidence_value = (
@@ -367,6 +371,11 @@ class ElementManager:
                 # Create the TextElement for the word
                 word_element_data = {
                     "text": ocr_text,
+=======
+                # Create the TextElement for the word
+                word_element_data = {
+                    "text": result["text"],
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                     "x0": pdf_x0,
                     "top": pdf_top,
                     "x1": pdf_x1,
@@ -375,7 +384,11 @@ class ElementManager:
                     "height": pdf_height,
                     "object_type": "word",  # Treat OCR results as whole words
                     "source": "ocr",
+<<<<<<< HEAD
                     "confidence": confidence_value,  # Use the handled confidence
+=======
+                    "confidence": float(result.get("confidence", 0.0)),
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                     "fontname": "OCR",  # Use consistent OCR fontname
                     "size": (
                         round(pdf_height) if pdf_height > 0 else 10.0
@@ -393,7 +406,11 @@ class ElementManager:
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
 
                 # Add the char dict list to the word data before creating TextElement
+<<<<<<< HEAD
                 word_element_data["_char_dicts"] = [ocr_char_dict]  # Store itself as its only char
+=======
+                word_element_data["_char_dicts"] = [ocr_char_dict]
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
                 word_elem = TextElement(word_element_data, self._page)
                 added_word_elements.append(word_elem)
@@ -401,6 +418,7 @@ class ElementManager:
                 # Append the word element to the manager's list
                 self._elements["words"].append(word_elem)
 
+<<<<<<< HEAD
                 # Only add a representative char dict if text actually exists
                 if ocr_text is not None:
                     # This char dict represents the entire OCR word as a single 'char'.
@@ -408,6 +426,18 @@ class ElementManager:
                     char_dict_data["object_type"] = "char"  # Mark as char type
                     char_dict_data.setdefault("adv", char_dict_data.get("width", 0))
                     self._elements["chars"].append(char_dict_data)  # Append the dictionary
+=======
+                # Also create and append a representative character dictionary
+                # for consistency if someone iterates through manager.chars later.
+                # This char dict represents the entire OCR word as a single 'char'.
+                char_dict_data = ocr_char_dict  # Use the one we already created
+                char_dict_data["object_type"] = "char"  # Mark as char type
+                # pdfplumber char dicts don't typically have width/height/doctop,
+                # but keeping them won't hurt WordExtractor if it encounters them.
+                char_dict_data.setdefault("adv", char_dict_data.get("width", 0))
+
+                self._elements["chars"].append(char_dict_data)  # Append the dictionary
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
             except (KeyError, ValueError, TypeError) as e:
                 logger.error(f"Failed to process OCR result: {result}. Error: {e}", exc_info=True)
@@ -539,6 +569,7 @@ class ElementManager:
         """Get all region elements."""
         self.load_elements()
         return self._elements.get("regions", [])
+<<<<<<< HEAD
 
     def remove_ocr_elements(self):
         """
@@ -606,3 +637,21 @@ class ElementManager:
         except Exception as e:
             logger.error(f"Error removing element from {element_type}: {e}", exc_info=True)
             return False
+
+    def has_elements(self) -> bool:
+        """
+        Check if any significant elements (words, rects, lines, regions)
+        have been loaded or added.
+
+        Returns:
+            True if any elements exist, False otherwise.
+        """
+        self.load_elements()
+
+        for key in ["words", "rects", "lines", "regions"]:
+            if self._elements.get(key):
+                return True
+
+        return False
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)

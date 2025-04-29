@@ -37,6 +37,7 @@ try:
 except ImportError:
     DoclingLayoutDetector = None
 
+<<<<<<< HEAD
 try:
     from .gemini import GeminiLayoutDetector
 except ImportError:
@@ -46,6 +47,11 @@ from .layout_options import (
     BaseLayoutOptions,
     DoclingLayoutOptions,
     GeminiLayoutOptions,
+=======
+from .layout_options import (
+    BaseLayoutOptions,
+    DoclingLayoutOptions,
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
     LayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
@@ -88,6 +94,7 @@ class LayoutManager:
             "class": DoclingLayoutDetector,
             "options_class": DoclingLayoutOptions,
         }
+<<<<<<< HEAD
 
     # Add Gemini entry if available
     if GeminiLayoutDetector:
@@ -95,6 +102,8 @@ class LayoutManager:
             "class": GeminiLayoutDetector,
             "options_class": GeminiLayoutOptions,
         }
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     # Define the limited set of kwargs allowed for the simple analyze_layout call
     SIMPLE_MODE_ALLOWED_KWARGS = {"engine", "confidence", "classes", "exclude_classes", "device"}
@@ -121,6 +130,7 @@ class LayoutManager:
             detector_instance = engine_class()  # Instantiate
             if not detector_instance.is_available():
                 # Check availability before storing
+<<<<<<< HEAD
                 # Construct helpful error message with install hint
                 install_hint = ""
                 if engine_name == "yolo":
@@ -137,6 +147,10 @@ class LayoutManager:
 
                 raise RuntimeError(
                     f"Layout engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
+=======
+                raise RuntimeError(
+                    f"Layout engine '{engine_name}' is not available. Please check dependencies."
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
                 )
             self._detector_instances[engine_name] = detector_instance  # Store if available
 

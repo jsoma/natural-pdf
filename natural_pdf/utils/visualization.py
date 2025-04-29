@@ -192,7 +192,16 @@ def merge_images_with_legend(
     if not legend:
         return image  # Return original image if legend is None or empty
 
+<<<<<<< HEAD
+<<<<<<< HEAD
     bg_color = (255, 255, 255, 255)  # Always use white for the merged background
+=======
+    # Determine background color from top-left pixel (safer than assuming white)
+    bg_color = image.getpixel((0, 0)) if image.mode == "RGBA" else (255, 255, 255, 255)
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
+=======
+    bg_color = (255, 255, 255, 255) # Always use white for the merged background
+>>>>>>> cb0e6708 (white background for legend area)
 
     if position == "right":
         # Create a new image with extra width for the legend

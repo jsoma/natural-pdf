@@ -1,6 +1,9 @@
 .notebook_cache.json
 .venv
+<<<<<<< HEAD
 output
+=======
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 Untitled.ipynb
 conversation.md
 docs/tutorials/pdfs
@@ -12,11 +15,16 @@ results
 docs/tutorials/needs-ocr-searchable.pdf
 sample.py
 sample2.py
+<<<<<<< HEAD
 requirements.lock
 hidden
 pdfs/hidden
 *.hocr
 my_paddleocr_finetune_data/
+=======
+pdfs/hidden
+*.hocr
+>>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos,visualstudiocode,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos,visualstudiocode,jupyternotebooks
