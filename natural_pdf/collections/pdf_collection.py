@@ -4,14 +4,10 @@ import logging
 import os
 import re  # Added for safe path generation
 from pathlib import Path
-<<<<<<< HEAD
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union, Callable, Generic, Iterator, TypeVar, overload
 import concurrent.futures # Import concurrent.futures
 import time # Import time for logging timestamps
 import threading # Import threading for logging thread information
-=======
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from PIL import Image
 from tqdm import tqdm
@@ -30,10 +26,7 @@ logger = logging.getLogger(__name__)
 
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.region import Region
-<<<<<<< HEAD
 from natural_pdf.export.mixin import ExportMixin
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 # --- Search Imports ---
 try:
@@ -45,14 +38,8 @@ try:
     from natural_pdf.search.searchable_mixin import SearchableMixin
 except ImportError as e:
     logger_init = logging.getLogger(__name__)
-<<<<<<< HEAD
     logger_init.warning(
         f"Failed to import Haystack components. Semantic search functionality disabled.",
-=======
-    logger_init.error(
-        f"Failed to import search components. Search functionality disabled. Error: {e}",
-        exc_info=True,
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     )
 
     # Dummy definitions
@@ -62,17 +49,11 @@ except ImportError as e:
     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
 
 from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
-<<<<<<< HEAD
 # Import the ApplyMixin
 from natural_pdf.collections.mixins import ApplyMixin
 
 
 class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixin
-=======
-
-
-class PDFCollection(SearchableMixin):  # Inherit from the mixin
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -279,7 +260,6 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
 
-<<<<<<< HEAD
     @overload
     def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
 
@@ -433,21 +413,6 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 _process_pdf(pdf) # Call helper directly with PDF object
         
         logger.info("Finished applying OCR across the collection.")
-=======
-    def apply_ocr(self, *args, **kwargs):
-        PDF = self._get_pdf_class()
-        # Delegate to individual PDF objects
-        logger.info("Applying OCR to relevant PDFs in collection...")
-        results = []
-        for pdf in self._pdfs:
-            # We need to figure out which pages belong to which PDF if batching here
-            # For now, simpler to call on each PDF
-            try:
-                # Assume apply_ocr exists on PDF and accepts similar args
-                pdf.apply_ocr(*args, **kwargs)
-            except Exception as e:
-                logger.error(f"Failed applying OCR to {pdf.path}: {e}", exc_info=True)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         return self
 
     def correct_ocr(
@@ -514,7 +479,6 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
         # Implementation requires integrating with classification models or logic
         raise NotImplementedError("categorize requires classification implementation.")
 
-<<<<<<< HEAD
     def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
         """
         Exports OCR results from all PDFs in this collection into a single
@@ -539,8 +503,6 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
             logger.error(f"Failed to export correction task for collection: {e}", exc_info=True)
             raise  # Re-raise the exception from the utility function
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:
         """Yields Page objects from the collection, conforming to Indexable."""
@@ -559,7 +521,6 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
                 #     logger.debug(f"Skipping empty page {page.page_number} from PDF '{pdf.path}'.")
                 #     continue
                 yield page
-<<<<<<< HEAD
 
     # --- Classification Method --- #
     def classify_all(
@@ -715,5 +676,3 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
             all_data.append(pdf_data)
         
         return all_data
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)

@@ -80,7 +80,6 @@ class DoclingLayoutOptions(BaseLayoutOptions):
     # Other kwargs like 'device', 'batch_size' can go in extra_args
 
 
-<<<<<<< HEAD
 # --- Gemini Specific Options ---
 @dataclass
 class GeminiLayoutOptions(BaseLayoutOptions):
@@ -91,8 +90,6 @@ class GeminiLayoutOptions(BaseLayoutOptions):
     # These are typically passed directly to the chat completion call or via extra_args
 
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 # --- Union Type ---
 LayoutOptions = Union[
     YOLOLayoutOptions,
@@ -100,9 +97,6 @@ LayoutOptions = Union[
     PaddleLayoutOptions,
     SuryaLayoutOptions,
     DoclingLayoutOptions,
-<<<<<<< HEAD
     GeminiLayoutOptions,
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     BaseLayoutOptions,  # Include base for typing flexibility
 ]

@@ -14,12 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 class BaseOCROptions:
     """Base class for OCR engine options."""
 
-<<<<<<< HEAD
-=======
-    languages: List[str] = field(default_factory=lambda: ["en"])
-    min_confidence: float = 0.5
-    device: Optional[str] = "cpu"  # Suggestion, actual device usage depends on engine impl.
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     extra_args: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -73,11 +67,7 @@ class EasyOCROptions(BaseOCROptions):
 class PaddleOCROptions(BaseOCROptions):
     """Specific options for the PaddleOCR engine."""
 
-<<<<<<< HEAD
     # General
-=======
-    use_angle_cls: bool = True
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     use_gpu: Optional[bool] = None
     gpu_mem: int = 8000 # Default from Paddle documentation
     gpu_mem: int = 8000 # Default from Paddle documentation
@@ -157,7 +147,6 @@ class PaddleOCROptions(BaseOCROptions):
     cls_batch_num: int = 30
 
     def __post_init__(self):
-<<<<<<< HEAD
         pass
 
     #     if self.use_gpu is None:
@@ -167,14 +156,6 @@ class PaddleOCROptions(BaseOCROptions):
     #             self.use_gpu = False
     #     # logger.debug(f"Initialized PaddleOCROptions: {self}")
 
-=======
-        if self.use_gpu is None:
-            if self.device and "cuda" in self.device.lower():
-                self.use_gpu = True
-            else:
-                self.use_gpu = False
-        # logger.debug(f"Initialized PaddleOCROptions: {self}")
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 
 # --- Surya Specific Options ---

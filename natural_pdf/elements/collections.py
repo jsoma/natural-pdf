@@ -11,7 +11,6 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
-<<<<<<< HEAD
     Iterable,
     Type,
     overload,
@@ -21,20 +20,11 @@ from typing import (
 from pdfplumber.utils.geometry import objects_to_bbox
 from tqdm.auto import tqdm
 from collections.abc import MutableSequence
-=======
-)
-
-from pdfplumber.utils.geometry import objects_to_bbox
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
-<<<<<<< HEAD
 from natural_pdf.elements.text import TextElement
-=======
-from natural_pdf.elements.text import TextElement  # Needed for isinstance check
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 from natural_pdf.ocr import OCROptions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
@@ -55,10 +45,6 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Page")
-<<<<<<< HEAD
-=======
-
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 
 class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollectionMixin, MutableSequence):
@@ -83,13 +69,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         """Get an element by index."""
         return self._elements[index]
 
-<<<<<<< HEAD
-=======
-    def __iter__(self):
-        """Iterate over elements."""
-        return iter(self._elements)
-
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def __repr__(self) -> str:
         """Return a string representation showing the element count."""
         element_type = "Mixed"
@@ -99,7 +78,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                 element_type = types.pop()
         return f"<ElementCollection[{element_type}](count={len(self)})>"
 
-<<<<<<< HEAD
     def __add__(self, other: "ElementCollection") -> "ElementCollection":
         if not isinstance(other, ElementCollection):
             return NotImplemented
@@ -114,8 +92,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
     def insert(self, index, value):
         self._elements.insert(index, value)
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     @property
     def elements(self) -> List["Element"]:
         """Get the elements in this collection."""
@@ -131,85 +107,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         """Get the last element in the collection."""
         return self._elements[-1] if self._elements else None
 
-<<<<<<< HEAD
-=======
-    def highest(self) -> Optional["Element"]:
-        """
-        Get element with the smallest top y-coordinate (highest on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with smallest top value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine highest element across multiple pages")
-
-        return min(self._elements, key=lambda e: e.top)
-
-    def lowest(self) -> Optional["Element"]:
-        """
-        Get element with the largest bottom y-coordinate (lowest on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with largest bottom value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine lowest element across multiple pages")
-
-        return max(self._elements, key=lambda e: e.bottom)
-
-    def leftmost(self) -> Optional["Element"]:
-        """
-        Get element with the smallest x0 coordinate (leftmost on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with smallest x0 value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine leftmost element across multiple pages")
-
-        return min(self._elements, key=lambda e: e.x0)
-
-    def rightmost(self) -> Optional["Element"]:
-        """
-        Get element with the largest x1 coordinate (rightmost on page).
-
-        Raises:
-            ValueError: If elements are on multiple pages
-
-        Returns:
-            Element with largest x1 value or None if empty
-        """
-        if not self._elements:
-            return None
-
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError("Cannot determine rightmost element across multiple pages")
-
-        return max(self._elements, key=lambda e: e.x1)
-
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def _are_on_multiple_pages(self) -> bool:
         """
         Check if elements in this collection span multiple pages.
@@ -229,7 +126,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         # Check if any element is on a different page
         return any(hasattr(e, "page") and e.page.index != first_page_idx for e in self._elements)
 
-<<<<<<< HEAD
     def _are_on_multiple_pdfs(self) -> bool:
         """
         Check if elements in this collection span multiple PDFs.
@@ -338,8 +234,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
 
         return max(self._elements, key=lambda e: e.x1)
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def exclude_regions(self, regions: List["Region"]) -> "ElementCollection":
         """
         Remove elements that are within any of the specified regions.
@@ -930,12 +824,8 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         Generates a temporary preview image highlighting elements in this collection
         on their page, ignoring any persistent highlights.
 
-<<<<<<< HEAD
         Currently only supports collections where all elements are on the same page
         of the same PDF.
-=======
-        Currently only supports collections where all elements are on the same page.
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Allows grouping and coloring elements based on attributes, similar to the
         persistent `highlight()` method, but only for this temporary view.
@@ -954,30 +844,20 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
 
         Returns:
             PIL Image object of the temporary preview, or None if rendering fails or
-<<<<<<< HEAD
             elements span multiple pages/PDFs.
 
         Raises:
             ValueError: If the collection is empty or elements are on different pages/PDFs.
-=======
-            elements span multiple pages.
-
-        Raises:
-            ValueError: If the collection is empty or elements are on different pages.
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         if not self._elements:
             raise ValueError("Cannot show an empty collection.")
 
-<<<<<<< HEAD
         # Check if elements are on multiple PDFs
         if self._are_on_multiple_pdfs():
             raise ValueError(
                 "show() currently only supports collections where all elements are from the same PDF."
             )
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # Check if elements are on multiple pages
         if self._are_on_multiple_pages():
             raise ValueError(
@@ -1252,15 +1132,9 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
             return None
 
-<<<<<<< HEAD
     def find(
             self, selector: str, **kwargs
     ) -> "ElementCollection":
-=======
-    def find_all(
-        self, selector: str, regex: bool = False, case: bool = True, **kwargs
-    ) -> "ElementCollection[T]":
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Find elements in this collection matching the selector.
 
@@ -1362,7 +1236,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                 
         return removed_count
 
-<<<<<<< HEAD
     # --- Classification Method --- #
     def classify_all(
         self,
@@ -1378,34 +1251,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         **kwargs
     ):
         """Classifies all elements in the collection in batch.
-=======
-        try:
-            selector_obj = parse_selector(selector)
-        except Exception as e:
-            logger.error(f"Error parsing selector '{selector}': {e}")
-            return ElementCollection([])  # Return empty on parse error
-
-        # Pass regex and case flags to selector function generator
-        kwargs["regex"] = regex
-        kwargs["case"] = case
-
-        try:
-            filter_func = selector_to_filter_func(selector_obj, **kwargs)
-        except Exception as e:
-            logger.error(f"Error creating filter function for selector '{selector}': {e}")
-            return ElementCollection([])  # Return empty on filter creation error
-
-        matching_elements = [element for element in self._elements if filter_func(element)]
-
-        # Note: Unlike Page.find_all, this doesn't re-sort.
-        # Sorting should be done explicitly on the collection if needed.
-
-        return ElementCollection(matching_elements)
-
-    def find(self, selector: str, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]:
-        """
-        Find the first element within this collection matching the selector.
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Args:
             categories: List of category labels.
@@ -1424,7 +1269,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
             logger.info("ElementCollection is empty, skipping classification.")
             return self
 
-<<<<<<< HEAD
         # Requires access to the PDF's manager. Assume first element has it.
         first_element = self.elements[0]
         manager_source = None
@@ -1622,10 +1466,6 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
 
 
 class PageCollection(Generic[P], ApplyMixin):
-=======
-
-class PageCollection(Generic[P]):
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     """
     A collection of PDF pages with cross-page operations.
 
@@ -1688,14 +1528,11 @@ class PageCollection(Generic[P]):
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,  # Min confidence threshold
         device: Optional[str] = None,
-<<<<<<< HEAD
         resolution: Optional[int] = None,  # DPI for rendering
         apply_exclusions: bool = True,  # New parameter
         replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options ---
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     ) -> "PageCollection[P]":
         """
         Applies OCR to all pages within this collection using batch processing.
@@ -1735,10 +1572,6 @@ class PageCollection(Generic[P]):
 
         parent_pdf = first_page._parent
 
-<<<<<<< HEAD
-=======
-        # Updated check for renamed method
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         if not hasattr(parent_pdf, "apply_ocr") or not callable(parent_pdf.apply_ocr):
             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
 
@@ -1752,18 +1585,12 @@ class PageCollection(Generic[P]):
             pages=page_indices,
             engine=engine,
             languages=languages,
-<<<<<<< HEAD
             min_confidence=min_confidence,  # Pass the renamed parameter
             device=device,
             resolution=resolution,
             apply_exclusions=apply_exclusions,  # Pass down
             replace=replace,  # Pass the replace parameter
             options=options,
-=======
-            min_confidence=min_confidence,
-            device=device,
-            # Pass any other relevant simple_kwargs here if added
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         )
         # The PDF method modifies the Page objects directly by adding elements.
 
@@ -1786,7 +1613,6 @@ class PageCollection(Generic[P]):
         **kwargs
     ) -> Optional[T]:
         """
-<<<<<<< HEAD
         Find the first element matching the selector OR text across all pages in the collection.
 
         Provide EITHER `selector` OR `text`, but not both.
@@ -1798,14 +1624,6 @@ class PageCollection(Generic[P]):
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
             **kwargs: Additional filter parameters.
-=======
-        Find the first element matching the selector across all pages.
-
-        Args:
-            selector: CSS-like selector string
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            **kwargs: Additional filter parameters
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
             First matching element or None.
@@ -1824,7 +1642,6 @@ class PageCollection(Generic[P]):
                 return element
         return None
 
-<<<<<<< HEAD
     @overload
     def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
 
@@ -1853,16 +1670,6 @@ class PageCollection(Generic[P]):
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
             **kwargs: Additional filter parameters.
-=======
-    def find_all(self, selector: str, apply_exclusions=True, **kwargs) -> ElementCollection:
-        """
-        Find all elements matching the selector across all pages.
-
-        Args:
-            selector: CSS-like selector string
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True)
-            **kwargs: Additional filter parameters
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
             ElementCollection with matching elements from all pages.
@@ -1883,7 +1690,6 @@ class PageCollection(Generic[P]):
 
         return ElementCollection(all_elements)
 
-<<<<<<< HEAD
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
@@ -1936,29 +1742,6 @@ class PageCollection(Generic[P]):
         )
 
         return self
-=======
-    # def debug_ocr(self, output_path):
-    #     """
-    #     Generate an interactive HTML debug report for OCR results.
-
-        This creates a single-file HTML report with:
-        - Side-by-side view of image regions and OCR text
-        - Confidence scores with color coding
-        - Editable correction fields
-        - Filtering and sorting options
-        - Export functionality for corrected text
-
-        Requires OCR elements (source='ocr') to be present on the pages.
-
-        Args:
-            output_path: Path to save the HTML report. If None, returns HTML string.
-
-    #     Returns:
-    #         Path to the generated HTML file
-    #     """
-    #     from natural_pdf.utils.ocr import debug_ocr_to_html
-    #     return debug_ocr_to_html(self.pages, output_path)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     def get_sections(
         self,
@@ -2260,7 +2043,6 @@ class PageCollection(Generic[P]):
                 sections.append(region)
 
         return sections
-<<<<<<< HEAD
 
     def _gather_analysis_data(
         self,
@@ -2434,5 +2216,3 @@ class PageCollection(Generic[P]):
         )
 
     # --- End Deskew Method --- #
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)

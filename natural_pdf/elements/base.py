@@ -2,20 +2,12 @@
 Base Element class for natural-pdf.
 """
 
-<<<<<<< HEAD
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overload
-=======
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from PIL import Image
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-<<<<<<< HEAD
-=======
-    from natural_pdf.elements.base import Element
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.region import Region
 
@@ -142,27 +134,11 @@ class DirectionalMixin:
                 # Adjust cross boundaries if cross_size is 'element'
                 if cross_size == "element":
                     if is_horizontal:  # Adjust y0, y1
-<<<<<<< HEAD
                         y0 = min(y0, self.y0)
                         y1 = max(y1, self.y1)
                     else:  # Adjust x0, x1
                         x0 = min(x0, self.x0)
                         x1 = max(x1, self.x1)
-=======
-                        target_y0 = (
-                            target.top if include_endpoint else target.bottom
-                        )  # Use opposite boundary if excluding
-                        target_y1 = target.bottom if include_endpoint else target.top
-                        y0 = min(y0, target_y0)
-                        y1 = max(y1, target_y1)
-                    else:  # Adjust x0, x1
-                        target_x0 = (
-                            target.x0 if include_endpoint else target.x1
-                        )  # Use opposite boundary if excluding
-                        target_x1 = target.x1 if include_endpoint else target.x0
-                        x0 = min(x0, target_x0)
-                        x1 = max(x1, target_x1)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # 4. Finalize bbox coordinates
         if is_horizontal:
@@ -321,30 +297,17 @@ class DirectionalMixin:
             **kwargs,
         )
 
-<<<<<<< HEAD
     def to_region(self):
         return self.expand()
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     def expand(
         self,
         left: float = 0,
         right: float = 0,
-<<<<<<< HEAD
         top: float = 0,
         bottom: float = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
-=======
-        top_expand: float = 0,  # Renamed to avoid conflict
-        bottom_expand: float = 0,  # Renamed to avoid conflict
-        width_factor: float = 1.0,
-        height_factor: float = 1.0,
-        # Keep original parameter names for backward compatibility
-        top: float = None,
-        bottom: float = None,
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     ) -> "Region":
         """
         Create a new region expanded from this element/region.
@@ -356,11 +319,6 @@ class DirectionalMixin:
             bottom: Amount to expand bottom edge (positive value expands downwards)
             width_factor: Factor to multiply width by (applied after absolute expansion)
             height_factor: Factor to multiply height by (applied after absolute expansion)
-<<<<<<< HEAD
-=======
-            top: (DEPRECATED, use top_expand) Amount to expand top edge (upward)
-            bottom: (DEPRECATED, use bottom_expand) Amount to expand bottom edge (downward)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Returns:
             New expanded Region object
@@ -371,25 +329,11 @@ class DirectionalMixin:
         new_top = self.top
         new_bottom = self.bottom
 
-<<<<<<< HEAD
         # Apply absolute expansions first
         new_x0 -= left
         new_x1 += right
         new_top -= top  # Expand upward (decrease top coordinate)
         new_bottom += bottom  # Expand downward (increase bottom coordinate)
-=======
-        # Handle the deprecated parameter names for backward compatibility
-        if top is not None:
-            top_expand = top
-        if bottom is not None:
-            bottom_expand = bottom
-
-        # Apply absolute expansions first
-        new_x0 -= left
-        new_x1 += right
-        new_top -= top_expand  # Expand upward (decrease top coordinate)
-        new_bottom += bottom_expand  # Expand downward (increase bottom coordinate)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # Apply percentage factors if provided
         if width_factor != 1.0 or height_factor != 1.0:
@@ -934,25 +878,8 @@ class Element(DirectionalMixin):
         """String representation of the element."""
         return f"<{self.__class__.__name__} bbox={self.bbox}>"
 
-<<<<<<< HEAD
     @overload
     def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
-=======
-    def find(self, selector: str, apply_exclusions=True, **kwargs) -> Optional["Element"]:
-        """
-        Find first element within this element's bounds matching the selector.
-        Creates a temporary region to perform the search.
-
-        Args:
-            selector: CSS-like selector string
-            apply_exclusions: Whether to apply exclusion regions
-            **kwargs: Additional parameters for element filtering
-
-        Returns:
-            First matching element or None
-        """
-        from natural_pdf.elements.region import Region
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
     @overload
     def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
@@ -996,7 +923,6 @@ class Element(DirectionalMixin):
             **kwargs
         )
 
-<<<<<<< HEAD
     @overload
     def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
 
@@ -1013,25 +939,9 @@ class Element(DirectionalMixin):
         case: bool = True,
         **kwargs
     ) -> "ElementCollection":
-=======
-    def find_all(self, selector: str, apply_exclusions=True, **kwargs) -> "ElementCollection":
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Find all elements within this element's bounds matching the selector OR text.
         Creates a temporary region to perform the search.
-<<<<<<< HEAD
-=======
-
-        Args:
-            selector: CSS-like selector string
-            apply_exclusions: Whether to apply exclusion regions
-            **kwargs: Additional parameters for element filtering
-
-        Returns:
-            ElementCollection with matching elements
-        """
-        from natural_pdf.elements.region import Region
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         Provide EITHER `selector` OR `text`, but not both.
 
@@ -1048,7 +958,6 @@ class Element(DirectionalMixin):
         """
         # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
-<<<<<<< HEAD
         # Delegate to the region's find_all method
         return temp_region.find_all(
             selector=selector,
@@ -1058,6 +967,3 @@ class Element(DirectionalMixin):
             case=case,
             **kwargs
         )
-=======
-        return temp_region.find_all(selector, apply_exclusions=apply_exclusions, **kwargs)
->>>>>>> ea72b84d (A hundred updates, a thousand updates)

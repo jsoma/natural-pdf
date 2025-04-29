@@ -11,7 +11,6 @@ from .ocr_options import BaseOCROptions
 logger = logging.getLogger(__name__)
 
 
-<<<<<<< HEAD
 class TextRegion:
     """Standard representation of an OCR text region."""
 
@@ -54,8 +53,6 @@ class TextRegion:
         }
 
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 class OCREngine(ABC):
     """Abstract Base Class for OCR engines."""
 
@@ -68,16 +65,12 @@ class OCREngine(ABC):
         """Initializes the base OCR engine."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.logger.info(f"Initializing {self.__class__.__name__}")
-<<<<<<< HEAD
         self._model = None
         self._initialized = False
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         self._reader_cache = {}  # Cache for initialized models/readers
 
     def process_image(
         self,
-<<<<<<< HEAD
         images: Union[Image.Image, List[Image.Image]],
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
@@ -85,11 +78,6 @@ class OCREngine(ABC):
         detect_only: bool = False,
         options: Optional[BaseOCROptions] = None,
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
-=======
-        images: Union[Image.Image, List[Image.Image]],  # Accept single or list
-        options: BaseOCROptions,
-    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:  # Return single or list of lists
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Process a single image or batch of images with OCR.
 
@@ -197,7 +185,6 @@ class OCREngine(ABC):
         device_key = str(getattr(options, "device", self.DEFAULT_DEVICE)).lower()
         return f"{self.__class__.__name__}_{lang_key}_{device_key}"
 
-<<<<<<< HEAD
     def _standardize_bbox(self, bbox: Any) -> Tuple[float, float, float, float]:
         """Standardizes bounding boxes to (x0, y0, x1, y1) format. Raises ValueError if standardization fails."""
         # Check if it's already in the correct tuple/list format
@@ -219,35 +206,6 @@ class OCREngine(ABC):
             and len(bbox[0]) == 2  # Ensure points are pairs
         ):
             try:
-=======
-    def _standardize_bbox(self, bbox: Any) -> Optional[Tuple[float, float, float, float]]:
-        """
-        Helper to standardize bounding boxes to (x0, y0, x1, y1) format.
-
-        Args:
-            bbox: The bounding box in the engine's native format.
-                  Expected formats:
-                  - List/Tuple of 4 numbers: (x0, y0, x1, y1)
-                  - List of points: [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] (polygon)
-
-        Returns:
-            Tuple[float, float, float, float] or None if conversion fails.
-        """
-        try:
-            if (
-                isinstance(bbox, (list, tuple))
-                and len(bbox) == 4
-                and all(isinstance(n, (int, float)) for n in bbox)
-            ):
-                # Already in (x0, y0, x1, y1) format (or similar)
-                return tuple(float(c) for c in bbox[:4])
-            elif (
-                isinstance(bbox, (list, tuple))
-                and len(bbox) > 0
-                and isinstance(bbox[0], (list, tuple))
-            ):
-                # Polygon format [[x1,y1],[x2,y2],...]
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
                 x_coords = [float(point[0]) for point in bbox]
                 y_coords = [float(point[1]) for point in bbox]
                 if not x_coords or not y_coords:  # Handle empty polygon case

@@ -25,15 +25,11 @@ CACHE_FILE = Path(".notebook_cache.json")
 EXCLUDE_PATTERNS = [
     "installation/index.md",
     "ocr/index.md",
-<<<<<<< HEAD:01-execute_notebooks.py
     "explanations",
     "api/index.md",
     "finetuning/index.md",
     "categorizing-documents/index.md",
     "data-extraction/index.md",
-=======
-    "explanations" "api/index.md",
->>>>>>> ea72b84d (A hundred updates, a thousand updates):execute_notebooks.py
 ]
 MAX_WORKERS = os.cpu_count()
 

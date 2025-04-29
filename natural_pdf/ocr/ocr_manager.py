@@ -2,11 +2,8 @@
 import copy  # For deep copying options
 import logging
 from typing import Any, Dict, List, Optional, Type, Union
-<<<<<<< HEAD
 import threading # Import threading for lock
 import time # Import time for timing
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
 from PIL import Image
 
@@ -14,13 +11,8 @@ from PIL import Image
 from .engine import OCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
-<<<<<<< HEAD
 from .engine_surya import SuryaOCREngine
 from .ocr_options import OCROptions
-=======
-from .engine_surya import SuryaOCREngine  # <-- Import Surya Engine
-from .ocr_options import OCROptions  # <-- Import Surya Options
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 from .ocr_options import BaseOCROptions, EasyOCROptions, PaddleOCROptions, SuryaOCROptions
 
 logger = logging.getLogger(__name__)
@@ -37,26 +29,11 @@ class OCRManager:
         # Add other engines here
     }
 
-<<<<<<< HEAD
     def __init__(self):
         """Initializes the OCR Manager."""
         self._engine_instances: Dict[str, OCREngine] = {}  # Cache for engine instances
         self._engine_locks: Dict[str, threading.Lock] = {} # Lock per engine type for initialization
         self._engine_inference_locks: Dict[str, threading.Lock] = {} # Lock per engine type for inference
-=======
-    # Define the limited set of kwargs allowed for the simple apply_ocr call
-    SIMPLE_MODE_ALLOWED_KWARGS = {
-        "engine",
-        "languages",
-        "min_confidence",
-        "device",
-        # Add image pre-processing args like 'resolution', 'width' if handled here
-    }
-
-    def __init__(self):
-        """Initializes the OCR Manager."""
-        self._engine_instances: Dict[str, OCREngine] = {}  # Cache for engine instances
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         logger.info("OCRManager initialized.")
 
     def _get_engine_instance(self, engine_name: str) -> OCREngine:
@@ -67,28 +44,9 @@ class OCRManager:
                 f"Unknown OCR engine: '{engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
             )
 
-<<<<<<< HEAD
         # Quick check if instance already exists (avoid lock contention)
         if engine_name in self._engine_instances:
             return self._engine_instances[engine_name]
-=======
-        # Surya engine might manage its own predictor state, consider if caching instance is always right
-        # For now, we cache the engine instance itself.
-        if engine_name not in self._engine_instances:
-            logger.info(f"Creating instance of engine: {engine_name}")
-            engine_class = self.ENGINE_REGISTRY[engine_name]["class"]
-            engine_instance = engine_class()  # Instantiate first
-            if not engine_instance.is_available():
-                # Check availability before storing
-                # Construct helpful error message with install hint
-                install_hint = f"pip install 'natural-pdf[{engine_name}]'"
-                # Handle potential special cases if extra name differs from engine name (none currently)
-                # if engine_name == 'some_engine': install_hint = "pip install 'natural-pdf[some_extra]'"
-                raise RuntimeError(
-                    f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
-                )
-            self._engine_instances[engine_name] = engine_instance  # Store if available
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
 
         # Get or create the lock for this engine type
         if engine_name not in self._engine_locks:
@@ -139,7 +97,6 @@ class OCRManager:
 
     def apply_ocr(
         self,
-<<<<<<< HEAD
         images: Union[Image.Image, List[Image.Image]],
         # --- Explicit Common Parameters ---
         engine: Optional[str] = None,
@@ -150,13 +107,6 @@ class OCRManager:
         # --- Engine-Specific Options ---
         options: Optional[Any] = None,  # e.g. EasyOCROptions(), PaddleOCROptions()
     ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
-=======
-        images: Union[Image.Image, List[Image.Image]],  # Accept single or list
-        engine: Optional[str] = "easyocr",  # Default engine
-        options: Optional[OCROptions] = None,
-        **kwargs,
-    ) -> Union[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:  # Return single or list of lists
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         """
         Applies OCR to a single image or a batch of images.
 
@@ -189,7 +139,6 @@ class OCRManager:
         is_batch = isinstance(images, list)
         if not is_batch and not isinstance(images, Image.Image):
             raise TypeError("Input 'images' must be a PIL Image or a list of PIL Images.")
-<<<<<<< HEAD
 
         # --- Determine Engine ---
         selected_engine_name = (engine or "easyocr").lower()
@@ -214,63 +163,6 @@ class OCRManager:
                         f"Provided options type '{type(final_options).__name__}' is not compatible with engine '{selected_engine_name}'. Expected '{options_class.__name__}' or dict."
                     )
 
-=======
-        # Allow engines to handle non-PIL images in list if they support it/log warnings
-        # if is_batch and not all(isinstance(img, Image.Image) for img in images):
-        #     logger.warning("Batch may contain items that are not PIL Images.")
-
-        # --- Determine Options and Engine ---
-        if options is not None:
-            # Advanced Mode
-            logger.debug(f"Using advanced mode with options object: {type(options).__name__}")
-            final_options = copy.deepcopy(options)  # Prevent modification of original
-            found_engine = False
-            for name, registry_entry in self.ENGINE_REGISTRY.items():
-                # Check if options object is an instance of the registered options class
-                if isinstance(options, registry_entry["options_class"]):
-                    selected_engine_name = name
-                    found_engine = True
-                    break
-            if not found_engine:
-                raise TypeError(
-                    f"Provided options object type '{type(options).__name__}' does not match any registered engine options."
-                )
-            if kwargs:
-                logger.warning(
-                    f"Keyword arguments {list(kwargs.keys())} were provided alongside 'options' and will be ignored."
-                )
-        else:
-            # Simple Mode
-            selected_engine_name = engine.lower() if engine else "easyocr"  # Fallback default
-            logger.debug(
-                f"Using simple mode with engine: '{selected_engine_name}' and kwargs: {kwargs}"
-            )
-
-            if selected_engine_name not in self.ENGINE_REGISTRY:
-                raise ValueError(
-                    f"Unknown OCR engine: '{selected_engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
-                )
-
-            unexpected_kwargs = set(kwargs.keys()) - self.SIMPLE_MODE_ALLOWED_KWARGS
-            if unexpected_kwargs:
-                raise TypeError(
-                    f"Got unexpected keyword arguments in simple mode: {list(unexpected_kwargs)}. Use the 'options' parameter for detailed configuration."
-                )
-
-            # Get the *correct* options class for the selected engine
-            options_class = self.ENGINE_REGISTRY[selected_engine_name]["options_class"]
-
-            # Create options instance using provided simple kwargs or defaults
-            simple_args = {
-                "languages": kwargs.get("languages", ["en"]),
-                "min_confidence": kwargs.get("min_confidence", 0.5),
-                "device": kwargs.get("device", "cpu"),
-                # Note: 'extra_args' isn't populated in simple mode
-            }
-            final_options = options_class(**simple_args)
-            logger.debug(f"Constructed options for simple mode: {final_options}")
-
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         # --- Get Engine Instance and Process ---
         try:
             engine_instance = self._get_engine_instance(selected_engine_name)

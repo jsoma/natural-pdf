@@ -41,14 +41,11 @@ class TextElement(Element):
         """Get the text content."""
         return self._obj.get("text", "")
 
-<<<<<<< HEAD
     @text.setter
     def text(self, value: str):
         """Set the text content."""
         self._obj["text"] = value
 
-=======
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     @property
     def source(self) -> str:
         """Get the source of this text element (pdf or ocr)."""
@@ -277,18 +274,12 @@ class TextElement(Element):
 
         return False
 
-<<<<<<< HEAD
     def __repr__(self) -> str:            
         """String representation of the text element."""
         if self.text:
             preview = self.text[:10] + "..." if len(self.text) > 10 else self.text
         else:
             preview = "..."
-=======
-    def __repr__(self) -> str:
-        """String representation of the text element."""
-        preview = self.text[:10] + "..." if len(self.text) > 10 else self.text
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
         font_style = []
         if self.bold:
             font_style.append("bold")

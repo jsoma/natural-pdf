@@ -55,14 +55,8 @@ try:
 except ImportError as e:
     # HAS_HAYSTACK_EXTRAS remains False
     # Log the full error and traceback for debugging
-<<<<<<< HEAD
     logger.warning(
         f"Failed to import Haystack components. Semantic search functionality disabled.",
-=======
-    logger.error(
-        f"Failed to import Haystack components. Search functionality disabled. Error: {e}",
-        exc_info=True,
->>>>>>> ea72b84d (A hundred updates, a thousand updates)
     )
 
     # Define dummy types/classes for type hinting and basic checks when extras aren't installed
