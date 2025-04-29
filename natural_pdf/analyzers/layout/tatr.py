@@ -5,7 +5,7 @@ import os
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 # Assuming base class and options are importable
 from .base import LayoutDetector
@@ -150,6 +150,26 @@ class TableTransformerDetector(LayoutDetector):
                 )
         return objects
 
+    def preprocess_image(self, image: Image.Image, enhance_contrast: float = 1.5) -> Image.Image:
+        """Enhance the image to improve table structure detection.
+        
+        Args:
+            image: The input PIL image
+            enhance_contrast: Contrast enhancement factor (1.0 = no change)
+            
+        Returns:
+            Enhanced PIL image
+        """
+        # Convert to grayscale and back to RGB for better structure detection
+        if image.mode != "L":  # If not already grayscale
+            grayscale = image.convert("L")
+            enhanced = ImageEnhance.Contrast(grayscale).enhance(enhance_contrast)
+            return enhanced.convert("RGB")  # Convert back to RGB for model input
+        else:
+            # Just enhance contrast if already grayscale
+            enhanced = ImageEnhance.Contrast(image).enhance(enhance_contrast)
+            return enhanced.convert("RGB")
+
     # --- End Helper Methods ---
 
     def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
@@ -196,9 +216,13 @@ class TableTransformerDetector(LayoutDetector):
             ]
         )
 
+        # Use image preprocessing for better structure detection
+        enhance_contrast = options.enhance_contrast if hasattr(options, 'enhance_contrast') else options.extra_args.get("enhance_contrast", 1.5)
+        processed_image = self.preprocess_image(image, enhance_contrast)
+
         # --- Detect Tables ---
         self.logger.debug("Running TATR table detection...")
-        pixel_values = detection_transform(image.convert("RGB")).unsqueeze(0).to(device)
+        pixel_values = detection_transform(processed_image).unsqueeze(0).to(device)
         with torch.no_grad():
             outputs = detection_model(pixel_values)
 
@@ -271,19 +295,33 @@ class TableTransformerDetector(LayoutDetector):
                 if x_max <= x_min or y_max <= y_min:
                     continue  # Skip invalid crop
 
+                # Process the cropped table for better structure detection
                 cropped_table = image.crop((x_min, y_min, x_max, y_max))
                 if cropped_table.width == 0 or cropped_table.height == 0:
                     continue  # Skip empty crop
-
-                pixel_values_struct = structure_transform(cropped_table).unsqueeze(0).to(device)
+                
+                processed_crop = self.preprocess_image(cropped_table, enhance_contrast)
+                pixel_values_struct = structure_transform(processed_crop).unsqueeze(0).to(device)
+                
                 with torch.no_grad():
                     outputs_struct = structure_model(pixel_values_struct)
 
                 structure_elements = self.outputs_to_objects(
                     outputs_struct, cropped_table.size, id2label_struct
                 )
+                
+                # Reduce confidence threshold specifically for columns to catch more
+                column_threshold = None
+                if hasattr(options, 'column_threshold') and options.column_threshold is not None:
+                    column_threshold = options.column_threshold
+                else:
+                    column_threshold = options.extra_args.get("column_threshold", options.confidence * 0.8)
+                
                 structure_elements = [
-                    e for e in structure_elements if e["score"] >= options.confidence
+                    e for e in structure_elements if (
+                        e["score"] >= column_threshold if "column" in e["label"] 
+                        else e["score"] >= options.confidence
+                    )
                 ]
 
                 for element in structure_elements:

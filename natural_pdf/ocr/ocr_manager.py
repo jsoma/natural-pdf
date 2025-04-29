@@ -12,8 +12,9 @@ from .engine import OCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
 from .engine_surya import SuryaOCREngine
+from .engine_doctr import DoctrOCREngine
 from .ocr_options import OCROptions
-from .ocr_options import BaseOCROptions, EasyOCROptions, PaddleOCROptions, SuryaOCROptions
+from .ocr_options import BaseOCROptions, EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,8 @@ class OCRManager:
     ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "easyocr": {"class": EasyOCREngine, "options_class": EasyOCROptions},
         "paddle": {"class": PaddleOCREngine, "options_class": PaddleOCROptions},
-        "surya": {"class": SuryaOCREngine, "options_class": SuryaOCROptions},  # <-- Add Surya
+        "surya": {"class": SuryaOCREngine, "options_class": SuryaOCROptions},
+        "doctr": {"class": DoctrOCREngine, "options_class": DoctrOCROptions},
         # Add other engines here
     }
 
@@ -112,7 +114,7 @@ class OCRManager:
 
         Args:
             images: A single PIL Image or a list of PIL Images to process.
-            engine: Name of the engine (e.g., 'easyocr', 'paddle', 'surya').
+            engine: Name of the engine (e.g., 'easyocr', 'paddle', 'surya', 'doctr').
                     Defaults to 'easyocr' if not specified.
             languages: List of language codes (e.g., ['en', 'fr'], ['en', 'german']).
                        **Passed directly to the engine.** Must be codes understood

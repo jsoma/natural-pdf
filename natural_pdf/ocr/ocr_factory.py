@@ -15,7 +15,7 @@ class OCRFactory:
         """Create and return an OCR engine instance.
 
         Args:
-            engine_type: One of 'surya', 'easyocr', 'paddle'
+            engine_type: One of 'surya', 'easyocr', 'paddle', 'doctr'
             **kwargs: Arguments to pass to the engine constructor
 
         Returns:
@@ -54,6 +54,15 @@ class OCRFactory:
                     "PaddleOCR engine requires 'paddleocr' and 'paddlepaddle'. "
                     "Install with: pip install paddleocr paddlepaddle"
                 )
+        elif engine_type == "doctr":
+            try:
+                from .engine_doctr import DoctrOCREngine
+                return DoctrOCREngine(**kwargs)
+            except ImportError:
+                raise ImportError(
+                     "Doctr engine requires the 'python-doctr' package. "
+                     "Install with: pip install python-doctr[torch] or python-doctr[tf]"
+                 )
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
 
@@ -85,13 +94,19 @@ class OCRFactory:
         except ImportError:
             engines["paddle"] = False
 
+        # Check Doctr
+        try:
+            engines["doctr"] = importlib.util.find_spec("doctr") is not None
+        except ImportError:
+            engines["doctr"] = False
+
         return engines
 
     @staticmethod
     def get_recommended_engine(**kwargs) -> OCREngine:
         """Returns the best available OCR engine based on what's installed.
 
-        First tries engines in order of preference: EasyOCR, Paddle, Surya.
+        First tries engines in order of preference: EasyOCR, Doctr, Paddle, Surya.
         If none are available, raises ImportError with installation instructions.
 
         Args:
@@ -109,6 +124,9 @@ class OCRFactory:
         if available.get("easyocr", False):
             logger.info("Using EasyOCR engine (recommended)")
             return OCRFactory.create_engine("easyocr", **kwargs)
+        elif available.get("doctr", False):
+            logger.info("Using Doctr engine")
+            return OCRFactory.create_engine("doctr", **kwargs)
         elif available.get("paddle", False):
             logger.info("Using PaddleOCR engine")
             return OCRFactory.create_engine("paddle", **kwargs)
@@ -120,6 +138,7 @@ class OCRFactory:
         raise ImportError(
             "No OCR engines available. Please install at least one of: \n"
             "- EasyOCR (recommended): pip install easyocr\n"
+            "- Doctr: pip install python-doctr[torch] or python-doctr[tf]\n"
             "- PaddleOCR: pip install paddleocr paddlepaddle\n"
             "- Surya OCR: pip install surya"
         )

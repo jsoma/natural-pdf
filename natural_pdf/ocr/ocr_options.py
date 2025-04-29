@@ -167,5 +167,30 @@ class SuryaOCROptions(BaseOCROptions):
     pass
 
 
+# --- Doctr Specific Options ---
+@dataclass
+class DoctrOCROptions(BaseOCROptions):
+    """Specific options for the doctr engine."""
+    # OCR predictor options
+    det_arch: str = 'db_resnet50'
+    reco_arch: str = 'crnn_vgg16_bn'
+    pretrained: bool = True
+    assume_straight_pages: bool = True  # Faster if pages are straight
+    export_as_straight_boxes: bool = False  # Output straight boxes even if rotated text is detected
+    
+    # Additional options from standalone predictors
+    # Detection predictor options
+    symmetric_pad: bool = True
+    preserve_aspect_ratio: bool = True
+    batch_size: int = 1
+    
+    # Postprocessing parameters
+    bin_thresh: Optional[float] = None  # Default is usually 0.3
+    box_thresh: Optional[float] = None  # Default is usually 0.1
+
+    # Options for orientation predictors
+    use_orientation_predictor: bool = False  # Whether to use page orientation predictor
+
+
 # --- Union type for type hinting ---
-OCROptions = Union[EasyOCROptions, PaddleOCROptions, SuryaOCROptions, BaseOCROptions]
+OCROptions = Union[EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions, BaseOCROptions]

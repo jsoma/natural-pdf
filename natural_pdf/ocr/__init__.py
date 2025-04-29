@@ -42,7 +42,7 @@ def get_engine(engine_name=None, **kwargs):
     Get OCR engine by name with graceful handling of missing dependencies.
 
     Args:
-        engine_name: Name of the engine to use ('easyocr', 'paddle', 'surya')
+        engine_name: Name of the engine to use ('easyocr', 'paddle', 'surya', 'doctr')
                      If None, the best available engine is used
         **kwargs: Additional arguments to pass to the engine constructor
 
@@ -64,7 +64,7 @@ def get_engine(engine_name=None, **kwargs):
 
         # Use the factory to create a specific engine
         normalized_name = engine_name.lower()
-        if normalized_name in ["easyocr", "paddle", "surya"]:
+        if normalized_name in ["easyocr", "paddle", "surya", "doctr"]:
             return OCRFactory.create_engine(normalized_name, **kwargs)
         else:
             raise ValueError(f"Unknown OCR engine: {engine_name}")

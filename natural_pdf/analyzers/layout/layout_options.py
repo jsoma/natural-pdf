@@ -43,6 +43,10 @@ class TATRLayoutOptions(BaseLayoutOptions):
     max_structure_size: int = 1000
     # Whether to create cell regions (can be slow)
     create_cells: bool = True
+    # Image enhancement options
+    enhance_contrast: float = 1.5  # Contrast enhancement factor (1.0 = no change)
+    # Special thresholds for specific elements
+    column_threshold: Optional[float] = None  # Lower threshold for columns (default: confidence * 0.8)
 
 
 # --- Paddle Specific Options ---

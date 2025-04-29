@@ -50,6 +50,10 @@ surya = [
     "surya-ocr",
     "natural-pdf[core-ml]",
 ]
+doctr = [
+    "python-doctr[torch]",
+    "natural-pdf[core-ml]",
+]
 qa = [
     "natural-pdf[core-ml]",
 ]
@@ -62,12 +66,6 @@ docling = [
 llm = [
     "openai>=1.0", # For OpenAI compatibility layer / general LLM API interaction
     "pydantic",    # For response schema definition / structured output
-]
-
-classification = [
-    "sentence-transformers", # Explicitly add for text models
-    "timm",                # Often needed for vision models via transformers
-    "natural-pdf[core-ml]", # Include torch, transformers, etc.
 ]
 
 classification = [
@@ -107,6 +105,7 @@ all = [
     "natural-pdf[paddle]",
     "natural-pdf[layout_yolo]",
     "natural-pdf[surya]",
+    "natural-pdf[doctr]",
     "natural-pdf[qa]",
     "natural-pdf[ocr-export]",
     "natural-pdf[docling]",
