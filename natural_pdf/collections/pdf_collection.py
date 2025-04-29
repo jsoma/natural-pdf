@@ -272,6 +272,7 @@ class PDFCollection(SearchableMixin):  # Inherit from the mixin
     def __repr__(self) -> str:
         # Removed search status
         return f"<PDFCollection(count={len(self._pdfs)})>"
+        return f"<PDFCollection(count={len(self._pdfs)})>"
 
     @property
     def pdfs(self) -> List["PDF"]:

@@ -126,6 +126,12 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         if type_match:
             result["type"] = type_match.group(1).lower()
             selector = selector[len(type_match.group(0)):].strip()
+    # Only run if selector wasn't '*'
+    if selector: 
+        type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
+        if type_match:
+            result["type"] = type_match.group(1).lower()
+            selector = selector[len(type_match.group(0)):].strip()
 
 
     # Regexes for parts at the START of the remaining string

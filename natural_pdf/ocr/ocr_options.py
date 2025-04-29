@@ -80,6 +80,7 @@ class PaddleOCROptions(BaseOCROptions):
 >>>>>>> ea72b84d (A hundred updates, a thousand updates)
     use_gpu: Optional[bool] = None
     gpu_mem: int = 8000 # Default from Paddle documentation
+    gpu_mem: int = 8000 # Default from Paddle documentation
     ir_optim: bool = True
     use_tensorrt: bool = False
     min_subgraph_size: int = 15
@@ -87,6 +88,13 @@ class PaddleOCROptions(BaseOCROptions):
     enable_mkldnn: bool = False
     cpu_threads: int = 10
     use_fp16: bool = False
+    show_log: bool = False
+    use_onnx: bool = False
+    use_zero_copy_run: bool = False
+
+    # Detection
+    det: bool = True
+    det_algorithm: str = "DB"
     show_log: bool = False
     use_onnx: bool = False
     use_zero_copy_run: bool = False
@@ -108,13 +116,37 @@ class PaddleOCROptions(BaseOCROptions):
     # Recognition
     rec: bool = True
     rec_algorithm: str = "CRNN"
+    det_limit_side_len: int = 960 # Corresponds to det_max_side_len
+    # DB specific
+    det_db_thresh: float = 0.3
+    det_db_box_thresh: float = 0.5
+    det_db_unclip_ratio: float = 2.0
+    # EAST specific
+    det_east_score_thresh: float = 0.8
+    det_east_cover_thresh: float = 0.1
+    det_east_nms_thresh: float = 0.2
+
+    # Recognition
+    rec: bool = True
+    rec_algorithm: str = "CRNN"
     rec_model_dir: Optional[str] = None
+    rec_image_shape: str = "3, 32, 320" # Kept as string per Paddle examples
+    rec_batch_num: int = 30 # Default from Paddle documentation
     rec_image_shape: str = "3, 32, 320" # Kept as string per Paddle examples
     rec_batch_num: int = 30 # Default from Paddle documentation
     max_text_length: int = 25
     rec_char_dict_path: Optional[str] = None # Path to char dictionary file
+    rec_char_dict_path: Optional[str] = None # Path to char dictionary file
     use_space_char: bool = True
     drop_score: float = 0.5
+
+    # Classification
+    cls: Optional[bool] = None # Often inferred from use_angle_cls
+    use_angle_cls: bool = False # Default from Paddle documentation
+    cls_model_dir: Optional[str] = None
+    cls_image_shape: str = "3, 48, 192" # Kept as string per Paddle examples
+    label_list: List[str] = field(default_factory=lambda: ['0', '180']) # Default from Paddle doc
+    cls_batch_num: int = 30
 
     # Classification
     cls: Optional[bool] = None # Often inferred from use_angle_cls

@@ -116,6 +116,12 @@ classification = [
     "natural-pdf[core-ml]", # Include torch, transformers, etc.
 ]
 
+classification = [
+    "sentence-transformers", # Explicitly add for text models
+    "timm",                # Often needed for vision models via transformers
+    "natural-pdf[core-ml]", # Include torch, transformers, etc.
+]
+
 test = [
     "pytest",
 ]
