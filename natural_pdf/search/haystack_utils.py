@@ -36,10 +36,10 @@ try:
         SentenceTransformersTextEmbedder,
     )
     from haystack.document_stores.types import DocumentStore, DuplicatePolicy
+
     # --- REMOVED Chroma Imports ---
     # from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
     # from haystack_integrations.document_stores.chroma import ChromaDocumentStore
-
     # --- ADDED LanceDB Imports ---
     try:
         from lancedb_haystack import LanceDBDocumentStore, LanceDBEmbeddingRetriever
@@ -76,9 +76,11 @@ except ImportError as e:
     Pipeline = None
     SentenceTransformersTextEmbedder = None
     # --- UPDATED Dummies ---
-    LanceDBEmbeddingRetriever = None # ChromaEmbeddingRetriever = None  # Dummy for Embedding Retriever
+    LanceDBEmbeddingRetriever = (
+        None  # ChromaEmbeddingRetriever = None  # Dummy for Embedding Retriever
+    )
     CohereRanker = None
-    LanceDBDocumentStore = None # ChromaDocumentStore = None
+    LanceDBDocumentStore = None  # ChromaDocumentStore = None
     DuplicatePolicy = None  # Dummy for DuplicatePolicy
     # --- REMOVED Dummies ---
     # SentenceTransformerEmbeddingFunction = None  # Dummy if kept
@@ -102,8 +104,8 @@ def check_haystack_availability(feature_name: str = "Search"):
 def create_default_document_store(
     # --- CHANGED persist_path to uri ---
     uri: str = "./natural_pdf_index",
-    collection_name: str = "natural_pdf_default", # LanceDB calls this table_name
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", # Make mandatory for dim calculation
+    collection_name: str = "natural_pdf_default",  # LanceDB calls this table_name
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",  # Make mandatory for dim calculation
 ) -> DocumentStore:
     """Creates a default LanceDB DocumentStore."""
     check_haystack_availability("create_default_document_store (LanceDB)")
@@ -113,7 +115,9 @@ def create_default_document_store(
     if not LanceDBDocumentStore:
         raise RuntimeError("LanceDBDocumentStore is not available despite Haystack extras check.")
     if not SentenceTransformer:
-         raise ImportError("sentence-transformers library is required to determine embedding dimensions.")
+        raise ImportError(
+            "sentence-transformers library is required to determine embedding dimensions."
+        )
 
     try:
         # Calculate embedding dimension
@@ -121,22 +125,32 @@ def create_default_document_store(
             model = SentenceTransformer(embedding_model)
             embedding_dims = model.get_sentence_embedding_dimension()
             if not embedding_dims:
-                 raise ValueError(f"Could not determine embedding dimension for model: {embedding_model}")
-            logger.debug(f"Determined embedding dimension: {embedding_dims} for model '{embedding_model}'")
+                raise ValueError(
+                    f"Could not determine embedding dimension for model: {embedding_model}"
+                )
+            logger.debug(
+                f"Determined embedding dimension: {embedding_dims} for model '{embedding_model}'"
+            )
         except Exception as e:
-            logger.error(f"Failed to load SentenceTransformer model '{embedding_model}' to get dimensions: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to determine embedding dimension for model '{embedding_model}'.") from e
-
+            logger.error(
+                f"Failed to load SentenceTransformer model '{embedding_model}' to get dimensions: {e}",
+                exc_info=True,
+            )
+            raise RuntimeError(
+                f"Failed to determine embedding dimension for model '{embedding_model}'."
+            ) from e
 
         # Create LanceDBDocumentStore
         store = LanceDBDocumentStore(
-            database=uri, # Use uri for the database path
+            database=uri,  # Use uri for the database path
             table_name=collection_name,
             embedding_dims=embedding_dims,
             # LanceDB might require a metadata schema, but let's try without it first for simplicity.
             # Add `metadata_schema=...` if needed based on lancedb-haystack requirements.
         )
-        logger.info(f"Initialized LanceDBDocumentStore (Table: {collection_name}, Dims: {embedding_dims}) at uri '{uri}'")
+        logger.info(
+            f"Initialized LanceDBDocumentStore (Table: {collection_name}, Dims: {embedding_dims}) at uri '{uri}'"
+        )
         return store
     except Exception as e:
         logger.error(f"Failed to initialize LanceDBDocumentStore: {e}", exc_info=True)
@@ -414,7 +428,7 @@ def _perform_haystack_search(
         # --- Fix: last_component_name should only be 'reranker' if it was added ---
         # if reranker_instance was initialized and added, last_component_name is 'reranker'
         # if not, it remains 'retriever'
-        pass # No change needed here if reranker wasn't added
+        pass  # No change needed here if reranker wasn't added
 
     logger.info("Running Haystack search pipeline...")
     try:

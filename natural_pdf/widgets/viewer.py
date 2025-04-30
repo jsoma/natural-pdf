@@ -666,7 +666,7 @@ try:
                 width = element.width
                 height = element.height
                 scale = 1.0
-                
+
                 # Base element dict with required info
                 elem_dict = {
                     "id": i,

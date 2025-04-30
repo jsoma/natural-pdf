@@ -22,16 +22,17 @@ try:
         SentenceTransformersDocumentEmbedder,
         SentenceTransformersTextEmbedder,
     )
-    from haystack.dataclasses import Document as HaystackDocument
-    from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 
     # Import InMemory Store & Retriever unconditionally
     from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+    from haystack.dataclasses import Document as HaystackDocument
     from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 
     # Conditional LanceDB Imports
     try:
         from lancedb_haystack import LanceDBDocumentStore, LanceDBEmbeddingRetriever
+
         LANCEDB_HAYSTACK_AVAILABLE = True
     except ImportError:
         LanceDBDocumentStore = None
@@ -64,6 +65,7 @@ except ImportError:
 # LanceDB Client Import (for management)
 try:
     import lancedb
+
     LANCEDB_CLIENT_AVAILABLE = True
 except ImportError:
     lancedb = None
@@ -89,6 +91,7 @@ logger = logging.getLogger(__name__)
 # --- Default Configuration Values ---
 DEFAULT_PERSIST_PATH = "./natural_pdf_index"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
 
 class HaystackSearchService(SearchServiceProtocol):
     """
@@ -135,16 +138,24 @@ class HaystackSearchService(SearchServiceProtocol):
 
         # Eagerly create InMemoryStore if not persisting
         if not self._persist:
-             if not InMemoryDocumentStore:
-                 raise ImportError("InMemoryDocumentStore not available. Cannot create non-persistent service.")
-             self._in_memory_store = InMemoryDocumentStore()
-             logger.info(f"HaystackSearchService initialized for InMemory store (table_name '{self.table_name}' ignored). Model: '{self._embedding_model}'")
+            if not InMemoryDocumentStore:
+                raise ImportError(
+                    "InMemoryDocumentStore not available. Cannot create non-persistent service."
+                )
+            self._in_memory_store = InMemoryDocumentStore()
+            logger.info(
+                f"HaystackSearchService initialized for InMemory store (table_name '{self.table_name}' ignored). Model: '{self._embedding_model}'"
+            )
         else:
             # Check LanceDB availability if persisting
             if not LANCEDB_HAYSTACK_AVAILABLE:
-                 raise ImportError("LanceDB persistent store requires lancedb-haystack. Install with: pip install lancedb-haystack")
+                raise ImportError(
+                    "LanceDB persistent store requires lancedb-haystack. Install with: pip install lancedb-haystack"
+                )
             if not SentenceTransformer:
-                 raise ImportError("LanceDB persistent store requires sentence-transformers to determine embedding dimensions. Install with: pip install sentence-transformers")
+                raise ImportError(
+                    "LanceDB persistent store requires sentence-transformers to determine embedding dimensions. Install with: pip install sentence-transformers"
+                )
             # Calculate embedding dimensions needed for LanceDB initialization
             self._calculate_embedding_dims()
             logger.info(
@@ -156,44 +167,59 @@ class HaystackSearchService(SearchServiceProtocol):
     def _calculate_embedding_dims(self) -> None:
         """Calculates and stores embedding dimensions from the model name."""
         if self._embedding_dims is None:
-             if not SentenceTransformer:
-                 raise ImportError("sentence-transformers library is required to determine embedding dimensions.")
-             try:
-                 model = SentenceTransformer(self._embedding_model)
-                 dims = model.get_sentence_embedding_dimension()
-                 if not dims:
-                     raise ValueError(f"Could not determine embedding dimension for model: {self._embedding_model}")
-                 self._embedding_dims = dims
-                 logger.debug(f"Determined embedding dimension: {self._embedding_dims} for model '{self._embedding_model}'")
-             except Exception as e:
-                 logger.error(f"Failed to load SentenceTransformer model '{self._embedding_model}' to get dimensions: {e}", exc_info=True)
-                 raise RuntimeError(f"Failed to determine embedding dimension for model '{self._embedding_model}'.") from e
+            if not SentenceTransformer:
+                raise ImportError(
+                    "sentence-transformers library is required to determine embedding dimensions."
+                )
+            try:
+                model = SentenceTransformer(self._embedding_model)
+                dims = model.get_sentence_embedding_dimension()
+                if not dims:
+                    raise ValueError(
+                        f"Could not determine embedding dimension for model: {self._embedding_model}"
+                    )
+                self._embedding_dims = dims
+                logger.debug(
+                    f"Determined embedding dimension: {self._embedding_dims} for model '{self._embedding_model}'"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to load SentenceTransformer model '{self._embedding_model}' to get dimensions: {e}",
+                    exc_info=True,
+                )
+                raise RuntimeError(
+                    f"Failed to determine embedding dimension for model '{self._embedding_model}'."
+                ) from e
 
     def _get_store(self) -> DocumentStore:
         """Gets or creates the appropriate Haystack DocumentStore instance."""
         if self._persist:
             if not LanceDBDocumentStore:
-                 raise ImportError("LanceDBDocumentStore not available.")
+                raise ImportError("LanceDBDocumentStore not available.")
             if self._lancedb_store is None:
                 logger.debug(
                     f"Initializing LanceDBDocumentStore for table '{self.table_name}' at uri '{self._uri}'."
                 )
                 if self._embedding_dims is None:
-                     logger.warning("Embedding dimensions not calculated before getting store. Calculating now.")
-                     self._calculate_embedding_dims()
+                    logger.warning(
+                        "Embedding dimensions not calculated before getting store. Calculating now."
+                    )
+                    self._calculate_embedding_dims()
 
                 self._lancedb_store = LanceDBDocumentStore(
                     database=self._uri,
                     table_name=self.table_name,
-                    embedding_dims=self._embedding_dims
+                    embedding_dims=self._embedding_dims,
                 )
-                logger.info(f"Initialized LanceDBDocumentStore for table '{self.table_name}' (Dims: {self._embedding_dims})")
+                logger.info(
+                    f"Initialized LanceDBDocumentStore for table '{self.table_name}' (Dims: {self._embedding_dims})"
+                )
             return self._lancedb_store
         else:
             if self._in_memory_store is None:
                 logger.warning("In-memory store was not initialized. Creating now.")
                 if not InMemoryDocumentStore:
-                     raise ImportError("InMemoryDocumentStore not available.")
+                    raise ImportError("InMemoryDocumentStore not available.")
                 self._in_memory_store = InMemoryDocumentStore()
             return self._in_memory_store
 
@@ -257,8 +283,8 @@ class HaystackSearchService(SearchServiceProtocol):
             return False
 
         if not LANCEDB_CLIENT_AVAILABLE:
-             logger.error("Cannot delete LanceDB table because 'lancedb' library is not installed.")
-             raise ImportError("'lancedb' library required for table deletion.")
+            logger.error("Cannot delete LanceDB table because 'lancedb' library is not installed.")
+            raise ImportError("'lancedb' library required for table deletion.")
 
         table_name_to_delete = self.table_name
         db_uri = self._uri
@@ -270,9 +296,13 @@ class HaystackSearchService(SearchServiceProtocol):
             table_names = db.table_names()
             if table_name_to_delete in table_names:
                 db.drop_table(table_name_to_delete)
-                logger.info(f"Successfully deleted existing LanceDB table '{table_name_to_delete}'.")
+                logger.info(
+                    f"Successfully deleted existing LanceDB table '{table_name_to_delete}'."
+                )
             else:
-                 logger.info(f"LanceDB table '{table_name_to_delete}' did not exist. No deletion needed.")
+                logger.info(
+                    f"LanceDB table '{table_name_to_delete}' did not exist. No deletion needed."
+                )
 
             self._lancedb_store = None
             return True
@@ -311,9 +341,7 @@ class HaystackSearchService(SearchServiceProtocol):
                     )
             else:
                 # For InMemory, re-initialize the instance's store
-                logger.info(
-                    f"force_reindex=True: Re-initializing InMemory store."
-                )
+                logger.info(f"force_reindex=True: Re-initializing InMemory store.")
                 if not InMemoryDocumentStore:
                     raise ImportError("InMemoryDocumentStore not available.")
                 self._in_memory_store = InMemoryDocumentStore()
@@ -334,24 +362,35 @@ class HaystackSearchService(SearchServiceProtocol):
             content_text = ""
             if isinstance(content_obj, str):
                 content_text = content_obj
-            elif hasattr(content_obj, "extract_text") and callable(getattr(content_obj, "extract_text")):
+            elif hasattr(content_obj, "extract_text") and callable(
+                getattr(content_obj, "extract_text")
+            ):
                 try:
                     content_text = content_obj.extract_text()
                     if not isinstance(content_text, str):
-                        logger.warning(f"extract_text() on {type(content_obj)} did not return a string for doc '{doc_id}'. Using str().")
+                        logger.warning(
+                            f"extract_text() on {type(content_obj)} did not return a string for doc '{doc_id}'. Using str()."
+                        )
                         content_text = str(content_obj)
                 except Exception as extraction_error:
-                    logger.error(f"Error calling extract_text() on {type(content_obj)} for doc '{doc_id}': {extraction_error}. Using str().", exc_info=False)
+                    logger.error(
+                        f"Error calling extract_text() on {type(content_obj)} for doc '{doc_id}': {extraction_error}. Using str().",
+                        exc_info=False,
+                    )
                     content_text = str(content_obj)
             else:
-                logger.warning(f"Could not extract text from content type {type(content_obj)} obtained via get_content() for doc '{doc_id}'. Using str().")
+                logger.warning(
+                    f"Could not extract text from content type {type(content_obj)} obtained via get_content() for doc '{doc_id}'. Using str()."
+                )
                 content_text = str(content_obj)
 
             haystack_doc = HaystackDocument(id=doc_id, content=content_text, meta=metadata)
             haystack_docs_to_embed.append(haystack_doc)
 
         if not haystack_docs_to_embed:
-            logger.warning("No Haystack documents were prepared. Check conversion logic and input data.")
+            logger.warning(
+                "No Haystack documents were prepared. Check conversion logic and input data."
+            )
             return
 
         logger.info(
@@ -363,13 +402,13 @@ class HaystackSearchService(SearchServiceProtocol):
             logger.info(f"Successfully embedded {len(embedded_docs)} documents.")
 
         except haystack.errors.dimensionality_mismatch.InvalidDimensionError as dim_error:
-            error_msg = f"Indexing failed for table '{self.table_name}'. Dimension mismatch: {dim_error}. "
+            error_msg = (
+                f"Indexing failed for table '{self.table_name}'. Dimension mismatch: {dim_error}. "
+            )
             error_msg += f"Ensure the embedding model ('{self._embedding_model}', Dim: {self._embedding_dims}) matches the expected dimension of the store. "
             if self._persist:
                 error_msg += f"If the table already exists at '{self._uri}', it might have been created with a different model/dimension. "
-                error_msg += (
-                    f"Try deleting the LanceDB table directory ('{os.path.join(self._uri, self.table_name + '.lance')}') or using force_reindex=True."
-                )
+                error_msg += f"Try deleting the LanceDB table directory ('{os.path.join(self._uri, self.table_name + '.lance')}') or using force_reindex=True."
             else:
                 error_msg += "This usually indicates an issue with the embedder setup or Haystack compatibility."
             logger.error(error_msg, exc_info=True)
@@ -382,14 +421,12 @@ class HaystackSearchService(SearchServiceProtocol):
         write_result = store.write_documents(
             documents=embedded_docs, policy=DuplicatePolicy.OVERWRITE
         )
-        logger.info(
-            f"Successfully wrote {write_result} documents to store."
-        )
+        logger.info(f"Successfully wrote {write_result} documents to store.")
         try:
-             count = store.count_documents()
-             logger.info(f"Store document count after write: {count}")
+            count = store.count_documents()
+            logger.info(f"Store document count after write: {count}")
         except Exception as count_error:
-             logger.warning(f"Could not get document count after write: {count_error}")
+            logger.warning(f"Could not get document count after write: {count_error}")
 
     def search(
         self,
@@ -416,7 +453,9 @@ class HaystackSearchService(SearchServiceProtocol):
             query_embedding = embedding_result["embedding"]
             if not query_embedding:
                 raise ValueError("Text embedder did not return an embedding for the query.")
-            logger.debug(f"Successfully generated query text embedding (dim: {len(query_embedding)}).")
+            logger.debug(
+                f"Successfully generated query text embedding (dim: {len(query_embedding)})."
+            )
         elif isinstance(query, Image.Image):
             logger.error("Multimodal query (PIL Image) is not yet supported.")
             raise NotImplementedError("Search with PIL Image queries is not implemented.")
@@ -425,16 +464,25 @@ class HaystackSearchService(SearchServiceProtocol):
             try:
                 query_text = query.extract_text()
                 if not query_text or not query_text.strip():
-                    logger.warning(f"Query object {type(query).__name__} provided empty text. Returning no results.")
+                    logger.warning(
+                        f"Query object {type(query).__name__} provided empty text. Returning no results."
+                    )
                     return []
                 text_embedder = self._get_text_embedder()
                 embedding_result = text_embedder.run(text=query_text)
                 query_embedding = embedding_result["embedding"]
                 if not query_embedding:
-                    raise ValueError(f"Text embedder did not return embedding for text from {type(query).__name__}.")
-                logger.debug(f"Generated query embedding from extracted text (dim: {len(query_embedding)}).")
+                    raise ValueError(
+                        f"Text embedder did not return embedding for text from {type(query).__name__}."
+                    )
+                logger.debug(
+                    f"Generated query embedding from extracted text (dim: {len(query_embedding)})."
+                )
             except Exception as e:
-                logger.error(f"Failed to extract/embed text from query object {type(query).__name__}: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to extract/embed text from query object {type(query).__name__}: {e}",
+                    exc_info=True,
+                )
                 raise RuntimeError("Query text extraction or embedding failed.") from e
         else:
             raise TypeError(f"Unsupported query type for HaystackSearchService: {type(query)}")
@@ -442,12 +490,20 @@ class HaystackSearchService(SearchServiceProtocol):
         # Select Retriever based on Store Type
         retriever = None
         # Check if LanceDB is available *before* checking isinstance
-        if LANCEDB_HAYSTACK_AVAILABLE and LanceDBDocumentStore and isinstance(store, LanceDBDocumentStore):
+        if (
+            LANCEDB_HAYSTACK_AVAILABLE
+            and LanceDBDocumentStore
+            and isinstance(store, LanceDBDocumentStore)
+        ):
             if not LanceDBEmbeddingRetriever:
                 raise ImportError("LanceDBEmbeddingRetriever is required but not available.")
             retriever = LanceDBEmbeddingRetriever(document_store=store)
         # Check if InMemory is available *before* checking isinstance
-        elif InMemoryDocumentStore and InMemoryEmbeddingRetriever and isinstance(store, InMemoryDocumentStore):
+        elif (
+            InMemoryDocumentStore
+            and InMemoryEmbeddingRetriever
+            and isinstance(store, InMemoryDocumentStore)
+        ):
             # No separate HAS_INMEMORY flag, check if classes are not None
             retriever = InMemoryEmbeddingRetriever(document_store=store)
         else:
@@ -455,34 +511,41 @@ class HaystackSearchService(SearchServiceProtocol):
             store_type_name = type(store).__name__
             available_integrations = []
             if LANCEDB_HAYSTACK_AVAILABLE and LanceDBDocumentStore:
-                 available_integrations.append("LanceDB")
+                available_integrations.append("LanceDB")
             if InMemoryDocumentStore:
-                 available_integrations.append("InMemory")
+                available_integrations.append("InMemory")
 
             if not available_integrations:
-                 raise TypeError(
-                     f"Cannot perform search: No supported document store integrations (LanceDB, InMemory) seem to be available. "
-                     f"Check Haystack installation."
-                 )
+                raise TypeError(
+                    f"Cannot perform search: No supported document store integrations (LanceDB, InMemory) seem to be available. "
+                    f"Check Haystack installation."
+                )
             # Check if the store type matches one of the available integrations' expected types
-            elif (LANCEDB_HAYSTACK_AVAILABLE and LanceDBDocumentStore and isinstance(store, LanceDBDocumentStore)) or \
-                 (InMemoryDocumentStore and isinstance(store, InMemoryDocumentStore)):
-                 # This case implies the retriever class (e.g., LanceDBEmbeddingRetriever) might be missing
-                 missing_retriever = ""
-                 if isinstance(store, LanceDBDocumentStore): missing_retriever = "LanceDBEmbeddingRetriever"
-                 if isinstance(store, InMemoryDocumentStore): missing_retriever = "InMemoryEmbeddingRetriever"
-                 raise ImportError(
-                     f"Store type '{store_type_name}' is supported, but its retriever component '{missing_retriever}' failed to import or is unavailable."
-                 )
-            else: # Store type doesn't match any known/available store type
-                 raise TypeError(
+            elif (
+                LANCEDB_HAYSTACK_AVAILABLE
+                and LanceDBDocumentStore
+                and isinstance(store, LanceDBDocumentStore)
+            ) or (InMemoryDocumentStore and isinstance(store, InMemoryDocumentStore)):
+                # This case implies the retriever class (e.g., LanceDBEmbeddingRetriever) might be missing
+                missing_retriever = ""
+                if isinstance(store, LanceDBDocumentStore):
+                    missing_retriever = "LanceDBEmbeddingRetriever"
+                if isinstance(store, InMemoryDocumentStore):
+                    missing_retriever = "InMemoryEmbeddingRetriever"
+                raise ImportError(
+                    f"Store type '{store_type_name}' is supported, but its retriever component '{missing_retriever}' failed to import or is unavailable."
+                )
+            else:  # Store type doesn't match any known/available store type
+                raise TypeError(
                     f"Cannot perform search with unexpected store type '{store_type_name}'. "
                     f"Available integrations: {', '.join(available_integrations)}."
-                 )
+                )
 
         # This check remains as a final safeguard, though the logic above should catch most issues
         if not retriever:
-             raise RuntimeError(f"Failed to select a suitable retriever for store type {type(store).__name__}. Please check dependencies and integration availability.")
+            raise RuntimeError(
+                f"Failed to select a suitable retriever for store type {type(store).__name__}. Please check dependencies and integration availability."
+            )
 
         logger.debug(f"Selected retriever: {type(retriever).__name__}")
 
@@ -502,7 +565,9 @@ class HaystackSearchService(SearchServiceProtocol):
 
         # Run Retrieval
         try:
-            logger.info(f"Running retrieval pipeline for table/store '{self.table_name if self._persist else 'InMemory'}'...")
+            logger.info(
+                f"Running retrieval pipeline for table/store '{self.table_name if self._persist else 'InMemory'}'..."
+            )
             result = pipeline.run(data={"retriever": retriever_input_data})
 
             # Format Results
@@ -539,12 +604,14 @@ class HaystackSearchService(SearchServiceProtocol):
             True if deletion was successful or table/store didn't exist, False otherwise.
         """
         if self._persist:
-            logger.warning(f"Request to delete LanceDB table '{self.table_name}' at uri '{self._uri}'.")
+            logger.warning(
+                f"Request to delete LanceDB table '{self.table_name}' at uri '{self._uri}'."
+            )
             return self._delete_lancedb_table()
         else:
             logger.info("Request to delete InMemory store (re-initializing).)")
             if not InMemoryDocumentStore:
-                 raise ImportError("InMemoryDocumentStore not available.")
+                raise ImportError("InMemoryDocumentStore not available.")
             self._in_memory_store = InMemoryDocumentStore()
             return True
 
@@ -555,7 +622,9 @@ class HaystackSearchService(SearchServiceProtocol):
               For InMemory, it checks if the internal store object exists and has documents.
         """
         store_name = self.table_name if self._persist else "InMemory"
-        logger.debug(f"Checking existence of index for '{store_name}'. URI: '{self._uri if self._persist else 'N/A'}'")
+        logger.debug(
+            f"Checking existence of index for '{store_name}'. URI: '{self._uri if self._persist else 'N/A'}'"
+        )
         try:
             store = self._get_store()
             count = store.count_documents()
@@ -565,8 +634,8 @@ class HaystackSearchService(SearchServiceProtocol):
             )
             return exists
         except ImportError as ie:
-             logger.error(f"Import error checking index existence for '{store_name}': {ie}")
-             return False
+            logger.error(f"Import error checking index existence for '{store_name}': {ie}")
+            return False
         except Exception as e:
             logger.warning(
                 f"Could not confirm existence or count documents in store for '{store_name}': {e}",
@@ -579,7 +648,9 @@ class HaystackSearchService(SearchServiceProtocol):
     def list_documents(self, include_metadata: bool = False, **kwargs) -> List[Dict]:
         """Retrieves documents, required for sync."""
         store_name = self.table_name if self._persist else "InMemory"
-        logger.debug(f"Listing documents for '{store_name}' (include_metadata={include_metadata})...")
+        logger.debug(
+            f"Listing documents for '{store_name}' (include_metadata={include_metadata})..."
+        )
         store = self._get_store()
         try:
             haystack_docs = store.filter_documents(filters=kwargs.get("filters"))
@@ -614,4 +685,3 @@ class HaystackSearchService(SearchServiceProtocol):
                 exc_info=True,
             )
             raise RuntimeError(f"Failed to delete documents from store '{store_name}'.") from e
-

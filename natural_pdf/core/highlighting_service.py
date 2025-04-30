@@ -627,9 +627,7 @@ class HighlightingService:
             return None
 
         page = self._pdf[page_index]
-        highlights_on_page = self.get_highlights_for_page(
-            page_index
-        )
+        highlights_on_page = self.get_highlights_for_page(page_index)
 
         render_resolution = resolution if resolution is not None else scale * 72
         base_image = render_plain_page(page, render_resolution)

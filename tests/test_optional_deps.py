@@ -1,6 +1,6 @@
 import importlib  # Use importlib for checking
-import sys
 import os
+import sys
 
 import pytest
 
@@ -254,12 +254,13 @@ def test_search_haystack_works_when_installed(standard_pdf_collection):
             collection_name="test_lance_collection",
             persist=True,
             uri="./test_lance_index",
-            index=False
+            index=False,
         )
         assert hasattr(standard_pdf_collection, "_search_service")
         assert standard_pdf_collection._search_service is not None
         # Check the service type and URI
         from natural_pdf.search.haystack_search_service import HaystackSearchService
+
         assert isinstance(standard_pdf_collection._search_service, HaystackSearchService)
         assert standard_pdf_collection._search_service._persist is True
         assert standard_pdf_collection._search_service._uri == "./test_lance_index"
@@ -267,6 +268,7 @@ def test_search_haystack_works_when_installed(standard_pdf_collection):
 
         # Cleanup the test directory
         import shutil
+
         if os.path.exists("./test_lance_index"):
             shutil.rmtree("./test_lance_index")
 
@@ -277,6 +279,7 @@ def test_search_haystack_works_when_installed(standard_pdf_collection):
     finally:
         # Ensure cleanup even on failure
         import shutil
+
         if os.path.exists("./test_lance_index"):
             shutil.rmtree("./test_lance_index")
 
@@ -296,7 +299,7 @@ def test_search_haystack_fails_gracefully_when_not_installed(standard_pdf_collec
             collection_name="test_missing_deps",
             persist=True,
             uri="./test_missing_index",
-            index=False
+            index=False,
         )
 
 

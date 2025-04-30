@@ -551,7 +551,7 @@ class Element(DirectionalMixin):
             for candidate in candidates:
                 if filter_func(candidate):
                     return candidate
-            return None # No match found
+            return None  # No match found
 
         # No selector, just return the next element if it exists
         elif idx + 1 < len(all_elements):
@@ -607,7 +607,7 @@ class Element(DirectionalMixin):
             for candidate in candidates:
                 if filter_func(candidate):
                     return candidate
-            return None # No match found
+            return None  # No match found
 
         # No selector, just return the previous element if it exists
         elif idx > 0:
@@ -943,6 +943,7 @@ class Element(DirectionalMixin):
             First matching element or None.
         """
         from natural_pdf.elements.region import Region
+
         # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         # Delegate to the region's find method
@@ -1005,6 +1006,7 @@ class Element(DirectionalMixin):
             ElementCollection with matching elements.
         """
         from natural_pdf.elements.region import Region
+
         # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         # Delegate to the region's find_all method

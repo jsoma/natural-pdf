@@ -26,9 +26,6 @@ from natural_pdf.utils.tqdm_utils import get_tqdm
 # --- End Classification Imports --- #
 
 
-
-
-
 if TYPE_CHECKING:
     # --- NEW: Add Image type hint for classification --- #
     from PIL.Image import Image

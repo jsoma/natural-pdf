@@ -24,6 +24,7 @@ from .search_service_protocol import Indexable, IndexConfigurationError, SearchS
 
 logger = logging.getLogger(__name__)
 
+
 # Factory Function
 def get_search_service(
     collection_name: str,
@@ -67,9 +68,7 @@ def get_search_service(
 
     try:
         service_instance = HaystackSearchService(**service_args)
-        logger.info(
-            f"Created new HaystackSearchService instance for index '{collection_name}'."
-        )
+        logger.info(f"Created new HaystackSearchService instance for index '{collection_name}'.")
         return service_instance
     except ImportError as e:
         # Error message remains valid
@@ -82,5 +81,6 @@ def get_search_service(
     except Exception as e:
         logger.error(f"Failed to instantiate Search Service: {e}", exc_info=True)
         raise RuntimeError("Could not create Search Service instance.") from e
+
 
 # Default instance commented out as before

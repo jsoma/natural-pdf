@@ -74,7 +74,6 @@ from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveV
 # --- End Classification Imports --- #
 
 
-
 try:
     from deskew import determine_skew
 
