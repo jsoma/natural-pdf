@@ -1,35 +1,38 @@
 import logging
-from typing import Callable, Iterable, Any, TypeVar
+from typing import Any, Callable, Iterable, TypeVar
+
 from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T") # Generic type for items in the collection
+T = TypeVar("T")  # Generic type for items in the collection
+
 
 class DirectionalCollectionMixin:
     """
     Mixin providing directional methods for collections of elements/regions.
     """
-    
+
     def below(self, **kwargs) -> "ElementCollection":
         """Find regions below all elements in this collection."""
         return self.apply(lambda element: element.below(**kwargs))
-    
+
     def above(self, **kwargs) -> "ElementCollection":
         """Find regions above all elements in this collection."""
         return self.apply(lambda element: element.above(**kwargs))
-    
+
     def left(self, **kwargs) -> "ElementCollection":
         """Find regions to the left of all elements in this collection."""
         return self.apply(lambda element: element.left(**kwargs))
-    
+
     def right(self, **kwargs) -> "ElementCollection":
         """Find regions to the right of all elements in this collection."""
         return self.apply(lambda element: element.right(**kwargs))
-    
+
     def expand(self, **kwargs) -> "ElementCollection":
         """Expand all elements in this collection."""
         return self.apply(lambda element: element.expand(**kwargs))
+
 
 class ApplyMixin:
     """
@@ -38,6 +41,7 @@ class ApplyMixin:
     Assumes the inheriting class implements `__iter__` and `__len__` appropriately
     for the items to be processed by `apply`.
     """
+
     def _get_items_for_apply(self) -> Iterable[Any]:
         """
         Returns the iterable of items to apply the function to.
@@ -59,7 +63,7 @@ class ApplyMixin:
                       A special keyword argument 'show_progress' (bool, default=False)
                       can be used to display a progress bar.
         """
-        show_progress = kwargs.pop('show_progress', False)
+        show_progress = kwargs.pop("show_progress", False)
         # Derive unit name from class name
         unit_name = self.__class__.__name__.lower()
         items_iterable = self._get_items_for_apply()
@@ -67,32 +71,35 @@ class ApplyMixin:
         # Need total count for tqdm, assumes __len__ is implemented by the inheriting class
         total_items = 0
         try:
-             total_items = len(self)
-        except TypeError: # Handle cases where __len__ might not be defined on self
-             logger.warning(f"Could not determine collection length for progress bar.")
+            total_items = len(self)
+        except TypeError:  # Handle cases where __len__ might not be defined on self
+            logger.warning(f"Could not determine collection length for progress bar.")
 
         if show_progress and total_items > 0:
-            items_iterable = tqdm(items_iterable, total=total_items, desc=f"Applying {func.__name__}", unit=unit_name)
+            items_iterable = tqdm(
+                items_iterable, total=total_items, desc=f"Applying {func.__name__}", unit=unit_name
+            )
         elif show_progress:
-             logger.info(f"Applying {func.__name__} (progress bar disabled for zero/unknown length).")
+            logger.info(
+                f"Applying {func.__name__} (progress bar disabled for zero/unknown length)."
+            )
 
         results = [func(item, *args, **kwargs) for item in items_iterable]
 
         # If results is empty, return an empty list
         if not results:
             return []
-            
-        # Import here to avoid circular imports
-        from natural_pdf.elements.base import Element
-        from natural_pdf.elements.region import Region
-        from natural_pdf import PDF, Page
-        from natural_pdf.elements.collections import ElementCollection, PageCollection
-        from natural_pdf.collections.pdf_collection import PDFCollection
 
- 
+        # Import here to avoid circular imports
+        from natural_pdf import PDF, Page
+        from natural_pdf.collections.pdf_collection import PDFCollection
+        from natural_pdf.elements.base import Element
+        from natural_pdf.elements.collections import ElementCollection, PageCollection
+        from natural_pdf.elements.region import Region
+
         first_non_none = next((r for r in results if r is not None), None)
         first_type = type(first_non_none) if first_non_none is not None else None
-        
+
         # Return the appropriate collection based on result type (...generally)
         if issubclass(first_type, Element) or issubclass(first_type, Region):
             return ElementCollection(results)
@@ -100,5 +107,5 @@ class ApplyMixin:
             return PDFCollection(results)
         elif first_type == Page:
             return PageCollection(results)
-                
+
         return results

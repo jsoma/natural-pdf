@@ -175,14 +175,10 @@ def process_notebook(md_file_path_str: str, log_level: int) -> Dict[str, Any]:
 
         cwd = md_file_path.parent
         client = NotebookClient(
-<<<<<<< HEAD:01-execute_notebooks.py
             notebook,
             timeout=600,
             kernel_name="natural-pdf-venv",
             resources={"metadata": {"path": str(cwd)}},
-=======
-            notebook, timeout=600, kernel_name="python3", resources={"metadata": {"path": str(cwd)}}
->>>>>>> ea72b84d (A hundred updates, a thousand updates):execute_notebooks.py
         )
         client.execute()  # Modifies 'notebook' object
 

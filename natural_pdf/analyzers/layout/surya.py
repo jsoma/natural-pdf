@@ -20,6 +20,7 @@ TableRecPredictor = None
 
 if surya_spec:
     try:
+        from surya.common.util import expand_bbox, rescale_bbox
         from surya.layout import LayoutPredictor
         from surya.table_rec import TableRecPredictor
     except ImportError as e:
@@ -74,25 +75,10 @@ class SuryaLayoutDetector(LayoutDetector):
             raise TypeError("Incorrect options type provided for Surya model loading.")
         self.logger.info(f"Loading Surya models (device={options.device})...")
         models = {}
-        try:
-            models["layout"] = LayoutPredictor()
-            models["table_rec"] = TableRecPredictor()
-            self.logger.info("Surya LayoutPredictor and TableRecPredictor loaded.")
-            return models
-        except Exception as e:
-            self.logger.error(f"Failed to load Surya models: {e}", exc_info=True)
-            raise
-
-    def _expand_bbox(
-        self, bbox: Tuple[float, float, float, float], padding: int, max_width: int, max_height: int
-    ) -> Tuple[int, int, int, int]:
-        """Expand bbox by padding, clamping to max dimensions."""
-        x0, y0, x1, y1 = bbox
-        x0 = max(0, int(x0 - padding))
-        y0 = max(0, int(y0 - padding))
-        x1 = min(max_width, int(x1 + padding))
-        y1 = min(max_height, int(y1 + padding))
-        return x0, y0, x1, y1
+        models["layout"] = LayoutPredictor()
+        models["table_rec"] = TableRecPredictor()
+        self.logger.info("Surya LayoutPredictor and TableRecPredictor loaded.")
+        return models
 
     def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
         """Detect layout elements and optionally table structure in an image using Surya."""
@@ -114,19 +100,12 @@ class SuryaLayoutDetector(LayoutDetector):
 
         # Extract page reference and scaling factors from extra_args (passed by LayoutAnalyzer)
         self._page_ref = options.extra_args.get("_page_ref")
-        img_scale_x = options.extra_args.get("_img_scale_x")
-        img_scale_y = options.extra_args.get("_img_scale_y")
 
         # We still need this check, otherwise later steps that need these vars will fail
-        can_do_table_rec = (
-            options.recognize_table_structure
-            and self._page_ref
-            and img_scale_x is not None
-            and img_scale_y is not None
-        )
+        can_do_table_rec = options.recognize_table_structure
         if options.recognize_table_structure and not can_do_table_rec:
             logger.warning(
-                "Surya table recognition cannot proceed without page reference and scaling factors. Disabling."
+                "Surya table recognition cannot proceed without page reference. Disabling."
             )
             options.recognize_table_structure = False
 
@@ -141,14 +120,12 @@ class SuryaLayoutDetector(LayoutDetector):
         table_rec_predictor = models["table_rec"]
 
         input_image = image.convert("RGB")
-        input_image_list = [input_image]
 
-        initial_layout_detections = []  # Detections relative to input_image
+        initial_layout_detections = []
         tables_to_process = []
 
-        # --- Initial Layout Detection ---
         self.logger.debug("Running Surya layout prediction...")
-        layout_predictions = layout_predictor(input_image_list)
+        layout_predictions = layout_predictor([input_image])
         self.logger.debug(f"Surya prediction returned {len(layout_predictions)} results.")
         if not layout_predictions:
             return []
@@ -164,6 +141,7 @@ class SuryaLayoutDetector(LayoutDetector):
         )
 
         for layout_box in prediction.bboxes:
+
             class_name_orig = layout_box.label
             normalized_class = self._normalize_class_name(class_name_orig)
             score = float(layout_box.confidence)
@@ -196,7 +174,6 @@ class SuryaLayoutDetector(LayoutDetector):
             f"Surya initially detected {len(initial_layout_detections)} layout elements matching criteria."
         )
 
-        # --- Table Structure Recognition (Optional) ---
         if not options.recognize_table_structure or not tables_to_process:
             self.logger.debug(
                 "Skipping Surya table structure recognition (disabled or no tables found)."
@@ -207,59 +184,29 @@ class SuryaLayoutDetector(LayoutDetector):
             f"Attempting Surya table structure recognition for {len(tables_to_process)} tables..."
         )
         high_res_crops = []
-        pdf_offsets = []  # Store (pdf_x0, pdf_y0) for each crop
 
         high_res_dpi = getattr(self._page_ref._parent, "_config", {}).get(
             "surya_table_rec_dpi", 192
         )
-        bbox_padding = getattr(self._page_ref._parent, "_config", {}).get(
-            "surya_table_bbox_padding", 10
+        high_res_page_image = self._page_ref.to_image(
+            resolution=high_res_dpi, include_highlights=False, scale=1.0
         )
-        pdf_to_highres_scale = high_res_dpi / 72.0
 
         # Render high-res page ONCE
         self.logger.debug(
-            f"Rendering page {self._page_ref.number} at {high_res_dpi} DPI for table recognition..."
-        )
-        high_res_page_image = self._page_ref.to_image(
-            resolution=high_res_dpi, include_highlights=False
-        )
-        if not high_res_page_image:
-            raise RuntimeError(f"Failed to render page {self._page_ref.number} at high resolution.")
-        self.logger.debug(
-            f"  High-res image size: {high_res_page_image.width}x{high_res_page_image.height}"
+            f"Rendering page {self._page_ref.number} at {high_res_dpi} DPI for table recognition, size {high_res_page_image.width}x{high_res_page_image.height}."
         )
 
+        source_tables = []
         for i, table_detection in enumerate(tables_to_process):
-            img_x0, img_y0, img_x1, img_y1 = table_detection["bbox"]
-
-            # PDF coords
-            pdf_x0 = img_x0 * img_scale_x
-            pdf_y0 = img_y0 * img_scale_y
-            pdf_x1 = img_x1 * img_scale_x
-            pdf_y1 = img_y1 * img_scale_y
-            pdf_x0 = max(0, pdf_x0)
-            pdf_y0 = max(0, pdf_y0)
-            pdf_x1 = min(self._page_ref.width, pdf_x1)
-            pdf_y1 = min(self._page_ref.height, pdf_y1)
-
-            # High-res image coords
-            hr_x0 = pdf_x0 * pdf_to_highres_scale
-            hr_y0 = pdf_y0 * pdf_to_highres_scale
-            hr_x1 = pdf_x1 * pdf_to_highres_scale
-            hr_y1 = pdf_y1 * pdf_to_highres_scale
-
-            # Expand high-res bbox
-            hr_x0_exp, hr_y0_exp, hr_x1_exp, hr_y1_exp = self._expand_bbox(
-                (hr_x0, hr_y0, hr_x1, hr_y1),
-                padding=bbox_padding,
-                max_width=high_res_page_image.width,
-                max_height=high_res_page_image.height,
+            highres_bbox = rescale_bbox(
+                list(table_detection["bbox"]), image.size, high_res_page_image.size
             )
+            highres_bbox = expand_bbox(highres_bbox)
 
-            crop = high_res_page_image.crop((hr_x0_exp, hr_y0_exp, hr_x1_exp, hr_y1_exp))
+            crop = high_res_page_image.crop(highres_bbox)
             high_res_crops.append(crop)
-            pdf_offsets.append((pdf_x0, pdf_y0))
+            source_tables.append(highres_bbox)
 
         if not high_res_crops:
             self.logger.info("No valid high-resolution table crops generated.")
@@ -267,64 +214,40 @@ class SuryaLayoutDetector(LayoutDetector):
 
         structure_detections = []  # Detections relative to std_res input_image
 
-        # --- Run Table Recognition (will raise error on failure) ---
         self.logger.debug(
             f"Running Surya table recognition on {len(high_res_crops)} high-res images..."
         )
         table_predictions = table_rec_predictor(high_res_crops)
         self.logger.debug(f"Surya table recognition returned {len(table_predictions)} results.")
 
-        # --- Process Results ---
-        if len(table_predictions) != len(pdf_offsets):
-            # This case is less likely if predictor didn't error, but good sanity check
-            raise RuntimeError(
-                f"Mismatch between table inputs ({len(pdf_offsets)}) and predictions ({len(table_predictions)})."
-            )
+        def build_row_item(element, source_table_bbox, label):
+            adjusted_bbox = [
+                float(element.bbox[0] + source_table_bbox[0]),
+                float(element.bbox[1] + source_table_bbox[1]),
+                float(element.bbox[2] + source_table_bbox[0]),
+                float(element.bbox[3] + source_table_bbox[1]),
+            ]
 
-        for table_pred, (offset_pdf_x0, offset_pdf_y0) in zip(table_predictions, pdf_offsets):
-            # Process Rows
-            for row_box in table_pred.rows:
-                crop_rx0, crop_ry0, crop_rx1, crop_ry1 = map(float, row_box.bbox)
-                pdf_row_x0 = offset_pdf_x0 + crop_rx0 / pdf_to_highres_scale
-                pdf_row_y0 = offset_pdf_y0 + crop_ry0 / pdf_to_highres_scale
-                pdf_row_x1 = offset_pdf_x0 + crop_rx1 / pdf_to_highres_scale
-                pdf_row_y1 = offset_pdf_y0 + crop_ry1 / pdf_to_highres_scale
-                img_row_x0 = pdf_row_x0 / img_scale_x
-                img_row_y0 = pdf_row_y0 / img_scale_y
-                img_row_x1 = pdf_row_x1 / img_scale_x
-                img_row_y1 = pdf_row_y1 / img_scale_y
-                structure_detections.append(
-                    {
-                        "bbox": (img_row_x0, img_row_y0, img_row_x1, img_row_y1),
-                        "class": "table-row",
-                        "confidence": 1.0,
-                        "normalized_class": "table-row",
-                        "source": "layout",
-                        "model": "surya",
-                    }
-                )
+            adjusted_bbox = rescale_bbox(adjusted_bbox, high_res_page_image.size, image.size)
 
-            # Process Columns
-            for col_box in table_pred.cols:
-                crop_cx0, crop_cy0, crop_cx1, crop_cy1 = map(float, col_box.bbox)
-                pdf_col_x0 = offset_pdf_x0 + crop_cx0 / pdf_to_highres_scale
-                pdf_col_y0 = offset_pdf_y0 + crop_cy0 / pdf_to_highres_scale
-                pdf_col_x1 = offset_pdf_x0 + crop_cx1 / pdf_to_highres_scale
-                pdf_col_y1 = offset_pdf_y0 + crop_cy1 / pdf_to_highres_scale
-                img_col_x0 = pdf_col_x0 / img_scale_x
-                img_col_y0 = pdf_col_y0 / img_scale_y
-                img_col_x1 = pdf_col_x1 / img_scale_x
-                img_col_y1 = pdf_col_y1 / img_scale_y
-                structure_detections.append(
-                    {
-                        "bbox": (img_col_x0, img_col_y0, img_col_x1, img_col_y1),
-                        "class": "table-column",
-                        "confidence": 1.0,
-                        "normalized_class": "table-column",
-                        "source": "layout",
-                        "model": "surya",
-                    }
-                )
+            return {
+                "bbox": adjusted_bbox,
+                "class": label,
+                "confidence": 1.0,
+                "normalized_class": label,
+                "source": "layout",
+                "model": "surya",
+            }
+
+        for table_pred, source_table_bbox in zip(table_predictions, source_tables):
+            for box in table_pred.rows:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-row"))
+
+            for box in table_pred.cols:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-column"))
+
+            for box in table_pred.cells:
+                structure_detections.append(build_row_item(box, source_table_bbox, "table-cell"))
 
         self.logger.info(f"Added {len(structure_detections)} table structure elements.")
 

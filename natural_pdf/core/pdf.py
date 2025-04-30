@@ -1,12 +1,12 @@
 import copy
+import io
 import logging
 import os
 import re
 import tempfile
-import urllib.request
-import time
 import threading
-import io
+import time
+import urllib.request
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -21,36 +21,33 @@ from typing import (
     Union,
     overload,
 )
-from natural_pdf.utils.tqdm_utils import get_tqdm
 
 import pdfplumber
 from PIL import Image
 
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+from natural_pdf.classification.manager import ClassificationError, ClassificationManager
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.classification.results import ClassificationResult
 from natural_pdf.core.highlighting_service import HighlightingService
+from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
+from natural_pdf.export.mixin import ExportMixin
+from natural_pdf.extraction.manager import StructuredDataManager
+from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
-
-from natural_pdf.classification.manager import ClassificationManager
-from natural_pdf.classification.manager import ClassificationError
-from natural_pdf.classification.results import ClassificationResult
-from natural_pdf.extraction.manager import StructuredDataManager
-
 from natural_pdf.utils.locks import pdf_render_lock
-from natural_pdf.elements.base import Element
-from natural_pdf.classification.mixin import ClassificationMixin
-from natural_pdf.extraction.mixin import ExtractionMixin
-from natural_pdf.export.mixin import ExportMixin
+from natural_pdf.utils.tqdm_utils import get_tqdm
 
 try:
     from typing import Any as TypingAny
 
-    from natural_pdf.search import TextSearchOptions
     from natural_pdf.search import (
         BaseSearchOptions,
         SearchOptions,
         SearchServiceProtocol,
+        TextSearchOptions,
         get_search_service,
     )
 except ImportError:
@@ -63,6 +60,7 @@ except ImportError:
             "Search dependencies are not installed. Install with: pip install natural-pdf[search]"
         )
 
+
 logger = logging.getLogger("natural_pdf.core.pdf")
 tqdm = get_tqdm()
 
@@ -74,14 +72,17 @@ DEFAULT_MANAGERS = {
 # Deskew Imports (Conditional)
 import numpy as np
 from PIL import Image
+
 try:
-    from deskew import determine_skew
     import img2pdf
+    from deskew import determine_skew
+
     DESKEW_AVAILABLE = True
 except ImportError:
     DESKEW_AVAILABLE = False
     img2pdf = None
 # End Deskew Imports
+
 
 class PDF(ExtractionMixin, ExportMixin):
     """
@@ -113,16 +114,16 @@ class PDF(ExtractionMixin, ExportMixin):
         self._is_stream = False
         stream_to_open = None
 
-        if hasattr(path_or_url_or_stream, 'read'): # Check if it's file-like
+        if hasattr(path_or_url_or_stream, "read"):  # Check if it's file-like
             logger.info("Initializing PDF from in-memory stream.")
             self._is_stream = True
-            self._resolved_path = None # No resolved file path for streams
-            self.source_path = "<stream>" # Identifier for source
-            self.path = self.source_path # Use source identifier as path for streams
+            self._resolved_path = None  # No resolved file path for streams
+            self.source_path = "<stream>"  # Identifier for source
+            self.path = self.source_path  # Use source identifier as path for streams
             stream_to_open = path_or_url_or_stream
         elif isinstance(path_or_url_or_stream, (str, Path)):
             path_or_url = str(path_or_url_or_stream)
-            self.source_path = path_or_url # Store original path/URL as source
+            self.source_path = path_or_url  # Store original path/URL as source
             is_url = path_or_url.startswith("http://") or path_or_url.startswith("https://")
 
             if is_url:
@@ -130,25 +131,25 @@ class PDF(ExtractionMixin, ExportMixin):
                 try:
                     # Use a context manager for the temporary file
                     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_f:
-                         self._temp_file = temp_f # Store reference if needed for cleanup
-                         with urllib.request.urlopen(path_or_url) as response:
-                             temp_f.write(response.read())
-                             temp_f.flush()
-                         self._resolved_path = temp_f.name
-                         logger.info(f"PDF downloaded to temporary file: {self._resolved_path}")
-                         stream_to_open = self._resolved_path
+                        self._temp_file = temp_f  # Store reference if needed for cleanup
+                        with urllib.request.urlopen(path_or_url) as response:
+                            temp_f.write(response.read())
+                            temp_f.flush()
+                        self._resolved_path = temp_f.name
+                        logger.info(f"PDF downloaded to temporary file: {self._resolved_path}")
+                        stream_to_open = self._resolved_path
                 except Exception as e:
-                    if self._temp_file and hasattr(self._temp_file, 'name'):
+                    if self._temp_file and hasattr(self._temp_file, "name"):
                         try:
                             os.unlink(self._temp_file.name)
-                        except: # noqa E722
+                        except:  # noqa E722
                             pass
                     logger.error(f"Failed to download PDF from URL: {e}")
                     raise ValueError(f"Failed to download PDF from URL: {e}")
             else:
-                self._resolved_path = str(Path(path_or_url).resolve()) # Resolve local paths
+                self._resolved_path = str(Path(path_or_url).resolve())  # Resolve local paths
                 stream_to_open = self._resolved_path
-            self.path = self._resolved_path # Use resolved path for file-based PDFs
+            self.path = self._resolved_path  # Use resolved path for file-based PDFs
         else:
             raise TypeError(
                 f"Invalid input type: {type(path_or_url_or_stream)}. "
@@ -164,7 +165,7 @@ class PDF(ExtractionMixin, ExportMixin):
             self._pdf = pdfplumber.open(stream_to_open)
         except Exception as e:
             logger.error(f"Failed to open PDF: {e}", exc_info=True)
-            self.close() # Attempt cleanup if opening fails
+            self.close()  # Attempt cleanup if opening fails
             raise IOError(f"Failed to open PDF source: {self.source_path}") from e
 
         # Store configuration used for initialization
@@ -175,10 +176,11 @@ class PDF(ExtractionMixin, ExportMixin):
         self._ocr_manager = OCRManager() if OCRManager else None
         self._layout_manager = LayoutManager() if LayoutManager else None
         self.highlighter = HighlightingService(self)
-        self._classification_manager_instance = ClassificationManager()
+        # self._classification_manager_instance = ClassificationManager() # Removed this line
         self._manager_registry = {}
 
         from natural_pdf.core.page import Page
+
         self._pages = [
             Page(p, parent=self, index=i, font_attrs=font_attrs)
             for i, p in enumerate(self._pdf.pages)
@@ -207,49 +209,20 @@ class PDF(ExtractionMixin, ExportMixin):
     def get_manager(self, key: str) -> Any:
         """Retrieve a manager instance by its key."""
         if key not in self._managers:
-            raise KeyError(f"No manager registered for key '{key}'. Available: {list(self._managers.keys())}")
-        
+            raise KeyError(
+                f"No manager registered for key '{key}'. Available: {list(self._managers.keys())}"
+            )
+
         manager_instance = self._managers.get(key)
-        
+
         if manager_instance is None:
-             manager_class = DEFAULT_MANAGERS.get(key)
-             if manager_class:
-                  raise RuntimeError(f"Manager '{key}' ({manager_class.__name__}) failed to initialize previously.")
-             else:
-                  raise RuntimeError(f"Manager '{key}' failed to initialize (class not found).")
-
-        return manager_instance
-
-    def _initialize_highlighter(self):
-        pass
-
-        self._initialize_managers()
-        self._initialize_highlighter()
-
-    def _initialize_managers(self):
-        """Initialize manager instances based on DEFAULT_MANAGERS."""
-        self._managers = {}
-        for key, manager_class in DEFAULT_MANAGERS.items():
-            try:
-                self._managers[key] = manager_class()
-                logger.debug(f"Initialized manager for key '{key}': {manager_class.__name__}")
-            except Exception as e:
-                logger.error(f"Failed to initialize manager {manager_class.__name__}: {e}")
-                self._managers[key] = None
-
-    def get_manager(self, key: str) -> Any:
-        """Retrieve a manager instance by its key."""
-        if key not in self._managers:
-            raise KeyError(f"No manager registered for key '{key}'. Available: {list(self._managers.keys())}")
-        
-        manager_instance = self._managers.get(key)
-        
-        if manager_instance is None:
-             manager_class = DEFAULT_MANAGERS.get(key)
-             if manager_class:
-                  raise RuntimeError(f"Manager '{key}' ({manager_class.__name__}) failed to initialize previously.")
-             else:
-                  raise RuntimeError(f"Manager '{key}' failed to initialize (class not found).")
+            manager_class = DEFAULT_MANAGERS.get(key)
+            if manager_class:
+                raise RuntimeError(
+                    f"Manager '{key}' ({manager_class.__name__}) failed to initialize previously."
+                )
+            else:
+                raise RuntimeError(f"Manager '{key}' failed to initialize (class not found).")
 
         return manager_instance
 
@@ -330,7 +303,7 @@ class PDF(ExtractionMixin, ExportMixin):
         Args:
             engine: Name of the OCR engine
             languages: List of language codes
-            min_confidence: Minimum confidence threshold 
+            min_confidence: Minimum confidence threshold
             device: Device to run OCR on
             resolution: DPI resolution for page images
             apply_exclusions: Whether to mask excluded areas
@@ -340,7 +313,7 @@ class PDF(ExtractionMixin, ExportMixin):
             pages: Page indices to process or None for all pages
             engine: Name of the OCR engine
             languages: List of language codes
-            min_confidence: Minimum confidence threshold 
+            min_confidence: Minimum confidence threshold
             device: Device to run OCR on
             resolution: DPI resolution for page images
             apply_exclusions: Whether to mask excluded areas
@@ -359,9 +332,9 @@ class PDF(ExtractionMixin, ExportMixin):
 
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
-        
+
         target_pages = []
-        
+
         target_pages = []
         if pages is None:
             target_pages = self._pages
@@ -383,7 +356,7 @@ class PDF(ExtractionMixin, ExportMixin):
 
         page_numbers = [p.number for p in target_pages]
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
-        
+
         final_resolution = resolution or getattr(self, "_config", {}).get("resolution", 150)
         logger.debug(f"Using OCR image resolution: {final_resolution} DPI")
 
@@ -392,7 +365,7 @@ class PDF(ExtractionMixin, ExportMixin):
         logger.info(f"[{thread_id}] Rendering {len(target_pages)} pages...")
         failed_page_num = "unknown"
         render_start_time = time.monotonic()
-        
+
         try:
             for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
                 failed_page_num = page.number
@@ -413,11 +386,14 @@ class PDF(ExtractionMixin, ExportMixin):
             logger.error(f"Failed to render pages for batch OCR: {e}")
             logger.error(f"Failed to render pages for batch OCR: {e}")
             raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
-            
-            
+
         render_end_time = time.monotonic()
-        logger.debug(f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)")
-        logger.debug(f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)")
+        logger.debug(
+            f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)"
+        )
+        logger.debug(
+            f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)"
+        )
 
         if not images_pil or not page_image_map:
             logger.error("No images were successfully rendered for batch OCR.")
@@ -435,12 +411,11 @@ class PDF(ExtractionMixin, ExportMixin):
         }
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
-        ocr_call_args = {k:v for k,v in manager_args.items() if k!='images'}
+        ocr_call_args = {k: v for k, v in manager_args.items() if k != "images"}
         logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
         logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
         ocr_start_time = time.monotonic()
-        
-        
+
         try:
             batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
@@ -452,26 +427,28 @@ class PDF(ExtractionMixin, ExportMixin):
         except Exception as e:
             logger.error(f"Batch OCR processing failed: {e}")
             return self
-            
-            
+
         ocr_end_time = time.monotonic()
-        logger.debug(f"[{thread_id}] OCR processing finished (Duration: {ocr_end_time - ocr_start_time:.2f}s)")
+        logger.debug(
+            f"[{thread_id}] OCR processing finished (Duration: {ocr_end_time - ocr_start_time:.2f}s)"
+        )
 
         logger.info("Adding OCR results to respective pages...")
         total_elements_added = 0
-        
-        
+
         for i, (page, img) in enumerate(page_image_map):
             results_for_page = batch_results[i]
             if not isinstance(results_for_page, list):
-                logger.warning(f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}")
+                logger.warning(
+                    f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}"
+                )
                 continue
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
             try:
                 if manager_args.get("replace", True) and hasattr(page, "_element_mgr"):
                     page._element_mgr.remove_ocr_elements()
-                
+
                 img_scale_x = page.width / img.width if img.width > 0 else 1
                 img_scale_y = page.height / img.height if img.height > 0 else 1
                 elements = page._element_mgr.create_text_elements_from_ocr(
@@ -515,17 +492,35 @@ class PDF(ExtractionMixin, ExportMixin):
                 if region_instance and isinstance(region_instance, Region):
                     page.add_region(region_instance, name=name, source="named")
                 elif region_instance is not None:
-                    logger.warning(f"Region function did not return a valid Region for page {page.number}")
+                    logger.warning(
+                        f"Region function did not return a valid Region for page {page.number}"
+                    )
             except Exception as e:
                 logger.error(f"Error adding region for page {page.number}: {e}")
 
         return self
 
     @overload
-    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
+    def find(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional[Any]: ...
 
     @overload
-    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
+    def find(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional[Any]: ...
 
     def find(
         self,
@@ -535,7 +530,7 @@ class PDF(ExtractionMixin, ExportMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Optional[Any]:
         """
         Find the first element matching the selector OR text content across all pages.
@@ -559,18 +554,20 @@ class PDF(ExtractionMixin, ExportMixin):
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
         if selector is None and text is None:
-             raise ValueError("Provide either 'selector' or 'text'.")
+            raise ValueError("Provide either 'selector' or 'text'.")
 
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-             effective_selector = f'text:contains("{escaped_text}")'
-             logger.debug(f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')")
+            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+            effective_selector = f'text:contains("{escaped_text}")'
+            logger.debug(
+                f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')"
+            )
         elif selector is not None:
-             effective_selector = selector
+            effective_selector = selector
         else:
-             raise ValueError("Internal error: No selector or text provided.")
+            raise ValueError("Internal error: No selector or text provided.")
 
         selector_obj = parse_selector(effective_selector)
         kwargs["regex"] = regex
@@ -581,21 +578,37 @@ class PDF(ExtractionMixin, ExportMixin):
             # Note: _apply_selector is on Page, so we call find directly here
             # We pass the constructed/validated effective_selector
             element = page.find(
-                selector=effective_selector, # Use the processed selector
+                selector=effective_selector,  # Use the processed selector
                 apply_exclusions=apply_exclusions,
-                regex=regex, # Pass down flags
+                regex=regex,  # Pass down flags
                 case=case,
-                **kwargs
+                **kwargs,
             )
             if element:
                 return element
-        return None # Not found on any page
+        return None  # Not found on any page
 
     @overload
-    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     @overload
-    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     def find_all(
         self,
@@ -605,7 +618,7 @@ class PDF(ExtractionMixin, ExportMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> "ElementCollection":
         """
         Find all elements matching the selector OR text content across all pages.
@@ -629,38 +642,40 @@ class PDF(ExtractionMixin, ExportMixin):
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
         if selector is None and text is None:
-             raise ValueError("Provide either 'selector' or 'text'.")
+            raise ValueError("Provide either 'selector' or 'text'.")
 
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-             effective_selector = f'text:contains("{escaped_text}")'
-             logger.debug(f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')")
+            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+            effective_selector = f'text:contains("{escaped_text}")'
+            logger.debug(
+                f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')"
+            )
         elif selector is not None:
-             effective_selector = selector
+            effective_selector = selector
         else:
-             raise ValueError("Internal error: No selector or text provided.")
+            raise ValueError("Internal error: No selector or text provided.")
 
         # Instead of parsing here, let each page parse and apply
         # This avoids parsing the same selector multiple times if not needed
         # selector_obj = parse_selector(effective_selector)
 
-        kwargs["regex"] = regex
-        kwargs["case"] = case
+        # kwargs["regex"] = regex # Removed: Already passed explicitly
+        # kwargs["case"] = case   # Removed: Already passed explicitly
 
         all_elements = []
         for page in self.pages:
-             # Call page.find_all with the effective selector and flags
-             page_elements = page.find_all(
-                 selector=effective_selector,
-                 apply_exclusions=apply_exclusions,
-                 regex=regex,
-                 case=case,
-                 **kwargs
-             )
-             if page_elements:
-                 all_elements.extend(page_elements.elements)
+            # Call page.find_all with the effective selector and flags
+            page_elements = page.find_all(
+                selector=effective_selector,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                **kwargs,
+            )
+            if page_elements:
+                all_elements.extend(page_elements.elements)
 
         from natural_pdf.elements.collections import ElementCollection
 
@@ -733,24 +748,22 @@ class PDF(ExtractionMixin, ExportMixin):
         """
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
-            
+
         logger.warning("PDF.extract_tables is not fully implemented yet.")
         all_tables = []
-        
-        
+
         for page in self.pages:
             if hasattr(page, "extract_tables"):
                 all_tables.extend(page.extract_tables(**kwargs))
             else:
                 logger.debug(f"Page {page.number} does not have extract_tables method.")
-                
+
         if selector:
             logger.warning("Filtering extracted tables by selector is not implemented.")
-            
-            
+
         if merge_across_pages:
             logger.warning("Merging tables across pages is not implemented.")
-            
+
         return all_tables
 
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
@@ -872,7 +885,9 @@ class PDF(ExtractionMixin, ExportMixin):
             raise ValueError("A configured SearchServiceProtocol instance must be provided.")
 
         collection_name = getattr(search_service, "collection_name", "<Unknown Collection>")
-        logger.info(f"Searching within index '{collection_name}' for content from PDF '{self.path}'")
+        logger.info(
+            f"Searching within index '{collection_name}' for content from PDF '{self.path}'"
+        )
 
         service = search_service
 
@@ -882,7 +897,9 @@ class PDF(ExtractionMixin, ExportMixin):
         if isinstance(query, Region):
             logger.debug("Query is a Region object. Extracting text.")
             if not isinstance(effective_options, TextSearchOptions):
-                logger.warning("Querying with Region image requires MultiModalSearchOptions. Falling back to text extraction.")
+                logger.warning(
+                    "Querying with Region image requires MultiModalSearchOptions. Falling back to text extraction."
+                )
             query_input = query.extract_text()
             if not query_input or query_input.isspace():
                 logger.error("Region has no extractable text for query.")
@@ -900,7 +917,10 @@ class PDF(ExtractionMixin, ExportMixin):
         # Combine with existing filters in options (if any)
         if effective_options.filters:
             logger.debug(f"Combining PDF scope filter with existing filters")
-            if isinstance(effective_options.filters, dict) and effective_options.filters.get("operator") == "AND":
+            if (
+                isinstance(effective_options.filters, dict)
+                and effective_options.filters.get("operator") == "AND"
+            ):
                 effective_options.filters["conditions"].append(pdf_scope_filter)
             elif isinstance(effective_options.filters, list):
                 effective_options.filters = {
@@ -913,7 +933,9 @@ class PDF(ExtractionMixin, ExportMixin):
                     "conditions": [effective_options.filters, pdf_scope_filter],
                 }
             else:
-                logger.warning(f"Unsupported format for existing filters. Overwriting with PDF scope filter.")
+                logger.warning(
+                    f"Unsupported format for existing filters. Overwriting with PDF scope filter."
+                )
                 effective_options.filters = pdf_scope_filter
         else:
             effective_options.filters = pdf_scope_filter
@@ -950,10 +972,15 @@ class PDF(ExtractionMixin, ExportMixin):
         """
         try:
             from natural_pdf.utils.packaging import create_correction_task_package
+
             create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
         except ImportError:
-            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
-            logger.error("Failed to import 'create_correction_task_package'. Packaging utility might be missing.")
+            logger.error(
+                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
+            )
+            logger.error(
+                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
+            )
         except Exception as e:
             logger.error(f"Failed to export correction task: {e}")
             raise
@@ -1036,11 +1063,12 @@ class PDF(ExtractionMixin, ExportMixin):
         """Access pages by index or slice."""
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not initialized yet.")
-            
+
         if isinstance(key, slice):
             from natural_pdf.elements.collections import PageCollection
+
             return PageCollection(self._pages[key])
-            
+
         if isinstance(key, int):
             if 0 <= key < len(self._pages):
                 return self._pages[key]
@@ -1067,8 +1095,8 @@ class PDF(ExtractionMixin, ExportMixin):
                     temp_file_path = self._temp_file.name
                     # Only unlink if it exists and _is_stream is False (meaning WE created it)
                     if not self._is_stream and os.path.exists(temp_file_path):
-                         os.unlink(temp_file_path)
-                         logger.debug(f"Removed temporary PDF file: {temp_file_path}")
+                        os.unlink(temp_file_path)
+                        logger.debug(f"Removed temporary PDF file: {temp_file_path}")
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary file '{temp_file_path}': {e}")
 
@@ -1093,7 +1121,7 @@ class PDF(ExtractionMixin, ExportMixin):
         resolution: int = 300,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
-        **deskew_kwargs
+        **deskew_kwargs,
     ) -> "PDF":
         """
         Creates a new, in-memory PDF object containing deskewed versions of the
@@ -1128,15 +1156,21 @@ class PDF(ExtractionMixin, ExportMixin):
             RuntimeError: If rendering or deskewing individual pages fails.
         """
         if not DESKEW_AVAILABLE:
-            raise ImportError("Deskew/img2pdf libraries missing. Install with: pip install natural-pdf[deskew]")
+            raise ImportError(
+                "Deskew/img2pdf libraries missing. Install with: pip install natural-pdf[deskew]"
+            )
 
-        target_pages = self._get_target_pages(pages) # Use helper to resolve pages
+        target_pages = self._get_target_pages(pages)  # Use helper to resolve pages
 
         # --- Safety Check --- #
         if not force_overwrite:
             for page in target_pages:
                 # Check if the element manager has been initialized and contains any elements
-                if hasattr(page, '_element_mgr') and page._element_mgr and page._element_mgr.has_elements():
+                if (
+                    hasattr(page, "_element_mgr")
+                    and page._element_mgr
+                    and page._element_mgr.has_elements()
+                ):
                     raise ValueError(
                         f"Page {page.number} contains existing elements (text, OCR, etc.). "
                         f"Deskewing creates an image-only PDF, discarding these elements. "
@@ -1154,22 +1188,26 @@ class PDF(ExtractionMixin, ExportMixin):
                 # Pass down resolutions and kwargs
                 deskewed_img = page.deskew(
                     resolution=resolution,
-                    angle=None, # Let page.deskew handle detection/caching
+                    angle=None,  # Let page.deskew handle detection/caching
                     detection_resolution=detection_resolution,
-                    **deskew_kwargs
+                    **deskew_kwargs,
                 )
 
                 if not deskewed_img:
-                    logger.warning(f"Page {page.number}: Failed to generate deskewed image, skipping.")
+                    logger.warning(
+                        f"Page {page.number}: Failed to generate deskewed image, skipping."
+                    )
                     continue
 
                 # Convert image to bytes for img2pdf (use PNG for lossless quality)
                 with io.BytesIO() as buf:
-                    deskewed_img.save(buf, format='PNG')
+                    deskewed_img.save(buf, format="PNG")
                     deskewed_images_bytes.append(buf.getvalue())
 
             except Exception as e:
-                logger.error(f"Page {page.number}: Failed during deskewing process: {e}", exc_info=True)
+                logger.error(
+                    f"Page {page.number}: Failed during deskewing process: {e}", exc_info=True
+                )
                 # Option: Raise a runtime error, or continue and skip the page?
                 # Raising makes the whole operation fail if one page fails.
                 raise RuntimeError(f"Failed to process page {page.number} during deskewing.") from e
@@ -1192,7 +1230,7 @@ class PDF(ExtractionMixin, ExportMixin):
                 pdf_stream,
                 reading_order=self._reading_order,
                 font_attrs=self._font_attrs,
-                keep_spaces=self._config.get('keep_spaces', True)
+                keep_spaces=self._config.get("keep_spaces", True),
             )
             return new_pdf
         except Exception as e:
@@ -1230,19 +1268,20 @@ class PDF(ExtractionMixin, ExportMixin):
             raise ValueError("Categories list cannot be empty.")
 
         try:
-            manager = self.get_manager('classification')
+            manager = self.get_manager("classification")
         except (ValueError, RuntimeError) as e:
             raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
 
         if not manager or not manager.is_available():
             try:
                 from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
+
                 if not _CLASSIFICATION_AVAILABLE:
                     raise ImportError("Classification dependencies missing.")
             except ImportError:
                 raise ImportError(
                     "Classification dependencies missing. "
-                    "Install with: pip install \"natural-pdf[classification]\""
+                    'Install with: pip install "natural-pdf[classification]"'
                 )
             raise ClassificationError("ClassificationManager not available.")
 
@@ -1266,12 +1305,14 @@ class PDF(ExtractionMixin, ExportMixin):
             return self
 
         inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
-        logger.info(f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})")
+        logger.info(
+            f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
+        )
 
         page_contents = []
         pages_to_classify = []
         logger.debug(f"Gathering content for {len(target_pages)} pages...")
-        
+
         for page in target_pages:
             try:
                 content = page._get_classification_content(model_type=inferred_using, **kwargs)
@@ -1285,7 +1326,7 @@ class PDF(ExtractionMixin, ExportMixin):
         if not page_contents:
             logger.warning("No content could be gathered for batch classification.")
             return self
-            
+
         logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
 
         try:
@@ -1301,17 +1342,23 @@ class PDF(ExtractionMixin, ExportMixin):
             raise ClassificationError(f"Batch classification failed: {e}") from e
 
         if len(batch_results) != len(pages_to_classify):
-            logger.error(f"Mismatch between number of results ({len(batch_results)}) and pages ({len(pages_to_classify)})")
+            logger.error(
+                f"Mismatch between number of results ({len(batch_results)}) and pages ({len(pages_to_classify)})"
+            )
             return self
 
-        logger.debug(f"Distributing {len(batch_results)} results to pages under key '{analysis_key}'...")
+        logger.debug(
+            f"Distributing {len(batch_results)} results to pages under key '{analysis_key}'..."
+        )
         for page, result_obj in zip(pages_to_classify, batch_results):
             try:
-                if not hasattr(page, 'analyses') or page.analyses is None:
+                if not hasattr(page, "analyses") or page.analyses is None:
                     page.analyses = {}
                 page.analyses[analysis_key] = result_obj
             except Exception as e:
-                logger.warning(f"Failed to store classification results for page {page.number}: {e}")
+                logger.warning(
+                    f"Failed to store classification results for page {page.number}: {e}"
+                )
 
         logger.info(f"Finished classifying PDF pages.")
         return self
@@ -1319,7 +1366,7 @@ class PDF(ExtractionMixin, ExportMixin):
     # --- End Classification Methods --- #
 
     # --- Extraction Support --- #
-    def _get_extraction_content(self, using: str = 'text', **kwargs) -> Any:
+    def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
         """
         Retrieves the content for the entire PDF.
 
@@ -1332,28 +1379,28 @@ class PDF(ExtractionMixin, ExportMixin):
             List[PIL.Image.Image]: List of page images if using='vision'
             None: If content cannot be retrieved
         """
-        if using == 'text':
+        if using == "text":
             try:
-                layout = kwargs.pop('layout', True)
+                layout = kwargs.pop("layout", True)
                 return self.extract_text(layout=layout, **kwargs)
             except Exception as e:
                 logger.error(f"Error extracting text from PDF: {e}")
                 return None
-        elif using == 'vision':
+        elif using == "vision":
             page_images = []
             logger.info(f"Rendering {len(self.pages)} pages to images...")
-            
-            resolution = kwargs.pop('resolution', 72)
-            include_highlights = kwargs.pop('include_highlights', False)
-            labels = kwargs.pop('labels', False)
-            
+
+            resolution = kwargs.pop("resolution", 72)
+            include_highlights = kwargs.pop("include_highlights", False)
+            labels = kwargs.pop("labels", False)
+
             try:
                 for page in tqdm(self.pages, desc="Rendering Pages"):
                     img = page.to_image(
                         resolution=resolution,
                         include_highlights=include_highlights,
                         labels=labels,
-                        **kwargs
+                        **kwargs,
                     )
                     if img:
                         page_images.append(img)
@@ -1369,6 +1416,7 @@ class PDF(ExtractionMixin, ExportMixin):
         else:
             logger.error(f"Unsupported value for 'using': {using}")
             return None
+
     # --- End Extraction Support --- #
 
     def _gather_analysis_data(
@@ -1382,7 +1430,7 @@ class PDF(ExtractionMixin, ExportMixin):
     ) -> List[Dict[str, Any]]:
         """
         Gather analysis data from all pages in the PDF.
-        
+
         Args:
             analysis_keys: Keys in the analyses dictionary to export
             include_content: Whether to include extracted text
@@ -1390,16 +1438,16 @@ class PDF(ExtractionMixin, ExportMixin):
             image_dir: Directory to save images
             image_format: Format to save images
             image_resolution: Resolution for exported images
-            
+
         Returns:
             List of dictionaries containing analysis data
         """
         if not hasattr(self, "_pages") or not self._pages:
             logger.warning(f"No pages found in PDF {self.path}")
             return []
-            
+
         all_data = []
-        
+
         for page in tqdm(self._pages, desc="Gathering page data", leave=False):
             # Basic page information
             page_data = {
@@ -1407,7 +1455,7 @@ class PDF(ExtractionMixin, ExportMixin):
                 "page_number": page.number,
                 "page_index": page.index,
             }
-            
+
             # Include extracted text if requested
             if include_content:
                 try:
@@ -1415,38 +1463,36 @@ class PDF(ExtractionMixin, ExportMixin):
                 except Exception as e:
                     logger.error(f"Error extracting text from page {page.number}: {e}")
                     page_data["content"] = ""
-            
+
             # Save image if requested
             if include_images:
                 try:
                     # Create image filename
                     image_filename = f"pdf_{Path(self.path).stem}_page_{page.number}.{image_format}"
                     image_path = image_dir / image_filename
-                    
+
                     # Save image
                     page.save_image(
-                        str(image_path),
-                        resolution=image_resolution,
-                        include_highlights=True
+                        str(image_path), resolution=image_resolution, include_highlights=True
                     )
-                    
+
                     # Add relative path to data
                     page_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
                 except Exception as e:
                     logger.error(f"Error saving image for page {page.number}: {e}")
                     page_data["image_path"] = None
-            
+
             # Add analyses data
             for key in analysis_keys:
                 if not hasattr(page, "analyses") or not page.analyses:
                     raise ValueError(f"Page {page.number} does not have analyses data")
-                    
+
                 if key not in page.analyses:
                     raise KeyError(f"Analysis key '{key}' not found in page {page.number}")
-                
+
                 # Get the analysis result
                 analysis_result = page.analyses[key]
-                
+
                 # If the result has a to_dict method, use it
                 if hasattr(analysis_result, "to_dict"):
                     analysis_data = analysis_result.to_dict()
@@ -1457,16 +1503,18 @@ class PDF(ExtractionMixin, ExportMixin):
                     except (TypeError, ValueError):
                         # Last resort: convert to string
                         analysis_data = {"raw_result": str(analysis_result)}
-                
+
                 # Add analysis data to page data with the key as prefix
                 for k, v in analysis_data.items():
                     page_data[f"{key}.{k}"] = v
-            
+
             all_data.append(page_data)
-        
+
         return all_data
 
-    def _get_target_pages(self, pages: Optional[Union[Iterable[int], range, slice]] = None) -> List["Page"]:
+    def _get_target_pages(
+        self, pages: Optional[Union[Iterable[int], range, slice]] = None
+    ) -> List["Page"]:
         """
         Helper method to get a list of Page objects based on the input pages.
 

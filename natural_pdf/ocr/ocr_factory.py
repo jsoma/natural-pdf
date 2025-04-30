@@ -1,6 +1,6 @@
-import logging
 import importlib.util
-from typing import Dict, Any, Optional, Type, Union, List
+import logging
+from typing import Any, Dict, List, Optional, Type, Union
 
 from .engine import OCREngine
 
@@ -57,12 +57,13 @@ class OCRFactory:
         elif engine_type == "doctr":
             try:
                 from .engine_doctr import DoctrOCREngine
+
                 return DoctrOCREngine(**kwargs)
             except ImportError:
                 raise ImportError(
-                     "Doctr engine requires the 'python-doctr' package. "
-                     "Install with: pip install python-doctr[torch] or python-doctr[tf]"
-                 )
+                    "Doctr engine requires the 'python-doctr' package. "
+                    "Install with: pip install python-doctr[torch] or python-doctr[tf]"
+                )
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
 

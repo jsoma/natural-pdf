@@ -1,5 +1,6 @@
 import importlib  # Use importlib for checking
 import sys
+import os
 
 import pytest
 
@@ -53,9 +54,7 @@ def standard_pdf_collection():
         pytest.fail(f"Failed to create PDFCollection ({STANDARD_PDF_PATH}) for module tests: {e}")
 
 
-# --- Helper --- #
-
-
+# --- Helper ---
 def is_extra_installed(extra_name):
     """Checks if packages associated with an extra appear importable."""
     extra_packages = {
@@ -63,8 +62,8 @@ def is_extra_installed(extra_name):
         "easyocr": ["easyocr"],
         "paddle": ["paddleocr"],
         "surya": ["surya"],
-        "layout_yolo": ["doclayout_yolo"],  # Correct package name for this extra
-        "haystack": ["haystack"],
+        "layout_yolo": ["doclayout_yolo"],
+        "haystack": ["haystack", "lancedb_haystack"],
         "qa": ["transformers"],
     }
     if extra_name not in extra_packages:
@@ -246,35 +245,59 @@ def test_layout_yolo_fails_gracefully_when_not_installed(standard_pdf_page):
 def test_search_haystack_works_when_installed(standard_pdf_collection):
     """Test basic Haystack initialization via PDFCollection when installed."""
     pytest.importorskip("haystack")
-    pytest.importorskip("chromadb")
+    pytest.importorskip("lancedb")
+    pytest.importorskip("lancedb_haystack")
+
     try:
         # Initialize search on the collection
-        # This should setup the SearchService internally
         standard_pdf_collection.init_search(
+            collection_name="test_lance_collection",
+            persist=True,
+            uri="./test_lance_index",
             index=False
-        )  # index=False to avoid actual indexing time
-        # Basic check: did init_search run without error?
-        # Optionally check if _search_service is now initialized on the collection
+        )
         assert hasattr(standard_pdf_collection, "_search_service")
         assert standard_pdf_collection._search_service is not None
-        # TODO: Add actual indexing and searching tests later
+        # Check the service type and URI
+        from natural_pdf.search.haystack_search_service import HaystackSearchService
+        assert isinstance(standard_pdf_collection._search_service, HaystackSearchService)
+        assert standard_pdf_collection._search_service._persist is True
+        assert standard_pdf_collection._search_service._uri == "./test_lance_index"
+        assert standard_pdf_collection._search_service.table_name == "test_lance_collection"
+
+        # Cleanup the test directory
+        import shutil
+        if os.path.exists("./test_lance_index"):
+            shutil.rmtree("./test_lance_index")
+
     except ImportError as ie:
-        pytest.fail(f"Import failed even though haystack/chromadb seem installed: {ie}")
+        pytest.fail(f"Import failed even though haystack/lancedb seem installed: {ie}")
     except Exception as e:
-        pytest.fail(f"Haystack integration failed when installed: {e}")
+        pytest.fail(f"Haystack/LanceDB integration failed when installed: {e}")
+    finally:
+        # Ensure cleanup even on failure
+        import shutil
+        if os.path.exists("./test_lance_index"):
+            shutil.rmtree("./test_lance_index")
 
 
 def test_search_haystack_fails_gracefully_when_not_installed(standard_pdf_collection):
     """Test initializing Haystack features via PDFCollection when not installed."""
     if is_extra_installed("haystack"):
-        pytest.skip("Skipping test: Haystack IS installed.")
+        pytest.skip("Skipping test: Haystack/LanceDB extras ARE installed.")
 
-    # Expect an ImportError when trying to initialize search
+    # Expect an ImportError
     with pytest.raises(
         ImportError,
         match="Search Service could not be created. Ensure Haystack extras are installed",
     ):
-        standard_pdf_collection.init_search(index=False)
+        # Pass parameters consistent with the factory/service
+        standard_pdf_collection.init_search(
+            collection_name="test_missing_deps",
+            persist=True,
+            uri="./test_missing_index",
+            index=False
+        )
 
 
 # --- QA Tests --- #

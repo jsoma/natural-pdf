@@ -4,6 +4,7 @@ Natural PDF - A more intuitive interface for working with PDFs.
 
 import logging
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Create library logger
@@ -66,8 +67,6 @@ __all__ = [
 if HAS_QA:
     __all__.extend(["DocumentQA", "get_qa_engine"])
 
-
-from .collections.pdf_collection import PDFCollection
 
 from .collections.pdf_collection import PDFCollection
 

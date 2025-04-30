@@ -1,8 +1,48 @@
 include README.md
 include LICENSE
+
+# HTML templates
 recursive-include natural_pdf/templates *.html
+
+# Documentation assets
 recursive-include docs *.md *.png *.jpg *.gif
-global-exclude __pycache__
-global-exclude *.py[cod]
-global-exclude *.so
-global-exclude .DS_Store
+
+# Remove common build garbage
+global-exclude __pycache__ *.py[cod] *.so .DS_Store
+global-exclude *hidden*
+
+# 💣 Critical: prevent recursion bugs
+prune build
+prune dist
+prune .nox
+prune .venv
+prune env
+prune venv
+
+# General junk
+exclude .notebook_cache.json
+exclude Untitled.ipynb
+exclude conversation.md
+exclude transcript.md
+exclude sample.py
+exclude sample2.py
+exclude requirements.lock
+exclude install.sh
+
+# Directories to exclude
+prune .venv
+prune output
+prune results
+prune natural_pdf_index
+prune hidden
+prune pdfs/hidden
+prune my_paddleocr_finetune_data
+prune notebooks
+prune docs/tutorials/pdfs
+
+# Individual files in nested directories
+exclude docs/tutorials/needs-ocr-searchable.pdf
+exclude notebooks/Examples.md
+
+# File patterns
+global-exclude *.hocr

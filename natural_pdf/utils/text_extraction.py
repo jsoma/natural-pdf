@@ -2,7 +2,12 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox, cluster_objects
+from pdfplumber.utils.geometry import (
+    cluster_objects,
+    get_bbox_overlap,
+    merge_bboxes,
+    objects_to_bbox,
+)
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
 if TYPE_CHECKING:
@@ -19,23 +24,25 @@ def _get_layout_kwargs(
     Prepares the keyword arguments for pdfplumber's chars_to_textmap based
     on defaults, context bbox, and allowed user overrides.
     """
-    # 1. Start with an empty dict for layout kwargs 
+    # 1. Start with an empty dict for layout kwargs
     layout_kwargs = {}
-    
+
     # Build allowed keys set without trying to copy the constants
     allowed_keys = set(TEXTMAP_KWARGS) | set(WORD_EXTRACTOR_KWARGS)
 
     # Add common, well-known default values
-    layout_kwargs.update({
-        'x_tolerance': 5,
-        'y_tolerance': 5,
-        'x_density': 7.25,
-        'y_density': 13,
-        'mode': 'box',
-        'min_words_vertical': 1,
-        'min_words_horizontal': 1,
-    })
-    
+    layout_kwargs.update(
+        {
+            "x_tolerance": 5,
+            "y_tolerance": 5,
+            "x_density": 7.25,
+            "y_density": 13,
+            "mode": "box",
+            "min_words_vertical": 1,
+            "min_words_horizontal": 1,
+        }
+    )
+
     # 2. Apply context if provided
     if layout_context_bbox:
         ctx_x0, ctx_top, ctx_x1, ctx_bottom = layout_context_bbox
@@ -51,16 +58,17 @@ def _get_layout_kwargs(
         for key, value in user_kwargs.items():
             if key in allowed_keys:
                 layout_kwargs[key] = value
-            elif key == 'layout': # Always allow layout flag
+            elif key == "layout":  # Always allow layout flag
                 layout_kwargs[key] = value
             else:
                 logger.warning(f"Ignoring unsupported layout keyword argument: '{key}'")
 
     # 4. Ensure layout flag is present, defaulting to True
-    if 'layout' not in layout_kwargs:
-        layout_kwargs['layout'] = True
+    if "layout" not in layout_kwargs:
+        layout_kwargs["layout"] = True
 
     return layout_kwargs
+
 
 def filter_chars_spatially(
     char_dicts: List[Dict[str, Any]],

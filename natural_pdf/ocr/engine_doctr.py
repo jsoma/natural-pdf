@@ -64,13 +64,13 @@ class DoctrOCREngine(OCREngine):
         try:
             # Create the main OCR predictor (doesn't accept batch_size)
             self._model = doctr.models.ocr_predictor(**predictor_args)
-            
+
             # Apply CUDA if available
             if use_cuda:
                 self._model = self._model.cuda()
-                
+
             self.logger.info("doctr ocr_predictor created successfully")
-            
+
             # Now initialize the detection-only model
             try:
                 detection_args = {
@@ -82,28 +82,27 @@ class DoctrOCREngine(OCREngine):
                     "batch_size": doctr_opts.batch_size,
                 }
                 self._detection_model = doctr.models.detection_predictor(**detection_args)
-                
+
                 # Apply CUDA if available
                 if use_cuda:
                     self._detection_model = self._detection_model.cuda()
-                    
+
                 # Configure postprocessing parameters if provided
                 if doctr_opts.bin_thresh is not None:
                     self._detection_model.model.postprocessor.bin_thresh = doctr_opts.bin_thresh
                 if doctr_opts.box_thresh is not None:
                     self._detection_model.model.postprocessor.box_thresh = doctr_opts.box_thresh
-                    
+
                 self.logger.info("doctr detection_predictor created successfully")
             except Exception as e:
                 self.logger.error(f"Failed to create detection_predictor: {e}")
                 self._detection_model = None
-                
+
             # Initialize orientation predictor if enabled
             if doctr_opts.use_orientation_predictor:
                 try:
                     self._orientation_model = doctr.models.page_orientation_predictor(
-                        pretrained=True,
-                        batch_size=doctr_opts.batch_size
+                        pretrained=True, batch_size=doctr_opts.batch_size
                     )
                     if use_cuda:
                         self._orientation_model = self._orientation_model.cuda()
@@ -111,20 +110,22 @@ class DoctrOCREngine(OCREngine):
                 except Exception as e:
                     self.logger.error(f"Failed to create page_orientation_predictor: {e}")
                     self._orientation_model = None
-                
+
         except Exception as e:
             self.logger.error(f"Failed to create doctr models: {e}")
             raise
 
         # Doctr doesn't explicitly use language list in ocr_predictor initialization
         if languages and languages != [self.DEFAULT_LANGUAGES[0]]:
-             logger.warning(f"Doctr engine currently doesn't support language selection during initialization. Using its default language capabilities for model: {doctr_opts.reco_arch}")
+            logger.warning(
+                f"Doctr engine currently doesn't support language selection during initialization. Using its default language capabilities for model: {doctr_opts.reco_arch}"
+            )
 
     def _preprocess_image(self, image: Image.Image) -> np.ndarray:
         """Convert PIL Image to RGB numpy array for doctr."""
         # Ensure the image is in RGB mode
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+        if image.mode != "RGB":
+            image = image.convert("RGB")
         # Convert to numpy array
         return np.array(image)
 
@@ -134,13 +135,13 @@ class DoctrOCREngine(OCREngine):
         """Process a single image with doctr."""
         if self._model is None:
             raise RuntimeError("Doctr model not initialized")
-        
+
         # Capture image dimensions for denormalization
         height, width = image.shape[:2]
-        
+
         # Cast options to DoctrOCROptions or use default
         doctr_opts = options if isinstance(options, DoctrOCROptions) else DoctrOCROptions()
-        
+
         # Check if we need to detect orientation first
         if self._orientation_model is not None and options and options.use_orientation_predictor:
             try:
@@ -152,7 +153,7 @@ class DoctrOCREngine(OCREngine):
                 # Note: doctr handles rotation internally for detection/recognition
             except Exception as e:
                 logger.error(f"Error detecting orientation: {e}")
-        
+
         # Process differently based on detect_only flag
         if detect_only and self._detection_model is not None:
             try:
@@ -161,49 +162,65 @@ class DoctrOCREngine(OCREngine):
                     original_bin_thresh = self._detection_model.model.postprocessor.bin_thresh
                     self._detection_model.model.postprocessor.bin_thresh = doctr_opts.bin_thresh
                     logger.debug(f"Temporarily set bin_thresh to {doctr_opts.bin_thresh}")
-                
+
                 if doctr_opts.box_thresh is not None:
                     original_box_thresh = self._detection_model.model.postprocessor.box_thresh
                     self._detection_model.model.postprocessor.box_thresh = doctr_opts.box_thresh
                     logger.debug(f"Temporarily set box_thresh to {doctr_opts.box_thresh}")
-                
+
                 # Use the dedicated detection model with a list of numpy arrays
                 result = self._detection_model([image])
-                
+
                 # Restore original thresholds
                 if doctr_opts.bin_thresh is not None:
                     self._detection_model.model.postprocessor.bin_thresh = original_bin_thresh
-                
+
                 if doctr_opts.box_thresh is not None:
                     self._detection_model.model.postprocessor.box_thresh = original_box_thresh
-                    
+
                 # Return tuple of (result, dimensions)
                 return (result, (height, width))
             except Exception as e:
                 logger.error(f"Error in detection_predictor: {e}")
                 # Fall back to OCR predictor if detection fails
                 logger.warning("Falling back to OCR predictor for detection")
-        
+
         # Process with full OCR model, passing a list of numpy arrays directly
         try:
             # For full OCR, we should also apply the thresholds
-            if detect_only and doctr_opts.bin_thresh is not None and hasattr(self._model.det_predictor.model.postprocessor, 'bin_thresh'):
+            if (
+                detect_only
+                and doctr_opts.bin_thresh is not None
+                and hasattr(self._model.det_predictor.model.postprocessor, "bin_thresh")
+            ):
                 original_bin_thresh = self._model.det_predictor.model.postprocessor.bin_thresh
                 self._model.det_predictor.model.postprocessor.bin_thresh = doctr_opts.bin_thresh
-            
-            if detect_only and doctr_opts.box_thresh is not None and hasattr(self._model.det_predictor.model.postprocessor, 'box_thresh'):
+
+            if (
+                detect_only
+                and doctr_opts.box_thresh is not None
+                and hasattr(self._model.det_predictor.model.postprocessor, "box_thresh")
+            ):
                 original_box_thresh = self._model.det_predictor.model.postprocessor.box_thresh
                 self._model.det_predictor.model.postprocessor.box_thresh = doctr_opts.box_thresh
-            
+
             result = self._model([image])
-            
+
             # Restore original thresholds
-            if detect_only and doctr_opts.bin_thresh is not None and hasattr(self._model.det_predictor.model.postprocessor, 'bin_thresh'):
+            if (
+                detect_only
+                and doctr_opts.bin_thresh is not None
+                and hasattr(self._model.det_predictor.model.postprocessor, "bin_thresh")
+            ):
                 self._model.det_predictor.model.postprocessor.bin_thresh = original_bin_thresh
-            
-            if detect_only and doctr_opts.box_thresh is not None and hasattr(self._model.det_predictor.model.postprocessor, 'box_thresh'):
+
+            if (
+                detect_only
+                and doctr_opts.box_thresh is not None
+                and hasattr(self._model.det_predictor.model.postprocessor, "box_thresh")
+            ):
                 self._model.det_predictor.model.postprocessor.box_thresh = original_box_thresh
-            
+
             # Return tuple of (result, dimensions)
             return (result, (height, width))
         except Exception as e:
@@ -215,7 +232,7 @@ class DoctrOCREngine(OCREngine):
     ) -> List[TextRegion]:
         """Convert doctr results to standardized TextRegion objects."""
         standardized_regions = []
-        
+
         # Extract results and dimensions
         if isinstance(raw_results, tuple) and len(raw_results) == 2:
             results, dimensions = raw_results
@@ -228,14 +245,14 @@ class DoctrOCREngine(OCREngine):
             logger.warning("Image dimensions not provided, using normalized coordinates")
 
         # Handle detection-only results differently
-        if detect_only and self._detection_model is not None and not hasattr(results, 'pages'):
+        if detect_only and self._detection_model is not None and not hasattr(results, "pages"):
             # Import doctr utils for detach_scores if needed
             try:
                 from doctr.utils.geometry import detach_scores
             except ImportError:
                 logger.error("Failed to import doctr.utils.geometry.detach_scores")
                 return standardized_regions
-                
+
             # Extract coordinates and scores from detection results
             for result in results:
                 # Detection results structure is different from ocr_predictor
@@ -243,21 +260,27 @@ class DoctrOCREngine(OCREngine):
                     try:
                         # Detach the coordinates and scores
                         detached_coords, prob_scores = detach_scores([result.get("words")])
-                        
+
                         for i, coords in enumerate(detached_coords[0]):
-                            score = prob_scores[0][i] if prob_scores and len(prob_scores[0]) > i else 0.0
-                            
+                            score = (
+                                prob_scores[0][i]
+                                if prob_scores and len(prob_scores[0]) > i
+                                else 0.0
+                            )
+
                             if score >= min_confidence:
                                 try:
                                     # Handle both straight and rotated boxes
-                                    if coords.shape == (4,):  # Straight box as [xmin, ymin, xmax, ymax]
+                                    if coords.shape == (
+                                        4,
+                                    ):  # Straight box as [xmin, ymin, xmax, ymax]
                                         xmin, ymin, xmax, ymax = coords.tolist()
                                         # Denormalize coordinates
                                         bbox = (
-                                            float(xmin * image_width), 
-                                            float(ymin * image_height), 
-                                            float(xmax * image_width), 
-                                            float(ymax * image_height)
+                                            float(xmin * image_width),
+                                            float(ymin * image_height),
+                                            float(xmax * image_width),
+                                            float(ymax * image_height),
                                         )
                                     else:  # Polygon points
                                         # Get bounding box from polygon
@@ -265,23 +288,23 @@ class DoctrOCREngine(OCREngine):
                                         x_coords = [p[0] * image_width for p in coords_list]
                                         y_coords = [p[1] * image_height for p in coords_list]
                                         bbox = (
-                                            float(min(x_coords)), 
-                                            float(min(y_coords)), 
-                                            float(max(x_coords)), 
-                                            float(max(y_coords))
+                                            float(min(x_coords)),
+                                            float(min(y_coords)),
+                                            float(max(x_coords)),
+                                            float(max(y_coords)),
                                         )
-                                    
+
                                     # In detection mode, we don't have text or confidence score
                                     standardized_regions.append(TextRegion(bbox, None, score))
                                 except Exception as e:
                                     logger.error(f"Error processing detection result: {e}")
                     except Exception as e:
                         logger.error(f"Error detaching scores: {e}")
-            
+
             return standardized_regions
 
         # Process standard OCR results
-        if not hasattr(results, 'pages') or not results.pages:
+        if not hasattr(results, "pages") or not results.pages:
             logger.warning("Doctr result object does not contain pages.")
             return standardized_regions
 
@@ -296,26 +319,28 @@ class DoctrOCREngine(OCREngine):
                                 # doctr geometry is ((x_min, y_min), (x_max, y_max)) as relative coordinates
                                 x_min, y_min = word.geometry[0]
                                 x_max, y_max = word.geometry[1]
-                                
+
                                 # Denormalize coordinates to absolute pixel values
                                 bbox = (
-                                    float(x_min * image_width), 
-                                    float(y_min * image_height), 
-                                    float(x_max * image_width), 
-                                    float(y_max * image_height)
+                                    float(x_min * image_width),
+                                    float(y_min * image_height),
+                                    float(x_max * image_width),
+                                    float(y_max * image_height),
                                 )
-                                
+
                                 # Skip text content if detect_only is True
                                 text = None if detect_only else word.value
                                 confidence = None if detect_only else word.confidence
-                                
+
                                 standardized_regions.append(TextRegion(bbox, text, confidence))
                             except (ValueError, TypeError, IndexError) as e:
-                                logger.error(f"Could not standardize bounding box/word from doctr result: {word}")
+                                logger.error(
+                                    f"Could not standardize bounding box/word from doctr result: {word}"
+                                )
                                 logger.error(f"Error: {e}")
 
         return standardized_regions
 
     def get_default_options(self) -> DoctrOCROptions:
         """Return the default options specific to this engine."""
-        return DoctrOCROptions() 
+        return DoctrOCROptions()

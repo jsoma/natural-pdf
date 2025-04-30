@@ -11,15 +11,15 @@ logger = logging.getLogger("natural_pdf.ocr")
 
 # Import the base classes that are always available
 from .engine import OCREngine
+from .ocr_factory import OCRFactory
+from .ocr_manager import OCRManager
 from .ocr_options import (
-    OCROptions,
     BaseOCROptions,
     EasyOCROptions,
+    OCROptions,
     PaddleOCROptions,
     SuryaOCROptions,
 )
-from .ocr_manager import OCRManager
-from .ocr_factory import OCRFactory
 
 # Add all public symbols that should be available when importing this module
 __all__ = [
@@ -34,7 +34,6 @@ __all__ = [
     "get_engine",
     "list_available_engines",
 ]
-
 
 
 def get_engine(engine_name=None, **kwargs):

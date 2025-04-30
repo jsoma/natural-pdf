@@ -274,7 +274,7 @@ class TextElement(Element):
 
         return False
 
-    def __repr__(self) -> str:            
+    def __repr__(self) -> str:
         """String representation of the text element."""
         if self.text:
             preview = self.text[:10] + "..." if len(self.text) > 10 else self.text

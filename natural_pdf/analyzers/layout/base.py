@@ -98,7 +98,7 @@ class LayoutDetector(ABC):
                 self.logger.error(f"Failed to load model for key {cache_key}: {e}", exc_info=True)
                 # Remove potentially corrupted cache entry
                 self._model_cache.pop(cache_key, None)
-                raise  # Re-raise exception after logging
+                raise
         else:
             self.logger.debug(f"Using cached model for key: {cache_key}")
         return self._model_cache[cache_key]
@@ -135,7 +135,6 @@ class LayoutDetector(ABC):
             return
 
         if classes:
-            # Normalize both requested and supported classes for comparison
             normalized_supported = {self._normalize_class_name(c) for c in self.supported_classes}
             normalized_requested = {self._normalize_class_name(c) for c in classes}
             unsupported_normalized = normalized_requested - normalized_supported
@@ -153,7 +152,4 @@ class LayoutDetector(ABC):
     def __del__(self):
         """Cleanup resources."""
         self.logger.info(f"Cleaning up {self.__class__.__name__} resources.")
-        # Clear model cache to free up memory/GPU resources if models are large
-        # Consider implications if models are shared or expensive to reload
-        # del self._model_cache # Optional: uncomment if models should be released aggressively
         self._model_cache.clear()

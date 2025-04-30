@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overl
 
 from PIL import Image
 
+# Import selector parsing functions
+from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.collections import ElementCollection
@@ -516,7 +519,7 @@ class Element(DirectionalMixin):
             selector: Optional selector to filter by
             limit: Maximum number of elements to search through (default: 10)
             apply_exclusions: Whether to apply exclusion regions (default: True)
-            **kwargs: Additional parameters
+            **kwargs: Additional parameters for selector filtering (e.g., regex, case)
 
         Returns:
             Next element or None if not found
@@ -539,13 +542,19 @@ class Element(DirectionalMixin):
             # Limit search range for performance
             candidates = candidates[:limit] if limit else candidates
 
-            # Find matching elements
-            from natural_pdf.elements.collections import ElementCollection
+            # Parse the selector and create a filter function
+            parsed_selector = parse_selector(selector)
+            # Pass relevant kwargs (like regex, case) to the filter function builder
+            filter_func = selector_to_filter_func(parsed_selector, **kwargs)
 
-            matches = ElementCollection(candidates).find_all(selector, **kwargs)
-            return matches[0] if matches else None
+            # Iterate and return the first match
+            for candidate in candidates:
+                if filter_func(candidate):
+                    return candidate
+            return None # No match found
+
+        # No selector, just return the next element if it exists
         elif idx + 1 < len(all_elements):
-            # No selector, just return the next element
             return all_elements[idx + 1]
 
         return None
@@ -564,7 +573,7 @@ class Element(DirectionalMixin):
             selector: Optional selector to filter by
             limit: Maximum number of elements to search through (default: 10)
             apply_exclusions: Whether to apply exclusion regions (default: True)
-            **kwargs: Additional parameters
+            **kwargs: Additional parameters for selector filtering (e.g., regex, case)
 
         Returns:
             Previous element or None if not found
@@ -589,13 +598,19 @@ class Element(DirectionalMixin):
             # Limit search range for performance
             candidates = candidates[:limit] if limit else candidates
 
-            # Find matching elements using ElementCollection
-            from natural_pdf.elements.collections import ElementCollection
+            # Parse the selector and create a filter function
+            parsed_selector = parse_selector(selector)
+            # Pass relevant kwargs (like regex, case) to the filter function builder
+            filter_func = selector_to_filter_func(parsed_selector, **kwargs)
 
-            matches = ElementCollection(candidates).find_all(selector, **kwargs)
-            return matches[0] if matches else None  # find_all returns a collection
+            # Iterate and return the first match (from reversed list)
+            for candidate in candidates:
+                if filter_func(candidate):
+                    return candidate
+            return None # No match found
+
+        # No selector, just return the previous element if it exists
         elif idx > 0:
-            # No selector, just return the previous element
             return all_elements[idx - 1]
 
         return None
@@ -879,10 +894,26 @@ class Element(DirectionalMixin):
         return f"<{self.__class__.__name__} bbox={self.bbox}>"
 
     @overload
-    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
+    def find(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional["Element"]: ...
 
     @overload
-    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional["Element"]: ...
+    def find(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional["Element"]: ...
 
     def find(
         self,
@@ -892,7 +923,7 @@ class Element(DirectionalMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Optional["Element"]:
         """
         Find first element within this element's bounds matching the selector OR text.
@@ -911,6 +942,7 @@ class Element(DirectionalMixin):
         Returns:
             First matching element or None.
         """
+        from natural_pdf.elements.region import Region
         # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         # Delegate to the region's find method
@@ -920,14 +952,30 @@ class Element(DirectionalMixin):
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs
+            **kwargs,
         )
 
     @overload
-    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     @overload
-    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     def find_all(
         self,
@@ -937,7 +985,7 @@ class Element(DirectionalMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> "ElementCollection":
         """
         Find all elements within this element's bounds matching the selector OR text.
@@ -956,6 +1004,7 @@ class Element(DirectionalMixin):
         Returns:
             ElementCollection with matching elements.
         """
+        from natural_pdf.elements.region import Region
         # Create a temporary region from this element's bounds
         temp_region = Region(self.page, self.bbox)
         # Delegate to the region's find_all method
@@ -965,5 +1014,5 @@ class Element(DirectionalMixin):
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs
+            **kwargs,
         )

@@ -1,20 +1,26 @@
 # ocr_manager.py
 import copy  # For deep copying options
 import logging
+import threading  # Import threading for lock
+import time  # Import time for timing
 from typing import Any, Dict, List, Optional, Type, Union
-import threading # Import threading for lock
-import time # Import time for timing
 
 from PIL import Image
 
 # Import engine classes and options
 from .engine import OCREngine
+from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
 from .engine_surya import SuryaOCREngine
-from .engine_doctr import DoctrOCREngine
-from .ocr_options import OCROptions
-from .ocr_options import BaseOCROptions, EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions
+from .ocr_options import (
+    BaseOCROptions,
+    DoctrOCROptions,
+    EasyOCROptions,
+    OCROptions,
+    PaddleOCROptions,
+    SuryaOCROptions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +40,12 @@ class OCRManager:
     def __init__(self):
         """Initializes the OCR Manager."""
         self._engine_instances: Dict[str, OCREngine] = {}  # Cache for engine instances
-        self._engine_locks: Dict[str, threading.Lock] = {} # Lock per engine type for initialization
-        self._engine_inference_locks: Dict[str, threading.Lock] = {} # Lock per engine type for inference
+        self._engine_locks: Dict[str, threading.Lock] = (
+            {}
+        )  # Lock per engine type for initialization
+        self._engine_inference_locks: Dict[str, threading.Lock] = (
+            {}
+        )  # Lock per engine type for inference
         logger.info("OCRManager initialized.")
 
     def _get_engine_instance(self, engine_name: str) -> OCREngine:
@@ -53,7 +63,7 @@ class OCRManager:
         # Get or create the lock for this engine type
         if engine_name not in self._engine_locks:
             self._engine_locks[engine_name] = threading.Lock()
-        
+
         engine_init_lock = self._engine_locks[engine_name]
 
         # Acquire lock to safely check and potentially initialize the engine
@@ -63,9 +73,11 @@ class OCRManager:
                 return self._engine_instances[engine_name]
 
             # If still not initialized, create it now under the lock
-            logger.info(f"[{threading.current_thread().name}] Creating shared instance of engine: {engine_name}")
+            logger.info(
+                f"[{threading.current_thread().name}] Creating shared instance of engine: {engine_name}"
+            )
             engine_class = self.ENGINE_REGISTRY[engine_name]["class"]
-            start_time = time.monotonic() # Optional: time initialization
+            start_time = time.monotonic()  # Optional: time initialization
             try:
                 engine_instance = engine_class()  # Instantiate first
                 if not engine_instance.is_available():
@@ -77,14 +89,20 @@ class OCRManager:
                 # Store the shared instance
                 self._engine_instances[engine_name] = engine_instance
                 end_time = time.monotonic()
-                logger.info(f"[{threading.current_thread().name}] Shared instance of {engine_name} created successfully (Duration: {end_time - start_time:.2f}s).")
+                logger.info(
+                    f"[{threading.current_thread().name}] Shared instance of {engine_name} created successfully (Duration: {end_time - start_time:.2f}s)."
+                )
                 return engine_instance
             except Exception as e:
-                 # Ensure we don't leave a partial state if init fails
-                 logger.error(f"[{threading.current_thread().name}] Failed to create shared instance of {engine_name}: {e}", exc_info=True)
-                 # Remove potentially partial entry if exists
-                 if engine_name in self._engine_instances: del self._engine_instances[engine_name]
-                 raise # Re-raise the exception after logging
+                # Ensure we don't leave a partial state if init fails
+                logger.error(
+                    f"[{threading.current_thread().name}] Failed to create shared instance of {engine_name}: {e}",
+                    exc_info=True,
+                )
+                # Remove potentially partial entry if exists
+                if engine_name in self._engine_instances:
+                    del self._engine_instances[engine_name]
+                raise  # Re-raise the exception after logging
 
     def _get_engine_inference_lock(self, engine_name: str) -> threading.Lock:
         """Gets or creates the inference lock for a given engine type."""
@@ -171,27 +189,41 @@ class OCRManager:
             processing_mode = "batch" if is_batch else "single image"
             # Log thread name for clarity during parallel calls
             thread_id = threading.current_thread().name
-            logger.info(f"[{thread_id}] Processing {processing_mode} using shared engine instance '{selected_engine_name}'...")
+            logger.info(
+                f"[{thread_id}] Processing {processing_mode} using shared engine instance '{selected_engine_name}'..."
+            )
             logger.debug(
                 f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}"
             )
 
             # Log image dimensions before processing
             if is_batch:
-                image_dims = [f"{img.width}x{img.height}" for img in images if hasattr(img, 'width') and hasattr(img, 'height')]
-                logger.debug(f"[{thread_id}] Processing batch of {len(images)} images with dimensions: {image_dims}")
-            elif hasattr(images, 'width') and hasattr(images, 'height'):
-                logger.debug(f"[{thread_id}] Processing single image with dimensions: {images.width}x{images.height}")
+                image_dims = [
+                    f"{img.width}x{img.height}"
+                    for img in images
+                    if hasattr(img, "width") and hasattr(img, "height")
+                ]
+                logger.debug(
+                    f"[{thread_id}] Processing batch of {len(images)} images with dimensions: {image_dims}"
+                )
+            elif hasattr(images, "width") and hasattr(images, "height"):
+                logger.debug(
+                    f"[{thread_id}] Processing single image with dimensions: {images.width}x{images.height}"
+                )
             else:
                 logger.warning(f"[{thread_id}] Could not determine dimensions of input image(s).")
 
             # Acquire lock specifically for the inference call
             inference_lock = self._get_engine_inference_lock(selected_engine_name)
-            logger.debug(f"[{thread_id}] Attempting to acquire inference lock for {selected_engine_name}...")
+            logger.debug(
+                f"[{thread_id}] Attempting to acquire inference lock for {selected_engine_name}..."
+            )
             inference_wait_start = time.monotonic()
             with inference_lock:
                 inference_acquired_time = time.monotonic()
-                logger.debug(f"[{thread_id}] Acquired inference lock for {selected_engine_name} (waited {inference_acquired_time - inference_wait_start:.2f}s). Calling process_image...")
+                logger.debug(
+                    f"[{thread_id}] Acquired inference lock for {selected_engine_name} (waited {inference_acquired_time - inference_wait_start:.2f}s). Calling process_image..."
+                )
                 inference_start_time = time.monotonic()
 
                 results = engine_instance.process_image(
@@ -203,7 +235,9 @@ class OCRManager:
                     options=final_options,
                 )
                 inference_end_time = time.monotonic()
-                logger.debug(f"[{thread_id}] process_image call finished for {selected_engine_name} (Duration: {inference_end_time - inference_start_time:.2f}s). Releasing lock.")
+                logger.debug(
+                    f"[{thread_id}] process_image call finished for {selected_engine_name} (Duration: {inference_end_time - inference_start_time:.2f}s). Releasing lock."
+                )
 
             # Log result summary based on mode
             if is_batch:

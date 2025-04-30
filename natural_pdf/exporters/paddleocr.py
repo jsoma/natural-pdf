@@ -1,8 +1,9 @@
-import os
 import logging
+import os
 import random
 import shutil
-from typing import Union, List, Optional, TYPE_CHECKING, Set, Tuple
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+
 from tqdm import tqdm
 
 from natural_pdf.exporters.base import FinetuneExporter
@@ -11,8 +12,8 @@ from natural_pdf.exporters.base import FinetuneExporter
 from natural_pdf.utils.identifiers import generate_short_path_hash
 
 if TYPE_CHECKING:
-    from natural_pdf.core.pdf import PDF
     from natural_pdf.collections.pdf_collection import PDFCollection
+    from natural_pdf.core.pdf import PDF
     from natural_pdf.elements.text import TextElement
 
 logger = logging.getLogger(__name__)

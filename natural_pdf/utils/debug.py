@@ -3,13 +3,13 @@ OCR debug utilities for natural-pdf.
 """
 
 import base64
+import importlib.resources
+import importlib.util
 import io
 import json
 import os
-import importlib.util
-import importlib.resources
 import webbrowser
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
 

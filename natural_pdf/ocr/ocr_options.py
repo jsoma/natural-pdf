@@ -69,8 +69,8 @@ class PaddleOCROptions(BaseOCROptions):
 
     # General
     use_gpu: Optional[bool] = None
-    gpu_mem: int = 8000 # Default from Paddle documentation
-    gpu_mem: int = 8000 # Default from Paddle documentation
+    gpu_mem: int = 8000  # Default from Paddle documentation
+    gpu_mem: int = 8000  # Default from Paddle documentation
     ir_optim: bool = True
     use_tensorrt: bool = False
     min_subgraph_size: int = 15
@@ -93,7 +93,7 @@ class PaddleOCROptions(BaseOCROptions):
     det: bool = True
     det_algorithm: str = "DB"
     det_model_dir: Optional[str] = None
-    det_limit_side_len: int = 960 # Corresponds to det_max_side_len
+    det_limit_side_len: int = 960  # Corresponds to det_max_side_len
     # DB specific
     det_db_thresh: float = 0.3
     det_db_box_thresh: float = 0.5
@@ -106,7 +106,7 @@ class PaddleOCROptions(BaseOCROptions):
     # Recognition
     rec: bool = True
     rec_algorithm: str = "CRNN"
-    det_limit_side_len: int = 960 # Corresponds to det_max_side_len
+    det_limit_side_len: int = 960  # Corresponds to det_max_side_len
     # DB specific
     det_db_thresh: float = 0.3
     det_db_box_thresh: float = 0.5
@@ -120,30 +120,30 @@ class PaddleOCROptions(BaseOCROptions):
     rec: bool = True
     rec_algorithm: str = "CRNN"
     rec_model_dir: Optional[str] = None
-    rec_image_shape: str = "3, 32, 320" # Kept as string per Paddle examples
-    rec_batch_num: int = 30 # Default from Paddle documentation
-    rec_image_shape: str = "3, 32, 320" # Kept as string per Paddle examples
-    rec_batch_num: int = 30 # Default from Paddle documentation
+    rec_image_shape: str = "3, 32, 320"  # Kept as string per Paddle examples
+    rec_batch_num: int = 30  # Default from Paddle documentation
+    rec_image_shape: str = "3, 32, 320"  # Kept as string per Paddle examples
+    rec_batch_num: int = 30  # Default from Paddle documentation
     max_text_length: int = 25
-    rec_char_dict_path: Optional[str] = None # Path to char dictionary file
-    rec_char_dict_path: Optional[str] = None # Path to char dictionary file
+    rec_char_dict_path: Optional[str] = None  # Path to char dictionary file
+    rec_char_dict_path: Optional[str] = None  # Path to char dictionary file
     use_space_char: bool = True
     drop_score: float = 0.5
 
     # Classification
-    cls: Optional[bool] = None # Often inferred from use_angle_cls
-    use_angle_cls: bool = False # Default from Paddle documentation
+    cls: Optional[bool] = None  # Often inferred from use_angle_cls
+    use_angle_cls: bool = False  # Default from Paddle documentation
     cls_model_dir: Optional[str] = None
-    cls_image_shape: str = "3, 48, 192" # Kept as string per Paddle examples
-    label_list: List[str] = field(default_factory=lambda: ['0', '180']) # Default from Paddle doc
+    cls_image_shape: str = "3, 48, 192"  # Kept as string per Paddle examples
+    label_list: List[str] = field(default_factory=lambda: ["0", "180"])  # Default from Paddle doc
     cls_batch_num: int = 30
 
     # Classification
-    cls: Optional[bool] = None # Often inferred from use_angle_cls
-    use_angle_cls: bool = False # Default from Paddle documentation
+    cls: Optional[bool] = None  # Often inferred from use_angle_cls
+    use_angle_cls: bool = False  # Default from Paddle documentation
     cls_model_dir: Optional[str] = None
-    cls_image_shape: str = "3, 48, 192" # Kept as string per Paddle examples
-    label_list: List[str] = field(default_factory=lambda: ['0', '180']) # Default from Paddle doc
+    cls_image_shape: str = "3, 48, 192"  # Kept as string per Paddle examples
+    label_list: List[str] = field(default_factory=lambda: ["0", "180"])  # Default from Paddle doc
     cls_batch_num: int = 30
 
     def __post_init__(self):
@@ -155,7 +155,6 @@ class PaddleOCROptions(BaseOCROptions):
     #         else:
     #             self.use_gpu = False
     #     # logger.debug(f"Initialized PaddleOCROptions: {self}")
-
 
 
 # --- Surya Specific Options ---
@@ -171,19 +170,20 @@ class SuryaOCROptions(BaseOCROptions):
 @dataclass
 class DoctrOCROptions(BaseOCROptions):
     """Specific options for the doctr engine."""
+
     # OCR predictor options
-    det_arch: str = 'db_resnet50'
-    reco_arch: str = 'crnn_vgg16_bn'
+    det_arch: str = "db_resnet50"
+    reco_arch: str = "crnn_vgg16_bn"
     pretrained: bool = True
     assume_straight_pages: bool = True  # Faster if pages are straight
     export_as_straight_boxes: bool = False  # Output straight boxes even if rotated text is detected
-    
+
     # Additional options from standalone predictors
     # Detection predictor options
     symmetric_pad: bool = True
     preserve_aspect_ratio: bool = True
     batch_size: int = 1
-    
+
     # Postprocessing parameters
     bin_thresh: Optional[float] = None  # Default is usually 0.3
     box_thresh: Optional[float] = None  # Default is usually 0.1
@@ -193,4 +193,6 @@ class DoctrOCROptions(BaseOCROptions):
 
 
 # --- Union type for type hinting ---
-OCROptions = Union[EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions, BaseOCROptions]
+OCROptions = Union[
+    EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions, BaseOCROptions
+]

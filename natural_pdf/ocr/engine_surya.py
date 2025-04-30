@@ -10,7 +10,6 @@ from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, SuryaOCROptions
 
 
-
 class SuryaOCREngine(OCREngine):
     """Surya OCR engine implementation."""
 

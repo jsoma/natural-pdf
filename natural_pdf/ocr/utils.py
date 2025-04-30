@@ -1,9 +1,11 @@
-import io
 import base64
+import io
 import logging
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, Any
-from natural_pdf.elements.text import TextElement
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+
 from tqdm.auto import tqdm
+
+from natural_pdf.elements.text import TextElement
 
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
@@ -93,7 +95,7 @@ def direct_ocr_llm(
     # Handle cases where image creation might fail (e.g., zero-dim region)
     if region_img is None:
         logger.warning(f"Could not generate image for region {region.bbox}, skipping OCR.")
-        return "" # Return empty string if image creation failed
+        return ""  # Return empty string if image creation failed
 
     region_img.save(buffered, format="PNG")
     base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")

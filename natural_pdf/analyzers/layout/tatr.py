@@ -152,11 +152,11 @@ class TableTransformerDetector(LayoutDetector):
 
     def preprocess_image(self, image: Image.Image, enhance_contrast: float = 1.5) -> Image.Image:
         """Enhance the image to improve table structure detection.
-        
+
         Args:
             image: The input PIL image
             enhance_contrast: Contrast enhancement factor (1.0 = no change)
-            
+
         Returns:
             Enhanced PIL image
         """
@@ -217,7 +217,11 @@ class TableTransformerDetector(LayoutDetector):
         )
 
         # Use image preprocessing for better structure detection
-        enhance_contrast = options.enhance_contrast if hasattr(options, 'enhance_contrast') else options.extra_args.get("enhance_contrast", 1.5)
+        enhance_contrast = (
+            options.enhance_contrast
+            if hasattr(options, "enhance_contrast")
+            else options.extra_args.get("enhance_contrast", 1.5)
+        )
         processed_image = self.preprocess_image(image, enhance_contrast)
 
         # --- Detect Tables ---
@@ -299,27 +303,32 @@ class TableTransformerDetector(LayoutDetector):
                 cropped_table = image.crop((x_min, y_min, x_max, y_max))
                 if cropped_table.width == 0 or cropped_table.height == 0:
                     continue  # Skip empty crop
-                
+
                 processed_crop = self.preprocess_image(cropped_table, enhance_contrast)
                 pixel_values_struct = structure_transform(processed_crop).unsqueeze(0).to(device)
-                
+
                 with torch.no_grad():
                     outputs_struct = structure_model(pixel_values_struct)
 
                 structure_elements = self.outputs_to_objects(
                     outputs_struct, cropped_table.size, id2label_struct
                 )
-                
+
                 # Reduce confidence threshold specifically for columns to catch more
                 column_threshold = None
-                if hasattr(options, 'column_threshold') and options.column_threshold is not None:
+                if hasattr(options, "column_threshold") and options.column_threshold is not None:
                     column_threshold = options.column_threshold
                 else:
-                    column_threshold = options.extra_args.get("column_threshold", options.confidence * 0.8)
-                
+                    column_threshold = options.extra_args.get(
+                        "column_threshold", options.confidence * 0.8
+                    )
+
                 structure_elements = [
-                    e for e in structure_elements if (
-                        e["score"] >= column_threshold if "column" in e["label"] 
+                    e
+                    for e in structure_elements
+                    if (
+                        e["score"] >= column_threshold
+                        if "column" in e["label"]
                         else e["score"] >= options.confidence
                     )
                 ]

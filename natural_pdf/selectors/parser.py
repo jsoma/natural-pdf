@@ -3,11 +3,11 @@ CSS-like selector parser for natural-pdf.
 """
 
 import ast
+import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from colour import Color
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +89,12 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     """
     result = {
         "type": "any",
-        "attributes": {},
+        "attributes": [],
         "pseudo_classes": [],
-        "filters": [], # Keep this for potential future use
+        "filters": [],  # Keep this for potential future use
     }
 
-    original_selector_for_error = selector # Keep for error messages
+    original_selector_for_error = selector  # Keep for error messages
     if not selector or not isinstance(selector, str):
         return result
 
@@ -104,23 +104,22 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     if selector == "*":
         # Wildcard matches any type, already the default.
         # Clear selector so the loop doesn't run and error out.
-        selector = "" 
+        selector = ""
     # --- END NEW ---
 
     # 1. Extract type (optional, at the beginning)
     # Only run if selector wasn't '*'
-    if selector: 
+    if selector:
         type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
         if type_match:
             result["type"] = type_match.group(1).lower()
-            selector = selector[len(type_match.group(0)):].strip()
+            selector = selector[len(type_match.group(0)) :].strip()
     # Only run if selector wasn't '*'
-    if selector: 
+    if selector:
         type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
         if type_match:
             result["type"] = type_match.group(1).lower()
-            selector = selector[len(type_match.group(0)):].strip()
-
+            selector = selector[len(type_match.group(0)) :].strip()
 
     # Regexes for parts at the START of the remaining string
     # Attribute: Starts with [, ends with ], content is non-greedy non-] chars
@@ -140,58 +139,74 @@ def parse_selector(selector: str) -> Dict[str, Any]:
             block_content = attr_match.group(1).strip()
             # Parse the content inside the block
             # Pattern: name, optional op, optional value
-            detail_match = re.match(r"^([a-zA-Z_\-]+)\s*(?:(>=|<=|>|<|!=|[\*\~\^\$]?=)\s*(.*?))?$", block_content)
+            detail_match = re.match(
+                r"^([a-zA-Z0-9_\-]+)\s*(?:(>=|<=|>|<|!=|[\*\~\^\$]?=)\s*(.*?))?$", block_content
+            )
             if not detail_match:
-                raise ValueError(f"Invalid attribute syntax inside block: '[{block_content}]'. Full selector: '{original_selector_for_error}'")
+                raise ValueError(
+                    f"Invalid attribute syntax inside block: '[{block_content}]'. Full selector: '{original_selector_for_error}'"
+                )
 
             name, op, value_str = detail_match.groups()
 
             if op is None:
-                 # Presence selector [attr]
-                 result["attributes"][name] = {"op": "exists", "value": None}
+                # Presence selector [attr]
+                result["attributes"].append({"name": name, "op": "exists", "value": None})
             else:
-                 # Operator exists, value must also exist (even if empty via quotes)
-                 if value_str is None: # Catches invalid [attr=]
-                     raise ValueError(
-                         f"Invalid selector: Attribute '[{name}{op}]' must have a value. Use '[{name}{op}\"\"]' for empty string or '[{name}]' for presence. Full selector: '{original_selector_for_error}'"
-                     )
-                 # Parse value
-                 parsed_value: Any
-                 if name in ["color", "non_stroking_color", "fill", "stroke", "strokeColor", "fillColor"]:
-                     parsed_value = safe_parse_color(value_str)
-                 else:
-                     parsed_value = safe_parse_value(value_str) # Handles quotes
-                 result["attributes"][name] = {"op": op, "value": parsed_value}
+                # Operator exists, value must also exist (even if empty via quotes)
+                if value_str is None:  # Catches invalid [attr=]
+                    raise ValueError(
+                        f"Invalid selector: Attribute '[{name}{op}]' must have a value. Use '[{name}{op}\"\"]' for empty string or '[{name}]' for presence. Full selector: '{original_selector_for_error}'"
+                    )
+                # Parse value
+                parsed_value: Any
+                if name in [
+                    "color",
+                    "non_stroking_color",
+                    "fill",
+                    "stroke",
+                    "strokeColor",
+                    "fillColor",
+                ]:
+                    parsed_value = safe_parse_color(value_str)
+                else:
+                    parsed_value = safe_parse_value(value_str)  # Handles quotes
+                result["attributes"].append({"name": name, "op": op, "value": parsed_value})
 
-            selector = selector[attr_match.end():].strip()
+            selector = selector[attr_match.end() :].strip()
             processed_chunk = True
             continue
 
         # Check for :not(...) block
         if selector.lower().startswith(not_pseudo_prefix):
-            start_index = len(not_pseudo_prefix) - 1 # Index of '('
+            start_index = len(not_pseudo_prefix) - 1  # Index of '('
             nesting = 1
             end_index = -1
             for i in range(start_index + 1, len(selector)):
-                if selector[i] == '(': nesting += 1
-                elif selector[i] == ')':
+                if selector[i] == "(":
+                    nesting += 1
+                elif selector[i] == ")":
                     nesting -= 1
                     if nesting == 0:
                         end_index = i
                         break
 
             if end_index == -1:
-                raise ValueError(f"Mismatched parenthesis in :not() selector near '{selector}'. Full selector: '{original_selector_for_error}'")
+                raise ValueError(
+                    f"Mismatched parenthesis in :not() selector near '{selector}'. Full selector: '{original_selector_for_error}'"
+                )
 
             inner_selector_str = selector[start_index + 1 : end_index].strip()
             if not inner_selector_str:
-                 raise ValueError(f"Empty selector inside :not(). Full selector: '{original_selector_for_error}'")
+                raise ValueError(
+                    f"Empty selector inside :not(). Full selector: '{original_selector_for_error}'"
+                )
 
             # Recursively parse the inner selector
             parsed_inner_selector = parse_selector(inner_selector_str)
-            result["pseudo_classes"].append({'name': 'not', 'args': parsed_inner_selector})
+            result["pseudo_classes"].append({"name": "not", "args": parsed_inner_selector})
 
-            selector = selector[end_index + 1:].strip()
+            selector = selector[end_index + 1 :].strip()
             processed_chunk = True
             continue
 
@@ -199,25 +214,27 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         pseudo_match = pseudo_pattern.match(selector)
         if pseudo_match:
             name, args_str = pseudo_match.groups()
-            name = name.lower() # Normalize pseudo-class name
-            processed_args = args_str # Keep as string initially, or None
+            name = name.lower()  # Normalize pseudo-class name
+            processed_args = args_str  # Keep as string initially, or None
 
             if args_str is not None:
                 # Only parse args if they exist and based on the pseudo-class type
-                 if name in ["color", "background"]:
+                if name in ["color", "background"]:
                     processed_args = safe_parse_color(args_str)
-                 else:
+                else:
                     processed_args = safe_parse_value(args_str)
             # else: args remain None
 
             result["pseudo_classes"].append({"name": name, "args": processed_args})
-            selector = selector[pseudo_match.end():].strip()
+            selector = selector[pseudo_match.end() :].strip()
             processed_chunk = True
             continue
 
         # If we reach here and the selector string is not empty, something is wrong
         if not processed_chunk and selector:
-            raise ValueError(f"Invalid or unexpected syntax near '{selector[:30]}...'. Full selector: '{original_selector_for_error}'")
+            raise ValueError(
+                f"Invalid or unexpected syntax near '{selector[:30]}...'. Full selector: '{original_selector_for_error}'"
+            )
 
     return result
 
@@ -270,12 +287,8 @@ def _is_approximate_match(value1, value2, tolerance: float = 0.1) -> bool:
 PSEUDO_CLASS_FUNCTIONS = {
     "bold": lambda el: hasattr(el, "bold") and el.bold,
     "italic": lambda el: hasattr(el, "italic") and el.italic,
-    "first-child": lambda el: hasattr(el, "parent")
-    and el.parent
-    and el.parent.children[0] == el, 
-    "last-child": lambda el: hasattr(el, "parent")
-    and el.parent
-    and el.parent.children[-1] == el,
+    "first-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[0] == el,
+    "last-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[-1] == el,
     "empty": lambda el: not el.text,
     "not-empty": lambda el: el.text,
     "not-bold": lambda el: hasattr(el, "bold") and not el.bold,
@@ -315,34 +328,44 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
             func = lambda el: (
                 hasattr(el, "normalized_type") and el.normalized_type == selector_type
             ) or (
-                not hasattr(el, "normalized_type") # Only check element.type if normalized_type doesn't exist/match
-                and hasattr(el, "type") and el.type == selector_type
+                not hasattr(
+                    el, "normalized_type"
+                )  # Only check element.type if normalized_type doesn't exist/match
+                and hasattr(el, "type")
+                and el.type == selector_type
             )
         filters.append({"name": filter_name, "func": func})
 
-
     # Filter by attributes
-    for name, attr_info in selector["attributes"].items():
-        op = attr_info["op"]
-        value = attr_info["value"]
-        python_name = name.replace("-", "_") # Convert CSS-style names
+    for attr_filter in selector["attributes"]:
+        name = attr_filter["name"]
+        op = attr_filter["op"]
+        value = attr_filter["value"]
+        python_name = name.replace("-", "_")  # Convert CSS-style names
 
         # --- Define the core value retrieval logic ---
-        def get_element_value(element, name=name, python_name=python_name, selector_type=selector_type):
-             # Special case for region attributes
-             if selector_type == "region":
-                 if name == "type":
-                     if hasattr(element, "normalized_type") and element.normalized_type:
-                         return element.normalized_type
-                     else:
-                         return getattr(element, "region_type", "").lower().replace(" ", "_")
-                 elif name == "model":
-                     return getattr(element, "model", None)
-                 else:
-                      return getattr(element, python_name, None)
-             else:
-                 # General case for non-region elements
-                 return getattr(element, python_name, None)
+        def get_element_value(
+            element, name=name, python_name=python_name, selector_type=selector_type
+        ):
+            bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
+            if name in bbox_mapping:
+                bbox = getattr(element, "_bbox", None) or getattr(element, "bbox", None)
+                return bbox[bbox_mapping[name]]
+
+            # Special case for region attributes
+            if selector_type == "region":
+                if name == "type":
+                    if hasattr(element, "normalized_type") and element.normalized_type:
+                        return element.normalized_type
+                    else:
+                        return getattr(element, "region_type", "").lower().replace(" ", "_")
+                elif name == "model":
+                    return getattr(element, "model", None)
+                else:
+                    return getattr(element, python_name, None)
+            else:
+                # General case for non-region elements
+                return getattr(element, python_name, None)
 
         # --- Define the comparison function or direct check ---
         filter_lambda: Callable[[Any], bool]
@@ -352,14 +375,11 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
             # Special handling for attribute presence check [attr]
             filter_name = f"attribute [{name} exists]"
             # Lambda checks that the retrieved value is not None
-            filter_lambda = (
-                lambda el, get_val=get_element_value:
-                get_val(el) is not None
-            )
+            filter_lambda = lambda el, get_val=get_element_value: get_val(el) is not None
         else:
             # Handle operators with values (e.g., =, !=, *=, etc.)
             compare_func: Callable[[Any, Any], bool]
-            op_desc = f"{op} {value!r}" # Default description
+            op_desc = f"{op} {value!r}"  # Default description
 
             # Determine compare_func based on op (reuse existing logic)
             if op == "=":
@@ -370,39 +390,75 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
                 op_desc = f"~= {value!r} (approx)"
                 compare_func = lambda el_val, sel_val: _is_approximate_match(el_val, sel_val)
             elif op == "^=":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, str) and isinstance(sel_val, str) and el_val.startswith(sel_val)
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, str)
+                    and isinstance(sel_val, str)
+                    and el_val.startswith(sel_val)
+                )
             elif op == "$=":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, str) and isinstance(sel_val, str) and el_val.endswith(sel_val)
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, str)
+                    and isinstance(sel_val, str)
+                    and el_val.endswith(sel_val)
+                )
             elif op == "*=":
                 if name == "fontname":
-                     op_desc = f"*= {value!r} (contains, case-insensitive)"
-                     compare_func = lambda el_val, sel_val: isinstance(el_val, str) and isinstance(sel_val, str) and sel_val.lower() in el_val.lower()
+                    op_desc = f"*= {value!r} (contains, case-insensitive)"
+                    compare_func = (
+                        lambda el_val, sel_val: isinstance(el_val, str)
+                        and isinstance(sel_val, str)
+                        and sel_val.lower() in el_val.lower()
+                    )
                 else:
-                     op_desc = f"*= {value!r} (contains)"
-                     compare_func = lambda el_val, sel_val: isinstance(el_val, str) and isinstance(sel_val, str) and sel_val in el_val
+                    op_desc = f"*= {value!r} (contains)"
+                    compare_func = (
+                        lambda el_val, sel_val: isinstance(el_val, str)
+                        and isinstance(sel_val, str)
+                        and sel_val in el_val
+                    )
             elif op == ">=":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, (int, float)) and isinstance(sel_val, (int, float)) and el_val >= sel_val
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+                    and isinstance(sel_val, (int, float))
+                    and el_val >= sel_val
+                )
             elif op == "<=":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, (int, float)) and isinstance(sel_val, (int, float)) and el_val <= sel_val
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+                    and isinstance(sel_val, (int, float))
+                    and el_val <= sel_val
+                )
             elif op == ">":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, (int, float)) and isinstance(sel_val, (int, float)) and el_val > sel_val
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+                    and isinstance(sel_val, (int, float))
+                    and el_val > sel_val
+                )
             elif op == "<":
-                compare_func = lambda el_val, sel_val: isinstance(el_val, (int, float)) and isinstance(sel_val, (int, float)) and el_val < sel_val
+                compare_func = (
+                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+                    and isinstance(sel_val, (int, float))
+                    and el_val < sel_val
+                )
             else:
                 # Should not happen with current parsing logic
-                logger.warning(f"Unsupported operator '{op}' encountered during filter building for attribute '{name}'")
-                continue # Skip this attribute filter
+                logger.warning(
+                    f"Unsupported operator '{op}' encountered during filter building for attribute '{name}'"
+                )
+                continue  # Skip this attribute filter
 
             # --- Create the final filter function for operators with values ---
             filter_name = f"attribute [{name}{op_desc}]"
             # Capture loop variables correctly in the lambda
             filter_lambda = (
-                lambda el, get_val=get_element_value, compare=compare_func, expected_val=value:
-                (element_value := get_val(el)) is not None and compare(element_value, expected_val)
+                lambda el, get_val=get_element_value, compare=compare_func, expected_val=value: (
+                    element_value := get_val(el)
+                )
+                is not None
+                and compare(element_value, expected_val)
             )
 
         filters.append({"name": filter_name, "func": filter_lambda})
-
 
     # Filter by pseudo-classes
     for pseudo in selector["pseudo_classes"]:
@@ -414,62 +470,75 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
 
         # Relational pseudo-classes are handled separately by the caller
         if name in ("above", "below", "near", "left-of", "right-of"):
-             continue
+            continue
 
-        # --- Handle :not() --- 
+        # --- Handle :not() ---
         elif name == "not":
-             if not isinstance(args, dict): # args should be the parsed inner selector
-                 logger.error(f"Invalid arguments for :not pseudo-class: {args}")
-                 raise TypeError("Internal error: :not pseudo-class requires a parsed selector dictionary as args.")
-             
-             # Recursively get the filter function for the inner selector
-             # Pass kwargs down in case regex/case flags affect the inner selector
-             inner_filter_func = selector_to_filter_func(args, **kwargs)
-             
-             # The filter lambda applies the inner function and inverts the result
-             filter_lambda = lambda el, inner_func=inner_filter_func: not inner_func(el)
-             
-             # Try to create a descriptive name (can be long)
-             # Maybe simplify this later if needed
-             inner_filter_list = _build_filter_list(args, **kwargs)
-             inner_filter_names = ", ".join([f['name'] for f in inner_filter_list])
-             filter_name = f"pseudo-class :not({inner_filter_names})"
-        
-        # --- Handle text-based pseudo-classes --- 
+            if not isinstance(args, dict):  # args should be the parsed inner selector
+                logger.error(f"Invalid arguments for :not pseudo-class: {args}")
+                raise TypeError(
+                    "Internal error: :not pseudo-class requires a parsed selector dictionary as args."
+                )
+
+            # Recursively get the filter function for the inner selector
+            # Pass kwargs down in case regex/case flags affect the inner selector
+            inner_filter_func = selector_to_filter_func(args, **kwargs)
+
+            # The filter lambda applies the inner function and inverts the result
+            filter_lambda = lambda el, inner_func=inner_filter_func: not inner_func(el)
+
+            # Try to create a descriptive name (can be long)
+            # Maybe simplify this later if needed
+            inner_filter_list = _build_filter_list(args, **kwargs)
+            inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
+            filter_name = f"pseudo-class :not({inner_filter_names})"
+
+        # --- Handle text-based pseudo-classes ---
         elif name == "contains" and args is not None:
             use_regex = kwargs.get("regex", False)
-            ignore_case = not kwargs.get("case", True) # Default case sensitive
-            filter_name = f"pseudo-class :contains({args!r}, regex={use_regex}, ignore_case={ignore_case})"
+            ignore_case = not kwargs.get("case", True)  # Default case sensitive
+            filter_name = (
+                f"pseudo-class :contains({args!r}, regex={use_regex}, ignore_case={ignore_case})"
+            )
 
             def contains_check(element, args=args, use_regex=use_regex, ignore_case=ignore_case):
-                 if not hasattr(element, "text") or not element.text:
-                     return False # Element must have non-empty text
+                if not hasattr(element, "text") or not element.text:
+                    return False  # Element must have non-empty text
 
-                 element_text = element.text
-                 search_term = str(args) # Ensure args is string
+                element_text = element.text
+                search_term = str(args)  # Ensure args is string
 
-                 if use_regex:
-                     try:
-                         pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
-                         return bool(pattern.search(element_text))
-                     except re.error as e:
-                         logger.warning(f"Invalid regex '{search_term}' in :contains selector: {e}. Falling back to literal search.")
-                         # Fallback to literal search on regex error
-                         if ignore_case:
-                              return search_term.lower() in element_text.lower()
-                         else:
-                              return search_term in element_text
-                 else: # Literal search
-                     if ignore_case:
-                         return search_term.lower() in element_text.lower()
-                     else:
-                         return search_term in element_text
+                if use_regex:
+                    try:
+                        pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
+                        return bool(pattern.search(element_text))
+                    except re.error as e:
+                        logger.warning(
+                            f"Invalid regex '{search_term}' in :contains selector: {e}. Falling back to literal search."
+                        )
+                        # Fallback to literal search on regex error
+                        if ignore_case:
+                            return search_term.lower() in element_text.lower()
+                        else:
+                            return search_term in element_text
+                else:  # Literal search
+                    if ignore_case:
+                        return search_term.lower() in element_text.lower()
+                    else:
+                        return search_term in element_text
+
             filter_lambda = contains_check
 
         elif name == "starts-with" and args is not None:
-            filter_lambda = lambda el, arg=args: hasattr(el, "text") and el.text and el.text.startswith(str(arg))
+            filter_lambda = (
+                lambda el, arg=args: hasattr(el, "text")
+                and el.text
+                and el.text.startswith(str(arg))
+            )
         elif name == "ends-with" and args is not None:
-             filter_lambda = lambda el, arg=args: hasattr(el, "text") and el.text and el.text.endswith(str(arg))
+            filter_lambda = (
+                lambda el, arg=args: hasattr(el, "text") and el.text and el.text.endswith(str(arg))
+            )
 
         # Boolean attribute pseudo-classes
         elif name == "bold":
@@ -484,10 +553,9 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
         # Check predefined lambda functions (e.g., :first-child, :empty)
         elif name in PSEUDO_CLASS_FUNCTIONS:
             filter_lambda = PSEUDO_CLASS_FUNCTIONS[name]
-            filter_name = f"pseudo-class :{name}" # Set name for predefined ones
+            filter_name = f"pseudo-class :{name}"  # Set name for predefined ones
         else:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
-
 
         if filter_lambda:
             # Use the potentially updated filter_name
@@ -507,15 +575,17 @@ def _assemble_filter_func(filters: List[Dict[str, Any]]) -> Callable[[Any], bool
         A single function that takes an element and returns True only if
         it passes ALL filters in the list.
     """
+
     def combined_filter(element):
         for f in filters:
             try:
-                if not f['func'](element):
+                if not f["func"](element):
                     return False
             except Exception as e:
-                 logger.error(f"Error applying filter '{f['name']}' to element: {e}", exc_info=True)
-                 return False # Treat errors as filter failures
+                logger.error(f"Error applying filter '{f['name']}' to element: {e}", exc_info=True)
+                return False  # Treat errors as filter failures
         return True
+
     return combined_filter
 
 
@@ -536,8 +606,7 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
     filter_list = _build_filter_list(selector, **kwargs)
 
     if logger.isEnabledFor(logging.DEBUG):
-       filter_names = [f['name'] for f in filter_list]
-       logger.debug(f"Assembling filters for selector {selector}: {filter_names}")
-    
-    return _assemble_filter_func(filter_list)
+        filter_names = [f["name"] for f in filter_list]
+        logger.debug(f"Assembling filters for selector {selector}: {filter_names}")
 
+    return _assemble_filter_func(filter_list)

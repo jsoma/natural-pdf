@@ -1,8 +1,9 @@
-import pytest
 import os
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from natural_pdf.core.pdf import PDF
 from natural_pdf.exporters import PaddleOCRRecognitionExporter
@@ -116,7 +117,7 @@ def test_paddleocr_export_basic(temp_output_dir):
     expected_char_set = set()
     for el in expected_elements:
         expected_char_set.update(el.text)
-    expected_chars = sorted(list(expected_char_set))
+    expected_chars = sorted(list(expected_char_set), reverse=True)
 
     # Read dict.txt more carefully
     dict_chars_raw = []

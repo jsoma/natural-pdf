@@ -1,13 +1,28 @@
+import concurrent.futures  # Import concurrent.futures
 import copy  # Added for copying options
 import glob as py_glob
 import logging
 import os
 import re  # Added for safe path generation
+import threading  # Import threading for logging thread information
+import time  # Import time for logging timestamps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union, Callable, Generic, Iterator, TypeVar, overload
-import concurrent.futures # Import concurrent.futures
-import time # Import time for logging timestamps
-import threading # Import threading for logging thread information
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from PIL import Image
 from tqdm import tqdm
@@ -48,9 +63,9 @@ except ImportError as e:
 
     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
 
-from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
 # Import the ApplyMixin
 from natural_pdf.collections.mixins import ApplyMixin
+from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
 
 
 class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixin
@@ -261,20 +276,36 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
         return self._pdfs
 
     @overload
-    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
-
-    @overload
-    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
-
     def find_all(
         self,
-        selector: Optional[str] = None, # Now optional
         *,
-        text: Optional[str] = None,     # New text parameter
+        text: str,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    @overload
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,  # Now optional
+        *,
+        text: Optional[str] = None,  # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
     ) -> "ElementCollection":
         """
         Find all elements matching the selector OR text across all PDFs in the collection.
@@ -308,7 +339,7 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                     apply_exclusions=apply_exclusions,
                     regex=regex,
                     case=case,
-                    **kwargs
+                    **kwargs,
                 )
                 all_elements.extend(elements.elements)
             except Exception as e:
@@ -344,24 +375,26 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             replace: If True, replace existing OCR elements
             options: Engine-specific options
             pages: Specific pages to process (None for all pages)
-            max_workers: Maximum number of threads to process PDFs concurrently. 
+            max_workers: Maximum number of threads to process PDFs concurrently.
                          If None or 1, processing is sequential. (default: None)
 
         Returns:
             Self for method chaining
         """
         PDF = self._get_pdf_class()
-        logger.info(f"Applying OCR to {len(self._pdfs)} PDFs in collection (max_workers={max_workers})...")
+        logger.info(
+            f"Applying OCR to {len(self._pdfs)} PDFs in collection (max_workers={max_workers})..."
+        )
 
         # Worker function takes PDF object again
         def _process_pdf(pdf: PDF):
             """Helper function to apply OCR to a single PDF, handling errors."""
-            thread_id = threading.current_thread().name # Get thread name for logging
-            pdf_path = pdf.path # Get path for logging
+            thread_id = threading.current_thread().name  # Get thread name for logging
+            pdf_path = pdf.path  # Get path for logging
             logger.debug(f"[{thread_id}] Starting OCR process for: {pdf_path}")
             start_time = time.monotonic()
             try:
-                pdf.apply_ocr( # Call apply_ocr on the original PDF object
+                pdf.apply_ocr(  # Call apply_ocr on the original PDF object
                     pages=pages,
                     engine=engine,
                     languages=languages,
@@ -376,17 +409,24 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                     # For now, PDF.apply_ocr doesn't have it.
                 )
                 end_time = time.monotonic()
-                logger.debug(f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)")
+                logger.debug(
+                    f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
+                )
                 return pdf_path, None
             except Exception as e:
                 end_time = time.monotonic()
-                logger.error(f"[{thread_id}] Failed OCR process for {pdf_path} after {end_time - start_time:.2f}s: {e}", exc_info=False)
-                return pdf_path, e # Return path and error
+                logger.error(
+                    f"[{thread_id}] Failed OCR process for {pdf_path} after {end_time - start_time:.2f}s: {e}",
+                    exc_info=False,
+                )
+                return pdf_path, e  # Return path and error
 
         # Use ThreadPoolExecutor for parallel processing if max_workers > 1
         if max_workers is not None and max_workers > 1:
             futures = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="OCRWorker") as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max_workers, thread_name_prefix="OCRWorker"
+            ) as executor:
                 for pdf in self._pdfs:
                     # Submit the PDF object to the worker function
                     futures.append(executor.submit(_process_pdf, pdf))
@@ -396,22 +436,22 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                 concurrent.futures.as_completed(futures),
                 total=len(self._pdfs),
                 desc="Applying OCR (Parallel)",
-                unit="pdf"
+                unit="pdf",
             )
-            
+
             for future in progress_bar:
-                pdf_path, error = future.result() # Get result (or exception)
+                pdf_path, error = future.result()  # Get result (or exception)
                 if error:
                     progress_bar.set_postfix_str(f"Error: {pdf_path}", refresh=True)
                 # Progress is updated automatically by tqdm
 
-        else: # Sequential processing (max_workers is None or 1)
+        else:  # Sequential processing (max_workers is None or 1)
             logger.info("Applying OCR sequentially...")
             # Use the selected tqdm class for sequential too for consistency
             # Iterate over PDF objects directly for sequential
             for pdf in tqdm(self._pdfs, desc="Applying OCR (Sequential)", unit="pdf"):
-                _process_pdf(pdf) # Call helper directly with PDF object
-        
+                _process_pdf(pdf)  # Call helper directly with PDF object
+
         logger.info("Finished applying OCR across the collection.")
         return self
 
@@ -435,7 +475,7 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
         Returns:
             Self for method chaining.
         """
-        PDF = self._get_pdf_class() # Ensure PDF class is available
+        PDF = self._get_pdf_class()  # Ensure PDF class is available
         if not callable(correction_callback):
             raise TypeError("`correction_callback` must be a callable function.")
 
@@ -450,7 +490,9 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             return self
 
         total_elements = len(all_ocr_elements)
-        logger.info(f"Found {total_elements} OCR elements across the collection. Starting correction process...")
+        logger.info(
+            f"Found {total_elements} OCR elements across the collection. Starting correction process..."
+        )
 
         # 2. Initialize the progress bar
         progress_bar = tqdm(total=total_elements, desc="Correcting OCR Elements", unit="element")
@@ -464,11 +506,14 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                 pdf.correct_ocr(
                     correction_callback=correction_callback,
                     max_workers=max_workers,
-                    progress_callback=progress_bar.update # Pass the bar's update method
+                    progress_callback=progress_bar.update,  # Pass the bar's update method
                 )
             except Exception as e:
-                 logger.error(f"Error occurred during correction process for PDF {pdf.path}: {e}", exc_info=True)
-                 # Decide if we should stop or continue? For now, continue.
+                logger.error(
+                    f"Error occurred during correction process for PDF {pdf.path}: {e}",
+                    exc_info=True,
+                )
+                # Decide if we should stop or continue? For now, continue.
 
         progress_bar.close()
 
@@ -558,7 +603,9 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
         if not categories:
             raise ValueError("Categories list cannot be empty.")
 
-        logger.info(f"Starting classification for {len(self._pdfs)} PDFs in collection (model: '{model}')...")
+        logger.info(
+            f"Starting classification for {len(self._pdfs)} PDFs in collection (model: '{model}')..."
+        )
 
         # Calculate total pages for the progress bar
         total_pages = sum(len(pdf.pages) for pdf in self._pdfs if pdf.pages)
@@ -567,9 +614,7 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             return self
 
         progress_bar = tqdm(
-            total=total_pages,
-            desc=f"Classifying Pages (model: {model})",
-            unit="page"
+            total=total_pages, desc=f"Classifying Pages (model: {model})", unit="page"
         )
 
         # Worker function
@@ -584,15 +629,20 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                     categories=categories,
                     model=model,
                     progress_callback=progress_bar.update,
-                    **kwargs
+                    **kwargs,
                 )
                 end_time = time.monotonic()
-                logger.debug(f"[{thread_id}] Finished classification for: {pdf_path} (Duration: {end_time - start_time:.2f}s)")
-                return pdf_path, None # Return path and no error
+                logger.debug(
+                    f"[{thread_id}] Finished classification for: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
+                )
+                return pdf_path, None  # Return path and no error
             except Exception as e:
                 end_time = time.monotonic()
                 # Error is logged within classify_pages, but log summary here
-                logger.error(f"[{thread_id}] Failed classification process for {pdf_path} after {end_time - start_time:.2f}s: {e}", exc_info=False)
+                logger.error(
+                    f"[{thread_id}] Failed classification process for {pdf_path} after {end_time - start_time:.2f}s: {e}",
+                    exc_info=False,
+                )
                 # Close progress bar immediately on error to avoid hanging
                 progress_bar.close()
                 # Re-raise the exception to stop the entire collection processing
@@ -603,16 +653,18 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             if max_workers is not None and max_workers > 1:
                 logger.info(f"Classifying PDFs in parallel with {max_workers} workers.")
                 futures = []
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="ClassifyWorker") as executor:
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=max_workers, thread_name_prefix="ClassifyWorker"
+                ) as executor:
                     for pdf in self._pdfs:
                         futures.append(executor.submit(_process_pdf_classification, pdf))
 
                     # Wait for all futures to complete (progress updated by callback)
                     # Exceptions are raised by future.result() if worker failed
                     for future in concurrent.futures.as_completed(futures):
-                         future.result() # Raise exception if worker failed
+                        future.result()  # Raise exception if worker failed
 
-            else: # Sequential processing
+            else:  # Sequential processing
                 logger.info("Classifying PDFs sequentially.")
                 for pdf in self._pdfs:
                     _process_pdf_classification(pdf)
@@ -620,11 +672,11 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             logger.info("Finished classification across the collection.")
 
         finally:
-             # Ensure progress bar is closed even if errors occurred elsewhere
-             if not progress_bar.disable and progress_bar.n < progress_bar.total:
-                 progress_bar.close()
-             elif progress_bar.disable is False:
-                  progress_bar.close()
+            # Ensure progress bar is closed even if errors occurred elsewhere
+            if not progress_bar.disable and progress_bar.n < progress_bar.total:
+                progress_bar.close()
+            elif progress_bar.disable is False:
+                progress_bar.close()
 
         return self
 
@@ -641,7 +693,7 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
     ) -> List[Dict[str, Any]]:
         """
         Gather analysis data from all PDFs in the collection.
-        
+
         Args:
             analysis_keys: Keys in the analyses dictionary to export
             include_content: Whether to include extracted text
@@ -649,16 +701,16 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
             image_dir: Directory to save images
             image_format: Format to save images
             image_resolution: Resolution for exported images
-            
+
         Returns:
             List of dictionaries containing analysis data
         """
         if not self._pdfs:
             logger.warning("No PDFs found in collection")
             return []
-            
+
         all_data = []
-        
+
         for pdf in tqdm(self._pdfs, desc="Gathering PDF data", leave=False):
             # PDF level data
             pdf_data = {
@@ -666,13 +718,13 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixi
                 "pdf_filename": Path(pdf.path).name,
                 "total_pages": len(pdf.pages) if hasattr(pdf, "pages") else 0,
             }
-            
+
             # Add metadata if available
             if hasattr(pdf, "metadata") and pdf.metadata:
                 for k, v in pdf.metadata.items():
                     if v:  # Only add non-empty metadata
                         pdf_data[f"metadata.{k}"] = str(v)
-            
+
             all_data.append(pdf_data)
-        
+
         return all_data

@@ -17,10 +17,16 @@ from natural_pdf.search.search_options import (
 # Set up logger for this module
 logger = logging.getLogger(__name__)
 
+# Import sentence-transformers for dimension calculation
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
+
 # --- Define flag BEFORE trying Haystack imports ---
 HAS_HAYSTACK_EXTRAS = False  # Default to False
 
-# --- Conditional Haystack Imports (Restoring Error Catching with Traceback Logging) ---
+# Conditional Haystack Imports
 try:
     import haystack
     from haystack import Document as HaystackDocument
@@ -30,8 +36,18 @@ try:
         SentenceTransformersTextEmbedder,
     )
     from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-    from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
-    from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+    # --- REMOVED Chroma Imports ---
+    # from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
+    # from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+
+    # --- ADDED LanceDB Imports ---
+    try:
+        from lancedb_haystack import LanceDBDocumentStore, LanceDBEmbeddingRetriever
+    except ImportError:
+        LanceDBDocumentStore = None
+        LanceDBEmbeddingRetriever = None
+
+    # Removed Chroma Imports
 
     # Keep try/except for optional Cohere
     try:
@@ -39,15 +55,7 @@ try:
     except ImportError:
         CohereRanker = None
 
-    # --- Add ChromaDB embedding function import ---
-    try:
-        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-    except ImportError:
-        logger.warning(
-            "chromadb library not found. Custom embedding models for ChromaDocumentStore may not work."
-        )
-        SentenceTransformerEmbeddingFunction = None
-    # --- End ChromaDB import ---
+    # Removed ChromaDB embedding function import
 
     HAS_HAYSTACK_EXTRAS = True  # Set to True if imports succeed
     logger.debug("Successfully imported Haystack components.")
@@ -67,11 +75,13 @@ except ImportError as e:
     HaystackDocument = Dict  # Represent as Dict if not available
     Pipeline = None
     SentenceTransformersTextEmbedder = None
-    ChromaEmbeddingRetriever = None  # Dummy for Embedding Retriever
+    # --- UPDATED Dummies ---
+    LanceDBEmbeddingRetriever = None # ChromaEmbeddingRetriever = None  # Dummy for Embedding Retriever
     CohereRanker = None
-    ChromaDocumentStore = None
+    LanceDBDocumentStore = None # ChromaDocumentStore = None
     DuplicatePolicy = None  # Dummy for DuplicatePolicy
-    SentenceTransformerEmbeddingFunction = None  # Dummy if kept
+    # --- REMOVED Dummies ---
+    # SentenceTransformerEmbeddingFunction = None  # Dummy if kept
 
 
 # Helper function to check availability and raise error
@@ -90,34 +100,48 @@ def check_haystack_availability(feature_name: str = "Search"):
 
 
 def create_default_document_store(
-    persist_path: str = "./natural_pdf_index",
-    collection_name: str = "natural_pdf_default",
-    embedding_model: Optional[str] = None,  # Allow specifying the model
+    # --- CHANGED persist_path to uri ---
+    uri: str = "./natural_pdf_index",
+    collection_name: str = "natural_pdf_default", # LanceDB calls this table_name
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2", # Make mandatory for dim calculation
 ) -> DocumentStore:
-    """Creates a default ChromaDB DocumentStore."""
-    check_haystack_availability("create_default_document_store")
+    """Creates a default LanceDB DocumentStore."""
+    check_haystack_availability("create_default_document_store (LanceDB)")
     logger.debug(
-        f"Creating default ChromaDocumentStore at '{persist_path}' with collection '{collection_name}'"
+        f"Creating default LanceDBDocumentStore at uri='{uri}' with table '{collection_name}'"
     )
-    if not ChromaDocumentStore:  # Should be caught by check_haystack_availability, but double-check
-        raise RuntimeError("ChromaDocumentStore is not available despite Haystack extras check.")
+    if not LanceDBDocumentStore:
+        raise RuntimeError("LanceDBDocumentStore is not available despite Haystack extras check.")
+    if not SentenceTransformer:
+         raise ImportError("sentence-transformers library is required to determine embedding dimensions.")
 
     try:
-        # Note: For Haystack's Chroma integration, the embedding model is typically handled
-        # by the Embedder component in the indexing/query pipeline, not set directly
-        # on the DocumentStore initialization.
-        # The `embedding_model` parameter passed here might be used later to configure that Embedder.
-        store = ChromaDocumentStore(
-            persist_path=persist_path,
-            collection_name=collection_name,
-            # embedding_function parameter removed as it caused issues with Haystack's util
+        # Calculate embedding dimension
+        try:
+            model = SentenceTransformer(embedding_model)
+            embedding_dims = model.get_sentence_embedding_dimension()
+            if not embedding_dims:
+                 raise ValueError(f"Could not determine embedding dimension for model: {embedding_model}")
+            logger.debug(f"Determined embedding dimension: {embedding_dims} for model '{embedding_model}'")
+        except Exception as e:
+            logger.error(f"Failed to load SentenceTransformer model '{embedding_model}' to get dimensions: {e}", exc_info=True)
+            raise RuntimeError(f"Failed to determine embedding dimension for model '{embedding_model}'.") from e
+
+
+        # Create LanceDBDocumentStore
+        store = LanceDBDocumentStore(
+            database=uri, # Use uri for the database path
+            table_name=collection_name,
+            embedding_dims=embedding_dims,
+            # LanceDB might require a metadata schema, but let's try without it first for simplicity.
+            # Add `metadata_schema=...` if needed based on lancedb-haystack requirements.
         )
-        logger.info(f"Initialized ChromaDocumentStore (Collection: {collection_name})")
+        logger.info(f"Initialized LanceDBDocumentStore (Table: {collection_name}, Dims: {embedding_dims}) at uri '{uri}'")
         return store
     except Exception as e:
-        logger.error(f"Failed to initialize ChromaDocumentStore: {e}", exc_info=True)
+        logger.error(f"Failed to initialize LanceDBDocumentStore: {e}", exc_info=True)
         raise RuntimeError(
-            f"Could not create ChromaDocumentStore for collection '{collection_name}'"
+            f"Could not create LanceDBDocumentStore for table '{collection_name}' at uri '{uri}'"
         ) from e
 
 
@@ -261,35 +285,32 @@ def create_default_document_embedder(
 def _perform_haystack_search(
     query: Union[str, Path, Image.Image],
     document_store: Any,  # Use Any for simplicity now
-    collection_name: str,  # Passed for clarity, but Chroma store instance is collection-specific
+    collection_name: str,  # Passed for clarity, corresponds to table_name in LanceDB
     embedder: SentenceTransformersTextEmbedder,  # Explicitly expect a text embedder for queries
     options: BaseSearchOptions,
 ) -> List[Dict[str, Any]]:
-    """Internal function to perform search using Haystack components (ChromaEmbeddingRetriever)."""
+    """Internal function to perform search using Haystack components (LanceDBEmbeddingRetriever)."""
     if not HAS_HAYSTACK_EXTRAS:
-        check_haystack_availability("_perform_haystack_search")
+        check_haystack_availability("_perform_haystack_search (LanceDB)")
         return []  # Should not be reached due to check
 
     logger.info(
-        f"Performing Haystack search in collection '{collection_name}' (using store: {type(document_store).__name__})..."
+        f"Performing Haystack search in table '{collection_name}' (using store: {type(document_store).__name__})..."
     )
     logger.debug(f"  Query type: {type(query).__name__}")
     logger.debug(f"  Options: {options}")
 
-    # --- 1. Embed Query (using the provided text embedder) --- #
+    # Embed Query
     text_query: Optional[str] = None
     query_embedding: Optional[List[float]] = None
 
     if isinstance(query, str):
-        text_query = query  # Keep text for potential reranker use
+        text_query = query
         if not embedder:
             logger.error(
                 "Text query provided, but no embedder instance was passed to _perform_haystack_search."
             )
             return []
-        # No need to check type if the type hint is enforced upstream
-        # if not isinstance(embedder, SentenceTransformersTextEmbedder):
-        #      logger.warning(f"Provided embedder is {type(embedder).__name__}, not SentenceTransformersTextEmbedder. Assuming it works like one for query embedding.")
         try:
             logger.debug(f"Running embedder {type(embedder).__name__} on query text...")
             embedding_result = embedder.run(text=text_query)
@@ -306,24 +327,21 @@ def _perform_haystack_search(
             logger.error(f"Failed to run text embedder on query text: {e}", exc_info=True)
             return []
     elif isinstance(query, Path) or isinstance(query, Image.Image):
-        # Currently, this function doesn't support multi-modal query embedding directly
         logger.error(
             f"Unsupported query type ({type(query).__name__}) for embedding in _perform_haystack_search. Requires text."
         )
         return []
     else:
-        # Handle other unexpected types
         logger.error(f"Unsupported query type: {type(query).__name__}. Requires text.")
+        return []
 
-    # If we didn't get an embedding (e.g., non-text query), we can't proceed
     if query_embedding is None:
         logger.error("Could not obtain query embedding. Cannot perform search.")
         return []
 
-    # --- 2. Set up Retriever --- #
-    # Assumes the document_store is ChromaDocumentStore for this utility function context
-    if not ChromaEmbeddingRetriever:
-        logger.error("ChromaEmbeddingRetriever not available.")
+    # Set up Retriever
+    if not LanceDBEmbeddingRetriever:
+        logger.error("LanceDBEmbeddingRetriever not available.")
         return []
 
     # Ensure retriever_top_k is set (should be by __post_init__)
@@ -335,28 +353,26 @@ def _perform_haystack_search(
         retriever_top_k = options.top_k
 
     # Instantiate the EMBEDDING retriever
-    retriever = ChromaEmbeddingRetriever(
+    retriever = LanceDBEmbeddingRetriever(
         document_store=document_store,
         filters=options.filters or {},  # Pass filters here
         top_k=retriever_top_k,
     )
 
     logger.debug(
-        f"Initialized ChromaEmbeddingRetriever (Top K: {retriever.top_k}, Filters: {retriever.filters})"
+        f"Initialized LanceDBEmbeddingRetriever (Top K: {retriever.top_k}, Filters: {retriever.filters})"
     )
 
-    # --- 3. Set up Optional Reranker --- #
+    # Set up Optional Reranker
     reranker_instance = None
-    if options.use_reranker in [True, None]:  # Check specifically for True or None
+    if options.use_reranker in [True, None]:
         logger.debug("Attempting to initialize reranker...")
-        # Currently only supports default text reranker (Cohere)
         reranker_instance = create_default_text_reranker(
             api_key=options.reranker_api_key,
             model_name=options.reranker_model or "rerank-english-v2.0",
         )
         if reranker_instance:
-            # Ensure reranker top_k matches final desired top_k
-            reranker_instance.top_k = options.top_k  # Set the final top_k for the reranker
+            reranker_instance.top_k = options.top_k
             logger.info(
                 f"Using reranker: {type(reranker_instance).__name__} (Final Top K: {options.top_k})"
             )
@@ -365,7 +381,7 @@ def _perform_haystack_search(
                 "Reranker requested (use_reranker=True/None) but could not be initialized (check API key/installation). Proceeding without reranking."
             )
 
-    # --- 4. Build and Run Pipeline --- #
+    # Build and Run Pipeline
     if not Pipeline:
         logger.error("Haystack Pipeline class not available.")
         return []
@@ -380,28 +396,25 @@ def _perform_haystack_search(
     if reranker_instance:
         search_pipeline.add_component("reranker", reranker_instance)
         search_pipeline.connect("retriever.documents", "reranker.documents")
-        # Reranker also needs the query text and final top_k
         if text_query is None:
             logger.error(
                 "Reranker requires text query, but it was not available (query might not have been text)."
             )
-            # Handle this case - maybe skip reranker or raise error?
-            # For now, let's skip reranker if text is missing
             logger.warning("Skipping reranker because text query is missing.")
-            reranker_instance = None  # Effectively remove it from the logic below
-            last_component_name = "retriever"  # Reset last component
-            # Remove reranker component if added? Less clean. Let's just not add its input.
+            reranker_instance = None
+            last_component_name = "retriever"
         else:
             pipeline_input["reranker"] = {
                 "query": text_query,
                 "top_k": options.top_k,
-            }  # Pass query and final top_k
+            }
             last_component_name = "reranker"
             logger.debug("Added reranker to pipeline and configured input.")
     else:
-        # No reranker was initialized or it was skipped
-        last_component_name = "reranker"
-        logger.debug("Added reranker to pipeline.")
+        # --- Fix: last_component_name should only be 'reranker' if it was added ---
+        # if reranker_instance was initialized and added, last_component_name is 'reranker'
+        # if not, it remains 'retriever'
+        pass # No change needed here if reranker wasn't added
 
     logger.info("Running Haystack search pipeline...")
     try:
@@ -412,9 +425,8 @@ def _perform_haystack_search(
         logger.error(f"Haystack search pipeline failed: {e}", exc_info=True)
         return []
 
-    # --- 5. Process Results --- #
+    # Process Results
     final_documents: List[HaystackDocument] = []
-    # Check output based on last component in the pipeline
     if last_component_name in result and result[last_component_name].get("documents"):
         final_documents = result[last_component_name]["documents"]
         logger.debug(
@@ -428,8 +440,7 @@ def _perform_haystack_search(
 
     # Convert Haystack Documents to the desired output format
     output_results = []
-    for doc in final_documents:  # Correctly loop over final_documents
-        # Check if doc is actually a Haystack Document object or potentially a dict
+    for doc in final_documents:
         doc_id = getattr(doc, "id", None)
         doc_score = getattr(doc, "score", 0.0)
         doc_content = getattr(doc, "content", None)
@@ -439,10 +450,9 @@ def _perform_haystack_search(
         output = {
             "pdf_path": meta.get("pdf_path", "Unknown"),
             "page_number": meta.get("page_number", -1),
-            "score": doc_score if doc_score is not None else 0.0,  # Handle potential None score
-            "content_snippet": doc_content[:200] + "..." if doc_content else "",  # Add snippet
+            "score": doc_score if doc_score is not None else 0.0,
+            "content_snippet": doc_content[:200] + "..." if doc_content else "",
             "metadata": meta,
-            # "haystack_document": doc # Optionally include the full Haystack doc
         }
         output_results.append(output)
 

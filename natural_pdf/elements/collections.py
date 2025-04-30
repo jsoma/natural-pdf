@@ -1,41 +1,41 @@
 import logging
+from collections.abc import MutableSequence
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Generic,
+    Iterable,
     Iterator,
     List,
     Optional,
+    Sequence,
     Tuple,
+    Type,
     TypeVar,
     Union,
-    Iterable,
-    Type,
     overload,
-    Sequence,
 )
 
 from pdfplumber.utils.geometry import objects_to_bbox
-from tqdm.auto import tqdm
-from collections.abc import MutableSequence
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
+from tqdm.auto import tqdm
 
-from natural_pdf.elements.text import TextElement
-from natural_pdf.ocr import OCROptions
-from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.classification.manager import ClassificationManager
+from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
-from natural_pdf.export.mixin import ExportMixin
-from pathlib import Path
+from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
-from natural_pdf.core.pdf import PDF
+from natural_pdf.elements.text import TextElement
+from natural_pdf.export.mixin import ExportMixin
+from natural_pdf.ocr import OCROptions
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
+from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,9 @@ T = TypeVar("T")
 P = TypeVar("P", bound="Page")
 
 
-class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollectionMixin, MutableSequence):
+class ElementCollection(
+    Generic[T], ApplyMixin, ExportMixin, DirectionalCollectionMixin, MutableSequence
+):
     """
     Collection of PDF elements with batch operations.
     """
@@ -144,9 +146,7 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
 
         # Check if any element is from a different PDF
         return any(
-            hasattr(e, "page") and 
-            hasattr(e.page, "pdf") and 
-            e.page.pdf is not first_pdf
+            hasattr(e, "page") and hasattr(e.page, "pdf") and e.page.pdf is not first_pdf
             for e in self._elements
         )
 
@@ -1132,9 +1132,7 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
             return None
 
-    def find(
-            self, selector: str, **kwargs
-    ) -> "ElementCollection":
+    def find(self, selector: str, **kwargs) -> "ElementCollection":
         """
         Find elements in this collection matching the selector.
 
@@ -1148,7 +1146,9 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         """
         Extract text from each element in this region.
         """
-        return self.apply(lambda element: element.extract_text(**kwargs) if element is not None else None)
+        return self.apply(
+            lambda element: element.extract_text(**kwargs) if element is not None else None
+        )
 
     def correct_ocr(
         self,
@@ -1194,23 +1194,23 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
     def remove(self) -> int:
         """
         Remove all elements in this collection from their respective pages.
-        
+
         This method removes elements from the page's _element_mgr storage.
         It's particularly useful for removing OCR elements before applying new OCR.
-        
+
         Returns:
             int: Number of elements successfully removed
         """
         if not self._elements:
             return 0
-            
+
         removed_count = 0
-        
+
         for element in self._elements:
             # Each element should have a reference to its page
             if hasattr(element, "page") and hasattr(element.page, "_element_mgr"):
                 element_mgr = element.page._element_mgr
-                
+
                 # Determine element type
                 element_type = getattr(element, "object_type", None)
                 if element_type:
@@ -1223,7 +1223,7 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                         element_type = "rects"
                     elif element_type == "line":
                         element_type = "lines"
-                    
+
                     # Try to remove from the element manager
                     if hasattr(element_mgr, "remove_element"):
                         success = element_mgr.remove_element(element, element_type)
@@ -1233,7 +1233,7 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                         logger.warning("ElementManager does not have remove_element method")
             else:
                 logger.warning(f"Element has no page or page has no _element_mgr: {element}")
-                
+
         return removed_count
 
     # --- Classification Method --- #
@@ -1243,12 +1243,12 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
-        analysis_key: str = 'classification',
+        analysis_key: str = "classification",
         multi_label: bool = False,
         batch_size: int = 8,
         max_workers: Optional[int] = None,
         progress_bar: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """Classifies all elements in the collection in batch.
 
@@ -1272,21 +1272,21 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         # Requires access to the PDF's manager. Assume first element has it.
         first_element = self.elements[0]
         manager_source = None
-        if hasattr(first_element, 'page') and hasattr(first_element.page, 'pdf'):
-             manager_source = first_element.page.pdf
-        elif hasattr(first_element, 'pdf'): # Maybe it's a PageCollection?
-             manager_source = first_element.pdf
-        
-        if not manager_source or not hasattr(manager_source, 'get_manager'):
-             raise RuntimeError("Cannot access ClassificationManager via elements.")
+        if hasattr(first_element, "page") and hasattr(first_element.page, "pdf"):
+            manager_source = first_element.page.pdf
+        elif hasattr(first_element, "pdf"):  # Maybe it's a PageCollection?
+            manager_source = first_element.pdf
+
+        if not manager_source or not hasattr(manager_source, "get_manager"):
+            raise RuntimeError("Cannot access ClassificationManager via elements.")
 
         try:
-            manager = manager_source.get_manager('classification')
+            manager = manager_source.get_manager("classification")
         except Exception as e:
-             raise RuntimeError(f"Failed to get ClassificationManager: {e}") from e
+            raise RuntimeError(f"Failed to get ClassificationManager: {e}") from e
 
         if not manager or not manager.is_available():
-             raise RuntimeError("ClassificationManager is not available.")
+            raise RuntimeError("ClassificationManager is not available.")
 
         # Determine engine type early for content gathering
         inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
@@ -1294,26 +1294,34 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
         # Gather content from all elements
         items_to_classify: List[Tuple[Any, Union[str, Image.Image]]] = []
         original_elements: List[Any] = []
-        logger.info(f"Gathering content for {len(self.elements)} elements for batch classification...")
+        logger.info(
+            f"Gathering content for {len(self.elements)} elements for batch classification..."
+        )
         for element in self.elements:
-             if not isinstance(element, ClassificationMixin):
-                 logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
-                 continue
-             try:
-                 # Delegate content fetching to the element itself
-                 content = element._get_classification_content(model_type=inferred_using, **kwargs)
-                 items_to_classify.append(content)
-                 original_elements.append(element)
-             except (ValueError, NotImplementedError) as e:
-                 logger.warning(f"Skipping element {element!r}: Cannot get content for classification - {e}")
-             except Exception as e:
-                  logger.warning(f"Skipping element {element!r}: Error getting classification content - {e}")
+            if not isinstance(element, ClassificationMixin):
+                logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
+                continue
+            try:
+                # Delegate content fetching to the element itself
+                content = element._get_classification_content(model_type=inferred_using, **kwargs)
+                items_to_classify.append(content)
+                original_elements.append(element)
+            except (ValueError, NotImplementedError) as e:
+                logger.warning(
+                    f"Skipping element {element!r}: Cannot get content for classification - {e}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Skipping element {element!r}: Error getting classification content - {e}"
+                )
 
         if not items_to_classify:
-             logger.warning("No content could be gathered from elements for batch classification.")
-             return self
+            logger.warning("No content could be gathered from elements for batch classification.")
+            return self
 
-        logger.info(f"Collected content for {len(items_to_classify)} elements. Running batch classification...")
+        logger.info(
+            f"Collected content for {len(items_to_classify)} elements. Running batch classification..."
+        )
 
         # Call manager's batch classify
         batch_results: List[ClassificationResult] = manager.classify_batch(
@@ -1325,27 +1333,30 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
             multi_label=multi_label,
             batch_size=batch_size,
             progress_bar=progress_bar,
-            **kwargs
+            **kwargs,
         )
 
         # Assign results back to elements
         if len(batch_results) != len(original_elements):
-             logger.error(
-                 f"Batch classification result count ({len(batch_results)}) mismatch "
-                 f"with elements processed ({len(original_elements)}). Cannot assign results."
-             )
-             # Decide how to handle mismatch - maybe store errors?
+            logger.error(
+                f"Batch classification result count ({len(batch_results)}) mismatch "
+                f"with elements processed ({len(original_elements)}). Cannot assign results."
+            )
+            # Decide how to handle mismatch - maybe store errors?
         else:
-             logger.info(f"Assigning {len(batch_results)} results to elements under key '{analysis_key}'.")
-             for element, result_obj in zip(original_elements, batch_results):
-                 try:
-                     if not hasattr(element, 'analyses') or element.analyses is None:
-                          element.analyses = {}
-                     element.analyses[analysis_key] = result_obj
-                 except Exception as e:
-                      logger.warning(f"Failed to store classification result for {element!r}: {e}")
+            logger.info(
+                f"Assigning {len(batch_results)} results to elements under key '{analysis_key}'."
+            )
+            for element, result_obj in zip(original_elements, batch_results):
+                try:
+                    if not hasattr(element, "analyses") or element.analyses is None:
+                        element.analyses = {}
+                    element.analyses[analysis_key] = result_obj
+                except Exception as e:
+                    logger.warning(f"Failed to store classification result for {element!r}: {e}")
 
         return self
+
     # --- End Classification Method --- #
 
     def _gather_analysis_data(
@@ -1359,7 +1370,7 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
     ) -> List[Dict[str, Any]]:
         """
         Gather analysis data from all elements in the collection.
-        
+
         Args:
             analysis_keys: Keys in the analyses dictionary to export
             include_content: Whether to include extracted text
@@ -1367,35 +1378,37 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
             image_dir: Directory to save images
             image_format: Format to save images
             image_resolution: Resolution for exported images
-            
+
         Returns:
             List of dictionaries containing analysis data
         """
         if not self.elements:
             logger.warning("No elements found in collection")
             return []
-            
+
         all_data = []
-        
+
         for i, element in enumerate(self.elements):
             # Base element information
             element_data = {
                 "element_index": i,
                 "element_type": getattr(element, "type", type(element).__name__),
             }
-            
+
             # Add geometry if available
             for attr in ["x0", "top", "x1", "bottom", "width", "height"]:
                 if hasattr(element, attr):
                     element_data[attr] = getattr(element, attr)
-            
+
             # Add page information if available
             if hasattr(element, "page"):
                 page = element.page
                 if page:
                     element_data["page_number"] = getattr(page, "number", None)
-                    element_data["pdf_path"] = getattr(page.pdf, "path", None) if hasattr(page, "pdf") else None
-            
+                    element_data["pdf_path"] = (
+                        getattr(page.pdf, "path", None) if hasattr(page, "pdf") else None
+                    )
+
             # Include extracted text if requested
             if include_content and hasattr(element, "extract_text"):
                 try:
@@ -1403,37 +1416,35 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                 except Exception as e:
                     logger.error(f"Error extracting text from element {i}: {e}")
                     element_data["content"] = ""
-            
+
             # Save image if requested
             if include_images and hasattr(element, "to_image"):
                 try:
                     # Create identifier for the element
                     pdf_name = "unknown"
                     page_num = "unknown"
-                    
+
                     if hasattr(element, "page") and element.page:
                         page_num = element.page.number
                         if hasattr(element.page, "pdf") and element.page.pdf:
                             pdf_name = Path(element.page.pdf.path).stem
-                    
+
                     # Create image filename
                     element_type = element_data.get("element_type", "element").lower()
                     image_filename = f"{pdf_name}_page{page_num}_{element_type}_{i}.{image_format}"
                     image_path = image_dir / image_filename
-                    
+
                     # Save image
                     element.to_image(
-                        path=str(image_path),
-                        resolution=image_resolution,
-                        include_highlights=True
+                        path=str(image_path), resolution=image_resolution, include_highlights=True
                     )
-                    
+
                     # Add relative path to data
                     element_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
                 except Exception as e:
                     logger.error(f"Error saving image for element {i}: {e}")
                     element_data["image_path"] = None
-            
+
             # Add analyses data
             if hasattr(element, "analyses"):
                 for key in analysis_keys:
@@ -1441,10 +1452,10 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                         # Skip this key if it doesn't exist - elements might have different analyses
                         logger.warning(f"Analysis key '{key}' not found in element {i}")
                         continue
-                    
+
                     # Get the analysis result
                     analysis_result = element.analyses[key]
-                    
+
                     # If the result has a to_dict method, use it
                     if hasattr(analysis_result, "to_dict"):
                         analysis_data = analysis_result.to_dict()
@@ -1455,13 +1466,13 @@ class ElementCollection(Generic[T], ApplyMixin, ExportMixin, DirectionalCollecti
                         except (TypeError, ValueError):
                             # Last resort: convert to string
                             analysis_data = {"raw_result": str(analysis_result)}
-                    
+
                     # Add analysis data to element data with the key as prefix
                     for k, v in analysis_data.items():
                         element_data[f"{key}.{k}"] = v
-            
+
             all_data.append(element_data)
-        
+
         return all_data
 
 
@@ -1597,10 +1608,26 @@ class PageCollection(Generic[P], ApplyMixin):
         return self  # Return self for chaining
 
     @overload
-    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]: ...
+    def find(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional[T]: ...
 
     @overload
-    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[T]: ...
+    def find(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional[T]: ...
 
     def find(
         self,
@@ -1610,7 +1637,7 @@ class PageCollection(Generic[P], ApplyMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Optional[T]:
         """
         Find the first element matching the selector OR text across all pages in the collection.
@@ -1636,17 +1663,33 @@ class PageCollection(Generic[P], ApplyMixin):
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs
+                **kwargs,
             )
             if element:
                 return element
         return None
 
     @overload
-    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     @overload
-    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
 
     def find_all(
         self,
@@ -1656,7 +1699,7 @@ class PageCollection(Generic[P], ApplyMixin):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
     ) -> "ElementCollection":
         """
         Find all elements matching the selector OR text across all pages in the collection.
@@ -1683,7 +1726,7 @@ class PageCollection(Generic[P], ApplyMixin):
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs
+                **kwargs,
             )
             if elements:
                 all_elements.extend(elements.elements)
@@ -1723,10 +1766,14 @@ class PageCollection(Generic[P], ApplyMixin):
 
         # Assume all pages share the same parent PDF object
         parent_pdf = self.pages[0]._parent
-        if not parent_pdf or not hasattr(parent_pdf, 'correct_ocr') or not callable(parent_pdf.correct_ocr):
-             raise RuntimeError(
-                 "Parent PDF reference not found or parent PDF lacks the required 'correct_ocr' method."
-             )
+        if (
+            not parent_pdf
+            or not hasattr(parent_pdf, "correct_ocr")
+            or not callable(parent_pdf.correct_ocr)
+        ):
+            raise RuntimeError(
+                "Parent PDF reference not found or parent PDF lacks the required 'correct_ocr' method."
+            )
 
         page_indices = [p.index for p in self.pages]
         logger.info(
@@ -1738,7 +1785,7 @@ class PageCollection(Generic[P], ApplyMixin):
         parent_pdf.correct_ocr(
             correction_callback=correction_callback,
             pages=page_indices,
-            max_workers=max_workers # Pass it here
+            max_workers=max_workers,  # Pass it here
         )
 
         return self
@@ -2055,7 +2102,7 @@ class PageCollection(Generic[P], ApplyMixin):
     ) -> List[Dict[str, Any]]:
         """
         Gather analysis data from all pages in the collection.
-        
+
         Args:
             analysis_keys: Keys in the analyses dictionary to export
             include_content: Whether to include extracted text
@@ -2063,16 +2110,16 @@ class PageCollection(Generic[P], ApplyMixin):
             image_dir: Directory to save images
             image_format: Format to save images
             image_resolution: Resolution for exported images
-            
+
         Returns:
             List of dictionaries containing analysis data
         """
         if not self.elements:
             logger.warning("No pages found in collection")
             return []
-            
+
         all_data = []
-        
+
         for page in self.elements:
             # Basic page information
             page_data = {
@@ -2081,12 +2128,12 @@ class PageCollection(Generic[P], ApplyMixin):
                 "width": page.width,
                 "height": page.height,
             }
-            
+
             # Add PDF information if available
             if hasattr(page, "pdf") and page.pdf:
                 page_data["pdf_path"] = page.pdf.path
                 page_data["pdf_filename"] = Path(page.pdf.path).name
-            
+
             # Include extracted text if requested
             if include_content:
                 try:
@@ -2094,7 +2141,7 @@ class PageCollection(Generic[P], ApplyMixin):
                 except Exception as e:
                     logger.error(f"Error extracting text from page {page.number}: {e}")
                     page_data["content"] = ""
-            
+
             # Save image if requested
             if include_images:
                 try:
@@ -2102,32 +2149,30 @@ class PageCollection(Generic[P], ApplyMixin):
                     pdf_name = "unknown"
                     if hasattr(page, "pdf") and page.pdf:
                         pdf_name = Path(page.pdf.path).stem
-                        
+
                     image_filename = f"{pdf_name}_page_{page.number}.{image_format}"
                     image_path = image_dir / image_filename
-                    
+
                     # Save image
                     page.save_image(
-                        str(image_path),
-                        resolution=image_resolution,
-                        include_highlights=True
+                        str(image_path), resolution=image_resolution, include_highlights=True
                     )
-                    
+
                     # Add relative path to data
                     page_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
                 except Exception as e:
                     logger.error(f"Error saving image for page {page.number}: {e}")
                     page_data["image_path"] = None
-            
+
             # Add analyses data
             if hasattr(page, "analyses") and page.analyses:
                 for key in analysis_keys:
                     if key not in page.analyses:
                         raise KeyError(f"Analysis key '{key}' not found in page {page.number}")
-                    
+
                     # Get the analysis result
                     analysis_result = page.analyses[key]
-                    
+
                     # If the result has a to_dict method, use it
                     if hasattr(analysis_result, "to_dict"):
                         analysis_data = analysis_result.to_dict()
@@ -2138,13 +2183,13 @@ class PageCollection(Generic[P], ApplyMixin):
                         except (TypeError, ValueError):
                             # Last resort: convert to string
                             analysis_data = {"raw_result": str(analysis_result)}
-                    
+
                     # Add analysis data to page data with the key as prefix
                     for k, v in analysis_data.items():
                         page_data[f"{key}.{k}"] = v
-            
+
             all_data.append(page_data)
-        
+
         return all_data
 
     # --- Deskew Method --- #
@@ -2154,8 +2199,8 @@ class PageCollection(Generic[P], ApplyMixin):
         resolution: int = 300,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
-        **deskew_kwargs
-    ) -> "PDF": # Changed return type
+        **deskew_kwargs,
+    ) -> "PDF":  # Changed return type
         """
         Creates a new, in-memory PDF object containing deskewed versions of the pages
         in this collection.
@@ -2196,14 +2241,16 @@ class PageCollection(Generic[P], ApplyMixin):
         else:
             parent_pdf = self.pages[0]._parent
 
-        if not parent_pdf or not hasattr(parent_pdf, 'deskew') or not callable(parent_pdf.deskew):
+        if not parent_pdf or not hasattr(parent_pdf, "deskew") or not callable(parent_pdf.deskew):
             raise RuntimeError(
                 "Parent PDF reference not found or parent PDF lacks the required 'deskew' method."
             )
 
         # Get the 0-based indices of the pages in this collection
         page_indices = [p.index for p in self.pages]
-        logger.info(f"PageCollection: Delegating deskew to parent PDF for page indices: {page_indices}")
+        logger.info(
+            f"PageCollection: Delegating deskew to parent PDF for page indices: {page_indices}"
+        )
 
         # Delegate the call to the parent PDF object for the relevant pages
         # Pass all relevant arguments through (no output_path anymore)
@@ -2212,7 +2259,7 @@ class PageCollection(Generic[P], ApplyMixin):
             resolution=resolution,
             detection_resolution=detection_resolution,
             force_overwrite=force_overwrite,
-            **deskew_kwargs
+            **deskew_kwargs,
         )
 
     # --- End Deskew Method --- #

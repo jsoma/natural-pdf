@@ -25,6 +25,7 @@ dependencies = [
     "numpy",
     "urllib3",
     "tqdm",
+    "pydantic"
 ]
 
 [project.optional-dependencies]
@@ -32,14 +33,15 @@ interactive = [
     "ipywidgets>=7.0.0,<9.0.0"
 ]
 haystack = [
-    "haystack-ai",   # Core Haystack 2.0 beta (adjust version as needed)
-    "chroma-haystack",       # ChromaDB integration
-    "sentence-transformers", # Default text embedder
-    "natural-pdf[core-ml]", # Add dependency on core ML packages
+    "haystack-ai",
+    "lancedb-haystack",
+    "lancedb",
+    "sentence-transformers",
+    "natural-pdf[core-ml]",
 ]
 easyocr = [
     "easyocr",
-    "natural-pdf[core-ml]", # Add dependency on core ML packages
+    "natural-pdf[core-ml]",
 ]
 paddle = ["paddlepaddle", "paddleocr"]
 layout_yolo = [
@@ -65,7 +67,6 @@ docling = [
 
 llm = [
     "openai>=1.0", # For OpenAI compatibility layer / general LLM API interaction
-    "pydantic",    # For response schema definition / structured output
 ]
 
 classification = [
@@ -161,16 +162,19 @@ minversion = "6.0"
 testpaths = ["tests"]
 filterwarnings = [
     # Ignore specific deprecation warnings from dependencies
-    "ignore:The distutils package is deprecated:DeprecationWarning:thop.profile",
-    "ignore:Support for class-based `config` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic._internal._config",
-    "ignore:`min_items` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic.fields",
-    "ignore:`max_items` is deprecated:pydantic.PydanticDeprecatedSince20:pydantic.fields",
+    "ignore:The distutils package is deprecated:DeprecationWarning",
+    "ignore:Support for class-based `config` is deprecated",
     "ignore:deprecated:DeprecationWarning:docling_core.types.doc.document",
 ]
 
 [tool.setuptools]
-# Why this is here I do not know
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["tests", "tests.*"]
+exclude = [
+    "tests", "tests.*",
+    "build", "dist", "*.egg-info",
+    "docs", "docs.*",
+    ".nox", ".venv", "env", "venv"
+]

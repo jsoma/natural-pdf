@@ -68,12 +68,11 @@ class SearchServiceProtocol(Protocol):
     Protocol defining the interface for indexing and searching documents.
 
     Implementations of this protocol handle the specifics of interacting
-    with a chosen search backend (e.g., Haystack with ChromaDB, Haystack In-Memory).
-    An instance of a service implementing this protocol is tied to a specific collection name.
+    with a chosen search backend (e.g., Haystack with LanceDB, Haystack In-Memory).
+    An instance of a service implementing this protocol is tied to a specific index name (e.g., table name).
     """
 
     collection_name: str
-    # Removed internal state hints (_persist, _embedding_model) - implementation detail
 
     def index(
         self,
@@ -82,7 +81,7 @@ class SearchServiceProtocol(Protocol):
         force_reindex: bool = False,
     ) -> None:
         """
-        Indexes the provided documents into the collection managed by this service instance.
+        Indexes the provided documents into the index/table managed by this service instance.
 
         Handles store and embedder creation/retrieval, configuration checks,
         re-indexing logic (including potential deletion), embedding, and writing.
@@ -91,12 +90,12 @@ class SearchServiceProtocol(Protocol):
             documents: An iterable of objects conforming to the Indexable protocol.
             embedder_device: The device ('cpu', 'cuda', etc.) for the embedder.
                              Defaults defined by the implementation.
-            force_reindex: If True, delete the entire existing collection
+            force_reindex: If True, delete the entire existing index/table
                            (if configuration permits) before indexing.
 
         Raises:
             IndexConfigurationError: If `force_reindex` is False and the existing
-                                     collection has incompatible settings.
+                                     index/table has incompatible settings.
             ImportError: If required backend libraries are missing.
             RuntimeError: For other failures during indexing.
         """
@@ -104,11 +103,11 @@ class SearchServiceProtocol(Protocol):
 
     def search(
         self,
-        query: Any,  # Allow any query type, service implementation handles it
+        query: Any,
         options: BaseSearchOptions,
     ) -> List[Dict[str, Any]]:
         """
-        Performs a search within the collection managed by this service instance.
+        Performs a search within the index/table managed by this service instance.
 
         Args:
             query: The search query (type depends on service capabilities).
@@ -119,7 +118,7 @@ class SearchServiceProtocol(Protocol):
             metadata, and relevance scores.
 
         Raises:
-            FileNotFoundError: If the collection managed by this service does not exist.
+            FileNotFoundError: If the index/table managed by this service does not exist or path is invalid.
             RuntimeError: For other failures during search.
             TypeError: If the query type is incompatible with the backend/options.
         """
@@ -129,10 +128,10 @@ class SearchServiceProtocol(Protocol):
         self,
     ) -> bool:
         """
-        Deletes the entire index/collection managed by this service instance.
+        Deletes the entire index/table managed by this service instance.
 
         Returns:
-            True if deletion was successful or collection didn't exist,
+            True if deletion was successful or index/table didn't exist,
             False if deletion failed.
 
         Raises:
@@ -145,7 +144,7 @@ class SearchServiceProtocol(Protocol):
         self,
     ) -> bool:
         """
-        Checks if the index/collection managed by this service instance exists.
+        Checks if the index/table managed by this service instance exists.
 
         Returns:
             True if the index exists, False otherwise.

@@ -96,9 +96,6 @@ class LayoutManager:
             "options_class": GeminiLayoutOptions,
         }
 
-    # Define the limited set of kwargs allowed for the simple analyze_layout call
-    SIMPLE_MODE_ALLOWED_KWARGS = {"engine", "confidence", "classes", "exclude_classes", "device"}
-
     def __init__(self):
         """Initializes the Layout Manager."""
         # Cache for detector instances (different from model cache inside detector)
@@ -145,109 +142,54 @@ class LayoutManager:
     def analyze_layout(
         self,
         image: Image.Image,
-        engine: Optional[str] = None,  # Default engine handled below
-        options: Optional[LayoutOptions] = None,
-        **kwargs,
+        options: LayoutOptions,
     ) -> List[Dict[str, Any]]:
         """
-        Analyzes layout of a single image using simple args or an options object.
+        Analyzes layout of a single image using a specific options object.
 
         Args:
             image: The PIL Image to analyze.
-            engine: Name of the engine (e.g., 'yolo', 'tatr'). Ignored if 'options' provided.
-                    Defaults to the first available engine if None.
-            options: Specific LayoutOptions object for advanced configuration.
-            **kwargs: For simple mode, accepts: 'confidence', 'classes',
-                      'exclude_classes', 'device'.
+            options: Specific LayoutOptions object containing configuration and context.
+                     This object MUST be provided.
 
         Returns:
             A list of standardized detection dictionaries.
         """
-        final_options: BaseLayoutOptions
-        selected_engine_name: str
-
-        if not isinstance(image, Image.Image):
-            raise TypeError("Input 'image' must be a PIL Image.")
-
-        available_engines = self.get_available_engines()
-        if not available_engines:
-            raise RuntimeError("No layout engines are available. Please check dependencies.")
-
-        # Determine default engine if not specified
-        default_engine = engine if engine else available_engines[0]
-
-        # --- Determine Options and Engine ---
-        if options is not None:
-            # Advanced Mode: An options object was provided directly (or constructed by LayoutAnalyzer)
-            # Use this object directly, do not deep copy or reconstruct.
-            logger.debug(f"LayoutManager: Using provided options object: {type(options).__name__}")
-            final_options = options  # Use the provided object directly
-            found_engine = False
-            for name, registry_entry in self.ENGINE_REGISTRY.items():
-                if isinstance(options, registry_entry["options_class"]):
-                    selected_engine_name = name
-                    found_engine = True
-                    break
-            if not found_engine:
-                raise TypeError(
-                    f"Provided options object type '{type(options).__name__}' does not match any registered layout engine options."
-                )
-            # Ignore simple kwargs if options object is present
-            if kwargs:
-                logger.warning(
-                    f"Keyword arguments {list(kwargs.keys())} were provided alongside an 'options' object and will be ignored."
-                )
-        else:
-            # Simple Mode: No options object provided initially.
-            # Determine engine from kwargs or default, then construct options.
-            selected_engine_name = default_engine.lower()
-            logger.debug(
-                f"LayoutManager: Using simple mode. Engine: '{selected_engine_name}', kwargs: {kwargs}"
+        selected_engine_name: Optional[str] = None
+        found_engine = False
+        for name, registry_entry in self.ENGINE_REGISTRY.items():
+            if isinstance(options, registry_entry["options_class"]):
+                selected_engine_name = name
+                found_engine = True
+                break
+        if not found_engine or selected_engine_name is None:
+            available_options_types = [
+                reg["options_class"].__name__ for reg in self.ENGINE_REGISTRY.values()
+            ]
+            raise TypeError(
+                f"Provided options object type '{type(options).__name__}' does not match any registered layout engine options: {available_options_types}"
             )
 
-            if selected_engine_name not in self.ENGINE_REGISTRY:
-                raise ValueError(
-                    f"Unknown or unavailable layout engine: '{selected_engine_name}'. Available: {available_engines}"
-                )
-
-            unexpected_kwargs = set(kwargs.keys()) - self.SIMPLE_MODE_ALLOWED_KWARGS
-            if unexpected_kwargs:
-                raise TypeError(
-                    f"Got unexpected keyword arguments in simple mode: {list(unexpected_kwargs)}. Use the 'options' parameter for detailed configuration."
-                )
-
-            options_class = self.ENGINE_REGISTRY[selected_engine_name]["options_class"]
-            # Use BaseLayoutOptions defaults unless overridden by kwargs
-            base_defaults = BaseLayoutOptions()
-            simple_args = {
-                "confidence": kwargs.get("confidence", base_defaults.confidence),
-                "classes": kwargs.get("classes"),
-                "exclude_classes": kwargs.get("exclude_classes"),
-                "device": kwargs.get("device", base_defaults.device),
-            }
-            # Filter out None values before passing to constructor
-            simple_args_filtered = {k: v for k, v in simple_args.items() if v is not None}
-            final_options = options_class(**simple_args_filtered)
-            logger.debug(f"LayoutManager: Constructed options for simple mode: {final_options}")
-
-        # --- Get Engine Instance and Process ---
         try:
             engine_instance = self._get_engine_instance(selected_engine_name)
             logger.info(f"Analyzing layout with engine '{selected_engine_name}'...")
 
-            # Call the engine's detect method
-            detections = engine_instance.detect(image, final_options)
+            detections = engine_instance.detect(image, options)  # Pass options directly
 
             logger.info(f"Layout analysis complete. Found {len(detections)} regions.")
             return detections
 
         except (ImportError, RuntimeError, ValueError, TypeError) as e:
-            logger.error(
-                f"Layout analysis failed for engine '{selected_engine_name}': {e}", exc_info=True
-            )
+            # Add engine name to error message if possible
+            engine_context = f" for engine '{selected_engine_name}'" if selected_engine_name else ""
+            logger.error(f"Layout analysis failed{engine_context}: {e}", exc_info=True)
             raise  # Re-raise expected errors
         except Exception as e:
-            logger.error(f"An unexpected error occurred during layout analysis: {e}", exc_info=True)
+            engine_context = f" for engine '{selected_engine_name}'" if selected_engine_name else ""
+            logger.error(
+                f"An unexpected error occurred during layout analysis{engine_context}: {e}",
+                exc_info=True,
+            )
             raise  # Re-raise unexpected errors
 
     def get_available_engines(self) -> List[str]:

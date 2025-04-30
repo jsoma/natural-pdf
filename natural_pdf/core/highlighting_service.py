@@ -18,7 +18,12 @@ except ImportError:
     Page = Any  # Fallback if circular import issue arises during type checking
 
 # Import ColorManager and related utils
-from natural_pdf.utils.visualization import ColorManager, create_legend, merge_images_with_legend
+from natural_pdf.utils.visualization import (
+    ColorManager,
+    create_legend,
+    merge_images_with_legend,
+    render_plain_page,
+)
 
 # Constants for drawing (Can be potentially moved to ColorManager/Renderer if desired)
 BORDER_ALPHA = 180  # Default alpha for highlight border
@@ -624,26 +629,14 @@ class HighlightingService:
         page = self._pdf[page_index]
         highlights_on_page = self.get_highlights_for_page(
             page_index
-        )  # This list will be empty if clear_page was called
+        )
 
-        # --- Get Base Image ---
-        try:
-            render_resolution = resolution if resolution is not None else scale * 72
-            img_object = page._page.to_image(resolution=render_resolution, **kwargs)
-            base_image = img_object.annotated
-            if not isinstance(base_image, Image.Image):
-                png_data = img_object._repr_png_()
-                if png_data:
-                    base_image = Image.open(io.BytesIO(png_data)).convert("RGB")
-                else:
-                    raise ValueError("Could not extract base PIL image from pdfplumber.")
-            base_image = base_image.convert("RGBA")
-            logger.debug(
-                f"Base image for page {page_index} rendered with resolution {render_resolution}."
-            )
-        except Exception as e:
-            logger.error(f"Failed to render base image for page {page_index}: {e}", exc_info=True)
-            return None
+        render_resolution = resolution if resolution is not None else scale * 72
+        base_image = render_plain_page(page, render_resolution)
+        base_image = base_image.convert("RGBA")
+        logger.debug(
+            f"Base image for page {page_index} rendered with resolution {render_resolution}."
+        )
 
         # --- Render Highlights ---
         rendered_image: Image.Image

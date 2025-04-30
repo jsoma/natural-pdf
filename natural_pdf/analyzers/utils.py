@@ -1,12 +1,10 @@
 import logging
 from typing import Any, Dict, List
 
-from ..elements.region import Region
-
 
 def convert_to_regions(
     page: Any, detections: List[Dict[str, Any]], scale_factor: float = 1.0
-) -> List[Region]:
+) -> List["Region"]:
     """
     Convert layout detections to Region objects.
 
@@ -18,6 +16,8 @@ def convert_to_regions(
     Returns:
         List of Region objects with layout metadata
     """
+    from natural_pdf.elements.region import Region
+
     conversion_logger = logging.getLogger("natural_pdf.analyzers.layout.convert")
     conversion_logger.debug(
         f"Converting {len(detections)} detections to regions with scale {scale_factor}"

@@ -2,8 +2,8 @@
 Utilities for generating consistent identifiers.
 """
 
-import hashlib
 import base64
+import hashlib
 import os
 
 

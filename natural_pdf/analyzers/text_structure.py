@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from natural_pdf.analyzers.text_options import TextStyleOptions
 
 if TYPE_CHECKING:
-    from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
+    from natural_pdf.elements.collections import ElementCollection
 
 logger = logging.getLogger(__name__)
 

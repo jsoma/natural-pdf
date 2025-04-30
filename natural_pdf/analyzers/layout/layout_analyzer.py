@@ -7,6 +7,7 @@ from PIL import Image
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import (
     BaseLayoutOptions,
+    GeminiLayoutOptions,
     LayoutOptions,
     TATRLayoutOptions,
 )
@@ -82,10 +83,10 @@ class LayoutAnalyzer:
             f"  Rendering page {self._page.number} to image for initial layout detection..."
         )
         try:
-            layout_scale = getattr(self._page._parent, "_config", {}).get("layout_image_scale", 1.5)
+            layout_scale = getattr(self._page._parent, "_config", {}).get("layout_image_scale", 1.0)
             layout_resolution = layout_scale * 72
             std_res_page_image = self._page.to_image(
-                resolution=layout_resolution, include_highlights=False
+                resolution=layout_resolution, include_highlights=False, scale=1.0
             )
             if not std_res_page_image:
                 raise ValueError("Initial page rendering returned None")
@@ -110,12 +111,11 @@ class LayoutAnalyzer:
         final_options: BaseLayoutOptions
 
         if options is not None:
-            # User provided a complete options object, use it directly
             logger.debug("Using user-provided options object.")
             final_options = copy.deepcopy(options)  # Copy to avoid modifying original user object
             if kwargs:
                 logger.warning(
-                    f"Ignoring kwargs {list(kwargs.keys())} because a full options object was provided."
+                    f"Ignoring simple mode keyword arguments {list(kwargs.keys())} because a full options object was provided."
                 )
             # Infer engine from options type if engine arg wasn't provided
             if engine is None:
@@ -145,16 +145,39 @@ class LayoutAnalyzer:
             # Get base defaults
             base_defaults = BaseLayoutOptions()
 
+            # Separate client from other kwargs
+            client_instance = kwargs.pop("client", None)  # Get client, remove from kwargs
+
+            # Separate model_name if provided for Gemini
+            model_name_kwarg = None
+            if issubclass(options_class, GeminiLayoutOptions):
+                model_name_kwarg = kwargs.pop("model_name", None)
+
             # Prepare args for constructor, prioritizing explicit args over defaults
             constructor_args = {
                 "confidence": confidence if confidence is not None else base_defaults.confidence,
                 "classes": classes,  # Pass None if not provided
                 "exclude_classes": exclude_classes,  # Pass None if not provided
                 "device": device if device is not None else base_defaults.device,
-                "extra_args": kwargs,  # Pass other kwargs here
+                # Pass client explicitly if constructing Gemini options
+                # Note: We check issubclass *before* calling constructor
+                **(
+                    {"client": client_instance}
+                    if client_instance and issubclass(options_class, GeminiLayoutOptions)
+                    else {}
+                ),
+                # Pass model_name explicitly if constructing Gemini options and it was provided
+                **(
+                    {"model_name": model_name_kwarg}
+                    if model_name_kwarg and issubclass(options_class, GeminiLayoutOptions)
+                    else {}
+                ),
+                "extra_args": kwargs,  # Pass REMAINING kwargs here
             }
             # Remove None values unless they are valid defaults (like classes=None)
             # We can pass all to the dataclass constructor; it handles defaults
+            # **Filter constructor_args to remove None values that aren't defaults?**
+            # For simplicity, let dataclass handle it for now.
 
             try:
                 final_options = options_class(**constructor_args)
@@ -167,24 +190,30 @@ class LayoutAnalyzer:
                 # Re-raise for now, indicates programming error or invalid kwarg.
                 raise e
 
-        # --- Add Internal Context to extra_args (ALWAYS) ---
+        # --- Add Internal Context to extra_args (Applies to the final_options object) ---
         if not hasattr(final_options, "extra_args") or final_options.extra_args is None:
+            # Ensure extra_args exists, potentially overwriting if needed
             final_options.extra_args = {}
+        elif not isinstance(final_options.extra_args, dict):
+            logger.warning(
+                f"final_options.extra_args was not a dict ({type(final_options.extra_args)}), replacing with internal context."
+            )
+            final_options.extra_args = {}
+
         final_options.extra_args["_page_ref"] = self._page
         final_options.extra_args["_img_scale_x"] = img_scale_x
         final_options.extra_args["_img_scale_y"] = img_scale_y
         logger.debug(
-            f"Added internal context to final_options.extra_args: {final_options.extra_args}"
+            f"Added/updated internal context in final_options.extra_args: {final_options.extra_args}"
         )
 
-        # --- Call Layout Manager with the Final Options ---
+        # --- Call Layout Manager (ALWAYS with options object) ---
         logger.debug(f"Calling Layout Manager with final options object.")
         try:
-            # Pass only image and the constructed options object
+            # ALWAYS pass the constructed/modified options object
             detections = self._layout_manager.analyze_layout(
                 image=std_res_page_image,
-                options=final_options,
-                # No engine, confidence, classes etc. passed here directly
+                options=final_options,  # Pass the final object with internal context
             )
             logger.info(f"  Layout Manager returned {len(detections)} detections.")
         # Specifically let errors about unknown/unavailable engines propagate

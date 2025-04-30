@@ -8,6 +8,7 @@ import math
 import random
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
+import pypdfium2
 from PIL import Image, ImageDraw, ImageFont
 
 # Define a base list of visually distinct colors for highlighting
@@ -193,7 +194,7 @@ def merge_images_with_legend(
         return image  # Return original image if legend is None or empty
 
     bg_color = (255, 255, 255, 255)  # Always use white for the merged background
-    bg_color = (255, 255, 255, 255) # Always use white for the merged background
+    bg_color = (255, 255, 255, 255)  # Always use white for the merged background
 
     if position == "right":
         # Create a new image with extra width for the legend
@@ -231,3 +232,19 @@ def merge_images_with_legend(
         merged = image
 
     return merged
+
+
+def render_plain_page(page, resolution):
+    doc = pypdfium2.PdfDocument(page._page.pdf.stream)
+
+    pdf_page = doc[page.index]
+
+    bitmap = pdf_page.render(
+        scale=resolution / 72,
+    )
+    image = bitmap.to_pil().convert("RGB")
+
+    pdf_page.close()
+    doc.close()
+
+    return image

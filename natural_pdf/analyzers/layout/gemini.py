@@ -1,13 +1,13 @@
 # layout_detector_gemini.py
+import base64
 import importlib.util
+import io
 import logging
 import os
 from typing import Any, Dict, List, Optional
-import base64
-import io
 
-from pydantic import BaseModel, Field
 from PIL import Image
+from pydantic import BaseModel, Field
 
 # Use OpenAI library for interaction
 try:
@@ -53,10 +53,8 @@ logger = logging.getLogger(__name__)
 # This is used by the openai library's `response_format`
 class DetectedRegion(BaseModel):
     label: str = Field(description="The identified class name.")
-    bbox: List[float] = Field(
-        description="Bounding box coordinates [xmin, ymin, xmax, ymax].", min_items=4, max_items=4
-    )
-    confidence: float = Field(description="Confidence score [0.0, 1.0].", ge=0.0, le=1.0)
+    bbox: List[float] = Field(description="Bounding box coordinates [xmin, ymin, xmax, ymax].")
+    confidence: float = Field(description="Confidence score [0.0, 1.0].")
 
 
 class GeminiLayoutDetector(LayoutDetector):
@@ -70,16 +68,10 @@ class GeminiLayoutDetector(LayoutDetector):
         self.supported_classes = set()  # Indicate dynamic nature
 
     def is_available(self) -> bool:
-        """Check if openai library is installed and GOOGLE_API_KEY is available."""
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            logger.warning(
-                "GOOGLE_API_KEY environment variable not set. Gemini detector (via OpenAI lib) will not be available."
-            )
-            return False
+        """Check if openai library is installed."""
         if OpenAI is None:
             logger.warning(
-                "openai package not found. Gemini detector (via OpenAI lib) will not be available."
+                "openai package not found. Gemini detector (via OpenAI lib) will not be available. Run: pip install openai"
             )
             return False
         return True
@@ -96,44 +88,65 @@ class GeminiLayoutDetector(LayoutDetector):
     def _load_model_from_options(self, options: GeminiLayoutOptions) -> Any:
         """Validate options and return the model name."""
         if not self.is_available():
-            raise RuntimeError(
-                "OpenAI library not installed or GOOGLE_API_KEY not set. Please run: pip install openai"
-            )
+            raise RuntimeError("OpenAI library not installed. Please run: pip install openai")
 
         if not isinstance(options, GeminiLayoutOptions):
             raise TypeError("Incorrect options type provided for Gemini model loading.")
 
-        # Simply return the model name, client is created in detect()
+        # Model loading is deferred to detect() based on whether a client is provided
         return options.model_name
 
     def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
         """Detect layout elements in an image using Gemini via OpenAI library."""
         if not self.is_available():
-            raise RuntimeError("OpenAI library not installed or GOOGLE_API_KEY not set.")
+            # The is_available check now only confirms library presence
+            raise RuntimeError("OpenAI library not installed. Please run: pip install openai")
 
         # Ensure options are the correct type
-        if not isinstance(options, GeminiLayoutOptions):
+        final_options: GeminiLayoutOptions
+        if isinstance(options, GeminiLayoutOptions):
+            final_options = options
+        else:
+            # If base options are passed, try to convert, keeping extra_args
+            # Note: This won't transfer a 'client' if it was somehow attached to BaseLayoutOptions
             self.logger.warning(
-                "Received BaseLayoutOptions, expected GeminiLayoutOptions. Using defaults."
+                "Received BaseLayoutOptions, expected GeminiLayoutOptions. Converting and using defaults."
             )
-            options = GeminiLayoutOptions(
+            final_options = GeminiLayoutOptions(
                 confidence=options.confidence,
                 classes=options.classes,
                 exclude_classes=options.exclude_classes,
-                device=options.device,
+                device=options.device,  # device is not used by Gemini detector currently
                 extra_args=options.extra_args,
+                # client will be None here, forcing default client creation below
             )
 
-        model_name = self._get_model(options)
-        api_key = os.environ.get("GOOGLE_API_KEY")
-
+        model_name = self._get_model(final_options)
         detections = []
+
         try:
-            # --- 1. Initialize OpenAI Client for Gemini ---
-            client = OpenAI(api_key=api_key, base_url=self.GEMINI_BASE_URL)
+            # --- 1. Initialize OpenAI Client ---
+            client: Optional[OpenAI] = None
+            # Use the provided client instance
+            if hasattr(final_options.client, "beta") and hasattr(
+                final_options.client.beta.chat.completions, "parse"
+            ):
+                client = final_options.client
+                logger.debug("Using provided client instance.")
+            else:
+                logger.error(
+                    "Provided client does not seem compatible (missing beta.chat.completions.parse)."
+                )
+                raise TypeError(
+                    "Provided client is not compatible with the expected OpenAI interface."
+                )
+
+            if not client:
+                # This should not happen if logic above is correct, but as a safeguard
+                raise RuntimeError("Failed to obtain a valid client for Gemini detection.")
 
             # --- 2. Prepare Input for OpenAI API ---
-            if not options.classes:
+            if not final_options.classes:
                 logger.error("Gemini layout detection requires a list of classes to find.")
                 return []
 
@@ -145,15 +158,13 @@ class GeminiLayoutDetector(LayoutDetector):
             img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
             image_url = f"data:image/png;base64,{img_base64}"
 
-            # Construct the prompt text
-            class_list_str = ", ".join(f"`{c}`" for c in options.classes)
+            class_list_str = ", ".join(f"`{c}`" for c in final_options.classes)
             prompt_text = (
                 f"Analyze the provided image of a document page ({width}x{height}). "
                 f"Identify all regions corresponding to the following types: {class_list_str}. "
-                f"Return ONLY the structured data requested."
+                f"Return ONLY the structured data requested as formatted JSON."
             )
 
-            # Prepare messages for chat completions endpoint
             messages = [
                 {
                     "role": "user",
@@ -167,27 +178,26 @@ class GeminiLayoutDetector(LayoutDetector):
                 }
             ]
 
-            # --- 3. Call OpenAI API using .parse for structured output ---
             logger.debug(
-                f"Running Gemini detection via OpenAI lib (Model: {model_name}). Asking for classes: {options.classes}"
+                f"Running Gemini detection via OpenAI lib (Model: {model_name}). Asking for classes: {final_options.classes}"
             )
 
-            # Extract relevant generation parameters from extra_args if provided
-            # Mapping common names: temperature, top_p, max_tokens
             completion_kwargs = {
-                "temperature": options.extra_args.get("temperature", 0.2),  # Default to low temp
-                "top_p": options.extra_args.get("top_p"),
-                "max_tokens": options.extra_args.get(
-                    "max_tokens", 4096
-                ),  # Map from max_output_tokens
+                "temperature": final_options.extra_args.get(
+                    "temperature", 0.0
+                ),  # Default to low temp
+                "max_tokens": final_options.extra_args.get("max_tokens", 4096),
             }
-            # Filter out None values
+
             completion_kwargs = {k: v for k, v in completion_kwargs.items() if v is not None}
+
+            class ImageContents(BaseModel):
+                regions: List[DetectedRegion]
 
             completion: ChatCompletion = client.beta.chat.completions.parse(
                 model=model_name,
                 messages=messages,
-                response_format=List[DetectedRegion],  # Pass the Pydantic model list
+                response_format=ImageContents,
                 **completion_kwargs,
             )
 
@@ -199,7 +209,7 @@ class GeminiLayoutDetector(LayoutDetector):
                 return []
 
             # Get the parsed Pydantic objects
-            parsed_results = completion.choices[0].message.parsed
+            parsed_results = completion.choices[0].message.parsed.regions
             if not parsed_results or not isinstance(parsed_results, list):
                 logger.error(
                     f"Gemini response (via OpenAI lib) did not contain a valid list of parsed regions. Found: {type(parsed_results)}"
@@ -207,10 +217,10 @@ class GeminiLayoutDetector(LayoutDetector):
                 return []
 
             # --- 5. Convert to Detections & Filter ---
-            normalized_classes_req = {self._normalize_class_name(c) for c in options.classes}
+            normalized_classes_req = {self._normalize_class_name(c) for c in final_options.classes}
             normalized_classes_excl = (
-                {self._normalize_class_name(c) for c in options.exclude_classes}
-                if options.exclude_classes
+                {self._normalize_class_name(c) for c in final_options.exclude_classes}
+                if final_options.exclude_classes
                 else set()
             )
 
@@ -242,9 +252,9 @@ class GeminiLayoutDetector(LayoutDetector):
                     continue
 
                 # Check against base confidence threshold from options
-                if confidence_score < options.confidence:
+                if confidence_score < final_options.confidence:
                     logger.debug(
-                        f"Skipping item with confidence {confidence_score:.3f} below threshold {options.confidence}."
+                        f"Skipping item with confidence {confidence_score:.3f} below threshold {final_options.confidence}."
                     )
                     continue
 

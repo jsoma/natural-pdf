@@ -46,7 +46,9 @@ class TATRLayoutOptions(BaseLayoutOptions):
     # Image enhancement options
     enhance_contrast: float = 1.5  # Contrast enhancement factor (1.0 = no change)
     # Special thresholds for specific elements
-    column_threshold: Optional[float] = None  # Lower threshold for columns (default: confidence * 0.8)
+    column_threshold: Optional[float] = (
+        None  # Lower threshold for columns (default: confidence * 0.8)
+    )
 
 
 # --- Paddle Specific Options ---
@@ -90,6 +92,7 @@ class GeminiLayoutOptions(BaseLayoutOptions):
     """Options specific to Gemini-based layout detection (using OpenAI compatibility)."""
 
     model_name: str = "gemini-2.0-flash"
+    client: Optional[Any] = None  # Allow passing a pre-configured client
     # Removed: prompt_template, temperature, top_p, max_output_tokens
     # These are typically passed directly to the chat completion call or via extra_args
 

@@ -1,4 +1,5 @@
 import base64
+import concurrent.futures  # Added import
 import hashlib
 import io
 import json
@@ -6,20 +7,30 @@ import logging
 import os
 import re
 import tempfile
-import time # Import time
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, overload # Added overload
-import concurrent.futures # Added import
-from tqdm.auto import tqdm # Added tqdm import
 import threading
+import time  # Import time
+from pathlib import Path
+from typing import (  # Added overload
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 import pdfplumber
 from PIL import Image, ImageDraw
+from tqdm.auto import tqdm  # Added tqdm import
 
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 from natural_pdf.selectors.parser import parse_selector
+from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
+from natural_pdf.utils.visualization import render_plain_page
 
 if TYPE_CHECKING:
     import pdfplumber
@@ -32,6 +43,8 @@ if TYPE_CHECKING:
 # New Imports
 import itertools
 
+# Deskew Imports (Conditional)
+import numpy as np
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
@@ -40,32 +53,31 @@ from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
+from natural_pdf.classification.manager import ClassificationManager  # For type hint
+
+# --- Classification Imports --- #
+from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
 from natural_pdf.core.element_manager import ElementManager
+from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
+from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr import OCRManager, OCROptions
+from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
+from natural_pdf.qa import DocumentQA, get_qa_engine
+from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.widgets import InteractiveViewerWidget
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveViewerWidget
 
-from natural_pdf.qa import DocumentQA, get_qa_engine
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-
-# --- Classification Imports --- #
-from natural_pdf.classification.mixin import ClassificationMixin
-from natural_pdf.classification.manager import ClassificationManager # For type hint
 # --- End Classification Imports --- #
 
-from natural_pdf.utils.locks import pdf_render_lock # Import the lock
-from natural_pdf.elements.base import Element # Import base element
-from natural_pdf.classification.mixin import ClassificationMixin # Import classification mixin
-from natural_pdf.extraction.mixin import ExtractionMixin # Import extraction mixin
 
-# Deskew Imports (Conditional)
-import numpy as np
+
 try:
     from deskew import determine_skew
+
     DESKEW_AVAILABLE = True
 except ImportError:
     DESKEW_AVAILABLE = False
@@ -98,7 +110,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         self._index = index
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
-        self._skew_angle: Optional[float] = None # Stores detected skew angle
+        self._skew_angle: Optional[float] = None  # Stores detected skew angle
 
         # --- ADDED --- Metadata store for mixins
         self.metadata: Dict[str, Any] = {}
@@ -449,20 +461,36 @@ class Page(ClassificationMixin, ExtractionMixin):
         return filtered_elements
 
     @overload
-    def find(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
-
-    @overload
-    def find(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> Optional[Any]: ...
-
     def find(
         self,
-        selector: Optional[str] = None, # Now optional
-        *,                     # Force subsequent args to be keyword-only
-        text: Optional[str] = None,     # New text parameter
+        *,
+        text: str,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
+    ) -> Optional[Any]: ...
+
+    @overload
+    def find(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> Optional[Any]: ...
+
+    def find(
+        self,
+        selector: Optional[str] = None,  # Now optional
+        *,  # Force subsequent args to be keyword-only
+        text: Optional[str] = None,  # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
     ) -> Optional[Any]:
         """
         Find first element on this page matching selector OR text content.
@@ -483,22 +511,24 @@ class Page(ClassificationMixin, ExtractionMixin):
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
         if selector is None and text is None:
-             raise ValueError("Provide either 'selector' or 'text'.")
+            raise ValueError("Provide either 'selector' or 'text'.")
 
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-             # Escape quotes within the text for the selector string
-             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-             # Default to 'text:contains(...)'
-             effective_selector = f'text:contains("{escaped_text}")'
-             # Note: regex/case handled by kwargs passed down
-             logger.debug(f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')")
+            # Escape quotes within the text for the selector string
+            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+            # Default to 'text:contains(...)'
+            effective_selector = f'text:contains("{escaped_text}")'
+            # Note: regex/case handled by kwargs passed down
+            logger.debug(
+                f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')"
+            )
         elif selector is not None:
-             effective_selector = selector
+            effective_selector = selector
         else:
-             # Should be unreachable due to checks above
-             raise ValueError("Internal error: No selector or text provided.")
+            # Should be unreachable due to checks above
+            raise ValueError("Internal error: No selector or text provided.")
 
         selector_obj = parse_selector(effective_selector)
 
@@ -523,20 +553,36 @@ class Page(ClassificationMixin, ExtractionMixin):
             return None
 
     @overload
-    def find_all(self, *, text: str, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
-
-    @overload
-    def find_all(self, selector: str, *, apply_exclusions: bool = True, regex: bool = False, case: bool = True, **kwargs) -> "ElementCollection": ...
-
     def find_all(
         self,
-        selector: Optional[str] = None, # Now optional
-        *,                     # Force subsequent args to be keyword-only
-        text: Optional[str] = None,     # New text parameter
+        *,
+        text: str,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    @overload
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,  # Now optional
+        *,  # Force subsequent args to be keyword-only
+        text: Optional[str] = None,  # New text parameter
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
     ) -> "ElementCollection":
         """
         Find all elements on this page matching selector OR text content.
@@ -554,27 +600,28 @@ class Page(ClassificationMixin, ExtractionMixin):
         Returns:
             ElementCollection with matching elements.
         """
-        from natural_pdf.elements.collections import ElementCollection # Import here for type hint
-        
+        from natural_pdf.elements.collections import ElementCollection  # Import here for type hint
+
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
         if selector is None and text is None:
-             raise ValueError("Provide either 'selector' or 'text'.")
+            raise ValueError("Provide either 'selector' or 'text'.")
 
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-             # Escape quotes within the text for the selector string
-             escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-             # Default to 'text:contains(...)'
-             effective_selector = f'text:contains("{escaped_text}")'
-             logger.debug(f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')")
+            # Escape quotes within the text for the selector string
+            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
+            # Default to 'text:contains(...)'
+            effective_selector = f'text:contains("{escaped_text}")'
+            logger.debug(
+                f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')"
+            )
         elif selector is not None:
-             effective_selector = selector
+            effective_selector = selector
         else:
             # Should be unreachable due to checks above
             raise ValueError("Internal error: No selector or text provided.")
-
 
         selector_obj = parse_selector(effective_selector)
 
@@ -1366,18 +1413,22 @@ class Page(ClassificationMixin, ExtractionMixin):
         image = None
         render_resolution = resolution if resolution is not None else scale * 72
         thread_id = threading.current_thread().name
-        logger.debug(f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image...")
+        logger.debug(
+            f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image..."
+        )
         lock_wait_start = time.monotonic()
         try:
             # Acquire the global PDF rendering lock
             with pdf_render_lock:
                 lock_acquired_time = time.monotonic()
-                logger.debug(f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render...")
+                logger.debug(
+                    f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render..."
+                )
                 if include_highlights:
                     # Delegate rendering to the central service
                     image = self._highlighter.render_page(
                         page_index=self.index,
-                        scale=scale,  # Note: scale is used by highlighter internally for drawing
+                        scale=scale,
                         labels=labels,
                         legend_position=legend_position,
                         render_ocr=render_ocr,
@@ -1385,28 +1436,15 @@ class Page(ClassificationMixin, ExtractionMixin):
                         **kwargs,
                     )
                 else:
-                    # Get the base page image directly from pdfplumber if no highlights needed
-                    # Use the underlying pdfplumber page object
-                    img_object = self._page.to_image(resolution=render_resolution, **kwargs)
-                    # Access the PIL image directly (assuming pdfplumber structure)
-                    image = (
-                        img_object.annotated
-                        if hasattr(img_object, "annotated")
-                        else img_object._repr_png_()
-                    )
-                    if isinstance(image, bytes):  # Handle cases where it returns bytes
-                        from io import BytesIO
-
-                        image = Image.open(BytesIO(image)).convert(
-                            "RGB"
-                        )  # Convert to RGB for consistency
-
+                    image = render_plain_page(self, render_resolution)
         except Exception as e:
             logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
             return None  # Return None on error
         finally:
             render_end_time = time.monotonic()
-            logger.debug(f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s")
+            logger.debug(
+                f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s"
+            )
 
         if image is None:
             return None
@@ -1529,7 +1567,9 @@ class Page(ClassificationMixin, ExtractionMixin):
 
         # Remove existing OCR elements if replace is True
         if replace and hasattr(self, "_element_mgr"):
-            logger.info(f"Page {self.number}: Removing existing OCR elements before applying new OCR.")
+            logger.info(
+                f"Page {self.number}: Removing existing OCR elements before applying new OCR."
+            )
             self._element_mgr.remove_ocr_elements()
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
@@ -1597,7 +1637,9 @@ class Page(ClassificationMixin, ExtractionMixin):
             with pdf_render_lock:
                 image = self.to_image(resolution=final_resolution, include_highlights=False)
                 if not image:
-                    logger.error(f"  Failed to render page {self.number} to image for OCR extraction.")
+                    logger.error(
+                        f"  Failed to render page {self.number} to image for OCR extraction."
+                    )
                     return []
                 logger.debug(f"  Rendered image size: {image.width}x{image.height}")
         except Exception as e:
@@ -1670,6 +1712,11 @@ class Page(ClassificationMixin, ExtractionMixin):
         return temp_elements
 
     @property
+    def size(self) -> Tuple[float, float]:
+        """Get the size of the page in points."""
+        return (self._page.width, self._page.height)
+
+    @property
     def layout_analyzer(self) -> LayoutAnalyzer:
         """Get or create the layout analyzer for this page."""
         if self._layout_analyzer is None:
@@ -1688,6 +1735,8 @@ class Page(ClassificationMixin, ExtractionMixin):
         exclude_classes: Optional[List[str]] = None,
         device: Optional[str] = None,
         existing: str = "replace",
+        model_name: Optional[str] = None,
+        client: Optional[Any] = None,  # Add client parameter
     ) -> ElementCollection[Region]:
         """
         Analyze the page layout using the configured LayoutManager.
@@ -1713,6 +1762,8 @@ class Page(ClassificationMixin, ExtractionMixin):
             exclude_classes=exclude_classes,
             device=device,
             existing=existing,
+            model_name=model_name,
+            client=client,  # Pass client down
         )
 
         # Retrieve the detected regions from the element manager
@@ -2162,7 +2213,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         self,
         correction_callback: Callable[[Any], Optional[str]],
         max_workers: Optional[int] = None,
-        progress_callback: Optional[Callable[[], None]] = None, # Added progress callback
+        progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
     ) -> "Page":  # Return self for chaining
         """
         Applies corrections to OCR-generated text elements on this page
@@ -2190,7 +2241,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         target_elements_collection = self.find_all(
             selector="text[source=ocr]", apply_exclusions=False
         )
-        target_elements = target_elements_collection.elements # Get the list
+        target_elements = target_elements_collection.elements  # Get the list
 
         if not target_elements:
             logger.info(f"Page {self.number}: No OCR elements found to correct.")
@@ -2203,22 +2254,24 @@ class Page(ClassificationMixin, ExtractionMixin):
         # Define the task to be run by the worker thread or sequentially
         def _process_element_task(element):
             try:
-                current_text = getattr(element, 'text', None)
+                current_text = getattr(element, "text", None)
                 # Call the user-provided callback
                 corrected_text = correction_callback(element)
 
                 # Validate result type
                 if corrected_text is not None and not isinstance(corrected_text, str):
-                    logger.warning(f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update.")
-                    return element, None, None # Treat as no correction
+                    logger.warning(
+                        f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update."
+                    )
+                    return element, None, None  # Treat as no correction
 
                 return element, corrected_text, None  # Return element, result, no error
             except Exception as e:
                 logger.error(
                     f"Page {self.number}: Error applying correction callback to element '{getattr(element, 'text', '')[:30]}...' ({element.bbox}): {e}",
-                    exc_info=False # Keep log concise
+                    exc_info=False,  # Keep log concise
                 )
-                return element, None, e # Return element, no result, error
+                return element, None, e  # Return element, no result, error
             finally:
                 # --- Call progress callback here --- #
                 if progress_callback:
@@ -2226,16 +2279,24 @@ class Page(ClassificationMixin, ExtractionMixin):
                         progress_callback()
                     except Exception as cb_e:
                         # Log error in callback itself, but don't stop processing
-                        logger.error(f"Page {self.number}: Error executing progress_callback: {cb_e}", exc_info=False)
+                        logger.error(
+                            f"Page {self.number}: Error executing progress_callback: {cb_e}",
+                            exc_info=False,
+                        )
 
         # Choose execution strategy based on max_workers
         if max_workers is not None and max_workers > 1:
             # --- Parallel execution --- #
-            logger.info(f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers.")
+            logger.info(
+                f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers."
+            )
             futures = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Submit all tasks
-                future_to_element = {executor.submit(_process_element_task, element): element for element in target_elements}
+                future_to_element = {
+                    executor.submit(_process_element_task, element): element
+                    for element in target_elements
+                }
 
                 # Process results as they complete (progress_callback called by worker)
                 for future in concurrent.futures.as_completed(future_to_element):
@@ -2247,14 +2308,17 @@ class Page(ClassificationMixin, ExtractionMixin):
                             # Error already logged in worker
                         elif corrected_text is not None:
                             # Apply correction if text changed
-                            current_text = getattr(element, 'text', None)
+                            current_text = getattr(element, "text", None)
                             if corrected_text != current_text:
                                 element.text = corrected_text
                                 updated_count += 1
                     except Exception as exc:
                         # Catch errors from future.result() itself
-                        element = future_to_element[future] # Find original element
-                        logger.error(f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}", exc_info=True)
+                        element = future_to_element[future]  # Find original element
+                        logger.error(
+                            f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}",
+                            exc_info=True,
+                        )
                         error_count += 1
                         # Note: progress_callback was already called in the worker's finally block
 
@@ -2262,64 +2326,76 @@ class Page(ClassificationMixin, ExtractionMixin):
             # --- Sequential execution --- #
             logger.info(f"Page {self.number}: Running OCR correction sequentially.")
             for element in target_elements:
-                 # Call the task function directly (it handles progress_callback)
-                 processed_count += 1
-                 _element, corrected_text, error = _process_element_task(element)
-                 if error:
-                     error_count += 1
-                 elif corrected_text is not None:
-                     # Apply correction if text changed
-                     current_text = getattr(_element, 'text', None)
-                     if corrected_text != current_text:
-                         _element.text = corrected_text
-                         updated_count += 1
+                # Call the task function directly (it handles progress_callback)
+                processed_count += 1
+                _element, corrected_text, error = _process_element_task(element)
+                if error:
+                    error_count += 1
+                elif corrected_text is not None:
+                    # Apply correction if text changed
+                    current_text = getattr(_element, "text", None)
+                    if corrected_text != current_text:
+                        _element.text = corrected_text
+                        updated_count += 1
 
         logger.info(
-             f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
+            f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
         )
 
-        return self # Return self for chaining
+        return self  # Return self for chaining
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
-        if not hasattr(self, 'pdf') or not hasattr(self.pdf, 'get_manager'):
-             raise AttributeError("ClassificationManager cannot be accessed: Parent PDF or get_manager method missing.")
+        if not hasattr(self, "pdf") or not hasattr(self.pdf, "get_manager"):
+            raise AttributeError(
+                "ClassificationManager cannot be accessed: Parent PDF or get_manager method missing."
+            )
         try:
-             # Use the PDF's manager registry accessor
-             return self.pdf.get_manager('classification')
+            # Use the PDF's manager registry accessor
+            return self.pdf.get_manager("classification")
         except (ValueError, RuntimeError, AttributeError) as e:
             # Wrap potential errors from get_manager for clarity
             raise AttributeError(f"Failed to get ClassificationManager from PDF: {e}") from e
 
-    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]: # Use "Image" for lazy import
-        if model_type == 'text':
-            text_content = self.extract_text(layout=False, use_exclusions=False) # Simple join, ignore exclusions for classification
+    def _get_classification_content(
+        self, model_type: str, **kwargs
+    ) -> Union[str, "Image"]:  # Use "Image" for lazy import
+        if model_type == "text":
+            text_content = self.extract_text(
+                layout=False, use_exclusions=False
+            )  # Simple join, ignore exclusions for classification
             if not text_content or text_content.isspace():
                 raise ValueError("Cannot classify page with 'text' model: No text content found.")
             return text_content
-        elif model_type == 'vision':
+        elif model_type == "vision":
             # Get resolution from manager/kwargs if possible, else default
             manager = self._get_classification_manager()
             default_resolution = 150
             # Access kwargs passed to classify method if needed
-            resolution = kwargs.get('resolution', default_resolution) if 'kwargs' in locals() else default_resolution
+            resolution = (
+                kwargs.get("resolution", default_resolution)
+                if "kwargs" in locals()
+                else default_resolution
+            )
 
             # Use to_image, ensuring no highlights interfere
             img = self.to_image(
                 resolution=resolution,
                 include_highlights=False,
                 labels=False,
-                exclusions=None # Don't mask exclusions for classification input image
+                exclusions=None,  # Don't mask exclusions for classification input image
             )
             if img is None:
-                raise ValueError("Cannot classify page with 'vision' model: Failed to render image.")
+                raise ValueError(
+                    "Cannot classify page with 'vision' model: Failed to render image."
+                )
             return img
         else:
             raise ValueError(f"Unsupported model_type for classification: {model_type}")
 
     def _get_metadata_storage(self) -> Dict[str, Any]:
         # Ensure metadata exists
-        if not hasattr(self, 'metadata') or self.metadata is None:
+        if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         return self.metadata
 
@@ -2337,7 +2413,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         resolution: int = 72,
         grayscale: bool = True,
         force_recalculate: bool = False,
-        **deskew_kwargs
+        **deskew_kwargs,
     ) -> Optional[float]:
         """
         Detects the skew angle of the page image and stores it.
@@ -2356,7 +2432,9 @@ class Page(ClassificationMixin, ExtractionMixin):
             ImportError: If the 'deskew' library is not installed.
         """
         if not DESKEW_AVAILABLE:
-            raise ImportError("Deskew library not found. Install with: pip install natural-pdf[deskew]")
+            raise ImportError(
+                "Deskew library not found. Install with: pip install natural-pdf[deskew]"
+            )
 
         if self._skew_angle is not None and not force_recalculate:
             logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle:.2f}")
@@ -2379,12 +2457,14 @@ class Page(ClassificationMixin, ExtractionMixin):
                 if len(img_np.shape) == 3 and img_np.shape[2] >= 3:
                     gray_np = np.mean(img_np[:, :, :3], axis=2).astype(np.uint8)
                 elif len(img_np.shape) == 2:
-                    gray_np = img_np # Already grayscale
+                    gray_np = img_np  # Already grayscale
                 else:
-                     logger.warning(f"Page {self.number}: Unexpected image shape {img_np.shape} for grayscale conversion.")
-                     gray_np = img_np # Try using it anyway
+                    logger.warning(
+                        f"Page {self.number}: Unexpected image shape {img_np.shape} for grayscale conversion."
+                    )
+                    gray_np = img_np  # Try using it anyway
             else:
-                gray_np = img_np # Use original if grayscale=False
+                gray_np = img_np  # Use original if grayscale=False
 
             # Determine skew angle using the deskew library
             angle = determine_skew(gray_np, **deskew_kwargs)
@@ -2402,7 +2482,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         resolution: int = 300,
         angle: Optional[float] = None,
         detection_resolution: int = 72,
-        **deskew_kwargs
+        **deskew_kwargs,
     ) -> Optional[Image.Image]:
         """
         Creates and returns a deskewed PIL image of the page.
@@ -2424,15 +2504,21 @@ class Page(ClassificationMixin, ExtractionMixin):
             ImportError: If the 'deskew' library is not installed.
         """
         if not DESKEW_AVAILABLE:
-            raise ImportError("Deskew library not found. Install with: pip install natural-pdf[deskew]")
+            raise ImportError(
+                "Deskew library not found. Install with: pip install natural-pdf[deskew]"
+            )
 
         # Determine the angle to use
         rotation_angle = angle
         if rotation_angle is None:
             # Detect angle (or use cached) if not explicitly provided
-            rotation_angle = self.detect_skew_angle(resolution=detection_resolution, **deskew_kwargs)
+            rotation_angle = self.detect_skew_angle(
+                resolution=detection_resolution, **deskew_kwargs
+            )
 
-        logger.debug(f"Page {self.number}: Preparing to deskew (output resolution={resolution} DPI). Using angle: {rotation_angle}")
+        logger.debug(
+            f"Page {self.number}: Preparing to deskew (output resolution={resolution} DPI). Using angle: {rotation_angle}"
+        )
 
         try:
             # Render the original page at the desired output resolution
@@ -2445,21 +2531,25 @@ class Page(ClassificationMixin, ExtractionMixin):
             if rotation_angle is not None and abs(rotation_angle) > 0.05:
                 logger.debug(f"Page {self.number}: Rotating by {rotation_angle:.2f} degrees.")
                 # Determine fill color based on image mode
-                fill = (255, 255, 255) if img.mode == 'RGB' else 255 # White background
+                fill = (255, 255, 255) if img.mode == "RGB" else 255  # White background
                 # Rotate the image using PIL
                 rotated_img = img.rotate(
-                    rotation_angle, # deskew provides angle, PIL rotates counter-clockwise
+                    rotation_angle,  # deskew provides angle, PIL rotates counter-clockwise
                     resample=Image.Resampling.BILINEAR,
-                    expand=True, # Expand image to fit rotated content
-                    fillcolor=fill
+                    expand=True,  # Expand image to fit rotated content
+                    fillcolor=fill,
                 )
                 return rotated_img
             else:
-                logger.debug(f"Page {self.number}: No significant rotation needed (angle={rotation_angle}). Returning original render.")
-                return img # Return the original rendered image if no rotation needed
+                logger.debug(
+                    f"Page {self.number}: No significant rotation needed (angle={rotation_angle}). Returning original render."
+                )
+                return img  # Return the original rendered image if no rotation needed
 
         except Exception as e:
-            logger.error(f"Page {self.number}: Error during deskewing image generation: {e}", exc_info=True)
+            logger.error(
+                f"Page {self.number}: Error during deskewing image generation: {e}", exc_info=True
+            )
             return None
 
     # --- End Skew Detection and Correction --- #

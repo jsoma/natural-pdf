@@ -544,56 +544,56 @@ class ElementManager:
         """
         Remove all elements with source="ocr" from the elements dictionary.
         This should be called before adding new OCR elements if replacement is desired.
-        
+
         Returns:
             int: Number of OCR elements removed
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         removed_count = 0
-        
+
         # Filter out OCR elements from words
         if "words" in self._elements:
             original_len = len(self._elements["words"])
             self._elements["words"] = [
-                word for word in self._elements["words"] 
-                if getattr(word, "source", None) != "ocr"
+                word for word in self._elements["words"] if getattr(word, "source", None) != "ocr"
             ]
             removed_count += original_len - len(self._elements["words"])
-        
+
         # Filter out OCR elements from chars
         if "chars" in self._elements:
             original_len = len(self._elements["chars"])
             self._elements["chars"] = [
-                char for char in self._elements["chars"]
-                if (isinstance(char, dict) and char.get("source") != "ocr") or
-                   (not isinstance(char, dict) and getattr(char, "source", None) != "ocr")
+                char
+                for char in self._elements["chars"]
+                if (isinstance(char, dict) and char.get("source") != "ocr")
+                or (not isinstance(char, dict) and getattr(char, "source", None) != "ocr")
             ]
             removed_count += original_len - len(self._elements["chars"])
-        
+
         logger.info(f"Page {self._page.number}: Removed {removed_count} OCR elements.")
         return removed_count
 
     def remove_element(self, element, element_type="words"):
         """
         Remove a specific element from the managed elements.
-        
+
         Args:
             element: The element to remove
             element_type: The type of element ('words', 'chars', etc.)
-            
+
         Returns:
             bool: True if removed successfully, False otherwise
         """
         # Load elements if not already loaded
         self.load_elements()
-        
+
         # Check if the collection exists
         if element_type not in self._elements:
             logger.warning(f"Cannot remove element: collection '{element_type}' does not exist")
             return False
-            
+
         # Try to remove the element
         try:
             if element in self._elements[element_type]:

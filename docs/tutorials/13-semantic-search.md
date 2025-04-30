@@ -8,18 +8,16 @@ When working with a collection of PDFs, you might need to find information relev
 ```
 
 ```python
-import logging
 import natural_pdf
-
-# Optional: Configure logging to see progress
-natural_pdf.configure_logging(level=logging.INFO)
 
 # Define the paths to your PDF files
 pdf_paths = [
     "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf",
     "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf"
-    # Add more PDF paths as needed
 ]
+
+# Or use glob patterns
+# collection = natural_pdf.PDFCollection("pdfs/*.pdf")
 
 # Create a PDFCollection
 collection = natural_pdf.PDFCollection(pdf_paths)
@@ -31,8 +29,9 @@ print(f"Created collection with {len(collection.pdfs)} PDFs.")
 Before performing a search, you need to initialize the search capabilities for the collection. This involves processing the documents and building an index.
 
 ```python
-# Initialize search. 'index=True' builds the index immediately.
-# This might take some time depending on the number and size of PDFs.
+# Initialize search.
+# index=True will build the serachable database immediately
+# persist=True will save it so you don't need to do it every time
 collection.init_search(index=True) 
 print("Search index initialized.")
 ```
@@ -57,6 +56,8 @@ The `find_relevant()` method returns a list of dictionaries, each representing a
 *   `page_number`: The page number within the PDF.
 *   `score`: A relevance score (higher means more relevant).
 *   `content_snippet`: A snippet of the text chunk that matched the query.
+
+In the future we should be able to easily look at the PDF!
 
 ```python
 # Process and display the results

@@ -2,23 +2,25 @@
 Utilities for packaging data for external processes, like correction tasks.
 """
 
-import os
 import base64
 import io
 import json
-import zipfile
-import tempfile
 import logging
+import os
 import shutil
-from typing import Any, List, Union, Iterable, TYPE_CHECKING, Dict
+import tempfile
+import zipfile
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Union
+
 from tqdm import tqdm
+
 from natural_pdf.elements.text import TextElement
 
 # Import the specific PDF/Page types if possible, otherwise use Any
 if TYPE_CHECKING:
-    from natural_pdf.core.pdf import PDF
-    from natural_pdf.core.page import Page
     from natural_pdf.collections.pdf_collection import PDFCollection
+    from natural_pdf.core.page import Page
+    from natural_pdf.core.pdf import PDF
 else:
     PDF = Any
     Page = Any

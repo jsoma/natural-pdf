@@ -3,6 +3,8 @@
 import logging
 import os
 
+from natural_pdf.utils.visualization import render_plain_page
+
 logger = logging.getLogger(__name__)
 
 # Initialize flag and module/class variables to None
@@ -615,31 +617,7 @@ try:
 
             from PIL import Image  # Ensure Image is imported
 
-            # Render page to image using the correct method and parameter
-            scale = 1.0  # Define scale factor used for rendering
-            try:
-                img_object = page.to_image(resolution=int(72 * scale))  # Call to_image
-                # Check if .original attribute exists, otherwise assume img_object is the PIL Image
-                if hasattr(img_object, "original") and isinstance(img_object.original, Image.Image):
-                    img = img_object.original
-                elif isinstance(img_object, Image.Image):
-                    img = img_object
-                else:
-                    # If it's neither, maybe it's the raw bytes? Try opening it.
-                    try:
-                        img = Image.open(BytesIO(img_object)).convert("RGB")
-                    except Exception:
-                        raise TypeError(
-                            f"page.to_image() returned unexpected type: {type(img_object)}"
-                        )
-                logger.debug(f"Successfully rendered page {page.index} using to_image()")
-            except Exception as render_err:
-                logger.error(
-                    f"Error rendering page {page.index} image for widget: {render_err}",
-                    exc_info=True,
-                )
-                # Return None or raise the error? Let's raise for now to make it clear.
-                raise ValueError(f"Failed to render page image: {render_err}") from render_err
+            img = render_plain_page(page, resolution=72)
 
             buffered = BytesIO()
             img.save(buffered, format="PNG")
@@ -687,7 +665,8 @@ try:
                 original_y1 = element.bottom
                 width = element.width
                 height = element.height
-
+                scale = 1.0
+                
                 # Base element dict with required info
                 elem_dict = {
                     "id": i,

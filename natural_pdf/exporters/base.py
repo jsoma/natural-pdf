@@ -1,10 +1,10 @@
 import abc
 import logging
-from typing import Union, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
-    from natural_pdf.core.pdf import PDF
     from natural_pdf.collections.pdf_collection import PDFCollection
+    from natural_pdf.core.pdf import PDF
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,8 @@ class FinetuneExporter(abc.ABC):
         """
         Helper to consistently resolve the input source to a list of PDF objects.
         """
-        from natural_pdf.core.pdf import PDF  # Avoid circular import at module level
         from natural_pdf.collections.pdf_collection import PDFCollection  # Avoid circular import
+        from natural_pdf.core.pdf import PDF  # Avoid circular import at module level
 
         pdfs_to_process: List["PDF"] = []
         if isinstance(source, PDF):

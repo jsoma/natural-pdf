@@ -79,11 +79,11 @@ page.to_image()
 
 ```python
 # Find text with specific font properties
-bold_text = page.find_all('text[style~=bold]')
+bold_text = page.find_all('text:bold')
 large_text = page.find_all('text[size>=12]')
 
 # Find text with specific font names
-helvetica_text = page.find_all('text[fontname~=Helvetica]')
+helvetica_text = page.find_all('text[fontname=Helvetica]')
 ```
 
 ## Spatial Navigation
@@ -107,7 +107,7 @@ You can combine multiple conditions to find exactly what you need:
 
 ```python
 # Find large, bold text that contains specific words
-important_text = page.find_all('text[size>=12][style~=bold]:contains("Critical")')
+important_text = page.find_all('text[size>=12]:bold:contains("Critical")')
 
 # Find red text inside a rectangle
 highlighted_text = page.find('rect').find_all('text[color~=red]')
