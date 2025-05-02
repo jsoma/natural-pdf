@@ -20,6 +20,7 @@ from typing import (
 )
 
 from pdfplumber.utils.geometry import objects_to_bbox
+from PIL import Image, ImageDraw, ImageFont
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
@@ -1239,7 +1240,7 @@ class ElementCollection(
     # --- Classification Method --- #
     def classify_all(
         self,
-        categories: List[str],
+        labels: List[str],
         model: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -1253,7 +1254,7 @@ class ElementCollection(
         """Classifies all elements in the collection in batch.
 
         Args:
-            categories: List of category labels.
+            labels: List of category labels.
             model: Model ID (or alias 'text', 'vision').
             using: Optional processing mode ('text' or 'vision'). Inferred if None.
             min_confidence: Minimum confidence threshold.
@@ -1326,7 +1327,7 @@ class ElementCollection(
         # Call manager's batch classify
         batch_results: List[ClassificationResult] = manager.classify_batch(
             item_contents=items_to_classify,
-            categories=categories,
+            labels=labels,
             model_id=model,
             using=inferred_using,
             min_confidence=min_confidence,
@@ -2263,3 +2264,106 @@ class PageCollection(Generic[P], ApplyMixin):
         )
 
     # --- End Deskew Method --- #
+
+    def to_image(
+        self,
+        page_width: int = 300,
+        cols: Optional[int] = 4,
+        rows: Optional[int] = None,
+        max_pages: Optional[int] = None,
+        spacing: int = 10,
+        add_labels: bool = True,
+        show_category: bool = False,  # Add new flag
+    ) -> Optional["Image.Image"]:
+        """
+        Generate a grid of page images for this collection.
+
+        Args:
+            page_width: Width in pixels for rendering individual pages
+            cols: Number of columns in grid (default: 4)
+            rows: Number of rows in grid (calculated automatically if None)
+            max_pages: Maximum number of pages to include (default: all)
+            spacing: Spacing between page thumbnails in pixels
+            add_labels: Whether to add page number labels
+            show_category: Whether to add category and confidence labels (if available)
+
+        Returns:
+            PIL Image of the page grid or None if no pages
+        """
+        if not self.pages:
+            logger.warning("Cannot generate image for empty PageCollection")
+            return None
+
+        # Limit pages if max_pages is specified
+        pages_to_render = self.pages[:max_pages] if max_pages else self.pages
+
+        # Load font once outside the loop
+        font = ImageFont.load_default(16) if add_labels else None
+
+        # Render individual page images
+        page_images = []
+        for page in pages_to_render:
+            img = page.to_image(width=page_width)
+
+            # Add page number label
+            if add_labels and font:  # Check if font was loaded
+                draw = ImageDraw.Draw(img)
+                pdf_name = Path(page.pdf.path).stem if hasattr(page, "pdf") and page.pdf else ""
+                label_text = f"p{page.number} - {pdf_name}"
+
+                # Add category if requested and available
+                if show_category:
+                    category = getattr(page, "category", None)
+                    confidence = getattr(page, "category_confidence", None)
+                    if category is not None and confidence is not None:
+                        category_str = f"{category} {confidence:.3f}"
+                        label_text += f"\n{category_str}"
+
+                # Calculate bounding box for multi-line text
+                # Use (5, 5) as top-left anchor for textbbox calculation for padding
+                # Use multiline_textbbox for accurate bounds with newlines
+                bbox = draw.multiline_textbbox((5, 5), label_text, font=font)
+                # Add padding to the calculated bbox for the white background
+                bg_rect = (bbox[0] - 2, bbox[1] - 2, bbox[2] + 2, bbox[3] + 2)
+
+                # Draw white background rectangle
+                draw.rectangle(bg_rect, fill=(255, 255, 255))
+
+                # Draw the potentially multi-line text using multiline_text
+                draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font)
+
+            page_images.append(img)
+
+        # Calculate grid dimensions if not provided
+        if not rows and not cols:
+            # Default to a square-ish grid
+            cols = min(4, int(len(page_images) ** 0.5) + 1)
+            rows = (len(page_images) + cols - 1) // cols
+        elif rows and not cols:
+            cols = (len(page_images) + rows - 1) // rows
+        elif cols and not rows:
+            rows = (len(page_images) + cols - 1) // cols
+
+        # Get maximum dimensions for consistent grid cells
+        max_width = max(img.width for img in page_images)
+        max_height = max(img.height for img in page_images)
+
+        # Create grid image
+        grid_width = cols * max_width + (cols + 1) * spacing
+        grid_height = rows * max_height + (rows + 1) * spacing
+        grid_img = Image.new("RGB", (grid_width, grid_height), (255, 255, 255))
+
+        # Place images in grid
+        for i, img in enumerate(page_images):
+            if i >= rows * cols:
+                break
+
+            row = i // cols
+            col = i % cols
+
+            x = col * max_width + (col + 1) * spacing
+            y = row * max_height + (row + 1) * spacing
+
+            grid_img.paste(img, (x, y))
+
+        return grid_img

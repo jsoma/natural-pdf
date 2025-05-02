@@ -140,14 +140,14 @@ Categorize pages or specific regions based on their content using text or vision
 
 ```python
 # Classify a page based on text
-categories = ["invoice", "scientific article", "presentation"]
-page.classify(categories=categories, model="text")
+labels = ["invoice", "scientific article", "presentation"]
+page.classify(labels, using="text")
 print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
 
 
 # Classify a page based on what it looks like
-categories = ["invoice", "scientific article", "presentation"]
-page.classify(categories=categories, model="vision")
+labels = ["invoice", "scientific article", "presentation"]
+page.classify(labels, using="vision")
 print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
 ```
 

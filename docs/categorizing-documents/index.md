@@ -22,32 +22,29 @@ from natural_pdf import PDF
 # Example: Classify a Page
 pdf = PDF("pdfs/01-practice.pdf")
 page = pdf.pages[0]
-categories = ["invoice", "letter", "report cover", "data table"]
-results = page.classify(categories=categories, model="text")
+labels = ["invoice", "letter", "report cover", "data table"]
+page.classify(labels, using="text")
 
 # Access the top result
 print(f"Top Category: {page.category}")
 print(f"Confidence: {page.category_confidence:.3f}")
-
-# Access all results
-# print(page.classification_results)
 ```
 
 **Key Arguments:**
 
-*   `categories` (required): A list of strings representing the potential categories you want to classify the item into.
-*   `model` (optional): Specifies which classification model or strategy to use. Defaults to `"text"`.
+*   `labels` (required): A list of strings representing the potential labels you want to classify the item into.
+*   `using` (optional): Specifies which classification model or strategy to use. Defaults to `"text"`.
     *   `"text"`: Uses a text-based model (default: `facebook/bart-large-mnli`) suitable for classifying based on language content.
     *   `"vision"`: Uses a vision-based model (default: `openai/clip-vit-base-patch32`) suitable for classifying based on visual layout and appearance.
     *   Specific Model ID: You can provide a Hugging Face model ID (e.g., `"google/siglip-base-patch16-224"`, `"MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"`) compatible with zero-shot text or image classification. The library attempts to infer whether it's text or vision, but you might need `using`.
-*   `using` (optional): Explicitly set to `"text"` or `"vision"` if the automatic inference based on the `model` ID fails or is ambiguous.
-*   `min_confidence` (optional): A float between 0.0 and 1.0. Only categories with a confidence score greater than or equal to this threshold will be included in the results (default: 0.0).
+*   `model` (optional): Explicitly model ID (HuggingFace repo name)
+*   `min_confidence` (optional): A float between 0.0 and 1.0. Only labels with a confidence score greater than or equal to this threshold will be included in the results (default: 0.0).
 
 ## Text vs. Vision Classification
 
 Choosing the right model type depends on your goal:
 
-### Text Classification (`model="text"`)
+### Text Classification (`using="text"`)
 
 *   **How it works:** Extracts the text from the page or region and analyzes the language content.
 *   **Best for:**
@@ -57,12 +54,12 @@ Choosing the right model type depends on your goal:
 
 ```python
 # Find pages related to finance
-financial_categories = ["budget", "revenue", "expenditure", "forecast"]
-pdf.classify_pages(categories=financial_categories, model="text")
+financial_labels = ["budget", "revenue", "expenditure", "forecast"]
+pdf.classify_pages(financial_labels, using="text")
 budget_pages = [p for p in pdf.pages if p.category == "budget"]
 ```
 
-### Vision Classification (`model="vision"`)
+### Vision Classification (`using="vision"`)
 
 *   **How it works:** Renders the page or region as an image and analyzes its visual layout, structure, and appearance.
 *   **Best for:**
@@ -72,8 +69,8 @@ budget_pages = [p for p in pdf.pages if p.category == "budget"]
 
 ```python
 # Find pages that look like invoices or receipts
-visual_categories = ["invoice", "receipt", "letter", "form"]
-page.classify(categories=visual_categories, model="vision")
+visual_labels = ["invoice", "receipt", "letter", "form"]
+page.classify(visual_labels, using="vision")
 if page.category in ["invoice", "receipt"]:
     print(f"Page {page.number} looks like an invoice or receipt.")
 ```
@@ -88,7 +85,7 @@ Classifying a whole page is useful for sorting documents or identifying the over
 # Classify the first page
 page = pdf.pages[0]
 page_types = ["cover page", "table of contents", "chapter start", "appendix"]
-page.classify(categories=page_types, model="vision") # Vision often good for page structure
+page.classify(page_types, using="vision") # Vision often good for page structure
 print(f"Page 1 Type: {page.category}")
 ```
 
@@ -101,9 +98,9 @@ Classifying a specific region allows for more granular analysis within a page. Y
 paragraphs = page.find_all("region[type=paragraph]")
 if paragraphs:
     # Classify the topic of the first paragraph
-    topic_categories = ["introduction", "methodology", "results", "conclusion"]
+    topic_labels = ["introduction", "methodology", "results", "conclusion"]
     # Use text model for topic
-    paragraphs[0].classify(categories=topic_categories, model="text")
+    paragraphs[0].classify(topic_labels, using="text")
     print(f"First paragraph category: {paragraphs[0].category}")
 ```
 
@@ -113,10 +110,10 @@ After running `.classify()`, you can access the results:
 
 *   `page.category` or `region.category`: Returns the string label of the category with the highest confidence score from the *last* classification run. Returns `None` if no classification has been run or no category met the threshold.
 *   `page.category_confidence` or `region.category_confidence`: Returns the float confidence score (0.0-1.0) for the top category. Returns `None` otherwise.
-*   `page.classification_results` or `region.classification_results`: Returns the full result dictionary stored in the object's `.metadata['classification']`, containing the model used, engine type, categories provided, timestamp, and a list of all scores above the threshold sorted by confidence. Returns `None` if no classification has been run.
+*   `page.classification_results` or `region.classification_results`: Returns the full result dictionary stored in the object's `.metadata['classification']`, containing the model used, engine type, labels provided, timestamp, and a list of all scores above the threshold sorted by confidence. Returns `None` if no classification has been run.
 
 ```python
-results = page.classify(categories=["invoice", "letter"], model="text", min_confidence=0.5)
+results = page.classify(["invoice", "letter"], using="text", min_confidence=0.5)
 
 if page.category == "invoice":
     print(f"Found an invoice with confidence {page.category_confidence:.2f}")
@@ -135,10 +132,10 @@ Classifies pages across all PDFs in the collection. Use `max_workers` for parall
 
 ```python
 collection = natural_pdf.PDFCollection.from_directory("./documents/")
-categories = ["form", "datasheet", "image", "text document"]
+labels = ["form", "datasheet", "image", "text document"]
 
 # Classify all pages using vision model, processing 4 PDFs concurrently
-collection.classify_all(categories=categories, model="vision", max_workers=4)
+collection.classify_all(labels, using="vision", max_workers=4)
 
 # Filter PDFs containing forms
 form_pdfs = []
@@ -160,7 +157,7 @@ layout_regions = pdf.find_all("region")
 region_types = ["paragraph", "list", "table", "figure", "caption"]
 
 # Classify all detected regions based on vision
-layout_regions.classify_all(categories=region_types, model="vision")
+layout_regions.classify_all(region_types, model="vision")
 
 # Count table regions
 table_count = sum(1 for r in layout_regions if r.category == "table")

@@ -109,3 +109,20 @@ class ApplyMixin:
             return PageCollection(results)
 
         return results
+
+    def filter(self: Any, predicate: Callable[[Any], bool]) -> Any:
+        """
+        Filters the collection based on a predicate function.
+
+        Args:
+            predicate: A function that takes an item and returns True if the item
+                       should be included in the result, False otherwise.
+
+        Returns:
+            A new collection of the same type containing only the items
+            for which the predicate returned True.
+        """
+        items_iterable = self._get_items_for_apply()
+        filtered_items = [item for item in items_iterable if predicate(item)]
+
+        return type(self)(filtered_items)

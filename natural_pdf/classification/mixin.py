@@ -44,9 +44,9 @@ class ClassificationMixin:
 
     def classify(
         self,
-        categories: List[str],
-        model: Optional[str] = None,  # Default handled by manager
-        using: Optional[str] = None,  # Renamed parameter
+        labels: List[str],
+        model: Optional[str] = None,
+        using: Optional[str] = None,
         min_confidence: float = 0.0,
         analysis_key: str = "classification",  # Default key
         multi_label: bool = False,
@@ -60,7 +60,7 @@ class ClassificationMixin:
         result under that key.
 
         Args:
-            categories: A list of string category names.
+            labels: A list of string category names.
             model: Model identifier (e.g., 'text', 'vision', HF ID). Defaults handled by manager.
             using: Optional processing mode ('text' or 'vision'). If None, inferred by manager.
             min_confidence: Minimum confidence threshold for results (0.0-1.0).
@@ -103,9 +103,9 @@ class ClassificationMixin:
             # Manager now returns a ClassificationResult object
             result_obj: ClassificationResult = manager.classify_item(
                 item_content=content,
-                categories=categories,
-                model_id=effective_model_id,  # Pass the resolved model ID
-                using=inferred_using,  # Pass renamed argument
+                labels=labels,
+                model_id=effective_model_id,
+                using=inferred_using,
                 min_confidence=min_confidence,
                 multi_label=multi_label,
                 **kwargs,

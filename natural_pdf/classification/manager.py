@@ -161,7 +161,7 @@ class ClassificationManager:
     def classify_item(
         self,
         item_content: Union[str, Image.Image],
-        categories: List[str],
+        labels: List[str],
         model_id: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -193,13 +193,13 @@ class ClassificationManager:
                     else self.DEFAULT_VISION_MODEL
                 )
 
-        if not categories:
-            raise ValueError("Categories list cannot be empty.")
+        if not labels:
+            raise ValueError("Labels list cannot be empty.")
 
         pipeline_instance = self._get_pipeline(model_id, effective_using)
         timestamp = datetime.now()
         parameters = {  # Store parameters used for this run
-            "categories": categories,
+            "labels": labels,
             "model_id": model_id,
             "using": effective_using,
             "min_confidence": min_confidence,
@@ -214,7 +214,7 @@ class ClassificationManager:
             # Handle potential kwargs for specific pipelines if needed
             # The zero-shot pipelines expect `candidate_labels`
             result_raw = pipeline_instance(
-                item_content, candidate_labels=categories, multi_label=multi_label, **kwargs
+                item_content, candidate_labels=labels, multi_label=multi_label, **kwargs
             )
             logger.debug(f"Raw pipeline result: {result_raw}")
 
@@ -226,7 +226,7 @@ class ClassificationManager:
                 for label, score_val in zip(result_raw["labels"], result_raw["scores"]):
                     if score_val >= min_confidence:
                         try:
-                            scores_list.append(CategoryScore(label=label, confidence=score_val))
+                            scores_list.append(CategoryScore(label, score_val))
                         except (ValueError, TypeError) as score_err:
                             logger.warning(
                                 f"Skipping invalid score from text pipeline: label='{label}', score={score_val}. Error: {score_err}"
@@ -241,7 +241,7 @@ class ClassificationManager:
                     label = item["label"]
                     if score_val >= min_confidence:
                         try:
-                            scores_list.append(CategoryScore(label=label, confidence=score_val))
+                            scores_list.append(CategoryScore(label, score_val))
                         except (ValueError, TypeError) as score_err:
                             logger.warning(
                                 f"Skipping invalid score from vision pipeline: label='{label}', score={score_val}. Error: {score_err}"
@@ -253,13 +253,15 @@ class ClassificationManager:
                 # Return empty result?
                 # scores_list = []
 
-            return ClassificationResult(
+            # ClassificationResult now calculates top score/category internally
+            result_obj = ClassificationResult(
+                scores=scores_list,  # Pass the filtered list
                 model_id=model_id,
                 using=effective_using,
-                timestamp=timestamp,
                 parameters=parameters,
-                scores=scores_list,
+                timestamp=timestamp,
             )
+            return result_obj
             # --- End Processing --- #
 
         except Exception as e:
@@ -273,7 +275,7 @@ class ClassificationManager:
     def classify_batch(
         self,
         item_contents: List[Union[str, Image.Image]],
-        categories: List[str],
+        labels: List[str],
         model_id: Optional[str] = None,
         using: Optional[str] = None,
         min_confidence: float = 0.0,
@@ -307,13 +309,13 @@ class ClassificationManager:
                     else self.DEFAULT_VISION_MODEL
                 )
 
-        if not categories:
-            raise ValueError("Categories list cannot be empty.")
+        if not labels:
+            raise ValueError("Labels list cannot be empty.")
 
         pipeline_instance = self._get_pipeline(model_id, effective_using)
         timestamp = datetime.now()  # Single timestamp for the batch run
         parameters = {  # Parameters for the whole batch
-            "categories": categories,
+            "labels": labels,
             "model_id": model_id,
             "using": effective_using,
             "min_confidence": min_confidence,
@@ -331,7 +333,7 @@ class ClassificationManager:
             # Use pipeline directly for batching
             results_iterator = pipeline_instance(
                 item_contents,
-                candidate_labels=categories,
+                candidate_labels=labels,
                 multi_label=multi_label,
                 batch_size=batch_size,
                 **kwargs,
@@ -362,9 +364,7 @@ class ClassificationManager:
                         for label, score_val in zip(raw_result["labels"], raw_result["scores"]):
                             if score_val >= min_confidence:
                                 try:
-                                    scores_list.append(
-                                        CategoryScore(label=label, confidence=score_val)
-                                    )
+                                    scores_list.append(CategoryScore(label, score_val))
                                 except (ValueError, TypeError) as score_err:
                                     logger.warning(
                                         f"Skipping invalid score from text pipeline batch: label='{label}', score={score_val}. Error: {score_err}"
@@ -376,9 +376,7 @@ class ClassificationManager:
                                 score_val = item["score"]
                                 label = item["label"]
                                 if score_val >= min_confidence:
-                                    scores_list.append(
-                                        CategoryScore(label=label, confidence=score_val)
-                                    )
+                                    scores_list.append(CategoryScore(label, score_val))
                             except (KeyError, ValueError, TypeError) as item_err:
                                 logger.warning(
                                     f"Skipping invalid item in vision result list from batch: {item}. Error: {item_err}"
@@ -394,14 +392,20 @@ class ClassificationManager:
                     )
                     # scores_list remains empty for this item
 
+                # --- Determine top category and score ---
+                scores_list.sort(key=lambda s: s.score, reverse=True)
+                top_category = scores_list[0].label
+                top_score = scores_list[0].score
+                # --- End Determine top category ---
+
                 # Append result object for this item
                 batch_results_list.append(
                     ClassificationResult(
+                        scores=scores_list,  # Pass the full list, init will sort/filter
                         model_id=model_id,
                         using=effective_using,
                         timestamp=timestamp,  # Use same timestamp for batch
                         parameters=parameters,  # Use same params for batch
-                        scores=scores_list,
                     )
                 )
                 # --- End Processing --- #

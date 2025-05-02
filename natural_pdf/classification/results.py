@@ -11,19 +11,19 @@ logger = logging.getLogger(__name__)
 class CategoryScore:
     """Represents a category and its confidence score from classification."""
 
-    category: str
+    label: str
     score: float
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {"category": self.category, "score": self.score}
+        return {"category": self.label, "score": self.score}
 
 
 @dataclass
 class ClassificationResult:
     """Results from a classification operation."""
 
-    category: str
+    category: Optional[str]  # Can be None if scores are empty
     score: float
     scores: List[CategoryScore]
     model_id: str
@@ -33,17 +33,25 @@ class ClassificationResult:
 
     def __init__(
         self,
-        category: str,
-        score: float,
-        scores: List[CategoryScore],
+        scores: List[CategoryScore],  # Now the primary source
         model_id: str,
         using: str,
         parameters: Optional[Dict[str, Any]] = None,
         timestamp: Optional[datetime] = None,
     ):
-        self.category = category
-        self.score = score
-        self.scores = scores
+        # Determine top category and score from the scores list
+        if scores:
+            # Sort scores descending by score to find the top one
+            sorted_scores = sorted(scores, key=lambda s: s.score, reverse=True)
+            self.category = sorted_scores[0].label
+            self.score = sorted_scores[0].score
+            self.scores = sorted_scores  # Store the sorted list
+        else:
+            # Handle empty scores list
+            self.category = None
+            self.score = 0.0
+            self.scores = []  # Store empty list
+
         self.model_id = model_id
         self.using = using
         self.parameters = parameters or {}

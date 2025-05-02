@@ -98,6 +98,7 @@ nav:
     - Enhanced Tables: tutorials/11-enhanced-table-processing.ipynb
     - OCR Integration: tutorials/12-ocr-integration.ipynb
     - Semantic Search: tutorials/13-semantic-search.ipynb
+    - Categorizing Documents: tutorials/14-categorizing-documents.ipynb
   - API Reference: api/index.md
 
 markdown_extensions:

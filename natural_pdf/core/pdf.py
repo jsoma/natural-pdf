@@ -84,7 +84,7 @@ except ImportError:
 # End Deskew Imports
 
 
-class PDF(ExtractionMixin, ExportMixin):
+class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
     """
     Enhanced PDF wrapper built on top of pdfplumber.
 
@@ -194,6 +194,7 @@ class PDF(ExtractionMixin, ExportMixin):
 
         self._initialize_managers()
         self._initialize_highlighter()
+        self.analyses: Dict[str, Any] = {}
 
     def _initialize_managers(self):
         """Initialize manager instances based on DEFAULT_MANAGERS."""
@@ -1243,7 +1244,7 @@ class PDF(ExtractionMixin, ExportMixin):
 
     def classify_pages(
         self,
-        categories: List[str],
+        labels: List[str],
         model: Optional[str] = None,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         analysis_key: str = "classification",
@@ -1254,7 +1255,7 @@ class PDF(ExtractionMixin, ExportMixin):
         Classifies specified pages of the PDF.
 
         Args:
-            categories: List of category names
+            labels: List of category names
             model: Model identifier ('text', 'vision', or specific HF ID)
             pages: Page indices, slice, or None for all pages
             analysis_key: Key to store results in page's analyses dict
@@ -1264,8 +1265,8 @@ class PDF(ExtractionMixin, ExportMixin):
         Returns:
             Self for method chaining
         """
-        if not categories:
-            raise ValueError("Categories list cannot be empty.")
+        if not labels:
+            raise ValueError("Labels list cannot be empty.")
 
         try:
             manager = self.get_manager("classification")
@@ -1332,7 +1333,7 @@ class PDF(ExtractionMixin, ExportMixin):
         try:
             batch_results = manager.classify_batch(
                 item_contents=page_contents,
-                categories=categories,
+                labels=labels,
                 model_id=model,
                 using=inferred_using,
                 **kwargs,
@@ -1537,3 +1538,58 @@ class PDF(ExtractionMixin, ExportMixin):
                 raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
         else:
             raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+
+    # --- Classification Mixin Implementation --- #
+
+    def _get_classification_manager(self) -> "ClassificationManager":
+        """Returns the ClassificationManager instance for this PDF."""
+        try:
+            return self.get_manager("classification")
+        except (KeyError, RuntimeError) as e:
+            raise AttributeError(f"Could not retrieve ClassificationManager: {e}") from e
+
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
+        """
+        Provides the content for classifying the entire PDF.
+
+        Args:
+            model_type: 'text' or 'vision'.
+            **kwargs: Additional arguments (e.g., for text extraction or image rendering).
+
+        Returns:
+            Extracted text (str) or the first page's image (PIL.Image).
+
+        Raises:
+            ValueError: If model_type is 'vision' and PDF has != 1 page,
+                      or if model_type is unsupported, or if content cannot be generated.
+        """
+        if model_type == "text":
+            try:
+                # Extract text from the whole document
+                text = self.extract_text(**kwargs)  # Pass relevant kwargs
+                if not text or text.isspace():
+                    raise ValueError("PDF contains no extractable text for classification.")
+                return text
+            except Exception as e:
+                logger.error(f"Error extracting text for PDF classification: {e}")
+                raise ValueError("Failed to extract text for classification.") from e
+
+        elif model_type == "vision":
+            if len(self.pages) == 1:
+                # Use the single page's content method
+                try:
+                    return self.pages[0]._get_classification_content(model_type="vision", **kwargs)
+                except Exception as e:
+                    logger.error(f"Error getting image from single page for classification: {e}")
+                    raise ValueError("Failed to get image from single page.") from e
+            elif len(self.pages) == 0:
+                raise ValueError("Cannot classify empty PDF using vision model.")
+            else:
+                raise ValueError(
+                    f"Vision classification for a PDF object is only supported for single-page PDFs. "
+                    f"This PDF has {len(self.pages)} pages. Use pdf.pages[0].classify() or pdf.classify_pages()."
+                )
+        else:
+            raise ValueError(f"Unsupported model_type for PDF classification: {model_type}")
+
+    # --- End Classification Mixin Implementation ---
