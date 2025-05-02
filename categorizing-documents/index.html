@@ -744,18 +744,18 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#text-classification-modeltext" class="md-nav__link">
+  <a href="#text-classification-usingtext" class="md-nav__link">
     <span class="md-ellipsis">
-      Text Classification (model="text")
+      Text Classification (using="text")
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#vision-classification-modelvision" class="md-nav__link">
+  <a href="#vision-classification-usingvision" class="md-nav__link">
     <span class="md-ellipsis">
-      Vision Classification (model="vision")
+      Vision Classification (using="vision")
     </span>
   </a>
   
@@ -911,6 +911,8 @@
   
     
     
+      
+        
       
         
       
@@ -1300,6 +1302,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/14-categorizing-documents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Categorizing documents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1384,18 +1409,18 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#text-classification-modeltext" class="md-nav__link">
+  <a href="#text-classification-usingtext" class="md-nav__link">
     <span class="md-ellipsis">
-      Text Classification (model="text")
+      Text Classification (using="text")
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#vision-classification-modelvision" class="md-nav__link">
+  <a href="#vision-classification-usingvision" class="md-nav__link">
     <span class="md-ellipsis">
-      Vision Classification (model="vision")
+      Vision Classification (using="vision")
     </span>
   </a>
   
@@ -1514,31 +1539,28 @@
 <span class="c1"># Example: Classify a Page</span>
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">,</span> <span class="s2">&quot;report cover&quot;</span><span class="p">,</span> <span class="s2">&quot;data table&quot;</span><span class="p">]</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">,</span> <span class="s2">&quot;report cover&quot;</span><span class="p">,</span> <span class="s2">&quot;data table&quot;</span><span class="p">]</span>
+<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
 
 <span class="c1"># Access the top result</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top Category: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Confidence: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="c1"># Access all results</span>
-<span class="c1"># print(page.classification_results)</span>
 </code></pre></div>
 <p><strong>Key Arguments:</strong></p>
 <ul>
-<li><code>categories</code> (required): A list of strings representing the potential categories you want to classify the item into.</li>
-<li><code>model</code> (optional): Specifies which classification model or strategy to use. Defaults to <code>"text"</code>.<ul>
+<li><code>labels</code> (required): A list of strings representing the potential labels you want to classify the item into.</li>
+<li><code>using</code> (optional): Specifies which classification model or strategy to use. Defaults to <code>"text"</code>.<ul>
 <li><code>"text"</code>: Uses a text-based model (default: <code>facebook/bart-large-mnli</code>) suitable for classifying based on language content.</li>
 <li><code>"vision"</code>: Uses a vision-based model (default: <code>openai/clip-vit-base-patch32</code>) suitable for classifying based on visual layout and appearance.</li>
 <li>Specific Model ID: You can provide a Hugging Face model ID (e.g., <code>"google/siglip-base-patch16-224"</code>, <code>"MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"</code>) compatible with zero-shot text or image classification. The library attempts to infer whether it's text or vision, but you might need <code>using</code>.</li>
 </ul>
 </li>
-<li><code>using</code> (optional): Explicitly set to <code>"text"</code> or <code>"vision"</code> if the automatic inference based on the <code>model</code> ID fails or is ambiguous.</li>
-<li><code>min_confidence</code> (optional): A float between 0.0 and 1.0. Only categories with a confidence score greater than or equal to this threshold will be included in the results (default: 0.0).</li>
+<li><code>model</code> (optional): Explicitly model ID (HuggingFace repo name)</li>
+<li><code>min_confidence</code> (optional): A float between 0.0 and 1.0. Only labels with a confidence score greater than or equal to this threshold will be included in the results (default: 0.0).</li>
 </ul>
 <h2 id="text-vs-vision-classification">Text vs. Vision Classification</h2>
 <p>Choosing the right model type depends on your goal:</p>
-<h3 id="text-classification-modeltext">Text Classification (<code>model="text"</code>)</h3>
+<h3 id="text-classification-usingtext">Text Classification (<code>using="text"</code>)</h3>
 <ul>
 <li><strong>How it works:</strong> Extracts the text from the page or region and analyzes the language content.</li>
 <li><strong>Best for:</strong><ul>
@@ -1549,11 +1571,11 @@
 <li><strong>Data Journalism Example:</strong> You have thousands of pages of government reports. You can use text classification to find all pages discussing "public health funding" or classify paragraphs within environmental impact statements to find mentions of specific endangered species.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find pages related to finance</span>
-<span class="n">financial_categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;budget&quot;</span><span class="p">,</span> <span class="s2">&quot;revenue&quot;</span><span class="p">,</span> <span class="s2">&quot;expenditure&quot;</span><span class="p">,</span> <span class="s2">&quot;forecast&quot;</span><span class="p">]</span>
-<span class="n">pdf</span><span class="o">.</span><span class="n">classify_pages</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">financial_categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+<span class="n">financial_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;budget&quot;</span><span class="p">,</span> <span class="s2">&quot;revenue&quot;</span><span class="p">,</span> <span class="s2">&quot;expenditure&quot;</span><span class="p">,</span> <span class="s2">&quot;forecast&quot;</span><span class="p">]</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">classify_pages</span><span class="p">(</span><span class="n">financial_labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
 <span class="n">budget_pages</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;budget&quot;</span><span class="p">]</span>
 </code></pre></div>
-<h3 id="vision-classification-modelvision">Vision Classification (<code>model="vision"</code>)</h3>
+<h3 id="vision-classification-usingvision">Vision Classification (<code>using="vision"</code>)</h3>
 <ul>
 <li><strong>How it works:</strong> Renders the page or region as an image and analyzes its visual layout, structure, and appearance.</li>
 <li><strong>Best for:</strong><ul>
@@ -1564,8 +1586,8 @@
 <li><strong>Data Journalism Example:</strong> You have a scanned archive of campaign finance filings containing various document types. You can use vision classification to quickly isolate all the pages that look like donation receipts or expenditure forms, even if the OCR quality is poor.</li>
 </ul>
 <div class="highlight"><pre><span></span><code><span class="c1"># Find pages that look like invoices or receipts</span>
-<span class="n">visual_categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;receipt&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">,</span> <span class="s2">&quot;form&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">visual_categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
+<span class="n">visual_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;receipt&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">,</span> <span class="s2">&quot;form&quot;</span><span class="p">]</span>
+<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">visual_labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">category</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;receipt&quot;</span><span class="p">]:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">number</span><span class="si">}</span><span class="s2"> looks like an invoice or receipt.&quot;</span><span class="p">)</span>
 </code></pre></div>
@@ -1575,7 +1597,7 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># Classify the first page</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">page_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;cover page&quot;</span><span class="p">,</span> <span class="s2">&quot;table of contents&quot;</span><span class="p">,</span> <span class="s2">&quot;chapter start&quot;</span><span class="p">,</span> <span class="s2">&quot;appendix&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">page_types</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span> <span class="c1"># Vision often good for page structure</span>
+<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">page_types</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span> <span class="c1"># Vision often good for page structure</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page 1 Type: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="regions-regionclassify">Regions (<code>region.classify(...)</code>)</h3>
@@ -1584,9 +1606,9 @@
 <span class="n">paragraphs</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;region[type=paragraph]&quot;</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">paragraphs</span><span class="p">:</span>
     <span class="c1"># Classify the topic of the first paragraph</span>
-    <span class="n">topic_categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;introduction&quot;</span><span class="p">,</span> <span class="s2">&quot;methodology&quot;</span><span class="p">,</span> <span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="s2">&quot;conclusion&quot;</span><span class="p">]</span>
+    <span class="n">topic_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;introduction&quot;</span><span class="p">,</span> <span class="s2">&quot;methodology&quot;</span><span class="p">,</span> <span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="s2">&quot;conclusion&quot;</span><span class="p">]</span>
     <span class="c1"># Use text model for topic</span>
-    <span class="n">paragraphs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">topic_categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+    <span class="n">paragraphs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">topic_labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;First paragraph category: </span><span class="si">{</span><span class="n">paragraphs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="accessing-classification-results">Accessing Classification Results</h2>
@@ -1594,9 +1616,9 @@
 <ul>
 <li><code>page.category</code> or <code>region.category</code>: Returns the string label of the category with the highest confidence score from the <em>last</em> classification run. Returns <code>None</code> if no classification has been run or no category met the threshold.</li>
 <li><code>page.category_confidence</code> or <code>region.category_confidence</code>: Returns the float confidence score (0.0-1.0) for the top category. Returns <code>None</code> otherwise.</li>
-<li><code>page.classification_results</code> or <code>region.classification_results</code>: Returns the full result dictionary stored in the object's <code>.metadata['classification']</code>, containing the model used, engine type, categories provided, timestamp, and a list of all scores above the threshold sorted by confidence. Returns <code>None</code> if no classification has been run.</li>
+<li><code>page.classification_results</code> or <code>region.classification_results</code>: Returns the full result dictionary stored in the object's <code>.metadata['classification']</code>, containing the model used, engine type, labels provided, timestamp, and a list of all scores above the threshold sorted by confidence. Returns <code>None</code> if no classification has been run.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="n">results</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">],</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="n">min_confidence</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">results</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">([</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">],</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="n">min_confidence</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">page</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;invoice&quot;</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found an invoice with confidence </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1609,10 +1631,10 @@
 <h3 id="pdfcollection-collectionclassify_all">PDFCollection (<code>collection.classify_all(...)</code>)</h3>
 <p>Classifies pages across all PDFs in the collection. Use <code>max_workers</code> for parallel processing across different PDF files.</p>
 <div class="highlight"><pre><span></span><code><span class="n">collection</span> <span class="o">=</span> <span class="n">natural_pdf</span><span class="o">.</span><span class="n">PDFCollection</span><span class="o">.</span><span class="n">from_directory</span><span class="p">(</span><span class="s2">&quot;./documents/&quot;</span><span class="p">)</span>
-<span class="n">categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;form&quot;</span><span class="p">,</span> <span class="s2">&quot;datasheet&quot;</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span> <span class="s2">&quot;text document&quot;</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;form&quot;</span><span class="p">,</span> <span class="s2">&quot;datasheet&quot;</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">,</span> <span class="s2">&quot;text document&quot;</span><span class="p">]</span>
 
 <span class="c1"># Classify all pages using vision model, processing 4 PDFs concurrently</span>
-<span class="n">collection</span><span class="o">.</span><span class="n">classify_all</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">collection</span><span class="o">.</span><span class="n">classify_all</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
 <span class="c1"># Filter PDFs containing forms</span>
 <span class="n">form_pdfs</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1630,7 +1652,7 @@
 <span class="n">region_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;paragraph&quot;</span><span class="p">,</span> <span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="s2">&quot;table&quot;</span><span class="p">,</span> <span class="s2">&quot;figure&quot;</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">]</span>
 
 <span class="c1"># Classify all detected regions based on vision</span>
-<span class="n">layout_regions</span><span class="o">.</span><span class="n">classify_all</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">region_types</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
+<span class="n">layout_regions</span><span class="o">.</span><span class="n">classify_all</span><span class="p">(</span><span class="n">region_types</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
 
 <span class="c1"># Count table regions</span>
 <span class="n">table_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">layout_regions</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;table&quot;</span><span class="p">)</span>

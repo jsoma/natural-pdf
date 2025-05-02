@@ -950,6 +950,8 @@
       
         
       
+        
+      
     
     
     
@@ -1310,6 +1312,29 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tutorials/14-categorizing-documents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Categorizing documents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1620,14 +1645,14 @@ pip install &quot;natural_pdf[all]&quot;
 <p>Categorize pages or specific regions based on their content using text or vision models.</p>
 <p><strong>Note:</strong> Requires <code>pip install "natural-pdf[classification]"</code></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Classify a page based on text</span>
-<span class="n">categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
+<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page Category: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2"> (Confidence: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
 
 <span class="c1"># Classify a page based on what it looks like</span>
-<span class="n">categories</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
+<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page Category: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2"> (Confidence: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="visualize-your-work">Visualize Your Work</h3>
