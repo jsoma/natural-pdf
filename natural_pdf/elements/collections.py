@@ -38,10 +38,29 @@ from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
+# Potentially lazy imports for optional dependencies needed in save_pdf
+try:
+    import pikepdf
+except ImportError:
+    pikepdf = None
+
+try:
+    from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
+except ImportError:
+    create_searchable_pdf = None
+
+# ---> ADDED Import for the new exporter
+try:
+    from natural_pdf.exporters.original_pdf import create_original_pdf
+except ImportError:
+    create_original_pdf = None
+# <--- END ADDED
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
+    from natural_pdf.core.pdf import PDF # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
 
 T = TypeVar("T")
@@ -2290,6 +2309,13 @@ class PageCollection(Generic[P], ApplyMixin):
         Returns:
             PIL Image of the page grid or None if no pages
         """
+        # Ensure PIL is imported, handle potential ImportError if not done globally/lazily
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+        except ImportError:
+             logger.error("Pillow library not found, required for to_image(). Install with 'pip install Pillow'")
+             return None
+
         if not self.pages:
             logger.warning("Cannot generate image for empty PageCollection")
             return None
@@ -2298,64 +2324,117 @@ class PageCollection(Generic[P], ApplyMixin):
         pages_to_render = self.pages[:max_pages] if max_pages else self.pages
 
         # Load font once outside the loop
-        font = ImageFont.load_default(16) if add_labels else None
+        font = None
+        if add_labels:
+            try:
+                # Try loading a commonly available font first
+                font = ImageFont.truetype("DejaVuSans.ttf", 16)
+            except IOError:
+                try:
+                    font = ImageFont.load_default(16)
+                except IOError:
+                     logger.warning("Default font not found. Labels cannot be added.")
+                     add_labels = False # Disable if no font
 
         # Render individual page images
         page_images = []
         for page in pages_to_render:
-            img = page.to_image(width=page_width)
+            try:
+                # Assume page.to_image returns a PIL Image or None
+                img = page.to_image(width=page_width, include_highlights=True) # Render with highlights for visual context
+                if img is None:
+                     logger.warning(f"Failed to generate image for page {page.number}. Skipping.")
+                     continue
+            except Exception as img_err:
+                 logger.error(f"Error generating image for page {page.number}: {img_err}", exc_info=True)
+                 continue
+
 
             # Add page number label
-            if add_labels and font:  # Check if font was loaded
+            if add_labels and font:
                 draw = ImageDraw.Draw(img)
-                pdf_name = Path(page.pdf.path).stem if hasattr(page, "pdf") and page.pdf else ""
-                label_text = f"p{page.number} - {pdf_name}"
+                pdf_name = Path(page.pdf.path).stem if hasattr(page, "pdf") and page.pdf and hasattr(page.pdf, "path") else ""
+                label_text = f"p{page.number}"
+                if pdf_name:
+                    label_text += f" - {pdf_name}"
 
                 # Add category if requested and available
                 if show_category:
-                    category = getattr(page, "category", None)
-                    confidence = getattr(page, "category_confidence", None)
+                    # Placeholder logic - adjust based on how classification results are stored
+                    category = None
+                    confidence = None
+                    if hasattr(page, 'analyses') and page.analyses and 'classification' in page.analyses:
+                        result = page.analyses['classification']
+                        # Adapt based on actual structure of classification result
+                        category = getattr(result, 'label', None) or result.get('label', None) if isinstance(result, dict) else None
+                        confidence = getattr(result, 'score', None) or result.get('score', None) if isinstance(result, dict) else None
+
                     if category is not None and confidence is not None:
-                        category_str = f"{category} {confidence:.3f}"
-                        label_text += f"\n{category_str}"
+                         try:
+                            category_str = f"{category} ({confidence:.2f})" # Format confidence
+                            label_text += f"\\n{category_str}"
+                         except (TypeError, ValueError): pass # Ignore formatting errors
 
-                # Calculate bounding box for multi-line text
-                # Use (5, 5) as top-left anchor for textbbox calculation for padding
-                # Use multiline_textbbox for accurate bounds with newlines
-                bbox = draw.multiline_textbbox((5, 5), label_text, font=font)
-                # Add padding to the calculated bbox for the white background
-                bg_rect = (bbox[0] - 2, bbox[1] - 2, bbox[2] + 2, bbox[3] + 2)
 
-                # Draw white background rectangle
-                draw.rectangle(bg_rect, fill=(255, 255, 255))
+                # Calculate bounding box for multi-line text and draw background/text
+                try:
+                    # Using textbbox for potentially better accuracy with specific fonts
+                    # Note: textbbox needs Pillow 8+
+                    bbox = draw.textbbox((5, 5), label_text, font=font, spacing=2) # Use textbbox if available
+                    bg_rect = (max(0, bbox[0] - 2), max(0, bbox[1] - 2),
+                               min(img.width, bbox[2] + 2), min(img.height, bbox[3] + 2))
 
-                # Draw the potentially multi-line text using multiline_text
-                draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font)
+                    # Draw semi-transparent background
+                    overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
+                    draw_overlay = ImageDraw.Draw(overlay)
+                    draw_overlay.rectangle(bg_rect, fill=(255, 255, 255, 180)) # White with alpha
+                    img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
+                    draw = ImageDraw.Draw(img) # Recreate draw object
+
+                    # Draw the potentially multi-line text
+                    draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
+                except AttributeError: # Fallback for older Pillow without textbbox
+                    # Approximate size and draw
+                    # This might not be perfectly aligned
+                     draw.rectangle((2, 2, 150, 40), fill=(255, 255, 255, 180)) # Simple fixed background
+                     draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
+                except Exception as draw_err:
+                     logger.error(f"Error drawing label on page {page.number}: {draw_err}", exc_info=True)
 
             page_images.append(img)
 
+        if not page_images:
+            logger.warning("No page images were successfully rendered for the grid.")
+            return None
+
+
         # Calculate grid dimensions if not provided
+        num_images = len(page_images)
         if not rows and not cols:
-            # Default to a square-ish grid
-            cols = min(4, int(len(page_images) ** 0.5) + 1)
-            rows = (len(page_images) + cols - 1) // cols
+            cols = min(4, int(num_images**0.5) + 1)
+            rows = (num_images + cols - 1) // cols
         elif rows and not cols:
-            cols = (len(page_images) + rows - 1) // rows
+            cols = (num_images + rows - 1) // rows
         elif cols and not rows:
-            rows = (len(page_images) + cols - 1) // cols
+            rows = (num_images + cols - 1) // cols
+        cols = max(1, cols if cols else 1) # Ensure at least 1
+        rows = max(1, rows if rows else 1)
+
 
         # Get maximum dimensions for consistent grid cells
-        max_width = max(img.width for img in page_images)
-        max_height = max(img.height for img in page_images)
+        max_width = max(img.width for img in page_images) if page_images else 1
+        max_height = max(img.height for img in page_images) if page_images else 1
+
 
         # Create grid image
         grid_width = cols * max_width + (cols + 1) * spacing
         grid_height = rows * max_height + (rows + 1) * spacing
-        grid_img = Image.new("RGB", (grid_width, grid_height), (255, 255, 255))
+        grid_img = Image.new("RGB", (grid_width, grid_height), (220, 220, 220)) # Lighter gray background
+
 
         # Place images in grid
         for i, img in enumerate(page_images):
-            if i >= rows * cols:
+            if i >= rows * cols: # Ensure we don't exceed grid capacity
                 break
 
             row = i // cols
@@ -2367,3 +2446,123 @@ class PageCollection(Generic[P], ApplyMixin):
             grid_img.paste(img, (x, y))
 
         return grid_img
+
+    def save_pdf(
+        self,
+        output_path: Union[str, Path],
+        ocr: bool = False,
+        original: bool = False,
+        dpi: int = 300,
+    ):
+        """
+        Saves the pages in this collection to a new PDF file.
+
+        Choose one saving mode:
+        - `ocr=True`: Creates a new, image-based PDF using OCR results. This
+          makes the text generated during the natural-pdf session searchable,
+          but loses original vector content. Requires 'ocr-export' extras.
+        - `original=True`: Extracts the original pages from the source PDF,
+          preserving all vector content, fonts, and annotations. OCR results
+          from the natural-pdf session are NOT included. Requires 'ocr-export' extras.
+
+        Args:
+            output_path: Path to save the new PDF file.
+            ocr: If True, save as a searchable, image-based PDF using OCR data.
+            original: If True, save the original, vector-based pages.
+            dpi: Resolution (dots per inch) used only when ocr=True for
+                 rendering page images and aligning the text layer.
+
+        Raises:
+            ValueError: If the collection is empty, if neither or both 'ocr'
+                        and 'original' are True, or if 'original=True' and
+                        pages originate from different PDFs.
+            ImportError: If required libraries ('pikepdf', 'ocrmypdf', 'Pillow')
+                         are not installed for the chosen mode.
+            RuntimeError: If an unexpected error occurs during saving.
+        """
+        if not self.pages:
+            raise ValueError("Cannot save an empty PageCollection.")
+
+        if not (ocr ^ original): # XOR: exactly one must be true
+             raise ValueError("Exactly one of 'ocr' or 'original' must be True.")
+
+        output_path_obj = Path(output_path)
+        output_path_str = str(output_path_obj)
+
+        if ocr:
+            if create_searchable_pdf is None:
+                raise ImportError(
+                    "Saving with ocr=True requires 'ocrmypdf' and 'Pillow'. "
+                    "Install with: pip install \\\"natural-pdf[ocr-export]\\\"" # Escaped quotes
+                )
+
+            # Check for non-OCR vector elements (provide a warning)
+            has_vector_elements = False
+            for page in self.pages:
+                # Simplified check for common vector types or non-OCR chars/words
+                if (hasattr(page, 'rects') and page.rects or
+                    hasattr(page, 'lines') and page.lines or
+                    hasattr(page, 'curves') and page.curves or
+                    (hasattr(page, 'chars') and any(getattr(el, 'source', None) != 'ocr' for el in page.chars)) or
+                    (hasattr(page, 'words') and any(getattr(el, 'source', None) != 'ocr' for el in page.words))):
+                    has_vector_elements = True
+                    break
+            if has_vector_elements:
+                logger.warning(
+                    "Warning: Saving with ocr=True creates an image-based PDF. "
+                    "Original vector elements (rects, lines, non-OCR text/chars) "
+                    "on selected pages will not be preserved in the output file."
+                )
+
+            logger.info(f"Saving searchable PDF (OCR text layer) to: {output_path_str}")
+            try:
+                # Delegate to the searchable PDF exporter function
+                # Pass `self` (the PageCollection instance) as the source
+                create_searchable_pdf(self, output_path_str, dpi=dpi)
+                # Success log is now inside create_searchable_pdf if needed, or keep here
+                # logger.info(f"Successfully saved searchable PDF to: {output_path_str}")
+            except Exception as e:
+                logger.error(f"Failed to create searchable PDF: {e}", exc_info=True)
+                # Re-raise as RuntimeError for consistency, potentially handled in exporter too
+                raise RuntimeError(f"Failed to create searchable PDF: {e}") from e
+
+        elif original:
+            # ---> MODIFIED: Call the new exporter
+            if create_original_pdf is None:
+                raise ImportError(
+                    "Saving with original=True requires 'pikepdf'. "
+                    "Install with: pip install \\\"natural-pdf[ocr-export]\\\"" # Escaped quotes
+                )
+
+            # Check for OCR elements (provide a warning) - keep this check here
+            has_ocr_elements = False
+            for page in self.pages:
+                 # Use find_all which returns a collection; check if it's non-empty
+                 if hasattr(page, 'find_all'):
+                     ocr_text_elements = page.find_all("text[source=ocr]")
+                     if ocr_text_elements: # Check truthiness of collection
+                         has_ocr_elements = True
+                         break
+                 elif hasattr(page, 'words'): # Fallback check if find_all isn't present?
+                     if any(getattr(el, 'source', None) == 'ocr' for el in page.words):
+                          has_ocr_elements = True
+                          break
+
+            if has_ocr_elements:
+                logger.warning(
+                    "Warning: Saving with original=True preserves original page content. "
+                    "OCR text generated in this session will not be included in the saved file."
+                )
+
+            logger.info(f"Saving original pages PDF to: {output_path_str}")
+            try:
+                # Delegate to the original PDF exporter function
+                # Pass `self` (the PageCollection instance) as the source
+                create_original_pdf(self, output_path_str)
+                # Success log is now inside create_original_pdf
+                # logger.info(f"Successfully saved original pages PDF to: {output_path_str}")
+            except Exception as e:
+                # Error logging is handled within create_original_pdf
+                # Re-raise the exception caught from the exporter
+                raise e # Keep the original exception type (ValueError, RuntimeError, etc.)
+            # <--- END MODIFIED

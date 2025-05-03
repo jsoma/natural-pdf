@@ -27,10 +27,24 @@ for page in pdf.pages:
 How did it do?
 
 ```python
-pdf.pages.filter(lambda page: page.category == 'diagram').to_image(show_category=True)
+(
+    pdf.pages
+    .filter(lambda page: page.category == 'diagram')
+    .to_image(show_category=True)
+)
 ```
 
 Looks great! Note that I did have to play around with the categories a bit before I got something that worked. `blank` doesn't ever show up, "invoice" did a lot better than "form," etc etc.
+
+I can also save just those pages into a new PDF document.
+
+```python
+(
+    pdf.pages
+    .filter(lambda page: page.category == 'diagram')
+    .save_pdf("output.pdf", original=True)
+)
+```
 
 ## Text classification (default)
 

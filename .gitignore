@@ -1,6 +1,7 @@
 .notebook_cache.json
 .venv
 output
+output.pdf
 Untitled.ipynb
 conversation.md
 docs/tutorials/pdfs
