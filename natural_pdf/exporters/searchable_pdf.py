@@ -22,7 +22,7 @@ except ImportError:
     pikepdf = None  # type: ignore
 
 try:
-    from ocrmypdf.hocrtransform import HocrTransform
+    from natural_pdf.exporters.hocr import HocrTransform
 except ImportError:
     HocrTransform = None  # type: ignore
 
@@ -310,7 +310,7 @@ def create_searchable_pdf(
     """
     Creates a searchable PDF from a natural_pdf.PDF object using OCR results.
 
-    Relies on ocrmypdf for hOCR transformation. Requires optional dependencies.
+    Relies on pikepdf for saving the PDF.
 
     Args:
         source: The natural_pdf.PDF, PageCollection, or Page object
@@ -323,7 +323,7 @@ def create_searchable_pdf(
         # This should ideally not happen if dependencies are in main install,
         # but serves as a safeguard during development or if install is broken.
         raise ImportError(
-            "Required dependencies (Pillow, pikepdf, ocrmypdf) are missing. "
+            "Required dependencies (Pillow, pikepdf) are missing. "
             "Please ensure natural-pdf is installed correctly with all dependencies."
         )
     # --- End Safeguard Check ---

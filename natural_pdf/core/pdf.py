@@ -268,7 +268,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         return self
 
     def add_exclusion(
-        self, exclusion_func: Callable[["Page"], Optional[Region]], label: str = None
+        self, exclusion_func: Callable[["Page"], Optional["Region"]], label: str = None
     ) -> "PDF":
         """
         Add an exclusion function to the PDF. Text from these regions will be excluded from extraction.
@@ -476,7 +476,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         return self
 
     def add_region(
-        self, region_func: Callable[["Page"], Optional[Region]], name: str = None
+        self, region_func: Callable[["Page"], Optional["Region"]], name: str = None
     ) -> "PDF":
         """
         Add a region function to the PDF.
@@ -792,7 +792,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         )
         if create_searchable_pdf is None:
              raise ImportError(
-                 "Saving searchable PDF requires 'ocrmypdf' and 'Pillow'. "
+                 "Saving searchable PDF requires 'pikepdf' and 'Pillow'. "
                  "Install with: pip install \"natural-pdf[ocr-export]\""
              )
         output_path_str = str(output_path)
@@ -844,7 +844,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         if ocr:
             if create_searchable_pdf is None:
                 raise ImportError(
-                    "Saving with ocr=True requires 'ocrmypdf' and 'Pillow'. "
+                    "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
                     "Install with: pip install \"natural-pdf[ocr-export]\""
                 )
 
@@ -968,9 +968,9 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
     def search_within_index(
         self,
-        query: Union[str, Path, Image.Image, Region],
-        search_service: SearchServiceProtocol,
-        options: Optional[SearchOptions] = None,
+        query: Union[str, Path, Image.Image, "Region"],
+        search_service: "SearchServiceProtocol",
+        options: Optional["SearchOptions"] = None,
     ) -> List[Dict[str, Any]]:
         """
         Finds relevant documents from this PDF within a search index.

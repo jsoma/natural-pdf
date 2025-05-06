@@ -173,7 +173,7 @@ if you'd like the normal approach instead of the "intelligent" one, you can ask 
 
 ```python
 # This extraction uses the detected rows/columns
-tatr_table.extract_table(method='pdfplumber')
+tatr_table.extract_table(method='plumber')
 ```
 
 ## Next Steps

@@ -46,6 +46,7 @@ except ImportError:
 
 try:
     from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
+    pass
 except ImportError:
     create_searchable_pdf = None
 
@@ -2476,7 +2477,7 @@ class PageCollection(Generic[P], ApplyMixin):
             ValueError: If the collection is empty, if neither or both 'ocr'
                         and 'original' are True, or if 'original=True' and
                         pages originate from different PDFs.
-            ImportError: If required libraries ('pikepdf', 'ocrmypdf', 'Pillow')
+            ImportError: If required libraries ('pikepdf', 'Pillow')
                          are not installed for the chosen mode.
             RuntimeError: If an unexpected error occurs during saving.
         """
@@ -2492,7 +2493,7 @@ class PageCollection(Generic[P], ApplyMixin):
         if ocr:
             if create_searchable_pdf is None:
                 raise ImportError(
-                    "Saving with ocr=True requires 'ocrmypdf' and 'Pillow'. "
+                    "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
                     "Install with: pip install \\\"natural-pdf[ocr-export]\\\"" # Escaped quotes
                 )
 

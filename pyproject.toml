@@ -124,7 +124,6 @@ core-ml = [
 ]
 
 ocr-export = [
-    "ocrmypdf",
     "pikepdf", 
 ]
 

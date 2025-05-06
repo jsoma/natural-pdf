@@ -93,7 +93,7 @@ tatr_table.extract_table(method='tatr')
 # Force using pdfplumber even on a TATR-detected region
 # (Might be useful for comparison or if TATR structure is flawed)
 tatr_table = page.find('region[type=table][model=tatr]')
-tatr_table.extract_table(method='pdfplumber')
+tatr_table.extract_table(method='plumber')
 ```
 
 ### When to Use Which Method?

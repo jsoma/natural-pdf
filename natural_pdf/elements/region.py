@@ -55,6 +55,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         bbox: Tuple[float, float, float, float],
         polygon: List[Tuple[float, float]] = None,
         parent=None,
+        label: Optional[str] = None,
     ):
         """
         Initialize a region.
@@ -74,11 +75,8 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         self.start_element = None
         self.end_element = None
 
-        # --- ADDED --- Metadata store for mixins
         self.metadata: Dict[str, Any] = {}
-        # --- NEW --- Central registry for analysis results
         self.analyses: Dict[str, Any] = {}
-        # --- END ADDED ---
 
         # Standard attributes for all elements
         self.object_type = "region"  # For selector compatibility
@@ -91,6 +89,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
 
         # Region management attributes
         self.name = None
+        self.label = label
         self.source = None  # Will be set by creation methods
 
         # Hierarchy support for nested document structure

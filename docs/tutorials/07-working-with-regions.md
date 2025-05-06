@@ -16,14 +16,16 @@ page = pdf.pages[0]
 # Create a region in the top portion of the page
 top_region = page.create_region(
     50,          # x0 (left)
-    50,          # y0 (top)
+    100,          # y0 (top)
     page.width - 50,  # x1 (right)
     200          # y1 (bottom)
 )
 
 # Visualize the region
-top_region.show(color="blue", label="Top Region")
+top_region.show(color="blue")
+```
 
+```python
 # Extract text from this region
 top_region.extract_text()
 ```
@@ -40,10 +42,15 @@ right_of_title = title.right(width=200)
 above_title = title.above(height=50)
 
 # Visualize these regions
-below_title.show(color="green", label="Below")
-right_of_title.show(color="red", label="Right")
-above_title.show(color="orange", label="Above")
+page.clear_highlights()
+below_title.highlight(color="green", label="Below")
+right_of_title.highlight(color="red", label="Right")
+above_title.highlight(color="orange", label="Above")
 
+page.to_image()
+```
+
+```python
 # Extract text from the region below the title
 below_title.extract_text()
 ```
@@ -58,11 +65,11 @@ form_region = page.create_region(50, 100, page.width - 50, 300)
 labels = form_region.find_all('text:contains(":")') 
 
 # Visualize the region and the elements found
-form_region.show(color=(0, 0, 1, 0.2), label="Form Region")
+form_region.show(
+    color=(0, 0, 1, 0.2),
+    label="Form Region"
+)
 labels.show(color="purple", label="Labels")
-
-# Count the elements found
-len(labels)
 ```
 
 ## Expanding and Adjusting Regions
@@ -72,10 +79,7 @@ len(labels)
 element = page.find('text:contains("Summary:")')
 
 # Create a tight region around the element
-tight_region = page.create_region(
-    element.x0, element.top, 
-    element.x1, element.bottom
-)
+tight_region = element.expand(0, 0, 0, 0)
 
 # Expand it to include surrounding content
 expanded_region = tight_region.expand(
@@ -86,11 +90,11 @@ expanded_region = tight_region.expand(
 )
 
 # Visualize both regions
-tight_region.show(color="red", label="Original")
-expanded_region.show(color="blue", label="Expanded")
+page.clear_highlights()
+tight_region.highlight(color="red", label="Original")
+expanded_region.highlight(color="blue", label="Expanded")
 
-# Extract the content from the expanded region
-expanded_region.extract_text()
+page.to_image()
 ```
 
 ## Creating Bounded Regions
@@ -98,7 +102,7 @@ expanded_region.extract_text()
 ```python
 # Find two elements to serve as boundaries
 start_elem = page.find('text:contains("Summary:")')
-end_elem = page.find('text:contains("Statute")')
+end_elem = page.find('text:contains("Violations")')
 
 # Create a region from start to end element
 bounded_region = start_elem.until(end_elem)
@@ -107,7 +111,7 @@ bounded_region = start_elem.until(end_elem)
 bounded_region.show(color="green", label="Bounded Region")
 
 # Extract text from this bounded region
-bounded_region.extract_text()[:200] + "..." if len(bounded_region.extract_text()) > 200 else bounded_region.extract_text()
+bounded_region.extract_text()[:200] + "..."
 ```
 
 ## Working with Multiple Regions

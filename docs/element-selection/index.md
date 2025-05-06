@@ -218,8 +218,7 @@ lowest = headings.lowest()
 
 ```python
 # Filter the collection further: headings containing "Service"
-service_headings = headings.find_all('text:contains("Service")')
-service_headings
+service_headings = headings.filter(lambda heading: 'Service' in heading.extract_text())
 ```
 
 ```python

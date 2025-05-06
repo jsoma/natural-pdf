@@ -33,8 +33,10 @@ text_elements = page.find_all('text[source=ocr]')
 print(f"Found {len(text_elements)} text elements using default OCR")
 
 # Visualize the elements
-text_elements.highlight()
+text_elements.show()
+```
 
+```python
 # Apply OCR using PaddleOCR for English and Chinese
 page.apply_ocr(engine='paddle', languages=['en', 'ch_sim'])
 

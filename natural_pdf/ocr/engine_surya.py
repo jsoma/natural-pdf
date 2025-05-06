@@ -59,7 +59,7 @@ class SuryaOCREngine(OCREngine):
 
         # Store languages instance variable during initialization to use here
         langs = (
-            [[lang] for lang in self._langs]
+            [self._langs]  # Send all languages together in one list per image
             if hasattr(self, "_langs")
             else [[self.DEFAULT_LANGUAGES[0]]]
         )

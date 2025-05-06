@@ -40,10 +40,10 @@ if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.collections import ElementCollection
 
-# New Imports
+# # New Imports
 import itertools
 
-# Deskew Imports (Conditional)
+# # Deskew Imports (Conditional)
 import numpy as np
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
@@ -55,7 +55,7 @@ from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
 from natural_pdf.classification.manager import ClassificationManager  # For type hint
 
-# --- Classification Imports --- #
+# # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
 from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.elements.base import Element  # Import base element
@@ -66,7 +66,7 @@ from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.qa import DocumentQA, get_qa_engine
 from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
-# Import new utils
+# # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.widgets import InteractiveViewerWidget
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveViewerWidget
@@ -210,7 +210,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
     def add_exclusion(
         self,
-        exclusion_func_or_region: Union[Callable[["Page"], Region], Region, Any],
+        exclusion_func_or_region: Union[Callable[["Page"], "Region"], "Region", Any],
         label: Optional[str] = None,
     ) -> "Page":
         """
@@ -274,7 +274,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
         return self
 
-    def add_region(self, region: Region, name: Optional[str] = None) -> "Page":
+    def add_region(self, region: "Region", name: Optional[str] = None) -> "Page":
         """
         Add a region to the page.
 
@@ -305,7 +305,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
         return self
 
-    def add_regions(self, regions: List[Region], prefix: Optional[str] = None) -> "Page":
+    def add_regions(self, regions: List["Region"], prefix: Optional[str] = None) -> "Page":
         """
         Add multiple regions to the page.
 
@@ -327,7 +327,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
         return self
 
-    def _get_exclusion_regions(self, include_callable=True, debug=False) -> List[Region]:
+    def _get_exclusion_regions(self, include_callable=True, debug=False) -> List["Region"]:
         """
         Get all exclusion regions for this page.
         Assumes self._exclusions contains tuples of (callable/Region, label).
@@ -1349,7 +1349,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         self._highlighter.clear_page(self.index)
         return self
 
-    def analyze_text_styles(self, options: Optional[TextStyleOptions] = None) -> ElementCollection:
+    def analyze_text_styles(self, options: Optional[TextStyleOptions] = None) -> "ElementCollection":
         """
         Analyze text elements by style, adding attributes directly to elements.
 
@@ -1520,7 +1520,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
     def _create_text_elements_from_ocr(
         self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None
-    ) -> List[TextElement]:
+    ) -> List["TextElement"]:
         """DEPRECATED: Use self._element_mgr.create_text_elements_from_ocr"""
         logger.warning(
             "_create_text_elements_from_ocr is deprecated. Use self._element_mgr version."
@@ -1532,7 +1532,7 @@ class Page(ClassificationMixin, ExtractionMixin):
     def apply_ocr(
         self,
         engine: Optional[str] = None,
-        options: Optional[OCROptions] = None,
+        options: Optional["OCROptions"] = None,
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
@@ -1597,12 +1597,12 @@ class Page(ClassificationMixin, ExtractionMixin):
     def extract_ocr_elements(
         self,
         engine: Optional[str] = None,
-        options: Optional[OCROptions] = None,
+        options: Optional["OCROptions"] = None,
         languages: Optional[List[str]] = None,
         min_confidence: Optional[float] = None,
         device: Optional[str] = None,
         resolution: Optional[int] = None,
-    ) -> List[TextElement]:
+    ) -> List["TextElement"]:
         """
         Extract text elements using OCR *without* adding them to the page's elements.
         Uses the shared OCRManager instance.
@@ -1716,7 +1716,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         return (self._page.width, self._page.height)
 
     @property
-    def layout_analyzer(self) -> LayoutAnalyzer:
+    def layout_analyzer(self) -> "LayoutAnalyzer":
         """Get or create the layout analyzer for this page."""
         if self._layout_analyzer is None:
             if not self._layout_manager:
@@ -1728,7 +1728,7 @@ class Page(ClassificationMixin, ExtractionMixin):
     def analyze_layout(
         self,
         engine: Optional[str] = None,
-        options: Optional[LayoutOptions] = None,
+        options: Optional["LayoutOptions"] = None,
         confidence: Optional[float] = None,
         classes: Optional[List[str]] = None,
         exclude_classes: Optional[List[str]] = None,
@@ -1736,7 +1736,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         existing: str = "replace",
         model_name: Optional[str] = None,
         client: Optional[Any] = None,  # Add client parameter
-    ) -> ElementCollection[Region]:
+    ) -> "ElementCollection[Region]":
         """
         Analyze the page layout using the configured LayoutManager.
         Adds detected Region objects to the page's element manager.
@@ -1813,7 +1813,7 @@ class Page(ClassificationMixin, ExtractionMixin):
 
     def get_section_between(
         self, start_element=None, end_element=None, boundary_inclusion="both"
-    ) -> Optional[Region]:  # Return Optional
+    ) -> Optional["Region"]:  # Return Optional
         """
         Get a section between two elements on this page.
         """
