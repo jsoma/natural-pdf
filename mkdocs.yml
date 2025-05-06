@@ -71,6 +71,7 @@ nav:
     - PDF Navigation: pdf-navigation/index.ipynb
     - Element Selection: element-selection/index.ipynb
     - Text Extraction: text-extraction/index.ipynb
+    - Loops and Groups: loops-and-groups/index.ipynb
     - Text Analysis: text-analysis/index.ipynb
     - Working with Regions: regions/index.ipynb
   - Advanced Features:
