@@ -140,6 +140,7 @@ plugins:
         - tables/index.md
         - text-analysis/index.md
         - text-extraction/index.md
+        - loops-and-groups/index.md
         - tutorials/01-loading-and-extraction.md
         - tutorials/02-finding-elements.md
         - tutorials/03-extracting-blocks.md
