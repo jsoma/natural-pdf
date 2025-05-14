@@ -1227,6 +1227,16 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         """Context manager exit."""
         self.close()
 
+    def __repr__(self) -> str:
+        """Return a string representation of the PDF object."""
+        if not hasattr(self, "_pages"):
+            page_count_str = "uninitialized"
+        else:
+            page_count_str = str(len(self._pages))
+
+        source_info = getattr(self, "source_path", "unknown source")
+        return f"<PDF source='{source_info}' pages={page_count_str}>"
+
     def get_id(self) -> str:
         """Get unique identifier for this PDF."""
         """Get unique identifier for this PDF."""
