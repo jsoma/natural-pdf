@@ -1400,7 +1400,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             except ImportError:
                 raise ImportError(
                     "Classification dependencies missing. "
-                    'Install with: pip install "natural-pdf[classification]"'
+                    'Install with: pip install "natural-pdf[core-ml]"'
                 )
             raise ClassificationError("ClassificationManager not available.")
 

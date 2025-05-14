@@ -7,7 +7,7 @@ Natural PDF allows you to automatically categorize pages or specific regions wit
 To use the classification features, you need to install the optional dependencies:
 
 ```bash
-pip install "natural-pdf[classification]"
+pip install "natural-pdf[core-ml]"
 ```
 
 This installs necessary libraries like `torch`, `transformers`, and others.

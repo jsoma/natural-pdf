@@ -15,26 +15,32 @@ pip install natural-pdf
 Natural PDF has modular dependencies for different features. Install them based on your needs:
 
 ```bash
-# --- OCR Engines ---
-# Install support for EasyOCR
-pip install natural-pdf[easyocr]
-
-# Install support for PaddleOCR (requires paddlepaddle)
-pip install natural-pdf[paddle]
-
-# Install support for Surya OCR
-pip install natural-pdf[surya]
-
-# --- Layout Detection ---
-# Install support for YOLO layout model
-pip install natural-pdf[layout_yolo]
-
-# --- Interactive Widget ---
-# Install support for the interactive .viewer() widget in Jupyter
+# Interactive PDF viewer 
 pip install natural-pdf[interactive]
 
-# --- All Features ---
-# Install all optional dependencies
+# Deskewing
+pip install natural-pdf[deskew]
+
+# OCR options
+pip install natural-pdf[easyocr]
+pip install natural-pdf[surya]
+pip install natural-pdf[paddle]
+pip install natural-pdf[doctr]
+
+# Layout analysis
+pip install natural-pdf[surya]
+pip install natural-pdf[docling]
+pip install natural-pdf[layout_yolo]
+pip install natural-pdf[paddle]
+
+# AI stuff
+pip install natural-pdf[core-ml]
+pip install natural-pdf[llm]
+
+# Semantic search
+pip install natural-pdf[haystack]
+
+# Install everything
 pip install natural-pdf[all]
 ```
 

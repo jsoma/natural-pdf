@@ -15,26 +15,11 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 pip install natural-pdf
 ```
 
-For optional features like specific OCR engines, layout analysis models, or the interactive Jupyter widget, you can install extras:
+For optional features like specific OCR engines, layout analysis models, or the interactive Jupyter widget, you can install one to two million different extras. If you just want the greatest hits:
 
 ```bash
-# Example: Install with EasyOCR support
-pip install natural-pdf[easyocr]
-pip install natural-pdf[surya]
-pip install natural-pdf[paddle]
-
-# Example: Install support for features using Large Language Models (e.g., via OpenAI-compatible APIs)
-pip install natural-pdf[llm]
-# (May require setting API key environment variables, e.g., GOOGLE_API_KEY for Gemini)
-
-# Example: Install with interactive viewer support
-pip install natural-pdf[interactive]
-
-# Example: Install with semantic search support (Haystack)
-pip install natural-pdf[haystack]
-
-# Install everything
-pip install natural-pdf[all]
+# deskewing, OCR (surya) + layout analysis (yolo), interactive browsing
+pip install natural-pdf[favorites]
 ```
 
 See the [installation guide](https://jsoma.github.io/natural-pdf/installation/) for more details on extras.
@@ -87,3 +72,16 @@ Natural PDF offers a range of features for working with PDFs:
 ## Learn More
 
 Dive deeper into the features and explore advanced usage in the [**Complete Documentation**](https://jsoma.github.io/natural-pdf).
+
+## Tools and models Natural PDF is built on 
+
+- [pdfplumber](https://github.com/jsvine/pdfplumber)
+- [EasyOCR](https://www.jaided.ai/easyocr/)
+- [PaddleOCR](https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html)
+- [Surya](https://github.com/VikParuchuri/surya)
+- A specific [YOLO](https://github.com/opendatalab/DocLayout-YOLO)
+- [deskew](https://github.com/sbrunner/deskew)
+- [doctr](https://github.com/mindee/doctr)
+- [docling](https://github.com/docling-project/docling)
+- [Haystack](https://haystack.deepset.ai/)
+- [Hugging Face](https://huggingface.co/models)

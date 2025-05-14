@@ -69,7 +69,7 @@ class ClassificationManager:
         if not _CLASSIFICATION_AVAILABLE:
             raise ImportError(
                 "Classification dependencies missing. "
-                'Install with: pip install "natural-pdf[classification]"'
+                'Install with: pip install "natural-pdf[core-ml]"'
             )
 
         self.pipelines: Dict[Tuple[str, str], "Pipeline"] = (

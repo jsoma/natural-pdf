@@ -1988,7 +1988,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
             from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError:
             logger.error(
-                "Question answering requires optional dependencies. Install with `pip install natural-pdf[qa]`"
+                "Question answering requires optional dependencies. Install with `pip install natural-pdf[core-ml]`"
             )
             return {
                 "answer": None,
