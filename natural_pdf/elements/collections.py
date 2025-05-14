@@ -1163,6 +1163,82 @@ class ElementCollection(
         """
         return self.apply(lambda element: element.find(selector, **kwargs))
 
+    @overload
+    def find_all(
+        self,
+        *,
+        text: str,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    @overload
+    def find_all(
+        self,
+        selector: str,
+        *,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        **kwargs,
+    ) -> "ElementCollection":
+        """
+        Find all elements within each element of this collection matching the selector OR text,
+        and return a flattened collection of all found sub-elements.
+
+        Provide EITHER `selector` OR `text`, but not both.
+
+        Args:
+            selector: CSS-like selector string.
+            text: Text content to search for (equivalent to 'text:contains(...)').
+            apply_exclusions: Whether to apply exclusion regions (default: True).
+            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
+            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
+            **kwargs: Additional parameters for element filtering.
+
+        Returns:
+            A new ElementCollection containing all matching sub-elements from all elements
+            in this collection.
+        """
+        if selector is None and text is None:
+            raise ValueError("Either 'selector' or 'text' must be provided to find_all.")
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text' to find_all, not both.")
+
+        all_found_elements: List[Element] = []
+        for element in self._elements:
+            if hasattr(element, "find_all") and callable(element.find_all):
+                # Element.find_all returns an ElementCollection
+                found_in_element: "ElementCollection" = element.find_all(
+                    selector=selector,
+                    text=text,
+                    apply_exclusions=apply_exclusions,
+                    regex=regex,
+                    case=case,
+                    **kwargs,
+                )
+                if found_in_element and found_in_element.elements:
+                    all_found_elements.extend(found_in_element.elements)
+            # else:
+            # Elements in the collection are expected to support find_all.
+            # If an element type doesn't, an AttributeError will naturally occur,
+            # or a more specific check/handling could be added here if needed.
+
+        return ElementCollection(all_found_elements)
+
     def extract_each_text(self, **kwargs) -> List[str]:
         """
         Extract text from each element in this region.

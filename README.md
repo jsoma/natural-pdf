@@ -33,25 +33,26 @@ from natural_pdf import PDF
 pdf = PDF('document.pdf')
 page = pdf.pages[0]
 
+# Extract all of the text on the page
+page.extract_text()
+
 # Find elements using CSS-like selectors
 heading = page.find('text:contains("Summary"):bold')
 
 # Extract content below the heading
 content = heading.below().extract_text()
-print("Content below Summary:", content[:100] + "...")
 
-# Exclude headers/footers automatically (example)
-# You might define these based on common text or position
-page.add_exclusion(page.find('text:contains("CONFIDENTIAL")').above())
-page.add_exclusion(page.find_all('line')[-1].below())
+# Examine all the bold text on the page
+page.find_all('text:bold').show()
 
-# Extract clean text from the page
+# Exclude parts of the page from selectors/extractors
+header = page.find('text:contains("CONFIDENTIAL")').above()
+footer = page.find_all('line')[-1].below()
+page.add_exclusion(header)
+page.add_exclusion(footer)
+
+# Extract clean text from the page ignoring exclusions
 clean_text = page.extract_text()
-print("\nClean page text:", clean_text[:200] + "...")
-
-# Highlight the heading and view the page
-heading.highlight(color='red')
-page.to_image()
 ```
 
 And as a fun bonus, `page.viewer()` will provide an interactive method to explore the PDF.
@@ -73,7 +74,9 @@ Natural PDF offers a range of features for working with PDFs:
 
 Dive deeper into the features and explore advanced usage in the [**Complete Documentation**](https://jsoma.github.io/natural-pdf).
 
-## Tools and models Natural PDF is built on 
+## Best friends
+
+Natural PDF sits on top of a *lot* of fantastic tools and mdoels, some of which are:
 
 - [pdfplumber](https://github.com/jsvine/pdfplumber)
 - [EasyOCR](https://www.jaided.ai/easyocr/)

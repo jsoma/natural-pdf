@@ -4,11 +4,23 @@ Let's get Natural PDF installed and run your first extraction.
 
 ## Installation
 
-The base installation includes the core library and necessary AI dependencies (like PyTorch and Transformers):
+The base installation includes the core library which will allow you to select, extract, and use spatial navigation.
 
 ```bash
 pip install natural-pdf
 ```
+
+But! If you want to recognize text, do page layout analysis, document q-and-a or other things, you can install optional dependencies.
+
+```bash
+# Install deskewing, OCR (surya and easyocr),
+# layout analysis (yolo), and interactive browsing
+pip install natural-pdf[favorites]
+
+# Install **everything**
+pip install natural-pdf[all]
+```
+
 
 ### Optional Dependencies
 
