@@ -322,6 +322,8 @@
       
         
       
+        
+      
     
     
     
@@ -422,6 +424,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../loops-and-groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Loops, groups and repetitive tasks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../text-analysis/" class="md-nav__link">
         
   
@@ -479,6 +504,12 @@
       
         
           
+        
+      
+        
+      
+        
+      
         
       
         
@@ -591,12 +622,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../layout-analysis/" class="md-nav__link">
+      <a href="../../finetuning/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Document Layout Analysis
+    OCR Fine-tuning
     
   </span>
   
@@ -620,6 +651,75 @@
   
   <span class="md-ellipsis">
     Table Extraction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../layout-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Document Layout Analysis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../categorizing-documents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Categorizing Documents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Data extraction
     
   </span>
   
@@ -670,6 +770,8 @@
   
     
     
+      
+        
       
         
       
@@ -1098,6 +1200,29 @@
   
   <span class="md-ellipsis">
     Semantic Search Across Multiple Documents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14-categorizing-documents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Categorizing documents
     
   </span>
   
@@ -1627,7 +1752,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e3b4e5c3">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3880ba5c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1640,7 +1765,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=c66cb1f1">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7b26c3ff">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1667,7 +1792,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a0f03729">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=cfbd0c03">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1721,7 +1846,14 @@ answer_1</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>Device set to use cpu
+<pre>CropBox missing from /Page, defaulting to MediaBox
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>Device set to use mps:0
 </pre>
 </div>
 </div>
@@ -1729,9 +1861,9 @@ answer_1</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
 <pre>{'answer': 'February 3, 1905',
- 'confidence': 0.998698353767395,
- 'start': 5,
- 'end': 5,
+ 'confidence': 0.9979940056800842,
+ 'start': 6,
+ 'end': 6,
  'found': True,
  'page_num': 0,
  'source_elements': &lt;ElementCollection[TextElement](count=1)&gt;}</pre>
@@ -1741,7 +1873,7 @@ answer_1</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=da025a3e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3b329f43">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1784,7 +1916,7 @@ answer_2</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
 <pre>{'answer': 'Jungle Health and Safety Inspection Service',
- 'confidence': 0.8496664762496948,
+ 'confidence': 0.9988948106765747,
  'start': 0,
  'end': 0,
  'found': True,
@@ -1796,7 +1928,7 @@ answer_2</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b743f721">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=6cd9c887">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1839,9 +1971,9 @@ answer_3</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[4]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
 <pre>{'answer': 'Inadequate Protective Equipment.',
- 'confidence': 0.9996328949928284,
- 'start': 25,
- 'end': 25,
+ 'confidence': 0.9997999668121338,
+ 'start': 26,
+ 'end': 26,
  'found': True,
  'page_num': 0,
  'source_elements': &lt;ElementCollection[TextElement](count=1)&gt;}</pre>
@@ -1851,7 +1983,7 @@ answer_3</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=76f2fadd">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1b6248cb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1863,7 +1995,7 @@ answer_3</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=be42d6e9">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0db945f0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1946,6 +2078,13 @@ df_results</div>
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>CropBox missing from /Page, defaulting to MediaBox
+</pre>
+</div>
+</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[5]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
@@ -1977,25 +2116,25 @@ df_results</div>
 <th>0</th>
 <td>What is the inspection date?</td>
 <td>February 3, 1905</td>
-<td>0.998698</td>
+<td>0.997994</td>
 </tr>
 <tr>
 <th>1</th>
 <td>What company was inspected?</td>
 <td>Jungle Health and Safety Inspection Service</td>
-<td>0.849666</td>
+<td>0.998895</td>
 </tr>
 <tr>
 <th>2</th>
 <td>What is statute 5.8.3 about?</td>
 <td>Inadequate Protective Equipment.</td>
-<td>0.999633</td>
+<td>0.999800</td>
 </tr>
 <tr>
 <th>3</th>
 <td>How many violations were there in total?</td>
-<td>7.1.5</td>
-<td>0.749996</td>
+<td>4.12.7</td>
+<td>0.662560</td>
 </tr>
 </tbody>
 </table>
@@ -2006,7 +2145,7 @@ df_results</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dc7f4298">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c9b2660f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
