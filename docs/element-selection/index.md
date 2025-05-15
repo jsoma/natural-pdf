@@ -238,6 +238,37 @@ Sometimes PDFs use font variants (prefixes like `AAAAAB+`) which can be useful f
 page.find_all('text[font-variant=AAAAAB]')
 ```
 
+## Containment geometry
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("pdfs/geometry.pdf")
+page = pdf.pages[0]
+
+rect = page.find('rect')
+rect.show(width=500)
+```
+
+By default, being inside of something means being *fully inside*.
+
+```python
+# rect.find_all('text', contains='all').show()
+rect.find_all('text').show()
+```
+
+If you're interested in *any* overlap, you can use `contains='any'`.
+
+```python
+rect.find_all('text', contains='any').show()
+```
+
+For just the center being part of it, `contains='center'` will work for you.
+
+```python
+rect.find_all('text', contains='center').show()
+```
+
 ## Next Steps
 
 Now that you can find elements, explore:

@@ -9,6 +9,7 @@ SAMPLE_PDFS = {
     "atlanta": "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf",
     "needs_ocr": "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf",
     "cia_doc": "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/cia-doc.pdf",
+    "geometry": "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/geometry.pdf",
 }
 
 # Local paths to PDF files in the repo
@@ -17,6 +18,7 @@ LOCAL_PDFS = {
     "atlanta": Path("pdfs/Atlanta_Public_Schools_GA_sample.pdf"),
     "needs_ocr": Path("pdfs/needs-ocr.pdf"),
     "cia_doc": Path("pdfs/cia-doc.pdf"),
+    "geometry": Path("pdfs/geometry.pdf"),
 }
 
 
@@ -36,6 +38,21 @@ def practice_pdf():
         if 'pdf' in locals():
             pdf.close()
 
+@pytest.fixture
+def geometry_pdf():
+    """Returns a loaded practice PDF object"""
+    from natural_pdf import PDF
+    try:
+        # Try local file first
+        if LOCAL_PDFS["geometry"].exists():
+            pdf = PDF(str(LOCAL_PDFS["geometry"].resolve()))
+        else:
+            # Fall back to URL
+            pdf = PDF(SAMPLE_PDFS["geometry"])
+        yield pdf
+    finally:
+        if 'pdf' in locals():
+            pdf.close()
 
 @pytest.fixture
 def atlanta_pdf():

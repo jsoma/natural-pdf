@@ -814,6 +814,7 @@ class Element(DirectionalMixin):
         legend_position: str = "right",
         color: Optional[Union[Tuple, str]] = "red",  # Default color for single element
         label: Optional[str] = None,
+        width: Optional[int] = None,  # Add width parameter
     ) -> Optional["Image.Image"]:
         """
         Show the page with only this element highlighted temporarily.
@@ -824,6 +825,7 @@ class Element(DirectionalMixin):
             legend_position: Position of the legend
             color: Color to highlight this element (default: red)
             label: Optional label for this element in the legend
+            width: Optional width for the output image in pixels
 
         Returns:
             PIL Image of the page with only this element highlighted, or None if error.
@@ -861,6 +863,7 @@ class Element(DirectionalMixin):
                 page_index=self.page.index,
                 temporary_highlights=[temp_highlight_data],
                 scale=scale,
+                width=width,  # Pass the width parameter
                 labels=labels,
                 legend_position=legend_position,
             )
@@ -898,6 +901,7 @@ class Element(DirectionalMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -909,6 +913,7 @@ class Element(DirectionalMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -920,6 +925,7 @@ class Element(DirectionalMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -934,6 +940,9 @@ class Element(DirectionalMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -950,6 +959,7 @@ class Element(DirectionalMixin):
         return temp_region.find(
             selector=selector,
             text=text,
+            contains=contains,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
@@ -961,6 +971,7 @@ class Element(DirectionalMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -972,6 +983,7 @@ class Element(DirectionalMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -983,6 +995,7 @@ class Element(DirectionalMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -997,6 +1010,9 @@ class Element(DirectionalMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1013,6 +1029,7 @@ class Element(DirectionalMixin):
         return temp_region.find_all(
             selector=selector,
             text=text,
+            contains=contains,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,

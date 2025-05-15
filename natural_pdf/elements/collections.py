@@ -841,6 +841,7 @@ class ElementCollection(
         labels: bool = True,  # Use 'labels' consistent with service
         legend_position: str = "right",
         render_ocr: bool = False,
+        width: Optional[int] = None,  # Add width parameter
     ) -> Optional["Image.Image"]:
         """
         Generates a temporary preview image highlighting elements in this collection
@@ -863,6 +864,7 @@ class ElementCollection(
             labels: Whether to include a legend for the temporary highlights.
             legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
             render_ocr: Whether to render OCR text.
+            width: Optional width for the output image in pixels.
 
         Returns:
             PIL Image object of the temporary preview, or None if rendering fails or
@@ -923,6 +925,7 @@ class ElementCollection(
                 page_index=page.index,
                 temporary_highlights=highlight_data_list,
                 scale=scale,
+                width=width,  # Pass the width parameter
                 labels=labels,  # Use 'labels'
                 legend_position=legend_position,
                 render_ocr=render_ocr,
@@ -1160,6 +1163,9 @@ class ElementCollection(
 
         Args:
             selector: CSS-like selector string
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                      'any' (any overlap), or 'center' (center point inside).
+                      (default: "all")
             apply_exclusions: Whether to exclude elements in exclusion regions
         """
         return self.apply(lambda element: element.find(selector, **kwargs))
@@ -1169,6 +1175,7 @@ class ElementCollection(
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1180,6 +1187,7 @@ class ElementCollection(
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1191,6 +1199,7 @@ class ElementCollection(
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1205,6 +1214,9 @@ class ElementCollection(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1226,6 +1238,7 @@ class ElementCollection(
                 found_in_element: "ElementCollection" = element.find_all(
                     selector=selector,
                     text=text,
+                    contains=contains,
                     apply_exclusions=apply_exclusions,
                     regex=regex,
                     case=case,
@@ -1710,6 +1723,7 @@ class PageCollection(Generic[P], ApplyMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1721,6 +1735,7 @@ class PageCollection(Generic[P], ApplyMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1732,6 +1747,7 @@ class PageCollection(Generic[P], ApplyMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1745,6 +1761,9 @@ class PageCollection(Generic[P], ApplyMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1758,6 +1777,7 @@ class PageCollection(Generic[P], ApplyMixin):
             element = page.find(
                 selector=selector,
                 text=text,
+                contains=contains,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
@@ -1772,6 +1792,7 @@ class PageCollection(Generic[P], ApplyMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1783,6 +1804,7 @@ class PageCollection(Generic[P], ApplyMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1794,6 +1816,7 @@ class PageCollection(Generic[P], ApplyMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1807,6 +1830,9 @@ class PageCollection(Generic[P], ApplyMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1821,6 +1847,7 @@ class PageCollection(Generic[P], ApplyMixin):
             elements = page.find_all(
                 selector=selector,
                 text=text,
+                contains=contains,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,

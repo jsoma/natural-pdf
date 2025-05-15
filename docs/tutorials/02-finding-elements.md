@@ -59,7 +59,7 @@ Find lines and rectangles based on their properties:
 
 ```python
 # Find horizontal lines
-horizontal_lines = page.find_all('line[horizontal]')
+horizontal_lines = page.find_all('line:horizontal')
 
 # Find thick lines (width >= 2)
 thick_lines = page.find_all('line[width>=2]')

@@ -772,6 +772,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         # Add a default color for standalone show
         color: Optional[Union[Tuple, str]] = "blue",
         label: Optional[str] = None,
+        width: Optional[int] = None,  # Add width parameter
     ) -> "Image.Image":
         """
         Show the page with just this region highlighted temporarily.
@@ -782,6 +783,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
             legend_position: Position of the legend
             color: Color to highlight this region (default: blue)
             label: Optional label for this region in the legend
+            width: Optional width for the output image in pixels
 
         Returns:
             PIL Image of the page with only this region highlighted
@@ -812,6 +814,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
             page_index=self._page.index,
             temporary_highlights=[temp_highlight_data],
             scale=scale,
+            width=width,  # Pass the width parameter
             labels=labels,
             legend_position=legend_position,
         )
@@ -1333,6 +1336,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1344,6 +1348,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1355,6 +1360,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         selector: Optional[str] = None,  # Now optional
         *,
         text: Optional[str] = None,  # New text parameter
+        contains: str = "all",  # New parameter for containment behavior
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1368,6 +1374,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1380,6 +1389,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         elements = self.find_all(
             selector=selector,
             text=text,
+            contains=contains,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
@@ -1392,6 +1402,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         self,
         *,
         text: str,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1403,6 +1414,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         self,
         selector: str,
         *,
+        contains: str = "all",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1414,6 +1426,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         selector: Optional[str] = None,  # Now optional
         *,
         text: Optional[str] = None,  # New text parameter
+        contains: str = "all",  # New parameter to control inside/overlap behavior
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1427,6 +1440,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
+            contains: How to determine if elements are inside: 'all' (fully inside),
+                     'any' (any overlap), or 'center' (center point inside).
+                     (default: "all")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1441,6 +1457,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
             raise ValueError("Provide either 'selector' or 'text', not both.")
         if selector is None and text is None:
             raise ValueError("Provide either 'selector' or 'text'.")
+
+        # Validate contains parameter
+        if contains not in ["all", "any", "center"]:
+            raise ValueError(f"Invalid contains value: {contains}. Must be 'all', 'any', or 'center'")
 
         # Construct selector if 'text' is provided
         effective_selector = ""
@@ -1481,22 +1501,34 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
             # Let the page handle its exclusion logic if needed
             potential_elements = self.page.find_all(
                 selector=effective_selector,
-                apply_exclusions=False,  # Apply exclusions LATER based on region bbox
+                apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
                 **kwargs,
             )
 
-            # Filter these elements to those strictly within the region's bounds
+            # Filter these elements based on the specified containment method
             region_bbox = self.bbox
-            matching_elements = [
-                el
-                for el in potential_elements
-                if el.x0 >= region_bbox[0]
-                and el.top >= region_bbox[1]
-                and el.x1 <= region_bbox[2]
-                and el.bottom <= region_bbox[3]
-            ]
+            matching_elements = []
+            
+            if contains == "all":  # Fully inside (strict)
+                matching_elements = [
+                    el for el in potential_elements
+                    if el.x0 >= region_bbox[0]
+                    and el.top >= region_bbox[1]
+                    and el.x1 <= region_bbox[2]
+                    and el.bottom <= region_bbox[3]
+                ]
+            elif contains == "any":  # Any overlap
+                matching_elements = [
+                    el for el in potential_elements
+                    if self.intersects(el)
+                ]
+            elif contains == "center":  # Center point inside
+                matching_elements = [
+                    el for el in potential_elements
+                    if self.is_element_center_inside(el)
+                ]
 
             return ElementCollection(matching_elements)
 
