@@ -44,7 +44,7 @@ def create_original_pdf(
     if pikepdf is None:
         raise ImportError(
             "Saving original PDF pages requires 'pikepdf'. "
-            "Install with: pip install \"natural-pdf[ocr-export]\""
+            'Install with: pip install "natural-pdf[ocr-export]"'
         )
 
     output_path_str = str(output_path)
@@ -55,18 +55,17 @@ def create_original_pdf(
         if not source.pages:
             raise ValueError("Cannot save an empty collection/PDF.")
         pages_to_extract = source.pages
-    elif hasattr(source, "page") and hasattr(source, "number"): # Single Page object
-         # Check if it's a natural_pdf.core.page.Page or similar duck-typed object
-         if hasattr(source, 'pdf') and source.pdf and hasattr(source.pdf, 'path'):
-             pages_to_extract = [source]
-         else:
+    elif hasattr(source, "page") and hasattr(source, "number"):  # Single Page object
+        # Check if it's a natural_pdf.core.page.Page or similar duck-typed object
+        if hasattr(source, "pdf") and source.pdf and hasattr(source.pdf, "path"):
+            pages_to_extract = [source]
+        else:
             raise ValueError("Input Page object does not have a valid PDF reference with a path.")
     else:
         raise TypeError(f"Unsupported source type for create_original_pdf: {type(source)}")
 
-
     if not pages_to_extract:
-         raise ValueError("No valid pages found in the source object.")
+        raise ValueError("No valid pages found in the source object.")
 
     # Verify all pages come from the same PDF and get path
     first_page_pdf_path = None
@@ -115,16 +114,14 @@ def create_original_pdf(
             )
 
     except pikepdf.PasswordError:
-        logger.error(
-            f"Failed to open password-protected source PDF: {first_page_pdf_path}"
-        )
+        logger.error(f"Failed to open password-protected source PDF: {first_page_pdf_path}")
         raise RuntimeError(
             f"Source PDF '{first_page_pdf_path}' is password-protected."
-        ) from None # Raise specific error without chaining the generic Exception
+        ) from None  # Raise specific error without chaining the generic Exception
     except Exception as e:
         logger.error(
             f"Failed to save original pages PDF to '{output_path_str}': {e}",
             exc_info=True,
         )
         # Re-raise as RuntimeError for consistent API error handling
-        raise RuntimeError(f"Failed to save original pages PDF: {e}") from e 
+        raise RuntimeError(f"Failed to save original pages PDF: {e}") from e

@@ -157,10 +157,10 @@ Debug and understand your extractions visually.
 
 ```python
 # Highlight headings
-page.find_all('text[size>=14]').highlight(color="red", label="Headings")
+page.find_all('text[size>=14]').show(color="red", label="Headings")
 
 # Launch the interactive viewer (Jupyter)
-# Requires: pip install natural-pdf[interactive]
+# Requires: pip install natural-pdf[viewer]
 page.viewer()
 
 # Or save an image

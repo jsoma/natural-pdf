@@ -64,7 +64,7 @@ def is_extra_installed(extra_name):
         "surya": ["surya"],
         "layout_yolo": ["doclayout_yolo"],
         "haystack": ["haystack", "lancedb_haystack"],
-        "qa": ["transformers"],
+        "core-ml": ["transformers"],
     }
     if extra_name not in extra_packages:
         return False

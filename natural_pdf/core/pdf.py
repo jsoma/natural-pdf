@@ -60,6 +60,7 @@ except ImportError:
             "Search dependencies are not installed. Install with: pip install natural-pdf[search]"
         )
 
+
 try:
     from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 except ImportError:
@@ -791,10 +792,10 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             "PDF.save_searchable() is deprecated. Use PDF.save_pdf(..., ocr=True) instead."
         )
         if create_searchable_pdf is None:
-             raise ImportError(
-                 "Saving searchable PDF requires 'pikepdf' and 'Pillow'. "
-                 "Install with: pip install \"natural-pdf[ocr-export]\""
-             )
+            raise ImportError(
+                "Saving searchable PDF requires 'pikepdf'. "
+                'Install with: pip install "natural-pdf[ocr-export]"'
+            )
         output_path_str = str(output_path)
         # Call the exporter directly, passing self (the PDF instance)
         create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
@@ -842,55 +843,59 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         output_path_str = str(output_path_obj)
 
         if ocr:
-            if create_searchable_pdf is None:
-                raise ImportError(
-                    "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
-                    "Install with: pip install \"natural-pdf[ocr-export]\""
-                )
-
-            # Optional: Add warning about vector data loss similar to PageCollection
             has_vector_elements = False
             for page in self.pages:
-                if (hasattr(page, 'rects') and page.rects or
-                    hasattr(page, 'lines') and page.lines or
-                    hasattr(page, 'curves') and page.curves or
-                    (hasattr(page, 'chars') and any(getattr(el, 'source', None) != 'ocr' for el in page.chars)) or
-                    (hasattr(page, 'words') and any(getattr(el, 'source', None) != 'ocr' for el in page.words))):
+                if (
+                    hasattr(page, "rects")
+                    and page.rects
+                    or hasattr(page, "lines")
+                    and page.lines
+                    or hasattr(page, "curves")
+                    and page.curves
+                    or (
+                        hasattr(page, "chars")
+                        and any(getattr(el, "source", None) != "ocr" for el in page.chars)
+                    )
+                    or (
+                        hasattr(page, "words")
+                        and any(getattr(el, "source", None) != "ocr" for el in page.words)
+                    )
+                ):
                     has_vector_elements = True
                     break
             if has_vector_elements:
-                 logger.warning(
-                     "Warning: Saving with ocr=True creates an image-based PDF. "
-                     "Original vector elements (rects, lines, non-OCR text/chars) "
-                     "will not be preserved in the output file."
-                 )
+                logger.warning(
+                    "Warning: Saving with ocr=True creates an image-based PDF. "
+                    "Original vector elements (rects, lines, non-OCR text/chars) "
+                    "will not be preserved in the output file."
+                )
 
             logger.info(f"Saving searchable PDF (OCR text layer) to: {output_path_str}")
             try:
                 # Delegate to the searchable PDF exporter, passing self (PDF instance)
                 create_searchable_pdf(self, output_path_str, dpi=dpi)
             except Exception as e:
-                 raise RuntimeError(f"Failed to create searchable PDF: {e}") from e
+                raise RuntimeError(f"Failed to create searchable PDF: {e}") from e
 
         elif original:
             if create_original_pdf is None:
                 raise ImportError(
                     "Saving with original=True requires 'pikepdf'. "
-                    "Install with: pip install \"natural-pdf[ocr-export]\""
+                    'Install with: pip install "natural-pdf[ocr-export]"'
                 )
 
-             # Optional: Add warning about losing OCR data similar to PageCollection
+            # Optional: Add warning about losing OCR data similar to PageCollection
             has_ocr_elements = False
             for page in self.pages:
-                 if hasattr(page, 'find_all'):
-                     ocr_text_elements = page.find_all("text[source=ocr]")
-                     if ocr_text_elements:
-                         has_ocr_elements = True
-                         break
-                 elif hasattr(page, 'words'): # Fallback
-                     if any(getattr(el, 'source', None) == 'ocr' for el in page.words):
-                          has_ocr_elements = True
-                          break
+                if hasattr(page, "find_all"):
+                    ocr_text_elements = page.find_all("text[source=ocr]")
+                    if ocr_text_elements:
+                        has_ocr_elements = True
+                        break
+                elif hasattr(page, "words"):  # Fallback
+                    if any(getattr(el, "source", None) == "ocr" for el in page.words):
+                        has_ocr_elements = True
+                        break
             if has_ocr_elements:
                 logger.warning(
                     "Warning: Saving with original=True preserves original page content. "
@@ -899,11 +904,11 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
             logger.info(f"Saving original PDF content to: {output_path_str}")
             try:
-                 # Delegate to the original PDF exporter, passing self (PDF instance)
-                 create_original_pdf(self, output_path_str)
+                # Delegate to the original PDF exporter, passing self (PDF instance)
+                create_original_pdf(self, output_path_str)
             except Exception as e:
-                 # Re-raise exception from exporter
-                 raise e
+                # Re-raise exception from exporter
+                raise e
 
     def ask(
         self,

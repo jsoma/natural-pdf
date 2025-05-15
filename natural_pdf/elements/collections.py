@@ -20,10 +20,10 @@ from typing import (
 )
 
 from pdfplumber.utils.geometry import objects_to_bbox
-from PIL import Image, ImageDraw, ImageFont
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
+from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
 
 from natural_pdf.classification.manager import ClassificationManager
@@ -46,6 +46,7 @@ except ImportError:
 
 try:
     from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
+
     pass
 except ImportError:
     create_searchable_pdf = None
@@ -61,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-    from natural_pdf.core.pdf import PDF # ---> ADDED PDF type hint
+    from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
 
 T = TypeVar("T")
@@ -2390,8 +2391,10 @@ class PageCollection(Generic[P], ApplyMixin):
         try:
             from PIL import Image, ImageDraw, ImageFont
         except ImportError:
-             logger.error("Pillow library not found, required for to_image(). Install with 'pip install Pillow'")
-             return None
+            logger.error(
+                "Pillow library not found, required for to_image(). Install with 'pip install Pillow'"
+            )
+            return None
 
         if not self.pages:
             logger.warning("Cannot generate image for empty PageCollection")
@@ -2410,27 +2413,34 @@ class PageCollection(Generic[P], ApplyMixin):
                 try:
                     font = ImageFont.load_default(16)
                 except IOError:
-                     logger.warning("Default font not found. Labels cannot be added.")
-                     add_labels = False # Disable if no font
+                    logger.warning("Default font not found. Labels cannot be added.")
+                    add_labels = False  # Disable if no font
 
         # Render individual page images
         page_images = []
         for page in pages_to_render:
             try:
                 # Assume page.to_image returns a PIL Image or None
-                img = page.to_image(width=page_width, include_highlights=True) # Render with highlights for visual context
+                img = page.to_image(
+                    width=page_width, include_highlights=True
+                )  # Render with highlights for visual context
                 if img is None:
-                     logger.warning(f"Failed to generate image for page {page.number}. Skipping.")
-                     continue
+                    logger.warning(f"Failed to generate image for page {page.number}. Skipping.")
+                    continue
             except Exception as img_err:
-                 logger.error(f"Error generating image for page {page.number}: {img_err}", exc_info=True)
-                 continue
-
+                logger.error(
+                    f"Error generating image for page {page.number}: {img_err}", exc_info=True
+                )
+                continue
 
             # Add page number label
             if add_labels and font:
                 draw = ImageDraw.Draw(img)
-                pdf_name = Path(page.pdf.path).stem if hasattr(page, "pdf") and page.pdf and hasattr(page.pdf, "path") else ""
+                pdf_name = (
+                    Path(page.pdf.path).stem
+                    if hasattr(page, "pdf") and page.pdf and hasattr(page.pdf, "path")
+                    else ""
+                )
                 label_text = f"p{page.number}"
                 if pdf_name:
                     label_text += f" - {pdf_name}"
@@ -2440,50 +2450,71 @@ class PageCollection(Generic[P], ApplyMixin):
                     # Placeholder logic - adjust based on how classification results are stored
                     category = None
                     confidence = None
-                    if hasattr(page, 'analyses') and page.analyses and 'classification' in page.analyses:
-                        result = page.analyses['classification']
+                    if (
+                        hasattr(page, "analyses")
+                        and page.analyses
+                        and "classification" in page.analyses
+                    ):
+                        result = page.analyses["classification"]
                         # Adapt based on actual structure of classification result
-                        category = getattr(result, 'label', None) or result.get('label', None) if isinstance(result, dict) else None
-                        confidence = getattr(result, 'score', None) or result.get('score', None) if isinstance(result, dict) else None
+                        category = (
+                            getattr(result, "label", None) or result.get("label", None)
+                            if isinstance(result, dict)
+                            else None
+                        )
+                        confidence = (
+                            getattr(result, "score", None) or result.get("score", None)
+                            if isinstance(result, dict)
+                            else None
+                        )
 
                     if category is not None and confidence is not None:
-                         try:
-                            category_str = f"{category} ({confidence:.2f})" # Format confidence
+                        try:
+                            category_str = f"{category} ({confidence:.2f})"  # Format confidence
                             label_text += f"\\n{category_str}"
-                         except (TypeError, ValueError): pass # Ignore formatting errors
-
+                        except (TypeError, ValueError):
+                            pass  # Ignore formatting errors
 
                 # Calculate bounding box for multi-line text and draw background/text
                 try:
                     # Using textbbox for potentially better accuracy with specific fonts
                     # Note: textbbox needs Pillow 8+
-                    bbox = draw.textbbox((5, 5), label_text, font=font, spacing=2) # Use textbbox if available
-                    bg_rect = (max(0, bbox[0] - 2), max(0, bbox[1] - 2),
-                               min(img.width, bbox[2] + 2), min(img.height, bbox[3] + 2))
+                    bbox = draw.textbbox(
+                        (5, 5), label_text, font=font, spacing=2
+                    )  # Use textbbox if available
+                    bg_rect = (
+                        max(0, bbox[0] - 2),
+                        max(0, bbox[1] - 2),
+                        min(img.width, bbox[2] + 2),
+                        min(img.height, bbox[3] + 2),
+                    )
 
                     # Draw semi-transparent background
-                    overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
+                    overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
                     draw_overlay = ImageDraw.Draw(overlay)
-                    draw_overlay.rectangle(bg_rect, fill=(255, 255, 255, 180)) # White with alpha
-                    img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
-                    draw = ImageDraw.Draw(img) # Recreate draw object
+                    draw_overlay.rectangle(bg_rect, fill=(255, 255, 255, 180))  # White with alpha
+                    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+                    draw = ImageDraw.Draw(img)  # Recreate draw object
 
                     # Draw the potentially multi-line text
                     draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
-                except AttributeError: # Fallback for older Pillow without textbbox
+                except AttributeError:  # Fallback for older Pillow without textbbox
                     # Approximate size and draw
                     # This might not be perfectly aligned
-                     draw.rectangle((2, 2, 150, 40), fill=(255, 255, 255, 180)) # Simple fixed background
-                     draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
+                    draw.rectangle(
+                        (2, 2, 150, 40), fill=(255, 255, 255, 180)
+                    )  # Simple fixed background
+                    draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
                 except Exception as draw_err:
-                     logger.error(f"Error drawing label on page {page.number}: {draw_err}", exc_info=True)
+                    logger.error(
+                        f"Error drawing label on page {page.number}: {draw_err}", exc_info=True
+                    )
 
             page_images.append(img)
 
         if not page_images:
             logger.warning("No page images were successfully rendered for the grid.")
             return None
-
 
         # Calculate grid dimensions if not provided
         num_images = len(page_images)
@@ -2494,24 +2525,23 @@ class PageCollection(Generic[P], ApplyMixin):
             cols = (num_images + rows - 1) // rows
         elif cols and not rows:
             rows = (num_images + cols - 1) // cols
-        cols = max(1, cols if cols else 1) # Ensure at least 1
+        cols = max(1, cols if cols else 1)  # Ensure at least 1
         rows = max(1, rows if rows else 1)
-
 
         # Get maximum dimensions for consistent grid cells
         max_width = max(img.width for img in page_images) if page_images else 1
         max_height = max(img.height for img in page_images) if page_images else 1
 
-
         # Create grid image
         grid_width = cols * max_width + (cols + 1) * spacing
         grid_height = rows * max_height + (rows + 1) * spacing
-        grid_img = Image.new("RGB", (grid_width, grid_height), (220, 220, 220)) # Lighter gray background
-
+        grid_img = Image.new(
+            "RGB", (grid_width, grid_height), (220, 220, 220)
+        )  # Lighter gray background
 
         # Place images in grid
         for i, img in enumerate(page_images):
-            if i >= rows * cols: # Ensure we don't exceed grid capacity
+            if i >= rows * cols:  # Ensure we don't exceed grid capacity
                 break
 
             row = i // cols
@@ -2560,8 +2590,8 @@ class PageCollection(Generic[P], ApplyMixin):
         if not self.pages:
             raise ValueError("Cannot save an empty PageCollection.")
 
-        if not (ocr ^ original): # XOR: exactly one must be true
-             raise ValueError("Exactly one of 'ocr' or 'original' must be True.")
+        if not (ocr ^ original):  # XOR: exactly one must be true
+            raise ValueError("Exactly one of 'ocr' or 'original' must be True.")
 
         output_path_obj = Path(output_path)
         output_path_str = str(output_path_obj)
@@ -2570,18 +2600,29 @@ class PageCollection(Generic[P], ApplyMixin):
             if create_searchable_pdf is None:
                 raise ImportError(
                     "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
-                    "Install with: pip install \\\"natural-pdf[ocr-export]\\\"" # Escaped quotes
+                    'Install with: pip install \\"natural-pdf[ocr-export]\\"'  # Escaped quotes
                 )
 
             # Check for non-OCR vector elements (provide a warning)
             has_vector_elements = False
             for page in self.pages:
                 # Simplified check for common vector types or non-OCR chars/words
-                if (hasattr(page, 'rects') and page.rects or
-                    hasattr(page, 'lines') and page.lines or
-                    hasattr(page, 'curves') and page.curves or
-                    (hasattr(page, 'chars') and any(getattr(el, 'source', None) != 'ocr' for el in page.chars)) or
-                    (hasattr(page, 'words') and any(getattr(el, 'source', None) != 'ocr' for el in page.words))):
+                if (
+                    hasattr(page, "rects")
+                    and page.rects
+                    or hasattr(page, "lines")
+                    and page.lines
+                    or hasattr(page, "curves")
+                    and page.curves
+                    or (
+                        hasattr(page, "chars")
+                        and any(getattr(el, "source", None) != "ocr" for el in page.chars)
+                    )
+                    or (
+                        hasattr(page, "words")
+                        and any(getattr(el, "source", None) != "ocr" for el in page.words)
+                    )
+                ):
                     has_vector_elements = True
                     break
             if has_vector_elements:
@@ -2608,22 +2649,22 @@ class PageCollection(Generic[P], ApplyMixin):
             if create_original_pdf is None:
                 raise ImportError(
                     "Saving with original=True requires 'pikepdf'. "
-                    "Install with: pip install \\\"natural-pdf[ocr-export]\\\"" # Escaped quotes
+                    'Install with: pip install \\"natural-pdf[ocr-export]\\"'  # Escaped quotes
                 )
 
             # Check for OCR elements (provide a warning) - keep this check here
             has_ocr_elements = False
             for page in self.pages:
-                 # Use find_all which returns a collection; check if it's non-empty
-                 if hasattr(page, 'find_all'):
-                     ocr_text_elements = page.find_all("text[source=ocr]")
-                     if ocr_text_elements: # Check truthiness of collection
-                         has_ocr_elements = True
-                         break
-                 elif hasattr(page, 'words'): # Fallback check if find_all isn't present?
-                     if any(getattr(el, 'source', None) == 'ocr' for el in page.words):
-                          has_ocr_elements = True
-                          break
+                # Use find_all which returns a collection; check if it's non-empty
+                if hasattr(page, "find_all"):
+                    ocr_text_elements = page.find_all("text[source=ocr]")
+                    if ocr_text_elements:  # Check truthiness of collection
+                        has_ocr_elements = True
+                        break
+                elif hasattr(page, "words"):  # Fallback check if find_all isn't present?
+                    if any(getattr(el, "source", None) == "ocr" for el in page.words):
+                        has_ocr_elements = True
+                        break
 
             if has_ocr_elements:
                 logger.warning(
@@ -2641,5 +2682,5 @@ class PageCollection(Generic[P], ApplyMixin):
             except Exception as e:
                 # Error logging is handled within create_original_pdf
                 # Re-raise the exception caught from the exporter
-                raise e # Keep the original exception type (ValueError, RuntimeError, etc.)
+                raise e  # Keep the original exception type (ValueError, RuntimeError, etc.)
             # <--- END MODIFIED

@@ -407,7 +407,17 @@ class ElementManager:
                     char_dict_data = ocr_char_dict  # Use the one we already created
                     char_dict_data["object_type"] = "char"  # Mark as char type
                     char_dict_data.setdefault("adv", char_dict_data.get("width", 0))
-                    self._elements["chars"].append(char_dict_data)  # Append the dictionary
+
+                    # Create a TextElement for the char representation
+                    # Ensure _char_dicts is handled correctly by TextElement constructor
+                    # For an OCR word represented as a char, its _char_dicts can be a list containing its own data
+                    char_element_specific_data = char_dict_data.copy()
+                    char_element_specific_data["_char_dicts"] = [char_dict_data.copy()]
+
+                    ocr_char_as_element = TextElement(char_element_specific_data, self._page)
+                    self._elements["chars"].append(
+                        ocr_char_as_element
+                    )  # Append TextElement instance
 
             except (KeyError, ValueError, TypeError) as e:
                 logger.error(f"Failed to process OCR result: {result}. Error: {e}", exc_info=True)

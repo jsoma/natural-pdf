@@ -318,16 +318,6 @@ def create_searchable_pdf(
         dpi: The resolution (dots per inch) for rendering page images and hOCR.
     """
 
-    # --- Ensure dependencies are loaded (they should be if installed) ---
-    if Image is None or pikepdf is None or HocrTransform is None:
-        # This should ideally not happen if dependencies are in main install,
-        # but serves as a safeguard during development or if install is broken.
-        raise ImportError(
-            "Required dependencies (Pillow, pikepdf) are missing. "
-            "Please ensure natural-pdf is installed correctly with all dependencies."
-        )
-    # --- End Safeguard Check ---
-
     # duck type to see if source has .pages, to populate pages =
     if hasattr(source, "pages"):
         pages = source.pages

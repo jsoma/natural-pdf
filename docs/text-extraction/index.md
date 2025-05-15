@@ -238,11 +238,11 @@ page.text_style_labels
 ```
 
 ```python
-page.find_all('text').highlight(group_by='style_label').to_image()
+page.find_all('text').show(group_by='style_label')
 ```
 
 ```python
-page.find_all('text[style_label="8.0pt Helvetica"]')
+page.find_all('text[style_label="8.0pt Helvetica (small)"]')
 ```
 
 ```python

@@ -31,20 +31,6 @@ try:
     from PIL import Image
     from traitlets import Dict, List, Unicode, observe
 
-    # --- Read JS code from file (only needed if widgets are defined) --- #
-    _MODULE_DIR = os.path.dirname(__file__)
-    _FRONTEND_JS_PATH = os.path.join(_MODULE_DIR, "frontend", "viewer.js")
-    try:
-        with open(_FRONTEND_JS_PATH, "r", encoding="utf-8") as f:
-            _FRONTEND_JS_CODE = f.read()
-        logger.debug(f"Successfully read frontend JS from: {_FRONTEND_JS_PATH}")
-    except FileNotFoundError:
-        logger.error(f"Frontend JS file not found at {_FRONTEND_JS_PATH}. Widget will likely fail.")
-        _FRONTEND_JS_CODE = "console.error('Frontend JS file not found! Widget cannot load.');"
-    except Exception as e:
-        logger.error(f"Error reading frontend JS file {_FRONTEND_JS_PATH}: {e}")
-        _FRONTEND_JS_CODE = f"console.error('Error reading frontend JS file: {e}');"
-
     # --- Define Widget Classes ONLY if ipywidgets is available ---
     class SimpleInteractiveViewerWidget(widgets.DOMWidget):
         def __init__(self, pdf_data=None, **kwargs):
@@ -631,7 +617,7 @@ try:
 
             # Filter out 'char' elements
             filtered_page_elements = [
-                el for el in page_elements if getattr(el, "type", "").lower() != "char"
+                el for el in page_elements if str(getattr(el, "type", "")).lower() != "char"
             ]
             logger.debug(
                 f"Filtered out char elements, keeping {len(filtered_page_elements)} elements."
@@ -659,19 +645,21 @@ try:
 
             for i, element in enumerate(filtered_page_elements):
                 # Get original coordinates and calculated width/height (always present via base class)
+                # Assuming 'element' is always an object with these attributes now
                 original_x0 = element.x0
                 original_y0 = element.top
                 original_x1 = element.x1
                 original_y1 = element.bottom
                 width = element.width
                 height = element.height
+                current_element_type = element.type  # Direct attribute access
                 scale = 1.0
 
                 # Base element dict with required info
                 elem_dict = {
                     "id": i,
                     # Use the standardized .type property
-                    "type": element.type,
+                    "type": current_element_type,
                     # Scaled coordinates for positioning in HTML/SVG
                     "x0": original_x0 * scale,
                     "y0": original_y0 * scale,
@@ -684,21 +672,24 @@ try:
                 # --- Get Default Attributes --- #
                 attributes_found = set()
                 for attr_name in default_attributes_to_get:
+                    # Assuming 'element' is always an object
                     if hasattr(element, attr_name):
                         try:
-                            value = getattr(element, attr_name)
+                            value_to_process = getattr(element, attr_name)
                             # Convert non-JSON serializable types to string
-                            processed_value = value
+                            processed_value = value_to_process
                             if (
-                                not isinstance(value, (str, int, float, bool, list, dict, tuple))
-                                and value is not None
+                                not isinstance(
+                                    value_to_process, (str, int, float, bool, list, dict, tuple)
+                                )
+                                and value_to_process is not None
                             ):
-                                processed_value = str(value)
+                                processed_value = str(value_to_process)
                             elem_dict[attr_name] = processed_value
                             attributes_found.add(attr_name)
                         except Exception as e:
                             logger.warning(
-                                f"Could not get or process default attribute '{attr_name}' for element {i} ({element.type}): {e}"
+                                f"Could not get or process default attribute '{attr_name}' for element {i} ({current_element_type}): {e}"
                             )
 
                 # --- Get User-Requested Attributes (if any) --- #
@@ -707,23 +698,23 @@ try:
                         # Only process if not already added and exists
                         if attr_name not in attributes_found and hasattr(element, attr_name):
                             try:
-                                value = getattr(element, attr_name)
-                                processed_value = value
+                                value_to_process = getattr(element, attr_name)
+                                processed_value = value_to_process
                                 if (
                                     not isinstance(
-                                        value, (str, int, float, bool, list, dict, tuple)
+                                        value_to_process, (str, int, float, bool, list, dict, tuple)
                                     )
-                                    and value is not None
+                                    and value_to_process is not None
                                 ):
-                                    processed_value = str(value)
+                                    processed_value = str(value_to_process)
                                 elem_dict[attr_name] = processed_value
                             except Exception as e:
                                 logger.warning(
-                                    f"Could not get or process requested attribute '{attr_name}' for element {i} ({element.type}): {e}"
+                                    f"Could not get or process requested attribute '{attr_name}' for element {i} ({current_element_type}): {e}"
                                 )
-                for attr_name in elem_dict:
-                    if isinstance(elem_dict[attr_name], float):
-                        elem_dict[attr_name] = round(elem_dict[attr_name], 2)
+                for attr_name_val in elem_dict:  # Renamed to avoid conflict
+                    if isinstance(elem_dict[attr_name_val], float):
+                        elem_dict[attr_name_val] = round(elem_dict[attr_name_val], 2)
                 elements.append(elem_dict)
 
             logger.debug(

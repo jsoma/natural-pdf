@@ -66,28 +66,28 @@ class HocrTransform:
     """
 
     box_pattern = re.compile(
-        r'''
+        r"""
         bbox \s+
         (\d+) \s+   # left: uint
         (\d+) \s+   # top: uint
         (\d+) \s+   # right: uint
         (\d+)       # bottom: uint
-        ''',
+        """,
         re.VERBOSE,
     )
     baseline_pattern = re.compile(
-        r'''
+        r"""
         baseline \s+
         ([\-\+]?\d*\.?\d*) \s+  # +/- decimal float
         ([\-\+]?\d+)            # +/- int
-        ''',
+        """,
         re.VERBOSE,
     )
     textangle_pattern = re.compile(
-        r'''
+        r"""
         textangle \s+
         ([\-\+]?\d*\.?\d*)  # +/- decimal float
-        ''',
+        """,
         re.VERBOSE,
     )
 
@@ -121,12 +121,12 @@ class HocrTransform:
 
         # if the hOCR file has a namespace, ElementTree requires its use to
         # find elements
-        matches = re.match(r'({.*})html', self.hocr.getroot().tag)
-        self.xmlns = ''
+        matches = re.match(r"({.*})html", self.hocr.getroot().tag)
+        self.xmlns = ""
         if matches:
             self.xmlns = matches.group(1)
 
-        for div in self.hocr.findall(self._child_xpath('div', 'ocr_page')):
+        for div in self.hocr.findall(self._child_xpath("div", "ocr_page")):
             coords = self.element_coordinates(div)
             if not coords:
                 raise HocrTransformError("hocr file is missing page dimensions")
@@ -137,16 +137,16 @@ class HocrTransform:
 
     def _get_element_text(self, element: Element) -> str:
         """Return the textual content of the element and its children."""
-        text = element.text if element.text is not None else ''
+        text = element.text if element.text is not None else ""
         for child in element:
             text += self._get_element_text(child)
-        text += element.tail if element.tail is not None else ''
+        text += element.tail if element.tail is not None else ""
         return text
 
     @classmethod
     def element_coordinates(cls, element: Element) -> Rectangle | None:
         """Get coordinates of the bounding box around an element."""
-        matches = cls.box_pattern.search(element.attrib.get('title', ''))
+        matches = cls.box_pattern.search(element.attrib.get("title", ""))
         if not matches:
             return None
         return Rectangle(
@@ -159,7 +159,7 @@ class HocrTransform:
     @classmethod
     def baseline(cls, element: Element) -> tuple[float, float]:
         """Get baseline's slope and intercept."""
-        matches = cls.baseline_pattern.search(element.attrib.get('title', ''))
+        matches = cls.baseline_pattern.search(element.attrib.get("title", ""))
         if not matches:
             return (0.0, 0.0)
         return float(matches.group(1)), int(matches.group(2))
@@ -167,7 +167,7 @@ class HocrTransform:
     @classmethod
     def textangle(cls, element: Element) -> float:
         """Get text angle of an element."""
-        matches = cls.textangle_pattern.search(element.attrib.get('title', ''))
+        matches = cls.textangle_pattern.search(element.attrib.get("title", ""))
         if not matches:
             return 0.0
         return float(matches.group(1))
@@ -220,13 +220,13 @@ class HocrTransform:
         with canvas.do.save_state(cm=page_matrix):
             self._debug_draw_paragraph_boxes(canvas)
             found_lines = False
-            for par in self.hocr.iterfind(self._child_xpath('p', 'ocr_par')):
+            for par in self.hocr.iterfind(self._child_xpath("p", "ocr_par")):
                 for line in (
                     element
-                    for element in par.iterfind(self._child_xpath('span'))
-                    if 'class' in element.attrib
-                    and element.attrib['class']
-                    in {'ocr_header', 'ocr_line', 'ocr_textfloat', 'ocr_caption'}
+                    for element in par.iterfind(self._child_xpath("span"))
+                    if "class" in element.attrib
+                    and element.attrib["class"]
+                    in {"ocr_header", "ocr_line", "ocr_textfloat", "ocr_caption"}
                 ):
                     found_lines = True
                     direction = self._get_text_direction(par)
@@ -242,7 +242,7 @@ class HocrTransform:
 
             if not found_lines:
                 # Tesseract did not report any lines (just words)
-                root = self.hocr.find(self._child_xpath('div', 'ocr_page'))
+                root = self.hocr.find(self._child_xpath("div", "ocr_page"))
                 direction = self._get_text_direction(root)
                 self._do_line(
                     canvas,
@@ -254,27 +254,21 @@ class HocrTransform:
                 )
         # put the image on the page, scaled to fill the page
         if image_filename is not None:
-            canvas.do.draw_image(
-                image_filename, 0, 0, width=self.width, height=self.height
-            )
+            canvas.do.draw_image(image_filename, 0, 0, width=self.width, height=self.height)
 
         # finish up the page and save it
         canvas.to_pdf().save(out_filename)
 
     def _get_text_direction(self, par):
         """Get the text direction of the paragraph.
-    
+
         Arabic, Hebrew, Persian, are right-to-left languages.
         When the paragraph element is None, defaults to left-to-right.
         """
         if par is None:
             return TextDirection.LTR
-            
-        return (
-            TextDirection.RTL
-            if par.attrib.get('dir', 'ltr') == 'rtl'
-            else TextDirection.LTR
-        )
+
+        return TextDirection.RTL if par.attrib.get("dir", "ltr") == "rtl" else TextDirection.LTR
 
     def _get_inject_word_breaks(self, par):
         """Determine whether word breaks should be injected.
@@ -283,9 +277,9 @@ class HocrTransform:
         words are usually one or two characters and separators are usually explicit.
         In all other languages, we inject word breaks to help word segmentation.
         """
-        lang = par.attrib.get('lang', '')
+        lang = par.attrib.get("lang", "")
         log.debug(lang)
-        if lang in {'chi_sim', 'chi_tra', 'jpn', 'kor'}:
+        if lang in {"chi_sim", "chi_tra", "jpn", "kor"}:
             return False
         return True
 
@@ -339,8 +333,7 @@ class HocrTransform:
         # size as the true bounding box of the line.
         top_left_corner = (line_min_aabb.llx, line_min_aabb.lly)
         line_size_aabb_matrix = (
-            Matrix()
-            .translated(*top_left_corner)
+            Matrix().translated(*top_left_corner)
             # Note: negative sign (textangle is counter-clockwise, see hOCR spec)
             .rotated(-self.textangle(line))
         )
@@ -371,12 +364,10 @@ class HocrTransform:
             text.font(self._fontname, fontsize)
             text.render_mode(3 if invisible_text else 0)
 
-            self._debug_draw_baseline(
-                canvas, baseline_matrix.inverse().transform(line_min_aabb), 0
-            )
+            self._debug_draw_baseline(canvas, baseline_matrix.inverse().transform(line_min_aabb), 0)
 
             canvas.do.fill_color(BLACK)  # text in black
-            elements = line.findall(self._child_xpath('span', elemclass))
+            elements = line.findall(self._child_xpath("span", elemclass))
             for elem, next_elem in pairwise(elements + [None]):
                 self._do_line_word(
                     canvas,
@@ -405,7 +396,7 @@ class HocrTransform:
         if elem is None:
             return
         elemtxt = self.normalize_text(self._get_element_text(elem).strip())
-        if elemtxt == '':
+        if elemtxt == "":
             return
 
         hocr_box = self.element_coordinates(elem)
@@ -430,9 +421,7 @@ class HocrTransform:
             text.show(self._font.text_encode(elemtxt))
 
         # Get coordinates of the next word (if there is one)
-        hocr_next_box = (
-            self.element_coordinates(next_elem) if next_elem is not None else None
-        )
+        hocr_next_box = self.element_coordinates(next_elem) if next_elem is not None else None
         if hocr_next_box is None:
             return
         # Render a space between this word and the next word. The explicit space helps
@@ -447,16 +436,14 @@ class HocrTransform:
         elif text_direction == TextDirection.RTL:
             space_box = Rectangle(next_box.urx, box.lly, box.llx, next_box.ury)
         self._debug_draw_space_bbox(canvas, space_box)
-        space_width = self._font.text_width(' ', fontsize)
+        space_width = self._font.text_width(" ", fontsize)
         if space_width > 0 and space_box.width > 0:
             if text_direction == TextDirection.LTR:
                 text.text_transform(Matrix(1, 0, 0, -1, space_box.llx, 0))
             elif text_direction == TextDirection.RTL:
-                text.text_transform(
-                    Matrix(-1, 0, 0, -1, space_box.llx + space_box.width, 0)
-                )
+                text.text_transform(Matrix(-1, 0, 0, -1, space_box.llx + space_box.width, 0))
             text.horiz_scale(100 * space_box.width / space_width)
-            text.show(self._font.text_encode(' '))
+            text.show(self._font.text_encode(" "))
 
     def _debug_draw_paragraph_boxes(self, canvas: Canvas, color=CYAN):
         """Draw boxes around paragraphs in the document."""
@@ -465,16 +452,14 @@ class HocrTransform:
         with canvas.do.save_state():
             # draw box around paragraph
             canvas.do.stroke_color(color).line_width(0.1)
-            for elem in self.hocr.iterfind(self._child_xpath('p', 'ocr_par')):
+            for elem in self.hocr.iterfind(self._child_xpath("p", "ocr_par")):
                 elemtxt = self._get_element_text(elem).strip()
                 if len(elemtxt) == 0:
                     continue
                 ocr_par = self.element_coordinates(elem)
                 if ocr_par is None:
                     continue
-                canvas.do.rect(
-                    ocr_par.llx, ocr_par.lly, ocr_par.width, ocr_par.height, fill=False
-                )
+                canvas.do.rect(ocr_par.llx, ocr_par.lly, ocr_par.width, ocr_par.height, fill=False)
 
     def _debug_draw_line_bbox(self, canvas: Canvas, line_box: Rectangle, color=BLUE):
         """Render the bounding box of a text line."""
@@ -485,22 +470,16 @@ class HocrTransform:
                 line_box.llx, line_box.lly, line_box.width, line_box.height, fill=False
             )
 
-    def _debug_draw_word_triangle(
-        self, canvas: Canvas, box: Rectangle, color=RED, line_width=0.1
-    ):
+    def _debug_draw_word_triangle(self, canvas: Canvas, box: Rectangle, color=RED, line_width=0.1):
         """Render a triangle that conveys word height and drawing direction."""
         if not self.render_options.render_triangle:  # pragma: no cover
             return
         with canvas.do.save_state():
             canvas.do.stroke_color(color).line_width(line_width).line(
                 box.llx, box.lly, box.urx, box.lly
-            ).line(box.urx, box.lly, box.llx, box.ury).line(
-                box.llx, box.lly, box.llx, box.ury
-            )
+            ).line(box.urx, box.lly, box.llx, box.ury).line(box.llx, box.lly, box.llx, box.ury)
 
-    def _debug_draw_word_bbox(
-        self, canvas: Canvas, box: Rectangle, color=GREEN, line_width=0.1
-    ):
+    def _debug_draw_word_bbox(self, canvas: Canvas, box: Rectangle, color=GREEN, line_width=0.1):
         """Render a box depicting the word."""
         if not self.render_options.render_word_bbox:  # pragma: no cover
             return

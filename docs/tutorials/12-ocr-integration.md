@@ -129,7 +129,7 @@ pdf = PDF(input_pdf_path)
 # Use desired engine and options
 pdf.apply_ocr(engine='easyocr', languages=['en'])
 
-pdf.save_searchable("needs-ocr-searchable.pdf")
+pdf.save_pdf("needs-ocr-searchable.pdf", ocr=True)
 
 print("Saved searchable PDF to needs-ocr-searchable.pdf")
 ```

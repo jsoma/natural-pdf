@@ -51,7 +51,11 @@ ElementCollection = None
 
 # Search options (if extras installed)
 try:
-    from natural_pdf.search.search_options import BaseSearchOptions, MultiModalSearchOptions, TextSearchOptions
+    from natural_pdf.search.search_options import (
+        BaseSearchOptions,
+        MultiModalSearchOptions,
+        TextSearchOptions,
+    )
 except ImportError:
     # Define dummy classes if extras not installed, so imports don't break
     # but using them will raise the ImportError from check_haystack_availability
@@ -67,9 +71,11 @@ except ImportError:
         def __init__(self, *args, **kwargs):
             pass
 
+
 # Import QA module if available
 try:
     from natural_pdf.qa import DocumentQA, get_qa_engine
+
     HAS_QA = True
 except ImportError:
     HAS_QA = False

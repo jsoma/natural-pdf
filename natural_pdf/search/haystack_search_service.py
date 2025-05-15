@@ -74,17 +74,10 @@ except ImportError:
 # Removed ChromaDB Client Import
 
 from .haystack_utils import HAS_HAYSTACK_EXTRAS
-from .search_options import (
-    BaseSearchOptions,
-    TextSearchOptions,
-)
+from .search_options import BaseSearchOptions, TextSearchOptions
 
 # --- Local Imports ---
-from .search_service_protocol import (
-    Indexable,
-    IndexConfigurationError,
-    SearchServiceProtocol,
-)
+from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
 
 logger = logging.getLogger(__name__)
 

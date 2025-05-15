@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,14 @@ class TextStyleOptions:
     # Example: "{size}pt {weight}{style} {family} ({color})"
     # Available keys: size, fontname, is_bold, is_italic, color, weight, style, family
     label_format: str = "{size}pt {weight}{style} {family}"  # Default format without color
+
+    # Configuration for font size bucketing.
+    # - List[float]: Explicit bucket boundaries (e.g., [10.0, 18.0, 24.0]).
+    #                Creates buckets: <10, 10-18, 18-24, >=24.
+    # - int: Number of buckets to determine automatically (e.g., 5).
+    # - str ('auto'): Automatically determine the optimal number of buckets.
+    # - None: No font size bucketing is applied (default).
+    font_size_buckets: Optional[Union[List[float], int, str]] = "auto"
 
     def __post_init__(self):
         # Validate size_tolerance

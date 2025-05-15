@@ -8,11 +8,7 @@ import unicodedata
 import zlib
 from importlib.resources import files as package_files
 
-from pikepdf import (
-    Dictionary,
-    Name,
-    Pdf,
-)
+from pikepdf import Dictionary, Name, Pdf
 from pikepdf.canvas import Font
 
 log = logging.getLogger(__name__)
@@ -25,8 +21,8 @@ class EncodableFont(Font):
 
 class GlyphlessFont(EncodableFont):
     CID_TO_GID_DATA = zlib.compress(b"\x00\x01" * 65536)
-    GLYPHLESS_FONT_NAME = 'pdf.ttf'
-    GLYPHLESS_FONT_PACKAGE_PATH = 'natural_pdf.exporters.data'
+    GLYPHLESS_FONT_NAME = "pdf.ttf"
+    GLYPHLESS_FONT_PACKAGE_PATH = "natural_pdf.exporters.data"
     GLYPHLESS_FONT = (package_files(GLYPHLESS_FONT_PACKAGE_PATH) / GLYPHLESS_FONT_NAME).read_bytes()
     CHAR_ASPECT = 2
 
@@ -39,7 +35,7 @@ class GlyphlessFont(EncodableFont):
         return len(unicodedata.normalize("NFKC", text)) * (fontsize / self.CHAR_ASPECT)
 
     def text_encode(self, text: str) -> bytes:
-        return text.encode('utf-16be')
+        return text.encode("utf-16be")
 
     def register(self, pdf: Pdf):
         """Register the glyphless font.
@@ -76,9 +72,7 @@ class GlyphlessFont(EncodableFont):
             )
         )
         basefont.DescendantFonts = [cid_font_type2]
-        cid_font_type2.CIDToGIDMap = pdf.make_stream(
-            self.CID_TO_GID_DATA, Filter=Name.FlateDecode
-        )
+        cid_font_type2.CIDToGIDMap = pdf.make_stream(self.CID_TO_GID_DATA, Filter=Name.FlateDecode)
         basefont.ToUnicode = pdf.make_stream(
             b"/CIDInit /ProcSet findresource begin\n"
             b"12 dict begin\n"
@@ -129,7 +123,7 @@ class Courier(EncodableFont):
         return len(text) * fontsize
 
     def text_encode(self, text: str) -> bytes:
-        return text.encode('pdfdoc', errors='ignore')
+        return text.encode("pdfdoc", errors="ignore")
 
     def register(self, pdf: Pdf) -> Dictionary:
         """Register the font."""

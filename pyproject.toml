@@ -20,16 +20,18 @@ classifiers = [
 ]
 dependencies = [
     "pdfplumber",
-    "Pillow",
+    "pillow",
     "colour",
     "numpy",
     "urllib3",
     "tqdm",
-    "pydantic"
+    "pydantic",
+    "jenkspy",
+    "pikepdf>=9.7.0",
 ]
 
 [project.optional-dependencies]
-interactive = [
+viewer = [
     "ipywidgets>=7.0.0,<9.0.0"
 ]
 haystack = [
@@ -77,7 +79,7 @@ favorites = [
     "natural-pdf[easyocr]",
     "natural-pdf[layout_yolo]",
     "natural-pdf[ocr-export]",
-    "natural-pdf[interactive]",
+    "natural-pdf[viewer]",
 ]
 
 dev = [
@@ -92,7 +94,8 @@ dev = [
     "pipdeptree",
     "nbformat",
     "jupytext",
-    "nbclient"
+    "nbclient",
+    "ipykernel",
 ]
 
 deskew = [
@@ -101,14 +104,13 @@ deskew = [
 ]
 
 all = [
-    "natural-pdf[interactive]",
+    "natural-pdf[viewer]",
     "natural-pdf[haystack]",
     "natural-pdf[easyocr]",
     "natural-pdf[paddle]",
     "natural-pdf[layout_yolo]",
     "natural-pdf[surya]",
     "natural-pdf[doctr]",
-    "natural-pdf[qa]",
     "natural-pdf[ocr-export]",
     "natural-pdf[docling]",
     "natural-pdf[llm]",

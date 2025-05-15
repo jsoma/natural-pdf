@@ -30,7 +30,7 @@ EXCLUDE_PATTERNS = [
     "finetuning/index.md",
     "categorizing-documents/index.md",
     "data-extraction/index.md",
-    "*.ipynb_checkpoints*"
+    "*.ipynb_checkpoints*",
 ]
 MAX_WORKERS = os.cpu_count()
 
@@ -178,7 +178,7 @@ def process_notebook(md_file_path_str: str, log_level: int) -> Dict[str, Any]:
         client = NotebookClient(
             notebook,
             timeout=600,
-            kernel_name="natural-pdf",
+            kernel_name="natural-pdf-project-venv",
             resources={"metadata": {"path": str(cwd)}},
         )
         client.execute()  # Modifies 'notebook' object

@@ -1349,7 +1349,9 @@ class Page(ClassificationMixin, ExtractionMixin):
         self._highlighter.clear_page(self.index)
         return self
 
-    def analyze_text_styles(self, options: Optional[TextStyleOptions] = None) -> "ElementCollection":
+    def analyze_text_styles(
+        self, options: Optional[TextStyleOptions] = None
+    ) -> "ElementCollection":
         """
         Analyze text elements by style, adding attributes directly to elements.
 
@@ -2130,7 +2132,7 @@ class Page(ClassificationMixin, ExtractionMixin):
         if not _IPYWIDGETS_AVAILABLE or SimpleInteractiveViewerWidget is None:
             logger.error(
                 "Interactive viewer requires optional dependencies ('ipywidgets'). "
-                "Install with `pip install natural-pdf[interactive]`"
+                "Install with `pip install natural-pdf[viewer]`"
             )
             # raise ImportError("ipywidgets not found.") # Option 1: Raise error
             return None  # Option 2: Return None gracefully

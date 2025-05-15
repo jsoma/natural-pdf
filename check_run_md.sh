@@ -9,7 +9,7 @@ fi
 
 MARKDOWN_FILE=$1
 NOTEBOOK_FILE="${MARKDOWN_FILE%.md}.ipynb"
-KERNEL_NAME="natural-pdf"
+KERNEL_NAME="natural-pdf-project-venv"
 
 echo "Converting $MARKDOWN_FILE to notebook..."
 # Jupytext will now automatically add tags based on markdown metadata
@@ -29,6 +29,6 @@ EOF
 
 
 echo "Executing notebook $NOTEBOOK_FILE..."
-jupyter execute "$NOTEBOOK_FILE" --inplace --ExecutePreprocessor.kernel_name=natural-pdf  || { echo "Execution failed"; exit 1; }
+jupyter execute "$NOTEBOOK_FILE" --inplace --ExecutePreprocessor.kernel_name=natural-pdf-project-venv  || { echo "Execution failed"; exit 1; }
 
 echo "Success! Notebook executed and results saved to $NOTEBOOK_FILE"

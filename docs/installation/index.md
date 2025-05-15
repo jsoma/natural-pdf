@@ -28,7 +28,7 @@ Natural PDF has modular dependencies for different features. Install them based 
 
 ```bash
 # Interactive PDF viewer 
-pip install natural-pdf[interactive]
+pip install natural-pdf[viewer]
 
 # Deskewing
 pip install natural-pdf[deskew]
