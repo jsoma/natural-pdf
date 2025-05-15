@@ -243,7 +243,7 @@ page.find_all('text[font-variant=AAAAAB]')
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("pdfs/geometry.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/geometry.pdf")
 page = pdf.pages[0]
 
 rect = page.find('rect')
