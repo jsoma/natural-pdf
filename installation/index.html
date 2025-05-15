@@ -406,8 +406,6 @@
       
         
       
-        
-      
     
     
     
@@ -508,29 +506,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../loops-and-groups/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Loops, groups and repetitive tasks
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../text-analysis/" class="md-nav__link">
         
   
@@ -588,12 +563,6 @@
       
         
           
-        
-      
-        
-      
-        
-      
         
       
         
@@ -706,52 +675,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../finetuning/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    OCR Fine-tuning
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tables/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Table Extraction
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../layout-analysis/" class="md-nav__link">
         
   
@@ -775,35 +698,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../categorizing-documents/" class="md-nav__link">
+      <a href="../tables/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Categorizing Documents
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../data-extraction/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Data extraction
+    Table Extraction
     
   </span>
   
@@ -852,8 +752,6 @@
   
     
     
-      
-        
       
         
       
@@ -1243,29 +1141,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tutorials/14-categorizing-documents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Categorizing documents
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1385,45 +1260,31 @@
 <h1 id="getting-started-with-natural-pdf">Getting Started with Natural PDF</h1>
 <p>Let's get Natural PDF installed and run your first extraction.</p>
 <h2 id="installation">Installation</h2>
-<p>The base installation includes the core library which will allow you to select, extract, and use spatial navigation.</p>
+<p>The base installation includes the core library and necessary AI dependencies (like PyTorch and Transformers):</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>natural-pdf
-</code></pre></div>
-<p>But! If you want to recognize text, do page layout analysis, document q-and-a or other things, you can install optional dependencies.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install deskewing, OCR (surya and easyocr),</span>
-<span class="c1"># layout analysis (yolo), and interactive browsing</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>favorites<span class="o">]</span>
-
-<span class="c1"># Install **everything**</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>all<span class="o">]</span>
 </code></pre></div>
 <h3 id="optional-dependencies">Optional Dependencies</h3>
 <p>Natural PDF has modular dependencies for different features. Install them based on your needs:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Interactive PDF viewer </span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>viewer<span class="o">]</span>
-
-<span class="c1"># Deskewing</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>deskew<span class="o">]</span>
-
-<span class="c1"># OCR options</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># --- OCR Engines ---</span>
+<span class="c1"># Install support for EasyOCR</span>
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>easyocr<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>surya<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>paddle<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>doctr<span class="o">]</span>
 
-<span class="c1"># Layout analysis</span>
+<span class="c1"># Install support for PaddleOCR (requires paddlepaddle)</span>
+pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>paddle<span class="o">]</span>
+
+<span class="c1"># Install support for Surya OCR</span>
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>surya<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>docling<span class="o">]</span>
+
+<span class="c1"># --- Layout Detection ---</span>
+<span class="c1"># Install support for YOLO layout model</span>
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>layout_yolo<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>paddle<span class="o">]</span>
 
-<span class="c1"># AI stuff</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>core-ml<span class="o">]</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>llm<span class="o">]</span>
+<span class="c1"># --- Interactive Widget ---</span>
+<span class="c1"># Install support for the interactive .viewer() widget in Jupyter</span>
+pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>interactive<span class="o">]</span>
 
-<span class="c1"># Semantic search</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>core-ml<span class="o">]</span>
-
-<span class="c1"># Install everything</span>
+<span class="c1"># --- All Features ---</span>
+<span class="c1"># Install all optional dependencies</span>
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>all<span class="o">]</span>
 </code></pre></div>
 <h2 id="your-first-pdf-extraction">Your First PDF Extraction</h2>

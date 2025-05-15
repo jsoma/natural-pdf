@@ -394,15 +394,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#classify-pages-and-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Classify Pages and Regions
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#visualize-your-work" class="md-nav__link">
     <span class="md-ellipsis">
       Visualize Your Work
@@ -490,8 +481,6 @@
       
         
           
-        
-      
         
       
         
@@ -602,29 +591,6 @@
   
   
     <li class="md-nav__item">
-      <a href="loops-and-groups/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Loops, groups and repetitive tasks
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="text-analysis/" class="md-nav__link">
         
   
@@ -682,12 +648,6 @@
       
         
           
-        
-      
-        
-      
-        
-      
         
       
         
@@ -800,52 +760,6 @@
   
   
     <li class="md-nav__item">
-      <a href="finetuning/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    OCR Fine-tuning
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="tables/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Table Extraction
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="layout-analysis/" class="md-nav__link">
         
   
@@ -869,35 +783,12 @@
   
   
     <li class="md-nav__item">
-      <a href="categorizing-documents/" class="md-nav__link">
+      <a href="tables/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Categorizing Documents
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="data-extraction/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Data extraction
+    Table Extraction
     
   </span>
   
@@ -946,8 +837,6 @@
   
     
     
-      
-        
       
         
       
@@ -1337,29 +1226,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="tutorials/14-categorizing-documents/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Categorizing documents
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1492,15 +1358,6 @@
   <a href="#document-question-answering" class="md-nav__link">
     <span class="md-ellipsis">
       Document Question Answering
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#classify-pages-and-regions" class="md-nav__link">
-    <span class="md-ellipsis">
-      Classify Pages and Regions
     </span>
   </a>
   
@@ -1666,27 +1523,13 @@ pip install &quot;natural_pdf[all]&quot;
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Answer: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;answer&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><a href="document-qa/">Learn about Document QA →</a></p>
-<h3 id="classify-pages-and-regions">Classify Pages and Regions</h3>
-<p>Categorize pages or specific regions based on their content using text or vision models.</p>
-<p><strong>Note:</strong> Requires <code>pip install "natural-pdf[core-ml]"</code></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Classify a page based on text</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page Category: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2"> (Confidence: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-
-
-<span class="c1"># Classify a page based on what it looks like</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;scientific article&quot;</span><span class="p">,</span> <span class="s2">&quot;presentation&quot;</span><span class="p">]</span>
-<span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Page Category: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category</span><span class="si">}</span><span class="s2"> (Confidence: </span><span class="si">{</span><span class="n">page</span><span class="o">.</span><span class="n">category_confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-</code></pre></div>
 <h3 id="visualize-your-work">Visualize Your Work</h3>
 <p>Debug and understand your extractions visually.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Highlight headings</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;=14]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headings&quot;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;=14]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headings&quot;</span><span class="p">)</span>
 
 <span class="c1"># Launch the interactive viewer (Jupyter)</span>
-<span class="c1"># Requires: pip install natural-pdf[viewer]</span>
+<span class="c1"># Requires: pip install natural-pdf[interactive]</span>
 <span class="n">page</span><span class="o">.</span><span class="n">viewer</span><span class="p">()</span>
 
 <span class="c1"># Or save an image</span>
