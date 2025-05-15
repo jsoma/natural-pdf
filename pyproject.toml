@@ -34,13 +34,6 @@ dependencies = [
 viewer = [
     "ipywidgets>=7.0.0,<9.0.0"
 ]
-haystack = [
-    "haystack-ai",
-    "lancedb-haystack",
-    "lancedb",
-    "sentence-transformers",
-    "natural-pdf[core-ml]",
-]
 easyocr = [
     "easyocr",
     "natural-pdf[core-ml]",
@@ -72,6 +65,11 @@ test = [
     "pytest",
 ]
 
+search = [
+    "lancedb",
+    "pyarrow",
+]
+
 favorites = [
     "natural-pdf[deskew]",
     "natural-pdf[llm]",
@@ -80,6 +78,7 @@ favorites = [
     "natural-pdf[layout_yolo]",
     "natural-pdf[ocr-export]",
     "natural-pdf[viewer]",
+    "natural-pdf[search]",
 ]
 
 dev = [
@@ -105,7 +104,6 @@ deskew = [
 
 all = [
     "natural-pdf[viewer]",
-    "natural-pdf[haystack]",
     "natural-pdf[easyocr]",
     "natural-pdf[paddle]",
     "natural-pdf[layout_yolo]",
@@ -116,7 +114,8 @@ all = [
     "natural-pdf[llm]",
     "natural-pdf[core-ml]",
     "natural-pdf[deskew]",
-    "natural-pdf[test]"
+    "natural-pdf[test]",
+    "natural-pdf[search]"
 ]
 
 core-ml = [
@@ -125,6 +124,7 @@ core-ml = [
     "transformers[sentencepiece]",
     "huggingface_hub",
     "sentence-transformers",
+    "numpy",
     "timm",
 ]
 

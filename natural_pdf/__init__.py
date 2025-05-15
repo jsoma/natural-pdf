@@ -58,7 +58,6 @@ try:
     )
 except ImportError:
     # Define dummy classes if extras not installed, so imports don't break
-    # but using them will raise the ImportError from check_haystack_availability
     class BaseSearchOptions:
         def __init__(self, *args, **kwargs):
             pass

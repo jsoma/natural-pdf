@@ -86,5 +86,4 @@ Natural PDF sits on top of a *lot* of fantastic tools and mdoels, some of which 
 - [deskew](https://github.com/sbrunner/deskew)
 - [doctr](https://github.com/mindee/doctr)
 - [docling](https://github.com/docling-project/docling)
-- [Haystack](https://haystack.deepset.ai/)
 - [Hugging Face](https://huggingface.co/models)

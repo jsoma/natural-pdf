@@ -63,7 +63,6 @@ def is_extra_installed(extra_name):
         "paddle": ["paddleocr"],
         "surya": ["surya"],
         "layout_yolo": ["doclayout_yolo"],
-        "haystack": ["haystack", "lancedb_haystack"],
         "core-ml": ["transformers"],
     }
     if extra_name not in extra_packages:
@@ -237,70 +236,6 @@ def test_layout_yolo_fails_gracefully_when_not_installed(standard_pdf_page):
     # Expect RuntimeError because engine is known but unavailable
     with pytest.raises(RuntimeError, match="not available"):
         _ = standard_pdf_page.analyze_layout(engine="yolo")
-
-
-# --- Haystack Tests --- #
-
-
-def test_search_haystack_works_when_installed(standard_pdf_collection):
-    """Test basic Haystack initialization via PDFCollection when installed."""
-    pytest.importorskip("haystack")
-    pytest.importorskip("lancedb")
-    pytest.importorskip("lancedb_haystack")
-
-    try:
-        # Initialize search on the collection
-        standard_pdf_collection.init_search(
-            collection_name="test_lance_collection",
-            persist=True,
-            uri="./test_lance_index",
-            index=False,
-        )
-        assert hasattr(standard_pdf_collection, "_search_service")
-        assert standard_pdf_collection._search_service is not None
-        # Check the service type and URI
-        from natural_pdf.search.haystack_search_service import HaystackSearchService
-
-        assert isinstance(standard_pdf_collection._search_service, HaystackSearchService)
-        assert standard_pdf_collection._search_service._persist is True
-        assert standard_pdf_collection._search_service._uri == "./test_lance_index"
-        assert standard_pdf_collection._search_service.table_name == "test_lance_collection"
-
-        # Cleanup the test directory
-        import shutil
-
-        if os.path.exists("./test_lance_index"):
-            shutil.rmtree("./test_lance_index")
-
-    except ImportError as ie:
-        pytest.fail(f"Import failed even though haystack/lancedb seem installed: {ie}")
-    except Exception as e:
-        pytest.fail(f"Haystack/LanceDB integration failed when installed: {e}")
-    finally:
-        # Ensure cleanup even on failure
-        import shutil
-
-        if os.path.exists("./test_lance_index"):
-            shutil.rmtree("./test_lance_index")
-
-
-def test_search_haystack_fails_gracefully_when_not_installed(standard_pdf_collection):
-    """Test initializing Haystack features via PDFCollection when not installed."""
-    if is_extra_installed("haystack"):
-        pytest.skip("Skipping test: Haystack/LanceDB extras ARE installed.")
-
-    # Expect an ImportError
-    with pytest.raises(
-        ImportError,
-        match="Search Service could not be created. Ensure Haystack extras are installed",
-    ):
-        # Pass parameters consistent with the factory/service
-        standard_pdf_collection.init_search(
-            collection_name="test_missing_deps",
-            persist=True,
-            uri="./test_missing_index",
-            index=False,
-        )
 
 
 # --- QA Tests --- #

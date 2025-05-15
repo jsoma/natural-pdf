@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Generator, Iterable, List, Optional, Type, Union
 
 # Now import the flag from the canonical source - this import should always work
-from .haystack_utils import HAS_HAYSTACK_EXTRAS
 
 DEFAULT_SEARCH_COLLECTION_NAME = "default_collection"
 
@@ -108,7 +107,6 @@ class SearchableMixin(ABC):
             logger.info(
                 f"Attaching provided SearchService instance (Collection: '{getattr(service, 'collection_name', '<Unknown>')}')."
             )
-            # TODO: Add stricter type check? isinstance(service, SearchServiceProtocol) requires runtime_checkable
             self._search_service = service
         else:
             # Create new service
@@ -125,28 +123,17 @@ class SearchableMixin(ABC):
             logger.info(
                 f"Creating new SearchService: name='{effective_collection_name}', persist={effective_persist}, model={embedding_model or 'default'}"
             )
-            try:
-                service_args = {
-                    "collection_name": effective_collection_name,
-                    "persist": effective_persist,
-                    **kwargs,
-                }
-                if embedding_model:
-                    service_args["embedding_model"] = embedding_model
-                self._search_service = get_search_service(**service_args)
-            except ImportError as ie:  # Catch the specific ImportError first
-                logger.error(f"Failed to create SearchService due to missing dependency: {ie}")
-                raise ie  # Re-raise the original ImportError
-            except Exception as e:
-                logger.error(
-                    f"Failed to create SearchService due to unexpected error: {e}", exc_info=True
-                )
-                # Keep the RuntimeError for other unexpected creation errors
-                raise RuntimeError(
-                    "Could not create SearchService instance due to an unexpected error."
-                ) from e
+            
+            # Direct creation without try/except
+            service_args = {
+                "collection_name": effective_collection_name,
+                "persist": effective_persist,
+                **kwargs,
+            }
+            if embedding_model:
+                service_args["embedding_model"] = embedding_model
+            self._search_service = get_search_service(**service_args)
 
-        # --- Optional Immediate Indexing (with safety check for persistent) ---
         if index:
             if not self._search_service:  # Should not happen if logic above is correct
                 raise RuntimeError(
@@ -176,8 +163,6 @@ class SearchableMixin(ABC):
                 logger.warning(
                     f"Proceeding with index=True and force_reindex=True for persistent index '{collection_name}'. Existing data will be deleted."
                 )
-            # else: # Not persistent, safe to proceed without existence check
-            #     logger.debug("Proceeding with index=True for non-persistent index.")
 
             # Proceed with indexing if checks passed or not applicable
             logger.info(
@@ -197,12 +182,8 @@ class SearchableMixin(ABC):
             f"Starting internal indexing process into SearchService collection '{collection_name}'..."
         )
 
-        # Use the abstract method to get items
-        try:
-            indexable_items = list(self.get_indexable_items())  # Consume iterator
-        except Exception as e:
-            logger.error(f"Error calling get_indexable_items: {e}", exc_info=True)
-            raise RuntimeError("Failed to retrieve indexable items for indexing.") from e
+        # Get indexable items without try/except
+        indexable_items = list(self.get_indexable_items())  # Consume iterator
 
         if not indexable_items:
             logger.warning(
@@ -211,27 +192,19 @@ class SearchableMixin(ABC):
             return
 
         logger.info(f"Prepared {len(indexable_items)} indexable items for indexing.")
-        try:
-            logger.debug(
-                f"Calling index() on SearchService for collection '{collection_name}' (force_reindex={force_reindex})."
-            )
-            self._search_service.index(
-                documents=indexable_items,
-                embedder_device=embedder_device,
-                force_reindex=force_reindex,
-            )
-            logger.info(
-                f"Successfully completed indexing into SearchService collection '{collection_name}'."
-            )
-        except IndexConfigurationError as ice:
-            logger.error(
-                f"Indexing failed due to configuration error in collection '{collection_name}': {ice}",
-                exc_info=True,
-            )
-            raise  # Re-raise specific error
-        except Exception as e:  # Catch other indexing errors from the service
-            logger.error(f"Indexing failed for collection '{collection_name}': {e}", exc_info=True)
-            raise RuntimeError(f"Indexing failed for collection '{collection_name}'.") from e
+        logger.debug(
+            f"Calling index() on SearchService for collection '{collection_name}' (force_reindex={force_reindex})."
+        )
+        
+        # Call index without try/except
+        self._search_service.index(
+            documents=indexable_items,
+            embedder_device=embedder_device,
+            force_reindex=force_reindex,
+        )
+        logger.info(
+            f"Successfully completed indexing into SearchService collection '{collection_name}'."
+        )
 
     def index_for_search(
         self,
@@ -254,14 +227,12 @@ class SearchableMixin(ABC):
         Returns:
             Self for method chaining.
         """
-        # --- Ensure Service is Initialized (Use Default if Needed) ---
         if not self._search_service:
             logger.info(
                 "Search service not initialized prior to index_for_search. Initializing default in-memory service."
             )
             self.init_search()  # Call init with defaults
 
-        # --- Perform Indexing ---
         self._perform_indexing(force_reindex=force_reindex, embedder_device=embedder_device)
         return self
 
@@ -289,7 +260,6 @@ class SearchableMixin(ABC):
             RuntimeError: If no search service is configured or provided, or if search fails.
             FileNotFoundError: If the collection managed by the service does not exist.
         """
-        # --- Determine which Search Service to use ---
         effective_service = search_service or self._search_service
         if not effective_service:
             raise RuntimeError(
@@ -302,21 +272,9 @@ class SearchableMixin(ABC):
             f"Searching collection '{collection_name}' via {type(effective_service).__name__}..."
         )
 
-        # --- Prepare Query and Options ---
         query_input = query
-        # Example: Handle Region query - maybe move this logic into HaystackSearchService.search?
-        # If we keep it here, it makes the mixin less generic.
-        # Let's assume the SearchService handles the query type appropriately for now.
-        # if isinstance(query, Region):
-        #     logger.debug("Query is a Region object. Extracting text.")
-        #     query_input = query.extract_text()
-        #     if not query_input or query_input.isspace():
-        #         logger.warning("Region provided for query has no extractable text.")
-        #         return []
-
         effective_options = options if options is not None else TextSearchOptions()
 
-        # --- Call SearchService Search Method ---
         try:
             results = effective_service.search(
                 query=query_input,
@@ -336,7 +294,6 @@ class SearchableMixin(ABC):
             # Consider wrapping in a SearchError?
             raise RuntimeError(f"Search failed in collection '{collection_name}'.") from e
 
-    # --- NEW Sync Method ---
     def sync_index(
         self,
         strategy: str = "full",  # 'full' (add/update/delete) or 'upsert_only'
@@ -378,7 +335,6 @@ class SearchableMixin(ABC):
         )
         summary = {"added": 0, "updated": 0, "deleted": 0, "skipped": 0}
 
-        # --- Check Service Capabilities for 'full' sync ---
         if strategy == "full":
             required_methods = ["list_documents", "delete_documents"]
             missing_methods = [m for m in required_methods if not hasattr(self._search_service, m)]
@@ -388,7 +344,6 @@ class SearchableMixin(ABC):
                     f"is missing required methods for 'full' sync strategy: {', '.join(missing_methods)}"
                 )
 
-        # --- 1. Get Desired State (from current collection) ---
         desired_state: Dict[str, Indexable] = {}  # {id: item}
         desired_hashes: Dict[str, Optional[str]] = {}  # {id: hash or None}
         try:
@@ -426,7 +381,6 @@ class SearchableMixin(ABC):
 
         logger.info(f"Desired state contains {len(desired_state)} indexable items.")
 
-        # --- 2. Handle Different Strategies ---
         if strategy == "upsert_only":
             # Simple case: just index everything, let the service handle upserts
             items_to_index = list(desired_state.values())

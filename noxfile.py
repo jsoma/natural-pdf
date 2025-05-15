@@ -12,7 +12,7 @@ nox.options.default_venv_backend = "uv"  # Use uv for faster venv creation and p
 PYTHON_VERSIONS = (
     ["3.9", "3.10", "3.11"] if sys.platform != "darwin" else ["3.9", "3.10", "3.11"]
 )  # Add more as needed
-OPTIONAL_DEPS = ["interactive", "haystack", "easyocr", "paddle", "layout_yolo", "surya", "core-ml"]
+OPTIONAL_DEPS = ["interactive", "easyocr", "paddle", "layout_yolo", "surya", "core-ml"]
 
 
 @nox.session(python=PYTHON_VERSIONS)

@@ -50,7 +50,7 @@ pip install natural-pdf[core-ml]
 pip install natural-pdf[llm]
 
 # Semantic search
-pip install natural-pdf[haystack]
+pip install natural-pdf[core-ml]
 
 # Install everything
 pip install natural-pdf[all]

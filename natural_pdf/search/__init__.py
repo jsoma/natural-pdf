@@ -3,29 +3,46 @@
 import logging
 from typing import Optional
 
-# --- Service Implementation Import ---
-# Import the concrete implementation
-from .haystack_search_service import HaystackSearchService
-
-# --- Utils Import ---
-from .haystack_utils import (  # Re-export flag and helper
-    HAS_HAYSTACK_EXTRAS,
-    check_haystack_availability,
-)
-
-# --- Option Imports (for convenience) ---
-# Make options easily available via `from natural_pdf.search import ...`
-from .search_options import SearchOptions  # Alias for TextSearchOptions for simplicity?
+# Import constants
+from .search_options import SearchOptions 
 from .search_options import BaseSearchOptions, MultiModalSearchOptions, TextSearchOptions
-
-# --- Protocol Import ---
-# Import the protocol for type hinting
 from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+
+# Check search extras availability
+LANCEDB_AVAILABLE = False
+SEARCH_DEPENDENCIES_AVAILABLE = False
+
+try:
+    import sentence_transformers
+    import numpy as np
+    # Basic search dependencies are available
+    SEARCH_DEPENDENCIES_AVAILABLE = True
+    
+    # Check if LanceDB is available
+    try:
+        import lancedb
+        import pyarrow
+        LANCEDB_AVAILABLE = True
+        from .lancedb_search_service import LanceDBSearchService, DEFAULT_LANCEDB_PERSIST_PATH, DEFAULT_EMBEDDING_MODEL
+    except ImportError:
+        # LanceDB not available, we'll use NumPy fallback
+        LANCEDB_AVAILABLE = False
+        from .numpy_search_service import NumpySearchService, DEFAULT_EMBEDDING_MODEL
+except ImportError:
+    # Basic dependencies missing
+    SEARCH_DEPENDENCIES_AVAILABLE = False
+    LANCEDB_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
+def check_search_availability():
+    """Check if required search dependencies are available."""
+    if not SEARCH_DEPENDENCIES_AVAILABLE:
+        raise ImportError(
+            "Search functionality requires 'sentence-transformers' and NumPy. "
+            "Install with: pip install natural-pdf[search] (or pip install sentence-transformers numpy)"
+        )
 
-# Factory Function
 def get_search_service(
     collection_name: str,
     persist: bool = False,
@@ -34,53 +51,49 @@ def get_search_service(
 ) -> SearchServiceProtocol:
     """
     Factory function to get an instance of the configured search service.
-
-    A service instance is tied to a specific index name (collection/table).
-
-    Currently, only returns HaystackSearchService but is structured for future extension.
+    
+    Automatically selects the best available implementation:
+    - LanceDB if installed (recommended for both in-memory and persistent)
+    - Numpy fallback for in-memory only
 
     Args:
-        collection_name: The logical name for the index this service instance manages
-                         (used as table_name for LanceDB).
+        collection_name: The logical name for the index/table this service instance manages.
         persist: If True, creates a service instance configured for persistent
-                 storage (currently LanceDB). If False (default), uses InMemory.
-        uri: Override the default path/URI for persistent storage.
+                 storage. If False (default), uses InMemory (via temp dir for LanceDB).
+        uri: Override the default path for persistent storage.
         default_embedding_model: Override the default embedding model used by the service.
-        **kwargs: Reserved for future configuration options.
 
     Returns:
-        An instance conforming to the SearchServiceProtocol for the specified collection/table.
+        An instance conforming to the SearchServiceProtocol.
     """
     logger.debug(
-        f"Calling get_search_service factory for index '{collection_name}' (persist={persist}, uri={uri})..."
+        f"Calling get_search_service factory for collection '{collection_name}' (persist={persist}, uri={uri})..."
     )
+    check_search_availability()
 
-    # Collect arguments relevant to HaystackSearchService.__init__
-    service_args = {}
-    service_args["table_name"] = collection_name
-    service_args["persist"] = persist
+    service_args = {
+        "collection_name": collection_name,
+        "persist": persist,
+    }
     if uri is not None:
         service_args["uri"] = uri
+
     if default_embedding_model is not None:
-        service_args["embedding_model"] = default_embedding_model
+        service_args["embedding_model_name"] = default_embedding_model
 
-    # Cache logic commented out as before
-
-    try:
-        service_instance = HaystackSearchService(**service_args)
-        logger.info(f"Created new HaystackSearchService instance for index '{collection_name}'.")
-        return service_instance
-    except ImportError as e:
-        # Error message remains valid
-        logger.error(
-            f"Failed to instantiate Search Service due to missing dependencies: {e}", exc_info=True
+    # If persistence is requested, LanceDB is required
+    if persist and not LANCEDB_AVAILABLE:
+        raise RuntimeError(
+            "Persistent vector search requires LanceDB. "
+            "Please install: pip install lancedb"
         )
-        raise ImportError(
-            "Search Service could not be created. Ensure Haystack extras are installed: pip install natural-pdf[haystack]"
-        ) from e
-    except Exception as e:
-        logger.error(f"Failed to instantiate Search Service: {e}", exc_info=True)
-        raise RuntimeError("Could not create Search Service instance.") from e
-
-
-# Default instance commented out as before
+    
+    # Select the appropriate implementation
+    if LANCEDB_AVAILABLE:
+        logger.info(f"Using LanceDB for vector search (collection: {collection_name})")
+        service_instance = LanceDBSearchService(**service_args)
+    else:
+        logger.info(f"Using NumPy fallback for in-memory vector search (collection: {collection_name})")
+        service_instance = NumpySearchService(**service_args)
+        
+    return service_instance
