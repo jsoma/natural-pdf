@@ -2,9 +2,10 @@
 
 When working with a collection of PDFs, you might need to find information relevant to a specific query across all documents, not just within a single one. This tutorial demonstrates how to perform semantic search over a `PDFCollection`.
 
+You can do semantic search with the default install, but for increased performance with LanceDB I recommend installing the search extension.
+
 ```python
-#%pip install "natural-pdf[all]"
-#%pip install "natural-pdf[search]"  # Ensure search dependencies are installed
+#%pip install "natural-pdf[search]"
 ```
 
 ```python
@@ -32,7 +33,7 @@ Before performing a search, you need to initialize the search capabilities for t
 # Initialize search.
 # index=True will build the serachable database immediately
 # persist=True will save it so you don't need to do it every time
-collection.init_search(index=True) 
+collection.init_search(index=True)
 print("Search index initialized.")
 ```
 

@@ -4,6 +4,9 @@ include LICENSE
 # HTML templates
 recursive-include natural_pdf/templates *.html
 
+# Data files
+recursive-include natural_pdf/exporters/data *
+
 # Documentation assets
 recursive-include docs *.md *.png *.jpg *.gif
 

@@ -142,6 +142,14 @@ class LanceDBSearchService(SearchServiceProtocol):
             except (AttributeError, NotImplementedError): pass
             except Exception as e: logger.warning(f"Error getting content_hash for item ID '{doc_id}': {e}")
 
+            # Ensure doc_id is not None - use a fallback if needed
+            if doc_id is None:
+                # Generate a unique ID based on content hash or position in the list
+                try:
+                    doc_id = f"auto_{item.get_content_hash() if hasattr(item, 'get_content_hash') else hash(content_text)}"
+                except:
+                    doc_id = f"auto_{len(texts_to_embed)}"
+
             texts_to_embed.append(content_text)
             original_items_info.append({
                 "id": doc_id,
@@ -170,8 +178,20 @@ class LanceDBSearchService(SearchServiceProtocol):
             logger.warning("No data prepared for LanceDB. Skipping add.")
             return
 
+        # Create a PyArrow table with the same schema as the LanceDB table
+        schema = self._get_schema()
+        arrays = [
+            pa.array([item["id"] for item in data_to_add], type=pa.string()),
+            pa.array([item["vector"] for item in data_to_add]),
+            pa.array([item["text"] for item in data_to_add], type=pa.string()),
+            pa.array([item["metadata_json"] for item in data_to_add], type=pa.string()),
+        ]
+        table = pa.Table.from_arrays(arrays, schema=schema)
+
         logger.info(f"Adding/updating {len(data_to_add)} documents to LanceDB table '{self.collection_name}'.")
-        self._table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(data_to_add)
+        self._table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(
+            table,
+        )
         logger.info(f"Successfully added/updated {len(data_to_add)} documents. Table count: {self._table.count_rows()}")
 
     def search(

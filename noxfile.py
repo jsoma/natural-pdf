@@ -5,14 +5,29 @@ import nox
 # Ensure nox uses the same Python version you are developing with or whichever is appropriate
 # Make sure this Python version has nox installed (`pip install nox`)
 # You can specify multiple Python versions to test against, e.g., ["3.9", "3.10", "3.11"]
-nox.options.sessions = ["lint", "test_core", "test_extras", "test_all"]
+nox.options.sessions = ["lint", "test_core", "test_extras", "test_all", "test_favorites"]
 nox.options.reuse_existing_virtualenvs = True  # Faster runs by reusing environments
 nox.options.default_venv_backend = "uv"  # Use uv for faster venv creation and package installation
 
 PYTHON_VERSIONS = (
     ["3.9", "3.10", "3.11"] if sys.platform != "darwin" else ["3.9", "3.10", "3.11"]
 )  # Add more as needed
-OPTIONAL_DEPS = ["interactive", "easyocr", "paddle", "layout_yolo", "surya", "core-ml"]
+
+# Updated to match pyproject.toml optional dependencies
+OPTIONAL_DEPS = [
+    "viewer", 
+    "easyocr", 
+    "paddle", 
+    "layout_yolo", 
+    "surya", 
+    "doctr",
+    "docling",
+    "llm",
+    "search",
+    "deskew",
+    "core-ml",
+    "ocr-export"
+]
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -43,6 +58,10 @@ def test_extras(session, extra):
     # Skip surya on Python 3.9 due to dependency incompatibility
     if extra == "surya" and session.python == "3.9":
         session.skip("Surya-OCR dependency uses syntax incompatible with Python 3.9")
+        
+    # Skip docling on Python 3.9 if it has the same dependency issue as surya
+    if extra == "docling" and session.python == "3.9":
+        session.skip("Docling dependency may use syntax incompatible with Python 3.9")
 
     # Install the package with the specified extra
     # Also include 'test' extras if your test runners/libs are there
@@ -59,14 +78,19 @@ def test_all(session):
 
     # Skip paddle on macOS for now
     if sys.platform == "darwin":
-        extras_to_install = [e for e in OPTIONAL_DEPS if e != "paddle"]
-        session.install(f".[all,test]")  # Install 'all' which should cover most
-        # Or install specific ones excluding paddle:
-        # install_string = ",".join(extras_to_install)
-        # session.install(f".[{install_string},test]")
+        # Install with 'all' which should include everything except paddle on macOS
+        session.install(".[all,test]")
     else:
         session.install(".[all,test]")
 
+    session.run("pytest", "tests")
+
+
+@nox.session(python=PYTHON_VERSIONS)
+def test_favorites(session):
+    """Run tests with the 'favorites' dependencies group."""
+    # The favorites group includes the most commonly used dependencies
+    session.install(".[favorites,test]")
     session.run("pytest", "tests")
 
 
