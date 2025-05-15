@@ -1,4 +1,5 @@
 import sys
+import os
 
 import nox
 
@@ -44,7 +45,13 @@ def lint(session):
 def test_core(session):
     """Run tests with only core dependencies."""
     session.install(".[test]")  # Assuming you add pytest etc to a [test] extra or install directly
-    session.run("pytest", "tests")
+    
+    # Run both the original tests and new test structure
+    # Prioritize the new structure but keep backward compatibility
+    if os.path.exists("tests/test_core"):
+        session.run("pytest", "tests/test_core", "tests/test_loading_original.py", "tests/exporters")
+    else:
+        session.run("pytest", "tests")
 
 
 @nox.session(python=PYTHON_VERSIONS)

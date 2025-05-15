@@ -133,7 +133,7 @@ len(title_sections)
 
 ```python
 # Use horizontal line elements as section dividers
-dividers = page.find_all('line[horizontal]')
+dividers = page.find_all('line:horizontal')
 
 # Compare the different boundary inclusion options
 inclusion_options = {
