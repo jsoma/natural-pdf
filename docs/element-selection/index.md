@@ -250,7 +250,7 @@ rect = page.find('rect')
 rect.show(width=500)
 ```
 
-By default, being inside of something means being *fully inside*.
+By default, being inside of something means being *fully inside* of the outer object.
 
 ```python
 # rect.find_all('text', contains='all').show()
