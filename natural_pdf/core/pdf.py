@@ -1253,6 +1253,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         self,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         resolution: int = 300,
+        angle: Optional[float] = None,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
         **deskew_kwargs,
@@ -1271,6 +1272,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         Args:
             pages: Page indices/slice to include (0-based). If None, processes all pages.
             resolution: DPI resolution for rendering the output deskewed pages.
+            angle: The specific angle (in degrees) to rotate by. If None, detects automatically.
             detection_resolution: DPI resolution used for skew detection if angles are not
                                   already cached on the page objects.
             force_overwrite: If False (default), raises a ValueError if any target page
@@ -1322,7 +1324,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
                 # Pass down resolutions and kwargs
                 deskewed_img = page.deskew(
                     resolution=resolution,
-                    angle=None,  # Let page.deskew handle detection/caching
+                    angle=angle,  # Let page.deskew handle detection/caching
                     detection_resolution=detection_resolution,
                     **deskew_kwargs,
                 )
