@@ -877,6 +877,123 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         image.save(filename)
         return self
 
+    def trim(self, padding: int = 1, threshold: float = 0.95, resolution: float = 150) -> "Region":
+        """
+        Trim visual whitespace from the edges of this region.
+        
+        Similar to Python's string .strip() method, but for visual whitespace in the region image.
+        Uses pixel analysis to detect rows/columns that are predominantly whitespace.
+        
+        Args:
+            padding: Number of pixels to keep as padding after trimming (default: 1)
+            threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
+                      Higher values mean more strict whitespace detection.
+                      E.g., 0.95 means if 95% of pixels in a row/column are white, consider it whitespace.
+            resolution: Resolution for image rendering in DPI (default: 150)
+        
+        Returns:
+            New Region with visual whitespace trimmed from all edges
+            
+        Example:
+            # Basic trimming with 1 pixel padding
+            trimmed = region.trim()
+            
+            # More aggressive trimming with no padding
+            tight = region.trim(padding=0, threshold=0.9)
+            
+            # Conservative trimming with more padding
+            loose = region.trim(padding=3, threshold=0.98)
+        """
+        # Get the region image
+        image = self.to_image(resolution=resolution, crop_only=True, include_highlights=False)
+        
+        if image is None:
+            logger.warning(f"Region {self.bbox}: Could not generate image for trimming. Returning original region.")
+            return self
+            
+        # Convert to grayscale for easier analysis
+        import numpy as np
+        
+        # Convert PIL image to numpy array
+        img_array = np.array(image.convert('L'))  # Convert to grayscale
+        height, width = img_array.shape
+        
+        if height == 0 or width == 0:
+            logger.warning(f"Region {self.bbox}: Image has zero dimensions. Returning original region.")
+            return self
+        
+        # Normalize pixel values to 0-1 range (255 = white = 1.0, 0 = black = 0.0)
+        normalized = img_array.astype(np.float32) / 255.0
+        
+        # Find content boundaries by analyzing row and column averages
+        
+        # Analyze rows (horizontal strips) to find top and bottom boundaries
+        row_averages = np.mean(normalized, axis=1)  # Average each row
+        content_rows = row_averages < threshold  # True where there's content (not whitespace)
+        
+        # Find first and last rows with content
+        content_row_indices = np.where(content_rows)[0]
+        if len(content_row_indices) == 0:
+            # No content found, return a minimal region at the center
+            logger.warning(f"Region {self.bbox}: No content detected during trimming. Returning center point.")
+            center_x = (self.x0 + self.x1) / 2
+            center_y = (self.top + self.bottom) / 2
+            return Region(self.page, (center_x, center_y, center_x, center_y))
+        
+        top_content_row = max(0, content_row_indices[0] - padding)
+        bottom_content_row = min(height - 1, content_row_indices[-1] + padding)
+        
+        # Analyze columns (vertical strips) to find left and right boundaries  
+        col_averages = np.mean(normalized, axis=0)  # Average each column
+        content_cols = col_averages < threshold  # True where there's content
+        
+        content_col_indices = np.where(content_cols)[0]
+        if len(content_col_indices) == 0:
+            # No content found in columns either
+            logger.warning(f"Region {self.bbox}: No column content detected during trimming. Returning center point.")
+            center_x = (self.x0 + self.x1) / 2
+            center_y = (self.top + self.bottom) / 2
+            return Region(self.page, (center_x, center_y, center_x, center_y))
+            
+        left_content_col = max(0, content_col_indices[0] - padding)
+        right_content_col = min(width - 1, content_col_indices[-1] + padding)
+        
+        # Convert trimmed pixel coordinates back to PDF coordinates
+        scale_factor = resolution / 72.0  # Scale factor used in to_image()
+        
+        # Calculate new PDF coordinates
+        trimmed_x0 = self.x0 + (left_content_col / scale_factor)
+        trimmed_top = self.top + (top_content_row / scale_factor)
+        trimmed_x1 = self.x0 + ((right_content_col + 1) / scale_factor)  # +1 because we want inclusive right edge
+        trimmed_bottom = self.top + ((bottom_content_row + 1) / scale_factor)  # +1 because we want inclusive bottom edge
+        
+        # Ensure the trimmed region doesn't exceed the original boundaries
+        final_x0 = max(self.x0, trimmed_x0)
+        final_top = max(self.top, trimmed_top)
+        final_x1 = min(self.x1, trimmed_x1)
+        final_bottom = min(self.bottom, trimmed_bottom)
+        
+        # Ensure valid coordinates (width > 0, height > 0)
+        if final_x1 <= final_x0 or final_bottom <= final_top:
+            logger.warning(f"Region {self.bbox}: Trimming resulted in invalid dimensions. Returning original region.")
+            return self
+        
+        # Create and return the trimmed region
+        trimmed_region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
+        
+        # Copy relevant metadata
+        trimmed_region.region_type = self.region_type
+        trimmed_region.normalized_type = self.normalized_type
+        trimmed_region.confidence = self.confidence
+        trimmed_region.model = self.model
+        trimmed_region.name = self.name
+        trimmed_region.label = self.label
+        trimmed_region.source = "trimmed"  # Indicate this is a derived region
+        trimmed_region.parent_region = self
+        
+        logger.debug(f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold})")
+        return trimmed_region
+
     def get_elements(
         self, selector: Optional[str] = None, apply_exclusions=True, **kwargs
     ) -> List["Element"]:
