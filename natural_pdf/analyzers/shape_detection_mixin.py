@@ -822,7 +822,11 @@ class ShapeDetectionMixin:
         Create table structure (rows, columns, cells) from previously detected lines.
         
         This method analyzes horizontal and vertical lines to create a grid structure,
-        then generates Region objects for each cell in the grid.
+        then generates Region objects for:
+        - An overall table region that encompasses the entire table structure
+        - Individual row regions spanning the width of the table
+        - Individual column regions spanning the height of the table 
+        - Individual cell regions at each row/column intersection
         
         Args:
             source_label: Filter lines by this source label (from detect_lines)
@@ -925,6 +929,37 @@ class ShapeDetectionMixin:
         logger.debug(f"Row boundaries for {self}: {row_boundaries}")
         logger.debug(f"Col boundaries for {self}: {col_boundaries}")
 
+        # Create overall table region that wraps the entire structure
+        tables_created = 0
+        if len(row_boundaries) >= 2 and len(col_boundaries) >= 2:
+            table_left = col_boundaries[0]
+            table_top = row_boundaries[0]
+            table_right = col_boundaries[-1]
+            table_bottom = row_boundaries[-1]
+            
+            if table_right > table_left and table_bottom > table_top:
+                try:
+                    table_region = page_object_for_elements.create_region(
+                        table_left, table_top, table_right, table_bottom
+                    )
+                    table_region.source = source_label
+                    table_region.region_type = "table"
+                    table_region.normalized_type = "table"  # Add normalized_type for selector compatibility
+                    table_region.metadata.update({
+                        "source_lines_label": source_label,
+                        "num_rows": len(row_boundaries) - 1,
+                        "num_cols": len(col_boundaries) - 1,
+                        "boundaries": {
+                            "rows": row_boundaries,
+                            "cols": col_boundaries
+                        }
+                    })
+                    element_manager.add_element(table_region, element_type="regions")
+                    tables_created += 1
+                    logger.debug(f"Created table region: L{table_left:.1f} T{table_top:.1f} R{table_right:.1f} B{table_bottom:.1f}")
+                except Exception as e:
+                    logger.error(f"Failed to create or add table Region: {e}. Table abs coords: L{table_left} T{table_top} R{table_right} B{table_bottom}", exc_info=True)
+
         # Create cell regions
         cells_created = 0
         rows_created = 0
@@ -952,8 +987,9 @@ class ShapeDetectionMixin:
                         row_region = page_object_for_elements.create_region(
                             row_extent_x0, top_abs, row_extent_x1, bottom_abs
                         )
-                        row_region.source = f"table_rows_from_{source_label}"
+                        row_region.source = source_label
                         row_region.region_type = "table_row"
+                        row_region.normalized_type = "table_row"  # Add normalized_type for selector compatibility
                         row_region.metadata.update({
                             "row_index": i,
                             "source_lines_label": source_label
@@ -984,8 +1020,9 @@ class ShapeDetectionMixin:
                         col_region = page_object_for_elements.create_region(
                             left_abs, col_extent_y0, right_abs, col_extent_y1
                         )
-                        col_region.source = f"table_cols_from_{source_label}"
+                        col_region.source = source_label
                         col_region.region_type = "table_column"
+                        col_region.normalized_type = "table_column"  # Add normalized_type for selector compatibility
                         col_region.metadata.update({
                             "col_index": j,
                             "source_lines_label": source_label
@@ -1024,8 +1061,9 @@ class ShapeDetectionMixin:
                         cell_region = page_object_for_elements.create_region(
                             cell_left_abs, cell_top_abs, cell_right_abs, cell_bottom_abs
                         )
-                        cell_region.source = f"table_cells_from_{source_label}"
+                        cell_region.source = source_label
                         cell_region.region_type = "table_cell"
+                        cell_region.normalized_type = "table_cell"  # Add normalized_type for selector compatibility
                         cell_region.metadata.update({
                             "row_index": i,
                             "col_index": j,
@@ -1040,10 +1078,15 @@ class ShapeDetectionMixin:
                     except Exception as e:
                         logger.error(f"Failed to create or add cell Region: {e}. Cell abs coords: L{cell_left_abs} T{cell_top_abs} R{cell_right_abs} B{cell_bottom_abs}", exc_info=True)
 
-        logger.info(f"Created {rows_created} rows, {cols_created} columns, and {cells_created} table cells from detected lines (source: '{source_label}') for {self}.")
+        logger.info(f"Created {tables_created} table, {rows_created} rows, {cols_created} columns, and {cells_created} table cells from detected lines (source: '{source_label}') for {self}.")
         return self
 
 # Example usage would be:
 # page.detect_lines(source_label="my_table_lines")
 # page.detect_table_structure_from_lines(source_label="my_table_lines", cell_padding=0.5)
-# cells = page.find_all('region[region_type="table_cell"][source="table_cells_from_my_table_lines"]') 
+# 
+# Now both selector styles work equivalently:
+# table = page.find('table[source*="table_from"]')  # Direct type selector
+# table = page.find('region[type="table"][source*="table_from"]')  # Region attribute selector
+# cells = page.find_all('table-cell[source*="table_cells_from"]')  # Direct type selector
+# cells = page.find_all('region[type="table-cell"][source*="table_cells_from"]')  # Region attribute selector 

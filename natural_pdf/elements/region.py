@@ -723,14 +723,36 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             PIL Image of just this region
         """
+        # Handle the case where user wants the cropped region to have a specific width
+        page_kwargs = kwargs.copy()
+        effective_resolution = resolution  # Start with the provided resolution
+        
+        if crop_only and 'width' in kwargs:
+            target_width = kwargs['width']
+            # Calculate what resolution is needed to make the region crop have target_width
+            region_width_points = self.width  # Region width in PDF points
+            
+            if region_width_points > 0:
+                # Calculate scale needed: target_width / region_width_points
+                required_scale = target_width / region_width_points
+                # Convert scale to resolution: scale * 72 DPI
+                effective_resolution = required_scale * 72.0
+                page_kwargs.pop('width')  # Remove width parameter to avoid conflicts
+                logger.debug(f"Region {self.bbox}: Calculated required resolution {effective_resolution:.1f} DPI for region crop width {target_width}")
+            else:
+                logger.warning(f"Region {self.bbox}: Invalid region width {region_width_points}, using original resolution")
+
         # First get the full page image with highlights if requested
         page_image = self._page.to_image(
-            scale=scale, resolution=resolution, include_highlights=include_highlights, **kwargs
+            scale=scale, resolution=effective_resolution, include_highlights=include_highlights, **page_kwargs
         )
 
-        # Calculate the crop coordinates - apply resolution scaling factor
-        # PDF coordinates are in points (1/72 inch), but image is scaled by resolution
-        scale_factor = resolution / 72.0  # Scale based on DPI
+        # Calculate the actual scale factor used by the page image
+        if page_image.width > 0 and self._page.width > 0:
+            scale_factor = page_image.width / self._page.width
+        else:
+            # Fallback to resolution-based calculation if dimensions are invalid
+            scale_factor = resolution / 72.0
 
         # Apply scaling to the coordinates
         x0 = int(self.x0 * scale_factor)
