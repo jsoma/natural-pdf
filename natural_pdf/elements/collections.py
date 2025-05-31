@@ -18,6 +18,7 @@ from typing import (
     Union,
     overload,
 )
+import hashlib
 
 from pdfplumber.utils.geometry import objects_to_bbox
 
@@ -37,6 +38,8 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+from natural_pdf.utils.tqdm_utils import get_tqdm
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
@@ -1587,12 +1590,10 @@ class ElementCollection(
         return all_data
 
 
-class PageCollection(Generic[P], ApplyMixin):
+class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
     """
-    A collection of PDF pages with cross-page operations.
-
-    This class provides methods for working with multiple pages, such as finding
-    elements across pages, extracting text from page ranges, and more.
+    Represents a collection of Page objects, often from a single PDF document.
+    Provides methods for batch operations on these pages.
     """
 
     def __init__(self, pages: List[P]):

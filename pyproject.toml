@@ -28,6 +28,7 @@ dependencies = [
     "pydantic",
     "jenkspy",
     "pikepdf>=9.7.0",
+    "scipy",
 ]
 
 [project.optional-dependencies]

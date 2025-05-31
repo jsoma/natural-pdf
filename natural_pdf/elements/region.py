@@ -25,6 +25,9 @@ from natural_pdf.utils.tqdm_utils import get_tqdm
 
 # --- End Classification Imports --- #
 
+# --- Shape Detection Mixin --- #
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+# --- End Shape Detection Mixin --- # 
 
 if TYPE_CHECKING:
     # --- NEW: Add Image type hint for classification --- #
@@ -44,7 +47,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin):
+class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
     """
     Represents a rectangular region on a page.
     """

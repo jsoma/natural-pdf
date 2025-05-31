@@ -29,6 +29,11 @@ class LineElement(Element):
         super().__init__(obj, page)
 
     @property
+    def source(self) -> Optional[str]:
+        """Get the source of this line element (e.g., 'pdf', 'detected')."""
+        return self._obj.get("source")
+
+    @property
     def type(self) -> str:
         """Element type."""
         return "line"

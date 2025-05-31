@@ -74,6 +74,11 @@ from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveV
 # --- End Classification Imports --- #
 
 
+# --- Shape Detection Mixin --- #
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+# --- End Shape Detection Mixin --- #
+
+
 try:
     from deskew import determine_skew
 
@@ -86,7 +91,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Page(ClassificationMixin, ExtractionMixin):
+class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
     """
     Enhanced Page wrapper built on top of pdfplumber.Page.
 

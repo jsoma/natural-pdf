@@ -67,8 +67,10 @@ except ImportError as e:
 from natural_pdf.collections.mixins import ApplyMixin
 from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
 
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 
-class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin):  # Add ExportMixin
+
+class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin):  # Add ExportMixin and ShapeDetectionMixin
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
