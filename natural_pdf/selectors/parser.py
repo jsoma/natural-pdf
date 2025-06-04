@@ -71,6 +71,91 @@ def safe_parse_color(value_str: str) -> tuple:
     return (0, 0, 0)
 
 
+def _split_top_level_or(selector: str) -> List[str]:
+    """
+    Split a selector string on top-level OR operators (| or ,) only.
+    
+    Respects parsing contexts and does not split when | or , appear inside:
+    - Quoted strings (both single and double quotes)
+    - Parentheses (for pseudo-class arguments like :not(...))
+    - Square brackets (for attribute selectors like [attr="value"])
+    
+    Args:
+        selector: The selector string to split
+        
+    Returns:
+        List of selector parts. If no top-level OR operators found, returns [selector].
+        
+    Examples:
+        >>> _split_top_level_or('text:contains("a|b")|text:bold')
+        ['text:contains("a|b")', 'text:bold']
+        
+        >>> _split_top_level_or('text:contains("hello,world")')
+        ['text:contains("hello,world")']
+    """
+    if not selector or not isinstance(selector, str):
+        return [selector] if selector else []
+    
+    parts = []
+    current_part = ""
+    i = 0
+    
+    # Parsing state
+    in_double_quotes = False
+    in_single_quotes = False
+    paren_depth = 0
+    bracket_depth = 0
+    
+    while i < len(selector):
+        char = selector[i]
+        
+        # Handle escape sequences in quotes
+        if i > 0 and selector[i-1] == '\\':
+            current_part += char
+            i += 1
+            continue
+        
+        # Handle quote state changes
+        if char == '"' and not in_single_quotes:
+            in_double_quotes = not in_double_quotes
+        elif char == "'" and not in_double_quotes:
+            in_single_quotes = not in_single_quotes
+        
+        # Handle parentheses and brackets only when not in quotes
+        elif not in_double_quotes and not in_single_quotes:
+            if char == '(':
+                paren_depth += 1
+            elif char == ')':
+                paren_depth -= 1
+            elif char == '[':
+                bracket_depth += 1
+            elif char == ']':
+                bracket_depth -= 1
+            
+            # Check for top-level OR operators
+            elif (char == '|' or char == ',') and paren_depth == 0 and bracket_depth == 0:
+                # Found a top-level OR operator
+                part = current_part.strip()
+                if part:  # Only add non-empty parts
+                    parts.append(part)
+                current_part = ""
+                i += 1
+                continue
+        
+        # Add character to current part
+        current_part += char
+        i += 1
+    
+    # Add the final part
+    final_part = current_part.strip()
+    if final_part:
+        parts.append(final_part)
+    
+    # If we only found one part, return it as a single-element list
+    # If we found multiple parts, those are the OR-separated parts
+    return parts if parts else [selector]
+
+
 def parse_selector(selector: str) -> Dict[str, Any]:
     """
     Parse a CSS-like selector string into a structured selector object.
@@ -80,12 +165,28 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     - Attribute presence (e.g., '[data-id]')
     - Attribute value checks with various operators (e.g., '[count=5]', '[name*="bold"]'')
     - Pseudo-classes (e.g., ':contains("Total")', ':empty', ':not(...)')
+    - OR operators (e.g., 'text:contains("A")|text:bold', 'sel1,sel2')
 
     Args:
         selector: CSS-like selector string
 
     Returns:
-        Dict representing the parsed selector
+        Dict representing the parsed selector, or compound selector with OR logic
+
+    Examples:
+        >>> parse_selector('text:contains("hello")')  # Single selector
+        {'type': 'text', 'pseudo_classes': [{'name': 'contains', 'args': 'hello'}], ...}
+        
+        >>> parse_selector('text:contains("A")|text:bold')  # OR with pipe
+        {'type': 'or', 'selectors': [...]}
+        
+        >>> parse_selector('text:contains("A"),line[width>5]')  # OR with comma
+        {'type': 'or', 'selectors': [...]}
+
+    Note:
+        OR operators work with all selector types except spatial pseudo-classes
+        (:above, :below, :near, :left-of, :right-of) which require page context.
+        Spatial relationships within OR selectors are not currently supported.
     """
     result = {
         "type": "any",
@@ -100,6 +201,36 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     selector = selector.strip()
 
+    # --- Handle OR operators first (| or ,) ---
+    # Check if selector contains OR operators at the top level only
+    # (not inside quotes, parentheses, or brackets)
+    or_parts = _split_top_level_or(selector)
+    
+    # If we found OR parts, parse each one recursively and return compound selector
+    if len(or_parts) > 1:
+        parsed_selectors = []
+        for part in or_parts:
+            try:
+                parsed_selectors.append(parse_selector(part))
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Skipping invalid OR selector part '{part}': {e}")
+                continue
+        
+        if len(parsed_selectors) > 1:
+            return {
+                "type": "or",
+                "selectors": parsed_selectors
+            }
+        elif len(parsed_selectors) == 1:
+            # Only one valid part, return it directly
+            return parsed_selectors[0]
+        else:
+            # No valid parts, return default
+            logger.warning(f"No valid parts found in OR selector '{original_selector_for_error}', returning default selector")
+            return result
+
+    # --- Continue with single selector parsing (existing logic) ---
+    
     # --- Handle wildcard selector explicitly ---
     if selector == "*":
         # Wildcard matches any type, already the default.
@@ -108,12 +239,6 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     # --- END NEW ---
 
     # 1. Extract type (optional, at the beginning)
-    # Only run if selector wasn't '*'
-    if selector:
-        type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
-        if type_match:
-            result["type"] = type_match.group(1).lower()
-            selector = selector[len(type_match.group(0)) :].strip()
     # Only run if selector wasn't '*'
     if selector:
         type_match = re.match(r"^([a-zA-Z_\-]+)", selector)
@@ -597,12 +722,42 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
     To inspect the individual filters, call `_build_filter_list` directly.
 
     Args:
-        selector: Parsed selector dictionary
+        selector: Parsed selector dictionary (single or compound OR selector)
         **kwargs: Additional filter parameters (e.g., regex, case).
 
     Returns:
         Function that takes an element and returns True if it matches the selector.
     """
+    # Handle compound OR selectors
+    if selector.get("type") == "or":
+        sub_selectors = selector.get("selectors", [])
+        if not sub_selectors:
+            # Empty OR selector, return a function that never matches
+            return lambda element: False
+        
+        # Create filter functions for each sub-selector
+        sub_filter_funcs = []
+        for sub_selector in sub_selectors:
+            sub_filter_funcs.append(selector_to_filter_func(sub_selector, **kwargs))
+        
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Creating OR filter with {len(sub_filter_funcs)} sub-selectors")
+        
+        # Return OR combination - element matches if ANY sub-selector matches
+        def or_filter(element):
+            for func in sub_filter_funcs:
+                try:
+                    if func(element):
+                        return True
+                except Exception as e:
+                    logger.error(f"Error applying OR sub-filter to element: {e}", exc_info=True)
+                    # Continue to next sub-filter on error
+                    continue
+            return False
+        
+        return or_filter
+    
+    # Handle single selectors (existing logic)
     filter_list = _build_filter_list(selector, **kwargs)
 
     if logger.isEnabledFor(logging.DEBUG):

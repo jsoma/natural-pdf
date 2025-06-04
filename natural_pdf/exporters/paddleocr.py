@@ -3,8 +3,9 @@ import os
 import random
 import shutil
 from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+import collections
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from natural_pdf.exporters.base import FinetuneExporter
 
@@ -33,19 +34,20 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
     def __init__(
         self,
         resolution: int = 150,
-        padding: int = 2,
+        padding: int = 0,
         selector: Optional[str] = None,
         corrected_only: bool = False,
         split_ratio: Optional[float] = 0.9,
         include_guide: bool = True,
         random_seed: Optional[int] = 42,
+        min_char_freq: int = 3,
     ):
         """
         Initialize the PaddleOCR Recognition Exporter.
 
         Args:
             resolution: DPI resolution for rendering text region images (default: 150).
-            padding: Padding (in points) to add around text element bbox before cropping (default: 2).
+            padding: Padding (in points) to add around text element bbox before cropping (default: 0).
             selector: CSS-like selector to filter which TextElements to export.
                       If None and corrected_only is False, all 'text' elements are considered.
             corrected_only: If True, overrides selector and exports only elements likely
@@ -57,6 +59,9 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                            in the output directory (default: True).
             random_seed: Seed for the random number generator used for train/val split shuffling,
                          ensuring reproducibility (default: 42).
+            min_char_freq: Minimum frequency for a character to be included in the dictionary.
+                           Text elements containing characters below this frequency will be removed.
+                           (default: 1, meaning no filtering based on frequency).
         """
         if corrected_only and selector:
             logger.warning(
@@ -76,10 +81,12 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
         self.split_ratio = split_ratio
         self.include_guide = include_guide
         self.random_seed = random_seed
+        self.min_char_freq = min_char_freq
 
         logger.info(
             f"Initialized PaddleOCRRecognitionExporter: selector='{self.selector}', resolution={resolution}, "
-            f"padding={padding}, split_ratio={split_ratio}, include_guide={include_guide}"
+            f"padding={padding}, split_ratio={split_ratio}, include_guide={include_guide}, "
+            f"min_char_freq={min_char_freq}"
         )
 
     def export(
@@ -114,7 +121,7 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
 
         # --- 2. Collect Elements and Render Images ---
         labels: List[Tuple[str, str]] = []  # List of (relative_image_path, text_label)
-        char_set: Set[str] = set()
+        char_counts: collections.Counter = collections.Counter()
         elements_processed = 0
         elements_skipped = 0
 
@@ -200,7 +207,7 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                         labels.append(
                             (relative_image_path.replace(os.path.sep, "/"), element_text)
                         )  # Use forward slashes for labels
-                        char_set.update(element_text)
+                        char_counts.update(element_text)
                         elements_processed += 1
 
                     except Exception as e:
@@ -226,15 +233,48 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
 
         logger.info(f"Processed {elements_processed} text elements, skipped {elements_skipped}.")
 
+        # --- 2.5 Filter based on character frequency ---
+        if self.min_char_freq > 1:
+            logger.info(f"Filtering elements based on min_char_freq: {self.min_char_freq}")
+            original_label_count = len(labels)
+            rare_chars = {char for char, count in char_counts.items() if count < self.min_char_freq}
+            if rare_chars:
+                logger.info(f"Identified {len(rare_chars)} rare characters: {rare_chars}")
+                filtered_labels = []
+                for img_path, text in labels:
+                    if any(char in rare_chars for char in text):
+                        elements_skipped += 1 # Count these as skipped due to rare chars
+                        elements_processed -=1 # Decrement from processed as it's now being skipped
+                    else:
+                        filtered_labels.append((img_path, text))
+                
+                labels_removed_count = original_label_count - len(filtered_labels)
+                if labels_removed_count > 0:
+                    logger.info(f"Removed {labels_removed_count} elements containing rare characters.")
+                labels = filtered_labels
+                
+                # Recalculate char_counts based on filtered_labels to update the dictionary
+                char_counts.clear()
+                for _, text in labels:
+                    char_counts.update(text)
+
+                if not labels:
+                    logger.error(
+                        "All elements were removed after character frequency filtering. Aborting."
+                    )
+                    return
+            else:
+                logger.info("No rare characters found below the frequency threshold.")
+
+
         # --- 3. Generate Dictionary File (`dict.txt`) ---
         dict_path = os.path.join(output_dir, "dict.txt")
         try:
             # Log the character set before sorting/writing
-            logger.debug(f"Exporter final char_set before sorting: {repr(char_set)}")
-            # PaddleOCR typically doesn't require special tokens like <UNK> or <BLK> in the dict
-            # for recognition models, but this might depend on the specific base model.
-            # Start with just the characters found.
-            sorted_chars = sorted(list(char_set), reverse=True)
+            final_chars_for_dict = set(char_counts.keys()) # Use keys from potentially filtered char_counts
+            logger.debug(f"Exporter final char_set for dict: {repr(final_chars_for_dict)}")
+
+            sorted_chars = sorted(list(final_chars_for_dict)) # No specific sorting order needed, just make it consistent
             with open(dict_path, "w", encoding="utf-8") as f_dict:
                 for char in sorted_chars:
                     # Ensure we don't write empty strings or just newlines as dictionary entries

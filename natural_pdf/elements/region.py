@@ -13,6 +13,7 @@ from natural_pdf.classification.manager import ClassificationManager  # Keep for
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.elements.base import DirectionalMixin
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
+from natural_pdf.elements.text import TextElement # ADDED IMPORT
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
@@ -20,9 +21,7 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
-# --- NEW: Import tqdm utility --- #
-from natural_pdf.utils.tqdm_utils import get_tqdm
-
+from tqdm.auto import tqdm
 # --- End Classification Imports --- #
 
 # --- Shape Detection Mixin --- #
@@ -36,6 +35,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.text import TextElement
+    from natural_pdf.elements.base import Element # Added for type hint
 
 # Import OCRManager conditionally to avoid circular imports
 try:
@@ -899,7 +899,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         image.save(filename)
         return self
 
-    def trim(self, padding: int = 1, threshold: float = 0.95, resolution: float = 150) -> "Region":
+    def trim(self, padding: int = 1, threshold: float = 0.95, resolution: float = 150, pre_shrink: float = 0.5) -> "Region":
         """
         Trim visual whitespace from the edges of this region.
         
@@ -912,22 +912,27 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                       Higher values mean more strict whitespace detection.
                       E.g., 0.95 means if 95% of pixels in a row/column are white, consider it whitespace.
             resolution: Resolution for image rendering in DPI (default: 150)
+            pre_shrink: Amount to shrink region before trimming, then expand back after (default: 0.5)
+                       This helps avoid detecting box borders/slivers as content.
         
         Returns:
             New Region with visual whitespace trimmed from all edges
             
         Example:
-            # Basic trimming with 1 pixel padding
+            # Basic trimming with 1 pixel padding and 0.5px pre-shrink
             trimmed = region.trim()
             
-            # More aggressive trimming with no padding
-            tight = region.trim(padding=0, threshold=0.9)
+            # More aggressive trimming with no padding and no pre-shrink
+            tight = region.trim(padding=0, threshold=0.9, pre_shrink=0)
             
             # Conservative trimming with more padding
             loose = region.trim(padding=3, threshold=0.98)
         """
+        # Pre-shrink the region to avoid box slivers
+        work_region = self.expand(left=-pre_shrink, right=-pre_shrink, top=-pre_shrink, bottom=-pre_shrink) if pre_shrink > 0 else self
+        
         # Get the region image
-        image = self.to_image(resolution=resolution, crop_only=True, include_highlights=False)
+        image = work_region.to_image(resolution=resolution, crop_only=True, include_highlights=False)
         
         if image is None:
             logger.warning(f"Region {self.bbox}: Could not generate image for trimming. Returning original region.")
@@ -983,25 +988,29 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Convert trimmed pixel coordinates back to PDF coordinates
         scale_factor = resolution / 72.0  # Scale factor used in to_image()
         
-        # Calculate new PDF coordinates
-        trimmed_x0 = self.x0 + (left_content_col / scale_factor)
-        trimmed_top = self.top + (top_content_row / scale_factor)
-        trimmed_x1 = self.x0 + ((right_content_col + 1) / scale_factor)  # +1 because we want inclusive right edge
-        trimmed_bottom = self.top + ((bottom_content_row + 1) / scale_factor)  # +1 because we want inclusive bottom edge
+        # Calculate new PDF coordinates and ensure they are Python floats
+        trimmed_x0 = float(work_region.x0 + (left_content_col / scale_factor))
+        trimmed_top = float(work_region.top + (top_content_row / scale_factor))
+        trimmed_x1 = float(work_region.x0 + ((right_content_col + 1) / scale_factor))  # +1 because we want inclusive right edge
+        trimmed_bottom = float(work_region.top + ((bottom_content_row + 1) / scale_factor))  # +1 because we want inclusive bottom edge
         
-        # Ensure the trimmed region doesn't exceed the original boundaries
-        final_x0 = max(self.x0, trimmed_x0)
-        final_top = max(self.top, trimmed_top)
-        final_x1 = min(self.x1, trimmed_x1)
-        final_bottom = min(self.bottom, trimmed_bottom)
+        # Ensure the trimmed region doesn't exceed the work region boundaries
+        final_x0 = max(work_region.x0, trimmed_x0)
+        final_top = max(work_region.top, trimmed_top)
+        final_x1 = min(work_region.x1, trimmed_x1)
+        final_bottom = min(work_region.bottom, trimmed_bottom)
         
         # Ensure valid coordinates (width > 0, height > 0)
         if final_x1 <= final_x0 or final_bottom <= final_top:
             logger.warning(f"Region {self.bbox}: Trimming resulted in invalid dimensions. Returning original region.")
             return self
         
-        # Create and return the trimmed region
+        # Create the trimmed region
         trimmed_region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
+        
+        # Expand back by the pre_shrink amount to restore original positioning
+        if pre_shrink > 0:
+            trimmed_region = trimmed_region.expand(left=pre_shrink, right=pre_shrink, top=pre_shrink, bottom=pre_shrink)
         
         # Copy relevant metadata
         trimmed_region.region_type = self.region_type
@@ -1013,8 +1022,109 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         trimmed_region.source = "trimmed"  # Indicate this is a derived region
         trimmed_region.parent_region = self
         
-        logger.debug(f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold})")
+        logger.debug(f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold}, pre_shrink={pre_shrink})")
         return trimmed_region
+
+    def clip(
+        self,
+        obj: Optional[Any] = None,
+        left: Optional[float] = None,
+        top: Optional[float] = None,
+        right: Optional[float] = None,
+        bottom: Optional[float] = None,
+    ) -> "Region":
+        """
+        Clip this region to specific bounds, either from another object with bbox or explicit coordinates.
+        
+        The clipped region will be constrained to not exceed the specified boundaries.
+        You can provide either an object with bounding box properties, specific coordinates, or both.
+        When both are provided, explicit coordinates take precedence.
+        
+        Args:
+            obj: Optional object with bbox properties (Region, Element, TextElement, etc.)
+            left: Optional left boundary (x0) to clip to
+            top: Optional top boundary to clip to  
+            right: Optional right boundary (x1) to clip to
+            bottom: Optional bottom boundary to clip to
+            
+        Returns:
+            New Region with bounds clipped to the specified constraints
+            
+        Examples:
+            # Clip to another region's bounds
+            clipped = region.clip(container_region)
+            
+            # Clip to any element's bounds
+            clipped = region.clip(text_element)
+            
+            # Clip to specific coordinates
+            clipped = region.clip(left=100, right=400)
+            
+            # Mix object bounds with specific overrides
+            clipped = region.clip(obj=container, bottom=page.height/2)
+        """
+        from natural_pdf.elements.base import extract_bbox
+        
+        # Start with current region bounds
+        clip_x0 = self.x0
+        clip_top = self.top
+        clip_x1 = self.x1
+        clip_bottom = self.bottom
+        
+        # Apply object constraints if provided
+        if obj is not None:
+            obj_bbox = extract_bbox(obj)
+            if obj_bbox is not None:
+                obj_x0, obj_top, obj_x1, obj_bottom = obj_bbox
+                # Constrain to the intersection with the provided object
+                clip_x0 = max(clip_x0, obj_x0)
+                clip_top = max(clip_top, obj_top)
+                clip_x1 = min(clip_x1, obj_x1)
+                clip_bottom = min(clip_bottom, obj_bottom)
+            else:
+                logger.warning(
+                    f"Region {self.bbox}: Cannot extract bbox from clipping object {type(obj)}. "
+                    "Object must have bbox property or x0/top/x1/bottom attributes."
+                )
+        
+        # Apply explicit coordinate constraints (these take precedence)
+        if left is not None:
+            clip_x0 = max(clip_x0, left)
+        if top is not None:
+            clip_top = max(clip_top, top)
+        if right is not None:
+            clip_x1 = min(clip_x1, right)
+        if bottom is not None:
+            clip_bottom = min(clip_bottom, bottom)
+        
+        # Ensure valid coordinates
+        if clip_x1 <= clip_x0 or clip_bottom <= clip_top:
+            logger.warning(
+                f"Region {self.bbox}: Clipping resulted in invalid dimensions "
+                f"({clip_x0}, {clip_top}, {clip_x1}, {clip_bottom}). Returning minimal region."
+            )
+            # Return a minimal region at the clip area's top-left
+            return Region(self.page, (clip_x0, clip_top, clip_x0, clip_top))
+        
+        # Create the clipped region
+        clipped_region = Region(self.page, (clip_x0, clip_top, clip_x1, clip_bottom))
+        
+        # Copy relevant metadata
+        clipped_region.region_type = self.region_type
+        clipped_region.normalized_type = self.normalized_type
+        clipped_region.confidence = self.confidence
+        clipped_region.model = self.model
+        clipped_region.name = self.name
+        clipped_region.label = self.label
+        clipped_region.source = "clipped"  # Indicate this is a derived region
+        clipped_region.parent_region = self
+        
+        logger.debug(
+            f"Region {self.bbox}: Clipped to {clipped_region.bbox} "
+            f"(constraints: obj={type(obj).__name__ if obj else None}, "
+            f"left={left}, top={top}, right={right}, bottom={bottom})"
+        )
+        return clipped_region
 
     def get_elements(
         self, selector: Optional[str] = None, apply_exclusions=True, **kwargs
@@ -1403,8 +1513,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         unique_tops = cluster_coords(tops)
         unique_lefts = cluster_coords(lefts)
 
-        # --- Setup tqdm --- #
-        tqdm = get_tqdm()
         # Determine iterable for tqdm
         cell_iterator = cell_dicts
         if show_progress:
@@ -2555,3 +2663,94 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         return ElementCollection(cell_regions)
 
     # --- END NEW METHOD ---
+
+    def to_text_element(
+        self,
+        text_content: Optional[Union[str, Callable[["Region"], Optional[str]]]] = None,
+        source_label: str = "derived_from_region",
+        object_type: str = "word", # Or "char", controls how it's categorized
+        default_font_size: float = 10.0,
+        default_font_name: str = "RegionContent",
+        confidence: Optional[float] = None, # Allow overriding confidence
+        add_to_page: bool = False # NEW: Option to add to page
+    ) -> "TextElement":
+        """
+        Creates a new TextElement object based on this region's geometry.
+
+        The text for the new TextElement can be provided directly,
+        generated by a callback function, or left as None.
+
+        Args:
+            text_content:
+                - If a string, this will be the text of the new TextElement.
+                - If a callable, it will be called with this region instance
+                  and its return value (a string or None) will be the text.
+                - If None (default), the TextElement's text will be None.
+            source_label: The 'source' attribute for the new TextElement.
+            object_type: The 'object_type' for the TextElement's data dict
+                         (e.g., "word", "char").
+            default_font_size: Placeholder font size if text is generated.
+            default_font_name: Placeholder font name if text is generated.
+            confidence: Confidence score for the text. If text_content is None,
+                        defaults to 0.0. If text is provided/generated, defaults to 1.0
+                        unless specified.
+            add_to_page: If True, the created TextElement will be added to the
+                         region's parent page. (Default: False)
+
+        Returns:
+            A new TextElement instance.
+        
+        Raises:
+            ValueError: If the region does not have a valid 'page' attribute.
+        """
+        actual_text: Optional[str] = None
+        if isinstance(text_content, str):
+            actual_text = text_content
+        elif callable(text_content):
+            try:
+                actual_text = text_content(self)
+            except Exception as e:
+                logger.error(f"Error executing text_content callback for region {self.bbox}: {e}", exc_info=True)
+                actual_text = None # Ensure actual_text is None on error
+
+        final_confidence = confidence
+        if final_confidence is None:
+            final_confidence = 1.0 if actual_text is not None and actual_text.strip() else 0.0
+
+        if not hasattr(self, 'page') or self.page is None:
+            raise ValueError("Region must have a valid 'page' attribute to create a TextElement.")
+
+        elem_data = {
+            "text": actual_text,
+            "x0": self.x0,
+            "top": self.top,
+            "x1": self.x1,
+            "bottom": self.bottom,
+            "width": self.width,
+            "height": self.height,
+            "object_type": object_type,
+            "page_number": self.page.page_number,
+            "stroking_color": getattr(self, 'stroking_color', (0,0,0)),
+            "non_stroking_color": getattr(self, 'non_stroking_color', (0,0,0)),
+            "fontname": default_font_name,
+            "size": default_font_size,
+            "upright": True,
+            "direction": 1,
+            "adv": self.width,
+            "source": source_label,
+            "confidence": final_confidence,
+            "_char_dicts": [] 
+        }
+        text_element = TextElement(elem_data, self.page)
+
+        if add_to_page:
+            if hasattr(self.page, '_element_mgr') and self.page._element_mgr is not None:
+                add_as_type = "words" if object_type == "word" else "chars" if object_type == "char" else object_type
+                # REMOVED try-except block around add_element
+                self.page._element_mgr.add_element(text_element, element_type=add_as_type)
+                logger.debug(f"TextElement created from region {self.bbox} and added to page {self.page.page_number} as {add_as_type}.")
+            else:
+                page_num_str = str(self.page.page_number) if hasattr(self.page, 'page_number') else 'N/A'
+                logger.warning(f"Cannot add TextElement to page: Page {page_num_str} for region {self.bbox} is missing '_element_mgr'.")
+        
+        return text_element

@@ -215,21 +215,14 @@ class HighlightRenderer:
     def _render_ocr_text(self):
         """Renders OCR text onto the image. (Adapted from old HighlightManager)"""
         # Use the page reference to get OCR elements
-        try:
-            # Try finding first, then extracting if necessary
-            ocr_elements = self.page.find_all("text[source=ocr]")
-            if not ocr_elements:
-                # Don't run full OCR here, just extract if already run
-                ocr_elements = [
-                    el for el in self.page.words if getattr(el, "source", None) == "ocr"
-                ]
-                # Alternative: self.page.extract_ocr_elements() - but might be slow
-
-        except Exception as e:
-            logger.warning(
-                f"Could not get OCR elements for page {self.page.number}: {e}", exc_info=True
-            )
-            return  # Don't modify image if OCR elements aren't available
+        # Try finding first, then extracting if necessary
+        ocr_elements = self.page.find_all("text[source=ocr]")
+        if not ocr_elements:
+            # Don't run full OCR here, just extract if already run
+            ocr_elements = [
+                el for el in self.page.words if getattr(el, "source", None) == "ocr"
+            ]
+            # Alternative: self.page.extract_ocr_elements() - but might be slow
 
         if not ocr_elements:
             logger.debug(f"No OCR elements found for page {self.page.number} to render.")
@@ -293,20 +286,15 @@ class HighlightRenderer:
             )
 
             # Calculate text position (centered vertically, slightly offset from left)
-            try:
-                if hasattr(sized_font, "getbbox"):  # Modern PIL
-                    _, text_top_offset, _, text_bottom_offset = sized_font.getbbox(element.text)
-                    text_h = text_bottom_offset - text_top_offset
-                else:  # Older PIL approximation
-                    text_h = font_size
-                text_y = top_s + (box_h - text_h) / 2
-                # Adjust for vertical offset in some fonts
-                text_y -= text_top_offset if hasattr(sized_font, "getbbox") else 0
-                text_x = x0_s + padding  # Start near left edge with padding
-
-            except Exception:
-                # Fallback positioning
-                text_x, text_y = x0_s + padding, top_s + padding
+            if hasattr(sized_font, "getbbox"):  # Modern PIL
+                _, text_top_offset, _, text_bottom_offset = sized_font.getbbox(element.text)
+                text_h = text_bottom_offset - text_top_offset
+            else:  # Older PIL approximation
+                text_h = font_size
+            text_y = top_s + (box_h - text_h) / 2
+            # Adjust for vertical offset in some fonts
+            text_y -= text_top_offset if hasattr(sized_font, "getbbox") else 0
+            text_x = x0_s + padding  # Start near left edge with padding
 
             draw.text((text_x, text_y), element.text, fill=(0, 0, 0, 255), font=sized_font)
 
@@ -391,9 +379,6 @@ class HighlightingService:
                 return None
             except ValueError:
                 logger.warning(f"Invalid color string: '{color_input}'")
-                return None
-            except Exception as e:
-                logger.error(f"Error processing color string '{color_input}': {e}")
                 return None
         else:
             logger.warning(f"Invalid color input type: {type(color_input)}")
@@ -677,9 +662,12 @@ class HighlightingService:
                     actual_scale_y = scale # Fallback
                 logger.debug(f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f}")
 
-        except Exception as e:
-            logger.error(f"Error creating base image for page {page_index}: {e}", exc_info=True)
-            return None
+        except IOError as e:
+            logger.error(f"IOError creating base image for page {page_index}: {e}")
+            raise
+        except AttributeError as e:
+            logger.error(f"AttributeError creating base image for page {page_index}: {e}")
+            raise
         
         renderer_scale = actual_scale_x # Assuming aspect ratio maintained, use x_scale
 
@@ -865,8 +853,11 @@ class HighlightingService:
             else:
                 final_image = rendered_image
 
-        except Exception as e:
-            logger.error(f"Error rendering preview for page {page_index}: {e}", exc_info=True)
-            return None
+        except IOError as e:
+            logger.error(f"IOError rendering preview for page {page_index}: {e}")
+            raise
+        except AttributeError as e:
+            logger.error(f"AttributeError rendering preview for page {page_index}: {e}")
+            raise
 
         return final_image

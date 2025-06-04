@@ -38,7 +38,7 @@ from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.utils.locks import pdf_render_lock
-from natural_pdf.utils.tqdm_utils import get_tqdm
+from tqdm.auto import tqdm
 
 try:
     from typing import Any as TypingAny
@@ -71,7 +71,6 @@ except ImportError:
     create_original_pdf = None
 
 logger = logging.getLogger("natural_pdf.core.pdf")
-tqdm = get_tqdm()
 
 DEFAULT_MANAGERS = {
     "classification": ClassificationManager,
@@ -1317,7 +1316,6 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         deskewed_images_bytes = []
         logger.info(f"Deskewing {len(target_pages)} pages (output resolution={resolution} DPI)...")
 
-        # Use tqdm via get_tqdm
         for page in tqdm(target_pages, desc="Deskewing Pages", leave=False):
             try:
                 # Use page.deskew to get the corrected PIL image

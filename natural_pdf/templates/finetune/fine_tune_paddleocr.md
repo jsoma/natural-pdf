@@ -27,6 +27,7 @@ First, let's install the necessary libraries: PaddlePaddle (GPU version) and Pad
 
 # Install PaddleOCR and its dependencies
 !pip install --quiet paddleocr
+!pip install --quiet lmdb rapidfuzz
 ```
 
 ```python
@@ -116,7 +117,7 @@ buffered_max_length
 
 ```python
 MAX_ALLOWED = buffered_max_length
-MIN_ALLOWED = 3
+MIN_ALLOWED = 2
 removed = 0
 cleaned_lines = []
 
@@ -148,6 +149,78 @@ else:
 ```
 
 You'll also notice it catches a lot of "Sorry, I can't process the image. Please upload the image again." and the like.
+
+Next up we'll make some calculations about what the data itself looks like, it will help us plan out our configuration down below.
+
+```python
+import random
+from PIL import Image
+import os
+import numpy as np
+
+# Parameters
+sample_size = 500
+label_path = "finetune_data/train.txt"
+image_base_dir = "finetune_data"
+
+# Load lines and randomly sample
+with open(label_path, encoding="utf-8") as f:
+    lines = [line.strip() for line in f if line.strip()]
+
+sampled_lines = random.sample(lines, min(sample_size, len(lines)))
+
+char_widths = []
+ratios = []
+heights = []
+
+for line in sampled_lines:
+    parts = line.split(maxsplit=1)
+    if len(parts) != 2:
+        continue
+    img_path = os.path.join(image_base_dir, parts[0])
+    try:
+        with Image.open(img_path) as im:
+            w, h = im.size
+            ratios.append(w / h)
+            heights.append(h)
+            text = parts[1].strip()
+            if len(text) > 0:
+                char_widths.append(w / len(text))
+    except Exception as e:
+        print(f"⚠️ Skipped {img_path}: {e}")
+
+# Stats
+ratios = np.array(ratios)
+print(f"Sampled {len(ratios)} valid images")
+print(f"Mean aspect ratio (W/H): {ratios.mean():.2f}")
+print(f"95th percentile ratio: {np.percentile(ratios, 95):.2f}")
+print(f"99th percentile ratio: {np.percentile(ratios, 99):.2f}")
+
+heights = np.array(heights)
+print(f"Mean height: {np.mean(heights):.2f}")
+print(f"95th percentile height: {np.percentile(heights, 95):.2f}")
+print(f"99th percentile height: {np.percentile(heights, 99):.2f}")
+
+avg_char_width = np.mean(char_widths)
+print(f"avg_char_width = {avg_char_width:.2f}")
+
+print(f"buffered_max_length = {buffered_max_length}")
+
+# `heights` and `ratios` should be lists of sampled image heights and aspect ratios
+H_base = int(np.percentile(heights, 95))  # or 95 if you want tighter crop
+H_target = int(round(H_base * 1.5))       # slight upscale for better readability
+H_target = max(16, min(H_target, 64))     # clamp to sensible range
+
+aspect_95 = np.percentile(ratios, 95)
+char_width_95 = np.percentile(char_widths, 95)
+W_target = int(char_width_95 * buffered_max_length * 1.1)  # 10% padding
+W_target = max(64, min(W_target, 640))  # Reasonable min/max bounds
+W_target = (W_target + 7) // 8 * 8  # Round to multiple of 8
+
+image_shape = [3, H_target, W_target]
+
+print("Suggested image_shape:", image_shape)
+```
 
 **And now it's configuration time!** We ignore almost all of the [suggestions from PaddleOCR's documentation](https://paddlepaddle.github.io/PaddleOCR/latest/en/ppocr/model_train/finetune.html) because for some reason they get me ~40% while copying the [PPOCRv3 yml](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/configs/rec/PP-OCRv3/multi_language/latin_PP-OCRv3_rec.yml) gets me up to ~80%.
 
@@ -238,12 +311,15 @@ Train:
           channel_first: False
       - MultiLabelEncode:
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 320]
+          image_shape: {image_shape}
+          keep_ratio: True
+          padding: True
+          padding_mode: 'border'
       - KeepKeys:
           keep_keys: ["image", "label_ctc", "label_sar", "length", "valid_ratio"]
   loader:
     shuffle: true
-    batch_size_per_card: 64
+    batch_size_per_card: 128
     drop_last: true
     num_workers: 4
 
@@ -258,13 +334,16 @@ Eval:
           channel_first: False
       - MultiLabelEncode:
       - SVTRRecResizeImg:
-          image_shape: [3, 48, 320]
+          image_shape: {image_shape}
+          keep_ratio: True
+          padding: True
+          padding_mode: 'border'
       - KeepKeys:
           keep_keys: ["image", "label_ctc", "label_sar", "length", "valid_ratio"]
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 64
+    batch_size_per_card: 128
     num_workers: 4
 """
 

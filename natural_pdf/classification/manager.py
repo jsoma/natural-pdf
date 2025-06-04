@@ -25,7 +25,7 @@ except ImportError:
     AutoModelForSequenceClassification = object
     torch = None
 
-from natural_pdf.utils.tqdm_utils import get_tqdm
+from tqdm.auto import tqdm
 
 # Import result classes
 from .results import CategoryScore, ClassificationResult
@@ -343,8 +343,7 @@ class ClassificationManager:
             total_items = len(item_contents)
             if progress_bar:
                 # Get the appropriate tqdm class
-                tqdm_class = get_tqdm()
-                results_iterator = tqdm_class(
+                results_iterator = tqdm(
                     results_iterator,
                     total=total_items,
                     desc=f"Classifying batch ({model_id})",

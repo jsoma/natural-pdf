@@ -25,14 +25,12 @@ from typing import (
 )
 
 from PIL import Image
-from tqdm import tqdm
-from tqdm.auto import tqdm as auto_tqdm
-from tqdm.notebook import tqdm as notebook_tqdm
+from tqdm.auto import tqdm
 
-from natural_pdf.utils.tqdm_utils import get_tqdm
+from natural_pdf.exporters.base import FinetuneExporter
 
-# Get the appropriate tqdm class once
-tqdm = get_tqdm()
+# Need to import this utility
+from natural_pdf.utils.identifiers import generate_short_path_hash
 
 # Set up logger early
 # Configure logging to include thread information
@@ -121,16 +119,8 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixi
     @staticmethod
     def _get_pdf_class():
         """Helper method to dynamically import the PDF class."""
-        try:
-            # Import needs to resolve path correctly
-            from natural_pdf.core.pdf import PDF
-
-            return PDF
-        except ImportError as e:
-            logger.error(
-                "Could not import PDF class from natural_pdf.core.pdf. Ensure it exists and there are no circular imports at runtime."
-            )
-            raise ImportError("PDF class is required but could not be imported.") from e
+        from natural_pdf.core.pdf import PDF
+        return PDF
 
     # --- Internal Helpers ---
 
@@ -143,16 +133,13 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixi
     def _execute_glob(self, pattern: str) -> Set[str]:
         """Glob for paths and return a set of valid PDF paths."""
         found_paths = set()
-        try:
-            # Use iglob for potentially large directories/matches
-            paths_iter = py_glob.iglob(pattern, recursive=self._recursive)
-            for path_str in paths_iter:
-                # Use Path object for easier checking
-                p = Path(path_str)
-                if p.is_file() and p.suffix.lower() == ".pdf":
-                    found_paths.add(str(p.resolve()))  # Store resolved absolute path
-        except Exception as e:
-            logger.error(f"Error processing glob pattern '{pattern}': {e}")
+        # Use iglob for potentially large directories/matches
+        paths_iter = py_glob.iglob(pattern, recursive=self._recursive)
+        for path_str in paths_iter:
+            # Use Path object for easier checking
+            p = Path(path_str)
+            if p.is_file() and p.suffix.lower() == ".pdf":
+                found_paths.add(str(p.resolve()))  # Store resolved absolute path
         return found_paths
 
     def _resolve_sources_to_paths(self, source: Union[str, Iterable[str]]) -> List[str]:
@@ -536,19 +523,10 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixi
             **kwargs: Additional arguments passed to create_correction_task_package
                       (e.g., image_render_scale, overwrite).
         """
-        try:
-            from natural_pdf.utils.packaging import create_correction_task_package
+        from natural_pdf.utils.packaging import create_correction_task_package
 
-            # Pass the collection itself (self) as the source
-            create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
-        except ImportError:
-            logger.error(
-                "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
-            )
-            # Or raise
-        except Exception as e:
-            logger.error(f"Failed to export correction task for collection: {e}", exc_info=True)
-            raise  # Re-raise the exception from the utility function
+        # Pass the collection itself (self) as the source
+        create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
 
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:

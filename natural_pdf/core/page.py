@@ -166,6 +166,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         self._layout_analyzer = None
 
         self._load_elements()
+        self._to_image_cache: Dict[tuple, Optional["Image.Image"]] = {}
 
     @property
     def pdf(self) -> "PDF":
@@ -654,7 +655,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         Exclusions are now handled by the calling methods (find, find_all) if requested.
 
         Args:
-            selector_obj: Parsed selector dictionary
+            selector_obj: Parsed selector dictionary (single or compound OR selector)
             **kwargs: Additional filter parameters including 'regex' and 'case'
 
         Returns:
@@ -662,6 +663,30 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         """
         from natural_pdf.selectors.parser import selector_to_filter_func
 
+        # Handle compound OR selectors
+        if selector_obj.get("type") == "or":
+            # For OR selectors, search all elements and let the filter function decide
+            elements_to_search = self._element_mgr.get_all_elements()
+            
+            # Create filter function from compound selector
+            filter_func = selector_to_filter_func(selector_obj, **kwargs)
+            
+            # Apply the filter to all elements
+            matching_elements = [element for element in elements_to_search if filter_func(element)]
+            
+            # Sort elements in reading order if requested
+            if kwargs.get("reading_order", True):
+                if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
+                    matching_elements.sort(key=lambda el: (el.top, el.x0))
+                else:
+                    logger.warning(
+                        "Cannot sort elements in reading order: Missing required attributes (top, x0)."
+                    )
+            
+            # Return result collection
+            return ElementCollection(matching_elements)
+
+        # Handle single selectors (existing logic)
         # Get element type to filter
         element_type = selector_obj.get("type", "any").lower()
 
@@ -1416,114 +1441,171 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         Returns:
             PIL Image of the page, or None if rendering fails.
         """
-        image = None
-        render_resolution = resolution if resolution is not None else scale * 72
-        thread_id = threading.current_thread().name
-        logger.debug(
-            f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image..."
-        )
-        lock_wait_start = time.monotonic()
+        # 1. Create cache key (excluding path)
+        cache_key_parts = [
+            scale,
+            width,
+            labels,
+            legend_position,
+            render_ocr,
+            resolution,
+            include_highlights,
+            exclusions,
+        ]
+        # Convert kwargs to a stable, hashable representation
+        sorted_kwargs_list = []
+        for k, v in sorted(kwargs.items()):
+            if isinstance(v, list):
+                try:
+                    v = tuple(v)  # Convert lists to tuples
+                except TypeError: # pragma: no cover
+                    # If list contains unhashable items, fall back to repr or skip
+                    # For simplicity, we'll try to proceed; hashing will fail if v remains unhashable
+                    logger.warning(f"Cache key generation: List item in kwargs['{k}'] could not be converted to tuple due to unhashable elements.")
+            sorted_kwargs_list.append((k, v))
+        
+        cache_key_parts.append(tuple(sorted_kwargs_list))
+        
         try:
-            # Acquire the global PDF rendering lock
-            with pdf_render_lock:
-                lock_acquired_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render..."
-                )
-                if include_highlights:
-                    # Delegate rendering to the central service
-                    image = self._highlighter.render_page(
-                        page_index=self.index,
-                        scale=scale,
-                        labels=labels,
-                        legend_position=legend_position,
-                        render_ocr=render_ocr,
-                        resolution=render_resolution,  # Pass the calculated resolution
-                        **kwargs,
-                    )
-                else:
-                    image = render_plain_page(self, render_resolution)
-        except Exception as e:
-            logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
-            return None  # Return None on error
-        finally:
-            render_end_time = time.monotonic()
+            cache_key = tuple(cache_key_parts)
+        except TypeError as e: # pragma: no cover
+            logger.warning(f"Page {self.index}: Could not create cache key for to_image due to unhashable item: {e}. Proceeding without cache for this call.")
+            cache_key = None # Fallback to not using cache for this call
+
+        image_to_return: Optional[Image.Image] = None
+
+        # 2. Check cache
+        if cache_key is not None and cache_key in self._to_image_cache:
+            image_to_return = self._to_image_cache[cache_key]
+            logger.debug(f"Page {self.index}: Returning cached image for key: {cache_key}")
+        else:
+            # --- This is the original logic to generate the image ---
+            rendered_image_component: Optional[Image.Image] = None # Renamed from 'image' in original
+            render_resolution = resolution if resolution is not None else scale * 72
+            thread_id = threading.current_thread().name
             logger.debug(
-                f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s"
+                f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image..."
             )
-
-        if image is None:
-            return None
-
-        # --- Apply exclusion masking if requested ---
-        if exclusions == "mask" and self._exclusions:
+            lock_wait_start = time.monotonic()
             try:
-                # Ensure image is mutable (RGB or RGBA)
-                if image.mode not in ("RGB", "RGBA"):
-                    image = image.convert("RGB")
-
-                exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=False)
-                if exclusion_regions:
-                    draw = ImageDraw.Draw(image)
-                    # Calculate the scaling factor used for the image
-                    # Base image was rendered at render_resolution (DPI)
-                    # pdfplumber default is 72 DPI
-                    # Scale factor = (pixels / inch) / (points / inch) = DPI / 72
-                    img_scale = render_resolution / 72.0
-
-                    for region in exclusion_regions:
-                        # Convert PDF points (x0, top, x1, bottom) to image pixels
-                        img_x0 = region.x0 * img_scale
-                        img_top = region.top * img_scale
-                        img_x1 = region.x1 * img_scale
-                        img_bottom = region.bottom * img_scale
-
-                        # Draw a white rectangle over the excluded area
-                        # Ensure coordinates are within image bounds (though region should be)
-                        img_coords = (
-                            max(0, img_x0),
-                            max(0, img_top),
-                            min(image.width, img_x1),
-                            min(image.height, img_bottom),
+                # Acquire the global PDF rendering lock
+                with pdf_render_lock:
+                    lock_acquired_time = time.monotonic()
+                    logger.debug(
+                        f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render..."
+                    )
+                    if include_highlights:
+                        # Delegate rendering to the central service
+                        rendered_image_component = self._highlighter.render_page(
+                            page_index=self.index,
+                            scale=scale,
+                            labels=labels,
+                            legend_position=legend_position,
+                            render_ocr=render_ocr,
+                            resolution=render_resolution,  # Pass the calculated resolution
+                            **kwargs,
                         )
-                        if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
-                            draw.rectangle(img_coords, fill="white")
-                        else:
-                            logger.warning(
-                                f"Skipping invalid exclusion rect for masking: {img_coords}"
-                            )
-
-                    del draw  # Release drawing context
-            except Exception as mask_error:
-                logger.error(
-                    f"Error applying exclusion mask to page {self.index}: {mask_error}",
-                    exc_info=True,
+                    else:
+                        rendered_image_component = render_plain_page(self, render_resolution)
+            except Exception as e:
+                logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
+                # rendered_image_component remains None
+            finally:
+                render_end_time = time.monotonic()
+                logger.debug(
+                    f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s"
                 )
-                # Decide if you want to return None or continue without mask
-                # For now, continue without mask
 
-        # Resize the final image if width is provided
-        if width is not None and width > 0 and image.width > 0:
-            aspect_ratio = image.height / image.width
-            height = int(width * aspect_ratio)
-            try:
-                image = image.resize(
-                    (width, height), Image.Resampling.LANCZOS
-                )  # Use modern resampling
-            except Exception as resize_error:
-                logger.warning(f"Could not resize image: {resize_error}")
+            if rendered_image_component is None:
+                if cache_key is not None:
+                    self._to_image_cache[cache_key] = None # Cache the failure
+                # Save the image if path is provided (will try to save None, handled by PIL/OS)
+                if path:
+                    try:
+                        if os.path.dirname(path):
+                            os.makedirs(os.path.dirname(path), exist_ok=True)
+                        if rendered_image_component is not None: # Should be None here
+                           rendered_image_component.save(path) # This line won't be hit if None
+                        # else: logger.debug("Not saving None image") # Not strictly needed
+                    except Exception as save_error: # pragma: no cover
+                        logger.error(f"Failed to save image to {path}: {save_error}")
+                return None
 
-        # Save the image if path is provided
-        if path:
+            # --- Apply exclusion masking if requested ---
+            # This modifies 'rendered_image_component'
+            image_after_masking = rendered_image_component # Start with the rendered image
+            if exclusions == "mask" and self._exclusions:
+                try:
+                    # Ensure image is mutable (RGB or RGBA)
+                    if image_after_masking.mode not in ("RGB", "RGBA"):
+                        image_after_masking = image_after_masking.convert("RGB")
+
+                    exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=False)
+                    if exclusion_regions:
+                        draw = ImageDraw.Draw(image_after_masking)
+                        # Calculate the scaling factor used for the image
+                        img_scale = render_resolution / 72.0
+
+                        for region in exclusion_regions:
+                            # Convert PDF points (x0, top, x1, bottom) to image pixels
+                            img_x0 = region.x0 * img_scale
+                            img_top = region.top * img_scale
+                            img_x1 = region.x1 * img_scale
+                            img_bottom = region.bottom * img_scale
+
+                            # Draw a white rectangle over the excluded area
+                            img_coords = (
+                                max(0, img_x0),
+                                max(0, img_top),
+                                min(image_after_masking.width, img_x1),
+                                min(image_after_masking.height, img_bottom),
+                            )
+                            if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
+                                draw.rectangle(img_coords, fill="white")
+                            else: # pragma: no cover
+                                logger.warning(
+                                    f"Skipping invalid exclusion rect for masking: {img_coords}"
+                                )
+                        del draw  # Release drawing context
+                except Exception as mask_error: # pragma: no cover
+                    logger.error(
+                        f"Error applying exclusion mask to page {self.index}: {mask_error}",
+                        exc_info=True,
+                    )
+                    # Continue with potentially unmasked or partially masked image
+
+            # --- Resize the final image if width is provided ---
+            image_final_content = image_after_masking # Start with image after masking
+            if width is not None and width > 0 and image_final_content.width > 0:
+                aspect_ratio = image_final_content.height / image_final_content.width
+                height = int(width * aspect_ratio)
+                try:
+                    image_final_content = image_final_content.resize(
+                        (width, height), Image.Resampling.LANCZOS
+                    )
+                except Exception as resize_error: # pragma: no cover
+                    logger.warning(f"Could not resize image: {resize_error}")
+                    # image_final_content remains the un-resized version if resize fails
+
+            # Store in cache
+            if cache_key is not None:
+                self._to_image_cache[cache_key] = image_final_content
+                logger.debug(f"Page {self.index}: Cached image for key: {cache_key}")
+            image_to_return = image_final_content
+        # --- End of cache miss block ---
+
+        # Save the image (either from cache or newly generated) if path is provided
+        if path and image_to_return:
             try:
                 # Ensure directory exists
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                image.save(path)
+                if os.path.dirname(path): # Only call makedirs if there's a directory part
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                image_to_return.save(path)
                 logger.debug(f"Saved page image to: {path}")
-            except Exception as save_error:
+            except Exception as save_error: # pragma: no cover
                 logger.error(f"Failed to save image to {path}: {save_error}")
 
-        return image
+        return image_to_return
 
     def _create_text_elements_from_ocr(
         self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None
@@ -2218,6 +2300,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
     def correct_ocr(
         self,
         correction_callback: Callable[[Any], Optional[str]],
+        selector: Optional[str] = "text[source=ocr]",
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
     ) -> "Page":  # Return self for chaining
@@ -2245,7 +2328,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         )
 
         target_elements_collection = self.find_all(
-            selector="text[source=ocr]", apply_exclusions=False
+            selector=selector, apply_exclusions=False
         )
         target_elements = target_elements_collection.elements  # Get the list
 
@@ -2253,102 +2336,112 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             logger.info(f"Page {self.number}: No OCR elements found to correct.")
             return self
 
-        processed_count = 0
-        updated_count = 0
-        error_count = 0
+        element_pbar = None
+        try:
+            element_pbar = tqdm(total=len(target_elements), desc=f"Correcting OCR Page {self.number}", unit="element", leave=False)
 
-        # Define the task to be run by the worker thread or sequentially
-        def _process_element_task(element):
-            try:
-                current_text = getattr(element, "text", None)
-                # Call the user-provided callback
-                corrected_text = correction_callback(element)
+            processed_count = 0
+            updated_count = 0
+            error_count = 0
 
-                # Validate result type
-                if corrected_text is not None and not isinstance(corrected_text, str):
-                    logger.warning(
-                        f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update."
+            # Define the task to be run by the worker thread or sequentially
+            def _process_element_task(element):
+                try:
+                    current_text = getattr(element, "text", None)
+                    # Call the user-provided callback
+                    corrected_text = correction_callback(element)
+
+                    # Validate result type
+                    if corrected_text is not None and not isinstance(corrected_text, str):
+                        logger.warning(
+                            f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update."
+                        )
+                        return element, None, None  # Treat as no correction
+
+                    return element, corrected_text, None  # Return element, result, no error
+                except Exception as e:
+                    logger.error(
+                        f"Page {self.number}: Error applying correction callback to element '{getattr(element, 'text', '')[:30]}...' ({element.bbox}): {e}",
+                        exc_info=False,  # Keep log concise
                     )
-                    return element, None, None  # Treat as no correction
+                    return element, None, e  # Return element, no result, error
+                finally:
+                    # --- Update internal tqdm progress bar ---
+                    if element_pbar:
+                        element_pbar.update(1)
+                    # --- Call user's progress callback --- #
+                    if progress_callback:
+                        try:
+                            progress_callback()
+                        except Exception as cb_e:
+                            # Log error in callback itself, but don't stop processing
+                            logger.error(
+                                f"Page {self.number}: Error executing progress_callback: {cb_e}",
+                                exc_info=False,
+                            )
 
-                return element, corrected_text, None  # Return element, result, no error
-            except Exception as e:
-                logger.error(
-                    f"Page {self.number}: Error applying correction callback to element '{getattr(element, 'text', '')[:30]}...' ({element.bbox}): {e}",
-                    exc_info=False,  # Keep log concise
+            # Choose execution strategy based on max_workers
+            if max_workers is not None and max_workers > 1:
+                # --- Parallel execution --- #
+                logger.info(
+                    f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers."
                 )
-                return element, None, e  # Return element, no result, error
-            finally:
-                # --- Call progress callback here --- #
-                if progress_callback:
-                    try:
-                        progress_callback()
-                    except Exception as cb_e:
-                        # Log error in callback itself, but don't stop processing
-                        logger.error(
-                            f"Page {self.number}: Error executing progress_callback: {cb_e}",
-                            exc_info=False,
-                        )
+                futures = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # Submit all tasks
+                    future_to_element = {
+                        executor.submit(_process_element_task, element): element
+                        for element in target_elements
+                    }
 
-        # Choose execution strategy based on max_workers
-        if max_workers is not None and max_workers > 1:
-            # --- Parallel execution --- #
-            logger.info(
-                f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers."
-            )
-            futures = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # Submit all tasks
-                future_to_element = {
-                    executor.submit(_process_element_task, element): element
-                    for element in target_elements
-                }
-
-                # Process results as they complete (progress_callback called by worker)
-                for future in concurrent.futures.as_completed(future_to_element):
-                    processed_count += 1
-                    try:
-                        element, corrected_text, error = future.result()
-                        if error:
+                    # Process results as they complete (progress_callback called by worker)
+                    for future in concurrent.futures.as_completed(future_to_element):
+                        processed_count += 1
+                        try:
+                            element, corrected_text, error = future.result()
+                            if error:
+                                error_count += 1
+                                # Error already logged in worker
+                            elif corrected_text is not None:
+                                # Apply correction if text changed
+                                current_text = getattr(element, "text", None)
+                                if corrected_text != current_text:
+                                    element.text = corrected_text
+                                    updated_count += 1
+                        except Exception as exc:
+                            # Catch errors from future.result() itself
+                            element = future_to_element[future]  # Find original element
+                            logger.error(
+                                f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}",
+                                exc_info=True,
+                            )
                             error_count += 1
-                            # Error already logged in worker
-                        elif corrected_text is not None:
-                            # Apply correction if text changed
-                            current_text = getattr(element, "text", None)
-                            if corrected_text != current_text:
-                                element.text = corrected_text
-                                updated_count += 1
-                    except Exception as exc:
-                        # Catch errors from future.result() itself
-                        element = future_to_element[future]  # Find original element
-                        logger.error(
-                            f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}",
-                            exc_info=True,
-                        )
+                            # Note: progress_callback was already called in the worker's finally block
+
+            else:
+                # --- Sequential execution --- #
+                logger.info(f"Page {self.number}: Running OCR correction sequentially.")
+                for element in target_elements:
+                    # Call the task function directly (it handles progress_callback)
+                    processed_count += 1
+                    _element, corrected_text, error = _process_element_task(element)
+                    if error:
                         error_count += 1
-                        # Note: progress_callback was already called in the worker's finally block
+                    elif corrected_text is not None:
+                        # Apply correction if text changed
+                        current_text = getattr(_element, "text", None)
+                        if corrected_text != current_text:
+                            _element.text = corrected_text
+                            updated_count += 1
 
-        else:
-            # --- Sequential execution --- #
-            logger.info(f"Page {self.number}: Running OCR correction sequentially.")
-            for element in target_elements:
-                # Call the task function directly (it handles progress_callback)
-                processed_count += 1
-                _element, corrected_text, error = _process_element_task(element)
-                if error:
-                    error_count += 1
-                elif corrected_text is not None:
-                    # Apply correction if text changed
-                    current_text = getattr(_element, "text", None)
-                    if corrected_text != current_text:
-                        _element.text = corrected_text
-                        updated_count += 1
+            logger.info(
+                f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
+            )
 
-        logger.info(
-            f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
-        )
-
-        return self  # Return self for chaining
+            return self  # Return self for chaining
+        finally:
+            if element_pbar:
+                element_pbar.close()
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
