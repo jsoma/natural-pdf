@@ -2,134 +2,134 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://jsoma.github.io/natural-pdf/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/api/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/categorizing-documents/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/data-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/document-qa/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/element-selection/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/finetuning/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/installation/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/interactive-widget/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/layout-analysis/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/loops-and-groups/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/ocr/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/pdf-navigation/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/regions/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tables/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/text-analysis/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/text-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/01-loading-and-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/02-finding-elements/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/03-extracting-blocks/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/04-table-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/05-excluding-content/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/06-document-qa/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/07-layout-analysis/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/07-working-with-regions/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/08-spatial-navigation/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/09-section-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/10-form-field-extraction/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/11-enhanced-table-processing/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/12-ocr-integration/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/13-semantic-search/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/tutorials/14-categorizing-documents/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
     <url>
          <loc>https://jsoma.github.io/natural-pdf/visual-debugging/</loc>
-         <lastmod>2025-05-15</lastmod>
+         <lastmod>2025-06-05</lastmod>
     </url>
 </urlset>
