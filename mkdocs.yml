@@ -74,6 +74,7 @@ nav:
     - Loops and Groups: loops-and-groups/index.ipynb
     - Text Analysis: text-analysis/index.ipynb
     - Working with Regions: regions/index.ipynb
+    - Reflowing Pages: reflowing-pages/index.md
   - Advanced Features:
     - Visual Debugging: visual-debugging/index.ipynb
     - Interactive Widget: interactive-widget/index.ipynb
@@ -141,6 +142,7 @@ plugins:
         - text-analysis/index.md
         - text-extraction/index.md
         - loops-and-groups/index.md
+        - reflowing-pages/index.md
         - tutorials/01-loading-and-extraction.md
         - tutorials/02-finding-elements.md
         - tutorials/03-extracting-blocks.md
