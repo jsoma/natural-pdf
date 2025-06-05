@@ -1,4 +1,4 @@
-# Restructuring pages pages
+# Restructuring page content
 
 Flows are a way to restructure pages that are not in normal one-page reading order. This might be columnal data, tables than span pages, etc.
 
@@ -31,8 +31,6 @@ We can use Flows to stack the three columns on top of each other.
 
 ```python
 stacked = [left, mid, right]
-stacked[1].show()
-
 flow = Flow(segments=stacked, arrangement="vertical")
 ```
 
