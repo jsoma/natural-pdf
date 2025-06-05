@@ -52,7 +52,7 @@ region.show()
 
 While you can't easily extract tables yet, you can at least extract text!
 
-```pdf
+```python
 print(region.extract_text())
 ```
 

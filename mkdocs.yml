@@ -74,7 +74,7 @@ nav:
     - Loops and Groups: loops-and-groups/index.ipynb
     - Text Analysis: text-analysis/index.ipynb
     - Working with Regions: regions/index.ipynb
-    - Reflowing Pages: reflowing-pages/index.md
+    - Reflowing Pages: reflowing-pages/index.ipynb
   - Advanced Features:
     - Visual Debugging: visual-debugging/index.ipynb
     - Interactive Widget: interactive-widget/index.ipynb
