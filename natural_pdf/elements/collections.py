@@ -2072,7 +2072,7 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         end_elements=None,
         new_section_on_page_break=False,
         boundary_inclusion="both",
-    ) -> List["Region"]:
+    ) -> "ElementCollection[Region]":
         """
         Extract sections from a page collection based on start/end elements.
 
@@ -2365,7 +2365,7 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 region.start_element = start_element
                 sections.append(region)
 
-        return sections
+        return ElementCollection(sections)
 
     def _gather_analysis_data(
         self,

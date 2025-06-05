@@ -2027,7 +2027,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
     def get_sections(
         self, start_elements=None, end_elements=None, boundary_inclusion="both"
-    ) -> List["Region"]:
+    ) -> "ElementCollection[Region]":
         """
         Get sections within this region based on start/end elements.
 
@@ -2147,7 +2147,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             section = self.get_section_between(start_element, end_element, boundary_inclusion)
             sections.append(section)
 
-        return sections
+        return ElementCollection(sections)
 
     def create_cells(self):
         """

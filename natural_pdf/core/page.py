@@ -2073,7 +2073,6 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                 region.is_end_next_start = False
                 regions.append(region)
 
-        # Return the list wrapped in an ElementCollection
         return ElementCollection(regions)
 
     def __repr__(self) -> str:
