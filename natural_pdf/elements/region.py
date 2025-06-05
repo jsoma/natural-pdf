@@ -106,7 +106,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -118,7 +118,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             direction: 'left', 'right', 'above', or 'below'
             size: Size in the primary direction (width for horizontal, height for vertical)
             cross_size: Size in the cross direction ('full' or 'element')
-            include_element: Whether to include this region's area in the result
+            include_source: Whether to include this region's area in the result
             until: Optional selector string to specify a boundary element
             include_endpoint: Whether to include the boundary element found by 'until'
             **kwargs: Additional parameters for the 'until' selector search
@@ -132,7 +132,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         is_positive = direction in ("right", "below")  # right/below are positive directions
         pixel_offset = 1  # Offset for excluding elements/endpoints
 
-        # 1. Determine initial boundaries based on direction and include_element
+        # 1. Determine initial boundaries based on direction and include_source
         if is_horizontal:
             # Initial cross-boundaries (vertical)
             y0 = 0 if cross_size == "full" else self.top
@@ -140,11 +140,11 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
             # Initial primary boundaries (horizontal)
             if is_positive:  # right
-                x0_initial = self.x0 if include_element else self.x1 + pixel_offset
+                x0_initial = self.x0 if include_source else self.x1 + pixel_offset
                 x1_initial = self.x1  # This edge moves
             else:  # left
                 x0_initial = self.x0  # This edge moves
-                x1_initial = self.x1 if include_element else self.x0 - pixel_offset
+                x1_initial = self.x1 if include_source else self.x0 - pixel_offset
         else:  # Vertical
             # Initial cross-boundaries (horizontal)
             x0 = 0 if cross_size == "full" else self.x0
@@ -152,11 +152,11 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
             # Initial primary boundaries (vertical)
             if is_positive:  # below
-                y0_initial = self.top if include_element else self.bottom + pixel_offset
+                y0_initial = self.top if include_source else self.bottom + pixel_offset
                 y1_initial = self.bottom  # This edge moves
             else:  # above
                 y0_initial = self.top  # This edge moves
-                y1_initial = self.bottom if include_element else self.top - pixel_offset
+                y1_initial = self.bottom if include_source else self.top - pixel_offset
 
         # 2. Calculate the final primary boundary, considering 'size' or page limits
         if is_horizontal:
@@ -248,7 +248,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # 5. Create and return Region
         region = Region(self.page, final_bbox)
         region.source_element = self
-        region.includes_source = include_element
+        region.includes_source = include_source
         # Optionally store the boundary element if found
         if target:
             region.boundary_element = target
@@ -259,7 +259,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         height: Optional[float] = None,
         width: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -270,7 +270,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Args:
             height: Height of the region above, in points
             width: Width mode - "full" for full page width or "element" for element width
-            include_element: Whether to include this region in the result (default: False)
+            include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -282,7 +282,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             direction="above",
             size=height,
             cross_size=width,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -292,7 +292,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         height: Optional[float] = None,
         width: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -303,7 +303,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Args:
             height: Height of the region below, in points
             width: Width mode - "full" for full page width or "element" for element width
-            include_element: Whether to include this region in the result (default: False)
+            include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -315,7 +315,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             direction="below",
             size=height,
             cross_size=width,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -325,7 +325,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         width: Optional[float] = None,
         height: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -336,7 +336,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Args:
             width: Width of the region to the left, in points
             height: Height mode - "full" for full page height or "element" for element height
-            include_element: Whether to include this region in the result (default: False)
+            include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -348,7 +348,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             direction="left",
             size=width,
             cross_size=height,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -358,7 +358,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         width: Optional[float] = None,
         height: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -369,7 +369,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Args:
             width: Width of the region to the right, in points
             height: Height mode - "full" for full page height or "element" for element height
-            include_element: Whether to include this region in the result (default: False)
+            include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -381,7 +381,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             direction="right",
             size=width,
             cross_size=height,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -1274,7 +1274,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             if hasattr(self, "model") and self.model == "tatr" and self.region_type == "table":
                 effective_method = "tatr"
             else:
-                effective_method = "text"
+                effective_method = "plumber"
 
         logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
 
@@ -1297,6 +1297,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
     def _extract_table_plumber(self, table_settings: dict) -> List[List[str]]:
         """
         Extract table using pdfplumber's table extraction.
+        This method extracts the largest table within the region.
 
         Args:
             table_settings: Settings for pdfplumber table extraction
@@ -1307,12 +1308,12 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Create a crop of the page for this region
         cropped = self.page._page.crop(self.bbox)
 
-        # Extract table from the cropped area
-        tables = cropped.extract_tables(table_settings)
+        # Extract the single largest table from the cropped area
+        table = cropped.extract_table(table_settings)
 
-        # Return the first table or an empty list if none found
-        if tables:
-            return tables[0]
+        # Return the table or an empty list if none found
+        if table:
+            return table
         return []
 
     def _extract_table_tatr(self, use_ocr=False, ocr_config=None) -> List[List[str]]:

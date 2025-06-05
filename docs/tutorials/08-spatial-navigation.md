@@ -46,7 +46,7 @@ date_label = page.find('text:contains("Date:")')
 
 # Get the region between these labels
 between_region = site_label.below(
-    include_element=True,     # Include starting element
+    include_source=True,     # Include starting element
     until='text:contains("Date:")',  # Stop at this element
     include_endpoint=False    # Don't include ending element
 )

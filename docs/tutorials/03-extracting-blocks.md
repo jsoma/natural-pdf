@@ -22,7 +22,7 @@ start_marker = page.find('text:contains("Summary:")')
 # Select elements below the start_marker, stopping *before*
 # the thick horizontal line (a line with height > 1).
 summary_elements = start_marker.below(
-    include_element=True, # Include the "Summary:" text itself
+    include_source=True, # Include the "Summary:" text itself
     until="line[height > 1]"
 )
 

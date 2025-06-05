@@ -59,7 +59,7 @@ class DirectionalMixin:
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -71,7 +71,7 @@ class DirectionalMixin:
             direction: 'left', 'right', 'above', or 'below'
             size: Size in the primary direction (width for horizontal, height for vertical)
             cross_size: Size in the cross direction ('full' or 'element')
-            include_element: Whether to include this element/region's area in the result
+            include_source: Whether to include this element/region's area in the result
             until: Optional selector string to specify a boundary element
             include_endpoint: Whether to include the boundary element found by 'until'
             **kwargs: Additional parameters for the 'until' selector search
@@ -85,7 +85,7 @@ class DirectionalMixin:
         is_positive = direction in ("right", "below")  # right/below are positive directions
         pixel_offset = 1  # Offset for excluding elements/endpoints
 
-        # 1. Determine initial boundaries based on direction and include_element
+        # 1. Determine initial boundaries based on direction and include_source
         if is_horizontal:
             # Initial cross-boundaries (vertical)
             y0 = 0 if cross_size == "full" else self.top
@@ -93,11 +93,11 @@ class DirectionalMixin:
 
             # Initial primary boundaries (horizontal)
             if is_positive:  # right
-                x0_initial = self.x0 if include_element else self.x1 + pixel_offset
+                x0_initial = self.x0 if include_source else self.x1 + pixel_offset
                 x1_initial = self.x1  # This edge moves
             else:  # left
                 x0_initial = self.x0  # This edge moves
-                x1_initial = self.x1 if include_element else self.x0 - pixel_offset
+                x1_initial = self.x1 if include_source else self.x0 - pixel_offset
         else:  # Vertical
             # Initial cross-boundaries (horizontal)
             x0 = 0 if cross_size == "full" else self.x0
@@ -105,11 +105,11 @@ class DirectionalMixin:
 
             # Initial primary boundaries (vertical)
             if is_positive:  # below
-                y0_initial = self.top if include_element else self.bottom + pixel_offset
+                y0_initial = self.top if include_source else self.bottom + pixel_offset
                 y1_initial = self.bottom  # This edge moves
             else:  # above
                 y0_initial = self.top  # This edge moves
-                y1_initial = self.bottom if include_element else self.top - pixel_offset
+                y1_initial = self.bottom if include_source else self.top - pixel_offset
 
         # 2. Calculate the final primary boundary, considering 'size' or page limits
         if is_horizontal:
@@ -195,7 +195,7 @@ class DirectionalMixin:
 
         result = Region(self.page, final_bbox)
         result.source_element = self
-        result.includes_source = include_element
+        result.includes_source = include_source
         # Optionally store the boundary element if found
         if target:
             result.boundary_element = target
@@ -206,7 +206,7 @@ class DirectionalMixin:
         self,
         height: Optional[float] = None,
         width: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -217,7 +217,7 @@ class DirectionalMixin:
         Args:
             height: Height of the region above, in points
             width: Width mode - "full" for full page width or "element" for element width
-            include_element: Whether to include this element/region in the result (default: False)
+            include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -229,7 +229,7 @@ class DirectionalMixin:
             direction="above",
             size=height,
             cross_size=width,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -239,7 +239,7 @@ class DirectionalMixin:
         self,
         height: Optional[float] = None,
         width: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -250,7 +250,7 @@ class DirectionalMixin:
         Args:
             height: Height of the region below, in points
             width: Width mode - "full" for full page width or "element" for element width
-            include_element: Whether to include this element/region in the result (default: False)
+            include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -262,7 +262,7 @@ class DirectionalMixin:
             direction="below",
             size=height,
             cross_size=width,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -272,7 +272,7 @@ class DirectionalMixin:
         self,
         width: Optional[float] = None,
         height: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -283,7 +283,7 @@ class DirectionalMixin:
         Args:
             width: Width of the region to the left, in points
             height: Height mode - "full" for full page height or "element" for element height
-            include_element: Whether to include this element/region in the result (default: False)
+            include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -295,7 +295,7 @@ class DirectionalMixin:
             direction="left",
             size=width,
             cross_size=height,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,
@@ -305,7 +305,7 @@ class DirectionalMixin:
         self,
         width: Optional[float] = None,
         height: str = "full",
-        include_element: bool = False,
+        include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
         **kwargs,
@@ -316,7 +316,7 @@ class DirectionalMixin:
         Args:
             width: Width of the region to the right, in points
             height: Height mode - "full" for full page height or "element" for element height
-            include_element: Whether to include this element/region in the result (default: False)
+            include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             **kwargs: Additional parameters
@@ -328,7 +328,7 @@ class DirectionalMixin:
             direction="right",
             size=width,
             cross_size=height,
-            include_element=include_element,
+            include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
             **kwargs,

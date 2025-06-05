@@ -175,7 +175,7 @@ class FlowElement:
             if current_segment_idx == start_segment_index:
                 op_source = self.physical_object 
                 op_direction_params["size"] = remaining_size if size is not None else None
-                op_direction_params["include_element"] = False 
+                op_direction_params["include_source"] = False 
 
                 source_for_op_call = op_source
                 if not isinstance(source_for_op_call, PhysicalRegion_Class):
@@ -191,7 +191,7 @@ class FlowElement:
                     "size": remaining_size if size is not None else None,
                     "cross_size": cross_size_for_op,
                     "cross_alignment": cross_alignment, # Pass alignment
-                    "include_element": False,
+                    "include_source": False,
                     # Pass other relevant kwargs if Region._direction uses them (e.g. strict_type)
                     **{k: v for k, v in kwargs.items() if k in ['strict_type', 'first_match_only']} 
                 }

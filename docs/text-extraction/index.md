@@ -99,14 +99,14 @@ page.find_all('text[fontname="Helvetica"][size=10]')
 ```python
 # Region below an element (e.g., below "Introduction")
 # Adjust selector as needed
-page.find('text:contains("Summary")').below(include_element=True).show()
+page.find('text:contains("Summary")').below(include_source=True).show()
 ```
 
 ```python
 (
     page
     .find('text:contains("Summary")')
-    .below(include_element=True)
+    .below(include_source=True)
     .extract_text()
     [:500]
 )
@@ -116,7 +116,7 @@ page.find('text:contains("Summary")').below(include_element=True).show()
 (
     page
     .find('text:contains("Summary")')
-    .below(include_element=True, until='line:horizontal')
+    .below(include_source=True, until='line:horizontal')
     .show()
 )
 ```

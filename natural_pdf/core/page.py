@@ -2198,7 +2198,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
     def viewer(
         self,
         # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
-        # include_element_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
+        # include_source_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
     ) -> Optional["SimpleInteractiveViewerWidget"]:  # Return type hint updated
         """
         Creates and returns an interactive ipywidget for exploring elements on this page.
