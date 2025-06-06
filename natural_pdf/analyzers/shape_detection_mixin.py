@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, binary_opening, binary_closing
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Constants for default values of less commonly adjusted line detection parameters
 LINE_DETECTION_PARAM_DEFAULTS = {
-    "binarization_method": "otsu",
+    "binarization_method": "adaptive",
     "adaptive_thresh_block_size": 21,
     "adaptive_thresh_C_val": 5,
     "morph_op_h": "none",
@@ -110,7 +110,593 @@ class ShapeDetectionMixin:
         return cv_image, scale_factor, origin_offset_pdf, page_obj
 
 
-    def _process_image_for_lines(
+
+
+    def _convert_line_to_element_data(
+        self, line_data_img: Dict, scale_factor: float, origin_offset_pdf: Tuple[float, float], page_obj: 'Page', source_label: str
+    ) -> Dict:
+        """Converts line data from image coordinates to PDF element data."""
+        # Ensure scale_factor is not zero to prevent division by zero or incorrect scaling
+        if scale_factor == 0:
+            logger.warning("Scale factor is zero, cannot convert line coordinates correctly.")
+            # Return something or raise error, for now, try to proceed with unscaled if possible (won't be right)
+            # This situation ideally shouldn't happen if _get_image_for_detection is robust.
+            effective_scale = 1.0 
+        else:
+            effective_scale = scale_factor
+
+        x0 = origin_offset_pdf[0] + line_data_img['x1'] * effective_scale
+        top = origin_offset_pdf[1] + line_data_img['y1'] * effective_scale
+        x1 = origin_offset_pdf[0] + line_data_img['x2'] * effective_scale
+        bottom = origin_offset_pdf[1] + line_data_img['y2'] * effective_scale # y2 is the second y-coord
+        
+        # For lines, width attribute in PDF points
+        line_width_pdf = line_data_img['width'] * effective_scale
+
+        # initial_doctop might not be loaded if page object is minimal
+        initial_doctop = getattr(page_obj._page, 'initial_doctop', 0) if hasattr(page_obj, '_page') else 0
+
+        return {
+            "x0": x0, "top": top, "x1": x1, "bottom": bottom, # bottom here is y2_pdf
+            "width": abs(x1 - x0), # This is bounding box width
+            "height": abs(bottom - top), # This is bounding box height
+            "linewidth": line_width_pdf, # Actual stroke width of the line
+            "object_type": "line",
+            "page_number": page_obj.page_number,
+            "doctop": top + initial_doctop,
+            "source": source_label,
+            "stroking_color": (0,0,0), # Default, can be enhanced
+            "non_stroking_color": (0,0,0), # Default
+            # Add other raw data if useful
+            "raw_line_thickness_px": line_data_img.get('line_thickness_px'), # Renamed from raw_nfa_score
+            "raw_line_position_px": line_data_img.get('line_position_px'),   # Added for clarity
+        }
+
+    def _find_lines_on_image_data(
+        self,
+        cv_image: np.ndarray,
+        pil_image_rgb: Image.Image, # For original dimensions
+        horizontal: bool = True,
+        vertical: bool = True,
+        peak_threshold_h: float = 0.5,
+        min_gap_h: int = 5,
+        peak_threshold_v: float = 0.5,
+        min_gap_v: int = 5,
+        max_lines_h: Optional[int] = None,
+        max_lines_v: Optional[int] = None,
+        binarization_method: str = LINE_DETECTION_PARAM_DEFAULTS["binarization_method"],
+        adaptive_thresh_block_size: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_block_size"],
+        adaptive_thresh_C_val: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_C_val"],
+        morph_op_h: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_h"],
+        morph_kernel_h: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_h"],
+        morph_op_v: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_v"],
+        morph_kernel_v: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_v"],
+        smoothing_sigma_h: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_h"],
+        smoothing_sigma_v: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_v"],
+        peak_width_rel_height: float = LINE_DETECTION_PARAM_DEFAULTS["peak_width_rel_height"],
+    ) -> Tuple[List[Dict], Optional[np.ndarray], Optional[np.ndarray]]:
+        """
+        Core image processing logic to detect lines using projection profiling.
+        Returns raw line data (image coordinates) and smoothed profiles.
+        """
+        if cv_image is None:
+            return [], None, None
+
+        # Convert RGB to grayscale using numpy (faster than PIL)
+        # Using standard luminance weights: 0.299*R + 0.587*G + 0.114*B
+        if len(cv_image.shape) == 3:
+            gray_image = np.dot(cv_image[...,:3], [0.299, 0.587, 0.114]).astype(np.uint8)
+        else:
+            gray_image = cv_image  # Already grayscale
+        
+        img_height, img_width = gray_image.shape
+        logger.debug(f"Line detection - Image dimensions: {img_width}x{img_height}")
+
+        def otsu_threshold(image):
+            """Simple Otsu's thresholding implementation using numpy."""
+            # Calculate histogram
+            hist, _ = np.histogram(image.flatten(), bins=256, range=(0, 256))
+            hist = hist.astype(float)
+            
+            # Calculate probabilities
+            total_pixels = image.size
+            current_max = 0
+            threshold = 0
+            sum_total = np.sum(np.arange(256) * hist)
+            sum_background = 0
+            weight_background = 0
+            
+            for i in range(256):
+                weight_background += hist[i]
+                if weight_background == 0:
+                    continue
+                    
+                weight_foreground = total_pixels - weight_background
+                if weight_foreground == 0:
+                    break
+                    
+                sum_background += i * hist[i]
+                mean_background = sum_background / weight_background
+                mean_foreground = (sum_total - sum_background) / weight_foreground
+                
+                # Calculate between-class variance
+                variance_between = weight_background * weight_foreground * (mean_background - mean_foreground) ** 2
+                
+                if variance_between > current_max:
+                    current_max = variance_between
+                    threshold = i
+                    
+            return threshold
+
+        def adaptive_threshold(image, block_size, C):
+            """Simple adaptive thresholding implementation."""
+            # Use scipy for gaussian filtering
+            from scipy.ndimage import gaussian_filter
+            
+            # Calculate local means using gaussian filter
+            sigma = block_size / 6.0  # Approximate relationship
+            local_mean = gaussian_filter(image.astype(float), sigma=sigma)
+            
+            # Apply threshold
+            binary = (image > (local_mean - C)).astype(np.uint8) * 255
+            return 255 - binary  # Invert to match binary inverse thresholding
+
+        if binarization_method == "adaptive":
+            binarized_image = adaptive_threshold(gray_image, adaptive_thresh_block_size, adaptive_thresh_C_val)
+        elif binarization_method == "otsu":
+            otsu_thresh_val = otsu_threshold(gray_image)
+            binarized_image = (gray_image <= otsu_thresh_val).astype(np.uint8) * 255  # Inverted binary
+            logger.debug(f"Otsu's threshold applied. Value: {otsu_thresh_val}")
+        else:
+            logger.error(f"Invalid binarization_method: {binarization_method}. Supported: 'otsu', 'adaptive'. Defaulting to 'otsu'.")
+            otsu_thresh_val = otsu_threshold(gray_image)
+            binarized_image = (gray_image <= otsu_thresh_val).astype(np.uint8) * 255  # Inverted binary
+        
+        binarized_norm = binarized_image.astype(float) / 255.0
+        
+        detected_lines_data = []
+        profile_h_smoothed_for_viz: Optional[np.ndarray] = None
+        profile_v_smoothed_for_viz: Optional[np.ndarray] = None
+
+        def get_lines_from_profile(
+            profile_data: np.ndarray,
+            max_dimension_for_ratio: int,
+            params_key_suffix: str,
+            is_horizontal_detection: bool
+        ) -> Tuple[List[Dict], np.ndarray]: # Ensure it always returns profile_smoothed
+            lines_info = []
+            sigma = smoothing_sigma_h if is_horizontal_detection else smoothing_sigma_v
+            profile_smoothed = gaussian_filter1d(profile_data.astype(float), sigma=sigma)
+
+            peak_threshold = peak_threshold_h if is_horizontal_detection else peak_threshold_v
+            min_gap = min_gap_h if is_horizontal_detection else min_gap_v
+            max_lines = max_lines_h if is_horizontal_detection else max_lines_v
+            
+            current_peak_height_threshold = peak_threshold * max_dimension_for_ratio
+            find_peaks_distance = min_gap
+
+            if max_lines is not None:
+                current_peak_height_threshold = 1.0 
+                find_peaks_distance = 1    
+            
+            candidate_peaks_indices, candidate_properties = find_peaks(
+                profile_smoothed, height=current_peak_height_threshold, distance=find_peaks_distance,
+                width=1, prominence=1, rel_height=peak_width_rel_height
+            )
+            
+            final_peaks_indices = candidate_peaks_indices
+            final_properties = candidate_properties
+
+            if max_lines is not None:
+                if len(candidate_peaks_indices) > 0 and 'prominences' in candidate_properties:
+                    prominences = candidate_properties["prominences"]
+                    sorted_candidate_indices_by_prominence = np.argsort(prominences)[::-1]
+                    selected_peaks_original_indices = [] 
+                    suppressed_profile_indices = np.zeros(len(profile_smoothed), dtype=bool)
+                    num_selected = 0
+                    for original_idx_in_candidate_list in sorted_candidate_indices_by_prominence:
+                        actual_profile_idx = candidate_peaks_indices[original_idx_in_candidate_list]
+                        if not suppressed_profile_indices[actual_profile_idx]:
+                            selected_peaks_original_indices.append(original_idx_in_candidate_list)
+                            num_selected += 1
+                            lower_bound = max(0, actual_profile_idx - min_gap)
+                            upper_bound = min(len(profile_smoothed), actual_profile_idx + min_gap + 1)
+                            suppressed_profile_indices[lower_bound:upper_bound] = True
+                            if num_selected >= max_lines: break
+                    final_peaks_indices = candidate_peaks_indices[selected_peaks_original_indices]
+                    final_properties = {key: val_array[selected_peaks_original_indices] for key, val_array in candidate_properties.items()}
+                    logger.debug(f"Selected {len(final_peaks_indices)} {params_key_suffix.upper()}-lines for max_lines={max_lines}.")
+                else:
+                    final_peaks_indices = np.array([])
+                    final_properties = {}
+                    logger.debug(f"No {params_key_suffix.upper()}-peaks for max_lines selection.")
+            elif not final_peaks_indices.size:
+                 final_properties = {}
+                 logger.debug(f"No {params_key_suffix.upper()}-lines found using threshold.")
+            else:
+                 logger.debug(f"Found {len(final_peaks_indices)} {params_key_suffix.upper()}-lines using threshold.")
+
+            if final_peaks_indices.size > 0:
+                sort_order = np.argsort(final_peaks_indices)
+                final_peaks_indices = final_peaks_indices[sort_order]
+                for key in final_properties: final_properties[key] = final_properties[key][sort_order]
+
+            for i, peak_idx in enumerate(final_peaks_indices):
+                center_coord = int(peak_idx)
+                profile_thickness = final_properties.get("widths", [])[i] if "widths" in final_properties and i < len(final_properties["widths"]) else 1.0
+                profile_thickness = max(1, int(round(profile_thickness)))
+                
+                current_img_width = pil_image_rgb.width # Use actual passed image dimensions
+                current_img_height = pil_image_rgb.height
+
+                if is_horizontal_detection: 
+                    lines_info.append({
+                        'x1': 0, 'y1': center_coord, 
+                        'x2': current_img_width -1, 'y2': center_coord,
+                        'width': profile_thickness, 
+                        'length': current_img_width,
+                        'line_thickness_px': profile_thickness,
+                        'line_position_px': center_coord
+                    })
+                else: 
+                    lines_info.append({
+                        'x1': center_coord, 'y1': 0,
+                        'x2': center_coord, 'y2': current_img_height -1,
+                        'width': profile_thickness, 
+                        'length': current_img_height,
+                        'line_thickness_px': profile_thickness,
+                        'line_position_px': center_coord
+                    })
+            return lines_info, profile_smoothed
+
+        def apply_morphology(image, operation, kernel_size):
+            """Apply morphological operations using scipy.ndimage."""
+            if operation == "none":
+                return image
+            
+            # Create rectangular structuring element
+            # kernel_size is (width, height) = (cols, rows)
+            cols, rows = kernel_size
+            structure = np.ones((rows, cols))  # Note: numpy uses (rows, cols) order
+            
+            # Convert to binary for morphological operations
+            binary_img = (image > 0.5).astype(bool)
+            
+            if operation == "open":
+                result = binary_opening(binary_img, structure=structure)
+            elif operation == "close":
+                result = binary_closing(binary_img, structure=structure)
+            else:
+                logger.warning(f"Unknown morphological operation: {operation}. Supported: 'open', 'close', 'none'.")
+                result = binary_img
+            
+            # Convert back to float
+            return result.astype(float)
+
+        if horizontal:
+            processed_image_h = binarized_norm.copy()
+            if morph_op_h != "none":
+                processed_image_h = apply_morphology(processed_image_h, morph_op_h, morph_kernel_h)
+            profile_h_raw = np.sum(processed_image_h, axis=1)
+            horizontal_lines, smoothed_h = get_lines_from_profile(profile_h_raw, pil_image_rgb.width, 'h', True)
+            profile_h_smoothed_for_viz = smoothed_h
+            detected_lines_data.extend(horizontal_lines)
+            logger.info(f"Detected {len(horizontal_lines)} horizontal lines.")
+
+        if vertical:
+            processed_image_v = binarized_norm.copy()
+            if morph_op_v != "none":
+                processed_image_v = apply_morphology(processed_image_v, morph_op_v, morph_kernel_v)
+            profile_v_raw = np.sum(processed_image_v, axis=0)
+            vertical_lines, smoothed_v = get_lines_from_profile(profile_v_raw, pil_image_rgb.height, 'v', False)
+            profile_v_smoothed_for_viz = smoothed_v
+            detected_lines_data.extend(vertical_lines)
+            logger.info(f"Detected {len(vertical_lines)} vertical lines.")
+            
+        return detected_lines_data, profile_h_smoothed_for_viz, profile_v_smoothed_for_viz
+
+    def detect_lines(
+        self,
+        resolution: int = 192,
+        source_label: str = "detected",
+        method: str = "projection",
+        horizontal: bool = True,
+        vertical: bool = True,
+        peak_threshold_h: float = 0.5,
+        min_gap_h: int = 5,
+        peak_threshold_v: float = 0.5,
+        min_gap_v: int = 5,
+        max_lines_h: Optional[int] = None,
+        max_lines_v: Optional[int] = None,
+        replace: bool = True,
+        binarization_method: str = LINE_DETECTION_PARAM_DEFAULTS["binarization_method"],
+        adaptive_thresh_block_size: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_block_size"],
+        adaptive_thresh_C_val: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_C_val"],
+        morph_op_h: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_h"],
+        morph_kernel_h: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_h"],
+        morph_op_v: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_v"],
+        morph_kernel_v: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_v"],
+        smoothing_sigma_h: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_h"],
+        smoothing_sigma_v: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_v"],
+        peak_width_rel_height: float = LINE_DETECTION_PARAM_DEFAULTS["peak_width_rel_height"],
+        # LSD-specific parameters
+        off_angle: int = 5,
+        min_line_length: int = 30,
+        merge_angle_tolerance: int = 5,
+        merge_distance_tolerance: int = 3,
+        merge_endpoint_tolerance: int = 10,
+        initial_min_line_length: int = 10,
+        min_nfa_score_horizontal: float = -10.0,
+        min_nfa_score_vertical: float = -10.0,
+    ) -> "ShapeDetectionMixin": # Return type changed back to self
+        """
+        Detects lines on the Page or Region, or on all pages within a Collection.
+        Adds detected lines as LineElement objects to the ElementManager.
+
+        Args:
+            resolution: DPI for image rendering before detection.
+            source_label: Label assigned to the 'source' attribute of created LineElements.
+            method: Detection method - "projection" (default, no cv2 required) or "lsd" (requires opencv-python).
+            horizontal: If True, detect horizontal lines.
+            vertical: If True, detect vertical lines.
+            
+            # Projection profiling parameters:
+            peak_threshold_h: Threshold for peak detection in horizontal profile (ratio of image width).
+            min_gap_h: Minimum gap between horizontal lines (pixels).
+            peak_threshold_v: Threshold for peak detection in vertical profile (ratio of image height).
+            min_gap_v: Minimum gap between vertical lines (pixels).
+            max_lines_h: If set, limits the number of horizontal lines to the top N by prominence.
+            max_lines_v: If set, limits the number of vertical lines to the top N by prominence.
+            replace: If True, remove existing detected lines with the same source_label.
+            binarization_method: "adaptive" or "otsu".
+            adaptive_thresh_block_size: Block size for adaptive thresholding (if method is "adaptive").
+            adaptive_thresh_C_val: Constant subtracted from the mean for adaptive thresholding (if method is "adaptive").
+            morph_op_h: Morphological operation for horizontal lines ("open", "close", "none").
+            morph_kernel_h: Kernel tuple (cols, rows) for horizontal morphology. Example: (1, 2).
+            morph_op_v: Morphological operation for vertical lines ("open", "close", "none").
+            morph_kernel_v: Kernel tuple (cols, rows) for vertical morphology. Example: (2, 1).
+            smoothing_sigma_h: Gaussian smoothing sigma for horizontal profile.
+            smoothing_sigma_v: Gaussian smoothing sigma for vertical profile.
+            peak_width_rel_height: Relative height for `scipy.find_peaks` 'width' parameter.
+            
+            # LSD-specific parameters (only used when method="lsd"):
+            off_angle: Maximum angle deviation from horizontal/vertical for line classification.
+            min_line_length: Minimum length for final detected lines.
+            merge_angle_tolerance: Maximum angle difference for merging parallel lines.
+            merge_distance_tolerance: Maximum perpendicular distance for merging lines.
+            merge_endpoint_tolerance: Maximum gap at endpoints for merging lines.
+            initial_min_line_length: Initial minimum length filter before merging.
+            min_nfa_score_horizontal: Minimum NFA score for horizontal lines.
+            min_nfa_score_vertical: Minimum NFA score for vertical lines.
+
+        Returns:
+            Self for method chaining.
+            
+        Raises:
+            ImportError: If method="lsd" but opencv-python is not installed.
+            ValueError: If method is not "projection" or "lsd".
+        """
+        if not horizontal and not vertical:
+            logger.info("Line detection skipped as both horizontal and vertical are False.")
+            return self
+        
+        # Validate method parameter
+        if method not in ["projection", "lsd"]:
+            raise ValueError(f"Invalid method '{method}'. Supported methods: 'projection', 'lsd'")
+            
+        collection_params = {
+            "resolution": resolution, "source_label": source_label, "method": method,
+            "horizontal": horizontal, "vertical": vertical,
+            "peak_threshold_h": peak_threshold_h, "min_gap_h": min_gap_h,
+            "peak_threshold_v": peak_threshold_v, "min_gap_v": min_gap_v,
+            "max_lines_h": max_lines_h, "max_lines_v": max_lines_v,
+            "replace": replace,
+            "binarization_method": binarization_method,
+            "adaptive_thresh_block_size": adaptive_thresh_block_size,
+            "adaptive_thresh_C_val": adaptive_thresh_C_val,
+            "morph_op_h": morph_op_h, "morph_kernel_h": morph_kernel_h,
+            "morph_op_v": morph_op_v, "morph_kernel_v": morph_kernel_v,
+            "smoothing_sigma_h": smoothing_sigma_h, "smoothing_sigma_v": smoothing_sigma_v,
+            "peak_width_rel_height": peak_width_rel_height,
+            # LSD parameters
+            "off_angle": off_angle, "min_line_length": min_line_length,
+            "merge_angle_tolerance": merge_angle_tolerance, "merge_distance_tolerance": merge_distance_tolerance,
+            "merge_endpoint_tolerance": merge_endpoint_tolerance, "initial_min_line_length": initial_min_line_length,
+            "min_nfa_score_horizontal": min_nfa_score_horizontal, "min_nfa_score_vertical": min_nfa_score_vertical,
+        }
+
+        if hasattr(self, 'pdfs'):
+            for pdf_doc in self.pdfs:
+                for page_obj in pdf_doc.pages:
+                    page_obj.detect_lines(**collection_params)
+            return self
+        elif hasattr(self, 'pages') and not hasattr(self, '_page'):
+            for page_obj in self.pages:
+                page_obj.detect_lines(**collection_params)
+            return self
+
+        # Dispatch to appropriate detection method
+        if method == "projection":
+            return self._detect_lines_projection(
+                resolution=resolution, source_label=source_label, horizontal=horizontal, vertical=vertical,
+                peak_threshold_h=peak_threshold_h, min_gap_h=min_gap_h, peak_threshold_v=peak_threshold_v, min_gap_v=min_gap_v,
+                max_lines_h=max_lines_h, max_lines_v=max_lines_v, replace=replace,
+                binarization_method=binarization_method, adaptive_thresh_block_size=adaptive_thresh_block_size,
+                adaptive_thresh_C_val=adaptive_thresh_C_val, morph_op_h=morph_op_h, morph_kernel_h=morph_kernel_h,
+                morph_op_v=morph_op_v, morph_kernel_v=morph_kernel_v, smoothing_sigma_h=smoothing_sigma_h, 
+                smoothing_sigma_v=smoothing_sigma_v, peak_width_rel_height=peak_width_rel_height
+            )
+        elif method == "lsd":
+            return self._detect_lines_lsd(
+                resolution=resolution, source_label=source_label, horizontal=horizontal, vertical=vertical,
+                off_angle=off_angle, min_line_length=min_line_length, merge_angle_tolerance=merge_angle_tolerance,
+                merge_distance_tolerance=merge_distance_tolerance, merge_endpoint_tolerance=merge_endpoint_tolerance,
+                initial_min_line_length=initial_min_line_length, min_nfa_score_horizontal=min_nfa_score_horizontal,
+                min_nfa_score_vertical=min_nfa_score_vertical, replace=replace
+            )
+        else:
+                         # This should never happen due to validation above, but just in case
+             raise ValueError(f"Unsupported method: {method}")
+
+    def _detect_lines_projection(
+        self,
+        resolution: int,
+        source_label: str,
+        horizontal: bool,
+        vertical: bool,
+        peak_threshold_h: float,
+        min_gap_h: int,
+        peak_threshold_v: float,
+        min_gap_v: int,
+        max_lines_h: Optional[int],
+        max_lines_v: Optional[int],
+        replace: bool,
+        binarization_method: str,
+        adaptive_thresh_block_size: int,
+        adaptive_thresh_C_val: int,
+        morph_op_h: str,
+        morph_kernel_h: Tuple[int, int],
+        morph_op_v: str,
+        morph_kernel_v: Tuple[int, int],
+        smoothing_sigma_h: float,
+        smoothing_sigma_v: float,
+        peak_width_rel_height: float,
+    ) -> "ShapeDetectionMixin":
+        """Internal method for projection profiling line detection."""
+        cv_image, scale_factor, origin_offset_pdf, page_object_ctx = self._get_image_for_detection(resolution)
+        if cv_image is None or page_object_ctx is None:
+            logger.warning(f"Skipping line detection for {self} due to image error.")
+            return self
+        
+        pil_image_for_dims = None
+        if hasattr(self, 'to_image') and hasattr(self, 'width') and hasattr(self, 'height'):
+            if hasattr(self, 'x0') and hasattr(self, 'top') and hasattr(self, '_page'):
+                pil_image_for_dims = self.to_image(resolution=resolution, crop_only=True, include_highlights=False)
+            else:
+                pil_image_for_dims = self.to_image(resolution=resolution, include_highlights=False)
+        if pil_image_for_dims is None:
+            logger.warning(f"Could not re-render PIL image for dimensions for {self}.")
+            pil_image_for_dims = Image.fromarray(cv_image) # Ensure it's not None
+
+        if pil_image_for_dims.mode != "RGB":
+            pil_image_for_dims = pil_image_for_dims.convert("RGB")
+
+        if replace:
+            from natural_pdf.elements.line import LineElement
+            element_manager = page_object_ctx._element_mgr
+            if hasattr(element_manager, '_elements') and 'lines' in element_manager._elements:
+                original_count = len(element_manager._elements['lines'])
+                element_manager._elements['lines'] = [
+                    line for line in element_manager._elements['lines']
+                    if getattr(line, 'source', None) != source_label
+                ]
+                removed_count = original_count - len(element_manager._elements['lines'])
+                if removed_count > 0:
+                    logger.info(f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}")
+
+        lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
+            cv_image=cv_image,
+            pil_image_rgb=pil_image_for_dims,
+            horizontal=horizontal,
+            vertical=vertical,
+            peak_threshold_h=peak_threshold_h,
+            min_gap_h=min_gap_h,
+            peak_threshold_v=peak_threshold_v,
+            min_gap_v=min_gap_v,
+            max_lines_h=max_lines_h,
+            max_lines_v=max_lines_v,
+            binarization_method=binarization_method,
+            adaptive_thresh_block_size=adaptive_thresh_block_size,
+            adaptive_thresh_C_val=adaptive_thresh_C_val,
+            morph_op_h=morph_op_h, morph_kernel_h=morph_kernel_h,
+            morph_op_v=morph_op_v, morph_kernel_v=morph_kernel_v,
+            smoothing_sigma_h=smoothing_sigma_h, smoothing_sigma_v=smoothing_sigma_v,
+            peak_width_rel_height=peak_width_rel_height,
+        )
+
+        from natural_pdf.elements.line import LineElement
+        element_manager = page_object_ctx._element_mgr
+
+        for line_data_item_img in lines_data_img:
+            element_constructor_data = self._convert_line_to_element_data(
+                line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
+            )
+            try:
+                line_element = LineElement(element_constructor_data, page_object_ctx)
+                element_manager.add_element(line_element, element_type="lines")
+            except Exception as e:
+                logger.error(f"Failed to create or add LineElement: {e}. Data: {element_constructor_data}", exc_info=True)
+        
+        logger.info(f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using projection profiling.")
+        return self
+
+    def _detect_lines_lsd(
+        self,
+        resolution: int,
+        source_label: str,
+        horizontal: bool,
+        vertical: bool,
+        off_angle: int,
+        min_line_length: int,
+        merge_angle_tolerance: int,
+        merge_distance_tolerance: int,
+        merge_endpoint_tolerance: int,
+        initial_min_line_length: int,
+        min_nfa_score_horizontal: float,
+        min_nfa_score_vertical: float,
+        replace: bool,
+    ) -> "ShapeDetectionMixin":
+        """Internal method for LSD line detection."""
+        try:
+            import cv2
+        except ImportError:
+            raise ImportError(
+                "OpenCV (cv2) is required for LSD line detection. "
+                "Install it with: pip install opencv-python\n"
+                "Alternatively, use method='projection' which requires no additional dependencies."
+            )
+        
+        cv_image, scale_factor, origin_offset_pdf, page_object_ctx = self._get_image_for_detection(resolution)
+        if cv_image is None or page_object_ctx is None:
+            logger.warning(f"Skipping LSD line detection for {self} due to image error.")
+            return self
+
+        if replace:
+            from natural_pdf.elements.line import LineElement
+            element_manager = page_object_ctx._element_mgr
+            if hasattr(element_manager, '_elements') and 'lines' in element_manager._elements:
+                original_count = len(element_manager._elements['lines'])
+                element_manager._elements['lines'] = [
+                    line for line in element_manager._elements['lines']
+                    if getattr(line, 'source', None) != source_label
+                ]
+                removed_count = original_count - len(element_manager._elements['lines'])
+                if removed_count > 0:
+                    logger.info(f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}")
+
+        lines_data_img = self._process_image_for_lines_lsd(
+            cv_image, off_angle, min_line_length, merge_angle_tolerance,
+            merge_distance_tolerance, merge_endpoint_tolerance, initial_min_line_length,
+            min_nfa_score_horizontal, min_nfa_score_vertical
+        )
+
+        from natural_pdf.elements.line import LineElement
+        element_manager = page_object_ctx._element_mgr
+
+        for line_data_item_img in lines_data_img:
+            element_constructor_data = self._convert_line_to_element_data(
+                line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
+            )
+            try:
+                line_element = LineElement(element_constructor_data, page_object_ctx)
+                element_manager.add_element(line_element, element_type="lines")
+            except Exception as e:
+                logger.error(f"Failed to create or add LineElement: {e}. Data: {element_constructor_data}", exc_info=True)
+        
+        logger.info(f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using LSD.")
+        return self
+
+    def _process_image_for_lines_lsd(
         self,
         cv_image: np.ndarray,
         off_angle: int,
@@ -123,13 +709,7 @@ class ShapeDetectionMixin:
         min_nfa_score_vertical: float,
     ) -> List[Dict]:
         """Processes an image to detect lines using OpenCV LSD and merging logic."""
-        try:
-            import cv2
-        except ImportError:
-            raise ImportError(
-                "OpenCV (cv2) is required for line detection using LSD algorithm. "
-                "Install it with: pip install opencv-python"
-            )
+        import cv2  # Import is already validated in calling method
         
         if cv_image is None:
             return []
@@ -199,7 +779,7 @@ class ShapeDetectionMixin:
                 
                 # Keep trying to expand the group until no more lines can be added
                 # Use multiple passes to ensure transitive merging works properly
-                for merge_pass in range(10):  # Up to 3 passes to catch complex merging scenarios
+                for merge_pass in range(10):  # Up to 10 passes to catch complex merging scenarios
                     group_changed = False
                     
                     # Calculate current group boundaries
@@ -305,376 +885,10 @@ class ShapeDetectionMixin:
                 })
         return final_lines_data
 
-    def _convert_line_to_element_data(
-        self, line_data_img: Dict, scale_factor: float, origin_offset_pdf: Tuple[float, float], page_obj: 'Page', source_label: str
-    ) -> Dict:
-        """Converts line data from image coordinates to PDF element data."""
-        # Ensure scale_factor is not zero to prevent division by zero or incorrect scaling
-        if scale_factor == 0:
-            logger.warning("Scale factor is zero, cannot convert line coordinates correctly.")
-            # Return something or raise error, for now, try to proceed with unscaled if possible (won't be right)
-            # This situation ideally shouldn't happen if _get_image_for_detection is robust.
-            effective_scale = 1.0 
-        else:
-            effective_scale = scale_factor
-
-        x0 = origin_offset_pdf[0] + line_data_img['x1'] * effective_scale
-        top = origin_offset_pdf[1] + line_data_img['y1'] * effective_scale
-        x1 = origin_offset_pdf[0] + line_data_img['x2'] * effective_scale
-        bottom = origin_offset_pdf[1] + line_data_img['y2'] * effective_scale # y2 is the second y-coord
-        
-        # For lines, width attribute in PDF points
-        line_width_pdf = line_data_img['width'] * effective_scale
-
-        # initial_doctop might not be loaded if page object is minimal
-        initial_doctop = getattr(page_obj._page, 'initial_doctop', 0) if hasattr(page_obj, '_page') else 0
-
-        return {
-            "x0": x0, "top": top, "x1": x1, "bottom": bottom, # bottom here is y2_pdf
-            "width": abs(x1 - x0), # This is bounding box width
-            "height": abs(bottom - top), # This is bounding box height
-            "linewidth": line_width_pdf, # Actual stroke width of the line
-            "object_type": "line",
-            "page_number": page_obj.page_number,
-            "doctop": top + initial_doctop,
-            "source": source_label,
-            "stroking_color": (0,0,0), # Default, can be enhanced
-            "non_stroking_color": (0,0,0), # Default
-            # Add other raw data if useful
-            "raw_line_thickness_px": line_data_img.get('line_thickness_px'), # Renamed from raw_nfa_score
-            "raw_line_position_px": line_data_img.get('line_position_px'),   # Added for clarity
-        }
-
-    def _find_lines_on_image_data(
-        self,
-        cv_image: np.ndarray,
-        pil_image_rgb: Image.Image, # For original dimensions
-        horizontal: bool = True,
-        vertical: bool = True,
-        peak_threshold_h: float = 0.5,
-        min_gap_h: int = 5,
-        peak_threshold_v: float = 0.5,
-        min_gap_v: int = 5,
-        max_lines_h: Optional[int] = None,
-        max_lines_v: Optional[int] = None,
-        binarization_method: str = LINE_DETECTION_PARAM_DEFAULTS["binarization_method"],
-        adaptive_thresh_block_size: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_block_size"],
-        adaptive_thresh_C_val: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_C_val"],
-        morph_op_h: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_h"],
-        morph_kernel_h: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_h"],
-        morph_op_v: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_v"],
-        morph_kernel_v: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_v"],
-        smoothing_sigma_h: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_h"],
-        smoothing_sigma_v: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_v"],
-        peak_width_rel_height: float = LINE_DETECTION_PARAM_DEFAULTS["peak_width_rel_height"],
-    ) -> Tuple[List[Dict], Optional[np.ndarray], Optional[np.ndarray]]:
-        """
-        Core image processing logic to detect lines using projection profiling.
-        Returns raw line data (image coordinates) and smoothed profiles.
-        """
-        try:
-            import cv2
-        except ImportError:
-            raise ImportError(
-                "OpenCV (cv2) is required for line detection using projection profiling. "
-                "Install it with: pip install opencv-python"
-            )
-        
-        if cv_image is None:
-            return [], None, None
-
-        cv_gray = cv2.cvtColor(cv_image, cv2.COLOR_RGB2GRAY)
-        img_height, img_width = cv_gray.shape
-        logger.debug(f"Line detection - Image dimensions: {img_width}x{img_height}")
-
-        if binarization_method == "adaptive":
-            binarized_image = cv2.adaptiveThreshold(cv_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                                    cv2.THRESH_BINARY_INV, adaptive_thresh_block_size, adaptive_thresh_C_val)
-        elif binarization_method == "otsu":
-            otsu_thresh_val, binarized_image = cv2.threshold(cv_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-            logger.debug(f"Otsu's threshold applied. Value: {otsu_thresh_val}")
-        else:
-            logger.error(f"Invalid binarization_method: {binarization_method}. Supported: 'otsu', 'adaptive'. Defaulting to 'otsu'.")
-            otsu_thresh_val, binarized_image = cv2.threshold(cv_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        
-        binarized_norm = binarized_image / 255.0
-        
-        detected_lines_data = []
-        profile_h_smoothed_for_viz: Optional[np.ndarray] = None
-        profile_v_smoothed_for_viz: Optional[np.ndarray] = None
-
-        def get_lines_from_profile(
-            profile_data: np.ndarray,
-            max_dimension_for_ratio: int,
-            params_key_suffix: str,
-            is_horizontal_detection: bool
-        ) -> Tuple[List[Dict], np.ndarray]: # Ensure it always returns profile_smoothed
-            lines_info = []
-            sigma = smoothing_sigma_h if is_horizontal_detection else smoothing_sigma_v
-            profile_smoothed = gaussian_filter1d(profile_data.astype(float), sigma=sigma)
-
-            peak_threshold = peak_threshold_h if is_horizontal_detection else peak_threshold_v
-            min_gap = min_gap_h if is_horizontal_detection else min_gap_v
-            max_lines = max_lines_h if is_horizontal_detection else max_lines_v
-            
-            current_peak_height_threshold = peak_threshold * max_dimension_for_ratio
-            find_peaks_distance = min_gap
-
-            if max_lines is not None:
-                current_peak_height_threshold = 1.0 
-                find_peaks_distance = 1    
-            
-            candidate_peaks_indices, candidate_properties = find_peaks(
-                profile_smoothed, height=current_peak_height_threshold, distance=find_peaks_distance,
-                width=1, prominence=1, rel_height=peak_width_rel_height
-            )
-            
-            final_peaks_indices = candidate_peaks_indices
-            final_properties = candidate_properties
-
-            if max_lines is not None:
-                if len(candidate_peaks_indices) > 0 and 'prominences' in candidate_properties:
-                    prominences = candidate_properties["prominences"]
-                    sorted_candidate_indices_by_prominence = np.argsort(prominences)[::-1]
-                    selected_peaks_original_indices = [] 
-                    suppressed_profile_indices = np.zeros(len(profile_smoothed), dtype=bool)
-                    num_selected = 0
-                    for original_idx_in_candidate_list in sorted_candidate_indices_by_prominence:
-                        actual_profile_idx = candidate_peaks_indices[original_idx_in_candidate_list]
-                        if not suppressed_profile_indices[actual_profile_idx]:
-                            selected_peaks_original_indices.append(original_idx_in_candidate_list)
-                            num_selected += 1
-                            lower_bound = max(0, actual_profile_idx - min_gap)
-                            upper_bound = min(len(profile_smoothed), actual_profile_idx + min_gap + 1)
-                            suppressed_profile_indices[lower_bound:upper_bound] = True
-                            if num_selected >= max_lines: break
-                    final_peaks_indices = candidate_peaks_indices[selected_peaks_original_indices]
-                    final_properties = {key: val_array[selected_peaks_original_indices] for key, val_array in candidate_properties.items()}
-                    logger.debug(f"Selected {len(final_peaks_indices)} {params_key_suffix.upper()}-lines for max_lines={max_lines}.")
-                else:
-                    final_peaks_indices = np.array([])
-                    final_properties = {}
-                    logger.debug(f"No {params_key_suffix.upper()}-peaks for max_lines selection.")
-            elif not final_peaks_indices.size:
-                 final_properties = {}
-                 logger.debug(f"No {params_key_suffix.upper()}-lines found using threshold.")
-            else:
-                 logger.debug(f"Found {len(final_peaks_indices)} {params_key_suffix.upper()}-lines using threshold.")
-
-            if final_peaks_indices.size > 0:
-                sort_order = np.argsort(final_peaks_indices)
-                final_peaks_indices = final_peaks_indices[sort_order]
-                for key in final_properties: final_properties[key] = final_properties[key][sort_order]
-
-            for i, peak_idx in enumerate(final_peaks_indices):
-                center_coord = int(peak_idx)
-                profile_thickness = final_properties.get("widths", [])[i] if "widths" in final_properties and i < len(final_properties["widths"]) else 1.0
-                profile_thickness = max(1, int(round(profile_thickness)))
-                
-                current_img_width = pil_image_rgb.width # Use actual passed image dimensions
-                current_img_height = pil_image_rgb.height
-
-                if is_horizontal_detection: 
-                    lines_info.append({
-                        'x1': 0, 'y1': center_coord, 
-                        'x2': current_img_width -1, 'y2': center_coord,
-                        'width': profile_thickness, 
-                        'length': current_img_width,
-                        'line_thickness_px': profile_thickness,
-                        'line_position_px': center_coord
-                    })
-                else: 
-                    lines_info.append({
-                        'x1': center_coord, 'y1': 0,
-                        'x2': center_coord, 'y2': current_img_height -1,
-                        'width': profile_thickness, 
-                        'length': current_img_height,
-                        'line_thickness_px': profile_thickness,
-                        'line_position_px': center_coord
-                    })
-            return lines_info, profile_smoothed
-
-        if horizontal:
-            processed_image_h = binarized_norm.copy()
-            if morph_op_h != "none":
-                kernel_h_struct = cv2.getStructuringElement(cv2.MORPH_RECT, morph_kernel_h)
-                op = cv2.MORPH_OPEN if morph_op_h == "open" else cv2.MORPH_CLOSE
-                processed_image_h = cv2.morphologyEx(processed_image_h, op, kernel_h_struct)
-            profile_h_raw = np.sum(processed_image_h, axis=1)
-            horizontal_lines, smoothed_h = get_lines_from_profile(profile_h_raw, pil_image_rgb.width, 'h', True)
-            profile_h_smoothed_for_viz = smoothed_h
-            detected_lines_data.extend(horizontal_lines)
-            logger.info(f"Detected {len(horizontal_lines)} horizontal lines.")
-
-        if vertical:
-            processed_image_v = binarized_norm.copy()
-            if morph_op_v != "none":
-                kernel_v_struct = cv2.getStructuringElement(cv2.MORPH_RECT, morph_kernel_v)
-                op = cv2.MORPH_OPEN if morph_op_v == "open" else cv2.MORPH_CLOSE
-                processed_image_v = cv2.morphologyEx(processed_image_v, op, kernel_v_struct)
-            profile_v_raw = np.sum(processed_image_v, axis=0)
-            vertical_lines, smoothed_v = get_lines_from_profile(profile_v_raw, pil_image_rgb.height, 'v', False)
-            profile_v_smoothed_for_viz = smoothed_v
-            detected_lines_data.extend(vertical_lines)
-            logger.info(f"Detected {len(vertical_lines)} vertical lines.")
-            
-        return detected_lines_data, profile_h_smoothed_for_viz, profile_v_smoothed_for_viz
-
-    def detect_lines(
-        self,
-        resolution: int = 192,
-        source_label: str = "detected",
-        horizontal: bool = True,
-        vertical: bool = True,
-        peak_threshold_h: float = 0.5,
-        min_gap_h: int = 5,
-        peak_threshold_v: float = 0.5,
-        min_gap_v: int = 5,
-        max_lines_h: Optional[int] = None,
-        max_lines_v: Optional[int] = None,
-        replace: bool = True,
-        binarization_method: str = LINE_DETECTION_PARAM_DEFAULTS["binarization_method"],
-        adaptive_thresh_block_size: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_block_size"],
-        adaptive_thresh_C_val: int = LINE_DETECTION_PARAM_DEFAULTS["adaptive_thresh_C_val"],
-        morph_op_h: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_h"],
-        morph_kernel_h: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_h"],
-        morph_op_v: str = LINE_DETECTION_PARAM_DEFAULTS["morph_op_v"],
-        morph_kernel_v: Tuple[int, int] = LINE_DETECTION_PARAM_DEFAULTS["morph_kernel_v"],
-        smoothing_sigma_h: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_h"],
-        smoothing_sigma_v: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_v"],
-        peak_width_rel_height: float = LINE_DETECTION_PARAM_DEFAULTS["peak_width_rel_height"],
-    ) -> "ShapeDetectionMixin": # Return type changed back to self
-        """
-        Detects lines on the Page or Region, or on all pages within a Collection
-        using projection profiling and peak detection.
-        Adds detected lines as LineElement objects to the ElementManager.
-
-        Args:
-            resolution: DPI for image rendering before detection.
-            source_label: Label assigned to the 'source' attribute of created LineElements.
-            horizontal: If True, detect horizontal lines.
-            vertical: If True, detect vertical lines.
-            peak_threshold_h: Threshold for peak detection in horizontal profile (ratio of image width).
-            min_gap_h: Minimum gap between horizontal lines (pixels).
-            peak_threshold_v: Threshold for peak detection in vertical profile (ratio of image height).
-            min_gap_v: Minimum gap between vertical lines (pixels).
-            max_lines_h: If set, limits the number of horizontal lines to the top N by prominence.
-            max_lines_v: If set, limits the number of vertical lines to the top N by prominence.
-            replace: If True, remove existing detected lines with the same source_label.
-            binarization_method: "adaptive" or "otsu".
-            adaptive_thresh_block_size: Block size for adaptive thresholding (if method is "adaptive").
-            adaptive_thresh_C_val: Constant subtracted from the mean for adaptive thresholding (if method is "adaptive").
-            morph_op_h: Morphological operation for horizontal lines ("open", "close", "none").
-            morph_kernel_h: Kernel tuple (cols, rows) for horizontal morphology. Example: (1, 2).
-            morph_op_v: Morphological operation for vertical lines ("open", "close", "none").
-            morph_kernel_v: Kernel tuple (cols, rows) for vertical morphology. Example: (2, 1).
-            smoothing_sigma_h: Gaussian smoothing sigma for horizontal profile.
-            smoothing_sigma_v: Gaussian smoothing sigma for vertical profile.
-            peak_width_rel_height: Relative height for `scipy.find_peaks` 'width' parameter.
-
-        Returns:
-            Self for method chaining.
-        """
-        if not horizontal and not vertical:
-            logger.info("Line detection skipped as both horizontal and vertical are False.")
-            return self
-            
-        collection_params = {
-            "resolution": resolution, "source_label": source_label,
-            "horizontal": horizontal, "vertical": vertical,
-            "peak_threshold_h": peak_threshold_h, "min_gap_h": min_gap_h,
-            "peak_threshold_v": peak_threshold_v, "min_gap_v": min_gap_v,
-            "max_lines_h": max_lines_h, "max_lines_v": max_lines_v,
-            "replace": replace,
-            "binarization_method": binarization_method,
-            "adaptive_thresh_block_size": adaptive_thresh_block_size,
-            "adaptive_thresh_C_val": adaptive_thresh_C_val,
-            "morph_op_h": morph_op_h, "morph_kernel_h": morph_kernel_h,
-            "morph_op_v": morph_op_v, "morph_kernel_v": morph_kernel_v,
-            "smoothing_sigma_h": smoothing_sigma_h, "smoothing_sigma_v": smoothing_sigma_v,
-            "peak_width_rel_height": peak_width_rel_height,
-        }
-
-        if hasattr(self, 'pdfs'):
-            for pdf_doc in self.pdfs:
-                for page_obj in pdf_doc.pages:
-                    page_obj.detect_lines(**collection_params)
-            return self
-        elif hasattr(self, 'pages') and not hasattr(self, '_page'):
-            for page_obj in self.pages:
-                page_obj.detect_lines(**collection_params)
-            return self
-
-        cv_image, scale_factor, origin_offset_pdf, page_object_ctx = self._get_image_for_detection(resolution)
-        if cv_image is None or page_object_ctx is None:
-            logger.warning(f"Skipping line detection for {self} due to image error.")
-            return self
-        
-        pil_image_for_dims = None
-        if hasattr(self, 'to_image') and hasattr(self, 'width') and hasattr(self, 'height'):
-            if hasattr(self, 'x0') and hasattr(self, 'top') and hasattr(self, '_page'):
-                pil_image_for_dims = self.to_image(resolution=resolution, crop_only=True, include_highlights=False)
-            else:
-                pil_image_for_dims = self.to_image(resolution=resolution, include_highlights=False)
-        if pil_image_for_dims is None:
-            logger.warning(f"Could not re-render PIL image for dimensions for {self}.")
-            pil_image_for_dims = Image.fromarray(cv_image) # Ensure it's not None
-
-        if pil_image_for_dims.mode != "RGB":
-            pil_image_for_dims = pil_image_for_dims.convert("RGB")
-
-        if replace:
-            from natural_pdf.elements.line import LineElement
-            element_manager = page_object_ctx._element_mgr
-            if hasattr(element_manager, '_elements') and 'lines' in element_manager._elements:
-                original_count = len(element_manager._elements['lines'])
-                element_manager._elements['lines'] = [
-                    line for line in element_manager._elements['lines']
-                    if getattr(line, 'source', None) != source_label
-                ]
-                removed_count = original_count - len(element_manager._elements['lines'])
-                if removed_count > 0:
-                    logger.info(f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}")
-
-        lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
-            cv_image=cv_image,
-            pil_image_rgb=pil_image_for_dims,
-            horizontal=horizontal,
-            vertical=vertical,
-            peak_threshold_h=peak_threshold_h,
-            min_gap_h=min_gap_h,
-            peak_threshold_v=peak_threshold_v,
-            min_gap_v=min_gap_v,
-            max_lines_h=max_lines_h,
-            max_lines_v=max_lines_v,
-            binarization_method=binarization_method,
-            adaptive_thresh_block_size=adaptive_thresh_block_size,
-            adaptive_thresh_C_val=adaptive_thresh_C_val,
-            morph_op_h=morph_op_h, morph_kernel_h=morph_kernel_h,
-            morph_op_v=morph_op_v, morph_kernel_v=morph_kernel_v,
-            smoothing_sigma_h=smoothing_sigma_h, smoothing_sigma_v=smoothing_sigma_v,
-            peak_width_rel_height=peak_width_rel_height,
-        )
-
-        from natural_pdf.elements.line import LineElement
-        element_manager = page_object_ctx._element_mgr
-
-        for line_data_item_img in lines_data_img:
-            element_constructor_data = self._convert_line_to_element_data(
-                line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
-            )
-            try:
-                line_element = LineElement(element_constructor_data, page_object_ctx)
-                element_manager.add_element(line_element, element_type="lines")
-            except Exception as e:
-                logger.error(f"Failed to create or add LineElement: {e}. Data: {element_constructor_data}", exc_info=True)
-        
-        logger.info(f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}'.")
-        return self
-
     def detect_lines_preview(
         self,
         resolution: int = 72, # Preview typically uses lower resolution
+        method: str = "projection",
         horizontal: bool = True,
         vertical: bool = True,
         peak_threshold_h: float = 0.5,
@@ -693,12 +907,31 @@ class ShapeDetectionMixin:
         smoothing_sigma_h: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_h"],
         smoothing_sigma_v: float = LINE_DETECTION_PARAM_DEFAULTS["smoothing_sigma_v"],
         peak_width_rel_height: float = LINE_DETECTION_PARAM_DEFAULTS["peak_width_rel_height"],
+        # LSD-specific parameters
+        off_angle: int = 5,
+        min_line_length: int = 30,
+        merge_angle_tolerance: int = 5,
+        merge_distance_tolerance: int = 3,
+        merge_endpoint_tolerance: int = 10,
+        initial_min_line_length: int = 10,
+        min_nfa_score_horizontal: float = -10.0,
+        min_nfa_score_vertical: float = -10.0,
     ) -> Optional[Image.Image]:
         """
         Previews detected lines on a Page or Region without adding them to the PDF elements.
         Generates and returns a debug visualization image.
         This method is intended for Page or Region objects.
-        See `detect_lines` for parameter descriptions. The main difference is a lower default `resolution`.
+        
+        Args:
+            method: Detection method - "projection" (default) or "lsd" (requires opencv-python).
+            See `detect_lines` for other parameter descriptions. The main difference is a lower default `resolution`.
+            
+        Returns:
+            PIL Image with line detection visualization, or None if preview failed.
+            
+        Note:
+            Only projection profiling method supports histogram visualization. 
+            LSD method will show detected lines overlaid on the original image.
         """
         if hasattr(self, 'pdfs') or (hasattr(self, 'pages') and not hasattr(self, '_page')):
             logger.warning("preview_detected_lines is intended for single Page/Region objects. For collections, process pages individually.")
@@ -707,6 +940,10 @@ class ShapeDetectionMixin:
         if not horizontal and not vertical: # Check this early
             logger.info("Line preview skipped as both horizontal and vertical are False.")
             return None
+
+        # Validate method parameter
+        if method not in ["projection", "lsd"]:
+            raise ValueError(f"Invalid method '{method}'. Supported methods: 'projection', 'lsd'")
 
         cv_image, _, _, page_object_ctx = self._get_image_for_detection(resolution) # scale_factor and origin_offset not needed for preview
         if cv_image is None or page_object_ctx is None: # page_object_ctx for logging context mostly
@@ -727,40 +964,56 @@ class ShapeDetectionMixin:
         if pil_image_for_dims.mode != "RGB":
             pil_image_for_dims = pil_image_for_dims.convert("RGB")
 
-        lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
-            cv_image=cv_image,
-            pil_image_rgb=pil_image_for_dims,
-            horizontal=horizontal,
-            vertical=vertical,
-            peak_threshold_h=peak_threshold_h,
-            min_gap_h=min_gap_h,
-            peak_threshold_v=peak_threshold_v,
-            min_gap_v=min_gap_v,
-            max_lines_h=max_lines_h,
-            max_lines_v=max_lines_v,
-            binarization_method=binarization_method,
-            adaptive_thresh_block_size=adaptive_thresh_block_size,
-            adaptive_thresh_C_val=adaptive_thresh_C_val,
-            morph_op_h=morph_op_h, morph_kernel_h=morph_kernel_h,
-            morph_op_v=morph_op_v, morph_kernel_v=morph_kernel_v,
-            smoothing_sigma_h=smoothing_sigma_h, smoothing_sigma_v=smoothing_sigma_v,
-            peak_width_rel_height=peak_width_rel_height,
-        )
+        # Get lines data based on method
+        if method == "projection":
+            lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
+                cv_image=cv_image,
+                pil_image_rgb=pil_image_for_dims,
+                horizontal=horizontal,
+                vertical=vertical,
+                peak_threshold_h=peak_threshold_h,
+                min_gap_h=min_gap_h,
+                peak_threshold_v=peak_threshold_v,
+                min_gap_v=min_gap_v,
+                max_lines_h=max_lines_h,
+                max_lines_v=max_lines_v,
+                binarization_method=binarization_method,
+                adaptive_thresh_block_size=adaptive_thresh_block_size,
+                adaptive_thresh_C_val=adaptive_thresh_C_val,
+                morph_op_h=morph_op_h, morph_kernel_h=morph_kernel_h,
+                morph_op_v=morph_op_v, morph_kernel_v=morph_kernel_v,
+                smoothing_sigma_h=smoothing_sigma_h, smoothing_sigma_v=smoothing_sigma_v,
+                peak_width_rel_height=peak_width_rel_height,
+            )
+        elif method == "lsd":
+            try:
+                import cv2
+            except ImportError:
+                raise ImportError(
+                    "OpenCV (cv2) is required for LSD line detection preview. "
+                    "Install it with: pip install opencv-python\n"
+                    "Alternatively, use method='projection' for preview."
+                )
+            lines_data_img = self._process_image_for_lines_lsd(
+                cv_image, off_angle, min_line_length, merge_angle_tolerance,
+                merge_distance_tolerance, merge_endpoint_tolerance, initial_min_line_length,
+                min_nfa_score_horizontal, min_nfa_score_vertical
+            )
+            profile_h_smoothed, profile_v_smoothed = None, None  # LSD doesn't use profiles
         
         if not lines_data_img: # Check if any lines were detected before visualization
              logger.info(f"No lines detected for preview on {page_object_ctx or self}")
              # Optionally return the base image if no lines, or None
              return pil_image_for_dims.convert("RGBA") # Return base image so something is shown
 
-
-        # --- Visualization Logic (copied from previous debug block) ---
+        # --- Visualization Logic ---
         final_viz_image: Optional[Image.Image] = None
         viz_image_base = pil_image_for_dims.convert("RGBA")
         draw = ImageDraw.Draw(viz_image_base)
         img_width, img_height = viz_image_base.size
 
         viz_params = {
-            "draw_line_thickness_viz": 1,
+            "draw_line_thickness_viz": 2,  # Slightly thicker for better visibility
             "debug_histogram_size": 100,
             "line_color_h": (255, 0, 0, 200), "line_color_v": (0, 0, 255, 200),
             "histogram_bar_color_h": (200, 0, 0, 200), "histogram_bar_color_v": (0, 0, 200, 200),
@@ -771,6 +1024,7 @@ class ShapeDetectionMixin:
             "max_lines_v": max_lines_v, 
         }
 
+        # Draw detected lines on the image
         for line_info in lines_data_img:
             is_h_line = abs(line_info['y1'] - line_info['y2']) < abs(line_info['x1'] - line_info['x2']) 
             line_color = viz_params["line_color_h"] if is_h_line else viz_params["line_color_v"]
@@ -779,51 +1033,63 @@ class ShapeDetectionMixin:
                 (line_info['x2'], line_info['y2'])
             ], fill=line_color, width=viz_params["draw_line_thickness_viz"])
 
-        hist_size = viz_params["debug_histogram_size"]
-        hist_h_img = Image.new("RGBA", (hist_size, img_height), viz_params["histogram_bg_color"])
-        hist_h_draw = ImageDraw.Draw(hist_h_img)
-        
-        if profile_h_smoothed is not None and profile_h_smoothed.size > 0:
-            actual_max_h_profile = profile_h_smoothed.max()
-            max_h_profile_val_for_scaling = actual_max_h_profile if actual_max_h_profile > 0 else img_width
-            display_threshold_val_h = peak_threshold_h * img_width
-            for y_coord, val in enumerate(profile_h_smoothed):
-                bar_len = 0; thresh_bar_len = 0
-                if max_h_profile_val_for_scaling > 0:
-                    bar_len = int((val / max_h_profile_val_for_scaling) * hist_size)
-                    if display_threshold_val_h >= 0:
-                        thresh_bar_len = int((display_threshold_val_h / max_h_profile_val_for_scaling) * hist_size)
-                bar_len = min(max(0, bar_len), hist_size)
-                if bar_len > 0: hist_h_draw.line([(0, y_coord), (bar_len -1 , y_coord)], fill=viz_params["histogram_bar_color_h"], width=1)
-                if viz_params["max_lines_h"] is None and display_threshold_val_h >=0 and \
-                   thresh_bar_len > 0 and thresh_bar_len < hist_size:
-                    hist_h_draw.line([(thresh_bar_len, y_coord), (thresh_bar_len, y_coord+1 if y_coord+1 < img_height else y_coord)], fill=(0,255,0,100), width=1)
-        
-        hist_v_img = Image.new("RGBA", (img_width, hist_size), viz_params["histogram_bg_color"])
-        hist_v_draw = ImageDraw.Draw(hist_v_img)
-        if profile_v_smoothed is not None and profile_v_smoothed.size > 0:
-            actual_max_v_profile = profile_v_smoothed.max()
-            max_v_profile_val_for_scaling = actual_max_v_profile if actual_max_v_profile > 0 else img_height
-            display_threshold_val_v = peak_threshold_v * img_height
-            for x_coord, val in enumerate(profile_v_smoothed):
-                bar_height = 0; thresh_bar_h = 0
-                if max_v_profile_val_for_scaling > 0:
-                    bar_height = int((val / max_v_profile_val_for_scaling) * hist_size)
-                    if display_threshold_val_v >=0:
-                        thresh_bar_h = int((display_threshold_val_v / max_v_profile_val_for_scaling) * hist_size)
-                bar_height = min(max(0, bar_height), hist_size)
-                if bar_height > 0: hist_v_draw.line([(x_coord, hist_size -1 ), (x_coord, hist_size - bar_height)], fill=viz_params["histogram_bar_color_v"], width=1)
-                if viz_params["max_lines_v"] is None and display_threshold_val_v >=0 and \
-                   thresh_bar_h > 0 and thresh_bar_h < hist_size:
-                    hist_v_draw.line([(x_coord, hist_size - thresh_bar_h), (x_coord+1 if x_coord+1 < img_width else x_coord, hist_size - thresh_bar_h)], fill=(0,255,0,100), width=1)
+        # For projection method, add histogram visualization
+        if method == "projection" and (profile_h_smoothed is not None or profile_v_smoothed is not None):
+            hist_size = viz_params["debug_histogram_size"]
+            hist_h_img = Image.new("RGBA", (hist_size, img_height), viz_params["histogram_bg_color"])
+            hist_h_draw = ImageDraw.Draw(hist_h_img)
+            
+            if profile_h_smoothed is not None and profile_h_smoothed.size > 0:
+                actual_max_h_profile = profile_h_smoothed.max()
+                display_threshold_val_h = peak_threshold_h * img_width
+                # Use the maximum of either the profile max or threshold for scaling, so both are always visible
+                max_h_profile_val_for_scaling = max(actual_max_h_profile, display_threshold_val_h) if actual_max_h_profile > 0 else img_width
+                for y_coord, val in enumerate(profile_h_smoothed):
+                    bar_len = 0; thresh_bar_len = 0
+                    if max_h_profile_val_for_scaling > 0:
+                        bar_len = int((val / max_h_profile_val_for_scaling) * hist_size)
+                        if display_threshold_val_h >= 0:
+                            thresh_bar_len = int((display_threshold_val_h / max_h_profile_val_for_scaling) * hist_size)
+                    bar_len = min(max(0, bar_len), hist_size)
+                    if bar_len > 0: hist_h_draw.line([(0, y_coord), (bar_len -1 , y_coord)], fill=viz_params["histogram_bar_color_h"], width=1)
+                    if viz_params["max_lines_h"] is None and display_threshold_val_h >=0 and \
+                       thresh_bar_len > 0 and thresh_bar_len <= hist_size:
+                        # Ensure threshold line is within bounds
+                        thresh_x = min(thresh_bar_len, hist_size - 1)
+                        hist_h_draw.line([(thresh_x, y_coord), (thresh_x, y_coord+1 if y_coord+1 < img_height else y_coord)], fill=(0,255,0,100), width=1)
+            
+            hist_v_img = Image.new("RGBA", (img_width, hist_size), viz_params["histogram_bg_color"])
+            hist_v_draw = ImageDraw.Draw(hist_v_img)
+            if profile_v_smoothed is not None and profile_v_smoothed.size > 0:
+                actual_max_v_profile = profile_v_smoothed.max()
+                display_threshold_val_v = peak_threshold_v * img_height
+                # Use the maximum of either the profile max or threshold for scaling, so both are always visible
+                max_v_profile_val_for_scaling = max(actual_max_v_profile, display_threshold_val_v) if actual_max_v_profile > 0 else img_height
+                for x_coord, val in enumerate(profile_v_smoothed):
+                    bar_height = 0; thresh_bar_h = 0
+                    if max_v_profile_val_for_scaling > 0:
+                        bar_height = int((val / max_v_profile_val_for_scaling) * hist_size)
+                        if display_threshold_val_v >=0:
+                            thresh_bar_h = int((display_threshold_val_v / max_v_profile_val_for_scaling) * hist_size)
+                    bar_height = min(max(0, bar_height), hist_size)
+                    if bar_height > 0: hist_v_draw.line([(x_coord, hist_size -1 ), (x_coord, hist_size - bar_height)], fill=viz_params["histogram_bar_color_v"], width=1)
+                    if viz_params["max_lines_v"] is None and display_threshold_val_v >=0 and \
+                       thresh_bar_h > 0 and thresh_bar_h <= hist_size:
+                        # Ensure threshold line is within bounds
+                        thresh_y = min(thresh_bar_h, hist_size - 1)
+                        hist_v_draw.line([(x_coord, hist_size - thresh_y), (x_coord+1 if x_coord+1 < img_width else x_coord, hist_size - thresh_y)], fill=(0,255,0,100), width=1)
 
-        padding = viz_params["padding_between_viz"]
-        total_width = img_width + padding + hist_size
-        total_height = img_height + padding + hist_size
-        final_viz_image = Image.new("RGBA", (total_width, total_height), (255, 255, 255, 255))
-        final_viz_image.paste(viz_image_base, (0, 0))
-        final_viz_image.paste(hist_h_img, (img_width + padding, 0))
-        final_viz_image.paste(hist_v_img, (0, img_height + padding))
+            padding = viz_params["padding_between_viz"]
+            total_width = img_width + padding + hist_size
+            total_height = img_height + padding + hist_size
+            final_viz_image = Image.new("RGBA", (total_width, total_height), (255, 255, 255, 255))
+            final_viz_image.paste(viz_image_base, (0, 0))
+            final_viz_image.paste(hist_h_img, (img_width + padding, 0))
+            final_viz_image.paste(hist_v_img, (0, img_height + padding))
+        else:
+            # For LSD method, just return the image with lines overlaid
+            final_viz_image = viz_image_base
+
         logger.info(f"Generated line preview visualization for {page_object_ctx or self}")
         return final_viz_image 
 
