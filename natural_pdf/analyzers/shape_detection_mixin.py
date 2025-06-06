@@ -1,7 +1,6 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.signal import find_peaks
@@ -124,6 +123,14 @@ class ShapeDetectionMixin:
         min_nfa_score_vertical: float,
     ) -> List[Dict]:
         """Processes an image to detect lines using OpenCV LSD and merging logic."""
+        try:
+            import cv2
+        except ImportError:
+            raise ImportError(
+                "OpenCV (cv2) is required for line detection using LSD algorithm. "
+                "Install it with: pip install opencv-python"
+            )
+        
         if cv_image is None:
             return []
         
@@ -365,6 +372,14 @@ class ShapeDetectionMixin:
         Core image processing logic to detect lines using projection profiling.
         Returns raw line data (image coordinates) and smoothed profiles.
         """
+        try:
+            import cv2
+        except ImportError:
+            raise ImportError(
+                "OpenCV (cv2) is required for line detection using projection profiling. "
+                "Install it with: pip install opencv-python"
+            )
+        
         if cv_image is None:
             return [], None, None
 
