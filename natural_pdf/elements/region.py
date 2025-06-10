@@ -1247,8 +1247,12 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Extract a table from this region.
 
         Args:
-            method: Method to use: 'tatr', 'plumber', 'text', or None (auto-detect).
-            table_settings: Settings for pdfplumber table extraction (used only with 'plumber' method).
+            method: Method to use: 'tatr', 'pdfplumber', 'text', 'stream', 'lattice', or None (auto-detect).
+                    'stream' is an alias for 'pdfplumber' with text-based strategies (equivalent to
+                    setting `vertical_strategy` and `horizontal_strategy` to 'text').
+                    'lattice' is an alias for 'pdfplumber' with line-based strategies (equivalent to
+                    setting `vertical_strategy` and `horizontal_strategy` to 'lines').
+            table_settings: Settings for pdfplumber table extraction (used with 'pdfplumber', 'stream', or 'lattice' methods).
             use_ocr: Whether to use OCR for text extraction (currently only applicable with 'tatr' method).
             ocr_config: OCR configuration parameters.
             text_options: Dictionary of options for the 'text' method, corresponding to arguments
@@ -1268,13 +1272,47 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             text_options = {}  # Initialize empty dict
 
         # Auto-detect method if not specified
-        effective_method = method
-        if effective_method is None:
+        if method is None:
             # If this is a TATR-detected region, use TATR method
             if hasattr(self, "model") and self.model == "tatr" and self.region_type == "table":
                 effective_method = "tatr"
             else:
-                effective_method = "plumber"
+                # Try lattice first, then fall back to stream if no meaningful results
+                logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
+                
+                try:
+                    logger.debug(f"Region {self.bbox}: Trying 'lattice' method first...")
+                    lattice_result = self.extract_table('lattice', table_settings=table_settings.copy())
+                    
+                    # Check if lattice found meaningful content
+                    if (lattice_result and len(lattice_result) > 0 and 
+                        any(any(cell and cell.strip() for cell in row if cell) for row in lattice_result)):
+                        logger.debug(f"Region {self.bbox}: 'lattice' method found table with {len(lattice_result)} rows")
+                        return lattice_result
+                    else:
+                        logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful content")
+                except Exception as e:
+                    logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
+                
+                # Fall back to stream
+                logger.debug(f"Region {self.bbox}: Falling back to 'stream' method...")
+                return self.extract_table('stream', table_settings=table_settings.copy())
+        else:
+            effective_method = method
+
+        # Handle method aliases for pdfplumber
+        if effective_method == "stream":
+            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
+            effective_method = "pdfplumber"
+            # Set default text strategies if not already provided by the user
+            table_settings.setdefault("vertical_strategy", "text")
+            table_settings.setdefault("horizontal_strategy", "text")
+        elif effective_method == "lattice":
+            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            effective_method = "pdfplumber"
+            # Set default line strategies if not already provided by the user
+            table_settings.setdefault("vertical_strategy", "lines")
+            table_settings.setdefault("horizontal_strategy", "lines")
 
         logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
 
@@ -1284,15 +1322,110 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         elif effective_method == "text":
             current_text_options = text_options.copy()
             current_text_options["cell_extraction_func"] = cell_extraction_func
-            # --- Pass show_progress to the helper --- #
             current_text_options["show_progress"] = show_progress
             return self._extract_table_text(**current_text_options)
-        elif effective_method == "plumber":
+        elif effective_method == "pdfplumber":
             return self._extract_table_plumber(table_settings)
         else:
             raise ValueError(
-                f"Unknown table extraction method: '{effective_method}'. Choose from 'tatr', 'plumber', 'text'."
+                f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
             )
+
+
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+    ) -> List[List[List[str]]]:
+        """
+        Extract all tables from this region using pdfplumber-based methods.
+
+        Note: Only 'pdfplumber', 'stream', and 'lattice' methods are supported for extract_tables.
+        'tatr' and 'text' methods are designed for single table extraction only.
+
+        Args:
+            method: Method to use: 'pdfplumber', 'stream', 'lattice', or None (auto-detect).
+                    'stream' uses text-based strategies, 'lattice' uses line-based strategies.
+            table_settings: Settings for pdfplumber table extraction.
+
+        Returns:
+            List of tables, where each table is a list of rows, and each row is a list of cell values.
+        """
+        if table_settings is None:
+            table_settings = {}
+
+        # Auto-detect method if not specified (try lattice first, then stream)
+        if method is None:
+            logger.debug(f"Region {self.bbox}: Auto-detecting tables extraction method...")
+            
+            # Try lattice first
+            try:
+                lattice_settings = table_settings.copy()
+                lattice_settings.setdefault("vertical_strategy", "lines")
+                lattice_settings.setdefault("horizontal_strategy", "lines")
+                
+                logger.debug(f"Region {self.bbox}: Trying 'lattice' method first for tables...")
+                lattice_result = self._extract_tables_plumber(lattice_settings)
+                
+                # Check if lattice found meaningful tables
+                if (lattice_result and len(lattice_result) > 0 and 
+                    any(any(any(cell and cell.strip() for cell in row if cell) for row in table if table) for table in lattice_result)):
+                    logger.debug(f"Region {self.bbox}: 'lattice' method found {len(lattice_result)} tables")
+                    return lattice_result
+                else:
+                    logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful tables")
+                    
+            except Exception as e:
+                logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
+            
+            # Fall back to stream
+            logger.debug(f"Region {self.bbox}: Falling back to 'stream' method for tables...")
+            stream_settings = table_settings.copy()
+            stream_settings.setdefault("vertical_strategy", "text")
+            stream_settings.setdefault("horizontal_strategy", "text")
+            
+            return self._extract_tables_plumber(stream_settings)
+
+        effective_method = method
+
+        # Handle method aliases
+        if effective_method == "stream":
+            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
+            effective_method = "pdfplumber"
+            table_settings.setdefault("vertical_strategy", "text")
+            table_settings.setdefault("horizontal_strategy", "text")
+        elif effective_method == "lattice":
+            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            effective_method = "pdfplumber"
+            table_settings.setdefault("vertical_strategy", "lines")
+            table_settings.setdefault("horizontal_strategy", "lines")
+
+        # Use the selected method
+        if effective_method == "pdfplumber":
+            return self._extract_tables_plumber(table_settings)
+        else:
+            raise ValueError(
+                f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
+            )
+
+    def _extract_tables_plumber(self, table_settings: dict) -> List[List[List[str]]]:
+        """
+        Extract all tables using pdfplumber's table extraction.
+
+        Args:
+            table_settings: Settings for pdfplumber table extraction
+
+        Returns:
+            List of tables, where each table is a list of rows, and each row is a list of cell values
+        """
+        # Create a crop of the page for this region
+        cropped = self.page._page.crop(self.bbox)
+
+        # Extract all tables from the cropped area
+        tables = cropped.extract_tables(table_settings)
+
+        # Return the tables or an empty list if none found
+        return tables if tables else []
 
     def _extract_table_plumber(self, table_settings: dict) -> List[List[str]]:
         """

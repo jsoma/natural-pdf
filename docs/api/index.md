@@ -107,7 +107,7 @@ class Region:
 | `save_image(path, resolution=72, crop_only=False)` | Save an image of just the region | `path`: Path to save image<br>`resolution`: Image resolution in DPI<br>`crop_only`: Whether to exclude border | `None` |
 | `get_sections(start_elements, end_elements=None, boundary_inclusion='start')` | Get sections within the region | `start_elements`: Elements marking section starts<br>`end_elements`: Elements marking section ends<br>`boundary_inclusion`: How to include boundaries | `list[Region]` |
 | `ask(question, min_confidence=0.0, model=None, debug=False)` | Ask a question about the region content | `question`: Question to ask<br>`min_confidence`: Minimum confidence threshold<br>`model`: Optional model name or path<br>`debug`: Whether to save debug files | `dict`: Result with answer and metadata |
-| `extract_table(method=None, table_settings=None, use_ocr=False)` | Extract table data from the region | `method`: Extraction method ("plumber", "tatr")<br>`table_settings`: Custom settings for extraction<br>`use_ocr`: Whether to use OCR text | `list`: Table data as rows and columns |
+| `extract_table(method=None, table_settings=None, use_ocr=False)` | Extract table data from the region | `method`: Extraction method ("pdfplumber", "tatr")<br>`table_settings`: Custom settings for extraction<br>`use_ocr`: Whether to use OCR text | `list`: Table data as rows and columns |
 | `intersects(other)` | Check if this region intersects with another | `other`: Another region | `bool`: True if regions intersect |
 | `contains(x, y)` | Check if a point is within the region | `x`: X coordinate<br>`y`: Y coordinate | `bool`: True if point is in region |
 

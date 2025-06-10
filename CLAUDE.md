@@ -865,7 +865,7 @@ data = table.extract_table()
 
 # Or explicitly specify the method to use
 data_tatr = table.extract_table(method='tatr')    # Uses detected table structure
-data_plumber = table.extract_table(method='plumber')  # Uses pdfplumber's algorithm
+data_plumber = table.extract_table(method='pdfplumber')  # Uses pdfplumber's algorithm
 
 # Work with table components directly
 rows = page.find_all('region[type=table-row][model=tatr]')

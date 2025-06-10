@@ -1138,31 +1138,145 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
         return result
 
-    def extract_table(self, table_settings={}) -> List[Any]:
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict] = None,
+        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        show_progress: bool = False,
+    ) -> List[List[Optional[str]]]:
         """
-        Extract the largest table from this page.
+        Extract the largest table from this page using enhanced region-based extraction.
 
         Args:
-            table_settings: Additional extraction parameters
+            method: Method to use: 'tatr', 'pdfplumber', 'text', 'stream', 'lattice', or None (auto-detect).
+            table_settings: Settings for pdfplumber table extraction.
+            use_ocr: Whether to use OCR for text extraction (currently only applicable with 'tatr' method).
+            ocr_config: OCR configuration parameters.
+            text_options: Dictionary of options for the 'text' method.
+            cell_extraction_func: Optional callable function that takes a cell Region object
+                                  and returns its string content. For 'text' method only.
+            show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
 
         Returns:
-            List of extracted tables (or None if no table found)
+            Table data as a list of rows, where each row is a list of cell values (str or None).
         """
-        # pdfplumber returns None if no table found
-        return self._page.extract_table(table_settings)
+        # Create a full-page region and delegate to its enhanced extract_table method
+        page_region = self.create_region(0, 0, self.width, self.height)
+        return page_region.extract_table(
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            show_progress=show_progress,
+        )
 
-    def extract_tables(self, table_settings={}) -> List[Any]:
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        check_tatr: bool = True,
+    ) -> List[List[List[str]]]:
         """
-        Extract tables from this page.
+        Extract all tables from this page with enhanced method support.
 
         Args:
-            table_settings: Additional extraction parameters
+            method: Method to use: 'pdfplumber', 'stream', 'lattice', or None (auto-detect).
+                    'stream' uses text-based strategies, 'lattice' uses line-based strategies.
+                    Note: 'tatr' and 'text' methods are not supported for extract_tables.
+            table_settings: Settings for pdfplumber table extraction.
+            check_tatr: If True (default), first check for TATR-detected table regions
+                        and extract from those before falling back to pdfplumber methods.
 
         Returns:
-            List of extracted tables
+            List of tables, where each table is a list of rows, and each row is a list of cell values.
         """
-        # pdfplumber returns list of tables
-        return self._page.extract_tables(table_settings)
+        if table_settings is None:
+            table_settings = {}
+
+        # Check for TATR-detected table regions first if enabled
+        if check_tatr:
+            try:
+                tatr_tables = self.find_all("region[type=table][model=tatr]")
+                if tatr_tables:
+                    logger.debug(f"Page {self.number}: Found {len(tatr_tables)} TATR table regions, extracting from those...")
+                    extracted_tables = []
+                    for table_region in tatr_tables:
+                        try:
+                            table_data = table_region.extract_table(method="tatr")
+                            if table_data:  # Only add non-empty tables
+                                extracted_tables.append(table_data)
+                        except Exception as e:
+                            logger.warning(f"Failed to extract table from TATR region {table_region.bbox}: {e}")
+                    
+                    if extracted_tables:
+                        logger.debug(f"Page {self.number}: Successfully extracted {len(extracted_tables)} tables from TATR regions")
+                        return extracted_tables
+                    else:
+                        logger.debug(f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber")
+                else:
+                    logger.debug(f"Page {self.number}: No TATR table regions found, using pdfplumber methods")
+            except Exception as e:
+                logger.debug(f"Page {self.number}: Error checking TATR regions: {e}, falling back to pdfplumber")
+
+        # Auto-detect method if not specified (try lattice first, then stream)
+        if method is None:
+            logger.debug(f"Page {self.number}: Auto-detecting tables extraction method...")
+            
+            # Try lattice first
+            try:
+                lattice_settings = table_settings.copy()
+                lattice_settings.setdefault("vertical_strategy", "lines")
+                lattice_settings.setdefault("horizontal_strategy", "lines")
+                
+                logger.debug(f"Page {self.number}: Trying 'lattice' method first for tables...")
+                lattice_result = self._page.extract_tables(lattice_settings)
+                
+                # Check if lattice found meaningful tables
+                if (lattice_result and len(lattice_result) > 0 and 
+                    any(any(any(cell and cell.strip() for cell in row if cell) for row in table if table) for table in lattice_result)):
+                    logger.debug(f"Page {self.number}: 'lattice' method found {len(lattice_result)} tables")
+                    return lattice_result
+                else:
+                    logger.debug(f"Page {self.number}: 'lattice' method found no meaningful tables")
+                    
+            except Exception as e:
+                logger.debug(f"Page {self.number}: 'lattice' method failed: {e}")
+            
+            # Fall back to stream
+            logger.debug(f"Page {self.number}: Falling back to 'stream' method for tables...")
+            stream_settings = table_settings.copy()
+            stream_settings.setdefault("vertical_strategy", "text")
+            stream_settings.setdefault("horizontal_strategy", "text")
+            
+            return self._page.extract_tables(stream_settings)
+
+        effective_method = method
+
+        # Handle method aliases
+        if effective_method == "stream":
+            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
+            effective_method = "pdfplumber"
+            table_settings.setdefault("vertical_strategy", "text")
+            table_settings.setdefault("horizontal_strategy", "text")
+        elif effective_method == "lattice":
+            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            effective_method = "pdfplumber"
+            table_settings.setdefault("vertical_strategy", "lines")
+            table_settings.setdefault("horizontal_strategy", "lines")
+
+        # Use the selected method
+        if effective_method == "pdfplumber":
+            return self._page.extract_tables(table_settings)
+        else:
+            raise ValueError(
+                f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
+            )
 
     def _load_elements(self):
         """Load all elements from the page via ElementManager."""
