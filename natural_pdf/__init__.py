@@ -37,6 +37,43 @@ def configure_logging(level=logging.INFO, handler=None):
     logger.propagate = False
 
 
+# Global options system
+class ConfigSection:
+    """A configuration section that holds key-value option pairs."""
+    
+    def __init__(self, **defaults):
+        self.__dict__.update(defaults)
+    
+    def __repr__(self):
+        items = [f"{k}={v!r}" for k, v in self.__dict__.items()]
+        return f"{self.__class__.__name__}({', '.join(items)})"
+
+
+class Options:
+    """Global options for natural-pdf, similar to pandas options."""
+    
+    def __init__(self):
+        # Image rendering defaults
+        self.image = ConfigSection(
+            width=None,
+            resolution=150
+        )
+        
+        # OCR defaults  
+        self.ocr = ConfigSection(
+            engine='easyocr',
+            languages=['en'],
+            min_confidence=0.5,
+            device='cpu'
+        )
+        
+        # Text extraction defaults (empty for now)
+        self.text = ConfigSection()
+
+# Create global options instance
+options = Options()
+
+
 # Version
 __version__ = "0.1.1"
 
@@ -90,6 +127,7 @@ __all__ = [
     "MultiModalSearchOptions",
     "BaseSearchOptions",
     "configure_logging",
+    "options",
 ]
 
 # Add QA components to __all__ if available

@@ -70,7 +70,6 @@ class SuryaOCREngine(OCREngine):
         else:
             results = self._recognition_predictor(
                 images=[image],
-                langs=langs,  # Use the languages set during initialization
                 det_predictor=self._detection_predictor,
             )
 

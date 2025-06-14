@@ -307,19 +307,8 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
     ) -> "PDF":
         """
         Applies OCR to specified pages of the PDF using batch processing.
-        Applies OCR to specified pages of the PDF using batch processing.
 
         Args:
-            engine: Name of the OCR engine
-            languages: List of language codes
-            min_confidence: Minimum confidence threshold
-            device: Device to run OCR on
-            resolution: DPI resolution for page images
-            apply_exclusions: Whether to mask excluded areas
-            detect_only: If True, only detect text boxes
-            replace: Whether to replace existing OCR elements
-            options: Engine-specific options
-            pages: Page indices to process or None for all pages
             engine: Name of the OCR engine
             languages: List of language codes
             min_confidence: Minimum confidence threshold
@@ -333,11 +322,23 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         Returns:
             Self for method chaining
-            Self for method chaining
         """
         if not self._ocr_manager:
             logger.error("OCRManager not available. Cannot apply OCR.")
             return self
+
+        # Apply global options as defaults, but allow explicit parameters to override
+        import natural_pdf
+        
+        # Use global OCR options if parameters are not explicitly set
+        if engine is None:
+            engine = natural_pdf.options.ocr.engine
+        if languages is None:
+            languages = natural_pdf.options.ocr.languages
+        if min_confidence is None:
+            min_confidence = natural_pdf.options.ocr.min_confidence
+        if device is None:
+            device = natural_pdf.options.ocr.device
 
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")

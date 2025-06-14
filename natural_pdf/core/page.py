@@ -1555,6 +1555,14 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         Returns:
             PIL Image of the page, or None if rendering fails.
         """
+        # Apply global options as defaults, but allow explicit parameters to override
+        import natural_pdf
+        
+        # Use global options if parameters are not explicitly set
+        if width is None:
+            width = natural_pdf.options.image.width
+        if resolution is None and natural_pdf.options.image.resolution is not None:
+            resolution = natural_pdf.options.image.resolution
         # 1. Create cache key (excluding path)
         cache_key_parts = [
             scale,
