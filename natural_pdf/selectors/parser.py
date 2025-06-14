@@ -302,6 +302,12 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                     parsed_value = safe_parse_color(value_str)
                 else:
                     parsed_value = safe_parse_value(value_str)  # Handles quotes
+                    # If using ~= with a numeric value, warn once during parsing
+                    if op == "~=" and isinstance(parsed_value, (int, float)):
+                        logger.warning(
+                            f"Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
+                            f"Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
+                        )
                 result["attributes"].append({"name": name, "op": op, "value": parsed_value})
 
             selector = selector[attr_match.end() :].strip()
@@ -416,7 +422,7 @@ def _is_approximate_match(value1, value2) -> bool:
     """
     Check if two values approximately match.
     
-    For colors: Uses Delta E color difference with tolerance of 10.0
+    For colors: Uses Delta E color difference with tolerance of 20.0
     For numbers: Uses absolute difference with tolerance of 2.0
     """
     # First check if both values are colors
@@ -425,10 +431,6 @@ def _is_approximate_match(value1, value2) -> bool:
     
     # Then check if both are numbers
     if isinstance(value1, (int, float)) and isinstance(value2, (int, float)):
-        logger.warning(
-            f"Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
-            f"Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
-        )
         return abs(value1 - value2) <= 2.0
     
     # Default to exact match for other types
