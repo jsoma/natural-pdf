@@ -20,6 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "pdfplumber",
+    "colormath2",
     "pillow",
     "colour",
     "numpy",

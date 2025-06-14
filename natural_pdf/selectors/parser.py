@@ -8,6 +8,9 @@ import re
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from colour import Color
+from colormath2.color_objects import LabColor, sRGBColor
+from colormath2.color_conversions import convert_color
+from colormath2.color_diff import delta_e_cie2000
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +49,9 @@ def safe_parse_color(value_str: str) -> tuple:
 
     Returns:
         RGB tuple (r, g, b) with values from 0 to 1
+        
+    Raises:
+        ValueError: If the color cannot be parsed
     """
     value_str = value_str.strip()
 
@@ -63,12 +69,12 @@ def safe_parse_color(value_str: str) -> tuple:
             color = Color(value_str)
             # Convert to RGB tuple with values between 0 and 1
             return (color.red, color.green, color.blue)
-        except (ValueError, AttributeError):
-            # If color parsing fails, return a default (black)
-            return (0, 0, 0)
+        except (ValueError, AttributeError) as e:
+            # If color parsing fails, raise the error
+            raise ValueError(f"Could not parse color value: {value_str}") from e
 
-    # If we got here with a non-tuple, return default
-    return (0, 0, 0)
+    # If we got here with a non-tuple, raise error
+    raise ValueError(f"Invalid color value: {value_str}")
 
 
 def _split_top_level_or(selector: str) -> List[str]:
@@ -364,47 +370,67 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     return result
 
 
-def _is_approximate_match(value1, value2, tolerance: float = 0.1) -> bool:
+def _is_color_value(value) -> bool:
+    """
+    Check if a value represents a color by attempting to parse it with Color.
+    """
+    try:
+        # If it's already a tuple/list, convert to tuple
+        if isinstance(value, (list, tuple)) and len(value) >= 3:
+            return True
+        # Otherwise try parsing as a color name/hex
+        Color(value)
+        return True
+    except:
+        return False
+
+
+def _color_distance(color1, color2) -> float:
+    """
+    Calculate Delta E color difference between two colors.
+    Colors can be strings (names/hex) or RGB tuples.
+    
+    Returns:
+        Delta E value, or float('inf') if colors can't be compared
+    """
+    try:
+        # Convert to RGB tuples
+        if isinstance(color1, (list, tuple)) and len(color1) >= 3:
+            rgb1 = sRGBColor(*color1[:3])
+        else:
+            rgb1 = sRGBColor(*Color(color1).rgb)
+            
+        if isinstance(color2, (list, tuple)) and len(color2) >= 3:
+            rgb2 = sRGBColor(*color2[:3])
+        else:
+            rgb2 = sRGBColor(*Color(color2).rgb)
+            
+        lab1 = convert_color(rgb1, LabColor)
+        lab2 = convert_color(rgb2, LabColor)
+        return delta_e_cie2000(lab1, lab2)
+    except:
+        return float('inf')
+
+
+def _is_approximate_match(value1, value2) -> bool:
     """
     Check if two values approximately match.
-
-    This is mainly used for color comparisons with some tolerance.
-
-    Args:
-        value1: First value
-        value2: Second value
-        tolerance: Maximum difference allowed
-
-    Returns:
-        True if the values approximately match
+    
+    For colors: Uses Delta E color difference with tolerance of 10.0
+    For numbers: Uses absolute difference with tolerance of 2.0
     """
-    # Handle string colors by converting them to RGB tuples
-    if isinstance(value1, str):
-        try:
-            value1 = tuple(Color(value1).rgb)
-        except:
-            pass
-
-    if isinstance(value2, str):
-        try:
-            value2 = tuple(Color(value2).rgb)
-        except:
-            pass
-
-    # If both are tuples/lists with the same length (e.g., colors)
-    if (
-        isinstance(value1, (list, tuple))
-        and isinstance(value2, (list, tuple))
-        and len(value1) == len(value2)
-    ):
-
-        # Check if all components are within tolerance
-        return all(abs(a - b) <= tolerance for a, b in zip(value1, value2))
-
-    # If both are numbers
+    # First check if both values are colors
+    if _is_color_value(value1) and _is_color_value(value2):
+        return _color_distance(value1, value2) <= 20.0
+    
+    # Then check if both are numbers
     if isinstance(value1, (int, float)) and isinstance(value2, (int, float)):
-        return abs(value1 - value2) <= tolerance
-
+        logger.warning(
+            f"Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
+            f"Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
+        )
+        return abs(value1 - value2) <= 2.0
+    
     # Default to exact match for other types
     return value1 == value2
 
@@ -511,7 +537,7 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
                 compare_func = lambda el_val, sel_val: el_val == sel_val
             elif op == "!=":
                 compare_func = lambda el_val, sel_val: el_val != sel_val
-            elif op == "~":
+            elif op == "~=":
                 op_desc = f"~= {value!r} (approx)"
                 compare_func = lambda el_val, sel_val: _is_approximate_match(el_val, sel_val)
             elif op == "^=":
