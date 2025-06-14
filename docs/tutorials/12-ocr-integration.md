@@ -47,6 +47,29 @@ text_with_ocr = page.extract_text()
 print(f"\nExtracted text after OCR:\n{text_with_ocr[:150]}...")
 ```
 
+## Setting Default OCR Options
+
+You can set global default OCR options using `natural_pdf.options`. These defaults will be used automatically when you call `apply_ocr()` without specifying parameters.
+
+```python
+import natural_pdf as npdf
+
+# Set global OCR defaults
+npdf.options.ocr.engine = 'surya'          # Default OCR engine
+npdf.options.ocr.languages = ['en', 'es']  # Default languages
+npdf.options.ocr.min_confidence = 0.7      # Default confidence threshold
+npdf.options.ocr.device = 'cpu'            # Default processing device
+
+# Now all OCR calls use these defaults
+pdf = npdf.PDF("document.pdf")
+pdf.pages[0].apply_ocr()  # Uses: engine='surya', languages=['en', 'es'], min_confidence=0.7
+
+# You can still override defaults for specific calls
+pdf.pages[0].apply_ocr(engine='easyocr', languages=['fr'])  # Override engine and languages
+```
+
+This is especially useful when processing many documents with the same OCR settings, as you don't need to specify the parameters repeatedly.
+
 ## Advanced OCR Configuration
 
 For more control, import and use the specific `Options` class for your chosen engine within the `apply_ocr` call.
