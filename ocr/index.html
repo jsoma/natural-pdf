@@ -1537,13 +1537,6 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Installation</strong></td>
-<td><code>natural-pdf[easyocr]</code></td>
-<td><code>natural-pdf[paddle]</code></td>
-<td><code>natural-pdf[surya]</code></td>
-<td><code>natural-pdf[gemini]</code></td>
-</tr>
-<tr>
 <td><strong>Primary Strength</strong></td>
 <td>Good general performance, simpler</td>
 <td>Excellent Asian language, speed</td>
@@ -1594,6 +1587,7 @@
 </tr>
 </tbody>
 </table>
+<p>If you try to use an engine that is not installed, the library will raise an error with a <code>pip install</code> command to install the required dependencies.</p>
 <h2 id="basic-ocr-usage">Basic OCR Usage</h2>
 <p>Apply OCR directly to a page or region:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
@@ -1623,14 +1617,8 @@
 
 <span class="c1"># --- Configure PaddleOCR ---</span>
 <span class="n">paddle_opts</span> <span class="o">=</span> <span class="n">PaddleOCROptions</span><span class="p">(</span>
-    <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">,</span> <span class="s1">&#39;zh-cn&#39;</span><span class="p">],</span>
-    <span class="n">use_gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>         <span class="c1"># Explicitly enable GPU if available</span>
-    <span class="n">use_angle_cls</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Disable text direction classification (if text is upright)</span>
-    <span class="n">det_db_thresh</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>   <span class="c1"># Lower detection threshold (more boxes, potentially noisy)</span>
-    <span class="n">rec_batch_num</span><span class="o">=</span><span class="mi">16</span>      <span class="c1"># Increase recognition batch size for potential speedup on GPU</span>
-    <span class="c1"># rec_char_dict_path=&#39;/path/to/custom_dict.txt&#39; # Optional: Path to a custom character dictionary</span>
-    <span class="c1"># See PaddleOCROptions documentation or source code for all parameters</span>
- <span class="p">)</span>
+    <span class="c1"># Ugh check ocr_options.py! So many!</span>
+<span class="p">)</span>
 <span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">paddle_opts</span><span class="p">)</span>
 
 <span class="c1"># --- Configure EasyOCR ---</span>
