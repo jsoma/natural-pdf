@@ -119,7 +119,7 @@ Repository = "https://github.com/jsoma/natural-pdf"
 # --- Tool Configurations ---
 
 [tool.setuptools_scm]
-# Empty section uses default configuration (version from Git tags)
+local_scheme = "no-local-version"
 
 [tool.black]
 line-length = 100

@@ -78,6 +78,7 @@ nav:
   - Advanced Features:
     - Visual Debugging: visual-debugging/index.ipynb
     - Interactive Widget: interactive-widget/index.ipynb
+    - Describe & Inspect: describe/index.ipynb
     - OCR: ocr/index.md
     - OCR Fine-tuning: finetuning/index.md
     - Tables: tables/index.ipynb

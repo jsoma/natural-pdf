@@ -30,6 +30,7 @@ from tqdm.auto import tqdm
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.base import Element
@@ -71,7 +72,14 @@ P = TypeVar("P", bound="Page")
 
 
 class ElementCollection(
-    Generic[T], ApplyMixin, ExportMixin, DirectionalCollectionMixin, MutableSequence
+    Generic[T],
+    ApplyMixin,
+    ExportMixin,
+    ClassificationMixin,
+    DirectionalCollectionMixin,
+    DescribeMixin,
+    InspectMixin,
+    MutableSequence,
 ):
     """
     Collection of PDF elements with batch operations.
@@ -1793,6 +1801,8 @@ class ElementCollection(
         return self.apply(
             lambda element: element.clip(obj=obj, left=left, top=top, right=right, bottom=bottom)
         )
+
+
 
 
 class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):

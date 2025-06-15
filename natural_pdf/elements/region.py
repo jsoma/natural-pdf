@@ -15,6 +15,7 @@ from natural_pdf.classification.manager import ClassificationManager  # Keep for
 
 # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.elements.base import DirectionalMixin
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
@@ -49,7 +50,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
+class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
     """
     Represents a rectangular region on a page.
     """
@@ -2962,3 +2963,5 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 )
 
         return text_element
+
+

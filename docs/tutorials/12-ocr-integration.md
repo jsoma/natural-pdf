@@ -49,6 +49,18 @@ text_with_ocr = page.extract_text()
 print(f"\nExtracted text after OCR:\n{text_with_ocr[:150]}...")
 ```
 
+You can also use `.describe()` to see a summary of the OCR outcome...
+
+```python
+page.describe()
+```
+
+...or `.inspect()` on the text elements for individual details.
+
+```python
+page.find_all('text').inspect()
+```
+
 ## Setting Default OCR Options
 
 You can set global default OCR options using `natural_pdf.options`. These defaults will be used automatically when you call `apply_ocr()` without specifying parameters.

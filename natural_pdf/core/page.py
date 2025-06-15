@@ -61,6 +61,7 @@ from natural_pdf.classification.manager import ClassificationManager  # For type
 # # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
 from natural_pdf.core.element_manager import ElementManager
+from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
@@ -92,7 +93,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
+class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
     """
     Enhanced Page wrapper built on top of pdfplumber.Page.
 

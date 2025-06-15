@@ -8,6 +8,7 @@ from PIL import Image
 
 # Import selector parsing functions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.describe.mixin import DescribeMixin
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -412,7 +413,7 @@ class DirectionalMixin:
         return new_region
 
 
-class Element(DirectionalMixin):
+class Element(DirectionalMixin, DescribeMixin):
     """
     Base class for all PDF elements.
 
