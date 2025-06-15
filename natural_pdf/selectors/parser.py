@@ -7,10 +7,10 @@ import logging
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from colour import Color
-from colormath2.color_objects import LabColor, sRGBColor
 from colormath2.color_conversions import convert_color
 from colormath2.color_diff import delta_e_cie2000
+from colormath2.color_objects import LabColor, sRGBColor
+from colour import Color
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,14 @@ def safe_parse_value(value_str: str) -> Any:
 
 def safe_parse_color(value_str: str) -> tuple:
     """
-    Parse a color value which could be an RGB tuple, color name, or hex code.
+    Parse a color value which could be an RGB tuple, color name, hex code, or CSS-style rgb(...)/rgba(...).
 
     Args:
-        value_str: String representation of a color (e.g., "red", "#ff0000", "(1,0,0)")
+        value_str: String representation of a color (e.g., "red", "#ff0000", "(1,0,0)", "rgb(0,0,255)")
 
     Returns:
         RGB tuple (r, g, b) with values from 0 to 1
-        
+
     Raises:
         ValueError: If the color cannot be parsed
     """
@@ -63,15 +63,32 @@ def safe_parse_color(value_str: str) -> tuple:
             # Return just the RGB components as a tuple
             return tuple(color_tuple[:3])
     except (SyntaxError, ValueError):
-        # Not a valid tuple/list, try as a color name or hex
-        try:
-            # Use colour library to parse color names, hex values, etc.
-            color = Color(value_str)
-            # Convert to RGB tuple with values between 0 and 1
-            return (color.red, color.green, color.blue)
-        except (ValueError, AttributeError) as e:
-            # If color parsing fails, raise the error
-            raise ValueError(f"Could not parse color value: {value_str}") from e
+        pass  # Not a valid tuple/list, try other formats
+
+    # Try parsing CSS-style rgb(...) or rgba(...)
+    css_rgb_match = re.match(
+        r"rgb\s*\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)", value_str, re.IGNORECASE
+    )
+    css_rgba_match = re.match(
+        r"rgba\s*\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9\.]+)\s*\)",
+        value_str,
+        re.IGNORECASE,
+    )
+    if css_rgb_match:
+        r, g, b = map(int, css_rgb_match.groups())
+        return (r / 255.0, g / 255.0, b / 255.0)
+    elif css_rgba_match:
+        r, g, b, a = css_rgba_match.groups()
+        r, g, b = int(r), int(g), int(b)
+        # alpha is ignored for now, but could be used if needed
+        return (r / 255.0, g / 255.0, b / 255.0)
+
+    # Try as a color name or hex
+    try:
+        color = Color(value_str)
+        return (color.red, color.green, color.blue)
+    except (ValueError, AttributeError) as e:
+        raise ValueError(f"Could not parse color value: {value_str}") from e
 
     # If we got here with a non-tuple, raise error
     raise ValueError(f"Invalid color value: {value_str}")
@@ -80,66 +97,66 @@ def safe_parse_color(value_str: str) -> tuple:
 def _split_top_level_or(selector: str) -> List[str]:
     """
     Split a selector string on top-level OR operators (| or ,) only.
-    
+
     Respects parsing contexts and does not split when | or , appear inside:
     - Quoted strings (both single and double quotes)
     - Parentheses (for pseudo-class arguments like :not(...))
     - Square brackets (for attribute selectors like [attr="value"])
-    
+
     Args:
         selector: The selector string to split
-        
+
     Returns:
         List of selector parts. If no top-level OR operators found, returns [selector].
-        
+
     Examples:
         >>> _split_top_level_or('text:contains("a|b")|text:bold')
         ['text:contains("a|b")', 'text:bold']
-        
+
         >>> _split_top_level_or('text:contains("hello,world")')
         ['text:contains("hello,world")']
     """
     if not selector or not isinstance(selector, str):
         return [selector] if selector else []
-    
+
     parts = []
     current_part = ""
     i = 0
-    
+
     # Parsing state
     in_double_quotes = False
     in_single_quotes = False
     paren_depth = 0
     bracket_depth = 0
-    
+
     while i < len(selector):
         char = selector[i]
-        
+
         # Handle escape sequences in quotes
-        if i > 0 and selector[i-1] == '\\':
+        if i > 0 and selector[i - 1] == "\\":
             current_part += char
             i += 1
             continue
-        
+
         # Handle quote state changes
         if char == '"' and not in_single_quotes:
             in_double_quotes = not in_double_quotes
         elif char == "'" and not in_double_quotes:
             in_single_quotes = not in_single_quotes
-        
+
         # Handle parentheses and brackets only when not in quotes
         elif not in_double_quotes and not in_single_quotes:
-            if char == '(':
+            if char == "(":
                 paren_depth += 1
-            elif char == ')':
+            elif char == ")":
                 paren_depth -= 1
-            elif char == '[':
+            elif char == "[":
                 bracket_depth += 1
-            elif char == ']':
+            elif char == "]":
                 bracket_depth -= 1
-            
+
             # Check for top-level OR operators
-            elif (char == '|' or char == ',') and paren_depth == 0 and bracket_depth == 0:
+            elif (char == "|" or char == ",") and paren_depth == 0 and bracket_depth == 0:
                 # Found a top-level OR operator
                 part = current_part.strip()
                 if part:  # Only add non-empty parts
@@ -147,16 +164,16 @@ def _split_top_level_or(selector: str) -> List[str]:
                 current_part = ""
                 i += 1
                 continue
-        
+
         # Add character to current part
         current_part += char
         i += 1
-    
+
     # Add the final part
     final_part = current_part.strip()
     if final_part:
         parts.append(final_part)
-    
+
     # If we only found one part, return it as a single-element list
     # If we found multiple parts, those are the OR-separated parts
     return parts if parts else [selector]
@@ -182,10 +199,10 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     Examples:
         >>> parse_selector('text:contains("hello")')  # Single selector
         {'type': 'text', 'pseudo_classes': [{'name': 'contains', 'args': 'hello'}], ...}
-        
+
         >>> parse_selector('text:contains("A")|text:bold')  # OR with pipe
         {'type': 'or', 'selectors': [...]}
-        
+
         >>> parse_selector('text:contains("A"),line[width>5]')  # OR with comma
         {'type': 'or', 'selectors': [...]}
 
@@ -211,7 +228,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
     # Check if selector contains OR operators at the top level only
     # (not inside quotes, parentheses, or brackets)
     or_parts = _split_top_level_or(selector)
-    
+
     # If we found OR parts, parse each one recursively and return compound selector
     if len(or_parts) > 1:
         parsed_selectors = []
@@ -221,22 +238,21 @@ def parse_selector(selector: str) -> Dict[str, Any]:
             except (ValueError, TypeError) as e:
                 logger.warning(f"Skipping invalid OR selector part '{part}': {e}")
                 continue
-        
+
         if len(parsed_selectors) > 1:
-            return {
-                "type": "or",
-                "selectors": parsed_selectors
-            }
+            return {"type": "or", "selectors": parsed_selectors}
         elif len(parsed_selectors) == 1:
             # Only one valid part, return it directly
             return parsed_selectors[0]
         else:
             # No valid parts, return default
-            logger.warning(f"No valid parts found in OR selector '{original_selector_for_error}', returning default selector")
+            logger.warning(
+                f"No valid parts found in OR selector '{original_selector_for_error}', returning default selector"
+            )
             return result
 
     # --- Continue with single selector parsing (existing logic) ---
-    
+
     # --- Handle wildcard selector explicitly ---
     if selector == "*":
         # Wildcard matches any type, already the default.
@@ -395,7 +411,7 @@ def _color_distance(color1, color2) -> float:
     """
     Calculate Delta E color difference between two colors.
     Colors can be strings (names/hex) or RGB tuples.
-    
+
     Returns:
         Delta E value, or float('inf') if colors can't be compared
     """
@@ -405,34 +421,34 @@ def _color_distance(color1, color2) -> float:
             rgb1 = sRGBColor(*color1[:3])
         else:
             rgb1 = sRGBColor(*Color(color1).rgb)
-            
+
         if isinstance(color2, (list, tuple)) and len(color2) >= 3:
             rgb2 = sRGBColor(*color2[:3])
         else:
             rgb2 = sRGBColor(*Color(color2).rgb)
-            
+
         lab1 = convert_color(rgb1, LabColor)
         lab2 = convert_color(rgb2, LabColor)
         return delta_e_cie2000(lab1, lab2)
     except:
-        return float('inf')
+        return float("inf")
 
 
 def _is_approximate_match(value1, value2) -> bool:
     """
     Check if two values approximately match.
-    
+
     For colors: Uses Delta E color difference with tolerance of 20.0
     For numbers: Uses absolute difference with tolerance of 2.0
     """
     # First check if both values are colors
     if _is_color_value(value1) and _is_color_value(value2):
         return _color_distance(value1, value2) <= 20.0
-    
+
     # Then check if both are numbers
     if isinstance(value1, (int, float)) and isinstance(value2, (int, float)):
         return abs(value1 - value2) <= 2.0
-    
+
     # Default to exact match for other types
     return value1 == value2
 
@@ -762,15 +778,15 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
         if not sub_selectors:
             # Empty OR selector, return a function that never matches
             return lambda element: False
-        
+
         # Create filter functions for each sub-selector
         sub_filter_funcs = []
         for sub_selector in sub_selectors:
             sub_filter_funcs.append(selector_to_filter_func(sub_selector, **kwargs))
-        
+
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"Creating OR filter with {len(sub_filter_funcs)} sub-selectors")
-        
+
         # Return OR combination - element matches if ANY sub-selector matches
         def or_filter(element):
             for func in sub_filter_funcs:
@@ -782,9 +798,9 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
                     # Continue to next sub-filter on error
                     continue
             return False
-        
+
         return or_filter
-    
+
     # Handle single selectors (existing logic)
     filter_list = _build_filter_list(selector, **kwargs)
 

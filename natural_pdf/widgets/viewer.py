@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 # Initialize flag and module/class variables to None
 _IPYWIDGETS_AVAILABLE = False
 widgets = None
-SimpleInteractiveViewerWidget = None
 InteractiveViewerWidget = None
 
 try:
@@ -29,13 +28,12 @@ try:
 
     from IPython.display import HTML, Javascript, display
     from PIL import Image
-    from traitlets import Dict, List, Unicode, observe
 
-    # --- Define Widget Classes ONLY if ipywidgets is available ---
-    class SimpleInteractiveViewerWidget(widgets.DOMWidget):
+    # --- Define Widget Class ---
+    class InteractiveViewerWidget(widgets.DOMWidget):
         def __init__(self, pdf_data=None, **kwargs):
             """
-            Create a simple interactive PDF viewer widget.
+            Create an interactive PDF viewer widget.
 
             Args:
                 pdf_data (dict, optional): Dictionary containing 'page_image', 'elements', etc.
@@ -56,7 +54,7 @@ try:
                 self.pdf_data = {"page_image": image_source, "elements": kwargs.get("elements", [])}
 
             # Log for debugging
-            logger.debug(f"SimpleInteractiveViewerWidget initialized with widget_id={id(self)}")
+            logger.debug(f"InteractiveViewerWidget initialized with widget_id={id(self)}")
             logger.debug(
                 f"Image source provided: {self.pdf_data.get('page_image', 'None')[:30]}..."
             )
@@ -248,133 +246,53 @@ try:
 
                 function handleMouseDown(event) {
                     // Prevent default only if needed (e.g., text selection on image)
-                     if (event.target.tagName === 'IMG') {
+                    if (event.target.tagName !== 'BUTTON') {
                         event.preventDefault();
-                     }
-                    // Allow mousedown events on elements to proceed for potential clicks
-                    // Record start position for potential drag
+                    }
+                    
+                    viewerData.isDragging = true;
                     viewerData.startX = event.clientX;
                     viewerData.startY = event.clientY;
-                    // Store initial translate values to calculate relative movement
                     viewerData.startTranslateX = viewerData.translateX;
                     viewerData.startTranslateY = viewerData.translateY;
-                    // Don't set isDragging = true yet
-                    // Don't change pointerEvents yet
+                    viewerData.justDragged = false; // Reset drag flag
+                    zoomPanContainer.style.cursor = 'grabbing';
                 }
-                
+
                 function handleMouseMove(event) {
-                    // Check if mouse button is actually down (browser inconsistencies)
-                    if (event.buttons !== 1) { 
-                         if (viewerData.isDragging) {
-                             // Force drag end if button is released unexpectedly
-                             handleMouseUp(event); 
-                         }
-                         return; 
-                     }
+                    if (!viewerData.isDragging) return;
 
-                    const currentX = event.clientX;
-                    const currentY = event.clientY;
-                    const deltaX = currentX - viewerData.startX;
-                    const deltaY = currentY - viewerData.startY;
-
-                    // If not already dragging, check if threshold is exceeded
-                    if (!viewerData.isDragging) {
-                        const movedDistance = Math.hypot(deltaX, deltaY);
-                        if (movedDistance > dragThreshold) {
-                            viewerData.isDragging = true;
-                            zoomPanContainer.style.cursor = 'grabbing';
-                            // Now disable pointer events on elements since a drag has started
-                            elements.forEach(el => el.style.pointerEvents = 'none');
-                        }
-                    }
-
-                    // If dragging, update transform
-                    if (viewerData.isDragging) {
-                         // Prevent text selection during drag
-                         event.preventDefault(); 
-                        viewerData.translateX = viewerData.startTranslateX + deltaX;
-                        viewerData.translateY = viewerData.startTranslateY + deltaY;
-                        applyTransform();
-                    }
-                }
-                
-                function handleMouseUp(event) {
-                    const wasDragging = viewerData.isDragging;
+                    const dx = event.clientX - viewerData.startX;
+                    const dy = event.clientY - viewerData.startY;
                     
-                     // Always reset cursor on mouse up
+                    // If we've moved past the threshold, it's a drag
+                    if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+                         viewerData.justDragged = true;
+                    }
+
+                    viewerData.translateX = viewerData.startTranslateX + dx;
+                    viewerData.translateY = viewerData.startTranslateY + dy;
+                    applyTransform();
+                }
+
+                function handleMouseUp() {
+                    viewerData.isDragging = false;
                     zoomPanContainer.style.cursor = 'grab';
-
-                    if (wasDragging) {
-                         viewerData.isDragging = false;
-                        // Restore pointer events now that drag is finished
-                        elements.forEach(el => el.style.pointerEvents = 'auto');
-                        
-                        // Set flag to indicate a drag just finished
-                        viewerData.justDragged = true;
-                        // Reset the flag after a minimal delay, allowing the click event to be ignored
-                        setTimeout(() => { viewerData.justDragged = false; }, 0);
-
-                        // IMPORTANT: Prevent this mouseup from triggering other default actions
-                        event.preventDefault(); 
-                        // Stop propagation might not be needed here if the click listener checks justDragged
-                        // event.stopPropagation(); 
-                     } else {
-                         // If it wasn't a drag, do nothing here. 
-                         // The browser should naturally fire a 'click' event on the target element 
-                         // which will be handled by the element's specific click listener 
-                         // or the outerContainer's listener if it was on the background.
-                     }
                 }
                 
-                // Mousedown starts the *potential* for a drag
-                // Attach to outer container to catch drags starting anywhere inside
-                outerContainer.addEventListener('mousedown', handleMouseDown);
+                zoomPanContainer.addEventListener('mousedown', handleMouseDown);
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
                 
-                // Mousemove determines if it's *actually* a drag and updates position
-                // Attach to window or document for smoother dragging even if mouse leaves outerContainer
-                // Using outerContainer for now, might need adjustment if dragging feels jerky near edges
-                outerContainer.addEventListener('mousemove', handleMouseMove); 
-                
-                // Mouseup ends the drag *or* allows a click to proceed
-                 // Attach to window or document to ensure drag ends even if mouse released outside
-                 // Using outerContainer for now
-                outerContainer.addEventListener('mouseup', handleMouseUp);
-                
-                // Stop dragging if mouse leaves the outer container entirely (optional but good practice)
-                outerContainer.addEventListener('mouseleave', (event) => {
-                     // Only act if the primary mouse button is NOT pressed anymore when leaving
-                     if (viewerData.isDragging && event.buttons !== 1) { 
-                         handleMouseUp(event); 
-                     } 
-                 }); 
-                
-                // --- Button Listeners --- 
+                // --- Button Controls ---
                 zoomInButton.addEventListener('click', () => {
-                    const centerRect = outerContainer.getBoundingClientRect();
-                    const centerX = centerRect.width / 2;
-                    const centerY = centerRect.height / 2;
-                    const zoomFactor = 1.2;
-                    const newScale = Math.min(5, viewerData.scale * zoomFactor);
-                    const pointX = (centerX - viewerData.translateX) / viewerData.scale;
-                    const pointY = (centerY - viewerData.translateY) / viewerData.scale;
-                    viewerData.scale = newScale;
-                    viewerData.translateX = centerX - pointX * viewerData.scale;
-                    viewerData.translateY = centerY - pointY * viewerData.scale;
-                    applyTransform();
+                     viewerData.scale = Math.min(5, viewerData.scale * 1.2);
+                     applyTransform();
                 });
                 
-                zoomOutButton.addEventListener('click', () => {
-                     const centerRect = outerContainer.getBoundingClientRect();
-                    const centerX = centerRect.width / 2;
-                    const centerY = centerRect.height / 2;
-                    const zoomFactor = 1 / 1.2;
-                    const newScale = Math.max(0.5, viewerData.scale * zoomFactor);
-                    const pointX = (centerX - viewerData.translateX) / viewerData.scale;
-                    const pointY = (centerY - viewerData.translateY) / viewerData.scale;
-                    viewerData.scale = newScale;
-                    viewerData.translateX = centerX - pointX * viewerData.scale;
-                    viewerData.translateY = centerY - pointY * viewerData.scale;
-                    applyTransform();
+                 zoomOutButton.addEventListener('click', () => {
+                     viewerData.scale = Math.max(0.5, viewerData.scale / 1.2);
+                     applyTransform();
                 });
                 
                 resetButton.addEventListener('click', () => {
@@ -382,385 +300,223 @@ try:
                     viewerData.translateX = 0;
                     viewerData.translateY = 0;
                     applyTransform();
-                    // Also reset selection on zoom reset
-                    if (viewerData.selectedElement !== null) {
-                        resetElementStyle(viewerData.selectedElement);
-                        viewerData.selectedElement = null;
-                        // Optionally clear info panel
-                        // const elementData = document.getElementById(widgetId + "-element-data");
-                        // if (elementData) elementData.textContent = '';
-                    }
-                });
-                
-                // --- Helper function to reset element style ---
-                function resetElementStyle(elementIdx) {
-                    const el = zoomPanContainer.querySelector(`.pdf-element[data-element-id='${elementIdx}']`);
-                    const svgRect = document.querySelector(`#${widgetId} .svg-layer svg rect[data-element-id='${elementIdx}']`);
-                    if (!el) return;
-
-                    const viewer = window.pdfViewerRegistry[widgetId];
-                    const eType = viewer.initialData.elements[elementIdx].type || 'unknown';
-
-                    if (eType === 'text') {
-                        el.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
-                    } else if (eType === 'image') {
-                        el.style.backgroundColor = "rgba(0, 128, 255, 0.3)";
-                    } else if (eType === 'figure') {
-                        el.style.backgroundColor = "rgba(255, 0, 255, 0.3)";
-                    } else if (eType === 'table') {
-                        el.style.backgroundColor = "rgba(0, 255, 0, 0.3)";
-                    } else {
-                        el.style.backgroundColor = "rgba(200, 200, 200, 0.3)";
-                    }
-                    el.style.border = "1px dashed transparent";
-
-                    if (svgRect) {
-                        svgRect.setAttribute("stroke", "rgba(255, 165, 0, 0.85)");
-                        svgRect.setAttribute("stroke-width", "1.5");
-                    }
-                }
-
-                // --- Helper function to set element style (selected/hover) ---
-                function setElementHighlightStyle(elementIdx) {
-                     const el = zoomPanContainer.querySelector(`.pdf-element[data-element-id='${elementIdx}']`);
-                     const svgRect = document.querySelector(`#${widgetId} .svg-layer svg rect[data-element-id='${elementIdx}']`);
-                     if (!el) return;
-
-                     el.style.backgroundColor = "rgba(64, 158, 255, 0.15)";
-                     el.style.border = "2px solid rgba(64, 158, 255, 0.6)";
-
-                     if (svgRect) {
-                        svgRect.setAttribute("stroke", "rgba(64, 158, 255, 0.9)");
-                        svgRect.setAttribute("stroke-width", "2.5");
-                     }
-                }
-                
-                // --- Background Click Listener (on outer container) ---
-                outerContainer.addEventListener('click', (event) => {
-                    // Ignore click if it resulted from the end of a drag
-                    if (viewerData.justDragged) {
-                        return; 
-                    }
-
-                    // If the click is on an element itself, let the element's click handler manage it.
-                    if (event.target.closest('.pdf-element')) {
-                        return;
-                    }
-                    // If dragging, don't deselect
-                    if (viewerData.isDragging) {
-                         return;
-                    }
-
-                    // If an element is selected, deselect it
-                    if (viewerData.selectedElement !== null) {
-                        resetElementStyle(viewerData.selectedElement);
-                        viewerData.selectedElement = null;
-
-                        // Optionally clear the info panel
-                        const infoPanel = document.getElementById(widgetId + "-info-panel");
-                        const elementData = document.getElementById(widgetId + "-element-data");
-                        if (infoPanel && elementData) {
-                            // infoPanel.style.display = "none"; // Or hide it
-                            elementData.textContent = ""; // Clear content
-                        }
-                    }
                 });
 
-                // Add click handlers to elements
-                elements.forEach(function(el) {
-                    el.addEventListener("click", function(event) {
-                        // Stop propagation to prevent the background click handler from immediately deselecting.
-                        event.stopPropagation();
-                        
-                        const elementIdx = parseInt(this.dataset.elementId);
-                        const viewer = window.pdfViewerRegistry[widgetId];
-
-                        // If there was a previously selected element, reset its style
-                        if (viewer.selectedElement !== null && viewer.selectedElement !== elementIdx) {
-                            resetElementStyle(viewer.selectedElement);
-                        }
-
-                        // If clicking the already selected element, deselect it (optional, uncomment if desired)
-                        /*
-                        if (viewer.selectedElement === elementIdx) {
-                             resetElementStyle(elementIdx);
-                             viewer.selectedElement = null;
-                             // Clear info panel maybe?
-                             const elementData = document.getElementById(widgetId + "-element-data");
-                             if (elementData) elementData.textContent = '';
-                             return; // Stop further processing
-                        }
-                        */
-                        
-                        // Store newly selected element
-                        viewer.selectedElement = elementIdx;
-                        
-                        // Highlight newly selected element
-                        setElementHighlightStyle(elementIdx);
-                        
-                        // Update info panel
-                        const infoPanel = document.getElementById(widgetId + "-info-panel");
-                        const elementData = document.getElementById(widgetId + "-element-data");
-                        
-                        if (infoPanel && elementData) {
-                            const element = viewer.initialData.elements[elementIdx];
-                            if (!element) { /* console.error(`[${widgetId}] Element data not found for index ${elementIdx}!`); */ return; }
-                            infoPanel.style.display = "block";
-                            elementData.textContent = JSON.stringify(element, null, 2);
-                        } else {
-                            /* console.error(`[${widgetId}] Info panel or element data container not found via getElementById on click!`); */
-                        }
+                // --- Element Interaction ---
+                function highlightElement(elementId) {
+                    // Remove previous highlights on SVG rects
+                    const allRects = zoomPanContainer.querySelectorAll('svg rect');
+                    allRects.forEach(rect => {
+                        rect.style.stroke = 'rgba(255, 165, 0, 0.85)'; 
+                        rect.style.strokeWidth = '1.5';
                     });
                     
-                    // Add hover effects
-                    el.addEventListener("mouseenter", function() {
-                        // *** Only apply hover if NOTHING is selected ***
-                        const viewer = window.pdfViewerRegistry[widgetId];
-                        if (viewer.selectedElement !== null) {
-                            return; // Do nothing if an element is selected
-                        }
-                        // Avoid hover effect while dragging
-                        if (viewer.isDragging) {
-                             return;
-                        }
-
-                        const elementIdx = parseInt(this.dataset.elementId);
-
-                        // Apply hover styling
-                        setElementHighlightStyle(elementIdx);
-                        
-                        // Show element info on hover (only if nothing selected)
-                        const infoPanel = document.getElementById(widgetId + "-info-panel");
-                        const elementData = document.getElementById(widgetId + "-element-data");
-                        
-                        if (infoPanel && elementData) {
-                            const element = viewer.initialData.elements[elementIdx];
-                            if (!element) { /* console.error(`[${widgetId}] Element data not found for index ${elementIdx}!`); */ return; }
-                            infoPanel.style.display = "block";
-                            elementData.textContent = JSON.stringify(element, null, 2);
-                        } else {
-                             // Don't spam console on hover if it's not found initially
-                             // console.error(`[${widgetId}] Info panel or element data container not found via getElementById on hover!`); 
-                        }
-                    });
-                    
-                    el.addEventListener("mouseleave", function() {
-                        // *** Only reset hover if NOTHING is selected ***
-                        const viewer = window.pdfViewerRegistry[widgetId];
-                        if (viewer.selectedElement !== null) {
-                             return; // Do nothing if an element is selected
-                        }
-                        // Avoid hover effect while dragging
-                         if (viewer.isDragging) {
-                              return;
+                    // Highlight the new one
+                    const targetRect = zoomPanContainer.querySelector(`svg rect[data-element-id='${elementId}']`);
+                    if (targetRect) {
+                        targetRect.style.stroke = 'red';
+                        targetRect.style.strokeWidth = '3';
+                    }
+                }
+                
+                function updateInfoPanel(element) {
+                    const infoPanel = document.getElementById(`${widgetId}-element-data`);
+                    if (infoPanel) {
+                         // Pretty print the JSON
+                         let displayData = {};
+                         for (const [key, value] of Object.entries(element)) {
+                             if (key !== 'bbox') { // Exclude raw bbox
+                                 if (typeof value === 'number') {
+                                     displayData[key] = parseFloat(value.toFixed(2));
+                                 } else {
+                                     displayData[key] = value;
+                                 }
+                             }
                          }
+                         infoPanel.textContent = JSON.stringify(displayData, null, 2);
+                    }
+                }
 
-                        const elementIdx = parseInt(this.dataset.elementId);
+                elements.forEach(el => {
+                    el.addEventListener('click', function(event) {
+                        if (viewerData.justDragged) {
+                            // If a drag just ended, prevent the click action
+                            viewerData.justDragged = false;
+                            return;
+                        }
                         
-                        // Reset styling
-                        resetElementStyle(elementIdx);
+                        event.stopPropagation(); // Stop click from propagating to the container
+                        const elementId = this.getAttribute('data-element-id');
+                        const elementData = viewerData.initialData.elements[elementId];
+                        
+                        console.log('Clicked element:', elementData);
+                        viewerData.selectedElement = elementData;
 
-                        // Optionally hide/clear the info panel on mouse leave when nothing is selected
-                        // const infoPanel = document.getElementById(widgetId + "-info-panel");
-                        // const elementData = document.getElementById(widgetId + "-element-data");
-                        // if (infoPanel && elementData) {
-                        //     elementData.textContent = '';
-                        // }
+                        // Update UI
+                        updateInfoPanel(elementData);
+                        highlightElement(elementId);
+                        
+                        // Example of sending data back to Python kernel
+                        if (window.IPython && window.IPython.notebook && window.IPython.notebook.kernel) {
+                            const command = `import json; from natural_pdf.widgets.viewer import InteractiveViewerWidget; InteractiveViewerWidget._handle_element_click(json.loads('${JSON.stringify(elementData)}'))`;
+                            console.log("Executing command:", command);
+                           // window.IPython.notebook.kernel.execute(command);
+                        }
                     });
                 });
-                            
             })();
             """ % (
                 self.widget_id,
                 json.dumps(self.pdf_data),
             )
-
-            # Add the JavaScript
+            # Display the JavaScript
             display(Javascript(js_code))
 
+        def _get_element_json(self):
+            """Returns the elements as a JSON string."""
+            # We don't need to do anything special here as the coords are already scaled
+            return json.dumps(self.pdf_data.get("elements", []))
+
         def _repr_html_(self):
-            """Return empty string as HTML has already been displayed"""
-            return ""
+            """Called by Jupyter to display the widget."""
+            # The __init__ method already calls display(), so nothing more is needed here
+            return None
 
         @classmethod
         def from_page(cls, page, on_element_click=None, include_attributes=None):
             """
-            Create a viewer widget from a Page object.
+            Factory method to create a viewer from a Page object.
 
             Args:
-                page: A natural_pdf.core.page.Page object
-                on_element_click: Optional callback function for element clicks
-                include_attributes: Optional list of *additional* specific attributes to include.
-                                    A default set of common/useful attributes is always included.
+                page (Page): The Page object to display.
+                on_element_click (callable, optional): Callback function when an element is clicked.
+                include_attributes (list, optional): List of element attributes to include.
 
             Returns:
-                SimpleInteractiveViewerWidget instance or None if image rendering fails.
+                An instance of InteractiveViewerWidget.
             """
-            # Get the page image
-            import base64
-            import json  # Ensure json is imported
-            from io import BytesIO
+            if not _IPYWIDGETS_AVAILABLE:
+                logger.warning(
+                    "Optional dependency 'ipywidgets' not found. Cannot create interactive viewer."
+                )
+                return None
 
-            from PIL import Image  # Ensure Image is imported
+            try:
+                # --- This logic is restored from the original SimpleInteractiveViewerWidget ---
 
-            img = render_plain_page(page, resolution=72)
+                resolution = 150  # Define resolution to calculate scale
+                scale = resolution / 72.0  # PDF standard DPI is 72
 
-            buffered = BytesIO()
-            img.save(buffered, format="PNG")
-            img_str = base64.b64encode(buffered.getvalue()).decode()
-            image_uri = f"data:image/png;base64,{img_str}"
+                # Get the page image, rendered at the higher resolution
+                img = render_plain_page(page, resolution=resolution)
 
-            # Convert elements to dict format
-            elements = []
-            # Use page.elements directly if available, otherwise fallback to find_all
-            page_elements = getattr(page, "elements", page.find_all("*"))
+                buffered = BytesIO()
+                img.save(buffered, format="PNG")
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+                image_uri = f"data:image/png;base64,{img_str}"
 
-            # Filter out 'char' elements
-            filtered_page_elements = [
-                el for el in page_elements if str(getattr(el, "type", "")).lower() != "char"
-            ]
-            logger.debug(
-                f"Filtered out char elements, keeping {len(filtered_page_elements)} elements."
-            )
+                # Convert elements to dict format
+                elements = []
+                # Use page.elements directly if available, otherwise fallback to find_all
+                page_elements = getattr(page, "elements", page.find_all("*"))
 
-            # Define a list of common/useful attributes (properties) to check for
-            default_attributes_to_get = [
-                "text",
-                "fontname",
-                "size",
-                "bold",
-                "italic",
-                "color",
-                "linewidth",  # For lines (pdfplumber uses 'linewidth')
-                "is_horizontal",
-                "is_vertical",  # For lines
-                "source",
-                "confidence",  # For text/OCR
-                "label",  # Common for layout elements
-                "model",  # Add the model name (engine)
-                # Add any other common properties you expect from your elements
-                "upright",
-                "direction",  # from pdfplumber chars/words
-            ]
+                # Filter out 'char' elements which are too noisy for the viewer
+                filtered_page_elements = [
+                    el for el in page_elements if str(getattr(el, "type", "")).lower() != "char"
+                ]
 
-            for i, element in enumerate(filtered_page_elements):
-                # Get original coordinates and calculated width/height (always present via base class)
-                # Assuming 'element' is always an object with these attributes now
-                original_x0 = element.x0
-                original_y0 = element.top
-                original_x1 = element.x1
-                original_y1 = element.bottom
-                width = element.width
-                height = element.height
-                current_element_type = element.type  # Direct attribute access
-                scale = 1.0
+                # Define a list of common/useful attributes to check for
+                default_attributes_to_get = [
+                    "text",
+                    "fontname",
+                    "size",
+                    "bold",
+                    "italic",
+                    "color",
+                    "linewidth",
+                    "is_horizontal",
+                    "is_vertical",
+                    "source",
+                    "confidence",
+                    "label",
+                    "model",
+                    "upright",
+                    "direction",
+                ]
 
-                # Base element dict with required info
-                elem_dict = {
-                    "id": i,
-                    # Use the standardized .type property
-                    "type": current_element_type,
-                    # Scaled coordinates for positioning in HTML/SVG
-                    "x0": original_x0 * scale,
-                    "y0": original_y0 * scale,
-                    "x1": original_x1 * scale,
-                    "y1": original_y1 * scale,
-                    "width": width * scale,
-                    "height": height * scale,
-                }
+                for i, element in enumerate(filtered_page_elements):
+                    elem_dict = {
+                        "id": i,
+                        "type": element.type,
+                        # Apply scaling to all coordinates and dimensions
+                        "x0": element.x0 * scale,
+                        "y0": element.top * scale,
+                        "x1": element.x1 * scale,
+                        "y1": element.bottom * scale,
+                        "width": element.width * scale,
+                        "height": element.height * scale,
+                    }
 
-                # --- Get Default Attributes --- #
-                attributes_found = set()
-                for attr_name in default_attributes_to_get:
-                    # Assuming 'element' is always an object
-                    if hasattr(element, attr_name):
-                        try:
-                            value_to_process = getattr(element, attr_name)
-                            # Convert non-JSON serializable types to string
-                            processed_value = value_to_process
-                            if (
-                                not isinstance(
-                                    value_to_process, (str, int, float, bool, list, dict, tuple)
-                                )
-                                and value_to_process is not None
-                            ):
-                                processed_value = str(value_to_process)
-                            elem_dict[attr_name] = processed_value
-                            attributes_found.add(attr_name)
-                        except Exception as e:
-                            logger.warning(
-                                f"Could not get or process default attribute '{attr_name}' for element {i} ({current_element_type}): {e}"
-                            )
+                    # Get Default and User-Requested Attributes
+                    attributes_found = set()
+                    all_attrs_to_check = default_attributes_to_get + (include_attributes or [])
 
-                # --- Get User-Requested Attributes (if any) --- #
-                if include_attributes:
-                    for attr_name in include_attributes:
-                        # Only process if not already added and exists
+                    for attr_name in all_attrs_to_check:
                         if attr_name not in attributes_found and hasattr(element, attr_name):
                             try:
-                                value_to_process = getattr(element, attr_name)
-                                processed_value = value_to_process
-                                if (
-                                    not isinstance(
-                                        value_to_process, (str, int, float, bool, list, dict, tuple)
-                                    )
-                                    and value_to_process is not None
+                                value = getattr(element, attr_name)
+                                # Ensure value is JSON serializable
+                                if not isinstance(
+                                    value, (str, int, float, bool, list, dict, type(None))
                                 ):
-                                    processed_value = str(value_to_process)
-                                elem_dict[attr_name] = processed_value
+                                    value = str(value)
+                                elem_dict[attr_name] = value
+                                attributes_found.add(attr_name)
                             except Exception as e:
                                 logger.warning(
-                                    f"Could not get or process requested attribute '{attr_name}' for element {i} ({current_element_type}): {e}"
+                                    f"Could not get attribute '{attr_name}' for element {i}: {e}"
                                 )
-                for attr_name_val in elem_dict:  # Renamed to avoid conflict
-                    if isinstance(elem_dict[attr_name_val], float):
-                        elem_dict[attr_name_val] = round(elem_dict[attr_name_val], 2)
-                elements.append(elem_dict)
 
-            logger.debug(
-                f"Prepared {len(elements)} elements for widget with scaled coordinates and curated attributes."
-            )
+                    # Round float values for cleaner display
+                    for key, val in elem_dict.items():
+                        if isinstance(val, float):
+                            elem_dict[key] = round(val, 2)
 
-            # Create and return widget
-            # The actual JSON conversion happens when the data is sent to the frontend
-            return cls(image_uri=image_uri, elements=elements)
+                    elements.append(elem_dict)
 
-    # Keep the original widget class for reference, but make it not register
-    # by commenting out the decorator
-    # @widgets.register
-    class InteractiveViewerWidget(widgets.DOMWidget):
-        """Jupyter widget for interactively viewing PDF page elements."""
+                viewer_data = {"page_image": image_uri, "elements": elements}
+                # --- End of restored logic ---
 
-        _view_name = Unicode("InteractiveViewerView").tag(sync=True)
-        _view_module = Unicode("viewer_widget").tag(sync=True)
-        _view_module_version = Unicode("^0.1.0").tag(sync=True)
+                # Set the callback if provided
+                if on_element_click:
+                    cls._on_element_click_callback = on_element_click
 
-        image_uri = Unicode("").tag(sync=True)
-        page_dimensions = Dict({}).tag(sync=True)
-        elements = List([]).tag(sync=True)
+                return cls(pdf_data=viewer_data)
 
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            logger.debug("InteractiveViewerWidget initialized (Python).")
+            except Exception as e:
+                logger.error(f"Failed to create viewer from page: {e}", exc_info=True)
+                return None
 
-        # Example observer (optional)
-        @observe("elements")
-        def _elements_changed(self, change):
-            # Only log if logger level allows
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Python: Elements traitlet changed. New count: {len(change['new'])}")
-            # Can add Python-side logic here if needed when elements change
-            # print(f"Python: Elements traitlet changed. New count: {len(change['new'])}")
-            pass
+        # Static callback storage and handler
+        _on_element_click_callback = None
+
+        @staticmethod
+        def _handle_element_click(element_data):
+            """Static method to handle element click events from JavaScript."""
+            if InteractiveViewerWidget._on_element_click_callback:
+                try:
+                    InteractiveViewerWidget._on_element_click_callback(element_data)
+                except Exception as e:
+                    logger.error(f"Error in element click callback: {e}", exc_info=True)
 
 except ImportError:
+    # This block runs if 'ipywidgets' is not installed
     logger.info(
         "Optional dependency 'ipywidgets' not found. Interactive viewer widgets will not be defined."
     )
-    # Ensure class variables are None if import fails
-    SimpleInteractiveViewerWidget = None
-    InteractiveViewerWidget = None
+    # Ensure flag is False if the import fails for any reason
+    _IPYWIDGETS_AVAILABLE = False
+except Exception as e:
+    # Catch other potential errors during widget definition
+    logger.error(f"An unexpected error occurred while defining viewer widgets: {e}", exc_info=True)
     _IPYWIDGETS_AVAILABLE = False  # Explicitly set flag to False here too
-
-# Example usage - kept outside the try/except as comments
-# ... (existing example usage comments) ...

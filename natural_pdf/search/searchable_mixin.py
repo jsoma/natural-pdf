@@ -123,7 +123,7 @@ class SearchableMixin(ABC):
             logger.info(
                 f"Creating new SearchService: name='{effective_collection_name}', persist={effective_persist}, model={embedding_model or 'default'}"
             )
-            
+
             # Direct creation without try/except
             service_args = {
                 "collection_name": effective_collection_name,
@@ -195,7 +195,7 @@ class SearchableMixin(ABC):
         logger.debug(
             f"Calling index() on SearchService for collection '{collection_name}' (force_reindex={force_reindex})."
         )
-        
+
         # Call index without try/except
         self._search_service.index(
             documents=indexable_items,

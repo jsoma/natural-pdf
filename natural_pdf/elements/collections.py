@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from collections.abc import MutableSequence
 from pathlib import Path
@@ -18,7 +19,6 @@ from typing import (
     Union,
     overload,
 )
-import hashlib
 
 from pdfplumber.utils.geometry import objects_to_bbox
 
@@ -27,6 +27,7 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
 
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
@@ -38,8 +39,6 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from tqdm.auto import tqdm
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
@@ -65,7 +64,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
-    from natural_pdf.elements.text import TextElement # Ensure TextElement is imported
+    from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Page")
@@ -844,6 +843,7 @@ class ElementCollection(
         legend_position: str = "right",
         render_ocr: bool = False,
         width: Optional[int] = None,  # Add width parameter
+        page: Optional[Any] = None,  # NEW: Optional page parameter for empty collections
     ) -> Optional["Image.Image"]:
         """
         Generates a temporary preview image highlighting elements in this collection
@@ -1590,13 +1590,13 @@ class ElementCollection(
 
     def to_text_elements(
         self,
-        text_content_func: Optional[Callable[["Region"], Optional[str]]] = None, 
+        text_content_func: Optional[Callable[["Region"], Optional[str]]] = None,
         source_label: str = "derived_from_region",
         object_type: str = "word",
         default_font_size: float = 10.0,
         default_font_name: str = "RegionContent",
         confidence: Optional[float] = None,
-        add_to_page: bool = False # Default is False
+        add_to_page: bool = False,  # Default is False
     ) -> "ElementCollection[TextElement]":
         """
         Converts each Region in this collection to a TextElement.
@@ -1610,95 +1610,150 @@ class ElementCollection(
             default_font_size: Placeholder font size.
             default_font_name: Placeholder font name.
             confidence: Confidence score.
-            add_to_page: If True (default is False), also adds the created 
+            add_to_page: If True (default is False), also adds the created
                          TextElements to their respective page's element manager.
 
         Returns:
             A new ElementCollection containing the created TextElement objects.
         """
-        from natural_pdf.elements.region import Region # Local import for type checking if needed or to resolve circularity
-        from natural_pdf.elements.text import TextElement # Ensure TextElement is imported for type hint if not in TYPE_CHECKING
+        from natural_pdf.elements.region import (  # Local import for type checking if needed or to resolve circularity
+            Region,
+        )
+        from natural_pdf.elements.text import (  # Ensure TextElement is imported for type hint if not in TYPE_CHECKING
+            TextElement,
+        )
 
         new_text_elements: List["TextElement"] = []
-        if not self.elements: # Accesses self._elements via property
+        if not self.elements:  # Accesses self._elements via property
             return ElementCollection([])
 
         page_context_for_adding: Optional["Page"] = None
         if add_to_page:
             # Try to determine a consistent page context if adding elements
             first_valid_region_with_page = next(
-                (el for el in self.elements if isinstance(el, Region) and hasattr(el, 'page') and el.page is not None), 
-                None
+                (
+                    el
+                    for el in self.elements
+                    if isinstance(el, Region) and hasattr(el, "page") and el.page is not None
+                ),
+                None,
             )
             if first_valid_region_with_page:
                 page_context_for_adding = first_valid_region_with_page.page
             else:
-                logger.warning("Cannot add TextElements to page: No valid Region with a page attribute found in collection, or first region's page is None.")
-                add_to_page = False # Disable adding if no valid page context can be determined
+                logger.warning(
+                    "Cannot add TextElements to page: No valid Region with a page attribute found in collection, or first region's page is None."
+                )
+                add_to_page = False  # Disable adding if no valid page context can be determined
 
-        for element in self.elements: # Accesses self._elements via property/iterator
+        for element in self.elements:  # Accesses self._elements via property/iterator
             if isinstance(element, Region):
                 text_el = element.to_text_element(
-                    text_content=text_content_func, 
+                    text_content=text_content_func,
                     source_label=source_label,
                     object_type=object_type,
                     default_font_size=default_font_size,
                     default_font_name=default_font_name,
-                    confidence=confidence
+                    confidence=confidence,
                 )
                 new_text_elements.append(text_el)
 
                 if add_to_page:
-                    if not hasattr(text_el, 'page') or text_el.page is None:
-                        logger.warning(f"TextElement created from region {element.bbox} has no page attribute. Cannot add to page.")
+                    if not hasattr(text_el, "page") or text_el.page is None:
+                        logger.warning(
+                            f"TextElement created from region {element.bbox} has no page attribute. Cannot add to page."
+                        )
                         continue
-                    
+
                     if page_context_for_adding and text_el.page == page_context_for_adding:
-                        if hasattr(page_context_for_adding, '_element_mgr') and page_context_for_adding._element_mgr is not None:
-                            add_as_type = "words" if object_type == "word" else "chars" if object_type == "char" else object_type
-                            page_context_for_adding._element_mgr.add_element(text_el, element_type=add_as_type)
+                        if (
+                            hasattr(page_context_for_adding, "_element_mgr")
+                            and page_context_for_adding._element_mgr is not None
+                        ):
+                            add_as_type = (
+                                "words"
+                                if object_type == "word"
+                                else "chars" if object_type == "char" else object_type
+                            )
+                            page_context_for_adding._element_mgr.add_element(
+                                text_el, element_type=add_as_type
+                            )
                         else:
-                            page_num_str = str(page_context_for_adding.page_number) if hasattr(page_context_for_adding, 'page_number') else 'N/A'
-                            logger.error(f"Page context for region {element.bbox} (Page {page_num_str}) is missing '_element_mgr'. Cannot add TextElement.")
+                            page_num_str = (
+                                str(page_context_for_adding.page_number)
+                                if hasattr(page_context_for_adding, "page_number")
+                                else "N/A"
+                            )
+                            logger.error(
+                                f"Page context for region {element.bbox} (Page {page_num_str}) is missing '_element_mgr'. Cannot add TextElement."
+                            )
                     elif page_context_for_adding and text_el.page != page_context_for_adding:
-                        current_page_num_str = str(text_el.page.page_number) if hasattr(text_el.page, 'page_number') else "Unknown"
-                        context_page_num_str = str(page_context_for_adding.page_number) if hasattr(page_context_for_adding, 'page_number') else "N/A"
-                        logger.warning(f"TextElement for region {element.bbox} from page {current_page_num_str} "
-                                       f"not added as it's different from collection's inferred page context {context_page_num_str}.")
-                    elif not page_context_for_adding: 
-                        logger.warning(f"TextElement for region {element.bbox} created, but no page context was determined for adding.")
+                        current_page_num_str = (
+                            str(text_el.page.page_number)
+                            if hasattr(text_el.page, "page_number")
+                            else "Unknown"
+                        )
+                        context_page_num_str = (
+                            str(page_context_for_adding.page_number)
+                            if hasattr(page_context_for_adding, "page_number")
+                            else "N/A"
+                        )
+                        logger.warning(
+                            f"TextElement for region {element.bbox} from page {current_page_num_str} "
+                            f"not added as it's different from collection's inferred page context {context_page_num_str}."
+                        )
+                    elif not page_context_for_adding:
+                        logger.warning(
+                            f"TextElement for region {element.bbox} created, but no page context was determined for adding."
+                        )
             else:
                 logger.warning(f"Skipping element {type(element)}, not a Region.")
-        
+
         if add_to_page and page_context_for_adding:
-            page_num_str = str(page_context_for_adding.page_number) if hasattr(page_context_for_adding, 'page_number') else 'N/A'
-            logger.info(f"Created and added {len(new_text_elements)} TextElements to page {page_num_str}.")
-        elif add_to_page and not page_context_for_adding: 
-             logger.info(f"Created {len(new_text_elements)} TextElements, but could not add to page as page context was not determined or was inconsistent.")
-        else: # add_to_page is False
+            page_num_str = (
+                str(page_context_for_adding.page_number)
+                if hasattr(page_context_for_adding, "page_number")
+                else "N/A"
+            )
+            logger.info(
+                f"Created and added {len(new_text_elements)} TextElements to page {page_num_str}."
+            )
+        elif add_to_page and not page_context_for_adding:
+            logger.info(
+                f"Created {len(new_text_elements)} TextElements, but could not add to page as page context was not determined or was inconsistent."
+            )
+        else:  # add_to_page is False
             logger.info(f"Created {len(new_text_elements)} TextElements (not added to page).")
 
         return ElementCollection(new_text_elements)
 
-    def trim(self, padding: int = 1, threshold: float = 0.95, resolution: float = 150, show_progress: bool = True) -> "ElementCollection":
+    def trim(
+        self,
+        padding: int = 1,
+        threshold: float = 0.95,
+        resolution: float = 150,
+        show_progress: bool = True,
+    ) -> "ElementCollection":
         """
         Trim visual whitespace from each region in the collection.
-        
+
         Applies the trim() method to each element in the collection,
         returning a new collection with the trimmed regions.
-        
+
         Args:
             padding: Number of pixels to keep as padding after trimming (default: 1)
             threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
             resolution: Resolution for image rendering in DPI (default: 150)
             show_progress: Whether to show a progress bar for the trimming operation
-        
+
         Returns:
             New ElementCollection with trimmed regions
         """
         return self.apply(
-            lambda element: element.trim(padding=padding, threshold=threshold, resolution=resolution),
-            show_progress=show_progress
+            lambda element: element.trim(
+                padding=padding, threshold=threshold, resolution=resolution
+            ),
+            show_progress=show_progress,
         )
 
     def clip(
@@ -1711,27 +1766,27 @@ class ElementCollection(
     ) -> "ElementCollection":
         """
         Clip each element in the collection to the specified bounds.
-        
+
         This method applies the clip operation to each individual element,
         returning a new collection with the clipped elements.
-        
+
         Args:
             obj: Optional object with bbox properties (Region, Element, TextElement, etc.)
             left: Optional left boundary (x0) to clip to
-            top: Optional top boundary to clip to  
+            top: Optional top boundary to clip to
             right: Optional right boundary (x1) to clip to
             bottom: Optional bottom boundary to clip to
-            
+
         Returns:
             New ElementCollection containing the clipped elements
-            
+
         Examples:
             # Clip each element to another region's bounds
             clipped_elements = collection.clip(container_region)
-            
+
             # Clip each element to specific coordinates
             clipped_elements = collection.clip(left=100, right=400)
-            
+
             # Mix object bounds with specific overrides
             clipped_elements = collection.clip(obj=container, bottom=page.height/2)
         """

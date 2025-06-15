@@ -176,6 +176,38 @@ if you'd like the normal approach instead of the "intelligent" one, you can ask 
 tatr_table.extract_table(method='pdfplumber')
 ```
 
+## Using Gemini for Layout Analysis (Advanced)
+
+Natural PDF supports layout analysis using Google's Gemini models via an OpenAI-compatible API. This is an advanced feature and requires you to provide your own OpenAI client, API key, and endpoint.
+
+**Example usage:**
+
+```py
+from openai import OpenAI
+from natural_pdf import PDF
+from natural_pdf.analyzers.layout.layout_options import GeminiLayoutOptions
+
+# Create a compatible OpenAI client for Gemini
+client = OpenAI(
+    api_key="YOUR_GOOGLE_API_KEY",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
+options = GeminiLayoutOptions(
+    model_name="gemini-2.0-flash",
+    client=client,
+    classes=["text", "title"]
+)
+
+pdf = PDF("your.pdf")
+page = pdf.pages[0]
+regions = page.analyze_layout(engine="gemini", options=options)
+```
+
+- You must provide your own API key and endpoint for Gemini.
+- The client must be compatible with the OpenAI API (see the `openai` Python package).
+- This feature is intended for advanced users who need LLM-based layout analysis.
+
 ## Next Steps
 
 Layout analysis provides regions that you can use for:

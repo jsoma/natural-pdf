@@ -1,17 +1,11 @@
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
-# Assuming PIL is installed as it's needed for vision
-try:
-    from PIL import Image
-except ImportError:
-    Image = None  # type: ignore
+from PIL import Image
 
-# Import result classes
-from .results import ClassificationResult  # Assuming results.py is in the same dir
+from .results import ClassificationResult
 
 if TYPE_CHECKING:
-    # Avoid runtime import cycle
     from natural_pdf.core.page import Page
     from natural_pdf.elements.region import Region
 

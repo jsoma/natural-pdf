@@ -5,15 +5,19 @@ from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
+from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
+
+# --- Shape Detection Mixin --- #
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager  # Keep for type hint
 
 # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.elements.base import DirectionalMixin
+from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
-from natural_pdf.elements.text import TextElement # ADDED IMPORT
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
@@ -21,21 +25,19 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
-from tqdm.auto import tqdm
 # --- End Classification Imports --- #
 
-# --- Shape Detection Mixin --- #
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-# --- End Shape Detection Mixin --- # 
+
+# --- End Shape Detection Mixin --- #
 
 if TYPE_CHECKING:
     # --- NEW: Add Image type hint for classification --- #
     from PIL.Image import Image
 
     from natural_pdf.core.page import Page
+    from natural_pdf.elements.base import Element  # Added for type hint
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.text import TextElement
-    from natural_pdf.elements.base import Element # Added for type hint
 
 # Import OCRManager conditionally to avoid circular imports
 try:
@@ -726,25 +728,32 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Handle the case where user wants the cropped region to have a specific width
         page_kwargs = kwargs.copy()
         effective_resolution = resolution  # Start with the provided resolution
-        
-        if crop_only and 'width' in kwargs:
-            target_width = kwargs['width']
+
+        if crop_only and "width" in kwargs:
+            target_width = kwargs["width"]
             # Calculate what resolution is needed to make the region crop have target_width
             region_width_points = self.width  # Region width in PDF points
-            
+
             if region_width_points > 0:
                 # Calculate scale needed: target_width / region_width_points
                 required_scale = target_width / region_width_points
                 # Convert scale to resolution: scale * 72 DPI
                 effective_resolution = required_scale * 72.0
-                page_kwargs.pop('width')  # Remove width parameter to avoid conflicts
-                logger.debug(f"Region {self.bbox}: Calculated required resolution {effective_resolution:.1f} DPI for region crop width {target_width}")
+                page_kwargs.pop("width")  # Remove width parameter to avoid conflicts
+                logger.debug(
+                    f"Region {self.bbox}: Calculated required resolution {effective_resolution:.1f} DPI for region crop width {target_width}"
+                )
             else:
-                logger.warning(f"Region {self.bbox}: Invalid region width {region_width_points}, using original resolution")
+                logger.warning(
+                    f"Region {self.bbox}: Invalid region width {region_width_points}, using original resolution"
+                )
 
         # First get the full page image with highlights if requested
         page_image = self._page.to_image(
-            scale=scale, resolution=effective_resolution, include_highlights=include_highlights, **page_kwargs
+            scale=scale,
+            resolution=effective_resolution,
+            include_highlights=include_highlights,
+            **page_kwargs,
         )
 
         # Calculate the actual scale factor used by the page image
@@ -899,13 +908,19 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         image.save(filename)
         return self
 
-    def trim(self, padding: int = 1, threshold: float = 0.95, resolution: float = 150, pre_shrink: float = 0.5) -> "Region":
+    def trim(
+        self,
+        padding: int = 1,
+        threshold: float = 0.95,
+        resolution: float = 150,
+        pre_shrink: float = 0.5,
+    ) -> "Region":
         """
         Trim visual whitespace from the edges of this region.
-        
+
         Similar to Python's string .strip() method, but for visual whitespace in the region image.
         Uses pixel analysis to detect rows/columns that are predominantly whitespace.
-        
+
         Args:
             padding: Number of pixels to keep as padding after trimming (default: 1)
             threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
@@ -914,104 +929,126 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             resolution: Resolution for image rendering in DPI (default: 150)
             pre_shrink: Amount to shrink region before trimming, then expand back after (default: 0.5)
                        This helps avoid detecting box borders/slivers as content.
-        
+
         Returns:
             New Region with visual whitespace trimmed from all edges
-            
+
         Example:
             # Basic trimming with 1 pixel padding and 0.5px pre-shrink
             trimmed = region.trim()
-            
+
             # More aggressive trimming with no padding and no pre-shrink
             tight = region.trim(padding=0, threshold=0.9, pre_shrink=0)
-            
+
             # Conservative trimming with more padding
             loose = region.trim(padding=3, threshold=0.98)
         """
         # Pre-shrink the region to avoid box slivers
-        work_region = self.expand(left=-pre_shrink, right=-pre_shrink, top=-pre_shrink, bottom=-pre_shrink) if pre_shrink > 0 else self
-        
+        work_region = (
+            self.expand(left=-pre_shrink, right=-pre_shrink, top=-pre_shrink, bottom=-pre_shrink)
+            if pre_shrink > 0
+            else self
+        )
+
         # Get the region image
-        image = work_region.to_image(resolution=resolution, crop_only=True, include_highlights=False)
-        
+        image = work_region.to_image(
+            resolution=resolution, crop_only=True, include_highlights=False
+        )
+
         if image is None:
-            logger.warning(f"Region {self.bbox}: Could not generate image for trimming. Returning original region.")
+            logger.warning(
+                f"Region {self.bbox}: Could not generate image for trimming. Returning original region."
+            )
             return self
-            
+
         # Convert to grayscale for easier analysis
         import numpy as np
-        
+
         # Convert PIL image to numpy array
-        img_array = np.array(image.convert('L'))  # Convert to grayscale
+        img_array = np.array(image.convert("L"))  # Convert to grayscale
         height, width = img_array.shape
-        
+
         if height == 0 or width == 0:
-            logger.warning(f"Region {self.bbox}: Image has zero dimensions. Returning original region.")
+            logger.warning(
+                f"Region {self.bbox}: Image has zero dimensions. Returning original region."
+            )
             return self
-        
+
         # Normalize pixel values to 0-1 range (255 = white = 1.0, 0 = black = 0.0)
         normalized = img_array.astype(np.float32) / 255.0
-        
+
         # Find content boundaries by analyzing row and column averages
-        
+
         # Analyze rows (horizontal strips) to find top and bottom boundaries
         row_averages = np.mean(normalized, axis=1)  # Average each row
         content_rows = row_averages < threshold  # True where there's content (not whitespace)
-        
+
         # Find first and last rows with content
         content_row_indices = np.where(content_rows)[0]
         if len(content_row_indices) == 0:
             # No content found, return a minimal region at the center
-            logger.warning(f"Region {self.bbox}: No content detected during trimming. Returning center point.")
+            logger.warning(
+                f"Region {self.bbox}: No content detected during trimming. Returning center point."
+            )
             center_x = (self.x0 + self.x1) / 2
             center_y = (self.top + self.bottom) / 2
             return Region(self.page, (center_x, center_y, center_x, center_y))
-        
+
         top_content_row = max(0, content_row_indices[0] - padding)
         bottom_content_row = min(height - 1, content_row_indices[-1] + padding)
-        
-        # Analyze columns (vertical strips) to find left and right boundaries  
+
+        # Analyze columns (vertical strips) to find left and right boundaries
         col_averages = np.mean(normalized, axis=0)  # Average each column
         content_cols = col_averages < threshold  # True where there's content
-        
+
         content_col_indices = np.where(content_cols)[0]
         if len(content_col_indices) == 0:
             # No content found in columns either
-            logger.warning(f"Region {self.bbox}: No column content detected during trimming. Returning center point.")
+            logger.warning(
+                f"Region {self.bbox}: No column content detected during trimming. Returning center point."
+            )
             center_x = (self.x0 + self.x1) / 2
             center_y = (self.top + self.bottom) / 2
             return Region(self.page, (center_x, center_y, center_x, center_y))
-            
+
         left_content_col = max(0, content_col_indices[0] - padding)
         right_content_col = min(width - 1, content_col_indices[-1] + padding)
-        
+
         # Convert trimmed pixel coordinates back to PDF coordinates
         scale_factor = resolution / 72.0  # Scale factor used in to_image()
-        
+
         # Calculate new PDF coordinates and ensure they are Python floats
         trimmed_x0 = float(work_region.x0 + (left_content_col / scale_factor))
         trimmed_top = float(work_region.top + (top_content_row / scale_factor))
-        trimmed_x1 = float(work_region.x0 + ((right_content_col + 1) / scale_factor))  # +1 because we want inclusive right edge
-        trimmed_bottom = float(work_region.top + ((bottom_content_row + 1) / scale_factor))  # +1 because we want inclusive bottom edge
-        
+        trimmed_x1 = float(
+            work_region.x0 + ((right_content_col + 1) / scale_factor)
+        )  # +1 because we want inclusive right edge
+        trimmed_bottom = float(
+            work_region.top + ((bottom_content_row + 1) / scale_factor)
+        )  # +1 because we want inclusive bottom edge
+
         # Ensure the trimmed region doesn't exceed the work region boundaries
         final_x0 = max(work_region.x0, trimmed_x0)
         final_top = max(work_region.top, trimmed_top)
         final_x1 = min(work_region.x1, trimmed_x1)
         final_bottom = min(work_region.bottom, trimmed_bottom)
-        
+
         # Ensure valid coordinates (width > 0, height > 0)
         if final_x1 <= final_x0 or final_bottom <= final_top:
-            logger.warning(f"Region {self.bbox}: Trimming resulted in invalid dimensions. Returning original region.")
+            logger.warning(
+                f"Region {self.bbox}: Trimming resulted in invalid dimensions. Returning original region."
+            )
             return self
-        
+
         # Create the trimmed region
         trimmed_region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
-        
+
         # Expand back by the pre_shrink amount to restore original positioning
         if pre_shrink > 0:
-            trimmed_region = trimmed_region.expand(left=pre_shrink, right=pre_shrink, top=pre_shrink, bottom=pre_shrink)
-        
+            trimmed_region = trimmed_region.expand(
+                left=pre_shrink, right=pre_shrink, top=pre_shrink, bottom=pre_shrink
+            )
+
         # Copy relevant metadata
         trimmed_region.region_type = self.region_type
         trimmed_region.normalized_type = self.normalized_type
@@ -1021,8 +1058,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         trimmed_region.label = self.label
         trimmed_region.source = "trimmed"  # Indicate this is a derived region
         trimmed_region.parent_region = self
-        
-        logger.debug(f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold}, pre_shrink={pre_shrink})")
+
+        logger.debug(
+            f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold}, pre_shrink={pre_shrink})"
+        )
         return trimmed_region
 
     def clip(
@@ -1035,42 +1074,42 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
     ) -> "Region":
         """
         Clip this region to specific bounds, either from another object with bbox or explicit coordinates.
-        
+
         The clipped region will be constrained to not exceed the specified boundaries.
         You can provide either an object with bounding box properties, specific coordinates, or both.
         When both are provided, explicit coordinates take precedence.
-        
+
         Args:
             obj: Optional object with bbox properties (Region, Element, TextElement, etc.)
             left: Optional left boundary (x0) to clip to
-            top: Optional top boundary to clip to  
+            top: Optional top boundary to clip to
             right: Optional right boundary (x1) to clip to
             bottom: Optional bottom boundary to clip to
-            
+
         Returns:
             New Region with bounds clipped to the specified constraints
-            
+
         Examples:
             # Clip to another region's bounds
             clipped = region.clip(container_region)
-            
+
             # Clip to any element's bounds
             clipped = region.clip(text_element)
-            
+
             # Clip to specific coordinates
             clipped = region.clip(left=100, right=400)
-            
+
             # Mix object bounds with specific overrides
             clipped = region.clip(obj=container, bottom=page.height/2)
         """
         from natural_pdf.elements.base import extract_bbox
-        
+
         # Start with current region bounds
         clip_x0 = self.x0
         clip_top = self.top
         clip_x1 = self.x1
         clip_bottom = self.bottom
-        
+
         # Apply object constraints if provided
         if obj is not None:
             obj_bbox = extract_bbox(obj)
@@ -1086,7 +1125,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                     f"Region {self.bbox}: Cannot extract bbox from clipping object {type(obj)}. "
                     "Object must have bbox property or x0/top/x1/bottom attributes."
                 )
-        
+
         # Apply explicit coordinate constraints (these take precedence)
         if left is not None:
             clip_x0 = max(clip_x0, left)
@@ -1096,7 +1135,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             clip_x1 = min(clip_x1, right)
         if bottom is not None:
             clip_bottom = min(clip_bottom, bottom)
-        
+
         # Ensure valid coordinates
         if clip_x1 <= clip_x0 or clip_bottom <= clip_top:
             logger.warning(
@@ -1105,10 +1144,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             )
             # Return a minimal region at the clip area's top-left
             return Region(self.page, (clip_x0, clip_top, clip_x0, clip_top))
-        
+
         # Create the clipped region
         clipped_region = Region(self.page, (clip_x0, clip_top, clip_x1, clip_bottom))
-        
+
         # Copy relevant metadata
         clipped_region.region_type = self.region_type
         clipped_region.normalized_type = self.normalized_type
@@ -1118,7 +1157,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         clipped_region.label = self.label
         clipped_region.source = "clipped"  # Indicate this is a derived region
         clipped_region.parent_region = self
-        
+
         logger.debug(
             f"Region {self.bbox}: Clipped to {clipped_region.bbox} "
             f"(constraints: obj={type(obj).__name__ if obj else None}, "
@@ -1279,24 +1318,36 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             else:
                 # Try lattice first, then fall back to stream if no meaningful results
                 logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
-                
+
                 try:
                     logger.debug(f"Region {self.bbox}: Trying 'lattice' method first...")
-                    lattice_result = self.extract_table('lattice', table_settings=table_settings.copy())
-                    
+                    lattice_result = self.extract_table(
+                        "lattice", table_settings=table_settings.copy()
+                    )
+
                     # Check if lattice found meaningful content
-                    if (lattice_result and len(lattice_result) > 0 and 
-                        any(any(cell and cell.strip() for cell in row if cell) for row in lattice_result)):
-                        logger.debug(f"Region {self.bbox}: 'lattice' method found table with {len(lattice_result)} rows")
+                    if (
+                        lattice_result
+                        and len(lattice_result) > 0
+                        and any(
+                            any(cell and cell.strip() for cell in row if cell)
+                            for row in lattice_result
+                        )
+                    ):
+                        logger.debug(
+                            f"Region {self.bbox}: 'lattice' method found table with {len(lattice_result)} rows"
+                        )
                         return lattice_result
                     else:
-                        logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful content")
+                        logger.debug(
+                            f"Region {self.bbox}: 'lattice' method found no meaningful content"
+                        )
                 except Exception as e:
                     logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-                
+
                 # Fall back to stream
                 logger.debug(f"Region {self.bbox}: Falling back to 'stream' method...")
-                return self.extract_table('stream', table_settings=table_settings.copy())
+                return self.extract_table("stream", table_settings=table_settings.copy())
         else:
             effective_method = method
 
@@ -1308,7 +1359,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_settings.setdefault("vertical_strategy", "text")
             table_settings.setdefault("horizontal_strategy", "text")
         elif effective_method == "lattice":
-            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            logger.debug(
+                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
+            )
             effective_method = "pdfplumber"
             # Set default line strategies if not already provided by the user
             table_settings.setdefault("vertical_strategy", "lines")
@@ -1330,7 +1383,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             raise ValueError(
                 f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
             )
-
 
     def extract_tables(
         self,
@@ -1357,33 +1409,45 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Auto-detect method if not specified (try lattice first, then stream)
         if method is None:
             logger.debug(f"Region {self.bbox}: Auto-detecting tables extraction method...")
-            
+
             # Try lattice first
             try:
                 lattice_settings = table_settings.copy()
                 lattice_settings.setdefault("vertical_strategy", "lines")
                 lattice_settings.setdefault("horizontal_strategy", "lines")
-                
+
                 logger.debug(f"Region {self.bbox}: Trying 'lattice' method first for tables...")
                 lattice_result = self._extract_tables_plumber(lattice_settings)
-                
+
                 # Check if lattice found meaningful tables
-                if (lattice_result and len(lattice_result) > 0 and 
-                    any(any(any(cell and cell.strip() for cell in row if cell) for row in table if table) for table in lattice_result)):
-                    logger.debug(f"Region {self.bbox}: 'lattice' method found {len(lattice_result)} tables")
+                if (
+                    lattice_result
+                    and len(lattice_result) > 0
+                    and any(
+                        any(
+                            any(cell and cell.strip() for cell in row if cell)
+                            for row in table
+                            if table
+                        )
+                        for table in lattice_result
+                    )
+                ):
+                    logger.debug(
+                        f"Region {self.bbox}: 'lattice' method found {len(lattice_result)} tables"
+                    )
                     return lattice_result
                 else:
                     logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful tables")
-                    
+
             except Exception as e:
                 logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-            
+
             # Fall back to stream
             logger.debug(f"Region {self.bbox}: Falling back to 'stream' method for tables...")
             stream_settings = table_settings.copy()
             stream_settings.setdefault("vertical_strategy", "text")
             stream_settings.setdefault("horizontal_strategy", "text")
-            
+
             return self._extract_tables_plumber(stream_settings)
 
         effective_method = method
@@ -1395,7 +1459,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_settings.setdefault("vertical_strategy", "text")
             table_settings.setdefault("horizontal_strategy", "text")
         elif effective_method == "lattice":
-            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            logger.debug(
+                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
+            )
             effective_method = "pdfplumber"
             table_settings.setdefault("vertical_strategy", "lines")
             table_settings.setdefault("horizontal_strategy", "lines")
@@ -1844,7 +1910,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         # Validate contains parameter
         if contains not in ["all", "any", "center"]:
-            raise ValueError(f"Invalid contains value: {contains}. Must be 'all', 'any', or 'center'")
+            raise ValueError(
+                f"Invalid contains value: {contains}. Must be 'all', 'any', or 'center'"
+            )
 
         # Construct selector if 'text' is provided
         effective_selector = ""
@@ -1894,24 +1962,21 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             # Filter these elements based on the specified containment method
             region_bbox = self.bbox
             matching_elements = []
-            
+
             if contains == "all":  # Fully inside (strict)
                 matching_elements = [
-                    el for el in potential_elements
+                    el
+                    for el in potential_elements
                     if el.x0 >= region_bbox[0]
                     and el.top >= region_bbox[1]
                     and el.x1 <= region_bbox[2]
                     and el.bottom <= region_bbox[3]
                 ]
             elif contains == "any":  # Any overlap
-                matching_elements = [
-                    el for el in potential_elements
-                    if self.intersects(el)
-                ]
+                matching_elements = [el for el in potential_elements if self.intersects(el)]
             elif contains == "center":  # Center point inside
                 matching_elements = [
-                    el for el in potential_elements
-                    if self.is_element_center_inside(el)
+                    el for el in potential_elements if self.is_element_center_inside(el)
                 ]
 
             return ElementCollection(matching_elements)
@@ -2001,17 +2066,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         # Run OCR on this region's image using the manager
-        try:
-            results = ocr_mgr.apply_ocr(**manager_args)
-            if not isinstance(results, list):
-                logger.error(
-                    f"OCRManager returned unexpected type for single region image: {type(results)}"
-                )
-                return self
-            logger.debug(f"Region OCR processing returned {len(results)} results.")
-        except Exception as e:
-            logger.error(f"Error during OCRManager processing for region: {e}", exc_info=True)
+        results = ocr_mgr.apply_ocr(**manager_args)
+        if not isinstance(results, list):
+            logger.error(
+                f"OCRManager returned unexpected type for single region image: {type(results)}"
+            )
             return self
+        logger.debug(f"Region OCR processing returned {len(results)} results.")
 
         # Convert results to TextElements
         scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
@@ -2802,11 +2863,11 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         text_content: Optional[Union[str, Callable[["Region"], Optional[str]]]] = None,
         source_label: str = "derived_from_region",
-        object_type: str = "word", # Or "char", controls how it's categorized
+        object_type: str = "word",  # Or "char", controls how it's categorized
         default_font_size: float = 10.0,
         default_font_name: str = "RegionContent",
-        confidence: Optional[float] = None, # Allow overriding confidence
-        add_to_page: bool = False # NEW: Option to add to page
+        confidence: Optional[float] = None,  # Allow overriding confidence
+        add_to_page: bool = False,  # NEW: Option to add to page
     ) -> "TextElement":
         """
         Creates a new TextElement object based on this region's geometry.
@@ -2833,7 +2894,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         Returns:
             A new TextElement instance.
-        
+
         Raises:
             ValueError: If the region does not have a valid 'page' attribute.
         """
@@ -2844,14 +2905,17 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             try:
                 actual_text = text_content(self)
             except Exception as e:
-                logger.error(f"Error executing text_content callback for region {self.bbox}: {e}", exc_info=True)
-                actual_text = None # Ensure actual_text is None on error
+                logger.error(
+                    f"Error executing text_content callback for region {self.bbox}: {e}",
+                    exc_info=True,
+                )
+                actual_text = None  # Ensure actual_text is None on error
 
         final_confidence = confidence
         if final_confidence is None:
             final_confidence = 1.0 if actual_text is not None and actual_text.strip() else 0.0
 
-        if not hasattr(self, 'page') or self.page is None:
+        if not hasattr(self, "page") or self.page is None:
             raise ValueError("Region must have a valid 'page' attribute to create a TextElement.")
 
         elem_data = {
@@ -2864,8 +2928,8 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             "height": self.height,
             "object_type": object_type,
             "page_number": self.page.page_number,
-            "stroking_color": getattr(self, 'stroking_color', (0,0,0)),
-            "non_stroking_color": getattr(self, 'non_stroking_color', (0,0,0)),
+            "stroking_color": getattr(self, "stroking_color", (0, 0, 0)),
+            "non_stroking_color": getattr(self, "non_stroking_color", (0, 0, 0)),
             "fontname": default_font_name,
             "size": default_font_size,
             "upright": True,
@@ -2873,18 +2937,28 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             "adv": self.width,
             "source": source_label,
             "confidence": final_confidence,
-            "_char_dicts": [] 
+            "_char_dicts": [],
         }
         text_element = TextElement(elem_data, self.page)
 
         if add_to_page:
-            if hasattr(self.page, '_element_mgr') and self.page._element_mgr is not None:
-                add_as_type = "words" if object_type == "word" else "chars" if object_type == "char" else object_type
+            if hasattr(self.page, "_element_mgr") and self.page._element_mgr is not None:
+                add_as_type = (
+                    "words"
+                    if object_type == "word"
+                    else "chars" if object_type == "char" else object_type
+                )
                 # REMOVED try-except block around add_element
                 self.page._element_mgr.add_element(text_element, element_type=add_as_type)
-                logger.debug(f"TextElement created from region {self.bbox} and added to page {self.page.page_number} as {add_as_type}.")
+                logger.debug(
+                    f"TextElement created from region {self.bbox} and added to page {self.page.page_number} as {add_as_type}."
+                )
             else:
-                page_num_str = str(self.page.page_number) if hasattr(self.page, 'page_number') else 'N/A'
-                logger.warning(f"Cannot add TextElement to page: Page {page_num_str} for region {self.bbox} is missing '_element_mgr'.")
-        
+                page_num_str = (
+                    str(self.page.page_number) if hasattr(self.page, "page_number") else "N/A"
+                )
+                logger.warning(
+                    f"Cannot add TextElement to page: Page {page_num_str} for region {self.bbox} is missing '_element_mgr'."
+                )
+
         return text_element

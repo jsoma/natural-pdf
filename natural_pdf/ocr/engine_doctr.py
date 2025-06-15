@@ -60,10 +60,22 @@ class DoctrOCREngine(OCREngine):
         # Filter out None values
         predictor_args = {k: v for k, v in predictor_args.items() if v is not None}
 
-        self.logger.debug(f"doctr ocr_predictor constructor args: {predictor_args}")
+        # Filter only allowed doctr ocr_predictor args
+        allowed_ocr_args = {
+            "det_arch",
+            "reco_arch",
+            "pretrained",
+            "assume_straight_pages",
+            "export_as_straight_boxes",
+        }
+        filtered_ocr_args = {k: v for k, v in predictor_args.items() if k in allowed_ocr_args}
+        dropped_ocr = set(predictor_args) - allowed_ocr_args
+        if dropped_ocr:
+            self.logger.warning(f"Dropped unsupported doctr ocr_predictor args: {dropped_ocr}")
+
+        self.logger.debug(f"doctr ocr_predictor constructor args: {filtered_ocr_args}")
         try:
-            # Create the main OCR predictor (doesn't accept batch_size)
-            self._model = doctr.models.ocr_predictor(**predictor_args)
+            self._model = doctr.models.ocr_predictor(**filtered_ocr_args)
 
             # Apply CUDA if available
             if use_cuda:
@@ -81,7 +93,28 @@ class DoctrOCREngine(OCREngine):
                     "preserve_aspect_ratio": doctr_opts.preserve_aspect_ratio,
                     "batch_size": doctr_opts.batch_size,
                 }
-                self._detection_model = doctr.models.detection_predictor(**detection_args)
+                # Filter out None values
+                detection_args = {k: v for k, v in detection_args.items() if v is not None}
+                allowed_det_args = {
+                    "arch",
+                    "pretrained",
+                    "assume_straight_pages",
+                    "symmetric_pad",
+                    "preserve_aspect_ratio",
+                    "batch_size",
+                }
+                filtered_det_args = {
+                    k: v for k, v in detection_args.items() if k in allowed_det_args
+                }
+                dropped_det = set(detection_args) - allowed_det_args
+                if dropped_det:
+                    self.logger.warning(
+                        f"Dropped unsupported doctr detection_predictor args: {dropped_det}"
+                    )
+                self.logger.debug(
+                    f"doctr detection_predictor constructor args: {filtered_det_args}"
+                )
+                self._detection_model = doctr.models.detection_predictor(**filtered_det_args)
 
                 # Apply CUDA if available
                 if use_cuda:

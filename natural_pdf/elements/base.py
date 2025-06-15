@@ -18,34 +18,34 @@ if TYPE_CHECKING:
 def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
     """
     Extract bounding box coordinates from any object that has bbox properties.
-    
+
     Args:
         obj: Object that might have bbox coordinates (Element, Region, etc.)
-        
+
     Returns:
         Tuple of (x0, top, x1, bottom) or None if object doesn't have bbox properties
     """
     # Try bbox property first (most common)
-    if hasattr(obj, 'bbox') and obj.bbox is not None:
+    if hasattr(obj, "bbox") and obj.bbox is not None:
         bbox = obj.bbox
         if isinstance(bbox, (tuple, list)) and len(bbox) == 4:
             return tuple(float(coord) for coord in bbox)
-    
+
     # Try individual coordinate properties
-    if all(hasattr(obj, attr) for attr in ['x0', 'top', 'x1', 'bottom']):
+    if all(hasattr(obj, attr) for attr in ["x0", "top", "x1", "bottom"]):
         try:
             return (float(obj.x0), float(obj.top), float(obj.x1), float(obj.bottom))
         except (ValueError, TypeError):
             pass
-    
+
     # If object is a dict with bbox keys
     if isinstance(obj, dict):
-        if all(key in obj for key in ['x0', 'top', 'x1', 'bottom']):
+        if all(key in obj for key in ["x0", "top", "x1", "bottom"]):
             try:
-                return (float(obj['x0']), float(obj['top']), float(obj['x1']), float(obj['bottom']))
+                return (float(obj["x0"]), float(obj["top"]), float(obj["x1"]), float(obj["bottom"]))
             except (ValueError, TypeError):
                 pass
-    
+
     return None
 
 

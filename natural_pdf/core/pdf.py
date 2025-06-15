@@ -24,6 +24,7 @@ from typing import (
 
 import pdfplumber
 from PIL import Image
+from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.classification.manager import ClassificationError, ClassificationManager
@@ -38,7 +39,6 @@ from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.utils.locks import pdf_render_lock
-from tqdm.auto import tqdm
 
 try:
     from typing import Any as TypingAny
@@ -329,7 +329,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         # Apply global options as defaults, but allow explicit parameters to override
         import natural_pdf
-        
+
         # Use global OCR options if parameters are not explicitly set
         if engine is None:
             engine = natural_pdf.options.ocr.engine
@@ -338,7 +338,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         if min_confidence is None:
             min_confidence = natural_pdf.options.ocr.min_confidence
         if device is None:
-            device = natural_pdf.options.ocr.device
+            pass  # No default device in options.ocr anymore
 
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
@@ -426,17 +426,13 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
         ocr_start_time = time.monotonic()
 
-        try:
-            batch_results = self._ocr_manager.apply_ocr(**manager_args)
+        batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
-            if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
-                logger.error(f"OCR Manager returned unexpected result format or length.")
-                return self
-
-            logger.info("OCR Manager batch processing complete.")
-        except Exception as e:
-            logger.error(f"Batch OCR processing failed: {e}")
+        if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
+            logger.error(f"OCR Manager returned unexpected result format or length.")
             return self
+
+        logger.info("OCR Manager batch processing complete.")
 
         ocr_end_time = time.monotonic()
         logger.debug(

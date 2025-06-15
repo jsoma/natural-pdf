@@ -37,11 +37,13 @@ text_elements.show()
 ```
 
 ```python
-# Apply OCR using PaddleOCR for English and Chinese
-page.apply_ocr(engine='paddle', languages=['en', 'ch_sim'])
+# Apply OCR using PaddleOCR for English
+page.apply_ocr(engine='paddle', languages=['en'])
+print(f"Found {len(page.find_all('text[source=ocr]'))} elements after English OCR.")
 
-# Apply OCR using SuryaOCR for English and German
-page.apply_ocr(engine='surya', languages=['en', 'de'])
+# Apply OCR using PaddleOCR for Chinese
+page.apply_ocr(engine='paddle', languages=['ch'])
+print(f"Found {len(page.find_all('text[source=ocr]'))} elements after Chinese OCR.")
 
 text_with_ocr = page.extract_text()
 print(f"\nExtracted text after OCR:\n{text_with_ocr[:150]}...")
@@ -58,10 +60,9 @@ import natural_pdf as npdf
 npdf.options.ocr.engine = 'surya'          # Default OCR engine
 npdf.options.ocr.languages = ['en', 'es']  # Default languages
 npdf.options.ocr.min_confidence = 0.7      # Default confidence threshold
-npdf.options.ocr.device = 'cpu'            # Default processing device
 
 # Now all OCR calls use these defaults
-pdf = npdf.PDF("document.pdf")
+pdf = npdf.PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf")
 pdf.pages[0].apply_ocr()  # Uses: engine='surya', languages=['en', 'es'], min_confidence=0.7
 
 # You can still override defaults for specific calls
@@ -83,10 +84,7 @@ easy_opts = EasyOCROptions(
 )
 page.apply_ocr(engine='easyocr', languages=['en'], min_confidence=0.1, options=easy_opts)
 
-paddle_opts = PaddleOCROptions(
-    use_angle_cls=False,
-    det_db_thresh=0.3,
-)
+paddle_opts = PaddleOCROptions()
 page.apply_ocr(engine='paddle', languages=['en'], options=paddle_opts)
 
 surya_opts = SuryaOCROptions()
@@ -140,23 +138,4 @@ print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 
 After applying OCR to a PDF, you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
 
-Use the `save_searchable()` method on the `PDF` object:
-
-```python
-from natural_pdf import PDF
-
-input_pdf_path = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"
-
-pdf = PDF(input_pdf_path)
-# Apply OCR to all pages before saving
-# Use desired engine and options
-pdf.apply_ocr(engine='easyocr', languages=['en'])
-
-pdf.save_pdf("needs-ocr-searchable.pdf", ocr=True)
-
-print("Saved searchable PDF to needs-ocr-searchable.pdf")
-```
-
-This creates `needs-ocr-searchable.pdf`, which looks identical to the original but now has a text layer corresponding to the OCR results. You can adjust the rendering resolution used during saving with the `dpi` parameter (default is 300).
-
-OCR integration enables you to work with scanned documents, historical archives, and image-based PDFs that don't have embedded text. By combining OCR with natural-pdf's layout analysis capabilities, you can turn any document into structured, searchable data. 
+Use the `save_searchable()` method on the `PDF`

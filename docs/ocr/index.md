@@ -8,7 +8,6 @@ Natural PDF supports multiple OCR engines:
 
 | Feature              | EasyOCR                            | PaddleOCR                                | Surya OCR                             | Gemini (Layout + potential OCR)      |
 |----------------------|------------------------------------|------------------------------------------|---------------------------------------|--------------------------------------|
-| **Installation**     | `natural-pdf[easyocr]`             | `natural-pdf[paddle]`                    | `natural-pdf[surya]`                  | `natural-pdf[gemini]`                |
 | **Primary Strength** | Good general performance, simpler  | Excellent Asian language, speed        | High accuracy, multilingual lines     | Advanced layout analysis (via API) |
 | **Speed**            | Moderate                           | Fast                                     | Moderate (GPU recommended)            | API Latency                          |
 | **Memory Usage**     | Higher                             | Efficient                                | Higher (GPU recommended)            | N/A (API)                            |
@@ -16,6 +15,8 @@ Natural PDF supports multiple OCR engines:
 | **Handwritten**      | Better support                     | Limited                                  | Limited                               | Potentially (API model dependent)    |
 | **Small Text**       | Moderate                           | Good                                     | Good                                  | Potentially (API model dependent)    |
 | **When to Use**      | General documents, handwritten text| Asian languages, speed-critical tasks    | Highest accuracy needed, line-level   | Complex layouts, API integration     |
+
+If you try to use an engine that is not installed, the library will raise an error with a `pip install` command to install the required dependencies.
 
 ## Basic OCR Usage
 
@@ -57,14 +58,8 @@ from natural_pdf.analyzers.layout import GeminiOptions # Note: Gemini is primari
 
 # --- Configure PaddleOCR ---
 paddle_opts = PaddleOCROptions(
-    languages=['en', 'zh-cn'],
-    use_gpu=True,         # Explicitly enable GPU if available
-    use_angle_cls=False,  # Disable text direction classification (if text is upright)
-    det_db_thresh=0.25,   # Lower detection threshold (more boxes, potentially noisy)
-    rec_batch_num=16      # Increase recognition batch size for potential speedup on GPU
-    # rec_char_dict_path='/path/to/custom_dict.txt' # Optional: Path to a custom character dictionary
-    # See PaddleOCROptions documentation or source code for all parameters
- )
+    # Ugh check ocr_options.py! So many!
+)
 ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
 
 # --- Configure EasyOCR ---

@@ -65,96 +65,61 @@ class EasyOCROptions(BaseOCROptions):
 # --- PaddleOCR Specific Options ---
 @dataclass
 class PaddleOCROptions(BaseOCROptions):
-    """Specific options for the PaddleOCR engine."""
+    """
+    Specific options for the PaddleOCR engine, reflecting the paddleocr>=3.0.0 API.
+    See: https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/pipeline_usage/OCR.html
+    """
 
-    # General
-    use_gpu: Optional[bool] = None
-    gpu_mem: int = 8000  # Default from Paddle documentation
-    gpu_mem: int = 8000  # Default from Paddle documentation
-    ir_optim: bool = True
-    use_tensorrt: bool = False
-    min_subgraph_size: int = 15
-    precision: str = "fp32"
-    enable_mkldnn: bool = False
-    cpu_threads: int = 10
-    use_fp16: bool = False
-    show_log: bool = False
-    use_onnx: bool = False
-    use_zero_copy_run: bool = False
+    # --- Constructor Parameters ---
 
-    # Detection
-    det: bool = True
-    det_algorithm: str = "DB"
-    show_log: bool = False
-    use_onnx: bool = False
-    use_zero_copy_run: bool = False
+    # Model paths and names
+    doc_orientation_classify_model_name: Optional[str] = None
+    doc_orientation_classify_model_dir: Optional[str] = None
+    doc_unwarping_model_name: Optional[str] = None
+    doc_unwarping_model_dir: Optional[str] = None
+    text_detection_model_name: Optional[str] = None
+    text_detection_model_dir: Optional[str] = None
+    textline_orientation_model_name: Optional[str] = None
+    textline_orientation_model_dir: Optional[str] = None
+    text_recognition_model_name: Optional[str] = None
+    text_recognition_model_dir: Optional[str] = None
 
-    # Detection
-    det: bool = True
-    det_algorithm: str = "DB"
-    det_model_dir: Optional[str] = None
-    det_limit_side_len: int = 960  # Corresponds to det_max_side_len
-    # DB specific
-    det_db_thresh: float = 0.3
-    det_db_box_thresh: float = 0.5
-    det_db_unclip_ratio: float = 2.0
-    # EAST specific
-    det_east_score_thresh: float = 0.8
-    det_east_cover_thresh: float = 0.1
-    det_east_nms_thresh: float = 0.2
+    # Module usage flags (can be overridden at predict time)
+    use_doc_orientation_classify: Optional[bool] = False
+    use_doc_unwarping: Optional[bool] = False
+    use_textline_orientation: Optional[bool] = False
 
-    # Recognition
-    rec: bool = True
-    rec_algorithm: str = "CRNN"
-    det_limit_side_len: int = 960  # Corresponds to det_max_side_len
-    # DB specific
-    det_db_thresh: float = 0.3
-    det_db_box_thresh: float = 0.5
-    det_db_unclip_ratio: float = 2.0
-    # EAST specific
-    det_east_score_thresh: float = 0.8
-    det_east_cover_thresh: float = 0.1
-    det_east_nms_thresh: float = 0.2
+    # Batch sizes
+    textline_orientation_batch_size: Optional[int] = None
+    text_recognition_batch_size: Optional[int] = None
 
-    # Recognition
-    rec: bool = True
-    rec_algorithm: str = "CRNN"
-    rec_model_dir: Optional[str] = None
-    rec_image_shape: str = "3, 32, 320"  # Kept as string per Paddle examples
-    rec_batch_num: int = 30  # Default from Paddle documentation
-    rec_image_shape: str = "3, 32, 320"  # Kept as string per Paddle examples
-    rec_batch_num: int = 30  # Default from Paddle documentation
-    max_text_length: int = 25
-    rec_char_dict_path: Optional[str] = None  # Path to char dictionary file
-    rec_char_dict_path: Optional[str] = None  # Path to char dictionary file
-    use_space_char: bool = True
-    drop_score: float = 0.5
+    # Detection parameters (can be overridden at predict time)
+    # https://github.com/PaddlePaddle/PaddleOCR/issues/15424
+    text_det_limit_side_len: Optional[int] = 736 # WAITING FOR FIX
+    text_det_limit_type: Optional[str] = 'max' # WAITING FOR FIX
+    text_det_thresh: Optional[float] = None
+    text_det_box_thresh: Optional[float] = None
+    text_det_unclip_ratio: Optional[float] = None
+    text_det_input_shape: Optional[Tuple[int, int]] = None
 
-    # Classification
-    cls: Optional[bool] = None  # Often inferred from use_angle_cls
-    use_angle_cls: bool = False  # Default from Paddle documentation
-    cls_model_dir: Optional[str] = None
-    cls_image_shape: str = "3, 48, 192"  # Kept as string per Paddle examples
-    label_list: List[str] = field(default_factory=lambda: ["0", "180"])  # Default from Paddle doc
-    cls_batch_num: int = 30
+    # Recognition parameters (can be overridden at predict time)
+    text_rec_score_thresh: Optional[float] = None
+    text_rec_input_shape: Optional[Tuple[int, int, int]] = None
 
-    # Classification
-    cls: Optional[bool] = None  # Often inferred from use_angle_cls
-    use_angle_cls: bool = False  # Default from Paddle documentation
-    cls_model_dir: Optional[str] = None
-    cls_image_shape: str = "3, 48, 192"  # Kept as string per Paddle examples
-    label_list: List[str] = field(default_factory=lambda: ["0", "180"])  # Default from Paddle doc
-    cls_batch_num: int = 30
+    # General parameters
+    lang: Optional[str] = None
+    ocr_version: Optional[str] = None
+    device: Optional[str] = None
+    enable_hpi: Optional[bool] = None
+    use_tensorrt: Optional[bool] = None
+    precision: Optional[str] = None
+    enable_mkldnn: Optional[bool] = False # https://github.com/PaddlePaddle/PaddleOCR/issues/15294
+    # mkldnn_cache_capacity: Optional[int] = None
+    cpu_threads: Optional[int] = None
+    paddlex_config: Optional[str] = None
 
     def __post_init__(self):
         pass
-
-    #     if self.use_gpu is None:
-    #         if self.device and "cuda" in self.device.lower():
-    #             self.use_gpu = True
-    #         else:
-    #             self.use_gpu = False
-    #     # logger.debug(f"Initialized PaddleOCROptions: {self}")
 
 
 # --- Surya Specific Options ---

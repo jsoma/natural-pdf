@@ -1,9 +1,9 @@
+import collections
 import logging
 import os
 import random
 import shutil
 from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
-import collections
 
 from tqdm.auto import tqdm
 
@@ -144,16 +144,34 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                     )
                     continue
 
-                elements = pdf.find_all(
-                    self.selector, apply_exclusions=False
-                )  # Usually want all text, even if excluded
+                elements = pdf.find_all(self.selector, apply_exclusions=False)
                 if not elements:
                     logger.debug(f"No elements matching '{self.selector}' found in {pdf.path}")
                     continue
 
+                # --- FILTER BASED ON CHARACTER FREQUENCY BEFORE EXPORT ---
+                filtered_elements = []
+                if self.min_char_freq > 1:
+                    # First, count all characters in all elements
+                    char_counts = collections.Counter()
+                    for element in elements:
+                        if hasattr(element, "text") and isinstance(element.text, str):
+                            char_counts.update(element.text)
+                    rare_chars = {
+                        char for char, count in char_counts.items() if count < self.min_char_freq
+                    }
+                    for element in elements:
+                        if hasattr(element, "text") and isinstance(element.text, str):
+                            if any(char in rare_chars for char in element.text):
+                                elements_skipped += 1
+                                continue
+                        filtered_elements.append(element)
+                else:
+                    filtered_elements = elements
+
                 for i, element in enumerate(
                     tqdm(
-                        elements,
+                        filtered_elements,
                         desc=f"Exporting '{os.path.basename(pdf.path)}'",
                         leave=False,
                         position=1,
@@ -243,16 +261,20 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                 filtered_labels = []
                 for img_path, text in labels:
                     if any(char in rare_chars for char in text):
-                        elements_skipped += 1 # Count these as skipped due to rare chars
-                        elements_processed -=1 # Decrement from processed as it's now being skipped
+                        elements_skipped += 1  # Count these as skipped due to rare chars
+                        elements_processed -= (
+                            1  # Decrement from processed as it's now being skipped
+                        )
                     else:
                         filtered_labels.append((img_path, text))
-                
+
                 labels_removed_count = original_label_count - len(filtered_labels)
                 if labels_removed_count > 0:
-                    logger.info(f"Removed {labels_removed_count} elements containing rare characters.")
+                    logger.info(
+                        f"Removed {labels_removed_count} elements containing rare characters."
+                    )
                 labels = filtered_labels
-                
+
                 # Recalculate char_counts based on filtered_labels to update the dictionary
                 char_counts.clear()
                 for _, text in labels:
@@ -266,15 +288,18 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
             else:
                 logger.info("No rare characters found below the frequency threshold.")
 
-
         # --- 3. Generate Dictionary File (`dict.txt`) ---
         dict_path = os.path.join(output_dir, "dict.txt")
         try:
             # Log the character set before sorting/writing
-            final_chars_for_dict = set(char_counts.keys()) # Use keys from potentially filtered char_counts
+            final_chars_for_dict = set(
+                char_counts.keys()
+            )  # Use keys from potentially filtered char_counts
             logger.debug(f"Exporter final char_set for dict: {repr(final_chars_for_dict)}")
 
-            sorted_chars = sorted(list(final_chars_for_dict)) # No specific sorting order needed, just make it consistent
+            sorted_chars = sorted(
+                list(final_chars_for_dict)
+            )  # No specific sorting order needed, just make it consistent
             with open(dict_path, "w", encoding="utf-8") as f_dict:
                 for char in sorted_chars:
                     # Ensure we don't write empty strings or just newlines as dictionary entries

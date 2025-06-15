@@ -83,6 +83,15 @@ class OCRManager:
                 if not engine_instance.is_available():
                     # Check availability before storing
                     install_hint = f"pip install 'natural-pdf[{engine_name}]'"
+                    if engine_name == "easyocr":
+                        install_hint = "pip install easyocr"
+                    elif engine_name == "paddle":
+                        install_hint = "pip install paddleocr paddlepaddle"
+                    elif engine_name == "surya":
+                        install_hint = "pip install surya-ocr"
+                    elif engine_name == "doctr":
+                        install_hint = "pip install 'python-doctr[torch]'"
+
                     raise RuntimeError(
                         f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
                     )
@@ -184,93 +193,83 @@ class OCRManager:
                     )
 
         # --- Get Engine Instance and Process ---
-        try:
-            engine_instance = self._get_engine_instance(selected_engine_name)
-            processing_mode = "batch" if is_batch else "single image"
-            # Log thread name for clarity during parallel calls
-            thread_id = threading.current_thread().name
-            logger.info(
-                f"[{thread_id}] Processing {processing_mode} using shared engine instance '{selected_engine_name}'..."
-            )
+        engine_instance = self._get_engine_instance(selected_engine_name)
+        processing_mode = "batch" if is_batch else "single image"
+        # Log thread name for clarity during parallel calls
+        thread_id = threading.current_thread().name
+        logger.info(
+            f"[{thread_id}] Processing {processing_mode} using shared engine instance '{selected_engine_name}'..."
+        )
+        logger.debug(
+            f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}"
+        )
+
+        # Log image dimensions before processing
+        if is_batch:
+            image_dims = [
+                f"{img.width}x{img.height}"
+                for img in images
+                if hasattr(img, "width") and hasattr(img, "height")
+            ]
             logger.debug(
-                f"  Engine Args: languages={languages}, min_confidence={min_confidence}, device={device}, options={final_options}"
+                f"[{thread_id}] Processing batch of {len(images)} images with dimensions: {image_dims}"
+            )
+        elif hasattr(images, "width") and hasattr(images, "height"):
+            logger.debug(
+                f"[{thread_id}] Processing single image with dimensions: {images.width}x{images.height}"
+            )
+        else:
+            logger.warning(f"[{thread_id}] Could not determine dimensions of input image(s).")
+
+        # Acquire lock specifically for the inference call
+        inference_lock = self._get_engine_inference_lock(selected_engine_name)
+        logger.debug(
+            f"[{thread_id}] Attempting to acquire inference lock for {selected_engine_name}..."
+        )
+        inference_wait_start = time.monotonic()
+        with inference_lock:
+            inference_acquired_time = time.monotonic()
+            logger.debug(
+                f"[{thread_id}] Acquired inference lock for {selected_engine_name} (waited {inference_acquired_time - inference_wait_start:.2f}s). Calling process_image..."
+            )
+            inference_start_time = time.monotonic()
+
+            results = engine_instance.process_image(
+                images=images,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                detect_only=detect_only,
+                options=final_options,
+            )
+            inference_end_time = time.monotonic()
+            logger.debug(
+                f"[{thread_id}] process_image call finished for {selected_engine_name} (Duration: {inference_end_time - inference_start_time:.2f}s). Releasing lock."
             )
 
-            # Log image dimensions before processing
-            if is_batch:
-                image_dims = [
-                    f"{img.width}x{img.height}"
-                    for img in images
-                    if hasattr(img, "width") and hasattr(img, "height")
-                ]
-                logger.debug(
-                    f"[{thread_id}] Processing batch of {len(images)} images with dimensions: {image_dims}"
-                )
-            elif hasattr(images, "width") and hasattr(images, "height"):
-                logger.debug(
-                    f"[{thread_id}] Processing single image with dimensions: {images.width}x{images.height}"
+        # Log result summary based on mode
+        if is_batch:
+            # Ensure results is a list before trying to get lengths
+            if isinstance(results, list):
+                num_results_per_image = [
+                    len(res_list) if isinstance(res_list, list) else -1 for res_list in results
+                ]  # Handle potential errors returning non-lists
+                logger.info(
+                    f"Processing complete. Found results per image: {num_results_per_image}"
                 )
             else:
-                logger.warning(f"[{thread_id}] Could not determine dimensions of input image(s).")
-
-            # Acquire lock specifically for the inference call
-            inference_lock = self._get_engine_inference_lock(selected_engine_name)
-            logger.debug(
-                f"[{thread_id}] Attempting to acquire inference lock for {selected_engine_name}..."
-            )
-            inference_wait_start = time.monotonic()
-            with inference_lock:
-                inference_acquired_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] Acquired inference lock for {selected_engine_name} (waited {inference_acquired_time - inference_wait_start:.2f}s). Calling process_image..."
+                logger.error(
+                    f"Processing complete but received unexpected result type for batch: {type(results)}"
                 )
-                inference_start_time = time.monotonic()
-
-                results = engine_instance.process_image(
-                    images=images,
-                    languages=languages,
-                    min_confidence=min_confidence,
-                    device=device,
-                    detect_only=detect_only,
-                    options=final_options,
-                )
-                inference_end_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] process_image call finished for {selected_engine_name} (Duration: {inference_end_time - inference_start_time:.2f}s). Releasing lock."
-                )
-
-            # Log result summary based on mode
-            if is_batch:
-                # Ensure results is a list before trying to get lengths
-                if isinstance(results, list):
-                    num_results_per_image = [
-                        len(res_list) if isinstance(res_list, list) else -1 for res_list in results
-                    ]  # Handle potential errors returning non-lists
-                    logger.info(
-                        f"Processing complete. Found results per image: {num_results_per_image}"
-                    )
-                else:
-                    logger.error(
-                        f"Processing complete but received unexpected result type for batch: {type(results)}"
-                    )
+        else:
+            # Ensure results is a list
+            if isinstance(results, list):
+                logger.info(f"Processing complete. Found {len(results)} results.")
             else:
-                # Ensure results is a list
-                if isinstance(results, list):
-                    logger.info(f"Processing complete. Found {len(results)} results.")
-                else:
-                    logger.error(
-                        f"Processing complete but received unexpected result type for single image: {type(results)}"
-                    )
-            return results  # Return type matches input type due to engine logic
-
-        except (ImportError, RuntimeError, ValueError, TypeError) as e:
-            logger.error(
-                f"OCR processing failed for engine '{selected_engine_name}': {e}", exc_info=True
-            )
-            raise  # Re-raise expected errors
-        except Exception as e:
-            logger.error(f"An unexpected error occurred during OCR processing: {e}", exc_info=True)
-            raise  # Re-raise unexpected errors
+                logger.error(
+                    f"Processing complete but received unexpected result type for single image: {type(results)}"
+                )
+        return results  # Return type matches input type due to engine logic
 
     def get_available_engines(self) -> List[str]:
         """Returns a list of registered engine names that are currently available."""

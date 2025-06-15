@@ -59,14 +59,34 @@ class EasyOCREngine(OCREngine):
             "cudnn_benchmark": easy_options.cudnn_benchmark,
         }
 
-        # Filter out None values, as EasyOCR expects non-None or default behaviour
+        # Filter out None values
         constructor_args = {k: v for k, v in constructor_args.items() if v is not None}
 
-        self.logger.debug(f"EasyOCR Reader constructor args: {constructor_args}")
+        # Filter only allowed EasyOCR args
+        allowed_args = {
+            "lang_list",
+            "gpu",
+            "model_storage_directory",
+            "user_network_directory",
+            "recog_network",
+            "detect_network",
+            "download_enabled",
+            "detector",
+            "recognizer",
+            "verbose",
+            "quantize",
+            "cudnn_benchmark",
+        }
+        filtered_args = {k: v for k, v in constructor_args.items() if k in allowed_args}
+        dropped = set(constructor_args) - allowed_args
+        if dropped:
+            self.logger.warning(f"Dropped unsupported EasyOCR args: {dropped}")
+
+        self.logger.debug(f"EasyOCR Reader constructor args: {filtered_args}")
 
         # Create the reader
         try:
-            self._model = easyocr.Reader(**constructor_args)
+            self._model = easyocr.Reader(**filtered_args)
             self.logger.info("EasyOCR reader created successfully")
         except Exception as e:
             self.logger.error(f"Failed to create EasyOCR reader: {e}")

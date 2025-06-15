@@ -51,6 +51,9 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
+
+# --- Shape Detection Mixin --- #
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
 from natural_pdf.classification.manager import ClassificationManager  # For type hint
@@ -68,14 +71,12 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
-from natural_pdf.widgets import InteractiveViewerWidget
-from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, SimpleInteractiveViewerWidget
+from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # --- End Classification Imports --- #
 
 
-# --- Shape Detection Mixin --- #
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+
 # --- End Shape Detection Mixin --- #
 
 
@@ -667,13 +668,13 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         if selector_obj.get("type") == "or":
             # For OR selectors, search all elements and let the filter function decide
             elements_to_search = self._element_mgr.get_all_elements()
-            
+
             # Create filter function from compound selector
             filter_func = selector_to_filter_func(selector_obj, **kwargs)
-            
+
             # Apply the filter to all elements
             matching_elements = [element for element in elements_to_search if filter_func(element)]
-            
+
             # Sort elements in reading order if requested
             if kwargs.get("reading_order", True):
                 if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
@@ -682,7 +683,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                     logger.warning(
                         "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                     )
-            
+
             # Return result collection
             return ElementCollection(matching_elements)
 
@@ -1204,7 +1205,9 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             try:
                 tatr_tables = self.find_all("region[type=table][model=tatr]")
                 if tatr_tables:
-                    logger.debug(f"Page {self.number}: Found {len(tatr_tables)} TATR table regions, extracting from those...")
+                    logger.debug(
+                        f"Page {self.number}: Found {len(tatr_tables)} TATR table regions, extracting from those..."
+                    )
                     extracted_tables = []
                     for table_region in tatr_tables:
                         try:
@@ -1212,48 +1215,70 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                             if table_data:  # Only add non-empty tables
                                 extracted_tables.append(table_data)
                         except Exception as e:
-                            logger.warning(f"Failed to extract table from TATR region {table_region.bbox}: {e}")
-                    
+                            logger.warning(
+                                f"Failed to extract table from TATR region {table_region.bbox}: {e}"
+                            )
+
                     if extracted_tables:
-                        logger.debug(f"Page {self.number}: Successfully extracted {len(extracted_tables)} tables from TATR regions")
+                        logger.debug(
+                            f"Page {self.number}: Successfully extracted {len(extracted_tables)} tables from TATR regions"
+                        )
                         return extracted_tables
                     else:
-                        logger.debug(f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber")
+                        logger.debug(
+                            f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber"
+                        )
                 else:
-                    logger.debug(f"Page {self.number}: No TATR table regions found, using pdfplumber methods")
+                    logger.debug(
+                        f"Page {self.number}: No TATR table regions found, using pdfplumber methods"
+                    )
             except Exception as e:
-                logger.debug(f"Page {self.number}: Error checking TATR regions: {e}, falling back to pdfplumber")
+                logger.debug(
+                    f"Page {self.number}: Error checking TATR regions: {e}, falling back to pdfplumber"
+                )
 
         # Auto-detect method if not specified (try lattice first, then stream)
         if method is None:
             logger.debug(f"Page {self.number}: Auto-detecting tables extraction method...")
-            
+
             # Try lattice first
             try:
                 lattice_settings = table_settings.copy()
                 lattice_settings.setdefault("vertical_strategy", "lines")
                 lattice_settings.setdefault("horizontal_strategy", "lines")
-                
+
                 logger.debug(f"Page {self.number}: Trying 'lattice' method first for tables...")
                 lattice_result = self._page.extract_tables(lattice_settings)
-                
+
                 # Check if lattice found meaningful tables
-                if (lattice_result and len(lattice_result) > 0 and 
-                    any(any(any(cell and cell.strip() for cell in row if cell) for row in table if table) for table in lattice_result)):
-                    logger.debug(f"Page {self.number}: 'lattice' method found {len(lattice_result)} tables")
+                if (
+                    lattice_result
+                    and len(lattice_result) > 0
+                    and any(
+                        any(
+                            any(cell and cell.strip() for cell in row if cell)
+                            for row in table
+                            if table
+                        )
+                        for table in lattice_result
+                    )
+                ):
+                    logger.debug(
+                        f"Page {self.number}: 'lattice' method found {len(lattice_result)} tables"
+                    )
                     return lattice_result
                 else:
                     logger.debug(f"Page {self.number}: 'lattice' method found no meaningful tables")
-                    
+
             except Exception as e:
                 logger.debug(f"Page {self.number}: 'lattice' method failed: {e}")
-            
+
             # Fall back to stream
             logger.debug(f"Page {self.number}: Falling back to 'stream' method for tables...")
             stream_settings = table_settings.copy()
             stream_settings.setdefault("vertical_strategy", "text")
             stream_settings.setdefault("horizontal_strategy", "text")
-            
+
             return self._page.extract_tables(stream_settings)
 
         effective_method = method
@@ -1265,7 +1290,9 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             table_settings.setdefault("vertical_strategy", "text")
             table_settings.setdefault("horizontal_strategy", "text")
         elif effective_method == "lattice":
-            logger.debug("Using 'lattice' method alias for 'pdfplumber' with line-based strategies.")
+            logger.debug(
+                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
+            )
             effective_method = "pdfplumber"
             table_settings.setdefault("vertical_strategy", "lines")
             table_settings.setdefault("horizontal_strategy", "lines")
@@ -1557,7 +1584,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         """
         # Apply global options as defaults, but allow explicit parameters to override
         import natural_pdf
-        
+
         # Use global options if parameters are not explicitly set
         if width is None:
             width = natural_pdf.options.image.width
@@ -1580,19 +1607,23 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             if isinstance(v, list):
                 try:
                     v = tuple(v)  # Convert lists to tuples
-                except TypeError: # pragma: no cover
+                except TypeError:  # pragma: no cover
                     # If list contains unhashable items, fall back to repr or skip
                     # For simplicity, we'll try to proceed; hashing will fail if v remains unhashable
-                    logger.warning(f"Cache key generation: List item in kwargs['{k}'] could not be converted to tuple due to unhashable elements.")
+                    logger.warning(
+                        f"Cache key generation: List item in kwargs['{k}'] could not be converted to tuple due to unhashable elements."
+                    )
             sorted_kwargs_list.append((k, v))
-        
+
         cache_key_parts.append(tuple(sorted_kwargs_list))
-        
+
         try:
             cache_key = tuple(cache_key_parts)
-        except TypeError as e: # pragma: no cover
-            logger.warning(f"Page {self.index}: Could not create cache key for to_image due to unhashable item: {e}. Proceeding without cache for this call.")
-            cache_key = None # Fallback to not using cache for this call
+        except TypeError as e:  # pragma: no cover
+            logger.warning(
+                f"Page {self.index}: Could not create cache key for to_image due to unhashable item: {e}. Proceeding without cache for this call."
+            )
+            cache_key = None  # Fallback to not using cache for this call
 
         image_to_return: Optional[Image.Image] = None
 
@@ -1602,7 +1633,9 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             logger.debug(f"Page {self.index}: Returning cached image for key: {cache_key}")
         else:
             # --- This is the original logic to generate the image ---
-            rendered_image_component: Optional[Image.Image] = None # Renamed from 'image' in original
+            rendered_image_component: Optional[Image.Image] = (
+                None  # Renamed from 'image' in original
+            )
             render_resolution = resolution if resolution is not None else scale * 72
             thread_id = threading.current_thread().name
             logger.debug(
@@ -1640,29 +1673,31 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
 
             if rendered_image_component is None:
                 if cache_key is not None:
-                    self._to_image_cache[cache_key] = None # Cache the failure
+                    self._to_image_cache[cache_key] = None  # Cache the failure
                 # Save the image if path is provided (will try to save None, handled by PIL/OS)
                 if path:
                     try:
                         if os.path.dirname(path):
                             os.makedirs(os.path.dirname(path), exist_ok=True)
-                        if rendered_image_component is not None: # Should be None here
-                           rendered_image_component.save(path) # This line won't be hit if None
+                        if rendered_image_component is not None:  # Should be None here
+                            rendered_image_component.save(path)  # This line won't be hit if None
                         # else: logger.debug("Not saving None image") # Not strictly needed
-                    except Exception as save_error: # pragma: no cover
+                    except Exception as save_error:  # pragma: no cover
                         logger.error(f"Failed to save image to {path}: {save_error}")
                 return None
 
             # --- Apply exclusion masking if requested ---
             # This modifies 'rendered_image_component'
-            image_after_masking = rendered_image_component # Start with the rendered image
+            image_after_masking = rendered_image_component  # Start with the rendered image
             if exclusions == "mask" and self._exclusions:
                 try:
                     # Ensure image is mutable (RGB or RGBA)
                     if image_after_masking.mode not in ("RGB", "RGBA"):
                         image_after_masking = image_after_masking.convert("RGB")
 
-                    exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=False)
+                    exclusion_regions = self._get_exclusion_regions(
+                        include_callable=True, debug=False
+                    )
                     if exclusion_regions:
                         draw = ImageDraw.Draw(image_after_masking)
                         # Calculate the scaling factor used for the image
@@ -1684,12 +1719,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                             )
                             if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
                                 draw.rectangle(img_coords, fill="white")
-                            else: # pragma: no cover
+                            else:  # pragma: no cover
                                 logger.warning(
                                     f"Skipping invalid exclusion rect for masking: {img_coords}"
                                 )
                         del draw  # Release drawing context
-                except Exception as mask_error: # pragma: no cover
+                except Exception as mask_error:  # pragma: no cover
                     logger.error(
                         f"Error applying exclusion mask to page {self.index}: {mask_error}",
                         exc_info=True,
@@ -1697,7 +1732,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                     # Continue with potentially unmasked or partially masked image
 
             # --- Resize the final image if width is provided ---
-            image_final_content = image_after_masking # Start with image after masking
+            image_final_content = image_after_masking  # Start with image after masking
             if width is not None and width > 0 and image_final_content.width > 0:
                 aspect_ratio = image_final_content.height / image_final_content.width
                 height = int(width * aspect_ratio)
@@ -1705,7 +1740,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
                     image_final_content = image_final_content.resize(
                         (width, height), Image.Resampling.LANCZOS
                     )
-                except Exception as resize_error: # pragma: no cover
+                except Exception as resize_error:  # pragma: no cover
                     logger.warning(f"Could not resize image: {resize_error}")
                     # image_final_content remains the un-resized version if resize fails
 
@@ -1720,11 +1755,11 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         if path and image_to_return:
             try:
                 # Ensure directory exists
-                if os.path.dirname(path): # Only call makedirs if there's a directory part
+                if os.path.dirname(path):  # Only call makedirs if there's a directory part
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                 image_to_return.save(path)
                 logger.debug(f"Saved page image to: {path}")
-            except Exception as save_error: # pragma: no cover
+            except Exception as save_error:  # pragma: no cover
                 logger.error(f"Failed to save image to {path}: {save_error}")
 
         return image_to_return
@@ -1783,24 +1818,20 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             self._element_mgr.remove_ocr_elements()
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
-        try:
-            # Delegate to parent PDF, targeting only this page's index
-            # Pass all relevant parameters through, including apply_exclusions
-            self._parent.apply_ocr(
-                pages=[self.index],
-                engine=engine,
-                options=options,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device,
-                resolution=resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-                replace=replace,  # Pass the replace parameter to PDF.apply_ocr
-            )
-        except Exception as e:
-            logger.error(f"Page {self.number}: Error during delegated OCR call: {e}", exc_info=True)
-            return self  # Return self for chaining
+        # Delegate to parent PDF, targeting only this page's index
+        # Pass all relevant parameters through, including apply_exclusions
+        self._parent.apply_ocr(
+            pages=[self.index],
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+            detect_only=detect_only,
+            apply_exclusions=apply_exclusions,
+            replace=replace,  # Pass the replace parameter to PDF.apply_ocr
+        )
 
         # Return self for chaining
         return self
@@ -2321,14 +2352,14 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
         self,
         # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
         # include_source_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
-    ) -> Optional["SimpleInteractiveViewerWidget"]:  # Return type hint updated
+    ) -> Optional["InteractiveViewerWidget"]:  # Return type hint updated
         """
         Creates and returns an interactive ipywidget for exploring elements on this page.
 
-        Uses SimpleInteractiveViewerWidget.from_page() to create the viewer.
+        Uses InteractiveViewerWidget.from_page() to create the viewer.
 
         Returns:
-            A SimpleInteractiveViewerWidget instance ready for display in Jupyter,
+            A InteractiveViewerWidget instance ready for display in Jupyter,
             or None if ipywidgets is not installed or widget creation fails.
 
         Raises:
@@ -2337,18 +2368,18 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             ValueError: If image rendering or data preparation fails within from_page.
         """
         # Check for availability using the imported flag and class variable
-        if not _IPYWIDGETS_AVAILABLE or SimpleInteractiveViewerWidget is None:
+        if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
             logger.error(
-                "Interactive viewer requires optional dependencies ('ipywidgets'). "
-                "Install with `pip install natural-pdf[viewer]`"
+                "Interactive viewer requires 'ipywidgets'. "
+                'Please install with: pip install "ipywidgets>=7.0.0,<10.0.0"'
             )
             # raise ImportError("ipywidgets not found.") # Option 1: Raise error
             return None  # Option 2: Return None gracefully
 
-        # If we reach here, SimpleInteractiveViewerWidget should be the actual class
+        # If we reach here, InteractiveViewerWidget should be the actual class
         try:
             # Pass self (the Page object) to the factory method
-            return SimpleInteractiveViewerWidget.from_page(self)
+            return InteractiveViewerWidget.from_page(self)
         except Exception as e:
             # Catch potential errors during widget creation (e.g., image rendering)
             logger.error(
@@ -2448,9 +2479,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
             f"Page {self.number}: Starting OCR correction with callback '{correction_callback.__name__}' (max_workers={max_workers})"
         )
 
-        target_elements_collection = self.find_all(
-            selector=selector, apply_exclusions=False
-        )
+        target_elements_collection = self.find_all(selector=selector, apply_exclusions=False)
         target_elements = target_elements_collection.elements  # Get the list
 
         if not target_elements:
@@ -2459,7 +2488,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin):
 
         element_pbar = None
         try:
-            element_pbar = tqdm(total=len(target_elements), desc=f"Correcting OCR Page {self.number}", unit="element", leave=False)
+            element_pbar = tqdm(
+                total=len(target_elements),
+                desc=f"Correcting OCR Page {self.number}",
+                unit="element",
+                leave=False,
+            )
 
             processed_count = 0
             updated_count = 0

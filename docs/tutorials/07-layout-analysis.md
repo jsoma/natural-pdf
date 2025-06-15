@@ -24,11 +24,7 @@ detected_regions = page.find_all('region[source="detected"]')
 
 ```python
 # Visualize all detected regions, using default colors based on type
-page.clear_highlights() # Clear previous highlights
-detected_regions.highlight(group_by='type', include_attrs=['confidence'])
-
-# Show the image with region overlays
-page.to_image(width=900)
+detected_regions.show(group_by='type', include_attrs=['confidence'])
 ```
 
 ```python
@@ -55,6 +51,8 @@ table_data
 
 Layout analysis provides structured `Region` objects. You can filter these regions by their predicted `type` and then perform actions like visualization or extracting text/tables specifically from those regions.
 
+## Other layout models
+
 <div class="admonition note">
 <p class="admonition-title">Layout Models and Configuration</p>
 
@@ -63,4 +61,21 @@ Layout analysis provides structured `Region` objects. You can filter these regio
     *   The detected regions are added to the page and can be found using selectors like `page.find_all('region[type=paragraph]')`.
 </div>
 
-``` 
+```python
+from natural_pdf import PDF
+
+# Load the PDF and get the page
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+page = pdf.pages[0]
+
+# Analyze the layout using the default model
+# This adds 'detected' Region objects to the page
+# It returns an ElementCollection of the detected regions
+page.analyze_layout('paddle')
+detected_regions = page.find_all('region[source="detected"]')
+```
+
+```python
+# Visualize all detected regions, using default colors based on type
+detected_regions.show(group_by='type', include_attrs=['confidence'])
+```

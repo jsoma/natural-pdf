@@ -2,15 +2,16 @@ import logging
 from collections.abc import MutableSequence
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar, Union
 
-from PIL import Image # Single import for PIL.Image module
+from PIL import Image  # Single import for PIL.Image module
 
 if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
+    from natural_pdf.core.page import Page as PhysicalPage
     from natural_pdf.elements.base import Element as PhysicalElement
     from natural_pdf.elements.collections import ElementCollection
-    from natural_pdf.core.page import Page as PhysicalPage
+
     from .element import FlowElement
-    from .flow import Flow # Though not directly used in __init__, FlowRegion needs it.
+    from .flow import Flow  # Though not directly used in __init__, FlowRegion needs it.
     from .region import FlowRegion
 
 
@@ -26,8 +27,11 @@ class FlowElementCollection(MutableSequence[T_FEC]):
     Provides directional methods that operate on its contained FlowElements and
     return FlowRegionCollection objects.
     """
+
     def __init__(self, flow_elements: List["FlowElement"]):
-        self._flow_elements: List["FlowElement"] = flow_elements if flow_elements is not None else []
+        self._flow_elements: List["FlowElement"] = (
+            flow_elements if flow_elements is not None else []
+        )
 
     def __getitem__(self, index: int) -> "FlowElement":
         return self._flow_elements[index]
@@ -62,11 +66,11 @@ class FlowElementCollection(MutableSequence[T_FEC]):
     def _execute_directional_on_all(self, method_name: str, **kwargs) -> "FlowRegionCollection":
         results: List["FlowRegion"] = []
         if not self._flow_elements:
-            return FlowRegionCollection([]) # Return empty FlowRegionCollection
+            return FlowRegionCollection([])  # Return empty FlowRegionCollection
 
         # Assuming all flow_elements share the same flow context
         # (which should be true if they came from the same Flow.find_all())
-        
+
         for fe in self._flow_elements:
             method_to_call = getattr(fe, method_name)
             flow_region_result: "FlowRegion" = method_to_call(**kwargs)
@@ -74,45 +78,103 @@ class FlowElementCollection(MutableSequence[T_FEC]):
             results.append(flow_region_result)
         return FlowRegionCollection(results)
 
-    def above(self, height: Optional[float] = None, width_ratio: Optional[float] = None,
-              width_absolute: Optional[float] = None, width_alignment: str = "center",
-              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> "FlowRegionCollection":
+    def above(
+        self,
+        height: Optional[float] = None,
+        width_ratio: Optional[float] = None,
+        width_absolute: Optional[float] = None,
+        width_alignment: str = "center",
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegionCollection":
         return self._execute_directional_on_all(
-            "above", height=height, width_ratio=width_ratio, width_absolute=width_absolute,
-            width_alignment=width_alignment, until=until, include_endpoint=include_endpoint, **kwargs
+            "above",
+            height=height,
+            width_ratio=width_ratio,
+            width_absolute=width_absolute,
+            width_alignment=width_alignment,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs,
         )
 
-    def below(self, height: Optional[float] = None, width_ratio: Optional[float] = None,
-              width_absolute: Optional[float] = None, width_alignment: str = "center",
-              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> "FlowRegionCollection":
+    def below(
+        self,
+        height: Optional[float] = None,
+        width_ratio: Optional[float] = None,
+        width_absolute: Optional[float] = None,
+        width_alignment: str = "center",
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegionCollection":
         return self._execute_directional_on_all(
-            "below", height=height, width_ratio=width_ratio, width_absolute=width_absolute,
-            width_alignment=width_alignment, until=until, include_endpoint=include_endpoint, **kwargs
+            "below",
+            height=height,
+            width_ratio=width_ratio,
+            width_absolute=width_absolute,
+            width_alignment=width_alignment,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs,
         )
 
-    def left(self, width: Optional[float] = None, height_ratio: Optional[float] = None,
-             height_absolute: Optional[float] = None, height_alignment: str = "center",
-             until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> "FlowRegionCollection":
+    def left(
+        self,
+        width: Optional[float] = None,
+        height_ratio: Optional[float] = None,
+        height_absolute: Optional[float] = None,
+        height_alignment: str = "center",
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegionCollection":
         return self._execute_directional_on_all(
-            "left", width=width, height_ratio=height_ratio, height_absolute=height_absolute,
-            height_alignment=height_alignment, until=until, include_endpoint=include_endpoint, **kwargs
+            "left",
+            width=width,
+            height_ratio=height_ratio,
+            height_absolute=height_absolute,
+            height_alignment=height_alignment,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs,
         )
 
-    def right(self, width: Optional[float] = None, height_ratio: Optional[float] = None,
-              height_absolute: Optional[float] = None, height_alignment: str = "center",
-              until: Optional[str] = None, include_endpoint: bool = True, **kwargs) -> "FlowRegionCollection":
+    def right(
+        self,
+        width: Optional[float] = None,
+        height_ratio: Optional[float] = None,
+        height_absolute: Optional[float] = None,
+        height_alignment: str = "center",
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegionCollection":
         return self._execute_directional_on_all(
-            "right", width=width, height_ratio=height_ratio, height_absolute=height_absolute,
-            height_alignment=height_alignment, until=until, include_endpoint=include_endpoint, **kwargs
+            "right",
+            width=width,
+            height_ratio=height_ratio,
+            height_absolute=height_absolute,
+            height_alignment=height_alignment,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs,
         )
 
-    def show(self, scale: float = 2.0, labels: bool = True, legend_position: str = "right", 
-             default_color: Optional[Union[Tuple, str]] = "orange", # A distinct color for FEC show
-             label_prefix: Optional[str] = "FEC_Element", width: Optional[int] = None,
-             stack_direction: str = "vertical", # "vertical" or "horizontal"
-             stack_gap: int = 5, # Gap between stacked page images
-             stack_background_color: Tuple[int, int, int] = (255, 255, 255), # Background for stacking
-             **kwargs) -> Optional[Image.Image]:
+    def show(
+        self,
+        scale: float = 2.0,
+        labels: bool = True,
+        legend_position: str = "right",
+        default_color: Optional[Union[Tuple, str]] = "orange",  # A distinct color for FEC show
+        label_prefix: Optional[str] = "FEC_Element",
+        width: Optional[int] = None,
+        stack_direction: str = "vertical",  # "vertical" or "horizontal"
+        stack_gap: int = 5,  # Gap between stacked page images
+        stack_background_color: Tuple[int, int, int] = (255, 255, 255),  # Background for stacking
+        **kwargs,
+    ) -> Optional[Image.Image]:
         """
         Shows all FlowElements in this collection by highlighting them on their respective pages.
         If multiple pages are involved, they are stacked into a single image.
@@ -133,15 +195,17 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                 raise ValueError(f"FlowElement {flow_element} has no page.")
 
         if not elements_by_page:
-            logger.info("FlowElementCollection.show() found no flow elements with associated pages.")
+            logger.info(
+                "FlowElementCollection.show() found no flow elements with associated pages."
+            )
             return None
 
         # Get a highlighter service from the first page
         first_page_with_elements = next(iter(elements_by_page.keys()), None)
         highlighter_service = None
-        if first_page_with_elements and hasattr(first_page_with_elements, '_highlighter'):
+        if first_page_with_elements and hasattr(first_page_with_elements, "_highlighter"):
             highlighter_service = first_page_with_elements._highlighter
-        
+
         if not highlighter_service:
             raise ValueError(
                 "Cannot get highlighter service for FlowElementCollection.show(). "
@@ -149,9 +213,12 @@ class FlowElementCollection(MutableSequence[T_FEC]):
             )
 
         output_page_images: List[Image.Image] = []
-        
+
         # Sort pages by index for consistent output order
-        sorted_pages = sorted(elements_by_page.keys(), key=lambda p: p.index if hasattr(p, 'index') else getattr(p, 'page_number', 0))
+        sorted_pages = sorted(
+            elements_by_page.keys(),
+            key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
+        )
 
         # Render each page with its relevant flow elements highlighted
         for page_idx, page_obj in enumerate(sorted_pages):
@@ -170,32 +237,47 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                             global_idx = self._flow_elements.index(flow_element)
                             count_indicator = f"_{global_idx + 1}"
                         except ValueError:
-                            count_indicator = f"_p{page_idx}i{i+1}" # fallback local index
+                            count_indicator = f"_p{page_idx}i{i+1}"  # fallback local index
                     elif len(flow_elements_on_this_page) > 1:
-                         count_indicator = f"_{i+1}"
+                        count_indicator = f"_{i+1}"
 
                     element_label = f"{label_prefix}{count_indicator}" if label_prefix else None
-                
-                temp_highlights_for_page.append({
-                    "page_index": page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
-                    "bbox": flow_element.bbox,
-                    "polygon": getattr(flow_element.physical_object, 'polygon', None) if hasattr(flow_element.physical_object, 'has_polygon') and flow_element.physical_object.has_polygon else None,
-                    "color": default_color,
-                    "label": element_label,
-                    "use_color_cycling": False,
-                })
-            
+
+                temp_highlights_for_page.append(
+                    {
+                        "page_index": (
+                            page_obj.index
+                            if hasattr(page_obj, "index")
+                            else getattr(page_obj, "page_number", 1) - 1
+                        ),
+                        "bbox": flow_element.bbox,
+                        "polygon": (
+                            getattr(flow_element.physical_object, "polygon", None)
+                            if hasattr(flow_element.physical_object, "has_polygon")
+                            and flow_element.physical_object.has_polygon
+                            else None
+                        ),
+                        "color": default_color,
+                        "label": element_label,
+                        "use_color_cycling": False,
+                    }
+                )
+
             if not temp_highlights_for_page:
                 continue
 
             page_image = highlighter_service.render_preview(
-                page_index=page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
+                page_index=(
+                    page_obj.index
+                    if hasattr(page_obj, "index")
+                    else getattr(page_obj, "page_number", 1) - 1
+                ),
                 temporary_highlights=temp_highlights_for_page,
                 scale=scale,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,
-                **kwargs
+                **kwargs,
             )
             if page_image:
                 output_page_images.append(page_image)
@@ -204,18 +286,23 @@ class FlowElementCollection(MutableSequence[T_FEC]):
         if not output_page_images:
             logger.info("FlowElementCollection.show() produced no page images to concatenate.")
             return None
-        
+
         if len(output_page_images) == 1:
             return output_page_images[0]
 
         # Stacking logic (same as in FlowRegionCollection.show)
         if stack_direction == "vertical":
             final_width = max(img.width for img in output_page_images)
-            final_height = sum(img.height for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
-            if final_width == 0 or final_height == 0: 
+            final_height = (
+                sum(img.height for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
+            if final_width == 0 or final_height == 0:
                 raise ValueError("Cannot create concatenated image with zero width or height.")
-            
-            concatenated_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+
+            concatenated_image = Image.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_y = 0
             for img in output_page_images:
                 paste_x = (final_width - img.width) // 2
@@ -223,12 +310,17 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                 current_y += img.height + stack_gap
             return concatenated_image
         elif stack_direction == "horizontal":
-            final_width = sum(img.width for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
+            final_width = (
+                sum(img.width for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
             final_height = max(img.height for img in output_page_images)
             if final_width == 0 or final_height == 0:
                 raise ValueError("Cannot create concatenated image with zero width or height.")
 
-            concatenated_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+            concatenated_image = Image.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_x = 0
             for img in output_page_images:
                 paste_y = (final_height - img.height) // 2
@@ -236,7 +328,9 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                 current_x += img.width + stack_gap
             return concatenated_image
         else:
-            raise ValueError(f"Invalid stack_direction '{stack_direction}' for FlowElementCollection.show(). Must be 'vertical' or 'horizontal'.")
+            raise ValueError(
+                f"Invalid stack_direction '{stack_direction}' for FlowElementCollection.show(). Must be 'vertical' or 'horizontal'."
+            )
 
 
 class FlowRegionCollection(MutableSequence[T_FRC]):
@@ -245,6 +339,7 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
     operations on a FlowElementCollection.
     Provides methods for querying and visualizing the aggregated content.
     """
+
     def __init__(self, flow_regions: List["FlowRegion"]):
         self._flow_regions: List["FlowRegion"] = flow_regions if flow_regions is not None else []
 
@@ -292,7 +387,9 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
     def filter(self, func: Callable[["FlowRegion"], bool]) -> "FlowRegionCollection":
         return FlowRegionCollection([fr for fr in self._flow_regions if func(fr)])
 
-    def sort(self, key: Optional[Callable[["FlowRegion"], Any]] = None, reverse: bool = False) -> "FlowRegionCollection":
+    def sort(
+        self, key: Optional[Callable[["FlowRegion"], Any]] = None, reverse: bool = False
+    ) -> "FlowRegionCollection":
         """Sorts the collection in-place. Default sort is by flow order if possible."""
         # A default key could try to sort by first constituent region's page then top/left,
         # but FlowRegions can be complex. For now, require explicit key or rely on list.sort default.
@@ -303,18 +400,19 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                     first_constituent = fr.constituent_regions[0]
                     page_idx = first_constituent.page.index if first_constituent.page else -1
                     return (page_idx, first_constituent.top, first_constituent.x0)
-                return (float('inf'), float('inf'), float('inf')) # Push empty ones to the end
+                return (float("inf"), float("inf"), float("inf"))  # Push empty ones to the end
+
             self._flow_regions.sort(key=default_sort_key, reverse=reverse)
         else:
             self._flow_regions.sort(key=key, reverse=reverse)
         return self
-        
+
     def extract_text(self, separator: str = "\n", apply_exclusions: bool = True, **kwargs) -> str:
         texts = [
             fr.extract_text(apply_exclusions=apply_exclusions, **kwargs)
             for fr in self._flow_regions
         ]
-        return separator.join(t for t in texts if t) # Filter out empty strings from concatenation
+        return separator.join(t for t in texts if t)  # Filter out empty strings from concatenation
 
     def extract_each_text(self, apply_exclusions: bool = True, **kwargs) -> List[str]:
         return [
@@ -322,24 +420,35 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
             for fr in self._flow_regions
         ]
 
-    def find(self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs) -> Optional["PhysicalElement"]:
-        from natural_pdf.elements.base import Element as PhysicalElement # Runtime import
+    def find(
+        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+    ) -> Optional["PhysicalElement"]:
+        from natural_pdf.elements.base import Element as PhysicalElement  # Runtime import
+
         for fr in self._flow_regions:
             found = fr.find(selector=selector, text=text, **kwargs)
             if found:
                 return found
         return None
 
-    def find_all(self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs) -> "ElementCollection":
-        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection # Runtime import
-        
+    def find_all(
+        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+    ) -> "ElementCollection":
+        from natural_pdf.elements.collections import (
+            ElementCollection as RuntimeElementCollection,  # Runtime import
+        )
+
         all_physical_elements: List["PhysicalElement"] = []
         for fr in self._flow_regions:
             # FlowRegion.find_all returns an ElementCollection
-            elements_in_fr: "RuntimeElementCollection" = fr.find_all(selector=selector, text=text, **kwargs)
-            if elements_in_fr: # ElementCollection has boolean True if not empty
-                 all_physical_elements.extend(elements_in_fr.elements) # Access .elements to get list
-        
+            elements_in_fr: "RuntimeElementCollection" = fr.find_all(
+                selector=selector, text=text, **kwargs
+            )
+            if elements_in_fr:  # ElementCollection has boolean True if not empty
+                all_physical_elements.extend(
+                    elements_in_fr.elements
+                )  # Access .elements to get list
+
         # Deduplicate while preserving order as much as possible (simple set doesn't preserve order)
         seen = set()
         unique_elements = []
@@ -349,126 +458,171 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                 seen.add(el)
         return RuntimeElementCollection(unique_elements)
 
-    def highlight(self, label_prefix: Optional[str] = "FRC", color: Optional[Union[Tuple, str]] = None, **kwargs) -> "FlowRegionCollection":
+    def highlight(
+        self,
+        label_prefix: Optional[str] = "FRC",
+        color: Optional[Union[Tuple, str]] = None,
+        **kwargs,
+    ) -> "FlowRegionCollection":
         if not self._flow_regions:
             return self
-        
+
         num_flow_regions = len(self._flow_regions)
         for i, fr in enumerate(self._flow_regions):
             current_label = None
             if label_prefix:
                 current_label = f"{label_prefix}_{i+1}" if num_flow_regions > 1 else label_prefix
-            
+
             # Pass the specific color to each FlowRegion's highlight method.
             # FlowRegion.highlight will then pass it to its constituent regions.
             fr.highlight(label=current_label, color=color, **kwargs)
         return self
 
-    def show(self, scale: float = 2.0, labels: bool = True, legend_position: str = "right", 
-             default_color: Optional[Union[Tuple, str]] = "darkviolet", # A distinct color for FRC show
-             label_prefix: Optional[str] = "FRC_Part", width: Optional[int] = None,
-             stack_direction: str = "vertical", # New: "vertical" or "horizontal"
-             stack_gap: int = 5, # New: Gap between stacked page images
-             stack_background_color: Tuple[int, int, int] = (255, 255, 255), # New: Background for stacking
-             **kwargs) -> Optional[Image.Image]: # Return type changed
+    def show(
+        self,
+        scale: float = 2.0,
+        labels: bool = True,
+        legend_position: str = "right",
+        default_color: Optional[Union[Tuple, str]] = "darkviolet",  # A distinct color for FRC show
+        label_prefix: Optional[str] = "FRC_Part",
+        width: Optional[int] = None,
+        stack_direction: str = "vertical",  # New: "vertical" or "horizontal"
+        stack_gap: int = 5,  # New: Gap between stacked page images
+        stack_background_color: Tuple[int, int, int] = (
+            255,
+            255,
+            255,
+        ),  # New: Background for stacking
+        **kwargs,
+    ) -> Optional[Image.Image]:  # Return type changed
         if not self._flow_regions:
             logger.info("FlowRegionCollection.show() called on an empty collection.")
-            return None # Changed from []
+            return None  # Changed from []
 
-        regions_by_page: dict["PhysicalPage", List[dict[str, Any]]] = {} 
+        regions_by_page: dict["PhysicalPage", List[dict[str, Any]]] = {}
 
         first_flow_region = self._flow_regions[0]
         highlighter_service = None
         if first_flow_region and first_flow_region.flow and first_flow_region.flow.segments:
-             first_segment_page = first_flow_region.flow.segments[0].page
-             if first_segment_page and hasattr(first_segment_page, '_highlighter'):
-                 highlighter_service = first_segment_page._highlighter
-        
+            first_segment_page = first_flow_region.flow.segments[0].page
+            if first_segment_page and hasattr(first_segment_page, "_highlighter"):
+                highlighter_service = first_segment_page._highlighter
+
         if not highlighter_service:
             logger.error("Cannot get highlighter service for FlowRegionCollection.show().")
-            return None # Changed from []
+            return None  # Changed from []
 
         constituent_idx = 0
         for fr_idx, fr in enumerate(self._flow_regions):
             for constituent_region in fr.constituent_regions:
                 page_obj = constituent_region.page
                 if not page_obj:
-                    logger.warning(f"Constituent region {constituent_region.bbox} has no page. Skipping in show().")
+                    logger.warning(
+                        f"Constituent region {constituent_region.bbox} has no page. Skipping in show()."
+                    )
                     continue
 
                 if page_obj not in regions_by_page:
                     regions_by_page[page_obj] = []
-                
+
                 part_label = None
                 if label_prefix:
                     part_label = f"{label_prefix}_{constituent_idx}"
-                
-                regions_by_page[page_obj].append({
-                    "page_index": page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
-                    "bbox": constituent_region.bbox,
-                    "polygon": constituent_region.polygon if constituent_region.has_polygon else None,
-                    "color": default_color, 
-                    "label": part_label,
-                    "use_color_cycling": False,
-                })
+
+                regions_by_page[page_obj].append(
+                    {
+                        "page_index": (
+                            page_obj.index
+                            if hasattr(page_obj, "index")
+                            else getattr(page_obj, "page_number", 1) - 1
+                        ),
+                        "bbox": constituent_region.bbox,
+                        "polygon": (
+                            constituent_region.polygon if constituent_region.has_polygon else None
+                        ),
+                        "color": default_color,
+                        "label": part_label,
+                        "use_color_cycling": False,
+                    }
+                )
                 constituent_idx += 1
-        
+
         output_page_images: List[Image.Image] = []
-        sorted_pages = sorted(regions_by_page.keys(), key=lambda p: p.index if hasattr(p, 'index') else getattr(p, 'page_number', 0))
+        sorted_pages = sorted(
+            regions_by_page.keys(),
+            key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
+        )
 
         for page_obj in sorted_pages:
             temp_highlights_for_page = regions_by_page[page_obj]
-            if not temp_highlights_for_page: continue
+            if not temp_highlights_for_page:
+                continue
 
             page_image = highlighter_service.render_preview(
-                page_index=page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
+                page_index=(
+                    page_obj.index
+                    if hasattr(page_obj, "index")
+                    else getattr(page_obj, "page_number", 1) - 1
+                ),
                 temporary_highlights=temp_highlights_for_page,
                 scale=scale,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,
-                **kwargs 
+                **kwargs,
             )
             if page_image:
                 output_page_images.append(page_image)
-        
+
         if not output_page_images:
             logger.info("FlowRegionCollection.show() produced no page images to concatenate.")
             return None
-        
+
         if len(output_page_images) == 1:
             return output_page_images[0]
 
         if stack_direction == "vertical":
             final_width = max(img.width for img in output_page_images)
-            final_height = sum(img.height for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
-            if final_width == 0 or final_height == 0: 
+            final_height = (
+                sum(img.height for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
+            if final_width == 0 or final_height == 0:
                 logger.warning("Cannot create concatenated image with zero width or height.")
                 return None
-            
-            concatenated_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+
+            concatenated_image = Image.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_y = 0
             for img in output_page_images:
-                paste_x = (final_width - img.width) // 2 # Center horizontally
+                paste_x = (final_width - img.width) // 2  # Center horizontally
                 concatenated_image.paste(img, (paste_x, current_y))
                 current_y += img.height + stack_gap
             return concatenated_image
         elif stack_direction == "horizontal":
-            final_width = sum(img.width for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
+            final_width = (
+                sum(img.width for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
             final_height = max(img.height for img in output_page_images)
-            if final_width == 0 or final_height == 0: 
+            if final_width == 0 or final_height == 0:
                 logger.warning("Cannot create concatenated image with zero width or height.")
                 return None
 
-            concatenated_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+            concatenated_image = Image.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_x = 0
             for img in output_page_images:
-                paste_y = (final_height - img.height) // 2 # Center vertically
+                paste_y = (final_height - img.height) // 2  # Center vertically
                 concatenated_image.paste(img, (current_x, paste_y))
                 current_x += img.width + stack_gap
             return concatenated_image
         else:
-            logger.error(f"Invalid stack_direction '{stack_direction}' for FlowRegionCollection.show(). Must be 'vertical' or 'horizontal'.")
+            logger.error(
+                f"Invalid stack_direction '{stack_direction}' for FlowRegionCollection.show(). Must be 'vertical' or 'horizontal'."
+            )
             return None
 
     def to_images(self, resolution: float = 150, **kwargs) -> List[Image.Image]:
@@ -477,8 +631,14 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         for fr in self._flow_regions:
             all_cropped_images.extend(fr.to_images(resolution=resolution, **kwargs))
         return all_cropped_images
-    
-    def to_image(self, stack_direction: str = "vertical", background_color=(255,255,255), gap: int = 5, **kwargs_for_constituent_to_image) -> Optional[Image.Image]:
+
+    def to_image(
+        self,
+        stack_direction: str = "vertical",
+        background_color=(255, 255, 255),
+        gap: int = 5,
+        **kwargs_for_constituent_to_image,
+    ) -> Optional[Image.Image]:
         """
         Creates a single composite image by stacking the composite images of each FlowRegion.
         Each FlowRegion's composite is generated by its own .to_image() method.
@@ -490,22 +650,28 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
             gap: Gap in pixels between stacked FlowRegion images.
             **kwargs_for_constituent_to_image: Passed to each FlowRegion.to_image().
         """
-        if not self._flow_regions: return None
+        if not self._flow_regions:
+            return None
 
         region_composites: List[Image.Image] = []
         for fr in self._flow_regions:
             img = fr.to_image(background_color=background_color, **kwargs_for_constituent_to_image)
             if img:
                 region_composites.append(img)
-        
-        if not region_composites: return None
-        if len(region_composites) == 1: return region_composites[0]
+
+        if not region_composites:
+            return None
+        if len(region_composites) == 1:
+            return region_composites[0]
 
         if stack_direction == "vertical":
             final_width = max(img.width for img in region_composites)
-            final_height = sum(img.height for img in region_composites) + (len(region_composites) - 1) * gap
-            if final_width == 0 or final_height == 0: return None
-            
+            final_height = (
+                sum(img.height for img in region_composites) + (len(region_composites) - 1) * gap
+            )
+            if final_width == 0 or final_height == 0:
+                return None
+
             new_image = Image.new("RGB", (final_width, final_height), background_color)
             current_y = 0
             for img in region_composites:
@@ -514,9 +680,12 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                 current_y += img.height + gap
             return new_image
         elif stack_direction == "horizontal":
-            final_width = sum(img.width for img in region_composites) + (len(region_composites) - 1) * gap
+            final_width = (
+                sum(img.width for img in region_composites) + (len(region_composites) - 1) * gap
+            )
             final_height = max(img.height for img in region_composites)
-            if final_width == 0 or final_height == 0: return None
+            if final_width == 0 or final_height == 0:
+                return None
 
             new_image = Image.new("RGB", (final_width, final_height), background_color)
             current_x = 0
@@ -526,8 +695,10 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                 current_x += img.width + gap
             return new_image
         else:
-            logger.warning(f"Invalid stack_direction: {stack_direction}. Must be 'vertical' or 'horizontal'.")
-            return None # Or perhaps return the list of images?
+            logger.warning(
+                f"Invalid stack_direction: {stack_direction}. Must be 'vertical' or 'horizontal'."
+            )
+            return None  # Or perhaps return the list of images?
 
     def apply(self, func: Callable[["FlowRegion"], Any]) -> List[Any]:
-        return [func(fr) for fr in self._flow_regions] 
+        return [func(fr) for fr in self._flow_regions]

@@ -1,19 +1,21 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from pdfplumber.utils.geometry import objects_to_bbox # For calculating combined bbox
+from pdfplumber.utils.geometry import objects_to_bbox  # For calculating combined bbox
 
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
 
 if TYPE_CHECKING:
-    from PIL.Image import Image as PIL_Image # For type hints
+    from PIL.Image import Image as PIL_Image  # For type hints
+
+    from natural_pdf.core.page import Page as PhysicalPage
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.region import Region as PhysicalRegion
     from natural_pdf.elements.collections import ElementCollection
-    from natural_pdf.core.page import Page as PhysicalPage 
-    from .flow import Flow
+    from natural_pdf.elements.region import Region as PhysicalRegion
+
     from .element import FlowElement
+    from .flow import Flow
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,7 @@ class FlowRegion:
 
         # Cache for expensive operations
         self._cached_text: Optional[str] = None
-        self._cached_elements: Optional["ElementCollection"] = None # Stringized
+        self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
 
     @property
@@ -68,7 +70,7 @@ class FlowRegion:
             return self._cached_bbox
         if not self.constituent_regions:
             return None
-        
+
         # Use objects_to_bbox from pdfplumber.utils.geometry to merge bboxes
         # This helper expects a list of objects that have .x0, .top, .x1, .bottom attributes.
         # Our PhysicalRegion objects satisfy this.
@@ -113,7 +115,9 @@ class FlowRegion:
         Returns:
             The combined text content as a string.
         """
-        if self._cached_text is not None and apply_exclusions: # Simple cache check, might need refinement if kwargs change behavior
+        if (
+            self._cached_text is not None and apply_exclusions
+        ):  # Simple cache check, might need refinement if kwargs change behavior
             return self._cached_text
 
         if not self.constituent_regions:
@@ -124,17 +128,19 @@ class FlowRegion:
         # The FlowElement._flow_direction method is responsible for ordering constituent_regions correctly.
         for region in self.constituent_regions:
             texts.append(region.extract_text(apply_exclusions=apply_exclusions, **kwargs))
-        
+
         # Join based on flow arrangement (e.g., newline for vertical, space for horizontal)
         # This is a simplification; true layout-aware joining would be more complex.
-        joiner = "\n" if self.flow.arrangement == "vertical" else " " # TODO: Make this smarter, consider segment_gap
+        joiner = (
+            "\n" if self.flow.arrangement == "vertical" else " "
+        )  # TODO: Make this smarter, consider segment_gap
         extracted = joiner.join(t for t in texts if t)
-        
-        if apply_exclusions: # Only cache if standard exclusion behavior
-             self._cached_text = extracted
+
+        if apply_exclusions:  # Only cache if standard exclusion behavior
+            self._cached_text = extracted
         return extracted
 
-    def elements(self, apply_exclusions: bool = True) -> "ElementCollection": # Stringized return
+    def elements(self, apply_exclusions: bool = True) -> "ElementCollection":  # Stringized return
         """
         Collects all unique physical elements from all constituent physical regions.
 
@@ -145,36 +151,44 @@ class FlowRegion:
         Returns:
             An ElementCollection containing all unique elements.
         """
-        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection # Local import
+        from natural_pdf.elements.collections import (
+            ElementCollection as RuntimeElementCollection,  # Local import
+        )
 
-        if self._cached_elements is not None and apply_exclusions: # Simple cache check
+        if self._cached_elements is not None and apply_exclusions:  # Simple cache check
             return self._cached_elements
 
         if not self.constituent_regions:
             return RuntimeElementCollection([])
 
-        all_physical_elements: List["PhysicalElement"] = [] # Stringized item type
-        seen_elements = set() # To ensure uniqueness if elements are shared or duplicated by region definitions
+        all_physical_elements: List["PhysicalElement"] = []  # Stringized item type
+        seen_elements = (
+            set()
+        )  # To ensure uniqueness if elements are shared or duplicated by region definitions
 
         for region in self.constituent_regions:
             # Region.get_elements() returns a list, not ElementCollection
-            elements_in_region: List["PhysicalElement"] = region.get_elements(apply_exclusions=apply_exclusions)
+            elements_in_region: List["PhysicalElement"] = region.get_elements(
+                apply_exclusions=apply_exclusions
+            )
             for elem in elements_in_region:
-                if elem not in seen_elements: # Check for uniqueness based on object identity
+                if elem not in seen_elements:  # Check for uniqueness based on object identity
                     all_physical_elements.append(elem)
                     seen_elements.add(elem)
 
         # Basic reading order sort based on original page and coordinates.
-        def get_sort_key(phys_elem: "PhysicalElement"): # Stringized param type
+        def get_sort_key(phys_elem: "PhysicalElement"):  # Stringized param type
             page_idx = -1
-            if hasattr(phys_elem, 'page') and hasattr(phys_elem.page, 'index'):
+            if hasattr(phys_elem, "page") and hasattr(phys_elem.page, "index"):
                 page_idx = phys_elem.page.index
             return (page_idx, phys_elem.top, phys_elem.x0)
 
         try:
             sorted_physical_elements = sorted(all_physical_elements, key=get_sort_key)
         except AttributeError:
-            logger.warning("Could not sort elements in FlowRegion by reading order; some elements might be missing page, top or x0 attributes.")
+            logger.warning(
+                "Could not sort elements in FlowRegion by reading order; some elements might be missing page, top or x0 attributes."
+            )
             sorted_physical_elements = all_physical_elements
 
         result_collection = RuntimeElementCollection(sorted_physical_elements)
@@ -182,22 +196,30 @@ class FlowRegion:
             self._cached_elements = result_collection
         return result_collection
 
-    def find(self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs) -> Optional["PhysicalElement"]: # Stringized
+    def find(
+        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+    ) -> Optional["PhysicalElement"]:  # Stringized
         """
         Finds the first physical element within this FlowRegion that matches the selector or text.
         """
         # Uses self.elements() which respects exclusions if apply_exclusions=True by default
         all_elems = self.elements(apply_exclusions=kwargs.get("apply_exclusions", True))
-        return all_elems.find(selector=selector, text=text, **kwargs) # ElementCollection.find
+        return all_elems.find(selector=selector, text=text, **kwargs)  # ElementCollection.find
 
-    def find_all(self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs) -> "ElementCollection": # Stringized
+    def find_all(
+        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+    ) -> "ElementCollection":  # Stringized
         """
         Finds all physical elements within this FlowRegion that match the selector or text.
         """
         all_elems = self.elements(apply_exclusions=kwargs.get("apply_exclusions", True))
-        return all_elems.find_all(selector=selector, text=text, **kwargs) # ElementCollection.find_all
+        return all_elems.find_all(
+            selector=selector, text=text, **kwargs
+        )  # ElementCollection.find_all
 
-    def highlight(self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs) -> "FlowRegion": # Stringized
+    def highlight(
+        self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs
+    ) -> "FlowRegion":  # Stringized
         """
         Highlights all constituent physical regions on their respective pages.
 
@@ -214,7 +236,9 @@ class FlowRegion:
 
         base_label = label if label else "FlowRegionPart"
         for i, region in enumerate(self.constituent_regions):
-            current_label = f"{base_label}_{i+1}" if len(self.constituent_regions) > 1 else base_label
+            current_label = (
+                f"{base_label}_{i+1}" if len(self.constituent_regions) > 1 else base_label
+            )
             region.highlight(label=current_label, color=color, **kwargs)
         return self
 
@@ -229,7 +253,7 @@ class FlowRegion:
         stack_direction: str = "vertical",
         stack_gap: int = 5,
         stack_background_color: Tuple[int, int, int] = (255, 255, 255),
-        **kwargs
+        **kwargs,
     ) -> Optional["PIL_Image"]:
         """
         Generates and returns a PIL Image of relevant pages with constituent regions highlighted.
@@ -256,9 +280,9 @@ class FlowRegion:
         # 2. Get a highlighter service (e.g., from the first page involved)
         first_page_with_regions = next(iter(regions_by_page.keys()), None)
         highlighter_service = None
-        if first_page_with_regions and hasattr(first_page_with_regions, '_highlighter'):
+        if first_page_with_regions and hasattr(first_page_with_regions, "_highlighter"):
             highlighter_service = first_page_with_regions._highlighter
-        
+
         if not highlighter_service:
             raise ValueError(
                 "Cannot get highlighter service for FlowRegion.show(). "
@@ -266,9 +290,12 @@ class FlowRegion:
             )
 
         output_page_images: List["PIL_Image_Runtime"] = []
-        
+
         # Sort pages by index for consistent output order
-        sorted_pages = sorted(regions_by_page.keys(), key=lambda p: p.index if hasattr(p, 'index') else getattr(p, 'page_number', 0))
+        sorted_pages = sorted(
+            regions_by_page.keys(),
+            key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
+        )
 
         # 3. Render each page with its relevant constituent regions highlighted
         for page_idx, page_obj in enumerate(sorted_pages):
@@ -279,41 +306,55 @@ class FlowRegion:
             temp_highlights_for_page = []
             for i, region_part in enumerate(constituent_regions_on_this_page):
                 part_label = None
-                if labels and label_prefix: # Ensure labels is True for label_prefix to apply
+                if labels and label_prefix:  # Ensure labels is True for label_prefix to apply
                     # If FlowRegion consists of multiple parts on this page, or overall
                     count_indicator = ""
-                    if len(self.constituent_regions) > 1 : # If flow region has multiple parts overall
+                    if (
+                        len(self.constituent_regions) > 1
+                    ):  # If flow region has multiple parts overall
                         # Find global index of this region_part in self.constituent_regions
                         try:
                             global_idx = self.constituent_regions.index(region_part)
                             count_indicator = f"_{global_idx + 1}"
-                        except ValueError: # Should not happen if region_part is from the list
-                            count_indicator = f"_p{page_idx}i{i+1}" # fallback local index
-                    elif len(constituent_regions_on_this_page) > 1 : # If multiple parts on *this* page, but FR is single part overall
-                         count_indicator = f"_{i+1}"
+                        except ValueError:  # Should not happen if region_part is from the list
+                            count_indicator = f"_p{page_idx}i{i+1}"  # fallback local index
+                    elif (
+                        len(constituent_regions_on_this_page) > 1
+                    ):  # If multiple parts on *this* page, but FR is single part overall
+                        count_indicator = f"_{i+1}"
 
                     part_label = f"{label_prefix}{count_indicator}" if label_prefix else None
-                
-                temp_highlights_for_page.append({
-                    "page_index": page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
-                    "bbox": region_part.bbox,
-                    "polygon": region_part.polygon if region_part.has_polygon else None,
-                    "color": color,  # Use the passed color
-                    "label": part_label,
-                    "use_color_cycling": False, # Keep specific color
-                })
-            
+
+                temp_highlights_for_page.append(
+                    {
+                        "page_index": (
+                            page_obj.index
+                            if hasattr(page_obj, "index")
+                            else getattr(page_obj, "page_number", 1) - 1
+                        ),
+                        "bbox": region_part.bbox,
+                        "polygon": region_part.polygon if region_part.has_polygon else None,
+                        "color": color,  # Use the passed color
+                        "label": part_label,
+                        "use_color_cycling": False,  # Keep specific color
+                    }
+                )
+
             if not temp_highlights_for_page:
                 continue
 
             page_image = highlighter_service.render_preview(
-                page_index=page_obj.index if hasattr(page_obj, 'index') else getattr(page_obj, 'page_number', 1) -1,
+                page_index=(
+                    page_obj.index
+                    if hasattr(page_obj, "index")
+                    else getattr(page_obj, "page_number", 1) - 1
+                ),
                 temporary_highlights=temp_highlights_for_page,
                 scale=scale,
                 width=width,
-                labels=labels, # Pass through labels
+                labels=labels,  # Pass through labels
                 legend_position=legend_position,
-                **kwargs
+                **kwargs,
             )
             if page_image:
                 output_page_images.append(page_image)
@@ -322,18 +363,23 @@ class FlowRegion:
         if not output_page_images:
             logger.info("FlowRegion.show() produced no page images to concatenate.")
             return None
-        
+
         if len(output_page_images) == 1:
             return output_page_images[0]
 
         # Stacking logic (same as in FlowRegionCollection.show)
         if stack_direction == "vertical":
             final_width = max(img.width for img in output_page_images)
-            final_height = sum(img.height for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
-            if final_width == 0 or final_height == 0: 
+            final_height = (
+                sum(img.height for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
+            if final_width == 0 or final_height == 0:
                 raise ValueError("Cannot create concatenated image with zero width or height.")
-            
-            concatenated_image = PIL_Image_Runtime.new("RGB", (final_width, final_height), stack_background_color)
+
+            concatenated_image = PIL_Image_Runtime.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_y = 0
             for img in output_page_images:
                 paste_x = (final_width - img.width) // 2
@@ -341,12 +387,17 @@ class FlowRegion:
                 current_y += img.height + stack_gap
             return concatenated_image
         elif stack_direction == "horizontal":
-            final_width = sum(img.width for img in output_page_images) + (len(output_page_images) - 1) * stack_gap
+            final_width = (
+                sum(img.width for img in output_page_images)
+                + (len(output_page_images) - 1) * stack_gap
+            )
             final_height = max(img.height for img in output_page_images)
             if final_width == 0 or final_height == 0:
                 raise ValueError("Cannot create concatenated image with zero width or height.")
 
-            concatenated_image = PIL_Image_Runtime.new("RGB", (final_width, final_height), stack_background_color)
+            concatenated_image = PIL_Image_Runtime.new(
+                "RGB", (final_width, final_height), stack_background_color
+            )
             current_x = 0
             for img in output_page_images:
                 paste_y = (final_height - img.height) // 2
@@ -354,15 +405,17 @@ class FlowRegion:
                 current_x += img.width + stack_gap
             return concatenated_image
         else:
-            raise ValueError(f"Invalid stack_direction '{stack_direction}' for FlowRegion.show(). Must be 'vertical' or 'horizontal'.")
+            raise ValueError(
+                f"Invalid stack_direction '{stack_direction}' for FlowRegion.show(). Must be 'vertical' or 'horizontal'."
+            )
 
     def to_images(
         self,
         resolution: float = 150,
-        **kwargs, 
-    ) -> List["PIL_Image"]: 
+        **kwargs,
+    ) -> List["PIL_Image"]:
         """
-        Generates and returns a list of cropped PIL Images, 
+        Generates and returns a list of cropped PIL Images,
         one for each constituent physical region of this FlowRegion.
         """
         if not self.constituent_regions:
@@ -373,19 +426,19 @@ class FlowRegion:
         for region_part in self.constituent_regions:
             try:
                 img = region_part.to_image(
-                    resolution=resolution, 
-                    crop_only=True, 
-                    include_highlights=False, 
-                    **kwargs
+                    resolution=resolution, crop_only=True, include_highlights=False, **kwargs
                 )
                 if img:
                     cropped_images.append(img)
             except Exception as e:
-                logger.error(f"Error generating image for constituent region {region_part.bbox}: {e}", exc_info=True)
-            
+                logger.error(
+                    f"Error generating image for constituent region {region_part.bbox}: {e}",
+                    exc_info=True,
+                )
+
         return cropped_images
 
-    def to_image(self, background_color=(255,255,255), **kwargs) -> Optional["PIL_Image"]:
+    def to_image(self, background_color=(255, 255, 255), **kwargs) -> Optional["PIL_Image"]:
         """
         Creates a single composite image by stacking the images of its constituent regions.
         Stacking direction is based on the Flow's arrangement.
@@ -410,23 +463,29 @@ class FlowRegion:
             # Stack vertically
             composite_width = max(img.width for img in images)
             composite_height = sum(img.height for img in images)
-            if composite_width == 0 or composite_height == 0: return None # Avoid zero-size image
+            if composite_width == 0 or composite_height == 0:
+                return None  # Avoid zero-size image
 
-            new_image = PIL_Image_Runtime.new("RGB", (composite_width, composite_height), background_color)
+            new_image = PIL_Image_Runtime.new(
+                "RGB", (composite_width, composite_height), background_color
+            )
             current_y = 0
             for img in images:
                 # Default to left alignment for vertical stacking
                 new_image.paste(img, (0, current_y))
                 current_y += img.height
             return new_image
-        
+
         elif self.flow.arrangement == "horizontal":
             # Stack horizontally
             composite_width = sum(img.width for img in images)
             composite_height = max(img.height for img in images)
-            if composite_width == 0 or composite_height == 0: return None
+            if composite_width == 0 or composite_height == 0:
+                return None
 
-            new_image = PIL_Image_Runtime.new("RGB", (composite_width, composite_height), background_color)
+            new_image = PIL_Image_Runtime.new(
+                "RGB", (composite_width, composite_height), background_color
+            )
             current_x = 0
             for img in images:
                 # Default to top alignment for horizontal stacking
@@ -435,7 +494,9 @@ class FlowRegion:
             return new_image
         else:
             # Should not happen if flow.arrangement is validated
-            logger.warning(f"Unknown flow arrangement: {self.flow.arrangement}. Cannot stack images.")
+            logger.warning(
+                f"Unknown flow arrangement: {self.flow.arrangement}. Cannot stack images."
+            )
             return None
 
     def __repr__(self) -> str:
@@ -453,6 +514,8 @@ class FlowRegion:
         # For now, if it has regions, it's not considered empty by this simple check.
         # User Point 4: FlowRegion can be empty (no text, no elements). This implies checking content.
         try:
-            return not bool(self.extract_text(apply_exclusions=False).strip()) and not bool(self.elements(apply_exclusions=False))
+            return not bool(self.extract_text(apply_exclusions=False).strip()) and not bool(
+                self.elements(apply_exclusions=False)
+            )
         except Exception:
-            return True # If error during check, assume empty to be safe 
+            return True  # If error during check, assume empty to be safe

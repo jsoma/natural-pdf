@@ -30,41 +30,19 @@ dependencies = [
     "jenkspy",
     "pikepdf>=9.7.0",
     "scipy",
+    "torch",
+    "torchvision",
+    "transformers[sentencepiece]<=4.34.1",
+    "huggingface_hub>=0.29.3",
+    "sentence-transformers",
+    "timm",
 ]
 
 [project.optional-dependencies]
-viewer = [
-    "ipywidgets>=7.0.0,<9.0.0"
-]
-easyocr = [
-    "easyocr",
-    "natural-pdf[core-ml]",
-]
-paddle = ["paddlepaddle", "paddleocr"]
-layout_yolo = [
-    "doclayout_yolo",
-    "natural-pdf[core-ml]",
-]
-surya = [
-    "surya-ocr",
-    "natural-pdf[core-ml]",
-]
-doctr = [
-    "python-doctr[torch]",
-    "natural-pdf[core-ml]",
-]
-
-docling = [
-    "docling", 
-    "natural-pdf[core-ml]",
-]
-
-llm = [
-    "openai>=1.0",
-]
-
 test = [
     "pytest",
+    "pytest-xdist",
+    "setuptools",
 ]
 
 search = [
@@ -74,13 +52,10 @@ search = [
 
 favorites = [
     "natural-pdf[deskew]",
-    "natural-pdf[llm]",
-    "natural-pdf[surya]",
-    "natural-pdf[easyocr]",
-    "natural-pdf[layout_yolo]",
     "natural-pdf[ocr-export]",
-    "natural-pdf[viewer]",
     "natural-pdf[search]",
+    "ipywidgets",
+    "surya-ocr"
 ]
 
 dev = [
@@ -88,6 +63,7 @@ dev = [
     "isort",
     "mypy",
     "pytest",
+    "pytest-xdist",
     "nox",
     "nox-uv",
     "build",
@@ -97,6 +73,8 @@ dev = [
     "jupytext",
     "nbclient",
     "ipykernel",
+    "pre-commit",
+    "setuptools",
 ]
 
 deskew = [
@@ -104,30 +82,25 @@ deskew = [
     "img2pdf"
 ]
 
-all = [
-    "natural-pdf[viewer]",
-    "natural-pdf[easyocr]",
-    "natural-pdf[paddle]",
-    "natural-pdf[layout_yolo]",
-    "natural-pdf[surya]",
-    "natural-pdf[doctr]",
-    "natural-pdf[ocr-export]",
-    "natural-pdf[docling]",
-    "natural-pdf[llm]",
-    "natural-pdf[core-ml]",
-    "natural-pdf[deskew]",
-    "natural-pdf[test]",
-    "natural-pdf[search]"
+addons = [
+    "surya-ocr",
+    "doclayout_yolo",
+    "paddlepaddle>=3.0.0",
+    "paddleocr>=3.0.0",
+    "ipywidgets>=7.0.0",
+    "easyocr",
+    "surya-ocr",
+    "doclayout_yolo",
+    "python-doctr[torch]",
+    "docling",
 ]
 
-core-ml = [
-    "torch", 
-    "torchvision",
-    "transformers[sentencepiece]",
-    "huggingface_hub",
-    "sentence-transformers",
-    "numpy",
-    "timm",
+all = [
+    "natural-pdf[ocr-export]",
+    "natural-pdf[deskew]",
+    "natural-pdf[test]",
+    "natural-pdf[search]",
+    "natural-pdf[addons]",
 ]
 
 ocr-export = [

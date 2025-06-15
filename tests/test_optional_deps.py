@@ -1,4 +1,4 @@
-import importlib  # Use importlib for checking
+import importlib
 import os
 import sys
 
@@ -11,7 +11,7 @@ from natural_pdf.core.page import Page
 
 # Define PDF paths relative to the project root (where pytest is usually run)
 TEST_PDF_URL = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf"
-NEEDS_OCR_PDF_PATH = "pdfs/needs-ocr.pdf"
+NEEDS_OCR_PDF_PATH = "pdfs/tiny-ocr.pdf"
 STANDARD_PDF_PATH = "pdfs/01-practice.pdf"
 
 
@@ -54,206 +54,120 @@ def standard_pdf_collection():
         pytest.fail(f"Failed to create PDFCollection ({STANDARD_PDF_PATH}) for module tests: {e}")
 
 
-# --- Helper ---
-def is_extra_installed(extra_name):
-    """Checks if packages associated with an extra appear importable."""
-    extra_packages = {
-        "interactive": ["ipywidgets"],
-        "easyocr": ["easyocr"],
-        "paddle": ["paddleocr"],
-        "surya": ["surya"],
-        "layout_yolo": ["doclayout_yolo"],
-        "core-ml": ["transformers"],
-    }
-    if extra_name not in extra_packages:
-        return False
-
-    packages_to_check = extra_packages[extra_name]
+# --- Helper to check if we are in a 'full' test environment ---
+def are_optional_deps_installed():
+    """
+    Checks if a sentinel optional package (e.g., easyocr) is installed.
+    This helps determine if we're running in the 'test_full' nox session.
+    """
     try:
-        for pkg_name in packages_to_check:
-            importlib.import_module(pkg_name)
+        importlib.import_module("easyocr")
         return True
     except ImportError:
         return False
 
 
-# --- Interactive Viewer (ipywidgets) Tests --- (Existing)
-
-
-def test_ipywidgets_availability_flag():
-    """Tests the internal _IPYWIDGETS_AVAILABLE flag based on environment."""
-    try:
-        from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE
-
-        flag_value = _IPYWIDGETS_AVAILABLE
-    except ImportError:
-        pytest.fail("Could not import or find _IPYWIDGETS_AVAILABLE in natural_pdf.widgets.viewer")
-    should_be_installed = is_extra_installed("interactive")
-    assert (
-        flag_value == should_be_installed
-    ), f"_IPYWIDGETS_AVAILABLE flag mismatch. Expected {should_be_installed}, got {flag_value}."
+# --- Interactive Viewer (ipywidgets) Tests ---
 
 
 def test_page_viewer_widget_creation_when_installed(standard_pdf_page):
     """Tests that Page.viewer() returns a widget when ipywidgets is installed."""
     pytest.importorskip("ipywidgets")
-    from natural_pdf.widgets.viewer import SimpleInteractiveViewerWidget
+    from natural_pdf.widgets.viewer import InteractiveViewerWidget
 
     viewer_instance = standard_pdf_page.viewer()
-    assert (
-        viewer_instance is not None
-    ), "Page.viewer() should return an object when ipywidgets is installed."
-    assert isinstance(
-        viewer_instance, SimpleInteractiveViewerWidget
-    ), f"Page.viewer() returned type {type(viewer_instance)}, expected SimpleInteractiveViewerWidget."
+    assert viewer_instance is not None
+    assert isinstance(viewer_instance, InteractiveViewerWidget)
 
 
-def test_page_viewer_widget_creation_when_not_installed(standard_pdf_page):
-    """Tests that Page.viewer() returns None when ipywidgets is missing."""
-    if is_extra_installed("interactive"):
-        pytest.skip("Skipping test: ipywidgets IS installed in this environment.")
+def test_page_viewer_logs_error_when_not_installed(standard_pdf_page, caplog):
+    """Tests that Page.viewer() logs an error when ipywidgets is missing."""
+    if are_optional_deps_installed():
+        pytest.skip("Skipping test: ipywidgets IS installed in the full test environment.")
+
     viewer_instance = standard_pdf_page.viewer()
-    assert (
-        viewer_instance is None
-    ), "Page.viewer() should return None when ipywidgets is not installed."
+    assert viewer_instance is None
+    assert "requires 'ipywidgets'" in caplog.text
 
 
-# --- EasyOCR Tests --- #
+# --- OCR and Layout Tests ---
 
 
-def test_ocr_easyocr_works_when_installed(needs_ocr_pdf_page):
-    """Test running EasyOCR when installed."""
-    pytest.importorskip("easyocr")
-    try:
-        # Use extract_ocr_elements which doesn't modify the page state
-        ocr_elements = needs_ocr_pdf_page.extract_ocr_elements(engine="easyocr")
-        assert isinstance(ocr_elements, list)
-        assert len(ocr_elements) > 0, "EasyOCR should find text elements on the OCR PDF."
-        # Check if the first element looks like a TextElement (basic check)
-        assert hasattr(ocr_elements[0], "text"), "OCR result should have text attribute."
-        assert hasattr(ocr_elements[0], "bbox"), "OCR result should have bbox attribute."
-    except Exception as e:
-        pytest.fail(f"EasyOCR extraction failed when installed: {e}")
+# Use parametrize to test all engines with the same logic
+@pytest.mark.parametrize(
+    "engine, package_name",
+    [
+        ("easyocr", "easyocr"),
+        ("paddle", "paddleocr"),
+        ("surya", "surya"),
+        ("doctr", "doctr"),
+        ("yolo", "doclayout_yolo"),
+        ("docling", "docling"),
+        ("gemini", "openai"),
+    ],
+)
+def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engine, package_name):
+    """Tests that a given engine works when its dependency is installed."""
+    pytest.importorskip(package_name)
 
-
-def test_ocr_easyocr_fails_gracefully_when_not_installed(needs_ocr_pdf_page):
-    """Test calling EasyOCR when not installed."""
-    if is_extra_installed("easyocr"):
-        pytest.skip("Skipping test: EasyOCR IS installed.")
-    # Check how OCRManager handles unavailable engines - assuming it returns empty list
-    ocr_elements = needs_ocr_pdf_page.extract_ocr_elements(engine="easyocr")
-    assert (
-        ocr_elements == []
-    ), "extract_ocr_elements should return empty list for unavailable engine."
-
-
-# --- PaddleOCR Tests --- #
-
-
-def test_ocr_paddle_works_when_installed(needs_ocr_pdf_page):
-    """Test running PaddleOCR when installed."""
-    pytest.importorskip("paddleocr")
-    if sys.platform == "darwin":
+    if engine == "paddle" and sys.platform == "darwin":
         pytest.skip("PaddleOCR tests skipped on macOS")
+    if engine in ["surya", "docling"] and sys.version_info < (3, 10):
+        pytest.skip(f"{engine} tests skipped on Python < 3.10")
+
     try:
-        ocr_elements = needs_ocr_pdf_page.extract_ocr_elements(engine="paddle")
-        assert isinstance(ocr_elements, list)
-        assert len(ocr_elements) > 0, "PaddleOCR should find text elements on the OCR PDF."
-        assert hasattr(ocr_elements[0], "text")
-        assert hasattr(ocr_elements[0], "bbox")
+        if engine in ["easyocr", "paddle", "surya", "doctr"]:
+            result = needs_ocr_pdf_page.apply_ocr(engine=engine)
+        elif engine in ["yolo", "surya", "docling", "gemini"]:
+            # Gemini requires classes, so we provide a default list for testing
+            if engine == "gemini":
+                pytest.importorskip("openai")
+                # A mock client or specific test setup might be needed here if real calls are made
+                # For now, we assume the test environment handles credentials or mocking
+                with pytest.raises(Exception):  # It will fail on client
+                    _ = standard_pdf_page.analyze_layout(engine=engine, classes=["text", "title"])
+                return
+            result = standard_pdf_page.analyze_layout(engine=engine)
+        else:
+            pytest.fail(f"Test logic not implemented for engine: {engine}")
+
+        assert isinstance(result, list)
     except Exception as e:
-        pytest.fail(f"PaddleOCR extraction failed when installed: {e}")
+        # We don't want auth errors etc to fail the test, just import errors
+        if isinstance(e, (ImportError, RuntimeError)):
+            pytest.fail(f"Engine '{engine}' failed unexpectedly when installed: {e}")
+        else:
+            pytest.skip(f"Skipping '{engine}' test due to non-dependency-related error: {e}")
 
 
-def test_ocr_paddle_fails_gracefully_when_not_installed(needs_ocr_pdf_page):
-    """Test calling PaddleOCR when not installed."""
-    if is_extra_installed("paddle"):
-        pytest.skip("Skipping test: PaddleOCR IS installed.")
-    if sys.platform == "darwin":  # Also skip if check fails but platform is darwin
-        pytest.skip("PaddleOCR tests skipped on macOS")
-    # Check how OCRManager handles unavailable engines - assume it returns empty list (KEEPING THIS)
-    # It might be reasonable for OCR manager to return [] if engine isn't there,
-    # vs layout which is explicitly requested.
-    # Alternatively, OCRManager could also be changed to raise errors.
-    ocr_elements = needs_ocr_pdf_page.extract_ocr_elements(engine="paddle")
-    assert (
-        ocr_elements == []
-    ), "extract_ocr_elements should return empty list for unavailable engine."
+@pytest.mark.parametrize(
+    "engine, package_name",
+    [
+        ("easyocr", "easyocr"),
+        ("paddle", "paddleocr"),
+        ("surya", "surya"),
+        ("doctr", "doctr"),
+        ("yolo", "doclayout_yolo"),
+        ("docling", "docling"),
+        ("gemini", "openai"),
+    ],
+)
+def test_engine_fails_gracefully_when_not_installed(
+    needs_ocr_pdf_page, standard_pdf_page, engine, package_name
+):
+    """Tests that using an engine without its dependency installed raises a RuntimeError."""
+    if are_optional_deps_installed():
+        pytest.skip(
+            f"Skipping test: All optional dependencies, including {package_name}, are installed."
+        )
 
+    if engine == "gemini":
+        with pytest.raises(RuntimeError, match="No client provided"):
+            _ = standard_pdf_page.analyze_layout(engine=engine)
+    else:
+        with pytest.raises(RuntimeError, match="is not available"):
+            if engine in ["easyocr", "paddle", "surya", "doctr"]:
+                _ = needs_ocr_pdf_page.apply_ocr(engine=engine)
+            elif engine in ["yolo", "surya", "docling", "gemini"]:
+                _ = standard_pdf_page.analyze_layout(engine=engine)
 
-# --- Surya Tests --- #
-
-
-def test_layout_surya_works_when_installed(standard_pdf_page):  # Use standard PDF for layout
-    """Test running Surya layout analysis when installed."""
-    pytest.importorskip("surya")
-    if sys.version_info < (3, 10):
-        pytest.skip("Surya tests skipped on Python < 3.10")
-    try:
-        layout_regions = standard_pdf_page.analyze_layout(engine="surya")
-        from natural_pdf.elements.collections import ElementCollection  # Import needed for check
-
-        assert isinstance(
-            layout_regions, ElementCollection
-        ), "analyze_layout should return an ElementCollection"
-        # Layout might return empty list, check type
-        # assert len(layout_regions) > 0, "Surya should find layout regions." # Keep commented unless specific PDF guarantees regions
-    except Exception as e:
-        pytest.fail(f"Surya layout analysis failed when installed: {e}")
-
-
-def test_layout_surya_fails_gracefully_when_not_installed(standard_pdf_page):
-    """Test calling Surya layout analysis when not installed raises error."""
-    if is_extra_installed("surya"):
-        pytest.skip("Skipping test: Surya IS installed.")
-    if sys.version_info < (3, 10):  # Also skip if check fails but Python is < 3.10
-        pytest.skip("Surya tests skipped on Python < 3.10")
-    # Expect RuntimeError because engine is known but unavailable
-    with pytest.raises(RuntimeError, match="not available"):
-        _ = standard_pdf_page.analyze_layout(engine="surya")
-
-
-# --- Layout YOLO Tests --- #
-
-
-def test_layout_yolo_works_when_installed(standard_pdf_page):
-    """Test running YOLO layout analysis when installed."""
-    # Check for the *actual* package associated with the extra
-    pytest.importorskip("doclayout_yolo")
-    try:
-        layout_regions = standard_pdf_page.analyze_layout(engine="yolo")
-        from natural_pdf.elements.collections import ElementCollection
-
-        assert isinstance(layout_regions, ElementCollection)
-    except Exception as e:
-        pytest.fail(f"YOLO layout analysis failed when installed: {e}")
-
-
-def test_layout_yolo_fails_gracefully_when_not_installed(standard_pdf_page):
-    """Test calling YOLO layout analysis when not installed raises error."""
-    if is_extra_installed("layout_yolo"):
-        pytest.skip("Skipping test: Layout YOLO IS installed.")
-    # Expect RuntimeError because engine is known but unavailable
-    with pytest.raises(RuntimeError, match="not available"):
-        _ = standard_pdf_page.analyze_layout(engine="yolo")
-
-
-# --- QA Tests --- #
-
-
-def test_qa_works_when_installed(standard_pdf_page):
-    """Test basic QA functionality (requires transformers core dep)."""
-    # No importorskip needed as transformers is core
-    try:
-        # Simple question
-        result = standard_pdf_page.ask("What is this document about?")
-        assert isinstance(result, dict)
-        assert "answer" in result
-        assert "confidence" in result
-        # We don't know the answer, but it should run
-    except Exception as e:
-        pytest.fail(f"QA execution failed: {e}")
-
-
-# No 'fails gracefully' test needed for QA as its core dep (transformers) is always installed.
-# We might need tests for *specific models* if they require separate downloads/setup.

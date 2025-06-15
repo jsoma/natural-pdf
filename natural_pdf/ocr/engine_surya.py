@@ -38,11 +38,17 @@ class SuryaOCREngine(OCREngine):
         self.logger.info("Surya modules imported successfully.")
 
         predictor_args = {}  # Configure if needed
+        # Filter only allowed Surya args (currently none, but placeholder for future)
+        allowed_args = set()  # Update if Surya supports constructor args
+        filtered_args = {k: v for k, v in predictor_args.items() if k in allowed_args}
+        dropped = set(predictor_args) - allowed_args
+        if dropped:
+            self.logger.warning(f"Dropped unsupported Surya args: {dropped}")
 
         self.logger.info("Instantiating Surya DetectionPredictor...")
-        self._detection_predictor = self._surya_detection(**predictor_args)
+        self._detection_predictor = self._surya_detection(**filtered_args)
         self.logger.info("Instantiating Surya RecognitionPredictor...")
-        self._recognition_predictor = self._surya_recognition(**predictor_args)
+        self._recognition_predictor = self._surya_recognition(**filtered_args)
 
         self.logger.info("Surya predictors initialized.")
 

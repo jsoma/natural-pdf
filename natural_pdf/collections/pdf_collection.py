@@ -61,14 +61,16 @@ except ImportError as e:
 
     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
 
+from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+
 # Import the ApplyMixin
 from natural_pdf.collections.mixins import ApplyMixin
 from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
 
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 
-
-class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin):  # Add ExportMixin and ShapeDetectionMixin
+class PDFCollection(
+    SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin
+):  # Add ExportMixin and ShapeDetectionMixin
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -120,6 +122,7 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixi
     def _get_pdf_class():
         """Helper method to dynamically import the PDF class."""
         from natural_pdf.core.pdf import PDF
+
         return PDF
 
     # --- Internal Helpers ---
@@ -382,33 +385,25 @@ class PDFCollection(SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixi
             pdf_path = pdf.path  # Get path for logging
             logger.debug(f"[{thread_id}] Starting OCR process for: {pdf_path}")
             start_time = time.monotonic()
-            try:
-                pdf.apply_ocr(  # Call apply_ocr on the original PDF object
-                    pages=pages,
-                    engine=engine,
-                    languages=languages,
-                    min_confidence=min_confidence,
-                    device=device,
-                    resolution=resolution,
-                    apply_exclusions=apply_exclusions,
-                    detect_only=detect_only,
-                    replace=replace,
-                    options=options,
-                    # Note: We might want a max_workers here too for page rendering?
-                    # For now, PDF.apply_ocr doesn't have it.
-                )
-                end_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
-                )
-                return pdf_path, None
-            except Exception as e:
-                end_time = time.monotonic()
-                logger.error(
-                    f"[{thread_id}] Failed OCR process for {pdf_path} after {end_time - start_time:.2f}s: {e}",
-                    exc_info=False,
-                )
-                return pdf_path, e  # Return path and error
+            pdf.apply_ocr(  # Call apply_ocr on the original PDF object
+                pages=pages,
+                engine=engine,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                resolution=resolution,
+                apply_exclusions=apply_exclusions,
+                detect_only=detect_only,
+                replace=replace,
+                options=options,
+                # Note: We might want a max_workers here too for page rendering?
+                # For now, PDF.apply_ocr doesn't have it.
+            )
+            end_time = time.monotonic()
+            logger.debug(
+                f"[{thread_id}] Finished OCR process for: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
+            )
+            return pdf_path, None
 
         # Use ThreadPoolExecutor for parallel processing if max_workers > 1
         if max_workers is not None and max_workers > 1:

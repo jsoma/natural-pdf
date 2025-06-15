@@ -222,7 +222,9 @@ image_shape = [3, H_target, W_target]
 print("Suggested image_shape:", image_shape)
 ```
 
-**And now it's configuration time!** We ignore almost all of the [suggestions from PaddleOCR's documentation](https://paddlepaddle.github.io/PaddleOCR/latest/en/ppocr/model_train/finetune.html) because for some reason they get me ~40% while copying the [PPOCRv3 yml](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/configs/rec/PP-OCRv3/multi_language/latin_PP-OCRv3_rec.yml) gets me up to ~80%.
+**And now it's configuration time!**
+
+We'll use the [official PP-OCRv5 config](https://github.com/PaddlePaddle/PaddleOCR/blob/main/configs/rec/PP-OCRv5/PP-OCRv5_server_rec.yml) as our template, updating it for your dataset and fine-tuning needs. This ensures you benefit from the latest architecture and improvements in PaddleOCR v5.
 
 This creates a `finetune_rec.yml` file that controls how the training process will go.
 
@@ -235,9 +237,9 @@ Global:
   print_batch_step: 50
   save_model_dir: ./output/finetune_rec/
   save_epoch_step: 5
-  eval_batch_step: [0, 200]  # Evaluate every 200 steps
+  eval_batch_step: [0, 200]
   cal_metric_during_train: true
-  pretrained_model: {PRETRAINED_MODEL_DIR}/best_accuracy
+  pretrained_model: {PRETRAINED_MODEL_DIR}/PP-OCRv5_server_rec_pretrained.pdparams  # Path to the v5 pretrained weights
   checkpoints: null
   save_inference_dir: null
   use_visualdl: false
@@ -361,6 +363,13 @@ We need the PaddleOCR repository for its training scripts. Once we have it we'll
 ```
 
 ```python
+# Download the PP-OCRv5 pretrained model
+PRETRAINED_MODEL_URL = "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_pretrained_model/PP-OCRv5_server_rec_pretrained.pdparams"
+!wget -q $PRETRAINED_MODEL_URL -O paddleocr_repo/PP-OCRv5_server_rec_pretrained.pdparams
+PRETRAINED_MODEL_DIR = "paddleocr_repo"
+```
+
+```python
 # Remove any existing trained model
 !rm -rf output
 
@@ -391,21 +400,19 @@ This will create an `inference_model` directory containing `inference.pdmodel`, 
 
 ## 6. Test Inference (Optional)
 
-You can use the exported inference model to predict text on new images.
+You can use the exported inference model to predict text on new images. **Be sure to use the `inference_model` directory created above, not the training checkpoint.**
 
 ```python
 from paddleocr import PaddleOCR
 from IPython.display import Image, display
 import random
 
+# Initialize the pipeline with your exported inference model
 ocr = PaddleOCR(
-    use_angle_cls=False,
-    lang='en',
-    rec_model_dir='inference_model',
-    rec_algorithm='SVTR_LCNet',
-    rec_image_shape='3,48,320',
-    rec_char_dict_path='finetune_data/dict.txt',
-    use_gpu=True
+    text_recognition_model_dir="inference_model",
+    text_recognition_char_dict_path="finetune_data/dict.txt",
+    text_recognition_model_name="PP-OCRv5_server_rec",  # or your custom model name if changed
+    det=False  # disables detection, only runs recognition
 )
 
 # Pick one random image from val.txt
@@ -414,11 +421,10 @@ with open("finetune_data/val.txt", encoding="utf-8") as f:
 img_path, ground_truth = line.split(maxsplit=1)
 img_path = "finetune_data/" + img_path
 
-# Run inference
-result = ocr.ocr(img_path, det=False)
+# Run inference using the pipeline API
+result = ocr(img_path)
 prediction = result[0][0][1] if result else '[No result]'
 
-# Display
 display(Image(filename=img_path))
 print(f"GT:  {ground_truth}")
 print(f"Pred: {prediction}")
@@ -430,7 +436,7 @@ Compare the predicted text with the ground truth in your label file.
 
 Once you have successfully fine-tuned and tested your model, you'll want to package it for easy distribution and use. A properly packaged model should include all necessary files to use it with Natural PDF:
 
-````python
+```python
 import shutil
 import os
 
@@ -450,7 +456,7 @@ with open(os.path.join(dist_dir, "README.md"), "w") as f:
 
 ## Model Information
 - Trained for: [describe your document type/language]
-- Base model: [e.g., "PaddleOCR v3 Latin"]
+- Base model: [e.g., "PP-OCRv5_server_rec"]
 - Training date: [date]
 - Epochs trained: [number of epochs]
 - Final accuracy: [accuracy percentage]
@@ -460,23 +466,27 @@ with open(os.path.join(dist_dir, "README.md"), "w") as f:
     from natural_pdf import PDF
     from natural_pdf.ocr import PaddleOCROptions
 
-    # Configure OCR with this model
+    # Configure OCR with this model (PaddleOCR v5 pipeline API)
     paddle_opts = PaddleOCROptions(
-        rec_model_dir="path/to/inference_model",
-        rec_char_dict_path="path/to/dict.txt",
+        text_recognition_model_dir="path/to/inference_model",
+        text_recognition_char_dict_path="path/to/dict.txt",
+        text_recognition_model_name="PP-OCRv5_server_rec",  # or your custom model name if changed
+        det=False  # disables detection, only runs recognition
     )
 
     # Use in your PDF processing
     pdf = PDF("your-document.pdf")
     page = pdf.pages[0]
     ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
+
+# Note: Be sure to use the exported inference_model directory, not the training checkpoint.
 """)
 
 # Zip everything up
 
 shutil.make_archive(dist_dir, 'zip', dist_dir)
 print(f"Model distribution package created: {dist_dir}.zip")
-````
+```
 
 ### Essential Components
 

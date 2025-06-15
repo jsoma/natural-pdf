@@ -89,7 +89,3 @@ for page in pdf.pages:
 ```
 
 This tutorial covered the basics of loading PDFs and extracting text. In the next tutorials, we'll explore more advanced features like searching for specific elements, extracting structured content, and working with tables. 
-
-```bash
-pip install "natural-pdf[all]"
-``` 

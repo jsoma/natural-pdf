@@ -121,14 +121,18 @@ class LayoutManager:
                 # Construct helpful error message with install hint
                 install_hint = ""
                 if engine_name == "yolo":
-                    install_hint = "pip install 'natural-pdf[layout_yolo]'"
+                    install_hint = "pip install doclayout_yolo"
                 elif engine_name == "tatr":
-                    install_hint = "pip install 'natural-pdf[core-ml]'"
+                    # This should now be installed with core dependencies
+                    install_hint = "(should be installed with natural-pdf, check for import errors)"
                 elif engine_name == "paddle":
-                    install_hint = "pip install 'natural-pdf[paddle]'"
+                    install_hint = "pip install paddleocr paddlepaddle"
                 elif engine_name == "surya":
-                    install_hint = "pip install 'natural-pdf[surya]'"
-                # Add other engines like docling if they become optional extras
+                    install_hint = "pip install surya-ocr"
+                elif engine_name == "docling":
+                    install_hint = "pip install docling"
+                elif engine_name == "gemini":
+                    install_hint = "pip install openai"
                 else:
                     install_hint = f"(Check installation requirements for {engine_name})"
 

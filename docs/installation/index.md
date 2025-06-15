@@ -12,49 +12,23 @@ pip install natural-pdf
 
 But! If you want to recognize text, do page layout analysis, document q-and-a or other things, you can install optional dependencies.
 
-```bash
-# Install deskewing, OCR (surya and easyocr),
-# layout analysis (yolo), and interactive browsing
-pip install natural-pdf[favorites]
-
-# Install **everything**
-pip install natural-pdf[all]
-```
-
-
-### Optional Dependencies
-
 Natural PDF has modular dependencies for different features. Install them based on your needs:
 
 ```bash
-# Interactive PDF viewer 
-pip install natural-pdf[viewer]
-
 # Deskewing
 pip install natural-pdf[deskew]
 
-# OCR options
-pip install natural-pdf[easyocr]
-pip install natural-pdf[surya]
-pip install natural-pdf[paddle]
-pip install natural-pdf[doctr]
-
-# Layout analysis
-pip install natural-pdf[surya]
-pip install natural-pdf[docling]
-pip install natural-pdf[layout_yolo]
-pip install natural-pdf[paddle]
-
-# AI stuff
-pip install natural-pdf[core-ml]
+# LLM features (OpenAI)
 pip install natural-pdf[llm]
 
 # Semantic search
-pip install natural-pdf[core-ml]
+pip install natural-pdf[search]
 
-# Install everything
-pip install natural-pdf[all]
+# Install everything in the 'favorites' collection
+pip install natural-pdf[favorites]
 ```
+
+Other OCR and layout analysis engines like `surya`, `easyocr`, `paddle`, `doctr`, and `docling` can be installed via `pip` as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.
 
 ## Your First PDF Extraction
 

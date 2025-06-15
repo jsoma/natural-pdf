@@ -54,14 +54,84 @@ class TATRLayoutOptions(BaseLayoutOptions):
 # --- Paddle Specific Options ---
 @dataclass
 class PaddleLayoutOptions(BaseLayoutOptions):
-    """Options specific to PaddlePaddle PP-Structure layout detection."""
-
-    lang: str = "en"  # Language ('en', 'ch', etc.)
-    use_angle_cls: bool = False  # Use text angle classification?
-    enable_table: bool = True  # Enable table structure detection?
-    show_log: bool = False  # Show Paddle internal logs?
-    detect_text: bool = True  # Also detect raw text boxes using PaddleOCR?
+    """
+    Options specific to PaddlePaddle PP-StructureV3 layout detection.
+    See: https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/pipeline_usage/PP-StructureV3.html
+    """
+    # Model paths and names
+    layout_detection_model_name: Optional[str] = None
+    layout_detection_model_dir: Optional[str] = None
+    layout_threshold: Optional[float] = None
+    layout_nms: Optional[bool] = None
+    layout_unclip_ratio: Optional[float] = None
+    layout_merge_bboxes_mode: Optional[str] = None
+    chart_recognition_model_name: Optional[str] = None
+    chart_recognition_model_dir: Optional[str] = None
+    chart_recognition_batch_size: Optional[int] = None
+    region_detection_model_name: Optional[str] = None
+    region_detection_model_dir: Optional[str] = None
+    doc_orientation_classify_model_name: Optional[str] = None
+    doc_orientation_classify_model_dir: Optional[str] = None
+    doc_unwarping_model_name: Optional[str] = None
+    doc_unwarping_model_dir: Optional[str] = None
+    text_detection_model_name: Optional[str] = None
+    text_detection_model_dir: Optional[str] = None
+    text_det_limit_side_len: Optional[int] = None
+    text_det_limit_type: Optional[str] = None
+    text_det_thresh: Optional[float] = None
+    text_det_box_thresh: Optional[float] = None
+    text_det_unclip_ratio: Optional[float] = None
+    textline_orientation_model_name: Optional[str] = None
+    textline_orientation_model_dir: Optional[str] = None
+    textline_orientation_batch_size: Optional[int] = None
+    text_recognition_model_name: Optional[str] = None
+    text_recognition_model_dir: Optional[str] = None
+    text_recognition_batch_size: Optional[int] = None
+    text_rec_score_thresh: Optional[float] = None
+    table_classification_model_name: Optional[str] = None
+    table_classification_model_dir: Optional[str] = None
+    wired_table_structure_recognition_model_name: Optional[str] = None
+    wired_table_structure_recognition_model_dir: Optional[str] = None
+    wireless_table_structure_recognition_model_name: Optional[str] = None
+    wireless_table_structure_recognition_model_dir: Optional[str] = None
+    wired_table_cells_detection_model_name: Optional[str] = None
+    wired_table_cells_detection_model_dir: Optional[str] = None
+    wireless_table_cells_detection_model_name: Optional[str] = None
+    wireless_table_cells_detection_model_dir: Optional[str] = None
+    seal_text_detection_model_name: Optional[str] = None
+    seal_text_detection_model_dir: Optional[str] = None
+    seal_det_limit_side_len: Optional[int] = None
+    seal_det_limit_type: Optional[str] = None
+    seal_det_thresh: Optional[float] = None
+    seal_det_box_thresh: Optional[float] = None
+    seal_det_unclip_ratio: Optional[float] = None
+    seal_text_recognition_model_name: Optional[str] = None
+    seal_text_recognition_model_dir: Optional[str] = None
+    seal_text_recognition_batch_size: Optional[int] = None
+    seal_rec_score_thresh: Optional[float] = None
+    formula_recognition_model_name: Optional[str] = None
+    formula_recognition_model_dir: Optional[str] = None
+    formula_recognition_batch_size: Optional[int] = None
+    # Module usage flags
+    use_doc_orientation_classify: Optional[bool] = True
+    use_doc_unwarping: Optional[bool] = True
+    use_textline_orientation: Optional[bool] = True
+    use_seal_recognition: Optional[bool] = False
+    use_table_recognition: Optional[bool] = True
+    use_formula_recognition: Optional[bool] = False
+    use_chart_recognition: Optional[bool] = True
+    use_region_detection: Optional[bool] = True
+    # General parameters
+    device: Optional[str] = None
+    enable_hpi: Optional[bool] = None
+    use_tensorrt: Optional[bool] = None
+    precision: Optional[str] = None
+    enable_mkldnn: Optional[bool] = False
+    cpu_threads: Optional[int] = None
+    paddlex_config: Optional[str] = None
+    lang: Optional[str] = None  # For English model selection
     verbose: bool = False  # Verbose logging for the detector class
+    create_cells: Optional[bool] = True
 
 
 # --- Surya Specific Options ---

@@ -4,8 +4,12 @@ import logging
 from typing import Optional
 
 # Import constants
-from .search_options import SearchOptions 
-from .search_options import BaseSearchOptions, MultiModalSearchOptions, TextSearchOptions
+from .search_options import (
+    BaseSearchOptions,
+    MultiModalSearchOptions,
+    SearchOptions,
+    TextSearchOptions,
+)
 from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
 
 # Check search extras availability
@@ -13,27 +17,34 @@ LANCEDB_AVAILABLE = False
 SEARCH_DEPENDENCIES_AVAILABLE = False
 
 try:
-    import sentence_transformers
     import numpy as np
+    import sentence_transformers
+
     # Basic search dependencies are available
     SEARCH_DEPENDENCIES_AVAILABLE = True
-    
+
     # Check if LanceDB is available
     try:
         import lancedb
         import pyarrow
+
         LANCEDB_AVAILABLE = True
-        from .lancedb_search_service import LanceDBSearchService, DEFAULT_LANCEDB_PERSIST_PATH, DEFAULT_EMBEDDING_MODEL
+        from .lancedb_search_service import (
+            DEFAULT_EMBEDDING_MODEL,
+            DEFAULT_LANCEDB_PERSIST_PATH,
+            LanceDBSearchService,
+        )
     except ImportError:
         # LanceDB not available, we'll use NumPy fallback
         LANCEDB_AVAILABLE = False
-        from .numpy_search_service import NumpySearchService, DEFAULT_EMBEDDING_MODEL
+        from .numpy_search_service import DEFAULT_EMBEDDING_MODEL, NumpySearchService
 except ImportError:
     # Basic dependencies missing
     SEARCH_DEPENDENCIES_AVAILABLE = False
     LANCEDB_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
 
 def check_search_availability():
     """Check if required search dependencies are available."""
@@ -43,6 +54,7 @@ def check_search_availability():
             "Install with: pip install natural-pdf[search] (or pip install sentence-transformers numpy)"
         )
 
+
 def get_search_service(
     collection_name: str,
     persist: bool = False,
@@ -51,7 +63,7 @@ def get_search_service(
 ) -> SearchServiceProtocol:
     """
     Factory function to get an instance of the configured search service.
-    
+
     Automatically selects the best available implementation:
     - LanceDB if installed (recommended for both in-memory and persistent)
     - Numpy fallback for in-memory only
@@ -84,16 +96,17 @@ def get_search_service(
     # If persistence is requested, LanceDB is required
     if persist and not LANCEDB_AVAILABLE:
         raise RuntimeError(
-            "Persistent vector search requires LanceDB. "
-            "Please install: pip install lancedb"
+            "Persistent vector search requires LanceDB. " "Please install: pip install lancedb"
         )
-    
+
     # Select the appropriate implementation
     if LANCEDB_AVAILABLE:
         logger.info(f"Using LanceDB for vector search (collection: {collection_name})")
         service_instance = LanceDBSearchService(**service_args)
     else:
-        logger.info(f"Using NumPy fallback for in-memory vector search (collection: {collection_name})")
+        logger.info(
+            f"Using NumPy fallback for in-memory vector search (collection: {collection_name})"
+        )
         service_instance = NumpySearchService(**service_args)
-        
+
     return service_instance

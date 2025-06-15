@@ -219,9 +219,7 @@ class HighlightRenderer:
         ocr_elements = self.page.find_all("text[source=ocr]")
         if not ocr_elements:
             # Don't run full OCR here, just extract if already run
-            ocr_elements = [
-                el for el in self.page.words if getattr(el, "source", None) == "ocr"
-            ]
+            ocr_elements = [el for el in self.page.words if getattr(el, "source", None) == "ocr"]
             # Alternative: self.page.extract_ocr_elements() - but might be slow
 
         if not ocr_elements:
@@ -611,7 +609,7 @@ class HighlightingService:
             logger.error(f"Invalid page index {page_index} for rendering.")
             return None
 
-        page_obj = self._pdf[page_index] # Renamed to avoid conflict
+        page_obj = self._pdf[page_index]  # Renamed to avoid conflict
         highlights_on_page = self.get_highlights_for_page(page_index)
 
         to_image_args = kwargs.copy()
@@ -620,20 +618,25 @@ class HighlightingService:
 
         if "width" in to_image_args and to_image_args["width"] is not None:
             logger.debug(f"Rendering page {page_index} with width={to_image_args['width']}.")
-            if "height" in to_image_args: to_image_args.pop("height", None)
+            if "height" in to_image_args:
+                to_image_args.pop("height", None)
             # Actual scale will be calculated after image creation
         elif "height" in to_image_args and to_image_args["height"] is not None:
             logger.debug(f"Rendering page {page_index} with height={to_image_args['height']}.")
             # Actual scale will be calculated after image creation
         else:
             # Use explicit resolution from kwargs if present, then the resolution param, then scale
-            render_resolution = to_image_args.pop("resolution", resolution) # Use and remove from kwargs if present
+            render_resolution = to_image_args.pop(
+                "resolution", resolution
+            )  # Use and remove from kwargs if present
             if render_resolution is None:
                 render_resolution = scale * 72
-            to_image_args["resolution"] = render_resolution # Add it back for the call
+            to_image_args["resolution"] = render_resolution  # Add it back for the call
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
-            logger.debug(f"Rendering page {page_index} with resolution {render_resolution} (scale: {actual_scale_x:.2f}).")
+            logger.debug(
+                f"Rendering page {page_index} with resolution {render_resolution} (scale: {actual_scale_x:.2f})."
+            )
 
         try:
             # base_image = render_plain_page(page_obj, actual_scale_x * 72 if actual_scale_x else scale * 72) # Old call
@@ -645,22 +648,23 @@ class HighlightingService:
             )
             if isinstance(base_image_pil, bytes):
                 from io import BytesIO
-                base_image_pil = Image.open(BytesIO(base_image_pil))
-            base_image_pil = base_image_pil.convert("RGBA") # Ensure RGBA for renderer
-            logger.debug(
-                f"Base image for page {page_index} rendered. Size: {base_image_pil.size}."
-            )
 
-            if actual_scale_x is None or actual_scale_y is None: # If not set by resolution path
+                base_image_pil = Image.open(BytesIO(base_image_pil))
+            base_image_pil = base_image_pil.convert("RGBA")  # Ensure RGBA for renderer
+            logger.debug(f"Base image for page {page_index} rendered. Size: {base_image_pil.size}.")
+
+            if actual_scale_x is None or actual_scale_y is None:  # If not set by resolution path
                 if page_obj.width > 0:
                     actual_scale_x = base_image_pil.width / page_obj.width
-                else: 
-                    actual_scale_x = scale # Fallback
+                else:
+                    actual_scale_x = scale  # Fallback
                 if page_obj.height > 0:
                     actual_scale_y = base_image_pil.height / page_obj.height
                 else:
-                    actual_scale_y = scale # Fallback
-                logger.debug(f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f}")
+                    actual_scale_y = scale  # Fallback
+                logger.debug(
+                    f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f}"
+                )
 
         except IOError as e:
             logger.error(f"IOError creating base image for page {page_index}: {e}")
@@ -668,8 +672,8 @@ class HighlightingService:
         except AttributeError as e:
             logger.error(f"AttributeError creating base image for page {page_index}: {e}")
             raise
-        
-        renderer_scale = actual_scale_x # Assuming aspect ratio maintained, use x_scale
+
+        renderer_scale = actual_scale_x  # Assuming aspect ratio maintained, use x_scale
 
         # --- Render Highlights ---
         rendered_image: Image.Image
@@ -678,7 +682,7 @@ class HighlightingService:
                 page=page_obj,
                 base_image=base_image_pil,
                 highlights=highlights_on_page,
-                scale=renderer_scale, # Use the determined actual scale
+                scale=renderer_scale,  # Use the determined actual scale
                 render_ocr=render_ocr,
             )
             rendered_image = renderer.render()
@@ -747,21 +751,25 @@ class HighlightingService:
             return None
 
         page_obj = self._pdf.pages[page_index]
-        
+
         to_image_args = kwargs.copy()
         actual_scale_x = None
         actual_scale_y = None
 
         # Determine arguments for page._page.to_image()
         if "width" in to_image_args and to_image_args["width"] is not None:
-            logger.debug(f"Rendering preview for page {page_index} with width={to_image_args['width']}.")
+            logger.debug(
+                f"Rendering preview for page {page_index} with width={to_image_args['width']}."
+            )
             # Resolution is implicitly handled by pdfplumber when width is set
-            if "height" in to_image_args: 
+            if "height" in to_image_args:
                 to_image_args.pop("height", None)
             # after image is created, we will calculate actual_scale_x and actual_scale_y
 
         elif "height" in to_image_args and to_image_args["height"] is not None:
-            logger.debug(f"Rendering preview for page {page_index} with height={to_image_args['height']}.")
+            logger.debug(
+                f"Rendering preview for page {page_index} with height={to_image_args['height']}."
+            )
             # Resolution is implicitly handled by pdfplumber when height is set
             # after image is created, we will calculate actual_scale_x and actual_scale_y
         else:
@@ -770,7 +778,9 @@ class HighlightingService:
             to_image_args["resolution"] = render_resolution
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
-            logger.debug(f"Rendering preview for page {page_index} with resolution={render_resolution} (scale: {actual_scale_x:.2f}).")
+            logger.debug(
+                f"Rendering preview for page {page_index} with resolution={render_resolution} (scale: {actual_scale_x:.2f})."
+            )
 
         try:
             img_object = page_obj._page.to_image(**to_image_args)
@@ -781,6 +791,7 @@ class HighlightingService:
             )
             if isinstance(base_image_pil, bytes):
                 from io import BytesIO
+
                 base_image_pil = Image.open(BytesIO(base_image_pil))
             base_image_pil = base_image_pil.convert("RGB")
 
@@ -789,12 +800,14 @@ class HighlightingService:
                 if page_obj.width > 0:
                     actual_scale_x = base_image_pil.width / page_obj.width
                 else:
-                    actual_scale_x = scale # Fallback to original scale
+                    actual_scale_x = scale  # Fallback to original scale
                 if page_obj.height > 0:
                     actual_scale_y = base_image_pil.height / page_obj.height
                 else:
-                    actual_scale_y = scale # Fallback to original scale
-                logger.debug(f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f} from image size {base_image_pil.size} and page size ({page_obj.width}, {page_obj.height})")
+                    actual_scale_y = scale  # Fallback to original scale
+                logger.debug(
+                    f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f} from image size {base_image_pil.size} and page size ({page_obj.width}, {page_obj.height})"
+                )
 
             # Convert temporary highlight dicts to Highlight objects
             preview_highlights = []
@@ -828,16 +841,18 @@ class HighlightingService:
                             attributes=attrs_to_draw,
                         )
                     )
-            
+
             # Use the calculated actual_scale_x for the HighlightRenderer
             # Assuming HighlightRenderer can handle a single scale or we adapt it.
             # For now, pdfplumber usually maintains aspect ratio, so one scale should be okay.
             # If not, HighlightRenderer needs to accept scale_x and scale_y.
-            # We will use actual_scale_x assuming aspect ratio is maintained by pdfplumber, 
+            # We will use actual_scale_x assuming aspect ratio is maintained by pdfplumber,
             # or if not, it's a reasonable approximation for highlight scaling.
-            renderer_scale = actual_scale_x 
+            renderer_scale = actual_scale_x
 
-            renderer = HighlightRenderer(page_obj, base_image_pil, preview_highlights, renderer_scale, render_ocr)
+            renderer = HighlightRenderer(
+                page_obj, base_image_pil, preview_highlights, renderer_scale, render_ocr
+            )
             rendered_image = renderer.render()
 
             legend = None
