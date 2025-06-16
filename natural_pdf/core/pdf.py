@@ -275,56 +275,42 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         )
 
     def _initialize_managers(self):
-        """Initialize manager instances based on DEFAULT_MANAGERS."""
-        self._managers = {}
-        for key, manager_class_or_factory in DEFAULT_MANAGERS.items():
-            try:
-                # Resolve the entry in DEFAULT_MANAGERS which can be:
-                #   1. A class  -> instantiate directly
-                #   2. A factory (callable) returning a class -> call then instantiate
-                #   3. A factory returning a **ready instance** -> use as-is
-
-                resolved = manager_class_or_factory
-
-                # If we have a callable that is *not* a class, call it to obtain the real target
-                # (This is the lazy-import factory case.)
-                if not isinstance(resolved, type) and callable(resolved):
-                    resolved = resolved()
-
-                # At this point `resolved` is either a class or an already-created instance
-                if isinstance(resolved, type):
-                    instance = resolved()  # Instantiate class
-                    self._managers[key] = instance
-                    logger.debug(f"Initialized manager for key '{key}': {resolved.__name__}")
-                else:
-                    # Assume factory already returned an instance
-                    self._managers[key] = resolved
-                    logger.debug(
-                        f"Initialized manager instance for key '{key}': {type(resolved).__name__} (factory-provided instance)"
-                    )
-            except Exception as e:
-                logger.error(f"Failed to initialize manager for key '{key}': {e}")
-                self._managers[key] = None
+        """Set up manager factories for lazy instantiation."""
+        # Store factories/classes for each manager key
+        self._manager_factories = dict(DEFAULT_MANAGERS)
+        self._managers = {}  # Will hold instantiated managers
 
     def get_manager(self, key: str) -> Any:
-        """Retrieve a manager instance by its key."""
-        if key not in self._managers:
+        """Retrieve a manager instance by its key, instantiating it lazily if needed."""
+        # Check if already instantiated
+        if key in self._managers:
+            manager_instance = self._managers[key]
+            if manager_instance is None:
+                raise RuntimeError(f"Manager '{key}' failed to initialize previously.")
+            return manager_instance
+
+        # Not instantiated yet: get factory/class
+        if not hasattr(self, "_manager_factories") or key not in self._manager_factories:
             raise KeyError(
-                f"No manager registered for key '{key}'. Available: {list(self._managers.keys())}"
+                f"No manager registered for key '{key}'. Available: {list(getattr(self, '_manager_factories', {}).keys())}"
             )
-
-        manager_instance = self._managers.get(key)
-
-        if manager_instance is None:
-            manager_class = DEFAULT_MANAGERS.get(key)
-            if manager_class:
-                raise RuntimeError(
-                    f"Manager '{key}' ({manager_class.__name__}) failed to initialize previously."
-                )
+        factory_or_class = self._manager_factories[key]
+        try:
+            resolved = factory_or_class
+            # If it's a callable that's not a class, call it to get the class/instance
+            if not isinstance(resolved, type) and callable(resolved):
+                resolved = resolved()
+            # If it's a class, instantiate it
+            if isinstance(resolved, type):
+                instance = resolved()
             else:
-                raise RuntimeError(f"Manager '{key}' failed to initialize (class not found).")
-
-        return manager_instance
+                instance = resolved  # Already an instance
+            self._managers[key] = instance
+            return instance
+        except Exception as e:
+            logger.error(f"Failed to initialize manager for key '{key}': {e}")
+            self._managers[key] = None
+            raise RuntimeError(f"Manager '{key}' failed to initialize: {e}") from e
 
     def _initialize_highlighter(self):
         pass

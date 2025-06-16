@@ -292,8 +292,8 @@ def _extract_element_value(element: "Element", column: str) -> Any:
     try:
         if column == 'text':
             text = getattr(element, 'text', '')
-            if text and len(text) > 50:
-                return text[:50] + "..."
+            if text and len(text) > 60:
+                return text[:60] + "..."
             return text or ""
         
         elif column == 'page':

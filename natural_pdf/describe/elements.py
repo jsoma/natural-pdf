@@ -396,7 +396,7 @@ def _analyze_ocr_quality(elements: List["Element"]) -> Dict[str, Any]:
             text = getattr(element, 'text', '').strip()
             if text:
                 # Truncate long text
-                display_text = text[:50] + "..." if len(text) > 50 else text
+                display_text = text[:60] + "..." if len(text) > 60 else text
                 element_confidences.append((confidence, display_text))
     
     if element_confidences:
