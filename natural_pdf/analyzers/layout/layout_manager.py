@@ -130,19 +130,12 @@ class LayoutManager:
                 # Check availability before storing
                 # Construct helpful error message with install hint
                 install_hint = ""
-                if engine_name == "yolo":
-                    install_hint = "pip install doclayout_yolo"
+                if engine_name in {"yolo", "paddle", "surya", "docling"}:
+                    install_hint = f"natural-pdf install {engine_name}"
                 elif engine_name == "tatr":
-                    # This should now be installed with core dependencies
-                    install_hint = "(should be installed with natural-pdf, check for import errors)"
-                elif engine_name == "paddle":
-                    install_hint = "pip install paddleocr paddlepaddle"
-                elif engine_name == "surya":
-                    install_hint = "pip install surya-ocr"
-                elif engine_name == "docling":
-                    install_hint = "pip install docling"
+                    install_hint = "(should be installed with natural-pdf core dependencies)"
                 elif engine_name == "gemini":
-                    install_hint = "pip install openai"
+                    install_hint = "pip install openai"  # keep as-is for now
                 else:
                     install_hint = f"(Check installation requirements for {engine_name})"
 
@@ -211,14 +204,17 @@ class LayoutManager:
         available = []
         for name, registry_entry in self.ENGINE_REGISTRY.items():
             try:
-                engine_class = registry_entry["class"]
-                # Check availability without full instantiation if possible
+                engine_class_or_factory = registry_entry["class"]
+                if callable(engine_class_or_factory) and not isinstance(engine_class_or_factory, type):
+                    # Lazy factory – call it to obtain real class
+                    engine_class = engine_class_or_factory()
+                else:
+                    engine_class = engine_class_or_factory
+
                 if hasattr(engine_class, "is_available") and callable(engine_class.is_available):
-                    # Create temporary instance only for check if needed, or use classmethod
-                    if engine_class().is_available():  # Assumes instance needed for check
+                    if engine_class().is_available():
                         available.append(name)
                 else:
-                    # Assume available if class exists (less robust)
                     available.append(name)
             except Exception as e:
                 logger.debug(f"Layout engine '{name}' check failed: {e}")

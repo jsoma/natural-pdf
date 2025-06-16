@@ -67,12 +67,12 @@ dev = [
 ]
 
 all = [
+    "natural-pdf[ocr-export]",
     "natural-pdf[deskew]",
     "natural-pdf[test]",
     "natural-pdf[search]",
     "natural-pdf[favorites]",
-    "natural-pdf[ocr-export]",
-    "natural-pdf[export-extras]",
+    "natural-pdf[export-extras]"
 ]
 
 deskew = [
@@ -83,18 +83,6 @@ deskew = [
 search = [
     "lancedb",
     "pyarrow",
-]
-
-favorites = [
-    "natural-pdf[deskew]",
-    "natural-pdf[ocr-export]",
-    "natural-pdf[paddle]"
-]
-
-paddle = [
-    "paddlepaddle>=3.0.0",
-    "paddleocr>=3.0.1",
-    "paddlex>=3.0.2",
 ]
 
 ocr-export = [
@@ -158,3 +146,8 @@ exclude = [
     "docs", "docs.*",
     ".nox", ".venv", "env", "venv"
 ]
+
+[project.scripts]
+# natural-pdf command exposes helper CLI
+natural-pdf = "natural_pdf.cli:main"
+npdf = "natural_pdf.cli:main"

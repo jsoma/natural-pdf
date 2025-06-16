@@ -94,15 +94,7 @@ class OCRManager:
                 engine_instance = engine_class()  # Instantiate first
                 if not engine_instance.is_available():
                     # Check availability before storing
-                    install_hint = f"pip install 'natural-pdf[{engine_name}]'"
-                    if engine_name == "easyocr":
-                        install_hint = "pip install easyocr"
-                    elif engine_name == "paddle":
-                        install_hint = "pip install paddleocr paddlepaddle"
-                    elif engine_name == "surya":
-                        install_hint = "pip install surya-ocr"
-                    elif engine_name == "doctr":
-                        install_hint = "pip install 'python-doctr[torch]'"
+                    install_hint = f"natural-pdf install {engine_name}"
 
                     raise RuntimeError(
                         f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
