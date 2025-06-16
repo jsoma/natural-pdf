@@ -11,7 +11,9 @@ from packaging.requirements import Requirement
 # ---------------------------------------------------------------------------
 INSTALL_RECIPES: Dict[str, list[str]] = {
     # heavyweight stacks
-    "paddle": ["paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2"],
+    "paddle": ["paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2", "pandas>=2.2.0"],
+    "numpy-high": ["numpy>=2.0"],
+    "numpy-low": ["numpy<1.27"],
     "surya": ["surya-ocr>=0.13.0"],
     "yolo": ["doclayout_yolo", "huggingface_hub>=0.29.3"],
     "docling": ["docling"],
@@ -24,7 +26,7 @@ INSTALL_RECIPES: Dict[str, list[str]] = {
 
 def _build_pip_install_args(requirements: list[str], upgrade: bool = True):
     """Return the pip command list to install/upgrade the given requirement strings."""
-    cmd = [sys.executable, "-m", "pip", "install"]
+    cmd = [sys.executable, "-m", "pip", "--quiet", "install"]
     if upgrade:
         cmd.append("--upgrade")
     cmd.extend(requirements)
@@ -48,34 +50,13 @@ def cmd_install(args):
 
         requirements = INSTALL_RECIPES[group_key]
 
-        # Skip paddlex upgrade if already satisfied
-        if group_key == "paddle":
-            try:
-                dist = distribution("paddlex")
-                from packaging.version import parse as V
-                if V(dist.version) >= V("3.0.2"):
-                    print("✓ paddlex already ≥ 3.0.2 – nothing to do.")
-                    continue
-            except PackageNotFoundError:
-                pass
-
         # Special handling for paddle stack: install paddlepaddle & paddleocr first
         # each in its own resolver run, then paddlex.
-        if group_key == "paddle":
-            base_reqs = [r for r in requirements if not r.startswith("paddlex")]
-            for req in base_reqs:
-                pip_cmd = _build_pip_install_args([req])
-                _run(pip_cmd)
-
-            # paddlex last to override the strict pin
-            pip_cmd = _build_pip_install_args(["paddlex==3.0.2"])
+        base_reqs = [r for r in requirements]
+        for req in base_reqs:
+            pip_cmd = _build_pip_install_args([req])
             _run(pip_cmd)
-            print("✔ Paddle stack installed (paddlex upgraded to 3.0.2)")
-        else:
-            for req in requirements:
-                pip_cmd = _build_pip_install_args([req])
-                _run(pip_cmd)
-            print("✔ Finished installing extra dependencies for", group_key)
+        print("✔ Finished installing extra dependencies for", group_key)
 
 
 def main():
