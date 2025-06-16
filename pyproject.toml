@@ -19,6 +19,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "pandas",
     "pdfplumber",
     "colormath2",
     "pillow",
@@ -28,14 +29,15 @@ dependencies = [
     "tqdm",
     "pydantic",
     "jenkspy",
-    "pikepdf>=9.7.0",
+    "pikepdf",
     "scipy",
     "torch",
     "torchvision",
-    "transformers[sentencepiece]<=4.34.1",
+    "transformers[sentencepiece]",
     "huggingface_hub>=0.29.3",
     "sentence-transformers",
     "timm",
+    "ipywidgets>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -54,8 +56,7 @@ favorites = [
     "natural-pdf[deskew]",
     "natural-pdf[ocr-export]",
     "natural-pdf[search]",
-    "ipywidgets",
-    "surya-ocr"
+    "surya-ocr",
 ]
 
 dev = [
@@ -82,25 +83,26 @@ deskew = [
     "img2pdf"
 ]
 
-addons = [
-    "surya-ocr",
-    "doclayout_yolo",
-    "paddlepaddle>=3.0.0",
-    "paddleocr>=3.0.0",
-    "ipywidgets>=7.0.0",
-    "easyocr",
-    "surya-ocr",
-    "doclayout_yolo",
-    "python-doctr[torch]",
-    "docling",
-]
-
 all = [
     "natural-pdf[ocr-export]",
     "natural-pdf[deskew]",
     "natural-pdf[test]",
     "natural-pdf[search]",
-    "natural-pdf[addons]",
+    "natural-pdf[extras]",
+    "natural-pdf[favorites]",
+]
+
+paddle = [
+    "paddlepaddle>=3.0.0",
+    "paddleocr>=3.0.1",
+    "paddlex>=3.0.1",
+]
+
+extras = [
+    "surya-ocr",
+    "doclayout_yolo",
+    "easyocr",
+    "natural-pdf[paddle]"
 ]
 
 ocr-export = [
@@ -144,6 +146,9 @@ filterwarnings = [
     "ignore:The distutils package is deprecated:DeprecationWarning",
     "ignore:Support for class-based `config` is deprecated",
     "ignore:deprecated:DeprecationWarning:docling_core.types.doc.document",
+]
+markers = [
+    "tutorial: tests that execute markdown tutorials to populate notebooks",
 ]
 
 [tool.setuptools]

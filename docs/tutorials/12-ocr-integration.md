@@ -70,7 +70,6 @@ import natural_pdf as npdf
 
 # Set global OCR defaults
 npdf.options.ocr.engine = 'surya'          # Default OCR engine
-npdf.options.ocr.languages = ['en', 'es']  # Default languages
 npdf.options.ocr.min_confidence = 0.7      # Default confidence threshold
 
 # Now all OCR calls use these defaults

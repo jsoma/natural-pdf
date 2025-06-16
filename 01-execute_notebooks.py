@@ -23,6 +23,7 @@ DOCS_DIR = Path("docs")
 CACHE_FILE = Path(".notebook_cache.json")
 # Add relative paths or glob patterns from DOCS_DIR, e.g., 'api/', '**/_*.md'
 EXCLUDE_PATTERNS = [
+    "describe/index.md",
     "installation/index.md",
     "ocr/index.md",
     "explanations",

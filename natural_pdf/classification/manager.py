@@ -5,25 +5,41 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
 
+# Lazy imports for heavy dependencies to avoid loading at module level
 # Use try-except for robustness if dependencies are missing
-try:
+_CLASSIFICATION_AVAILABLE = None
+
+def _check_classification_dependencies():
+    """Lazy check for classification dependencies."""
+    global _CLASSIFICATION_AVAILABLE
+    if _CLASSIFICATION_AVAILABLE is None:
+        try:
+            import torch
+            import transformers
+            _CLASSIFICATION_AVAILABLE = True
+        except ImportError:
+            _CLASSIFICATION_AVAILABLE = False
+    return _CLASSIFICATION_AVAILABLE
+
+def _get_torch():
+    """Lazy import for torch."""
     import torch
+    return torch
+
+def _get_transformers_components():
+    """Lazy import for transformers components."""
     from transformers import (
         AutoModelForSequenceClassification,
         AutoModelForZeroShotImageClassification,
         AutoTokenizer,
         pipeline,
     )
-
-    _CLASSIFICATION_AVAILABLE = True
-except ImportError:
-    _CLASSIFICATION_AVAILABLE = False
-    # Define dummy types for type hinting if imports fail
-    pipeline = object
-    AutoTokenizer = object
-    AutoModelForZeroShotImageClassification = object
-    AutoModelForSequenceClassification = object
-    torch = None
+    return {
+        'AutoModelForSequenceClassification': AutoModelForSequenceClassification,
+        'AutoModelForZeroShotImageClassification': AutoModelForZeroShotImageClassification,
+        'AutoTokenizer': AutoTokenizer,
+        'pipeline': pipeline,
+    }
 
 from tqdm.auto import tqdm
 
@@ -40,6 +56,11 @@ logger = logging.getLogger(__name__)
 _PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
 _TOKENIZER_CACHE: Dict[str, Any] = {}
 _MODEL_CACHE: Dict[str, Any] = {}
+
+# Export the availability check function for external use
+def is_classification_available() -> bool:
+    """Check if classification dependencies are available."""
+    return _check_classification_dependencies()
 
 
 class ClassificationError(Exception):
@@ -66,7 +87,7 @@ class ClassificationManager:
             model_mapping: Optional dictionary mapping aliases ('text', 'vision') to model IDs.
             default_device: Default device ('cpu', 'cuda') if not specified in classify calls.
         """
-        if not _CLASSIFICATION_AVAILABLE:
+        if not _check_classification_dependencies():
             raise ImportError(
                 "Classification dependencies missing. "
                 'Install with: pip install "natural-pdf[core-ml]"'
@@ -81,7 +102,7 @@ class ClassificationManager:
 
     def is_available(self) -> bool:
         """Check if required dependencies are installed."""
-        return _CLASSIFICATION_AVAILABLE
+        return _check_classification_dependencies()
 
     def _get_pipeline(self, model_id: str, using: str) -> "Pipeline":
         """Get or create a classification pipeline."""
@@ -92,6 +113,10 @@ class ClassificationManager:
             )
             start_time = time.time()
             try:
+                # Lazy import transformers components
+                transformers_components = _get_transformers_components()
+                pipeline = transformers_components['pipeline']
+                
                 task = (
                     "zero-shot-classification"
                     if using == "text"

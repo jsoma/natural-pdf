@@ -49,7 +49,7 @@ def lint(session):
 def test_minimal(session):
     """Run tests with only core dependencies, expecting failures for optional features."""
     session.install(".[test]")
-    session.run("pytest", "tests", "-n", "auto")
+    session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -68,7 +68,7 @@ def test_full(session):
         session.install(package)
 
     # Run tests with all dependencies available
-    session.run("pytest", "tests", "-n", "auto")
+    session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -76,7 +76,17 @@ def test_favorites(session):
     """Run tests with the 'favorites' dependencies group."""
     # The 'favorites' extra in pyproject.toml should now just list packages directly
     session.install(".[favorites,test]")
-    session.run("pytest", "tests", "-n", "auto")
+    session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
+
+
+@nox.session(name="tutorials", python="3.10")
+def tutorials(session):
+    """Execute markdown tutorials once to populate executed notebooks for docs."""
+    # Install dev extras that include jupytext/nbclient etc.
+    session.install(".[all,dev]")
+    # Run only tests marked as tutorial (no repetition across envs)
+    workers = os.environ.get("NOTEBOOK_WORKERS", "1")
+    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
 
 
 # Optional: Add a test dependency group to pyproject.toml if needed

@@ -27,7 +27,6 @@ class SuryaOCREngine(OCREngine):
         if not self.is_available():
             raise ImportError("Surya OCR library is not installed or available.")
 
-        # Store languages for use in _process_single_image
         self._langs = languages
 
         from surya.detection import DetectionPredictor
@@ -63,7 +62,6 @@ class SuryaOCREngine(OCREngine):
         if not self._recognition_predictor or not self._detection_predictor:
             raise RuntimeError("Surya predictors are not initialized.")
 
-        # Store languages instance variable during initialization to use here
         langs = (
             [self._langs]  # Send all languages together in one list per image
             if hasattr(self, "_langs")
@@ -75,6 +73,7 @@ class SuryaOCREngine(OCREngine):
             results = self._detection_predictor(images=[image])
         else:
             results = self._recognition_predictor(
+                langs=langs,
                 images=[image],
                 det_predictor=self._detection_predictor,
             )

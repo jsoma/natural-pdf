@@ -1,21 +1,31 @@
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
+# Lazy import for SentenceTransformer to avoid heavy loading at module level
+# from sentence_transformers import SentenceTransformer
 
 from .search_options import BaseSearchOptions
 from .search_service_protocol import (
     Indexable,
     IndexConfigurationError,
+    SearchResult,
     SearchServiceProtocol,
 )
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
+
+def _get_sentence_transformer(model_name: str):
+    """Lazy import and instantiation of SentenceTransformer."""
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)
 
 
 class NumpySearchService(SearchServiceProtocol):
@@ -38,7 +48,7 @@ class NumpySearchService(SearchServiceProtocol):
 
         self.collection_name = collection_name
         self._embedding_model_name = embedding_model_name
-        self.embedding_model = SentenceTransformer(self._embedding_model_name)
+        self.embedding_model = _get_sentence_transformer(self._embedding_model_name)
         self._embedding_dims = len(self.embedding_model.encode("test"))
 
         # Simple in-memory storage

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 from math import atan, pi
 from pathlib import Path
+from typing import Optional, Union
 from xml.etree import ElementTree
 
 from pikepdf import Matrix, Name, Rectangle
@@ -94,12 +95,12 @@ class HocrTransform:
     def __init__(
         self,
         *,
-        hocr_filename: str | Path,
+        hocr_filename: Union[str, Path],
         dpi: float,
         debug: bool = False,
         fontname: Name = Name("/f-0-0"),
         font: Font = GlyphlessFont(),
-        debug_render_options: DebugRenderOptions | None = None,
+        debug_render_options: Optional[DebugRenderOptions] = None,
     ):
         """Initialize the HocrTransform object."""
         if debug:
@@ -144,7 +145,7 @@ class HocrTransform:
         return text
 
     @classmethod
-    def element_coordinates(cls, element: Element) -> Rectangle | None:
+    def element_coordinates(cls, element: Element) -> Optional[Rectangle]:
         """Get coordinates of the bounding box around an element."""
         matches = cls.box_pattern.search(element.attrib.get("title", ""))
         if not matches:
@@ -172,7 +173,7 @@ class HocrTransform:
             return 0.0
         return float(matches.group(1))
 
-    def _child_xpath(self, html_tag: str, html_class: str | None = None) -> str:
+    def _child_xpath(self, html_tag: str, html_class: Optional[str] = None) -> str:
         xpath = f".//{self.xmlns}{html_tag}"
         if html_class:
             xpath += f"[@class='{html_class}']"
@@ -187,7 +188,7 @@ class HocrTransform:
         self,
         *,
         out_filename: Path,
-        image_filename: Path | None = None,
+        image_filename: Optional[Path] = None,
         invisible_text: bool = True,
     ) -> None:
         """Creates a PDF file with an image superimposed on top of the text.
@@ -291,7 +292,7 @@ class HocrTransform:
     def _do_line(
         self,
         canvas: Canvas,
-        line: Element | None,
+        line: Optional[Element],
         elemclass: str,
         invisible_text: bool,
         text_direction: TextDirection,
@@ -387,8 +388,8 @@ class HocrTransform:
         line_matrix: Matrix,
         text: Text,
         fontsize: float,
-        elem: Element | None,
-        next_elem: Element | None,
+        elem: Optional[Element],
+        next_elem: Optional[Element],
         text_direction: TextDirection,
         inject_word_breaks: bool,
     ):

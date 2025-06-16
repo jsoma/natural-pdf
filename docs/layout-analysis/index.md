@@ -98,13 +98,17 @@ page.to_image(width=700)
 ```
 
 ```python
-# Analyze using Table Transformer (TATR) - specialized for tables
-page.clear_detected_layout_regions()
-page.clear_highlights()
+# Analyze using Docling
+# https://docling-project.github.io/docling/
 
-page.analyze_layout(engine="docling")
-page.find_all('region[model=docling]').highlight(group_by='region_type')
-page.to_image(width=700)
+# Docling has been weird, it's not included at the moment
+
+# page.clear_detected_layout_regions()
+# page.clear_highlights()
+
+# page.analyze_layout(engine="docling")
+# page.find_all('region[model=docling]').highlight(group_by='region_type')
+# page.to_image(width=700)
 ```
 
 ```python

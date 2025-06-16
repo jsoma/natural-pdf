@@ -1,12 +1,14 @@
 import logging
+import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import lancedb
 import pyarrow as pa
-from sentence_transformers import SentenceTransformer
+# Lazy import for SentenceTransformer to avoid heavy loading at module level
+# from sentence_transformers import SentenceTransformer
 
 from .search_options import BaseSearchOptions
 from .search_service_protocol import (
@@ -17,8 +19,14 @@ from .search_service_protocol import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-DEFAULT_LANCEDB_PERSIST_PATH = "./natural_pdf_lancedb_index"
+DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+DEFAULT_LANCEDB_PERSIST_PATH = "./lancedb_data"
+
+
+def _get_sentence_transformer(model_name: str):
+    """Lazy import and instantiation of SentenceTransformer."""
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)
 
 
 class LanceDBSearchService(SearchServiceProtocol):
@@ -41,7 +49,7 @@ class LanceDBSearchService(SearchServiceProtocol):
         self._db = None
         self._table = None
 
-        self.embedding_model = SentenceTransformer(self._embedding_model_name)
+        self.embedding_model = _get_sentence_transformer(self._embedding_model_name)
         test_embedding = self.embedding_model.encode("test")
         self._embedding_dims = len(test_embedding)
 

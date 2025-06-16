@@ -25,9 +25,10 @@ from typing import (
 import pdfplumber
 from PIL import Image
 from tqdm.auto import tqdm
+import weakref
 
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
-from natural_pdf.classification.manager import ClassificationError, ClassificationManager
+from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.classification.results import ClassificationResult
 from natural_pdf.core.highlighting_service import HighlightingService
@@ -72,8 +73,13 @@ except ImportError:
 
 logger = logging.getLogger("natural_pdf.core.pdf")
 
+def _get_classification_manager_class():
+    """Lazy import for ClassificationManager."""
+    from natural_pdf.classification.manager import ClassificationManager
+    return ClassificationManager
+
 DEFAULT_MANAGERS = {
-    "classification": ClassificationManager,
+    "classification": _get_classification_manager_class,
     "structured_data": StructuredDataManager,
 }
 
@@ -91,6 +97,62 @@ except ImportError:
     img2pdf = None
 # End Deskew Imports
 
+# --- Lazy Page List Helper --- #
+from collections.abc import Sequence
+
+class _LazyPageList(Sequence):
+    """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
+
+    The sequence holds `None` placeholders until an index is accessed, at which point
+    a real `Page` object is created, cached, and returned.  Slices and iteration are
+    also supported and will materialise pages on demand.
+    """
+
+    def __init__(self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None):
+        self._parent_pdf = parent_pdf
+        self._plumber_pdf = plumber_pdf
+        self._font_attrs = font_attrs
+        # One slot per pdfplumber page – initially all None
+        self._cache: List[Optional["Page"]] = [None] * len(self._plumber_pdf.pages)
+
+    # Internal helper -----------------------------------------------------
+    def _create_page(self, index: int) -> "Page":
+        cached = self._cache[index]
+        if cached is None:
+            # Import here to avoid circular import problems
+            from natural_pdf.core.page import Page
+
+            plumber_page = self._plumber_pdf.pages[index]
+            cached = Page(plumber_page, parent=self._parent_pdf, index=index, font_attrs=self._font_attrs)
+            self._cache[index] = cached
+        return cached
+
+    # Sequence protocol ---------------------------------------------------
+    def __len__(self) -> int:
+        return len(self._cache)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            # Materialise pages for slice lazily as well
+            indices = range(*key.indices(len(self)))
+            return [self._create_page(i) for i in indices]
+        elif isinstance(key, int):
+            if key < 0:
+                key += len(self)
+            if key < 0 or key >= len(self):
+                raise IndexError("Page index out of range")
+            return self._create_page(key)
+        else:
+            raise TypeError("Page indices must be integers or slices")
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self._create_page(i)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<_LazyPageList(len={len(self)})>"
+
+# --- End Lazy Page List Helper --- #
 
 class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
     """
@@ -129,6 +191,15 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             self.source_path = "<stream>"  # Identifier for source
             self.path = self.source_path  # Use source identifier as path for streams
             stream_to_open = path_or_url_or_stream
+            try:
+                if hasattr(path_or_url_or_stream, "read"):
+                    # If caller provided an in-memory binary stream, capture bytes for potential re-export
+                    current_pos = path_or_url_or_stream.tell()
+                    path_or_url_or_stream.seek(0)
+                    self._original_bytes = path_or_url_or_stream.read()
+                    path_or_url_or_stream.seek(current_pos)
+            except Exception:
+                pass
         elif isinstance(path_or_url_or_stream, (str, Path)):
             path_or_url = str(path_or_url_or_stream)
             self.source_path = path_or_url  # Store original path/URL as source
@@ -137,21 +208,15 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             if is_url:
                 logger.info(f"Downloading PDF from URL: {path_or_url}")
                 try:
-                    # Use a context manager for the temporary file
-                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_f:
-                        self._temp_file = temp_f  # Store reference if needed for cleanup
-                        with urllib.request.urlopen(path_or_url) as response:
-                            temp_f.write(response.read())
-                            temp_f.flush()
-                        self._resolved_path = temp_f.name
-                        logger.info(f"PDF downloaded to temporary file: {self._resolved_path}")
-                        stream_to_open = self._resolved_path
+                    with urllib.request.urlopen(path_or_url) as response:
+                        data = response.read()
+                    # Load directly into an in-memory buffer — no temp file needed
+                    buffer = io.BytesIO(data)
+                    buffer.seek(0)
+                    self._temp_file = None  # No on-disk temp file
+                    self._resolved_path = path_or_url  # For repr / get_id purposes
+                    stream_to_open = buffer  # pdfplumber accepts file-like objects
                 except Exception as e:
-                    if self._temp_file and hasattr(self._temp_file, "name"):
-                        try:
-                            os.unlink(self._temp_file.name)
-                        except:  # noqa E722
-                            pass
                     logger.error(f"Failed to download PDF from URL: {e}")
                     raise ValueError(f"Failed to download PDF from URL: {e}")
             else:
@@ -187,12 +252,8 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         # self._classification_manager_instance = ClassificationManager() # Removed this line
         self._manager_registry = {}
 
-        from natural_pdf.core.page import Page
-
-        self._pages = [
-            Page(p, parent=self, index=i, font_attrs=font_attrs)
-            for i, p in enumerate(self._pdf.pages)
-        ]
+        # Lazily instantiate pages only when accessed
+        self._pages = _LazyPageList(self, self._pdf, font_attrs=font_attrs)
 
         self._element_cache = {}
         self._exclusions = []
@@ -204,15 +265,45 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         self._initialize_highlighter()
         self.analyses: Dict[str, Any] = {}
 
+        # --- Automatic cleanup when object is garbage-collected ---
+        self._finalizer = weakref.finalize(
+            self,
+            PDF._finalize_cleanup,
+            self._pdf,
+            getattr(self, "_temp_file", None),
+            getattr(self, "_is_stream", False),
+        )
+
     def _initialize_managers(self):
         """Initialize manager instances based on DEFAULT_MANAGERS."""
         self._managers = {}
-        for key, manager_class in DEFAULT_MANAGERS.items():
+        for key, manager_class_or_factory in DEFAULT_MANAGERS.items():
             try:
-                self._managers[key] = manager_class()
-                logger.debug(f"Initialized manager for key '{key}': {manager_class.__name__}")
+                # Resolve the entry in DEFAULT_MANAGERS which can be:
+                #   1. A class  -> instantiate directly
+                #   2. A factory (callable) returning a class -> call then instantiate
+                #   3. A factory returning a **ready instance** -> use as-is
+
+                resolved = manager_class_or_factory
+
+                # If we have a callable that is *not* a class, call it to obtain the real target
+                # (This is the lazy-import factory case.)
+                if not isinstance(resolved, type) and callable(resolved):
+                    resolved = resolved()
+
+                # At this point `resolved` is either a class or an already-created instance
+                if isinstance(resolved, type):
+                    instance = resolved()  # Instantiate class
+                    self._managers[key] = instance
+                    logger.debug(f"Initialized manager for key '{key}': {resolved.__name__}")
+                else:
+                    # Assume factory already returned an instance
+                    self._managers[key] = resolved
+                    logger.debug(
+                        f"Initialized manager instance for key '{key}': {type(resolved).__name__} (factory-provided instance)"
+                    )
             except Exception as e:
-                logger.error(f"Failed to initialize manager {manager_class.__name__}: {e}")
+                logger.error(f"Failed to initialize manager for key '{key}': {e}")
                 self._managers[key] = None
 
     def get_manager(self, key: str) -> Any:
@@ -1220,6 +1311,10 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary file '{temp_file_path}': {e}")
 
+        # Cancels the weakref finalizer so we don't double-clean
+        if hasattr(self, "_finalizer") and self._finalizer.alive:
+            self._finalizer()
+
     def __enter__(self):
         """Context manager entry."""
         return self
@@ -1404,12 +1499,9 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
 
         if not manager or not manager.is_available():
-            try:
-                from natural_pdf.classification.manager import _CLASSIFICATION_AVAILABLE
-
-                if not _CLASSIFICATION_AVAILABLE:
-                    raise ImportError("Classification dependencies missing.")
-            except ImportError:
+            from natural_pdf.classification.manager import is_classification_available
+            
+            if not is_classification_available():
                 raise ImportError(
                     "Classification dependencies missing. "
                     'Install with: pip install "natural-pdf[core-ml]"'
@@ -1723,3 +1815,20 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise ValueError(f"Unsupported model_type for PDF classification: {model_type}")
 
     # --- End Classification Mixin Implementation ---
+
+    # Static helper for weakref.finalize to avoid capturing 'self'
+    @staticmethod
+    def _finalize_cleanup(plumber_pdf, temp_file_obj, is_stream):
+        try:
+            if plumber_pdf is not None:
+                plumber_pdf.close()
+        except Exception:
+            pass
+
+        if temp_file_obj and not is_stream:
+            try:
+                path = temp_file_obj.name if hasattr(temp_file_obj, "name") else None
+                if path and os.path.exists(path):
+                    os.unlink(path)
+            except Exception:
+                pass

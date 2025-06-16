@@ -38,7 +38,7 @@ Looks great! Note that **I had to play around with the categories a bit** before
 
 I can also save just those pages into a new PDF document.
 
-```python
+```python tags=["skip-execution"]
 (
     pdf.pages
     .filter(lambda page: page.category == 'diagram')

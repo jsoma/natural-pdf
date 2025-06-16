@@ -4,6 +4,8 @@ Module for exporting original PDF pages without modification.
 
 import logging
 import os
+import io
+import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
 
@@ -69,8 +71,11 @@ def create_original_pdf(
 
     # Verify all pages come from the same PDF and get path
     first_page_pdf_path = None
+    first_page_pdf_obj = None
     if hasattr(pages_to_extract[0], "pdf") and pages_to_extract[0].pdf:
-        first_page_pdf_path = getattr(pages_to_extract[0].pdf, "path", None)
+        src_pdf = pages_to_extract[0].pdf
+        first_page_pdf_path = getattr(src_pdf, "path", None)
+        first_page_pdf_obj = src_pdf
 
     if not first_page_pdf_path:
         raise ValueError(
@@ -93,7 +98,28 @@ def create_original_pdf(
     )
 
     try:
-        with pikepdf.Pdf.open(first_page_pdf_path) as source_pikepdf_doc:
+        # Prefer opening via filesystem path when it exists locally
+        if first_page_pdf_path and os.path.exists(first_page_pdf_path):
+            source_handle = pikepdf.Pdf.open(first_page_pdf_path)
+        else:
+            # Fallback: attempt to open from in-memory bytes stored on PDF object
+            if first_page_pdf_obj is not None and hasattr(first_page_pdf_obj, "_original_bytes") and first_page_pdf_obj._original_bytes:
+                source_handle = pikepdf.Pdf.open(io.BytesIO(first_page_pdf_obj._original_bytes))
+            else:
+                # Attempt to download bytes directly if path looks like URL
+                if isinstance(first_page_pdf_path, str) and first_page_pdf_path.startswith(("http://", "https://")):
+                    try:
+                        with urllib.request.urlopen(first_page_pdf_path) as resp:
+                            data = resp.read()
+                        source_handle = pikepdf.Pdf.open(io.BytesIO(data))
+                    except Exception as dl_err:
+                        raise FileNotFoundError(
+                            f"Source PDF bytes not available and download failed for {first_page_pdf_path}: {dl_err}"
+                        )
+                else:
+                    raise FileNotFoundError(f"Source PDF bytes not available for {first_page_pdf_path}")
+
+        with source_handle as source_pikepdf_doc:
             target_pikepdf_doc = pikepdf.Pdf.new()
 
             for page_index in sorted_indices:
@@ -113,6 +139,9 @@ def create_original_pdf(
                 f"Successfully saved original pages PDF ({len(target_pikepdf_doc.pages)} pages) to: {output_path_str}"
             )
 
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        raise RuntimeError(f"Failed to save original pages PDF: {e}")
     except pikepdf.PasswordError:
         logger.error(f"Failed to open password-protected source PDF: {first_page_pdf_path}")
         raise RuntimeError(

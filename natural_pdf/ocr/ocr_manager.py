@@ -11,7 +11,8 @@ from PIL import Image
 from .engine import OCREngine
 from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
-from .engine_paddle import PaddleOCREngine
+# Lazy import for PaddleOCREngine to avoid heavy paddle dependencies at module level
+# from .engine_paddle import PaddleOCREngine
 from .engine_surya import SuryaOCREngine
 from .ocr_options import (
     BaseOCROptions,
@@ -28,10 +29,16 @@ logger = logging.getLogger(__name__)
 class OCRManager:
     """Manages OCR engine selection, configuration, and execution."""
 
+    @staticmethod
+    def _get_paddle_engine_class():
+        """Lazy import for PaddleOCREngine to avoid heavy paddle dependencies at module level."""
+        from .engine_paddle import PaddleOCREngine
+        return PaddleOCREngine
+
     # Registry mapping engine names to classes and default options
     ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "easyocr": {"class": EasyOCREngine, "options_class": EasyOCROptions},
-        "paddle": {"class": PaddleOCREngine, "options_class": PaddleOCROptions},
+        "paddle": {"class": lambda: OCRManager._get_paddle_engine_class(), "options_class": PaddleOCROptions},
         "surya": {"class": SuryaOCREngine, "options_class": SuryaOCROptions},
         "doctr": {"class": DoctrOCREngine, "options_class": DoctrOCROptions},
         # Add other engines here
@@ -76,7 +83,12 @@ class OCRManager:
             logger.info(
                 f"[{threading.current_thread().name}] Creating shared instance of engine: {engine_name}"
             )
-            engine_class = self.ENGINE_REGISTRY[engine_name]["class"]
+            engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
+            # Handle lazy loading - if it's a lambda function, call it to get the actual class
+            if callable(engine_class_or_factory) and getattr(engine_class_or_factory, '__name__', '') == '<lambda>':
+                engine_class = engine_class_or_factory()
+            else:
+                engine_class = engine_class_or_factory
             start_time = time.monotonic()  # Optional: time initialization
             try:
                 engine_instance = engine_class()  # Instantiate first
@@ -277,7 +289,12 @@ class OCRManager:
         for name, registry_entry in self.ENGINE_REGISTRY.items():
             try:
                 # Temporarily instantiate to check availability without caching
-                engine_class = registry_entry["class"]
+                engine_class_or_factory = registry_entry["class"]
+                # Handle lazy loading - if it's a lambda function, call it to get the actual class
+                if callable(engine_class_or_factory) and getattr(engine_class_or_factory, '__name__', '') == '<lambda>':
+                    engine_class = engine_class_or_factory()
+                else:
+                    engine_class = engine_class_or_factory
                 if engine_class().is_available():
                     available.append(name)
             except Exception as e:
