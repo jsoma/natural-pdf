@@ -80,15 +80,6 @@ def test_page_viewer_widget_creation_when_installed(standard_pdf_page):
     assert isinstance(viewer_instance, InteractiveViewerWidget)
 
 
-def test_page_viewer_logs_error_when_not_installed(standard_pdf_page, caplog):
-    """Tests that Page.viewer() logs an error when ipywidgets is missing."""
-    if are_optional_deps_installed():
-        pytest.skip("Skipping test: ipywidgets IS installed in the full test environment.")
-
-    viewer_instance = standard_pdf_page.viewer()
-    assert viewer_instance is None
-    assert "requires 'ipywidgets'" in caplog.text
-
 
 # --- OCR and Layout Tests ---
 

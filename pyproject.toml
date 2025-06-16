@@ -47,17 +47,6 @@ test = [
     "setuptools",
 ]
 
-search = [
-    "lancedb",
-    "pyarrow",
-]
-
-favorites = [
-    "natural-pdf[deskew]",
-    "natural-pdf[ocr-export]",
-    "natural-pdf[paddle]"
-]
-
 dev = [
     "black",
     "isort",
@@ -77,31 +66,35 @@ dev = [
     "setuptools",
 ]
 
+all = [
+    "natural-pdf[deskew]",
+    "natural-pdf[test]",
+    "natural-pdf[search]",
+    "natural-pdf[favorites]",
+    "natural-pdf[ocr-export]",
+    "natural-pdf[export-extras]",
+]
+
 deskew = [
     "deskew>=1.5",
     "img2pdf"
 ]
 
-all = [
-    "natural-pdf[ocr-export]",
+search = [
+    "lancedb",
+    "pyarrow",
+]
+
+favorites = [
     "natural-pdf[deskew]",
-    "natural-pdf[test]",
-    "natural-pdf[search]",
-    "natural-pdf[extras]",
-    "natural-pdf[favorites]",
+    "natural-pdf[ocr-export]",
+    "natural-pdf[paddle]"
 ]
 
 paddle = [
     "paddlepaddle>=3.0.0",
     "paddleocr>=3.0.1",
     "paddlex>=3.0.1",
-]
-
-extras = [
-    "surya-ocr>=0.13.0",
-    "doclayout_yolo",
-    "easyocr",
-    "natural-pdf[paddle]"
 ]
 
 ocr-export = [

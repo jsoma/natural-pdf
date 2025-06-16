@@ -84,8 +84,11 @@ def tutorials(session):
     """Execute markdown tutorials once to populate executed notebooks for docs."""
     # Install dev extras that include jupytext/nbclient etc.
     session.install(".[all,dev]")
+    session.install("surya-ocr")
+    session.install("easyocr")
+    session.install("doclayout_yolo")
     # Run only tests marked as tutorial (no repetition across envs)
-    workers = os.environ.get("NOTEBOOK_WORKERS", "1")
+    workers = os.environ.get("NOTEBOOK_WORKERS", "10")
     session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
 
 

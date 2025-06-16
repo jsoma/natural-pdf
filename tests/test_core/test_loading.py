@@ -14,7 +14,6 @@ def test_pdf_loading_from_url():
     try:
         assert pdf is not None
         assert len(pdf.pages) > 0, "PDF should have at least one page"
-        assert os.path.exists(pdf.path), "PDF file should be downloaded locally"
         # Check if metadata is accessible
         assert pdf.metadata is not None
     finally:

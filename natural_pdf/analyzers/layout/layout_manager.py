@@ -5,43 +5,11 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from PIL import Image
 
-# --- Import detector classes and options ---
-# Use try-except blocks for robustness if some detectors might be missing dependencies
-try:
-    from .base import LayoutDetector
-except ImportError:
-    LayoutDetector = type("LayoutDetector", (), {})
+# --- Import lightweight components only ---
+# Heavy detector implementations (paddle, yolo, etc.) are **not** imported at module load.
+# Instead, we provide tiny helper functions that import them lazily **only when needed**.
 
-try:
-    from .yolo import YOLODocLayoutDetector
-except ImportError:
-    YOLODocLayoutDetector = None
-
-try:
-    from .tatr import TableTransformerDetector
-except ImportError:
-    TableTransformerDetector = None
-
-try:
-    from .paddle import PaddleLayoutDetector
-except ImportError:
-    PaddleLayoutDetector = None
-
-try:
-    from .surya import SuryaLayoutDetector
-except ImportError:
-    SuryaLayoutDetector = None
-
-try:
-    from .docling import DoclingLayoutDetector
-except ImportError:
-    DoclingLayoutDetector = None
-
-try:
-    from .gemini import GeminiLayoutDetector
-except ImportError:
-    GeminiLayoutDetector = None
-
+from .base import LayoutDetector  # Lightweight base class
 from .layout_options import (
     BaseLayoutOptions,
     DoclingLayoutOptions,
@@ -53,6 +21,47 @@ from .layout_options import (
     YOLOLayoutOptions,
 )
 
+# ------------------ Lazy import helpers ------------------ #
+
+
+def _lazy_import_yolo_detector():
+    """Import YOLO detector lazily to avoid heavy deps at import time."""
+    from .yolo import YOLODocLayoutDetector  # Local import
+
+    return YOLODocLayoutDetector
+
+
+def _lazy_import_tatr_detector():
+    from .tatr import TableTransformerDetector
+
+    return TableTransformerDetector
+
+
+def _lazy_import_paddle_detector():
+    from .paddle import PaddleLayoutDetector
+
+    return PaddleLayoutDetector
+
+
+def _lazy_import_surya_detector():
+    from .surya import SuryaLayoutDetector
+
+    return SuryaLayoutDetector
+
+
+def _lazy_import_docling_detector():
+    from .docling import DoclingLayoutDetector
+
+    return DoclingLayoutDetector
+
+
+def _lazy_import_gemini_detector():
+    from .gemini import GeminiLayoutDetector
+
+    return GeminiLayoutDetector
+
+# --------------------------------------------------------- #
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,39 +71,34 @@ class LayoutManager:
     # Registry mapping engine names to classes and default options
     ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {}
 
-    # Populate registry only with available detectors
-    if YOLODocLayoutDetector:
-        ENGINE_REGISTRY["yolo"] = {
-            "class": YOLODocLayoutDetector,
+    # Populate registry with lazy import callables. The heavy imports are executed only
+    # when the corresponding engine is first requested.
+    ENGINE_REGISTRY = {
+        "yolo": {
+            "class": _lazy_import_yolo_detector,  # returns detector class when called
             "options_class": YOLOLayoutOptions,
-        }
-    if TableTransformerDetector:
-        ENGINE_REGISTRY["tatr"] = {
-            "class": TableTransformerDetector,
+        },
+        "tatr": {
+            "class": _lazy_import_tatr_detector,
             "options_class": TATRLayoutOptions,
-        }
-    if PaddleLayoutDetector:
-        ENGINE_REGISTRY["paddle"] = {
-            "class": PaddleLayoutDetector,
+        },
+        "paddle": {
+            "class": _lazy_import_paddle_detector,
             "options_class": PaddleLayoutOptions,
-        }
-    if SuryaLayoutDetector:
-        ENGINE_REGISTRY["surya"] = {
-            "class": SuryaLayoutDetector,
+        },
+        "surya": {
+            "class": _lazy_import_surya_detector,
             "options_class": SuryaLayoutOptions,
-        }
-    if DoclingLayoutDetector:
-        ENGINE_REGISTRY["docling"] = {
-            "class": DoclingLayoutDetector,
+        },
+        "docling": {
+            "class": _lazy_import_docling_detector,
             "options_class": DoclingLayoutOptions,
-        }
-
-    # Add Gemini entry if available
-    if GeminiLayoutDetector:
-        ENGINE_REGISTRY["gemini"] = {
-            "class": GeminiLayoutDetector,
+        },
+        "gemini": {
+            "class": _lazy_import_gemini_detector,
             "options_class": GeminiLayoutOptions,
-        }
+        },
+    }
 
     def __init__(self):
         """Initializes the Layout Manager."""
@@ -114,7 +118,13 @@ class LayoutManager:
 
         if engine_name not in self._detector_instances:
             logger.info(f"Creating instance of layout engine: {engine_name}")
-            engine_class = self.ENGINE_REGISTRY[engine_name]["class"]
+            engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
+            # If the registry provides a callable (lazy import helper), call it to obtain the real class.
+            if callable(engine_class_or_factory) and not isinstance(engine_class_or_factory, type):
+                engine_class = engine_class_or_factory()
+            else:
+                engine_class = engine_class_or_factory
+
             detector_instance = engine_class()  # Instantiate
             if not detector_instance.is_available():
                 # Check availability before storing
