@@ -342,6 +342,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-helper-cli-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      1&nbsp;·&nbsp;Helper CLI (recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-classic-extras-for-the-light-stuff" class="md-nav__link">
+    <span class="md-ellipsis">
+      2&nbsp;·&nbsp;Classic extras (for the light stuff)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1363,6 +1387,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-helper-cli-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      1&nbsp;·&nbsp;Helper CLI (recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-classic-extras-for-the-light-stuff" class="md-nav__link">
+    <span class="md-ellipsis">
+      2&nbsp;·&nbsp;Classic extras (for the light stuff)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1423,6 +1471,29 @@ pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>favorites<span class="o">]</span>
 </code></pre></div>
 <p>Other OCR and layout analysis engines like <code>surya</code>, <code>easyocr</code>, <code>paddle</code>, <code>doctr</code>, and <code>docling</code> can be installed via <code>pip</code> as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.</p>
+<p>After the core install you have two ways to add <strong>optional engines</strong>:</p>
+<h3 id="1-helper-cli-recommended">1&nbsp;·&nbsp;Helper CLI (recommended)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># list optional groups and their install-status</span>
+npdf<span class="w"> </span>list
+
+<span class="c1"># install PaddleOCR stack</span>
+npdf<span class="w"> </span>install<span class="w"> </span>paddle
+
+<span class="c1"># install Surya OCR + YOLO layout detector</span>
+npdf<span class="w"> </span>install<span class="w"> </span>surya<span class="w"> </span>yolo
+</code></pre></div>
+<p>The CLI runs each wheel in its own resolver pass, so it avoids strict
+version pins like <code>paddleocr → paddlex==3.0.1</code> while still upgrading to
+<code>paddlex 3.0.2</code>.</p>
+<h3 id="2-classic-extras-for-the-light-stuff">2&nbsp;·&nbsp;Classic extras (for the light stuff)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Deskewing</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[deskew]&quot;</span>
+
+<span class="c1"># Semantic search service</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[search]&quot;</span>
+</code></pre></div>
+<p>If you attempt to use an engine that is missing, the library will raise an
+error that tells you which <code>npdf install …</code> command to run.</p>
 <h2 id="your-first-pdf-extraction">Your First PDF Extraction</h2>
 <p>Here's a quick example to make sure everything is working:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
