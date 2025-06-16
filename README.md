@@ -15,14 +15,28 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 pip install natural-pdf
 ```
 
-For optional features like specific OCR engines, layout analysis models, or the interactive Jupyter widget, you can install one to two million different extras. If you just want the greatest hits:
+Need OCR engines, layout models, or other heavy add-ons? Install the **core** once, then use the helper CLI to pull in exactly what you need:
 
 ```bash
-# deskewing, OCR (surya) + layout analysis (yolo), interactive browsing
-pip install natural-pdf[favorites]
+# add PaddleOCR (+paddlex) after the fact
+npdf install paddle
+
+# Surya OCR and the YOLO Doc-Layout detector in one go
+npdf install surya yolo
+
+# see what's already on your machine
+npdf list
 ```
 
-See the [installation guide](https://jsoma.github.io/natural-pdf/installation/) for more details on extras.
+Light-weight extras such as `deskew` or `search` can still be added with
+classic PEP-508 markers if you prefer:
+
+```bash
+pip install "natural-pdf[deskew]"
+pip install "natural-pdf[search]"
+```
+
+More details in the [installation guide](https://jsoma.github.io/natural-pdf/installation/).
 
 ## Quick Start
 

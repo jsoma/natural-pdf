@@ -30,6 +30,38 @@ pip install natural-pdf[favorites]
 
 Other OCR and layout analysis engines like `surya`, `easyocr`, `paddle`, `doctr`, and `docling` can be installed via `pip` as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.
 
+After the core install you have two ways to add **optional engines**:
+
+### 1&nbsp;·&nbsp;Helper CLI (recommended)
+
+```bash
+# list optional groups and their install-status
+npdf list
+
+# install PaddleOCR stack
+npdf install paddle
+
+# install Surya OCR + YOLO layout detector
+npdf install surya yolo
+```
+
+The CLI runs each wheel in its own resolver pass, so it avoids strict
+version pins like `paddleocr → paddlex==3.0.1` while still upgrading to
+`paddlex 3.0.2`.
+
+### 2&nbsp;·&nbsp;Classic extras (for the light stuff)
+
+```bash
+# Deskewing
+pip install "natural-pdf[deskew]"
+
+# Semantic search service
+pip install "natural-pdf[search]"
+```
+
+If you attempt to use an engine that is missing, the library will raise an
+error that tells you which `npdf install …` command to run.
+
 ## Your First PDF Extraction
 
 Here's a quick example to make sure everything is working:
