@@ -55,8 +55,7 @@ search = [
 favorites = [
     "natural-pdf[deskew]",
     "natural-pdf[ocr-export]",
-    "natural-pdf[search]",
-    "surya-ocr",
+    "natural-pdf[paddle]"
 ]
 
 dev = [
@@ -99,7 +98,7 @@ paddle = [
 ]
 
 extras = [
-    "surya-ocr",
+    "surya-ocr>=0.13.0",
     "doclayout_yolo",
     "easyocr",
     "natural-pdf[paddle]"
