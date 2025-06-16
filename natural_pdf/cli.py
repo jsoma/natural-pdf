@@ -1,9 +1,10 @@
 import argparse
 import subprocess
 import sys
-from importlib.metadata import distribution, PackageNotFoundError
+from importlib.metadata import distribution, PackageNotFoundError, version as get_version
 from pathlib import Path
 from typing import Dict
+from packaging.requirements import Requirement
 
 # ---------------------------------------------------------------------------
 # Mapping: sub-command name -> list of pip requirement specifiers to install
@@ -36,31 +37,31 @@ def _run(cmd):
 
 
 def cmd_install(args):
-    group_key = args.extra.lower()
-    if group_key not in INSTALL_RECIPES:
-        print(
-            f"❌ Unknown extra '{group_key}'. Known extras: {', '.join(sorted(INSTALL_RECIPES))}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    for extra in args.extras:
+        group_key = extra.lower()
+        if group_key not in INSTALL_RECIPES:
+            print(
+                f"❌ Unknown extra '{group_key}'. Known extras: {', '.join(sorted(INSTALL_RECIPES))}",
+                file=sys.stderr,
+            )
+            continue
 
-    requirements = INSTALL_RECIPES[group_key]
+        requirements = INSTALL_RECIPES[group_key]
 
-    # Try trivial skip for paddlex specific check
-    try:
-        dist = distribution("paddlex") if group_key == "paddle" else None
-        if dist and group_key == "paddle":
-            from packaging.version import parse as V
+        # Skip paddlex upgrade if already satisfied
+        if group_key == "paddle":
+            try:
+                dist = distribution("paddlex")
+                from packaging.version import parse as V
+                if V(dist.version) >= V("3.0.2"):
+                    print("✓ paddlex already ≥ 3.0.2 – nothing to do.")
+                    continue
+            except PackageNotFoundError:
+                pass
 
-            if V(dist.version) >= V("3.0.2"):
-                print("✓ paddlex already ≥ 3.0.2 – nothing to do.")
-                return
-    except PackageNotFoundError:
-        pass
-
-    pip_cmd = _build_pip_install_args(requirements)
-    _run(pip_cmd)
-    print("✔ Finished installing extra dependencies for", group_key)
+        pip_cmd = _build_pip_install_args(requirements)
+        _run(pip_cmd)
+        print("✔ Finished installing extra dependencies for", group_key)
 
 
 def main():
@@ -74,11 +75,45 @@ def main():
     install_p = subparsers.add_parser(
         "install", help="Install optional dependency groups (e.g. paddle, surya)"
     )
-    install_p.add_argument("extra", help="Name of the extra to install")
+    install_p.add_argument("extras", nargs="+", help="One or more extras to install (e.g. paddle surya)")
     install_p.set_defaults(func=cmd_install)
+
+    # list subcommand -------------------------------------------------------
+    list_p = subparsers.add_parser("list", help="Show status of optional dependency groups")
+    list_p.set_defaults(func=cmd_list)
 
     args = parser.parse_args()
     args.func(args)
+
+
+# ---------------------------------------------------------------------------
+# List command implementation
+# ---------------------------------------------------------------------------
+
+
+def _pkg_version(pkg_name: str):
+    try:
+        return get_version(pkg_name)
+    except PackageNotFoundError:
+        return None
+
+
+def cmd_list(args):
+    print("Optional dependency groups status:\n")
+    for extra, reqs in INSTALL_RECIPES.items():
+        installed_all = True
+        pieces = []
+        for req_str in reqs:
+            pkg_name = Requirement(req_str).name  # strip version specifiers
+            ver = _pkg_version(pkg_name)
+            if ver is None:
+                installed_all = False
+                pieces.append(f"{pkg_name} (missing)")
+            else:
+                pieces.append(f"{pkg_name} {ver}")
+        status = "✓" if installed_all else "✗"
+        print(f"{status} {extra:<8} -> " + ", ".join(pieces))
+    print("\nLegend: ✓ group fully installed, ✗ some packages missing\n")
 
 
 if __name__ == "__main__":
