@@ -29,7 +29,6 @@ dependencies = [
     "tqdm",
     "pydantic",
     "jenkspy",
-    "pikepdf",
     "scipy",
     "torch",
     "torchvision",
