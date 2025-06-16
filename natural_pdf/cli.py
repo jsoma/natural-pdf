@@ -59,9 +59,23 @@ def cmd_install(args):
             except PackageNotFoundError:
                 pass
 
-        pip_cmd = _build_pip_install_args(requirements)
-        _run(pip_cmd)
-        print("✔ Finished installing extra dependencies for", group_key)
+        # Special handling for paddle stack: install paddlepaddle & paddleocr first
+        # each in its own resolver run, then paddlex.
+        if group_key == "paddle":
+            base_reqs = [r for r in requirements if not r.startswith("paddlex")]
+            for req in base_reqs:
+                pip_cmd = _build_pip_install_args([req])
+                _run(pip_cmd)
+
+            # paddlex last to override the strict pin
+            pip_cmd = _build_pip_install_args(["paddlex==3.0.2"])
+            _run(pip_cmd)
+            print("✔ Paddle stack installed (paddlex upgraded to 3.0.2)")
+        else:
+            for req in requirements:
+                pip_cmd = _build_pip_install_args([req])
+                _run(pip_cmd)
+            print("✔ Finished installing extra dependencies for", group_key)
 
 
 def main():
