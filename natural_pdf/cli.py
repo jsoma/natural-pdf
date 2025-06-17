@@ -21,6 +21,7 @@ INSTALL_RECIPES: Dict[str, list[str]] = {
     "deskew": [f"{__package__.split('.')[0]}[deskew]"],
     "search": [f"{__package__.split('.')[0]}[search]"],
     "easyocr": ["easyocr"],
+    "ai": [f"{__package__.split('.')[0]}[ai]"],
 }
 
 

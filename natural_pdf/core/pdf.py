@@ -1490,7 +1490,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             if not is_classification_available():
                 raise ImportError(
                     "Classification dependencies missing. "
-                    'Install with: pip install "natural-pdf[core-ml]"'
+                    'Install with: pip install "natural-pdf[ai]"'
                 )
             raise ClassificationError("ClassificationManager not available.")
 
@@ -1816,5 +1816,5 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
                 path = temp_file_obj.name if hasattr(temp_file_obj, "name") else None
                 if path and os.path.exists(path):
                     os.unlink(path)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary file '{path}': {e}")

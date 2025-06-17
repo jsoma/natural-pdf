@@ -30,12 +30,6 @@ dependencies = [
     "pydantic",
     "jenkspy",
     "scipy",
-    "torch",
-    "torchvision",
-    "transformers[sentencepiece]",
-    "huggingface_hub>=0.29.3",
-    "sentence-transformers",
-    "timm",
     "ipywidgets>=7.0.0",
 ]
 
@@ -71,7 +65,8 @@ all = [
     "natural-pdf[test]",
     "natural-pdf[search]",
     "natural-pdf[favorites]",
-    "natural-pdf[export-extras]"
+    "natural-pdf[export-extras]",
+    "natural-pdf[ai]"
 ]
 
 deskew = [
@@ -91,6 +86,17 @@ ocr-export = [
 export-extras = [
     "jupytext",
     "nbformat",
+]
+
+ai = [
+    "sentence-transformers",
+    "torch",
+    "torchvision",
+    "transformers[sentencepiece]",
+    "huggingface_hub>=0.29.3",
+    "timm",
+    "doclayout_yolo",
+    "easyocr",
 ]
 
 [project.urls]

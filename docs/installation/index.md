@@ -15,28 +15,28 @@ But! If you want to recognize text, do page layout analysis, document q-and-a or
 Natural PDF has modular dependencies for different features. Install them based on your needs:
 
 ```bash
+# Full ML / QA / semantic-search stack
+pip install natural-pdf[ai]
+
 # Deskewing
 pip install natural-pdf[deskew]
 
-# LLM features (OpenAI)
-pip install natural-pdf[llm]
-
 # Semantic search
 pip install natural-pdf[search]
-
-# Install everything in the 'favorites' collection
-pip install natural-pdf[favorites]
 ```
 
 Other OCR and layout analysis engines like `surya`, `easyocr`, `paddle`, `doctr`, and `docling` can be installed via `pip` as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.
 
 After the core install you have two ways to add **optional engines**:
 
-### 1&nbsp;·&nbsp;Helper CLI (recommended)
+### 1 – Helper CLI (recommended)
 
 ```bash
 # list optional groups and their install-status
 npdf list
+
+# everything for classification, QA, semantic search, etc.
+npdf install ai
 
 # install PaddleOCR stack
 npdf install paddle
@@ -49,9 +49,12 @@ The CLI runs each wheel in its own resolver pass, so it avoids strict
 version pins like `paddleocr → paddlex==3.0.1` while still upgrading to
 `paddlex 3.0.2`.
 
-### 2&nbsp;·&nbsp;Classic extras (for the light stuff)
+### 2 – Classic extras (for the light stuff)
 
 ```bash
+# Full AI/ML stack
+pip install "natural-pdf[ai]"
+
 # Deskewing
 pip install "natural-pdf[deskew]"
 
@@ -70,7 +73,7 @@ Here's a quick example to make sure everything is working:
 from natural_pdf import PDF
 
 # Open a PDF
-pdf = PDF('your_document.pdf')
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Get the first page
 page = pdf.pages[0]
