@@ -2,6 +2,17 @@
 
 Beyond simple text and lines, `natural-pdf` can use layout analysis models (like YOLO or DETR) to identify semantic regions within a page, such as paragraphs, tables, figures, headers, etc. This provides a higher-level understanding of the document structure.
 
+## Available Layout Engines
+
+* **yolo** – YOLOv5 model trained on DocLayNet; fast and good at classic page objects (paragraph, table, figure, heading).  Install via `npdf install yolo`.
+* **tatr** – Microsoft's Table Transformer (LayoutLM) specialised in tables; already included in the **ai** extra.
+* **paddle** – PaddleOCR`s layout detector; lightweight and CPU-friendly.
+* **surya** – Surya Layout Parser (DETR backbone) tuned for invoices and forms.
+* **docling** – YOLOX model published by DocLING researchers; performs well on historical documents.
+* **gemini** – Calls Google's Vision Gemini API (experimental, requires `OPENAI_API_KEY`).
+
+`page.analyze_layout()` defaults to the first available engine (search order `yolo → paddle → tatr`), but you can pick one explicitly with `engine="..."`.
+
 Let's analyze the layout of our `01-practice.pdf`.
 
 ```python
@@ -49,33 +60,41 @@ table_data = table_region.extract_table()
 table_data
 ```
 
+## Switching Engines and Tuning Thresholds
+
+```python
+# Re-run layout with PaddleOCR detector
+page.clear_detected_layout_regions()
+
+paddle_regions = page.analyze_layout(engine="paddle", confidence=0.3)
+#paddle_regions.show(group_by="type")
+
+# Only keep detections the model tagged as "table" or "figure"
+tables_and_figs = paddle_regions.filter(lambda r: r.normalized_type in {"table", "figure"})
+#tables_and_figs.show(label_format="{normalized_type} ({confidence:.2f})")
+```
+
+The helper accepts these common kwargs (see `LayoutOptions` subclasses for full list):
+
+* `confidence` – minimum score for retaining a prediction.
+* `classes` / `exclude_classes` – whitelist or blacklist region types.
+* `device` – "cuda" or "cpu"; defaults to GPU if available.
+
+Each engine also exposes its own options class (e.g., `YOLOLayoutOptions`) for fine control over NMS thresholds, model sizes, etc. Pass an instance via the `options=` param.
+
 Layout analysis provides structured `Region` objects. You can filter these regions by their predicted `type` and then perform actions like visualization or extracting text/tables specifically from those regions.
 
-## Other layout models
+## TODO
 
-<div class="admonition note">
-<p class="admonition-title">Layout Models and Configuration</p>
+* Add a speed/accuracy comparison snippet looping over all installed engines.
+* Demonstrate multi-page batch: `pdf.pages[::2].analyze_layout(engine="yolo")`.
+* Show `page.get_sections(start_elements=page.find_all('region[type=heading]'))` to split by detected headings.
+* Include an example of exporting regions to COCO JSON for custom model fine-tuning.
+* Document how to override the model path via `model_name` and how to plug a remote inference client (`client=`).
 
-    *   Layout analysis requires external models. Ensure these are installed.
-    *   You can specify different models (`engine='yolo'`, `engine='detr'`, `engine='paddle'`) or configurations (confidence thresholds, specific classes) via arguments to `page.analyze_layout()`. Different models may perform better on different document types.
-    *   The detected regions are added to the page and can be found using selectors like `page.find_all('region[type=paragraph]')`.
-</div>
+## Wish List (Future Enhancements)
 
-```python
-from natural_pdf import PDF
-
-# Load the PDF and get the page
-pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
-page = pdf.pages[0]
-
-# Analyze the layout using the default model
-# This adds 'detected' Region objects to the page
-# It returns an ElementCollection of the detected regions
-page.analyze_layout('paddle')
-detected_regions = page.find_all('region[source="detected"]')
-```
-
-```python
-# Visualize all detected regions, using default colors based on type
-detected_regions.show(group_by='type', include_attrs=['confidence'])
-```
+* **Confidence palette** – Allow `show(color_by="confidence")` to auto-map scores to a red–green gradient.
+* **`ElementCollection.to_json()`** – one-liner export of detected regions (and optionally `to_dataframe()`).
+* **Model cache override** – honor an env variable like `NATPDF_MODEL_DIR` so enterprises can redirect weight downloads.
+* **Remote inference support** – make the `client=` hook forward images to a custom REST or gRPC service.

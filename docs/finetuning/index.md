@@ -42,7 +42,9 @@ import os
 # os.environ["ANTHROPIC_API_KEY"] = "sk-..." 
 
 # pdf_path = "path/to/your/document.pdf" 
-pdf_path = "pdfs/hidden/the-bad-one.pdf" # Replace with your PDF path
+pdf_path = "path/to/your/document.pdf" 
+# For demonstration we use a public sample PDF; replace with your own.
+pdf_path = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"
 pdf = PDF(pdf_path)
 
 # --- 2. (Optional) Exclude Irrelevant Areas ---

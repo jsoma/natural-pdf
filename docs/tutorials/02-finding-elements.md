@@ -26,8 +26,8 @@ site_label = page.find('text:contains("Site:")')
 date_label = page.find('text:contains("Date:")')
 
 # Visualize the found elements
-site_label.highlight(color="red", label="Site Label")
-date_label.highlight(color="blue", label="Date Label")
+site_label.highlight(color="red", label="Site")
+date_label.highlight(color="blue", label="Date")
 
 # Access the text content directly
 {
@@ -35,7 +35,7 @@ date_label.highlight(color="blue", label="Date Label")
     "Date Label": date_label.text
 }
 
-# Display the page image to see the visualized elements
+# Display page with both highlights
 page.to_image()
 ```
 
@@ -46,8 +46,8 @@ You can find elements based on their color:
 ```python
 # Find text elements that are red
 red_text = page.find('text[color~=red]')
-red_text.highlight(color="red", label="Red Text")
 print(f"Found red text: {red_text.text}")
+red_text.show()
 
 # Find elements with specific RGB colors
 blue_text = page.find('text[color=rgb(0,0,255)]')
@@ -68,10 +68,11 @@ thick_lines = page.find_all('line[width>=2]')
 rectangles = page.find_all('rect')
 
 # Visualize what we found
-page.clear_highlights()
-horizontal_lines.highlight(color="blue", label="Horizontal Lines")
-thick_lines.highlight(color="red", label="Thick Lines")
+horizontal_lines.highlight(color="blue", label="Horizontal")
+thick_lines.highlight(color="red", label="Thick")
 rectangles.highlight(color="green", label="Rectangles")
+
+# Display page with all shapes highlighted
 page.to_image()
 ```
 
@@ -122,8 +123,7 @@ highlighted_text = page.find('rect').find_all('text[color~=red]')
     site_label = page.find('text:contains("Site:")')
     if site_label:
         # Found it! Proceed...
-        site_label.highlight(color="red", label="Site Label")
-        site_label.text  # Display or use the text
+        print(site_label.extract_text())
     else:
         # Didn't find it, handle appropriately...
         "Warning: 'Site:' label not found."
@@ -136,14 +136,7 @@ highlighted_text = page.find('rect').find_all('text[color~=red]')
     When working with complex selectors, it's helpful to visualize what you're finding:
 
     ```py
-    # Clear any existing highlights
-    page.clear_highlights()
-
-    # Find and highlight elements
     elements = page.find_all('text[color~=red]')
-    elements.highlight(color="red", label="Red Text")
-
-    # Display the page to see what was found
-    page.to_image(width=800)
+    elements.show()
     ```
 </div> 

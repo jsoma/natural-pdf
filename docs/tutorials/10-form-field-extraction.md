@@ -1,10 +1,19 @@
 # Form Field Extraction
 
-Business documents like invoices, forms, and applications contain field-value pairs that need to be extracted. This tutorial shows how to identify and extract these form fields.
+Extracting key-value pairs from documents can be tackled in two complementary ways:
+
+* **Rule-based / spatial heuristics** – look for label text, navigate rightward or downward, group elements into rows, etc.
+* **Extractive Document QA** – feed the page image and its words to a fine-tuned LayoutLM model and ask natural-language questions such as *"What is the invoice total?"*. The model returns the answer span **exactly as it appears** in the document along with a confidence score.
+
+This tutorial starts with classical heuristics and then upgrades to the LayoutLM-based **DocumentQA** engine built into `natural-pdf`. Because DocumentQA relies on `torch`, `transformers`, and `vision` extras, install the **AI** optional dependencies first:
 
 ```python
-#%pip install "natural-pdf[all]"
+#%pip install "natural-pdf[ai]"
 ```
+
+If you already have the core library, simply run `npdf install ai` to add the extra ML packages.
+
+---
 
 ```python
 from natural_pdf import PDF
@@ -198,4 +207,30 @@ for date_elem in dates:
 all_fields
 ```
 
-Form field extraction enables you to automate data entry and document processing. By combining different techniques like label detection, spatial navigation, and pattern matching, you can handle a wide variety of form layouts. 
+## Asking Questions with LayoutLM (DocumentQA)
+
+### Optional one-liner QA
+
+Need a single field but can't locate the right label?  You can fall back to `page.ask()` which runs the LayoutLM **extractive** QA model:
+
+```python
+answer = page.ask("What is the invoice total?")
+```
+
+`answer['answer']` is the literal text found on the page.
+
+For a deep dive into Question Answering—including confidence tuning, batching, and answer-span highlighting—see **Tutorial 06: Document Question Answering**.
+
+---
+
+Form field extraction enables you to automate data entry and document processing. By combining different techniques like label detection, spatial navigation, and pattern matching, you can handle a wide variety of form layouts.
+
+## TODO
+
+* Showcase the new `init_search` workflow for quickly locating form labels across multi-page documents.
+* Compare heuristics for multi-col forms (e.g., left/right alignment vs. table structures) and when to switch strategies.
+* Demonstrate embedding page classification (e.g., "invoice" vs "purchase order") before field extraction to route documents to the correct template.
+* Provide an end-to-end example saving the extracted dictionary to JSON and a searchable PDF via `pdf.save_searchable()`.
+* Add a sidebar contrasting **extractive** QA with **generative** LLM approaches and notes on when to choose each.
+
+<!-- Bulk QA example removed; see Tutorial 06 for a full walkthrough of batching and visualising answers. --> 

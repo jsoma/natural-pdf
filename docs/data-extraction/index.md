@@ -3,12 +3,12 @@
 Extracting specific, structured information (like invoice numbers, dates, or addresses) from documents often requires more than simple text extraction. Natural PDF integrates with LLMs to pull out [structured data](https://platform.openai.com/docs/guides/structured-outputs).
 
 You need to install more than just the tiny baby default `natural_pdf` for this:
-```
-# Install just the LLM portions
-pip install "natural_pdf[llm]"
+```bash
+# Install the OpenAI (or compatible) client library
+pip install openai
 
-# Install eeeeeverything
-pip install "natural_pdf[all]"
+# Or pull in the full AI stack (classification, QA, search, etc.)
+pip install "natural_pdf[ai]"
 ```
 
 ## Introduction

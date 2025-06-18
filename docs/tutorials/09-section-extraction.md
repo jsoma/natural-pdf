@@ -3,7 +3,7 @@
 Documents are often organized into logical sections like chapters, articles, or content blocks. This tutorial shows how to extract these sections using natural-pdf, using a library weeding log as an example.
 
 ```python
-#%pip install "natural-pdf[all]"
+#%pip install natural-pdf
 ```
 
 ```python
@@ -13,11 +13,11 @@ from natural_pdf import PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 
-# Find horizontal lines that separate book entries
+# Identify horizontal rules that look like section dividers
 horizontal_lines = page.find_all('line:horizontal')
 
-# Visualize the potential section boundaries
-horizontal_lines.highlight(color="red", label="Section Boundaries")
+# Visualize the potential section boundaries (single element type ➜ use .show())
+horizontal_lines.show(color="red", label="Section Boundaries")
 page.to_image()
 ```
 
@@ -39,7 +39,7 @@ book_sections = page.get_sections(
 # Visualize each section
 page.clear_highlights()
 for section in book_sections:
-    section.highlight()
+    section.show()
 page.to_image()
 ```
 
@@ -120,7 +120,7 @@ title_sections = page.get_sections(
 
 # Show the title-based sections
 page.clear_highlights()
-title_sections.highlight()
+title_sections.show()
 page.to_image()
 ```
 
@@ -166,7 +166,7 @@ single_book_entry = page.get_sections(
 )
     
 # Visualize the custom section
-single_book_entry.highlight(color="green", label="Single Book Entry")
+single_book_entry.show(color="green", label="Single Book Entry")
     
 print(single_book_entry[0].extract_text())
 
@@ -254,3 +254,10 @@ df.head()
 ```
 
 Section extraction lets you break down documents into logical parts, making it easier to generate summaries, extract specific content, and create structured data from semi-structured documents. In this example, we've shown how to convert a PDF library catalog into a structured book database. 
+
+## TODO
+
+* Demonstrate using `page.init_search()` to pre-index all pages and retrieve section headings quickly.
+* Add an example that merges multi-page sections by passing `new_section_on_page_break=False`.
+* Include tips for detecting numbered headings ("1.", "2.") when ruling lines are absent.
+* Provide a performance note on large PDFs and how to stream through pages lazily. 

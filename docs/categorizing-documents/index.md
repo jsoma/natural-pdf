@@ -7,7 +7,7 @@ Natural PDF allows you to automatically categorize pages or specific regions wit
 To use the classification features, you need to install the optional dependencies:
 
 ```bash
-pip install "natural-pdf[core-ml]"
+pip install "natural-pdf[ai]"
 ```
 
 This installs necessary libraries like `torch`, `transformers`, and others.
@@ -20,7 +20,7 @@ The primary way to perform categorization is using the `.classify()` method avai
 from natural_pdf import PDF
 
 # Example: Classify a Page
-pdf = PDF("pdfs/01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 labels = ["invoice", "letter", "report cover", "data table"]
 page.classify(labels, using="text")
@@ -159,7 +159,7 @@ region_types = ["paragraph", "list", "table", "figure", "caption"]
 # Classify all detected regions based on vision
 layout_regions.classify_all(region_types, model="vision")
 
-# Count table regions
-table_count = sum(1 for r in layout_regions if r.category == "table")
-print(f"Found {table_count} regions classified as tables.")
+# Count table regions using filter()
+table_regions = layout_regions.filter(lambda region: region.category == "table")
+print(f"Found {len(table_regions)} regions classified as tables.")
 ```

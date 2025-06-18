@@ -5,7 +5,7 @@ Often, PDFs have repeating headers or footers on every page that you want to ign
 We'll use a different PDF for this example, which has a distinct header and footer section: `0500000US42007.pdf`.
 
 ```python
-#%pip install "natural-pdf[all]"
+#%pip install natural-pdf
 ```
 
 
@@ -48,7 +48,7 @@ page = pdf.pages[0]
 
 # Visualize the excluded area
 footer_region_viz = page.region(top=page.height - footer_height)
-footer_region_viz.highlight(label="Excluded Footer Area")
+footer_region_viz.show(label="Excluded Footer Area")
 page.to_image()
 ```
 
@@ -99,6 +99,13 @@ page.to_image()
 ```
 
 This element-based approach is usually more reliable as it adapts to the content's position, but it depends on finding consistent boundary elements (like lines or specific text markers).
+
+## TODO
+
+* Show a text-based exclusion: `pdf.add_exclusion(lambda p: p.find('text:contains("Page ")').below())` for dynamic page numbers.
+* Demonstrate stacking multiple exclusions (e.g., header + footer) and the order they are applied.
+* Provide an example disabling exclusions temporarily with `extract_text(use_exclusions=False)`.
+* Include a multi-page preview that outlines exclusions on every page.
 
 <div class="admonition note">
 <p class="admonition-title">Applying Exclusions</p>

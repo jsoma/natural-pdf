@@ -698,6 +698,28 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
 
             filter_lambda = contains_check
 
+        # --- Handle :startswith and :starts-with (alias) --- #
+        elif name in ("starts-with", "startswith") and args is not None:
+            filter_name = f"pseudo-class :{name}({args!r})"
+
+            def startswith_check(element, arg=args):
+                if not hasattr(element, "text") or not element.text:
+                    return False
+                return str(element.text).startswith(str(arg))
+
+            filter_lambda = startswith_check
+
+        # --- Handle :endswith and :ends-with (alias) --- #
+        elif name in ("ends-with", "endswith") and args is not None:
+            filter_name = f"pseudo-class :{name}({args!r})"
+
+            def endswith_check(element, arg=args):
+                if not hasattr(element, "text") or not element.text:
+                    return False
+                return str(element.text).endswith(str(arg))
+
+            filter_lambda = endswith_check
+
         elif name == "starts-with" and args is not None:
             filter_lambda = (
                 lambda el, arg=args: hasattr(el, "text")

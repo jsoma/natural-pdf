@@ -150,3 +150,11 @@ print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 After applying OCR to a PDF, you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
 
 Use the `save_searchable()` method on the `PDF`
+
+## TODO
+
+* Add guidance on installing only the OCR engines you need (e.g. `pip install "natural-pdf[ai] easyocr"`) instead of the heavy `[all]` extra.
+* Show how to use `detect_only=True` to combine OCR detection with external recognition for higher accuracy (ties into fine-tuning tutorial).
+* Include an example of saving a searchable PDF via `pdf.save_searchable("output.pdf")` after OCR.
+* Mention `resolution` parameter trade-offs (speed vs accuracy) when calling `apply_ocr`.
+* Provide a quick snippet demonstrating `.viewer()` for interactive visual QC of OCR results.

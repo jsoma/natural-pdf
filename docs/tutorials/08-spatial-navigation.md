@@ -3,7 +3,7 @@
 Spatial navigation lets you work with PDF content based on the physical layout of elements on the page. It's perfect for finding elements relative to each other and extracting information in context.
 
 ```python
-#%pip install "natural-pdf[all]"
+#%pip install natural-pdf
 ```
 
 ```python
@@ -148,8 +148,7 @@ for i in range(4):
 # Visualize all found rows
 page.clear_highlights()
 for i, row in enumerate(rows):
-    row.highlight(label=f"Row {i+1}")
-page.to_image(width=700)
+    row.highlight(label=f"Row {i+1}", use_color_cycling=True)
 ```
 
 ```python
@@ -187,4 +186,51 @@ for label in labels:
 field_data
 ```
 
-Spatial navigation mimics how humans read documents, letting you navigate content based on physical relationships between elements. It's especially useful for extracting structured data from forms, tables, and formatted documents. 
+Spatial navigation mimics how humans read documents, letting you navigate content based on physical relationships between elements. It's especially useful for extracting structured data from forms, tables, and formatted documents.
+
+## TODO
+
+* Add examples for navigating across multiple pages using `pdf.pages` slicing and `below(..., until=...)` that spans pages.
+* Show how to chain selectors, e.g., `page.find('text:bold').below().right()` for complex paths.
+* Include a sidebar on performance when many spatial calls are chained and how to cache intermediate regions.
+* Add examples using `.until()` for one-liner "from here until X" extractions.
+* Show using `width="element"` vs `"full"` in `.below()` and `.above()` to restrict horizontal span.
+* Demonstrate attribute selectors (e.g., `line[width>2]`) and `:not()` pseudo-class for exclusion in spatial chains.
+* Briefly introduce `.expand()` for fine-tuning region size after spatial selection.
+
+## Chaining Spatial Calls
+
+Spatial helpers like `.below()`, `.right()`, `.nearest()` and friends **return Element or Region objects**, so you can keep chaining operations just like you would with jQuery or BeautifulSoup.
+
+1. Start with a selector (string or Element).
+2. Apply a spatial function.
+3. Optionally, add another selector to narrow the result.
+4. Repeat!
+
+### Example 1 – Heading → next bold word → value to its right
+
+```python
+# Step 1 – find the heading text
+heading = page.find('text:contains("Summary:")')
+
+# Step 2 – get the first bold word after that heading (skip up to 30 elements)
+value_label = heading.next('text:bold', limit=30)
+
+# Step 3 – grab the value region to the right of that bold word
+value_region = value_label.right(until='line')  # Extend until the boundary line
+
+value_region.show(color="orange", label="Summary Value")
+value_region.extract_text()
+```
+
+### Example 2 – Find a label anywhere on the document and walk to its value in one chain
+
+```python
+invoice_total = (
+    page.find('text:startswith("Date:")')
+        .right(width=500, height='element')            # Move right to get the amount region
+        .find('text')                # Narrow to text elements only
+)
+```
+
+Because each call returns an element, **you never lose the spatial context** – you can always add another `.below()` or `.nearest()` later.

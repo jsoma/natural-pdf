@@ -72,11 +72,31 @@ class SuryaOCREngine(OCREngine):
         if detect_only:
             results = self._detection_predictor(images=[image])
         else:
-            results = self._recognition_predictor(
-                langs=langs,
-                images=[image],
-                det_predictor=self._detection_predictor,
-            )
+            # Some Surya versions require 'langs' parameter in the __call__ while
+            # others assume the predictor was initialized with languages already.
+            # Inspect the callable signature to decide what to pass.
+            import inspect
+
+            recog_callable = self._recognition_predictor
+            try:
+                sig = inspect.signature(recog_callable)
+                has_langs_param = "langs" in sig.parameters
+            except (TypeError, ValueError):
+                # Fallback: assume langs not required if signature cannot be inspected
+                has_langs_param = False
+
+            if has_langs_param:
+                results = recog_callable(
+                    langs=langs,
+                    images=[image],
+                    det_predictor=self._detection_predictor,
+                )
+            else:
+                # Older/newer Surya versions that omit 'langs'
+                results = recog_callable(
+                    images=[image],
+                    det_predictor=self._detection_predictor,
+                )
 
         # Surya may return a list with one result per image or a single result object
         # Return the result as-is and handle the extraction in _standardize_results

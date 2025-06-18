@@ -7,7 +7,7 @@ Sometimes, instead of searching for specific text patterns, you just want to ask
 Let's ask our `01-practice.pdf` a few questions.
 
 ```python
-#%pip install "natural-pdf[all]"
+#%pip install "natural-pdf[ai]"  # DocumentQA relies on torch + transformers
 ```
 
 ```python
@@ -21,8 +21,13 @@ page = pdf.pages[0]
 question_1 = "What is the inspection date?"
 answer_1 = page.ask(question_1)
 
-# The result is a dictionary with the answer, confidence, etc.
+# The result dictionary always contains:
+#   answer      – extracted span (string, may be empty)
+#   confidence  – model score 0–1
+#   start / end – indices into page.words
+#   found       – False if confidence < min_confidence
 answer_1
+# ➜ {'answer': 'July 31, 2023', 'confidence': 0.82, 'start': 33, 'end': 36, 'found': True}
 ```
 
 ```python
@@ -44,6 +49,20 @@ answer_3
 ```
 
 The results include the extracted `answer`, a `confidence` score (useful for filtering uncertain answers), the `page_num`, and the `source_elements`.
+
+## Visualising Where the Answer Came From
+
+```python
+from natural_pdf.elements.collections import ElementCollection
+
+page.clear_highlights()
+
+if answer_1["found"]:
+    words = ElementCollection(page.words[answer_1["start"] : answer_1["end"] + 1])
+    words.show(color="yellow", label=question_1)
+
+page.to_image()
+```
 
 ## Collecting Results into a DataFrame
 
@@ -67,20 +86,28 @@ questions = [
 # Collect answers for each question
 results = []
 for q in questions:
-    answer_dict = page.ask(q)
-    # Add the original question to the dictionary
-    answer_dict['question'] = q
-    results.append(answer_dict)
+    ans = page.ask(q, min_confidence=0.2)
+    ans["question"] = q
+    results.append(ans)
 
-# Convert the list of dictionaries to a DataFrame
-# We select only the most relevant columns here
-df_results = pd.DataFrame(results)[['question', 'answer', 'confidence']]
-
-# Display the DataFrame
-df_results
+cols = ["question", "answer", "confidence", "found"]
+qa_df = pd.DataFrame(results)[cols]
+qa_df
 ```
 
 This shows how you can iterate through questions, collect the answer dictionaries, and then create a structured DataFrame, making it easy to review questions, answers, and their confidence levels together.
+
+## TODO
+
+* Demonstrate passing `model="impira/layoutlm-document-qa"` to switch models.
+* Show multi-page QA: iterate over `pdf.pages` and add `page` column to the results.
+* Add batch helper (`pdf.ask_many(questions)`) once implemented.
+
+## Wish List
+
+* Support for highlighting answer automatically via a `show_answer()` helper.
+* Option to return bounding box coordinates directly (`bbox`) in the answer dict.
+* Add `ElementCollection.to_dataframe()` for one-call DataFrame creation.
 
 <div class="admonition note">
 <p class="admonition-title">QA Model and Limitations</p>

@@ -54,11 +54,7 @@ We can find specific elements using spatial queries and text content:
 elements = page.find_all('text:contains("Inadequate")')
 
 # Show these elements on the page
-page.clear_highlights()
-elements.highlight(color="red", label="Contains 'Inadequate'")
-
-# Display the page to see them
-page.to_image(width=700)
+elements.show()
 ```
 
 ## Working with Layout Regions
@@ -70,11 +66,7 @@ We can analyze the layout of the page to identify different regions:
 page.analyze_layout(engine='yolo')
 
 # Find and highlight all detected regions
-page.clear_highlights()
-page.find_all('region').highlight(group_by='type')
-
-# Display the page to see the regions
-page.to_image(width=900)
+page.find_all('region').show(group_by='type')
 ```
 
 ## Working with Multiple Pages

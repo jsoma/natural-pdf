@@ -77,3 +77,11 @@ else:
 ```
 
 Semantic search allows you to efficiently query large sets of documents to find the most relevant information without needing exact keyword matches, leveraging the meaning and context of your query. 
+
+## TODO
+
+* Add example for using `persist=True` and `collection_name` in `init_search` to create a persistent on-disk index.
+* Show how to override the embedding model (e.g. `embedding_model="all-MiniLM-L12-v2"`).
+* Mention `top_k` and filtering options available through `SearchOptions` when calling `find_relevant`.
+* Provide a short snippet on visualising matched pages/elements once highlighting support lands (future feature).
+* Clarify that installing the AI stack (`natural-pdf[ai]`) also pulls in `sentence-transformers`, which is needed for in-memory NumPy fallback. 

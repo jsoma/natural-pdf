@@ -136,7 +136,7 @@ if result.get("found", False):
 
 Categorize pages or specific regions based on their content using text or vision models.
 
-**Note:** Requires `pip install "natural-pdf[core-ml]"`
+**Note:** Requires `pip install "natural-pdf[ai]"`
 
 ```python
 # Classify a page based on text
