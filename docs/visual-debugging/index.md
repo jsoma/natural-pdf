@@ -2,6 +2,41 @@
 
 Sometimes it's hard to understand what's happening when working with PDFs. Natural PDF provides powerful visual debugging tools to help you see what you're extracting.
 
+## Quick Visualization with `.show()`
+
+The **fastest** way to see what you have selected is to call `.show()` on the element (or collection/region) that you receive.  
+Unlike `.highlight()` this does **not** persist anything on the page – it simply returns a `PIL.Image` with temporary highlights that you can display right away.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+page = pdf.pages[0]
+
+# View a few elements that contain the word "Summary"
+page.find_all('text:contains("Summary")').show()
+
+# Crop-only display of the region below the heading
+heading = page.find('text:bold[size>=12]')
+region_below = heading.below(height=250)
+region_below.show(crop=True)
+
+# Colour by element type
+page.find_all('text, rect, line').show(group_by='type')
+```
+
+Need a prettier image for an article or report? `.show()` accepts the same keyword arguments as `.highlight()` (`color`, `label`, `group_by`, `include_attrs`, …) so you can style the output exactly the way you like without leaving any permanent marks on the page.
+
+**Tip – `crop=True`**  
+
+Pass `crop=True` to `.show()` (or `.to_image()`) when you want the *smallest* image that still contains all of the selected elements/region.  
+This works for both `Region` objects and regular `ElementCollection`s – perfect for quickly zooming into the exact area you're debugging.
+
+```python
+# Zoom into just the bold text you found
+page.find_all('text:bold').show(crop=True)
+```
+
 ## Adding Persistent Highlights
 
 Use the `.highlight()` method on `Element` or `ElementCollection` objects to add persistent highlights to a page. These highlights are stored and will appear when viewing the page later.
@@ -62,9 +97,9 @@ tables.highlight(color=(0, 0, 1, 0.2), label="Tables")
 page.viewer()
 ```
 
-## Highlighting Regions
+## Viewing Regions
 
-You can highlight regions to see what area you're working with:
+You can visualise regions to see the exact area you're working with:
 
 ```python
 # Find a title and create a region below it
@@ -83,7 +118,7 @@ title = page.find('text:contains("Violations")')
 content = title.below(height=200)
 
 # Crop to the region
-content.to_image(crop_only=True, include_highlights=False)
+content.to_image(crop=True, include_highlights=False)
 ```
 
 ## Working with Text Styles
@@ -91,11 +126,11 @@ content.to_image(crop_only=True, include_highlights=False)
 Visualize text styles to understand the document structure:
 
 ```python
-# Analyze and highlight text styles
+# Analyze and visualize text styles
 page.clear_highlights()
 
 page.analyze_text_styles()
-page.find_all('text').highlight(group_by='style_label')
+page.find_all('text').show(group_by='style_label')
 
 page.to_image(width=700)
 ```

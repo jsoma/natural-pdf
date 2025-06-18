@@ -166,7 +166,7 @@ region_for_image = page.create_region(
 )
 
 # Generate an image of just this region
-region_for_image.to_image(crop_only=True)  # Shows just the region
+region_for_image.to_image(crop=True)  # Shows just the region
 ```
 
 ### Adjust and Expand Regions

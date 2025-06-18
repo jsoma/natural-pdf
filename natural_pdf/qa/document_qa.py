@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from natural_pdf.elements.collections import ElementCollection
+from .qa_result import QAResult
 
 logger = logging.getLogger("natural_pdf.qa.document_qa")
 
@@ -123,7 +124,7 @@ class DocumentQA:
         min_confidence: float = 0.1,
         debug: bool = False,
         debug_output_dir: str = "output",
-    ) -> Dict[str, Any]:
+    ) -> QAResult:
         """
         Ask a question about document content.
 
@@ -136,12 +137,7 @@ class DocumentQA:
             debug_output_dir: Directory to save debug files
 
         Returns:
-            Dictionary with answer details: {
-                "answer": extracted text,
-                "confidence": confidence score,
-                "start": start word index,
-                "end": end word index
-            }
+            QAResult instance with answer details
         """
         if not self._is_initialized:
             raise RuntimeError("DocumentQA is not properly initialized")
@@ -225,25 +221,25 @@ class DocumentQA:
         # Check confidence against threshold
         if result["score"] < min_confidence:
             logger.info(f"Answer confidence {result['score']:.4f} below threshold {min_confidence}")
-            return {
-                "answer": "",
-                "confidence": result["score"],
-                "start": result.get("start", -1),
-                "end": result.get("end", -1),
-                "found": False,
-            }
+            return QAResult(
+                answer="",
+                confidence=result["score"],
+                start=result.get("start", -1),
+                end=result.get("end", -1),
+                found=False,
+            )
 
-        return {
-            "answer": result["answer"],
-            "confidence": result["score"],
-            "start": result.get("start", 0),
-            "end": result.get("end", 0),
-            "found": True,
-        }
+        return QAResult(
+            answer=result["answer"],
+            confidence=result["score"],
+            start=result.get("start", 0),
+            end=result.get("end", 0),
+            found=True,
+        )
 
     def ask_pdf_page(
         self, page, question: str, min_confidence: float = 0.1, debug: bool = False
-    ) -> Dict[str, Any]:
+    ) -> QAResult:
         """
         Ask a question about a specific PDF page.
 
@@ -253,7 +249,7 @@ class DocumentQA:
             min_confidence: Minimum confidence threshold for answers
 
         Returns:
-            Dictionary with answer details
+            QAResult instance with answer details
         """
         # Ensure we have text elements on the page
         if not page.find_all("text"):
@@ -284,12 +280,12 @@ class DocumentQA:
             )
 
             # Add page reference to the result
-            result["page_num"] = page.index
+            result.page_num = page.index
 
             # Add element references if possible
-            if result.get("found", False) and "start" in result and "end" in result:
-                start_idx = result["start"]
-                end_idx = result["end"]
+            if result.found and "start" in result and "end" in result:
+                start_idx = result.start
+                end_idx = result.end
 
                 # Make sure we have valid indices and elements to work with
                 if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
@@ -308,7 +304,7 @@ class DocumentQA:
                             if element.text in matched_texts:
                                 matched_texts.remove(element.text)
 
-                    result["source_elements"] = ElementCollection(source_elements)
+                    result.source_elements = ElementCollection(source_elements)
 
             return result
 
@@ -319,7 +315,7 @@ class DocumentQA:
 
     def ask_pdf_region(
         self, region, question: str, min_confidence: float = 0.1, debug: bool = False
-    ) -> Dict[str, Any]:
+    ) -> QAResult:
         """
         Ask a question about a specific region of a PDF page.
 
@@ -329,7 +325,7 @@ class DocumentQA:
             min_confidence: Minimum confidence threshold for answers
 
         Returns:
-            Dictionary with answer details
+            QAResult instance with answer details
         """
         # Get all text elements within the region
         elements = region.find_all("text")
@@ -366,13 +362,13 @@ class DocumentQA:
             )
 
             # Add region reference to the result
-            result["region"] = region
-            result["page_num"] = region.page.index
+            result.region = region
+            result.page_num = region.page.index
 
             # Add element references if possible
-            if result.get("found", False) and "start" in result and "end" in result:
-                start_idx = result["start"]
-                end_idx = result["end"]
+            if result.found and "start" in result and "end" in result:
+                start_idx = result.start
+                end_idx = result.end
 
                 # Make sure we have valid indices and elements to work with
                 if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
@@ -391,7 +387,7 @@ class DocumentQA:
                             if element.text in matched_texts:
                                 matched_texts.remove(element.text)
 
-                    result["source_elements"] = ElementCollection(source_elements)
+                    result.source_elements = ElementCollection(source_elements)
 
             return result
 

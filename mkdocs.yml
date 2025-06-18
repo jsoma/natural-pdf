@@ -43,49 +43,15 @@ theme:
     - content.code.annotate
     - toc.follow
   language: en
-  palette:
-    # Light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/toggle-switch-off-outline
-        name: Switch to dark mode
-    # Dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: deep purple
-      accent: deep purple
-      toggle:
-        icon: material/toggle-switch
-        name: Switch to light mode
   
 extra_css:
   - assets/stylesheets/custom.css
 
 nav:
   - Home: index.md
-  - Getting Started: installation/index.md
-  - Working with PDFs:
-    - PDF Navigation: pdf-navigation/index.ipynb
-    - Element Selection: element-selection/index.ipynb
-    - Text Extraction: text-extraction/index.ipynb
-    - Loops and Groups: loops-and-groups/index.ipynb
-    - Text Analysis: text-analysis/index.ipynb
-    - Working with Regions: regions/index.ipynb
-    - Reflowing Pages: reflowing-pages/index.ipynb
-  - Advanced Features:
-    - Visual Debugging: visual-debugging/index.ipynb
-    - Interactive Widget: interactive-widget/index.ipynb
-    - Describe & Inspect: describe/index.ipynb
-    - OCR: ocr/index.md
-    - OCR Fine-tuning: finetuning/index.md
-    - Tables: tables/index.ipynb
-    - Layout Analysis: layout-analysis/index.ipynb
-    - Categorizing Documents: categorizing-documents/index.md
-    - Data extraction: data-extraction/index.md
-    - Document Q&A: document-qa/index.ipynb
+  - Getting Started:
+    - Installation: installation/index.md
+    - Quick Reference: quick-reference/index.md
   - Tutorials:
     - Loading & Extraction: tutorials/01-loading-and-extraction.ipynb
     - Finding Elements: tutorials/02-finding-elements.ipynb
@@ -102,7 +68,36 @@ nav:
     - OCR Integration: tutorials/12-ocr-integration.ipynb
     - Semantic Search: tutorials/13-semantic-search.ipynb
     - Categorizing Documents: tutorials/14-categorizing-documents.ipynb
-  - API Reference: api/index.md
+  - How-To Guides:
+    - Text Extraction:
+      - Basic Text Extraction: text-extraction/index.md
+      - Text from Scanned Documents: ocr/index.md
+      - Clean Text Without Headers/Footers: extracting-clean-text/index.md
+    - Table Extraction:
+      - Fix Messy Tables: fix-messy-tables/index.md
+      - Basic Table Extraction: tables/index.ipynb
+    - Data Extraction:
+      - Extract from Forms/Invoices: process-forms-and-invoices/index.md
+      - Structured Data Extraction: data-extraction/index.md
+    - Document Analysis:
+      - Ask Questions to Documents: document-qa/index.ipynb
+      - Categorize Documents: categorizing-documents/index.md
+    - Finding Content:
+      - Element Selection: element-selection/index.ipynb
+      - PDF Navigation: pdf-navigation/index.ipynb
+    - Layout & Structure:
+      - Layout Analysis: layout-analysis/index.ipynb
+      - Working with Regions: regions/index.ipynb
+      - Visual Debugging: visual-debugging/index.ipynb
+  - Advanced Features:
+    - Interactive Widget: interactive-widget/index.ipynb
+    - Describe & Inspect: describe/index.ipynb
+    - Loops and Groups: loops-and-groups/index.ipynb
+    - Text Analysis: text-analysis/index.ipynb
+    - Reflowing Pages: reflowing-pages/index.ipynb
+    - OCR Fine-tuning: finetuning/index.md
+  - Reference:
+    - API Reference: api/index.md
 
 markdown_extensions:
   - pymdownx.highlight:

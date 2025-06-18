@@ -162,7 +162,7 @@ paddle_opts = PaddleOCROptions(
     use_gpu=True # If using GPU locally
 )
 
-pdf = PDF("another-similar-document.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
 # Apply OCR using your fine-tuned model

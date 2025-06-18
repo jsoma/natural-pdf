@@ -217,7 +217,7 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                         # Expand region, render, and save image
                         region = element.expand(self.padding)
                         img = region.to_image(
-                            resolution=self.resolution, crop_only=True, include_highlights=False
+                            resolution=self.resolution, crop=True, include_highlights=False
                         )
                         img.save(absolute_image_path, "PNG")
 

@@ -1,8 +1,8 @@
-# Structured Data Extraction
+# Pulling Structured Data from PDFs
 
-Extracting specific, structured information (like invoice numbers, dates, or addresses) from documents often requires more than simple text extraction. Natural PDF integrates with LLMs to pull out [structured data](https://platform.openai.com/docs/guides/structured-outputs).
+Ever had a pile of invoices, reports, or forms where you need to extract the same pieces of information from each one? That's where structured data extraction shines. Instead of manually copying invoice numbers and dates, you can tell Natural PDF exactly what information you want and let it find those details automatically.
 
-You need to install more than just the tiny baby default `natural_pdf` for this:
+You'll need more than the basic install for this:
 ```bash
 # Install the OpenAI (or compatible) client library
 pip install openai
@@ -11,20 +11,14 @@ pip install openai
 pip install "natural_pdf[ai]"
 ```
 
-## Introduction
+## The Simple Approach: Just Tell It What You Want
 
-This feature allows you to define the exact data structure you want using a Pydantic model and then instruct an LLM to populate that structure based on the content of a PDF element (like a `Page` or `Region`).
-
-> Not sure how to write a Pydantic schema? Just ask an LLM! "Write me a Pydantic schema to pull out an invoice number (an integer), a company name (string) and a date (string)." It'll go fine.
-
-## Quick Start: Just Pass a List
-
-Don't want to write a Pydantic schema? You don't have to. Just pass a list of the fields you want:
+Don't want to mess around with schemas? Just make a list of what you're looking for:
 
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("inspection-report.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
 # Extract data using just a list - no schema required!
@@ -35,7 +29,7 @@ print(data.date)  # "2024-03-15"
 print(data.violation_count)  # "3"
 ```
 
-Natural PDF automatically builds a schema for you and extracts the data. Each field becomes a string, and you get confidence scores for free:
+Natural PDF automatically builds a schema behind the scenes and extracts the data. Each field becomes a string, and you get confidence scores for free:
 
 ```python
 # Check how confident the extraction was
@@ -43,27 +37,27 @@ print(data.site_confidence)  # 0.89
 print(data.date_confidence)  # 0.95
 ```
 
-This works entirely offline - no API keys or internet connection required. It uses a local document question-answering model that understands both text and layout.
+This works completely offline - no API keys or internet connection needed. It uses a local document question-answering model that understands both text and layout.
 
-## Working Offline
+## Working Offline (No Internet Required)
 
-Sometimes you don't want to send documents to an external API, or you're working somewhere without internet. Natural PDF has you covered:
+Maybe you're dealing with sensitive documents or just don't want to send everything to the cloud:
 
 ```python
 # This works completely offline
 page.extract(schema=["company", "total", "due_date"])
 ```
 
-The offline engine is pretty smart - it looks at both the text content and the visual layout to find answers. For low-confidence results, you can set a threshold:
+The offline engine is pretty smart - it looks at both the text content and how things are visually laid out on the page. For sketchy results, you can set a confidence threshold:
 
 ```python
 # Only accept answers the model is confident about
 page.extract(schema=["amount", "date"], min_confidence=0.8)
 ```
 
-If an answer falls below your confidence threshold, it gets set to `None` instead of returning questionable data.
+If an answer falls below your threshold, it gets set to `None` instead of giving you questionable data.
 
-You can also use local LLMs if you prefer the structured output capabilities. Tools like [LM Studio](https://lmstudio.ai/) or [Msty](https://msty.app/) can run models like Qwen locally and provide an OpenAI-compatible API:
+Want to use a local LLM instead? Tools like [LM Studio](https://lmstudio.ai/) or [Msty](https://msty.app/) can run models locally with an OpenAI-compatible API:
 
 ```python
 from openai import OpenAI
@@ -74,95 +68,95 @@ client = OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
 page.extract(schema=InvoiceSchema, client=client)
 ```
 
-Just be warned - local LLMs are much slower than the document QA approach for simple extractions!
+Just heads up - local LLMs are much slower than the document QA approach for simple extractions!
 
-## Basic Extraction
+## Building Custom Schemas
 
-1.  **Define a Schema:** Create a Pydantic model for your desired data.
-2.  **Extract:** Use `.extract()` on a `PDF`, `Page`, or `Region` object.
-3.  **Access:** Use `.extracted()` to retrieve the results.
+For more complex extractions, you can define exactly what you want using Pydantic:
 
 ```python
 from natural_pdf import PDF
 from pydantic import BaseModel, Field
 from openai import OpenAI
 
-# Initialize your LLM client
-# Anything OpenAI-compatible works!
+# Set up your LLM client (using Gemini here)
 client = OpenAI(
-    api_key="ANTHROPIC_API_KEY",  # Your Anthropic API key
-    base_url="https://api.anthropic.com/v1/"  # Anthropic's API endpoint
+    api_key="YOUR_API_KEY",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/" 
 )
 
 # Load the PDF
-pdf = PDF("path/to/your/document.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
-# Define your schema
-class InvoiceInfo(BaseModel):
-    invoice_number: str = Field(description="The main invoice identifier")
-    total_amount: float = Field(description="The final amount due")
-    company_name: Optional[str] = Field(None, description="The name of the issuing company")
+# Define exactly what you want to extract
+class ReportInfo(BaseModel):
+    inspection_number: str = Field(description="The main report identifier")
+    inspection_date: str = Field(description="When the inspection happened")
+    inspection_service: str = Field(description="Name of inspection service")
+    site_name: str = Field(description="Location that was inspected")
+    summary: str = Field(description="Visit summary")
+    violation_count: int = Field(description="Number of violations found")
 
-# Extract data
-page.extract(schema=InvoiceInfo, client=client) 
+# Extract the data
+page.extract(schema=ReportInfo, client=client, model="gemini-2.5-flash") 
 
-# Access the full result object
-full_data = page.extracted() 
-print(full_data)
-
-# Access a single field
-inv_num = page.extracted('invoice_number')
-print(f"Invoice Number: {inv_num}") 
+# Get your structured data
+report_data = page.extracted() 
+print(report_data.inspection_number)
+print(report_data.violation_count)
 ```
 
-## Keys and Overwriting
+## Managing Multiple Extractions
 
-- By default, results are stored under the key `"default-structured"` in the element's `.analyses` dictionary.
-- Use the `analysis_key` parameter in `.extract()` to store results under a different name (e.g., `analysis_key="customer_details"`).
-- Attempting to extract using an existing `analysis_key` will raise an error unless `overwrite=True` is specified.
+- Results get stored under the key `"default-structured"` by default
+- Use `analysis_key` to store multiple different extractions from the same document
+- Trying to extract with an existing key will fail unless you use `overwrite=True`
 
 ```python
 # Extract using a specific key
 page.extract(InvoiceInfo, client=client, analysis_key="invoice_header")
 
-# Access using the specific key
+# Access that specific extraction
 header_data = page.extracted(analysis_key="invoice_header") 
 company = page.extracted('company_name', analysis_key="invoice_header")
 ```
 
-## Text vs vision
+## Text vs Vision Extraction
 
-When sending a page (or a region or etc) to an LLM, you can choose either `using='text'` (default) or `using='vision'`.
+You can choose how to send the document to the LLM:
 
-- `text` sends the text, somewhat respecting layout using `.extract_text(layout=True)`
-- `vision` sends an image of the page with `.to_image(resolution=72)` (no highlights or labels)
-
-## Batch and bulk extraction
-
-If you have a lot of pages or a lot of PDFs or a lot of anything, the `.extract()` and `.extracted()` methods work identically on most parts of a PDF - regions, pages, collections of pdfs, etc, allowing a lot of flexibility in what you analyze.
+- `using='text'` (default): Sends the text content with layout preserved
+- `using='vision'`: Sends an image of the page
 
 ```python
-# Assuming 'header_region' is a Region object you defined
-header_region.extract(InvoiceInfo, client)
-company = header_region.extracted('company_name')
+# Send text content (faster, cheaper)
+page.extract(schema=MySchema, client=client, using='text')
+
+# Send page image (better for visual layouts)
+page.extract(schema=MySchema, client=client, using='vision')
 ```
 
-Furthermore, you can apply extraction to collections of elements (like `pdf.pages`, or the result of `pdf.find_all(...)`) using the `.apply()` method. This iterates through the collection and calls `.extract()` on each item.
+## Processing Multiple Documents
+
+The extraction methods work on any part of a PDF - regions, pages, collections - making it easy to process lots of documents:
 
 ```python
-# Example: Extract InvoiceInfo from the first 5 pages
+# Extract from a specific region
+header_region.extract(InvoiceInfo, client=client)
+company = header_region.extracted('company_name')
+
+# Process multiple pages at once
 results = pdf.pages[:5].apply(
     lambda page: page.extract(
-        client=client,
         schema=InvoiceInfo, 
         client=client, 
-        analysis_key="page_invoice_info",
+        analysis_key="page_invoice_info"
     )
 )
 
-# Access results for the first page in the collection
+# Access results for any page
 pdf.pages[0].extracted('company_name', analysis_key="page_invoice_info")
 ```
 
-This provides a powerful way to turn unstructured PDF content into structured, usable data.
+This approach lets you turn unstructured PDF content into clean, structured data you can actually work with.

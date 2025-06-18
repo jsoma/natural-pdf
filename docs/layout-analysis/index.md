@@ -203,7 +203,7 @@ options = GeminiLayoutOptions(
     classes=["text", "title"]
 )
 
-pdf = PDF("your.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 regions = page.analyze_layout(engine="gemini", options=options)
 ```

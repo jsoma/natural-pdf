@@ -592,7 +592,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         scale: float = 2.0,
         resolution: float = 150,
-        crop_only: bool = False,
+        crop: bool = False,
         include_highlights: bool = True,
         **kwargs,
     ) -> "Image.Image":
@@ -601,7 +601,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         Args:
             resolution: Resolution in DPI for rendering (default: 150)
-            crop_only: If True, only crop the region without highlighting its boundaries
+            crop: If True, only crop the region without highlighting its boundaries
             include_highlights: Whether to include existing highlights (default: True)
             **kwargs: Additional parameters for page.to_image()
 
@@ -612,7 +612,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         page_kwargs = kwargs.copy()
         effective_resolution = resolution  # Start with the provided resolution
 
-        if crop_only and "width" in kwargs:
+        if crop and "width" in kwargs:
             target_width = kwargs["width"]
             # Calculate what resolution is needed to make the region crop have target_width
             region_width_points = self.width  # Region width in PDF points
@@ -667,8 +667,8 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Crop the image to just this region
         region_image = page_image.crop((x0, top, x1, bottom))
 
-        # If not crop_only, add a border to highlight the region boundaries
-        if not crop_only:
+        # If not crop, add a border to highlight the region boundaries
+        if not crop:
             from PIL import ImageDraw
 
             # Create a 1px border around the region
@@ -690,6 +690,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         color: Optional[Union[Tuple, str]] = "blue",
         label: Optional[str] = None,
         width: Optional[int] = None,  # Add width parameter
+        crop: bool = False,  # NEW: Crop output to region bounds before legend
     ) -> "Image.Image":
         """
         Show the page with just this region highlighted temporarily.
@@ -701,6 +702,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             color: Color to highlight this region (default: blue)
             label: Optional label for this region in the legend
             width: Optional width for the output image in pixels
+            crop: If True, crop the rendered image to this region's
+                        bounding box (with a small margin handled inside
+                        HighlightingService) before legends/overlays are added.
 
         Returns:
             PIL Image of the page with only this region highlighted
@@ -726,6 +730,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             "use_color_cycling": False,  # Explicitly false for single preview
         }
 
+        # Determine crop bbox if requested
+        crop_bbox = self.bbox if crop else None
+
         # Use render_preview to show only this highlight
         return service.render_preview(
             page_index=self._page.index,
@@ -734,6 +741,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             width=width,  # Pass the width parameter
             labels=labels,
             legend_position=legend_position,
+            crop_bbox=crop_bbox,
         )
 
     def save(
@@ -762,7 +770,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         filename: str,
         resolution: float = 150,
-        crop_only: bool = False,
+        crop: bool = False,
         include_highlights: bool = True,
         **kwargs,
     ) -> "Region":
@@ -772,7 +780,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Args:
             filename: Path to save the image to
             resolution: Resolution in DPI for rendering (default: 150)
-            crop_only: If True, only crop the region without highlighting its boundaries
+            crop: If True, only crop the region without highlighting its boundaries
             include_highlights: Whether to include existing highlights (default: True)
             **kwargs: Additional parameters for page.to_image()
 
@@ -782,7 +790,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Get the region image
         image = self.to_image(
             resolution=resolution,
-            crop_only=crop_only,
+            crop=crop,
             include_highlights=include_highlights,
             **kwargs,
         )
@@ -835,7 +843,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         # Get the region image
         image = work_region.to_image(
-            resolution=resolution, crop_only=True, include_highlights=False
+            resolution=resolution, crop=True, include_highlights=False
         )
 
         if image is None:
@@ -1926,7 +1934,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # Render the page region to an image using the determined resolution
         try:
             region_image = self.to_image(
-                resolution=final_resolution, include_highlights=False, crop_only=True
+                resolution=final_resolution, include_highlights=False, crop=True
             )
             if not region_image:
                 logger.error("Failed to render region to image for OCR.")
@@ -2566,7 +2574,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             img = self.to_image(
                 resolution=resolution,
                 include_highlights=False,  # No highlights for classification input
-                crop_only=True,  # Just the region content
+                crop=True,  # Just the region content
             )
             if img is None:
                 raise ValueError(

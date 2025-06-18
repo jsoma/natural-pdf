@@ -63,7 +63,7 @@ class ShapeDetectionMixin:
                 logger.debug(f"Shape detection on Region: {self}")
                 page_obj = self._page
                 pil_image = self.to_image(
-                    resolution=resolution, crop_only=True, include_highlights=False
+                    resolution=resolution, crop=True, include_highlights=False
                 )
                 if pil_image:  # Ensure pil_image is not None before accessing attributes
                     origin_offset_pdf = (self.x0, self.top)
@@ -681,7 +681,7 @@ class ShapeDetectionMixin:
         if hasattr(self, "to_image") and hasattr(self, "width") and hasattr(self, "height"):
             if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):
                 pil_image_for_dims = self.to_image(
-                    resolution=resolution, crop_only=True, include_highlights=False
+                    resolution=resolution, crop=True, include_highlights=False
                 )
             else:
                 pil_image_for_dims = self.to_image(resolution=resolution, include_highlights=False)
@@ -1204,7 +1204,7 @@ class ShapeDetectionMixin:
         if hasattr(self, "to_image") and hasattr(self, "width") and hasattr(self, "height"):
             if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):
                 pil_image_for_dims = self.to_image(
-                    resolution=resolution, crop_only=True, include_highlights=False
+                    resolution=resolution, crop=True, include_highlights=False
                 )
             else:
                 pil_image_for_dims = self.to_image(resolution=resolution, include_highlights=False)

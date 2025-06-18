@@ -226,9 +226,9 @@ value_region.extract_text()
 ### Example 2 – Find a label anywhere on the document and walk to its value in one chain
 
 ```python
-invoice_total = (
+inspection_date_value = (
     page.find('text:startswith("Date:")')
-        .right(width=500, height='element')            # Move right to get the amount region
+        .right(width=500, height='element')            # Move right to get the date value region
         .find('text')                # Narrow to text elements only
 )
 ```

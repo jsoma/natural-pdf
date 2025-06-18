@@ -48,7 +48,7 @@ More details in the [installation guide](https://jsoma.github.io/natural-pdf/ins
 from natural_pdf import PDF
 
 # Open a PDF
-pdf = PDF('document.pdf')
+pdf = PDF('https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf')
 page = pdf.pages[0]
 
 # Extract all of the text on the page

@@ -69,6 +69,32 @@ df.insert(0, 'question', questions)
 df
 ```
 
+## Visualizing where answers come from
+
+Sometimes you'll want to see exactly where the model found an answer in your document. Maybe you're checking if it grabbed the right table cell, or you want to verify it didn't confuse similar-looking sections.
+
+```python
+result = page.ask("Who got the most votes for Attorney General?")
+
+# See the answer
+print(result.answer)  # "John Smith"
+
+# Show exactly where it found that answer
+result.show()
+```
+
+The `result.show()` method highlights the specific text elements the model used to answer your question - super helpful for debugging or when you need to double-check the results.
+
+You can also access result data like a normal dictionary or use dot notation if you prefer:
+
+```python
+# Both of these work the same way
+print(result["confidence"])  # 0.97
+print(result.confidence)     # 0.97
+```
+
+If the model couldn't find a confident answer, `result.found` will be `False` and calling `result.show()` will let you know there's nothing to visualize.
+
 ## Next Steps
 
 Now that you've learned about document QA, explore:

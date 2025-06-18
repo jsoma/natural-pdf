@@ -260,7 +260,7 @@ region_image = region.to_image(resolution=150)  # Get a PIL Image of just the re
 region.save_image("region_only.png")  # Save the region image to a file
 
 # Control region image rendering
-region.save_image("region_no_border.png", crop_only=True)  # Don't add a border
+region.save_image("region_no_border.png", crop=True)  # Don't add a border
 region.save_image("region_high_res.png", resolution=300)  # Higher resolution
 
 # Clear all highlights

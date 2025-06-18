@@ -21,7 +21,7 @@ pip install "natural_pdf[all]"
 ```python
 from natural_pdf import PDF
 
-pdf = PDF('document.pdf')
+pdf = PDF('https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf')
 page = pdf.pages[0]
 
 # Find the title and get content below it
@@ -36,9 +36,59 @@ page.add_exclusion(page.find_all('line')[-1].below())
 clean_text = page.extract_text()
 ```
 
-## Key Features
+## Getting Started
 
-Here are a few highlights of what you can do:
+### New to Natural PDF?
+- **[Installation](installation/)** - Get Natural PDF installed and run your first extraction
+- **[Quick Reference](quick-reference/)** - Essential commands and patterns in one place
+- **[Tutorial Series](tutorials/)** - Step-by-step learning path through all features
+
+### Learning the Basics
+Follow the tutorial series to learn Natural PDF systematically:
+
+1. [Loading and Basic Text Extraction](tutorials/01-loading-and-extraction.md)
+2. [Finding Specific Elements](tutorials/02-finding-elements.md) 
+3. [Extracting Content Blocks](tutorials/03-extracting-blocks.md)
+4. [Table Extraction](tutorials/04-table-extraction.md)
+5. [Excluding Unwanted Content](tutorials/05-excluding-content.md)
+6. [Document Question Answering](tutorials/06-document-qa.md)
+7. [Layout Analysis](tutorials/07-layout-analysis.md)
+8. [Spatial Navigation](tutorials/08-spatial-navigation.md)
+9. [Section Extraction](tutorials/09-section-extraction.md)
+10. [Form Field Extraction](tutorials/10-form-field-extraction.md)
+11. [Enhanced Table Processing](tutorials/11-enhanced-table-processing.md)
+12. [OCR Integration](tutorials/12-ocr-integration.md)
+13. [Semantic Search](tutorials/13-semantic-search.md)
+14. [Categorizing Documents](tutorials/14-categorizing-documents.md)
+
+## Solving Specific Problems
+
+### Text Extraction Issues
+- **[Extract Clean Text Without Headers and Footers](extracting-clean-text/)** - Remove repeated content that's cluttering your text extraction
+- **[Getting Text from Scanned Documents](ocr/)** - Use OCR to extract text from image-based PDFs
+
+### Table Problems  
+- **[Fix Messy Table Extraction](fix-messy-tables/)** - Handle tables with no borders, merged cells, or poor alignment
+- **[Getting Tables Out of PDFs](tables/)** - Basic to advanced table extraction techniques
+
+### Data Extraction
+- **[Extract Data from Forms and Invoices](process-forms-and-invoices/)** - Pull structured information from standardized documents
+- **[Pulling Structured Data from PDFs](data-extraction/)** - Use AI to extract specific fields from any document
+
+### Document Analysis
+- **[Ask Questions to Your Documents](document-qa/)** - Use natural language to find information
+- **[Categorizing Pages and Regions](categorizing-documents/)** - Automatically classify document types and content
+
+### Finding Content
+- **[Finding What You Need in PDFs](element-selection/)** - Master selectors to locate any element
+- **[PDF Navigation](pdf-navigation/)** - Move around documents and work with multiple pages
+
+### Layout and Structure
+- **[Document Layout Analysis](layout-analysis/)** - Automatically detect titles, tables, and document structure
+- **[Working with Regions](regions/)** - Define and work with specific areas of pages
+- **[Visual Debugging](visual-debugging/)** - See what you're extracting and debug selector issues
+
+## Key Features
 
 ### Find Elements with Selectors
 
@@ -51,8 +101,6 @@ page.find('text:contains("Revenue"):bold').extract_text()
 # Find all large text
 page.find_all('text[size>=12]').extract_text()
 ```
-
-[Learn more about selectors →](element-selection/index.ipynb)
 
 ### Navigate Spatially
 
@@ -68,8 +116,6 @@ methods_text = page.find('text:contains("Methods")').below(
 ).extract_text()
 ```
 
-[Explore more navigation methods →](pdf-navigation/index.ipynb)
-
 ### Extract Clean Text
 
 Easily extract text content, automatically handling common page elements like headers and footers (if exclusions are set).
@@ -83,9 +129,6 @@ some_region = page.find(...)
 region_text = some_region.extract_text()
 ```
 
-[Learn about text extraction →](text-extraction/index.ipynb)
-[Learn about exclusion zones →](regions/index.ipynb#exclusion-zones)
-
 ### Apply OCR
 
 Extract text from scanned documents using various OCR engines.
@@ -97,8 +140,6 @@ ocr_elements = page.apply_ocr()
 # Extract text (will use OCR results if available)
 text = page.extract_text()
 ```
-
-[Explore OCR options →](ocr/index.md)
 
 ### Analyze Document Layout
 
@@ -116,27 +157,21 @@ page.find_all('region[type=table]').highlight(color="blue")
 table_data = page.find('region[type=table]').extract_table()
 ```
 
-[Learn about layout models →](layout-analysis/index.ipynb)
-[Working with tables? →](tables/index.ipynb)
-
 ### Document Question Answering
 
 Ask natural language questions directly to your documents.
 
 ```python
 # Ask a question
-result = pdf.ask("What was the company's revenue in 2022?")
-if result.get("found", False):
-    print(f"Answer: {result['answer']}")
+result = page.ask("What was the company's revenue in 2022?")
+if result.found:
+    print(f"Answer: {result.answer}")
+    result.show()  # Highlight where the answer was found
 ```
-
-[Learn about Document QA →](document-qa/index.ipynb)
 
 ### Classify Pages and Regions
 
 Categorize pages or specific regions based on their content using text or vision models.
-
-**Note:** Requires `pip install "natural-pdf[ai]"`
 
 ```python
 # Classify a page based on text
@@ -144,9 +179,7 @@ labels = ["invoice", "scientific article", "presentation"]
 page.classify(labels, using="text")
 print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
 
-
 # Classify a page based on what it looks like
-labels = ["invoice", "scientific article", "presentation"]
 page.classify(labels, using="vision")
 print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
 ```
@@ -160,30 +193,14 @@ Debug and understand your extractions visually.
 page.find_all('text[size>=14]').show(color="red", label="Headings")
 
 # Launch the interactive viewer (Jupyter)
-# Requires: pip install natural-pdf[viewer]
 page.viewer()
-
-# Or save an image
-# page.save_image("highlighted.png")
 ```
 
-[See more visualization options →](visual-debugging/index.ipynb)
+## Reference Documentation
 
-## Documentation Topics
+- **[Quick Reference](quick-reference/)** - Cheat sheet of essential commands and patterns
+- **[API Reference](api/)** - Complete library reference
 
-Choose what you want to learn about:
+## Understanding Natural PDF
 
-### Task-based Guides
-- [Getting Started](installation/index.md): Install the library and run your first extraction
-- [PDF Navigation](pdf-navigation/index.ipynb): Open PDFs and work with pages
-- [Element Selection](element-selection/index.ipynb): Find text and other elements using selectors
-- [Text Extraction](text-extraction/index.ipynb): Extract clean text from documents
-- [Regions](regions/index.ipynb): Work with specific areas of a page
-- [Visual Debugging](visual-debugging/index.ipynb): See what you're extracting
-- [OCR](ocr/index.md): Extract text from scanned documents
-- [Layout Analysis](layout-analysis/index.ipynb): Detect document structure
-- [Tables](tables/index.ipynb): Extract tabular data
-- [Document QA](document-qa/index.ipynb): Ask questions to your documents
-
-### Reference
-- [API Reference](api/index.md): Complete library reference
+Coming soon: Conceptual guides explaining how Natural PDF thinks about PDFs and when to use different approaches.

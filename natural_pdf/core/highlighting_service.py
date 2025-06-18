@@ -727,6 +727,7 @@ class HighlightingService:
         legend_position: str = "right",
         render_ocr: bool = False,
         resolution: Optional[float] = None,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -741,6 +742,9 @@ class HighlightingService:
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text.
             resolution: Resolution for base page image rendering if width/height not used.
+            crop_bbox: Optional bounding box (x0, top, x1, bottom) in PDF coordinate
+                space to crop the output image to, before legends or other overlays are
+                applied. If None, no cropping is performed.
             **kwargs: Additional args for pdfplumber's to_image (e.g., width, height).
 
         Returns:
@@ -854,6 +858,25 @@ class HighlightingService:
                 page_obj, base_image_pil, preview_highlights, renderer_scale, render_ocr
             )
             rendered_image = renderer.render()
+
+            # --- Optional Cropping BEFORE legend addition ---
+            if crop_bbox is not None:
+                cb_x0, cb_top, cb_x1, cb_bottom = crop_bbox
+                # Convert to pixel coordinates using actual scales
+                left_px = int(cb_x0 * actual_scale_x) - 2
+                top_px = int(cb_top * actual_scale_y) - 2
+                right_px = int(cb_x1 * actual_scale_x) + 2
+                bottom_px = int(cb_bottom * actual_scale_y) + 2
+
+                # Safeguard coordinates within bounds
+                left_px = max(0, min(left_px, rendered_image.width - 1))
+                top_px = max(0, min(top_px, rendered_image.height - 1))
+                right_px = max(left_px + 1, min(right_px, rendered_image.width))
+                bottom_px = max(top_px + 1, min(bottom_px, rendered_image.height))
+
+                rendered_image = rendered_image.crop(
+                    (left_px, top_px, right_px, bottom_px)
+                )
 
             legend = None
             if labels:

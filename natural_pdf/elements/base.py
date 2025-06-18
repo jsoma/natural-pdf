@@ -856,6 +856,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         color: Optional[Union[Tuple, str]] = "red",  # Default color for single element
         label: Optional[str] = None,
         width: Optional[int] = None,  # Add width parameter
+        crop: bool = False,  # NEW: Crop to element bounds before legend
     ) -> Optional["Image.Image"]:
         """
         Show the page with only this element highlighted temporarily.
@@ -867,6 +868,8 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             color: Color to highlight this element (default: red)
             label: Optional label for this element in the legend
             width: Optional width for the output image in pixels
+            crop: If True, crop the rendered image to this element's
+                        bounding box before legends/overlays are added.
 
         Returns:
             PIL Image of the page with only this element highlighted, or None if error.
@@ -893,6 +896,9 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             "use_color_cycling": False,  # Explicitly false for single preview
         }
 
+        # Determine crop bbox
+        crop_bbox = self.bbox if crop else None
+
         # Check if we actually got geometry data
         if temp_highlight_data["bbox"] is None and temp_highlight_data["polygon"] is None:
             logger.warning(f"Cannot show element, failed to get bbox or polygon: {self}")
@@ -907,6 +913,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
                 width=width,  # Pass the width parameter
                 labels=labels,
                 legend_position=legend_position,
+                crop_bbox=crop_bbox,
             )
         except Exception as e:
             logger.error(f"Error calling render_preview for element {self}: {e}", exc_info=True)
@@ -1112,7 +1119,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             return self.expand().to_image(
                 resolution=resolution,
                 include_highlights=False,
-                crop_only=True,
+                crop=True,
             )
         else:
             raise ValueError(f"Unsupported model_type for classification: {model_type}")

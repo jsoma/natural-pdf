@@ -1,10 +1,10 @@
-# Finding Elements with Selectors
+# Finding What You Need in PDFs
 
-Natural PDF uses CSS-like selectors to find elements (text, lines, images, etc.) within a PDF page or document. This guide demonstrates how to use these selectors effectively.
+Finding specific content in PDFs is like being a detective - you need the right tools to hunt down exactly what you're looking for. Natural PDF uses CSS-like selectors to help you find text, lines, images, and other elements in your documents. Think of it like using browser developer tools, but for PDFs.
 
 ## Setup
 
-Let's load a sample PDF to work with. We'll use `01-practice.pdf` which has various elements.
+Let's load up a sample PDF to experiment with. This one has various elements we can practice finding.
 
 ```python
 from natural_pdf import PDF
@@ -19,13 +19,11 @@ page = pdf.pages[0]
 page.show()
 ```
 
-## Basic Element Finding
+## The Basics: Finding Elements
 
-The core methods are `find()` (returns the first match) and `find_all()` (returns all matches as an `ElementCollection`).
+You have two main tools: `find()` (gets the first match) and `find_all()` (gets everything that matches). The basic pattern is `element_type[attribute_filter]:pseudo_class`.
 
-The basic selector structure is `element_type[attribute_filter]:pseudo_class`.
-
-### Finding Text by Content
+### Finding Text by What It Says
 
 ```python
 # Find the first text element containing "Summary"
@@ -40,14 +38,15 @@ len(contains_inadequate)
 ```
 
 ```python
+# Let's see what we found
 summary_text.highlight(label='summary')
 contains_inadequate.highlight(label="inadequate")
 page.to_image(width=700)
 ```
 
-## Selecting by Element Type
+## Finding Different Types of Elements
 
-You can select specific types of elements found in PDFs.
+PDFs contain more than just text - there are rectangles, lines, images, and other shapes.
 
 ```python
 # Find all text elements
@@ -68,136 +67,129 @@ len(all_lines)
 ```
 
 ```python
+# Show where all the lines are
 page.find_all('line').show()
 ```
 
-## Filtering by Attributes
+## Filtering by Properties
 
-Use square brackets `[]` to filter elements by their properties (attributes).
+Use square brackets `[]` to filter elements by their characteristics - size, color, font, etc.
 
-### Common Attributes & Operators
+### Common Properties You Can Filter On
 
-| Attribute     | Example Usage          | Operators | Notes |
-|---------------|------------------------|-----------|-------|
-| `size` (text) | `text[size>=12]`       | `>`, `<`, `>=`, `<=` | Font size in points |
-| `fontname`    | `text[fontname*=Bold]` | `=`, `*=`  | `*=` for contains substring |
-| `color` (text)| `text[color~=red]`     | `~=`      | Approx. match (name, rgb, hex) |
-| `width` (line)| `line[width>1]`        | `>`, `<`, `>=`, `<=` | Line thickness |
-| `source`      | `text[source=ocr]`     | `=`       | `pdf`, `ocr`, `detected` |
-| `type` (region)| `region[type=table]`  | `=`       | Layout analysis region type |
+| Property      | Example Usage          | What It Does | Notes |
+|---------------|------------------------|--------------|-------|
+| `size` (text) | `text[size>=12]`       | Font size in points | Use `>`, `<`, `>=`, `<=` |
+| `fontname`    | `text[fontname*=Bold]` | Font family name | `*=` means "contains" |
+| `color` (text)| `text[color~=red]`     | Text color | `~=` for approximate match |
+| `width` (line)| `line[width>1]`        | Line thickness | Useful for finding borders |
+| `source`      | `text[source=ocr]`     | Where text came from | `pdf`, `ocr`, or `detected` |
+| `type` (region)| `region[type=table]`  | Layout analysis result | From layout detection models |
 
 ```python
-# Find large text (size >= 11 points)
+# Find large text (probably headings)
 page.find_all('text[size>=11]')
 ```
 
 ```python
-# Find text with 'Helvetica' in the font name
+# Find text that uses Helvetica font
 page.find_all('text[fontname*=Helvetica]')
 ```
 
 ```python
-# Find red text (using approximate color match)
-# This PDF has text with color (0.8, 0.0, 0.0)
+# Find red text in this PDF
 red_text = page.find_all('text[color~=red]')
-```
-
-```python
-# Highlight the red text (ignoring existing highlights)
 red_text.show()
 ```
 
 ```python
-# Find thick lines (width >= 2)
+# Find thick lines (might be important borders)
 page.find_all('line[width>=2]')
 ```
 
-## Using Pseudo-Classes
+## Using Special Conditions (Pseudo-Classes)
 
-Use colons `:` for special conditions (pseudo-classes).
+These are powerful filters that let you find elements based on their content or relationship to other elements.
 
 ### Common Pseudo-Classes
 
-| Pseudo-Class          | Example Usage                           | Notes |
-|-----------------------|-----------------------------------------|-------|
-| `:contains('text')` | `text:contains('Report')`             | Finds elements containing specific text |
-| `:bold`               | `text:bold`                             | Finds text heuristically identified as bold |
-| `:italic`             | `text:italic`                           | Finds text heuristically identified as italic |
-| `:below(selector)`    | `text:below('line[width>=2]')`         | Finds elements physically below the reference element |
-| `:above(selector)`    | `text:above('text:contains("Summary")')`| Finds elements physically above the reference element |
-| `:left-of(selector)`  | `line:left-of('rect')`                 | Finds elements physically left of the reference element |
-| `:right-of(selector)` | `text:right-of('rect')`                | Finds elements physically right of the reference element |
-| `:near(selector)`     | `text:near('image')`                   | Finds elements physically near the reference element |
+| Pseudo-Class          | Example                           | What It Finds |
+|-----------------------|-----------------------------------|---------------|
+| `:contains('text')` | `text:contains('Report')`       | Elements containing specific text |
+| `:bold`               | `text:bold`                       | Bold text (detected automatically) |
+| `:italic`             | `text:italic`                     | Italic text |
+| `:below(selector)`    | `text:below('line[width>=2]')`   | Elements below another element |
+| `:above(selector)`    | `text:above('text:contains("Summary")')`| Elements above another element |
+| `:near(selector)`     | `text:near('image')`             | Elements close to another element |
 
-*Note: Spatial pseudo-classes like `:below`, `:above` identify elements based on bounding box positions relative to the **first** element matched by the inner selector.*
+*Spatial pseudo-classes like `:below` and `:above` work based on the **first** element that matches the inner selector.*
 
 ```python
-# Find bold text
+# Find bold text (probably important)
 page.find_all('text:bold').show()
 ```
 
 ```python
-# Combine attribute and pseudo-class: bold text size >= 11
+# Combine filters: large bold text (definitely headings)
 page.find_all('text[size>=11]:bold')
 ```
 
-### Negation Pseudo-class (`:not()`)
+### Excluding Things with `:not()`
 
-You can exclude elements that match a certain selector using the `:not()` pseudo-class. It takes another simple selector as its argument.
+Sometimes it's easier to say what you don't want than what you do want.
 
 ```python
-# Find all text elements that are NOT bold
+# Find all text that's NOT bold
 non_bold_text = page.find_all('text:not(:bold)')
 
-# Find all elements that are NOT regions of type 'table'
+# Find all elements that are NOT tables  
 not_tables = page.find_all(':not(region[type=table])')
 
-# Find text elements that do not contain "Total" (case-insensitive)
+# Find text that doesn't contain "Total"
 relevant_text = page.find_all('text:not(:contains("Total"))', case=False)
 
-# Find text elements that are not empty
+# Find text that isn't empty
 non_empty_text = page.find_all('text:not(:empty)')
 ```
 
-**Note:** The selector inside `:not()` follows the same rules as regular selectors but currently does not support combinators (like `>`, `+`, `~`, or descendant space) within `:not()`. You can nest basic type, attribute, and other pseudo-class selectors.
+### Finding Things Relative to Other Things
 
-### Spatial Pseudo-Classes Examples
+This is super useful when you know the structure of your document.
 
 ```python
-# Find the thick horizontal line first
+# First, find a thick horizontal line
 ref_line = page.find('line[width>=2]')
 
-# Find text elements strictly above that line
+# Now find text that's above that line
 text_above_line = page.find_all('text:above("line[width>=2]")')
 text_above_line
 ```
 
-## Advanced Text Searching Options
+## Advanced Text Searching
 
-Pass options to `find()` or `find_all()` for more control over text matching.
+When you need more control over how text matching works:
 
 ```python
-# Case-insensitive search for "summary"
+# Case-insensitive search
 page.find_all('text:contains("summary")', case=False)
 ```
 
 ```python
-# Regular expression search for the inspection ID (e.g., INS-XXX...)
-# The ID is in the red text we found earlier
+# Regular expression search (for patterns like inspection IDs)
 page.find_all('text:contains("INS-\\w+")', regex=True)
 ```
 
 ```python
-# Combine regex and case-insensitivity
+# Combine regex with case-insensitivity
 page.find_all('text:contains("jungle health")', regex=True, case=False)
 ```
 
-## Working with ElementCollections
+## Working with Groups of Elements
 
-`find_all()` returns an `ElementCollection`, which is like a list but with extra PDF-specific methods.
+`find_all()` returns an `ElementCollection` - like a list, but with PDF-specific superpowers.
 
 ```python
-# Get all headings (using a selector for large, bold text)
+# Get all headings (large, bold text)
 headings = page.find_all('text[size>=11]:bold')
 headings
 ```
@@ -210,35 +202,36 @@ last = headings.last
 ```
 
 ```python
-# Get the physically highest/lowest element in the collection
+# Get the physically highest/lowest element
 highest = headings.highest()
 lowest = headings.lowest()
 (highest, lowest)
 ```
 
 ```python
-# Filter the collection further: headings containing "Service"
+# Filter the collection further
 service_headings = headings.filter(lambda heading: 'Service' in heading.extract_text())
 ```
 
 ```python
-# Extract text from all elements in the collection
+# Extract text from all elements at once
 headings.extract_text()
 ```
 
-*Remember: `.highest()`, `.lowest()`, `.leftmost()`, `.rightmost()` raise errors if the collection spans multiple pages.*
+*Note: `.highest()`, `.lowest()`, etc. will complain if your collection spans multiple pages.*
 
-## Font Variants
+## Dealing with Weird Font Names
 
-Sometimes PDFs use font variants (prefixes like `AAAAAB+`) which can be useful for selection.
+PDFs sometimes have bizarre font names that don't look like normal fonts. Don't worry - they're usually normal fonts with weird internal names.
 
 ```python
-# Find text elements with a specific font variant prefix (if any exist)
-# This example PDF doesn't use variants, but the selector works like this:
+# Find text with specific font variants (if they exist)
 page.find_all('text[font-variant=AAAAAB]')
 ```
 
-## Containment geometry
+## Testing Relationships Between Elements
+
+Want to see how elements relate to each other spatially? Let's try a different PDF:
 
 ```python
 from natural_pdf import PDF
@@ -249,31 +242,3 @@ page = pdf.pages[0]
 rect = page.find('rect')
 rect.show(width=500)
 ```
-
-By default, being inside of something means being *fully inside* of the outer object.
-
-```python
-# rect.find_all('text', contains='all').show()
-rect.find_all('text').show()
-```
-
-If you're interested in *any* overlap, you can use `contains='any'`.
-
-```python
-rect.find_all('text', contains='any').show()
-```
-
-For just the center being part of it, `contains='center'` will work for you.
-
-```python
-rect.find_all('text', contains='center').show()
-```
-
-## Next Steps
-
-Now that you can find elements, explore:
-
-- [Text Extraction](../text-extraction/index.ipynb): Get text content from found elements.
-- [Spatial Navigation](../pdf-navigation/index.ipynb): Use found elements as anchors to navigate (`.above()`, `.below()`, etc.).
-- [Working with Regions](../regions/index.ipynb): Define areas based on found elements.
-- [Visual Debugging](../visual-debugging/index.ipynb): Techniques for highlighting and visualizing elements.

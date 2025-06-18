@@ -426,7 +426,7 @@ class FlowRegion:
         for region_part in self.constituent_regions:
             try:
                 img = region_part.to_image(
-                    resolution=resolution, crop_only=True, include_highlights=False, **kwargs
+                    resolution=resolution, crop=True, include_highlights=False, **kwargs
                 )
                 if img:
                     cropped_images.append(img)

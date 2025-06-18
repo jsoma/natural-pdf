@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
+import warnings
 
 from .results import ClassificationResult
 
@@ -74,32 +75,52 @@ class ClassificationMixin:
         try:
             manager = self._get_classification_manager()
 
-            # Determine the effective model ID and engine type
-            effective_model_id = model
-            inferred_using = manager.infer_using(
-                model if model else manager.DEFAULT_TEXT_MODEL, using
-            )
+            # ------------------------------------------------------------
+            # Resolve engine ('text' vs 'vision')
+            # ------------------------------------------------------------
+            engine: Optional[str] = using  # rename for clarity
 
-            # If model was not provided, use the manager's default for the inferred engine type
+            content = None  # will hold final content
+
+            if engine is None:
+                # Try text first
+                try:
+                    tentative_text = self._get_classification_content("text", **kwargs)
+                    if tentative_text and not (isinstance(tentative_text, str) and tentative_text.isspace()):
+                        engine = "text"
+                        content = tentative_text
+                    else:
+                        raise ValueError("Empty text")
+                except Exception:
+                    warnings.warn(
+                        "No text found for classification; falling back to vision model. "
+                        "Pass using='vision' explicitly to silence this message.",
+                        UserWarning,
+                    )
+                    engine = "vision"
+
+            # If engine determined but content not yet retrieved, get it now
+            if content is None:
+                content = self._get_classification_content(model_type=engine, **kwargs)
+
+            # ------------------------------------------------------------
+            # Determine model ID default based on engine
+            # ------------------------------------------------------------
+            effective_model_id = model
             if effective_model_id is None:
                 effective_model_id = (
-                    manager.DEFAULT_TEXT_MODEL
-                    if inferred_using == "text"
-                    else manager.DEFAULT_VISION_MODEL
+                    manager.DEFAULT_TEXT_MODEL if engine == "text" else manager.DEFAULT_VISION_MODEL
                 )
                 logger.debug(
-                    f"No model provided, using default for mode '{inferred_using}': '{effective_model_id}'"
+                    f"No model provided, using default for mode '{engine}': '{effective_model_id}'"
                 )
-
-            # Get content based on the *final* determined engine type
-            content = self._get_classification_content(model_type=inferred_using, **kwargs)
 
             # Manager now returns a ClassificationResult object
             result_obj: ClassificationResult = manager.classify_item(
                 item_content=content,
                 labels=labels,
                 model_id=effective_model_id,
-                using=inferred_using,
+                using=engine,
                 min_confidence=min_confidence,
                 multi_label=multi_label,
                 **kwargs,

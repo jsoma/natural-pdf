@@ -852,6 +852,7 @@ class ElementCollection(
         render_ocr: bool = False,
         width: Optional[int] = None,  # Add width parameter
         page: Optional[Any] = None,  # NEW: Optional page parameter for empty collections
+        crop: bool = False,  # NEW: If True, crop output to element bounds
     ) -> Optional["Image.Image"]:
         """
         Generates a temporary preview image highlighting elements in this collection
@@ -875,6 +876,9 @@ class ElementCollection(
             legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
             render_ocr: Whether to render OCR text.
             width: Optional width for the output image in pixels.
+            crop: If True, crop the resulting image to the tight bounding box
+                        containing all elements in the collection. The elements are
+                        still highlighted first, then the image is cropped.
 
         Returns:
             PIL Image object of the temporary preview, or None if rendering fails or
@@ -931,7 +935,23 @@ class ElementCollection(
 
         # 2. Call render_preview on the HighlightingService
         try:
-            return service.render_preview(
+            # Calculate crop bounding box in PDF coordinates if crop is requested
+            crop_bbox = None
+            if crop:
+                try:
+                    crop_bbox = (
+                        min(el.x0 for el in self._elements),
+                        min(el.top for el in self._elements),
+                        max(el.x1 for el in self._elements),
+                        max(el.bottom for el in self._elements),
+                    )
+                except Exception as bbox_err:
+                    logger.error(
+                        f"Error determining crop bbox for collection show: {bbox_err}",
+                        exc_info=True,
+                    )
+
+            img = service.render_preview(
                 page_index=page.index,
                 temporary_highlights=highlight_data_list,
                 scale=scale,
@@ -939,7 +959,9 @@ class ElementCollection(
                 labels=labels,  # Use 'labels'
                 legend_position=legend_position,
                 render_ocr=render_ocr,
+                crop_bbox=crop_bbox,
             )
+            return img
         except Exception as e:
             logger.error(f"Error calling highlighting_service.render_preview: {e}", exc_info=True)
             return None
