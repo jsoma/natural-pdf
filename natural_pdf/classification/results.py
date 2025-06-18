@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class CategoryScore:
 
 
 @dataclass
-class ClassificationResult:
+class ClassificationResult(Mapping):
     """Results from a classification operation."""
 
     category: Optional[str]  # Can be None if scores are empty
@@ -86,3 +87,17 @@ class ClassificationResult:
 
     def __repr__(self) -> str:
         return f"<ClassificationResult category='{self.category}' score={self.score:.3f} model='{self.model_id}'>"
+
+    def __iter__(self):
+        """Iterate over mapping keys (linked to ``to_dict`` so it stays in sync)."""
+        return iter(self.to_dict())
+
+    def __getitem__(self, key):
+        """Dictionary-style access to attributes."""
+        try:
+            return self.to_dict()[key]
+        except KeyError as exc:
+            raise KeyError(key) from exc
+
+    def __len__(self):
+        return len(self.to_dict())

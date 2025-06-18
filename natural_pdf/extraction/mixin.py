@@ -1,8 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type, Sequence
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, create_model
 
 # Avoid circular import
 if TYPE_CHECKING:
@@ -65,12 +65,13 @@ class ExtractionMixin(ABC):
     def extract(
         self: Any,
         schema: Type[BaseModel],
-        client: Any,
+        client: Any = None,
         analysis_key: str = DEFAULT_STRUCTURED_KEY,  # Default key
         prompt: Optional[str] = None,
         using: str = "text",
         model: Optional[str] = None,
-        overwrite: bool = False,  # Add overwrite parameter
+        engine: Optional[str] = None,  # NEW: choose between 'llm' and 'doc_qa'
+        overwrite: bool = True,  # Overwrite by default
         **kwargs,
     ) -> Any:
         """
@@ -79,18 +80,67 @@ class ExtractionMixin(ABC):
         Results are stored in the element's `analyses` dictionary.
 
         Args:
-            schema: Pydantic model class defining the desired structure
-            client: Initialized LLM client
+            schema: Either a Pydantic model class defining the desired structure, or an
+                    iterable (e.g. list) of field names. When iterable is supplied a
+                    temporary Pydantic model of string fields is created automatically.
+            client: Initialized LLM client (required for LLM engine only)
             analysis_key: Key to store the result under in `analyses`. Defaults to "default-structured".
             prompt: Optional user-provided prompt for the LLM
             using: Modality ('text' or 'vision')
             model: Optional specific LLM model identifier
-            overwrite: If True, allow overwriting an existing result at `analysis_key`.
+            engine: Extraction engine to use ("llm" or "doc_qa"). If None, auto-determined.
+            overwrite: Whether to overwrite an existing result stored at `analysis_key`. Defaults to True.
             **kwargs: Additional parameters for extraction
 
         Returns:
             Self for method chaining
         """
+        # ------------------------------------------------------------------
+        # If the user supplied a plain list/tuple of field names, dynamically
+        # build a simple Pydantic model (all `str` fields) so the rest of the
+        # pipeline can work unmodified.
+        # ------------------------------------------------------------------
+        if not isinstance(schema, type):  # not already a class
+            if isinstance(schema, Sequence):
+                field_names = list(schema)
+                if not field_names:
+                    raise ValueError("Schema list cannot be empty")
+
+                import re
+
+                field_defs = {}
+                for orig_name in field_names:
+                    safe_name = re.sub(r"[^0-9a-zA-Z_]", "_", orig_name)
+                    if safe_name and safe_name[0].isdigit():
+                        safe_name = f"_{safe_name}"
+
+                    field_defs[safe_name] = (
+                        str,
+                        Field(
+                            None,
+                            description=f"{orig_name}",
+                            alias=orig_name,  # allow access via original name
+                        ),
+                    )
+
+                schema = create_model("DynamicExtractSchema", **field_defs)  # type: ignore[arg-type]
+            else:
+                raise TypeError(
+                    "schema must be a Pydantic model class or a sequence of field names"
+                )
+
+        # ------------------------------------------------------------------
+        # Resolve which engine to use
+        # ------------------------------------------------------------------
+        if engine not in (None, "llm", "doc_qa"):
+            raise ValueError("engine must be either 'llm', 'doc_qa', or None")
+
+        # Auto-select: LLM when client provided, else Document-QA
+        if engine is None:
+            engine = "llm" if client is not None else "doc_qa"
+
+        logger.info(f"Extraction engine resolved to '{engine}'")
+
         if not analysis_key:
             raise ValueError("analysis_key cannot be empty for extract operation")
 
@@ -99,11 +149,47 @@ class ExtractionMixin(ABC):
             self.analyses = {}
 
         if analysis_key in self.analyses and not overwrite:
-            raise ValueError(
-                f"Analysis key '{analysis_key}' already exists in analyses. "
-                f"Use overwrite=True to replace it. Available keys: {list(self.analyses.keys())}"
+            logger.info(
+                f"Extraction for key '{analysis_key}' already exists; returning cached result. "
+                "Pass overwrite=True to force re-extraction."
             )
+            return self
         # --- End Overwrite Check --- #
+
+        # ------------------------------------------------------------------
+        # Delegate to engine-specific helpers and return early
+        # ------------------------------------------------------------------
+        if engine == "doc_qa":
+            self._perform_docqa_extraction(
+                schema=schema,
+                analysis_key=analysis_key,
+                model=model,
+                overwrite=overwrite,
+                **kwargs,
+            )
+            return self
+
+        if engine == "llm":
+            if client is None:
+                raise ValueError("LLM engine selected but no 'client' was provided.")
+
+            self._perform_llm_extraction(
+                schema=schema,
+                client=client,
+                analysis_key=analysis_key,
+                prompt=prompt,
+                using=using,
+                model=model,
+                overwrite=overwrite,
+                **kwargs,
+            )
+            return self
+
+        # ------------------------------------------------------------------
+        # LLM ENGINE  (existing behaviour)
+        # ------------------------------------------------------------------
+        if engine == "llm" and client is None:
+            raise ValueError("LLM engine selected but no 'client' was provided.")
 
         # Determine PDF instance to get manager
         pdf_instance = None
@@ -162,7 +248,7 @@ class ExtractionMixin(ABC):
                 data=None,
                 success=False,
                 error_message=f"No content available for extraction (using='{using}')",
-                model=model,  # Use model requested, even if failed
+                model_used=model,  # Use model requested, even if failed
             )
         else:
             result = manager.extract(
@@ -277,3 +363,201 @@ class ExtractionMixin(ABC):
                     raise TypeError(
                         f"Could not access field/attribute '{field_name}' on extracted data for key '{target_key}' (type: {type(result.data).__name__}). Error: {e}"
                     ) from e
+
+    # ------------------------------------------------------------------
+    # Internal helper: Document-QA powered extraction
+    # ------------------------------------------------------------------
+    def _perform_docqa_extraction(
+        self,
+        *,
+        schema: Type[BaseModel],
+        analysis_key: str,
+        model: Optional[str] = None,
+        overwrite: bool = True,
+        min_confidence: float = 0.1,
+        debug: bool = False,
+        question_map: Optional[dict] = None,
+        **kwargs,
+    ) -> None:
+        """Run extraction using the local Document-QA engine.
+
+        Mutates ``self.analyses[analysis_key]`` with a StructuredDataResult.
+        """
+        question_map = question_map or {}
+
+        try:
+            from natural_pdf.qa.document_qa import get_qa_engine
+            from natural_pdf.extraction.result import StructuredDataResult
+            from pydantic import Field as _Field, create_model
+            import re
+        except ImportError as exc:
+            raise RuntimeError(
+                "Document-QA dependencies missing. Install with `pip install natural-pdf[ai]`."
+            ) from exc
+
+        qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
+
+        # Iterate over schema fields
+        if hasattr(schema, "__fields__"):
+            fields_iter = schema.__fields__.items()  # Pydantic v1
+        else:
+            fields_iter = schema.model_fields.items()  # Pydantic v2
+
+        answers: dict = {}
+        confidences: dict = {}
+        errors: list[str] = []
+
+        # Ensure we can call QA on this object type
+        from natural_pdf.core.page import Page as _Page
+        from natural_pdf.elements.region import Region as _Region
+
+        if not isinstance(self, (_Page, _Region)):
+            raise NotImplementedError(
+                "Document-QA extraction is only supported on Page or Region objects."
+            )
+
+        for field_name, field_obj in fields_iter:
+            display_name = getattr(field_obj, "alias", field_name)
+
+            # Compose question text
+            if display_name in question_map:
+                question = question_map[display_name]
+            else:
+                description = None
+                if hasattr(field_obj, "field_info") and hasattr(field_obj.field_info, "description"):
+                    description = field_obj.field_info.description
+                elif hasattr(field_obj, "description"):
+                    description = field_obj.description
+
+                question = description or f"What is the {display_name.replace('_', ' ')}?"
+
+            try:
+                # Ask via appropriate helper
+                if isinstance(self, _Page):
+                    qa_resp = qa_engine.ask_pdf_page(
+                        self,
+                        question,
+                        min_confidence=min_confidence,
+                        debug=debug,
+                    )
+                else:  # Region
+                    qa_resp = qa_engine.ask_pdf_region(
+                        self,
+                        question,
+                        min_confidence=min_confidence,
+                        debug=debug,
+                    )
+
+                confidence_val = qa_resp.get("confidence") if qa_resp else None
+                answer_val = qa_resp.get("answer") if qa_resp else None
+
+                if confidence_val is not None and confidence_val < min_confidence:
+                    answer_val = None
+
+                answers[display_name] = answer_val
+                confidences[f"{display_name}_confidence"] = confidence_val
+
+            except Exception as e:  # noqa: BLE001
+                logger.error("Doc-QA failed for field '%s': %s", field_name, e)
+                errors.append(str(e))
+                answers[display_name] = None
+                confidences[f"{display_name}_confidence"] = None
+
+        combined = {**answers, **confidences}
+
+        # Build extended model that includes confidence fields
+        field_defs_ext = {}
+        for orig_key, val in combined.items():
+            safe_key = re.sub(r"[^0-9a-zA-Z_]", "_", orig_key)
+            if safe_key and safe_key[0].isdigit():
+                safe_key = f"_{safe_key}"
+
+            if orig_key.endswith("_confidence"):
+                field_defs_ext[safe_key] = (
+                    Optional[float],
+                    _Field(None, description=f"Confidence for {orig_key}", alias=orig_key),
+                )
+            else:
+                field_defs_ext[safe_key] = (
+                    Optional[type(val) if val is not None else str],
+                    _Field(None, alias=orig_key),
+                )
+
+        ExtendedSchema = create_model(f"{schema.__name__}WithConf", **field_defs_ext)
+
+        try:
+            structured_instance = ExtendedSchema(**combined)
+            success_flag = not errors
+            err_msg = None if not errors else "; ".join(errors)
+        except Exception as exc:  # noqa: BLE001
+            structured_instance = None
+            success_flag = False
+            err_msg = str(exc)
+
+        result = StructuredDataResult(
+            data=structured_instance if structured_instance is not None else combined,
+            success=success_flag,
+            error_message=err_msg,
+            model_used=getattr(qa_engine, "model_name", None),
+        )
+
+        self.analyses[analysis_key] = result
+
+    # ------------------------------------------------------------------
+    # Internal helper: LLM powered extraction (existing behaviour)
+    # ------------------------------------------------------------------
+    def _perform_llm_extraction(
+        self,
+        *,
+        schema: Type[BaseModel],
+        client: Any,
+        analysis_key: str,
+        prompt: Optional[str] = None,
+        using: str = "text",
+        model: Optional[str] = None,
+        overwrite: bool = True,
+        **kwargs,
+    ) -> None:
+        """Run extraction via the StructuredDataManager (LLM)."""
+
+        from natural_pdf.extraction.result import StructuredDataResult
+
+        # Determine PDF instance to obtain StructuredDataManager
+        pdf_instance = None
+
+        if hasattr(self, "get_manager") and callable(self.get_manager):
+            pdf_instance = self
+        elif hasattr(self, "pdf") and hasattr(self.pdf, "get_manager"):
+            pdf_instance = self.pdf
+        elif hasattr(self, "page") and hasattr(self.page, "pdf") and hasattr(self.page.pdf, "get_manager"):
+            pdf_instance = self.page.pdf
+        else:
+            raise RuntimeError("Cannot access PDF manager to perform LLM extraction.")
+
+        manager = pdf_instance.get_manager("structured_data")
+        if not manager or not manager.is_available():
+            raise RuntimeError("StructuredDataManager is not available")
+
+        # Content preparation
+        layout_for_text = kwargs.pop("layout", True)
+        content = self._get_extraction_content(using=using, layout=layout_for_text, **kwargs)
+
+        if content is None or (using == "text" and isinstance(content, str) and not content.strip()):
+            result = StructuredDataResult(
+                data=None,
+                success=False,
+                error_message=f"No content available for extraction (using='{using}')",
+                model_used=model,
+            )
+        else:
+            result = manager.extract(
+                content=content,
+                schema=schema,
+                client=client,
+                prompt=prompt,
+                using=using,
+                model=model,
+                **kwargs,
+            )
+
+        self.analyses[analysis_key] = result

@@ -17,6 +17,65 @@ This feature allows you to define the exact data structure you want using a Pyda
 
 > Not sure how to write a Pydantic schema? Just ask an LLM! "Write me a Pydantic schema to pull out an invoice number (an integer), a company name (string) and a date (string)." It'll go fine.
 
+## Quick Start: Just Pass a List
+
+Don't want to write a Pydantic schema? You don't have to. Just pass a list of the fields you want:
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("inspection-report.pdf")
+page = pdf.pages[0]
+
+# Extract data using just a list - no schema required!
+data = page.extract(schema=["site", "date", "violation count", "inspector"]).extracted()
+
+print(data.site)  # "ACME Manufacturing Plant"
+print(data.date)  # "2024-03-15"
+print(data.violation_count)  # "3"
+```
+
+Natural PDF automatically builds a schema for you and extracts the data. Each field becomes a string, and you get confidence scores for free:
+
+```python
+# Check how confident the extraction was
+print(data.site_confidence)  # 0.89
+print(data.date_confidence)  # 0.95
+```
+
+This works entirely offline - no API keys or internet connection required. It uses a local document question-answering model that understands both text and layout.
+
+## Working Offline
+
+Sometimes you don't want to send documents to an external API, or you're working somewhere without internet. Natural PDF has you covered:
+
+```python
+# This works completely offline
+page.extract(schema=["company", "total", "due_date"])
+```
+
+The offline engine is pretty smart - it looks at both the text content and the visual layout to find answers. For low-confidence results, you can set a threshold:
+
+```python
+# Only accept answers the model is confident about
+page.extract(schema=["amount", "date"], min_confidence=0.8)
+```
+
+If an answer falls below your confidence threshold, it gets set to `None` instead of returning questionable data.
+
+You can also use local LLMs if you prefer the structured output capabilities. Tools like [LM Studio](https://lmstudio.ai/) or [Msty](https://msty.app/) can run models like Qwen locally and provide an OpenAI-compatible API:
+
+```python
+from openai import OpenAI
+
+# Point to your local LLM server
+client = OpenAI(base_url="http://localhost:1234/v1", api_key="not-needed")
+
+page.extract(schema=InvoiceSchema, client=client)
+```
+
+Just be warned - local LLMs are much slower than the document QA approach for simple extractions!
+
 ## Basic Extraction
 
 1.  **Define a Schema:** Create a Pydantic model for your desired data.

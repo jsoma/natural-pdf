@@ -126,10 +126,10 @@ class StructuredDataManager:
             )
             parsed_data = completion.choices[0].message.parsed
             return StructuredDataResult(
-                data=parsed_data, success=True, error_message=None, model=selected_model
+                data=parsed_data, success=True, error_message=None, model_used=selected_model
             )
         except Exception as e:
             logger.error(f"Extraction failed: {str(e)}")
             return StructuredDataResult(
-                data=None, success=False, error_message=str(e), model=selected_model
+                data=None, success=False, error_message=str(e), model_used=selected_model
             )
