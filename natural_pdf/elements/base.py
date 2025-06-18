@@ -9,11 +9,13 @@ from PIL import Image
 # Import selector parsing functions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.describe.mixin import DescribeMixin
+from natural_pdf.classification.mixin import ClassificationMixin
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.region import Region
+    from natural_pdf.classification.manager import ClassificationManager  # noqa: F401
 
 
 def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
@@ -413,7 +415,7 @@ class DirectionalMixin:
         return new_region
 
 
-class Element(DirectionalMixin, DescribeMixin):
+class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
     """
     Base class for all PDF elements.
 
@@ -431,6 +433,10 @@ class Element(DirectionalMixin, DescribeMixin):
         """
         self._obj = obj
         self._page = page
+
+        # Containers for per-element metadata and analysis results (e.g., classification)
+        self.metadata: Dict[str, Any] = {}
+        # Access analysis results via self.analyses property (see below)
 
     @property
     def type(self) -> str:
@@ -1070,3 +1076,68 @@ class Element(DirectionalMixin, DescribeMixin):
             case=case,
             **kwargs,
         )
+
+    # ------------------------------------------------------------------
+    # ClassificationMixin requirements
+    # ------------------------------------------------------------------
+
+    def _get_classification_manager(self) -> "ClassificationManager":
+        """Access the shared ClassificationManager via the parent PDF."""
+        if (
+            not hasattr(self, "page")
+            or not hasattr(self.page, "pdf")
+            or not hasattr(self.page.pdf, "get_manager")
+        ):
+            raise AttributeError(
+                "ClassificationManager cannot be accessed: Parent Page, PDF, or get_manager method missing."
+            )
+
+        return self.page.pdf.get_manager("classification")
+
+    def _get_classification_content(self, model_type: str, **kwargs):  # type: ignore[override]
+        """Return either text or an image, depending on model_type (text|vision)."""
+        if model_type == "text":
+            text_content = self.extract_text(layout=False)  # type: ignore[arg-type]
+            if not text_content or text_content.isspace():
+                raise ValueError(
+                    "Cannot classify element with 'text' model: No text content found."
+                )
+            return text_content
+
+        elif model_type == "vision":
+            # Delegate to Region implementation via a temporary expand()
+            resolution = kwargs.get("resolution", 150)
+            from natural_pdf.elements.region import Region  # Local import to avoid cycles
+
+            return self.expand().to_image(
+                resolution=resolution,
+                include_highlights=False,
+                crop_only=True,
+            )
+        else:
+            raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    # ------------------------------------------------------------------
+    # Lightweight to_image proxy (vision models, previews, etc.)
+    # ------------------------------------------------------------------
+
+    def to_image(self, *args, **kwargs):  # type: ignore[override]
+        """Generate an image of this element by delegating to a temporary Region."""
+        return self.expand().to_image(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Unified analysis storage (maps to metadata["analysis"])
+    # ------------------------------------------------------------------
+
+    @property
+    def analyses(self) -> Dict[str, Any]:
+        """Dictionary holding model-generated analysis objects (classification, extraction, …)."""
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        return self.metadata.setdefault("analysis", {})
+
+    @analyses.setter
+    def analyses(self, value: Dict[str, Any]):
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        self.metadata["analysis"] = value

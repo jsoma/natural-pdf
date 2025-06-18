@@ -82,7 +82,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self.end_element = None
 
         self.metadata: Dict[str, Any] = {}
-        self.analyses: Dict[str, Any] = {}
+        # Analysis results live under self.metadata['analysis'] via property
 
         # Standard attributes for all elements
         self.object_type = "region"  # For selector compatibility
@@ -115,146 +115,28 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         **kwargs,
     ) -> "Region":
         """
-        Protected helper method to create a region in a specified direction relative to this region.
+        Region-specific wrapper around :py:meth:`DirectionalMixin._direction`.
 
-        Args:
-            direction: 'left', 'right', 'above', or 'below'
-            size: Size in the primary direction (width for horizontal, height for vertical)
-            cross_size: Size in the cross direction ('full' or 'element')
-            include_source: Whether to include this region's area in the result
-            until: Optional selector string to specify a boundary element
-            include_endpoint: Whether to include the boundary element found by 'until'
-            **kwargs: Additional parameters for the 'until' selector search
-
-        Returns:
-            Region object
+        It performs any pre-processing required by *Region* (none currently),
+        delegates the core geometry work to the mix-in implementation via
+        ``super()``, then attaches region-level metadata before returning the
+        new :class:`Region` instance.
         """
-        import math  # Use math.inf for infinity
 
-        is_horizontal = direction in ("left", "right")
-        is_positive = direction in ("right", "below")  # right/below are positive directions
-        pixel_offset = 1  # Offset for excluding elements/endpoints
+        # Delegate to the shared implementation on DirectionalMixin
+        region = super()._direction(
+            direction=direction,
+            size=size,
+            cross_size=cross_size,
+            include_source=include_source,
+            until=until,
+            include_endpoint=include_endpoint,
+            **kwargs,
+        )
 
-        # 1. Determine initial boundaries based on direction and include_source
-        if is_horizontal:
-            # Initial cross-boundaries (vertical)
-            y0 = 0 if cross_size == "full" else self.top
-            y1 = self.page.height if cross_size == "full" else self.bottom
-
-            # Initial primary boundaries (horizontal)
-            if is_positive:  # right
-                x0_initial = self.x0 if include_source else self.x1 + pixel_offset
-                x1_initial = self.x1  # This edge moves
-            else:  # left
-                x0_initial = self.x0  # This edge moves
-                x1_initial = self.x1 if include_source else self.x0 - pixel_offset
-        else:  # Vertical
-            # Initial cross-boundaries (horizontal)
-            x0 = 0 if cross_size == "full" else self.x0
-            x1 = self.page.width if cross_size == "full" else self.x1
-
-            # Initial primary boundaries (vertical)
-            if is_positive:  # below
-                y0_initial = self.top if include_source else self.bottom + pixel_offset
-                y1_initial = self.bottom  # This edge moves
-            else:  # above
-                y0_initial = self.top  # This edge moves
-                y1_initial = self.bottom if include_source else self.top - pixel_offset
-
-        # 2. Calculate the final primary boundary, considering 'size' or page limits
-        if is_horizontal:
-            if is_positive:  # right
-                x1_final = min(
-                    self.page.width,
-                    x1_initial + (size if size is not None else (self.page.width - x1_initial)),
-                )
-                x0_final = x0_initial
-            else:  # left
-                x0_final = max(0, x0_initial - (size if size is not None else x0_initial))
-                x1_final = x1_initial
-        else:  # Vertical
-            if is_positive:  # below
-                y1_final = min(
-                    self.page.height,
-                    y1_initial + (size if size is not None else (self.page.height - y1_initial)),
-                )
-                y0_final = y0_initial
-            else:  # above
-                y0_final = max(0, y0_initial - (size if size is not None else y0_initial))
-                y1_final = y1_initial
-
-        # 3. Handle 'until' selector if provided
-        target = None
-        if until:
-            all_matches = self.page.find_all(until, **kwargs)
-            matches_in_direction = []
-
-            # Filter and sort matches based on direction
-            if direction == "above":
-                matches_in_direction = [m for m in all_matches if m.bottom <= self.top]
-                matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
-            elif direction == "below":
-                matches_in_direction = [m for m in all_matches if m.top >= self.bottom]
-                matches_in_direction.sort(key=lambda e: e.top)
-            elif direction == "left":
-                matches_in_direction = [m for m in all_matches if m.x1 <= self.x0]
-                matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
-            elif direction == "right":
-                matches_in_direction = [m for m in all_matches if m.x0 >= self.x1]
-                matches_in_direction.sort(key=lambda e: e.x0)
-
-            if matches_in_direction:
-                target = matches_in_direction[0]
-
-                # Adjust the primary boundary based on the target
-                if is_horizontal:
-                    if is_positive:  # right
-                        x1_final = target.x1 if include_endpoint else target.x0 - pixel_offset
-                    else:  # left
-                        x0_final = target.x0 if include_endpoint else target.x1 + pixel_offset
-                else:  # Vertical
-                    if is_positive:  # below
-                        y1_final = target.bottom if include_endpoint else target.top - pixel_offset
-                    else:  # above
-                        y0_final = target.top if include_endpoint else target.bottom + pixel_offset
-
-                # Adjust cross boundaries if cross_size is 'element'
-                if cross_size == "element":
-                    if is_horizontal:  # Adjust y0, y1
-                        target_y0 = (
-                            target.top if include_endpoint else target.bottom
-                        )  # Use opposite boundary if excluding
-                        target_y1 = target.bottom if include_endpoint else target.top
-                        y0 = min(y0, target_y0)
-                        y1 = max(y1, target_y1)
-                    else:  # Adjust x0, x1
-                        target_x0 = (
-                            target.x0 if include_endpoint else target.x1
-                        )  # Use opposite boundary if excluding
-                        target_x1 = target.x1 if include_endpoint else target.x0
-                        x0 = min(x0, target_x0)
-                        x1 = max(x1, target_x1)
-
-        # 4. Finalize bbox coordinates
-        if is_horizontal:
-            bbox = (x0_final, y0, x1_final, y1)
-        else:
-            bbox = (x0, y0_final, x1, y1_final)
-
-        # Ensure valid coordinates (x0 <= x1, y0 <= y1)
-        final_x0 = min(bbox[0], bbox[2])
-        final_y0 = min(bbox[1], bbox[3])
-        final_x1 = max(bbox[0], bbox[2])
-        final_y1 = max(bbox[1], bbox[3])
-        final_bbox = (final_x0, final_y0, final_x1, final_y1)
-
-        # 5. Create and return Region
-        region = Region(self.page, final_bbox)
+        # Post-process: make sure callers can trace lineage and flags
         region.source_element = self
         region.includes_source = include_source
-        # Optionally store the boundary element if found
-        if target:
-            region.boundary_element = target
 
         return region
 
@@ -2963,5 +2845,21 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 )
 
         return text_element
+
+    # ------------------------------------------------------------------
+    # Unified analysis storage (maps to metadata["analysis"])
+    # ------------------------------------------------------------------
+
+    @property
+    def analyses(self) -> Dict[str, Any]:
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        return self.metadata.setdefault("analysis", {})
+
+    @analyses.setter
+    def analyses(self, value: Dict[str, Any]):
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        self.metadata["analysis"] = value
 
 

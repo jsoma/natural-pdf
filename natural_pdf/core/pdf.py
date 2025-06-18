@@ -263,7 +263,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         self._initialize_managers()
         self._initialize_highlighter()
-        self.analyses: Dict[str, Any] = {}
+        # Analysis results accessed via self.analyses property (see below)
 
         # --- Automatic cleanup when object is garbage-collected ---
         self._finalizer = weakref.finalize(
@@ -1801,6 +1801,26 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise ValueError(f"Unsupported model_type for PDF classification: {model_type}")
 
     # --- End Classification Mixin Implementation ---
+
+    # ------------------------------------------------------------------
+    # Unified analysis storage (maps to metadata["analysis"])
+    # ------------------------------------------------------------------
+
+    @property
+    def analyses(self) -> Dict[str, Any]:
+        if not hasattr(self, "metadata") or self.metadata is None:
+            # For PDF, metadata property returns self._pdf.metadata which may be None
+            self._pdf.metadata = self._pdf.metadata or {}
+        if self.metadata is None:
+            # Fallback safeguard
+            self._pdf.metadata = {}
+        return self.metadata.setdefault("analysis", {})  # type: ignore[attr-defined]
+
+    @analyses.setter
+    def analyses(self, value: Dict[str, Any]):
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self._pdf.metadata = self._pdf.metadata or {}
+        self.metadata["analysis"] = value  # type: ignore[attr-defined]
 
     # Static helper for weakref.finalize to avoid capturing 'self'
     @staticmethod

@@ -2808,3 +2808,19 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             return None
 
     # --- End Skew Detection and Correction --- #
+
+    # ------------------------------------------------------------------
+    # Unified analysis storage (maps to metadata["analysis"])
+    # ------------------------------------------------------------------
+
+    @property
+    def analyses(self) -> Dict[str, Any]:
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        return self.metadata.setdefault("analysis", {})
+
+    @analyses.setter
+    def analyses(self, value: Dict[str, Any]):
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        self.metadata["analysis"] = value
