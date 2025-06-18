@@ -814,6 +814,24 @@
         
       
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
       
         
       
@@ -839,8 +857,9 @@
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
-            
+          <div class="md-nav__link md-nav__container">
+            <a href="../ocr/" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -849,72 +868,19 @@
   </span>
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            How-To Guides
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-          
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../ocr/" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    Text Extraction
-    
-  </span>
-  
-
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_1">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-            Text Extraction
+            How-To Guides
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -966,14 +932,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
               
                 
   
@@ -982,55 +940,160 @@
   
   
   
-    
-    
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
       
         
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
           
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
-              
   
   
   <span class="md-ellipsis">
-    Table Extraction
+    Fix Messy Tables
     
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link md-nav__link--active" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4_2">
-            <span class="md-nav__icon md-icon"></span>
-            Table Extraction
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
+  
+  
+  <span class="md-ellipsis">
+    Fix Messy Tables
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Problem
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-fix-try-layout-detection-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Fix: Try Layout Detection First
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-basic-detection-fails-use-tatr" class="md-nav__link">
+    <span class="md-ellipsis">
+      When Basic Detection Fails: Use TATR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-table-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manual Table Definition
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#define-table-boundaries-using-header-labels-pdfplumber" class="md-nav__link">
+    <span class="md-ellipsis">
+      Define Table Boundaries Using Header Labels (pdfplumber)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fix-alignment-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fix Alignment Issues
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handle-multiple-tables-on-one-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handle Multiple Tables on One Page
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deal-with-rotated-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deal with Rotated Tables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extract-tables-from-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extract Tables from Images
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debug-table-extraction-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Table Extraction Step by Step
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting Checklist
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
               
             
               
@@ -1056,71 +1119,27 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
               
                 
   
   
   
   
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../process-forms-and-invoices/" class="md-nav__link">
         
-          
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../process-forms-and-invoices/" class="md-nav__link ">
-              
   
   
   <span class="md-ellipsis">
-    Data Extraction
+    Extract from Forms/Invoices
     
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_3">
-            <span class="md-nav__icon md-icon"></span>
-            Data Extraction
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
+      </a>
+    </li>
+  
+
               
             
               
@@ -1146,71 +1165,27 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
               
                 
   
   
   
   
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../document-qa/" class="md-nav__link">
         
-          
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../document-qa/" class="md-nav__link ">
-              
   
   
   <span class="md-ellipsis">
-    Document Analysis
+    Document Question Answering
     
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_4">
-            <span class="md-nav__icon md-icon"></span>
-            Document Analysis
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
+      </a>
+    </li>
+  
+
               
             
               
@@ -1236,71 +1211,27 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
               
                 
   
   
   
   
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../element-selection/" class="md-nav__link">
         
-          
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_5" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../element-selection/" class="md-nav__link ">
-              
   
   
   <span class="md-ellipsis">
-    Finding Content
+    Finding What You Need in PDFs
     
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_5">
-            <span class="md-nav__icon md-icon"></span>
-            Finding Content
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
+      </a>
+    </li>
+  
+
               
             
               
@@ -1326,73 +1257,27 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
               
                 
   
   
   
   
-    
-    
-      
+    <li class="md-nav__item">
+      <a href="../layout-analysis/" class="md-nav__link">
         
-          
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_6" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../layout-analysis/" class="md-nav__link ">
-              
   
   
   <span class="md-ellipsis">
-    Layout & Structure
+    Document Layout Analysis
     
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_6">
-            <span class="md-nav__icon md-icon"></span>
-            Layout & Structure
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
+      </a>
+    </li>
+  
+
               
             
               
@@ -1436,14 +1321,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
     </li>
   
 
@@ -1503,7 +1380,7 @@
   
   
   <span class="md-ellipsis">
-    Advanced Features
+    Extra fun features
     
   </span>
   
@@ -1520,7 +1397,7 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
-            Advanced Features
+            Extra fun features
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1781,6 +1658,60 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fix-alignment-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fix Alignment Issues
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handle-multiple-tables-on-one-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handle Multiple Tables on One Page
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deal-with-rotated-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deal with Rotated Tables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extract-tables-from-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extract Tables from Images
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debug-table-extraction-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Table Extraction Step by Step
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting Checklist
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1910,41 +1841,19 @@ Here's a quick, self-contained approach that works great on the violations table
 <span class="n">data</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="s1">&#39;pdfplumber&#39;</span><span class="p">,</span> <span class="n">table_settings</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
 <span class="n">data</span>
 </code></pre></div>
-<h1 id="2-compute-a-bounding-box-that-covers-every-header-element">2) Compute a bounding box that covers every header element</h1>
-<p>x0 = min(h.x0 for h in headers)
-x1 = max(h.x1 for h in headers)
-top = min(h.top for h in headers)</p>
-<h1 id="3-extend-the-box-downward-until-the-next-thick-horizontal-line">3) Extend the box downward until the next thick horizontal line</h1>
-<p>bottom_line = headers[0].below(until='line:horizontal[width&gt;=400]')
-bottom = bottom_line.bottom if bottom_line else page.height</p>
-<p>table_region = page.create_region(x0, top, x1, bottom)</p>
-<h1 id="4-extract-using-pdfplumber-simple-fast-no-ai">4) Extract using pdfplumber (simple, fast, no AI)</h1>
-<p>data = table_region.extract_table(method='pdfplumber')
-print(f"Got {len(data)} rows from the table!")
-<div class="highlight"><pre><span></span><code>Why this works:
+<h2 id="fix-alignment-issues">Fix Alignment Issues</h2>
+<p>When columns don't line up properly:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Customize pdfplumber settings for better alignment</span>
+<span class="n">table_settings</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;vertical_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span>        <span class="c1"># Use text alignment instead of lines</span>
+    <span class="s2">&quot;horizontal_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;lines&quot;</span><span class="p">,</span>     <span class="c1"># Still use lines for rows</span>
+    <span class="s2">&quot;intersection_x_tolerance&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>     <span class="c1"># More forgiving column alignment</span>
+    <span class="s2">&quot;intersection_y_tolerance&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>      <span class="c1"># More forgiving row alignment</span>
+    <span class="s2">&quot;edge_min_length&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>              <span class="c1"># Shorter minimum line length</span>
+<span class="p">}</span>
 
-* Header labels are almost always the top-left anchors of a table.
-* pdfplumber&#39;s heuristics excel once you provide a tight bounding box.
-* No fancy ML models, so it&#39;s fast and deterministic.
-
-If your headers have different names, just update the regular expression.  This trick often beats spending time on manual coordinate tweaking.
-
-## Fix Alignment Issues
-
-When columns don&#39;t line up properly:
-
-```python
-# Customize pdfplumber settings for better alignment
-table_settings = {
-    &quot;vertical_strategy&quot;: &quot;text&quot;,        # Use text alignment instead of lines
-    &quot;horizontal_strategy&quot;: &quot;lines&quot;,     # Still use lines for rows
-    &quot;intersection_x_tolerance&quot;: 10,     # More forgiving column alignment
-    &quot;intersection_y_tolerance&quot;: 5,      # More forgiving row alignment
-    &quot;edge_min_length&quot;: 3,              # Shorter minimum line length
-}
-
-data = table_area.extract_table(table_settings=table_settings)
-</code></pre></div></p>
+<span class="n">data</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">extract_table</span><span class="p">(</span><span class="n">table_settings</span><span class="o">=</span><span class="n">table_settings</span><span class="p">)</span>
+</code></pre></div>
 <h2 id="handle-multiple-tables-on-one-page">Handle Multiple Tables on One Page</h2>
 <p>Separate and extract each table individually:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Detect all tables</span>
