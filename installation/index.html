@@ -348,7 +348,7 @@
           <li class="md-nav__item">
   <a href="#1-helper-cli-recommended" class="md-nav__link">
     <span class="md-ellipsis">
-      1&nbsp;·&nbsp;Helper CLI (recommended)
+      1 – Helper CLI (recommended)
     </span>
   </a>
   
@@ -357,7 +357,7 @@
           <li class="md-nav__item">
   <a href="#2-classic-extras-for-the-light-stuff" class="md-nav__link">
     <span class="md-ellipsis">
-      2&nbsp;·&nbsp;Classic extras (for the light stuff)
+      2 – Classic extras (for the light stuff)
     </span>
   </a>
   
@@ -1393,7 +1393,7 @@
           <li class="md-nav__item">
   <a href="#1-helper-cli-recommended" class="md-nav__link">
     <span class="md-ellipsis">
-      1&nbsp;·&nbsp;Helper CLI (recommended)
+      1 – Helper CLI (recommended)
     </span>
   </a>
   
@@ -1402,7 +1402,7 @@
           <li class="md-nav__item">
   <a href="#2-classic-extras-for-the-light-stuff" class="md-nav__link">
     <span class="md-ellipsis">
-      2&nbsp;·&nbsp;Classic extras (for the light stuff)
+      2 – Classic extras (for the light stuff)
     </span>
   </a>
   
@@ -1458,23 +1458,23 @@
 </code></pre></div>
 <p>But! If you want to recognize text, do page layout analysis, document q-and-a or other things, you can install optional dependencies.</p>
 <p>Natural PDF has modular dependencies for different features. Install them based on your needs:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Deskewing</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>deskew<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full ML / QA / semantic-search stack</span>
+pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>ai<span class="o">]</span>
 
-<span class="c1"># LLM features (OpenAI)</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>llm<span class="o">]</span>
+<span class="c1"># Deskewing</span>
+pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>deskew<span class="o">]</span>
 
 <span class="c1"># Semantic search</span>
 pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>search<span class="o">]</span>
-
-<span class="c1"># Install everything in the &#39;favorites&#39; collection</span>
-pip<span class="w"> </span>install<span class="w"> </span>natural-pdf<span class="o">[</span>favorites<span class="o">]</span>
 </code></pre></div>
 <p>Other OCR and layout analysis engines like <code>surya</code>, <code>easyocr</code>, <code>paddle</code>, <code>doctr</code>, and <code>docling</code> can be installed via <code>pip</code> as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.</p>
 <p>After the core install you have two ways to add <strong>optional engines</strong>:</p>
-<h3 id="1-helper-cli-recommended">1&nbsp;·&nbsp;Helper CLI (recommended)</h3>
+<h3 id="1-helper-cli-recommended">1 – Helper CLI (recommended)</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># list optional groups and their install-status</span>
 npdf<span class="w"> </span>list
+
+<span class="c1"># everything for classification, QA, semantic search, etc.</span>
+npdf<span class="w"> </span>install<span class="w"> </span>ai
 
 <span class="c1"># install PaddleOCR stack</span>
 npdf<span class="w"> </span>install<span class="w"> </span>paddle
@@ -1485,8 +1485,11 @@ npdf<span class="w"> </span>install<span class="w"> </span>surya<span class="w">
 <p>The CLI runs each wheel in its own resolver pass, so it avoids strict
 version pins like <code>paddleocr → paddlex==3.0.1</code> while still upgrading to
 <code>paddlex 3.0.2</code>.</p>
-<h3 id="2-classic-extras-for-the-light-stuff">2&nbsp;·&nbsp;Classic extras (for the light stuff)</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Deskewing</span>
+<h3 id="2-classic-extras-for-the-light-stuff">2 – Classic extras (for the light stuff)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full AI/ML stack</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[ai]&quot;</span>
+
+<span class="c1"># Deskewing</span>
 pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[deskew]&quot;</span>
 
 <span class="c1"># Semantic search service</span>
@@ -1499,7 +1502,7 @@ error that tells you which <code>npdf install …</code> command to run.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
 <span class="c1"># Open a PDF</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s1">&#39;your_document.pdf&#39;</span><span class="p">)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
 
 <span class="c1"># Get the first page</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>

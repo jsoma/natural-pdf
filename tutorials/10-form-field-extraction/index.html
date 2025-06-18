@@ -1227,6 +1227,39 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#asking-questions-with-layoutlm-documentqa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Asking Questions with LayoutLM (DocumentQA)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Asking Questions with LayoutLM (DocumentQA)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-one-liner-qa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional one-liner QA
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#todo" class="md-nav__link">
+    <span class="md-ellipsis">
+      TODO
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1432,6 +1465,39 @@
   <a href="#combining-different-extraction-techniques" class="md-nav__link">
     <span class="md-ellipsis">
       Combining Different Extraction Techniques
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asking-questions-with-layoutlm-documentqa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Asking Questions with LayoutLM (DocumentQA)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Asking Questions with LayoutLM (DocumentQA)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-one-liner-qa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional one-liner QA
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#todo" class="md-nav__link">
+    <span class="md-ellipsis">
+      TODO
     </span>
   </a>
   
@@ -1892,18 +1958,23 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4e2013c0">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=30a4f770">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="form-field-extraction">Form Field Extraction<a class="anchor-link" href="#form-field-extraction">¶</a></h1><p>Business documents like invoices, forms, and applications contain field-value pairs that need to be extracted. This tutorial shows how to identify and extract these form fields.</p>
+<h1 id="form-field-extraction">Form Field Extraction<a class="anchor-link" href="#form-field-extraction">¶</a></h1><p>Extracting key-value pairs from documents can be tackled in two complementary ways:</p>
+<ul>
+<li><strong>Rule-based / spatial heuristics</strong> – look for label text, navigate rightward or downward, group elements into rows, etc.</li>
+<li><strong>Extractive Document QA</strong> – feed the page image and its words to a fine-tuned LayoutLM model and ask natural-language questions such as <em>"What is the invoice total?"</em>. The model returns the answer span <strong>exactly as it appears</strong> in the document along with a confidence score.</li>
+</ul>
+<p>This tutorial starts with classical heuristics and then upgrades to the LayoutLM-based <strong>DocumentQA</strong> engine built into <code>natural-pdf</code>. Because DocumentQA relies on <code>torch</code>, <code>transformers</code>, and <code>vision</code> extras, install the <strong>AI</strong> optional dependencies first:</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=270077a0">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=a12e3abb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1921,16 +1992,28 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1">#%pip install "natural-pdf[all]"</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1">#%pip install "natural-pdf[ai]"</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-1">#%pip install "natural-pdf[all]"</div>
+<div class="clipboard-copy-txt" id="cell-1">#%pip install "natural-pdf[ai]"</div>
 </div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b11036e4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>If you already have the core library, simply run <code>npdf install ai</code> to add the extra ML packages.</p>
+<hr/>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=2d926622">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b589891f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1995,7 +2078,7 @@ len(labels)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3dea4e05">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=59203eaa">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2006,7 +2089,7 @@ len(labels)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=2369e2ba">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=bab0a399">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2078,7 +2161,7 @@ form_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1769e5c3">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cf418551">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2089,7 +2172,7 @@ form_data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=bca23e8f">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=24cd7327">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2152,7 +2235,7 @@ page.to_image()</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3ef6eaca">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f0d36ba3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2163,7 +2246,7 @@ page.to_image()</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=24e18a41">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=95199507">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2247,7 +2330,7 @@ multi_line_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=db415edb">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=aeaea115">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2258,7 +2341,7 @@ multi_line_data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=7b734683">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9d453edc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2334,7 +2417,7 @@ date_texts</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7357dfc1">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=437731bf">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2345,7 +2428,7 @@ date_texts</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=95971ac8">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e38c9603">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2484,14 +2567,14 @@ else:
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmposfmbsvl/temp_layout_image.png: 1024x800 1 title, 3 plain texts, 2 abandons, 1 table, 1913.6ms
+<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmpl0o4g880/temp_layout_image.png: 1024x800 1 title, 3 plain texts, 2 abandons, 1 table, 2263.2ms
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Speed: 7.5ms preprocess, 1913.6ms inference, 1.0ms postprocess per image at shape (1, 3, 1024, 800)
+<pre>Speed: 7.9ms preprocess, 2263.2ms inference, 2.1ms postprocess per image at shape (1, 3, 1024, 800)
 </pre>
 </div>
 </div>
@@ -2499,7 +2582,7 @@ else:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cedd1598">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a49962b6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2510,7 +2593,7 @@ else:
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=94e083be">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a1c82df6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2604,13 +2687,77 @@ all_fields</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d97b0ede">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0b42026c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="asking-questions-with-layoutlm-documentqa">Asking Questions with LayoutLM (DocumentQA)<a class="anchor-link" href="#asking-questions-with-layoutlm-documentqa">¶</a></h2><h3 id="optional-one-liner-qa">Optional one-liner QA<a class="anchor-link" href="#optional-one-liner-qa">¶</a></h3><p>Need a single field but can't locate the right label?  You can fall back to <code>page.ask()</code> which runs the LayoutLM <strong>extractive</strong> QA model:</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=8503687d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="CodeMirror cm-s-jupyter">
+<div class="zeroclipboard-container">
+<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-9">
+<div>
+<span class="notice" hidden="">Copied!</span>
+<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
+<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+</clipboard-copy>
+</div>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">answer</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">ask</span><span class="p">(</span><span class="s2">"What is the invoice total?"</span><span class="p">)</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-9">answer = page.ask("What is the invoice total?")</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>/Users/soma/Development/natural-pdf/.nox/tutorials/lib/python3.10/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Hardware accelerator e.g. GPU is available in the environment, but no `device` argument is passed to the `Pipeline` object. Model will be on CPU.
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d4b1eefd">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p><code>answer['answer']</code> is the literal text found on the page.</p>
+<p>For a deep dive into Question Answering—including confidence tuning, batching, and answer-span highlighting—see <strong>Tutorial 06: Document Question Answering</strong>.</p>
+<hr/>
 <p>Form field extraction enables you to automate data entry and document processing. By combining different techniques like label detection, spatial navigation, and pattern matching, you can handle a wide variety of form layouts.</p>
+<h2 id="todo">TODO<a class="anchor-link" href="#todo">¶</a></h2><ul>
+<li>Showcase the new <code>init_search</code> workflow for quickly locating form labels across multi-page documents.</li>
+<li>Compare heuristics for multi-col forms (e.g., left/right alignment vs. table structures) and when to switch strategies.</li>
+<li>Demonstrate embedding page classification (e.g., "invoice" vs "purchase order") before field extraction to route documents to the correct template.</li>
+<li>Provide an end-to-end example saving the extracted dictionary to JSON and a searchable PDF via <code>pdf.save_searchable()</code>.</li>
+<li>Add a sidebar contrasting <strong>extractive</strong> QA with <strong>generative</strong> LLM approaches and notes on when to choose each.</li>
+</ul>
+<!-- Bulk QA example removed; see Tutorial 06 for a full walkthrough of batching and visualising answers. -->
 </div>
 </div>
 </div>

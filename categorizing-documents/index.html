@@ -1604,7 +1604,7 @@
 <p>Natural PDF allows you to automatically categorize pages or specific regions within a page using machine learning models. This is incredibly useful for filtering large collections of documents or understanding the structure and content of individual PDFs.</p>
 <h2 id="installation">Installation</h2>
 <p>To use the classification features, you need to install the optional dependencies:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[core-ml]&quot;</span>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural-pdf[ai]&quot;</span>
 </code></pre></div>
 <p>This installs necessary libraries like <code>torch</code>, <code>transformers</code>, and others.</p>
 <h2 id="core-concept-the-classify-method">Core Concept: The <code>.classify()</code> Method</h2>
@@ -1612,7 +1612,7 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
 <span class="c1"># Example: Classify a Page</span>
-<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;letter&quot;</span><span class="p">,</span> <span class="s2">&quot;report cover&quot;</span><span class="p">,</span> <span class="s2">&quot;data table&quot;</span><span class="p">]</span>
 <span class="n">page</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">using</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
@@ -1729,9 +1729,9 @@
 <span class="c1"># Classify all detected regions based on vision</span>
 <span class="n">layout_regions</span><span class="o">.</span><span class="n">classify_all</span><span class="p">(</span><span class="n">region_types</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;vision&quot;</span><span class="p">)</span>
 
-<span class="c1"># Count table regions</span>
-<span class="n">table_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">layout_regions</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;table&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">table_count</span><span class="si">}</span><span class="s2"> regions classified as tables.&quot;</span><span class="p">)</span>
+<span class="c1"># Count table regions using filter()</span>
+<span class="n">table_regions</span> <span class="o">=</span> <span class="n">layout_regions</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">region</span><span class="p">:</span> <span class="n">region</span><span class="o">.</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;table&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">table_regions</span><span class="p">)</span><span class="si">}</span><span class="s2"> regions classified as tables.&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 

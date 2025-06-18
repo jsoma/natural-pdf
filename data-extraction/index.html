@@ -1441,11 +1441,11 @@
 <h1 id="structured-data-extraction">Structured Data Extraction</h1>
 <p>Extracting specific, structured information (like invoice numbers, dates, or addresses) from documents often requires more than simple text extraction. Natural PDF integrates with LLMs to pull out <a href="https://platform.openai.com/docs/guides/structured-outputs">structured data</a>.</p>
 <p>You need to install more than just the tiny baby default <code>natural_pdf</code> for this:
-<div class="highlight"><pre><span></span><code># Install just the LLM portions
-pip install &quot;natural_pdf[llm]&quot;
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the OpenAI (or compatible) client library</span>
+pip<span class="w"> </span>install<span class="w"> </span>openai
 
-# Install eeeeeverything
-pip install &quot;natural_pdf[all]&quot;
+<span class="c1"># Or pull in the full AI stack (classification, QA, search, etc.)</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;natural_pdf[ai]&quot;</span>
 </code></pre></div></p>
 <h2 id="introduction">Introduction</h2>
 <p>This feature allows you to define the exact data structure you want using a Pydantic model and then instruct an LLM to populate that structure based on the content of a PDF element (like a <code>Page</code> or <code>Region</code>).</p>

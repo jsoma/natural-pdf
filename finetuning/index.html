@@ -1475,7 +1475,9 @@
 <span class="c1"># os.environ[&quot;ANTHROPIC_API_KEY&quot;] = &quot;sk-...&quot; </span>
 
 <span class="c1"># pdf_path = &quot;path/to/your/document.pdf&quot; </span>
-<span class="n">pdf_path</span> <span class="o">=</span> <span class="s2">&quot;pdfs/hidden/the-bad-one.pdf&quot;</span> <span class="c1"># Replace with your PDF path</span>
+<span class="n">pdf_path</span> <span class="o">=</span> <span class="s2">&quot;path/to/your/document.pdf&quot;</span> 
+<span class="c1"># For demonstration we use a public sample PDF; replace with your own.</span>
+<span class="n">pdf_path</span> <span class="o">=</span> <span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf&quot;</span>
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="n">pdf_path</span><span class="p">)</span>
 
 <span class="c1"># --- 2. (Optional) Exclude Irrelevant Areas ---</span>
