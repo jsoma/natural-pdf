@@ -823,6 +823,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-start-just-pass-a-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start: Just Pass a List
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-offline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working Offline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#basic-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       Basic Extraction
@@ -1384,6 +1402,24 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-start-just-pass-a-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start: Just Pass a List
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-offline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working Offline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#basic-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       Basic Extraction
@@ -1452,6 +1488,45 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot
 <blockquote>
 <p>Not sure how to write a Pydantic schema? Just ask an LLM! "Write me a Pydantic schema to pull out an invoice number (an integer), a company name (string) and a date (string)." It'll go fine.</p>
 </blockquote>
+<h2 id="quick-start-just-pass-a-list">Quick Start: Just Pass a List</h2>
+<p>Don't want to write a Pydantic schema? You don't have to. Just pass a list of the fields you want:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;inspection-report.pdf&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Extract data using just a list - no schema required!</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;site&quot;</span><span class="p">,</span> <span class="s2">&quot;date&quot;</span><span class="p">,</span> <span class="s2">&quot;violation count&quot;</span><span class="p">,</span> <span class="s2">&quot;inspector&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">extracted</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">site</span><span class="p">)</span>  <span class="c1"># &quot;ACME Manufacturing Plant&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">date</span><span class="p">)</span>  <span class="c1"># &quot;2024-03-15&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">violation_count</span><span class="p">)</span>  <span class="c1"># &quot;3&quot;</span>
+</code></pre></div>
+<p>Natural PDF automatically builds a schema for you and extracts the data. Each field becomes a string, and you get confidence scores for free:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check how confident the extraction was</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">site_confidence</span><span class="p">)</span>  <span class="c1"># 0.89</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">date_confidence</span><span class="p">)</span>  <span class="c1"># 0.95</span>
+</code></pre></div>
+<p>This works entirely offline - no API keys or internet connection required. It uses a local document question-answering model that understands both text and layout.</p>
+<h2 id="working-offline">Working Offline</h2>
+<p>Sometimes you don't want to send documents to an external API, or you're working somewhere without internet. Natural PDF has you covered:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># This works completely offline</span>
+<span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company&quot;</span><span class="p">,</span> <span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="s2">&quot;due_date&quot;</span><span class="p">])</span>
+</code></pre></div>
+<p>The offline engine is pretty smart - it looks at both the text content and the visual layout to find answers. For low-confidence results, you can set a threshold:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Only accept answers the model is confident about</span>
+<span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="s2">&quot;date&quot;</span><span class="p">],</span> <span class="n">min_confidence</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+</code></pre></div>
+<p>If an answer falls below your confidence threshold, it gets set to <code>None</code> instead of returning questionable data.</p>
+<p>You can also use local LLMs if you prefer the structured output capabilities. Tools like <a href="https://lmstudio.ai/">LM Studio</a> or <a href="https://msty.app/">Msty</a> can run models like Qwen locally and provide an OpenAI-compatible API:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+
+<span class="c1"># Point to your local LLM server</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:1234/v1&quot;</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;not-needed&quot;</span><span class="p">)</span>
+
+<span class="n">page</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="n">InvoiceSchema</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+</code></pre></div>
+<p>Just be warned - local LLMs are much slower than the document QA approach for simple extractions!</p>
 <h2 id="basic-extraction">Basic Extraction</h2>
 <ol>
 <li><strong>Define a Schema:</strong> Create a Pydantic model for your desired data.</li>
