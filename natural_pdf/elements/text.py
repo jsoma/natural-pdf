@@ -151,20 +151,28 @@ class TextElement(Element):
         # Default to black
         return (0, 0, 0)
 
-    def extract_text(self, keep_blank_chars=True, **kwargs) -> str:
+    def extract_text(self, keep_blank_chars=True, strip: Optional[bool] = True, **kwargs) -> str:
         """
         Extract text from this element.
 
         Args:
-            keep_blank_chars: Whether to keep blank characters (default: True)
-            **kwargs: Additional extraction parameters
+            keep_blank_chars: Retained for API compatibility (unused).
+            strip: If True (default) remove leading/trailing whitespace. Users may
+                   pass ``strip=False`` to preserve whitespace exactly as stored.
+            **kwargs: Accepted for forward-compatibility and ignored here.
 
         Returns:
-            Text content
+            The text content, optionally stripped.
         """
-        # For text elements, keep_blank_chars doesn't affect anything as we're
-        # simply returning the text property. Included for API consistency.
-        return self.text
+        # Basic retrieval
+        result = self.text or ""
+
+        # Apply optional stripping – align with global convention where simple
+        # element extraction is stripped by default.
+        if strip:
+            result = result.strip()
+
+        return result
 
     def contains(self, substring: str, case_sensitive: bool = True) -> bool:
         """

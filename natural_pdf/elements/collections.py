@@ -290,7 +290,13 @@ class ElementCollection(
 
         return ElementCollection(filtered)
 
-    def extract_text(self, preserve_whitespace=True, use_exclusions=True, **kwargs) -> str:
+    def extract_text(
+        self,
+        preserve_whitespace: bool = True,
+        use_exclusions: bool = True,
+        strip: Optional[bool] = None,
+        **kwargs,
+    ) -> str:
         """
         Extract text from all TextElements in the collection, optionally using
         pdfplumber's layout engine if layout=True is specified.
@@ -303,6 +309,7 @@ class ElementCollection(
                       `chars_to_textmap` function ONLY if `layout=True` is passed.
                       See Page.extract_text docstring for common parameters.
                       If `layout=False` or omitted, performs a simple join.
+            strip: Whether to strip whitespace from the extracted text.
 
         Returns:
             Combined text from elements, potentially with layout-based spacing.
@@ -398,6 +405,12 @@ class ElementCollection(
             # Simple join of character text
             result = "".join(c.get("text", "") for c in all_char_dicts)
             # Replace multiple spaces created by joining possibly overlapping chars? Maybe not necessary.
+
+        # Determine final strip flag – same rule as global helper unless caller overrides
+        strip_text = strip if strip is not None else (not use_layout)
+
+        if strip_text and isinstance(result, str):
+            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
 
         return result
 
@@ -1860,13 +1873,20 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         """Return a string representation showing the page count."""
         return f"<PageCollection(count={len(self)})>"
 
-    def extract_text(self, keep_blank_chars=True, apply_exclusions=True, **kwargs) -> str:
+    def extract_text(
+        self,
+        keep_blank_chars: bool = True,
+        apply_exclusions: bool = True,
+        strip: Optional[bool] = None,
+        **kwargs,
+    ) -> str:
         """
         Extract text from all pages in the collection.
 
         Args:
             keep_blank_chars: Whether to keep blank characters (default: True)
             apply_exclusions: Whether to apply exclusion regions (default: True)
+            strip: Whether to strip whitespace from the extracted text.
             **kwargs: Additional extraction parameters
 
         Returns:
@@ -1875,11 +1895,22 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         texts = []
         for page in self.pages:
             text = page.extract_text(
-                keep_blank_chars=keep_blank_chars, apply_exclusions=apply_exclusions, **kwargs
+                keep_blank_chars=keep_blank_chars,
+                apply_exclusions=apply_exclusions,
+                **kwargs,
             )
             texts.append(text)
 
-        return "\n".join(texts)
+        combined = "\n".join(texts)
+
+        # Default strip behaviour: if caller picks, honour; else respect layout flag passed via kwargs.
+        use_layout = kwargs.get("layout", False)
+        strip_final = strip if strip is not None else (not use_layout)
+
+        if strip_final:
+            combined = "\n".join(line.rstrip() for line in combined.splitlines()).strip()
+
+        return combined
 
     def apply_ocr(
         self,

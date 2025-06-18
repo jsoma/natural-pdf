@@ -5,6 +5,7 @@ You've got a PDF where you need the main content, but every page has headers, fo
 ## The Problem
 
 PDFs often have repeated content on every page that you don't want:
+
 - Company headers with logos and contact info
 - Page numbers and footers  
 - "CONFIDENTIAL" watermarks

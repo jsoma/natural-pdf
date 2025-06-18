@@ -69,27 +69,21 @@ nav:
     - Semantic Search: tutorials/13-semantic-search.ipynb
     - Categorizing Documents: tutorials/14-categorizing-documents.ipynb
   - How-To Guides:
-    - Text Extraction:
-      - Basic Text Extraction: text-extraction/index.md
-      - Text from Scanned Documents: ocr/index.md
-      - Clean Text Without Headers/Footers: extracting-clean-text/index.md
-    - Table Extraction:
-      - Fix Messy Tables: fix-messy-tables/index.md
-      - Basic Table Extraction: tables/index.ipynb
-    - Data Extraction:
-      - Extract from Forms/Invoices: process-forms-and-invoices/index.md
-      - Structured Data Extraction: data-extraction/index.md
-    - Document Analysis:
-      - Ask Questions to Documents: document-qa/index.ipynb
-      - Categorize Documents: categorizing-documents/index.md
-    - Finding Content:
-      - Element Selection: element-selection/index.ipynb
-      - PDF Navigation: pdf-navigation/index.ipynb
-    - Layout & Structure:
-      - Layout Analysis: layout-analysis/index.ipynb
-      - Working with Regions: regions/index.ipynb
-      - Visual Debugging: visual-debugging/index.ipynb
-  - Advanced Features:
+    - Basic Text Extraction: text-extraction/index.md
+    - Text from Scanned Documents: ocr/index.md
+    - Clean Text Without Headers/Footers: extracting-clean-text/index.md
+    - Fix Messy Tables: fix-messy-tables/index.md
+    - Basic Table Extraction: tables/index.ipynb
+    - Extract from Forms/Invoices: process-forms-and-invoices/index.md
+    - Structured Data Extraction: data-extraction/index.md
+    - Ask Questions to Documents: document-qa/index.ipynb
+    - Categorize Documents: categorizing-documents/index.md
+    - Element Selection: element-selection/index.ipynb
+    - PDF Navigation: pdf-navigation/index.ipynb
+    - Layout Analysis: layout-analysis/index.ipynb
+    - Working with Regions: regions/index.ipynb
+    - Visual Debugging: visual-debugging/index.ipynb
+  - Extra fun features:
     - Interactive Widget: interactive-widget/index.ipynb
     - Describe & Inspect: describe/index.ipynb
     - Loops and Groups: loops-and-groups/index.ipynb

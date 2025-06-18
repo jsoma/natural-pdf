@@ -174,8 +174,8 @@ class DirectionalMixin:
                 # Adjust cross boundaries if cross_size is 'element'
                 if cross_size == "element":
                     if is_horizontal:  # Adjust y0, y1
-                        y0 = min(y0, self.y0)
-                        y1 = max(y1, self.y1)
+                        y0 = min(y0, self.top)
+                        y1 = max(y1, self.bottom)
                     else:  # Adjust x0, x1
                         x0 = min(x0, self.x0)
                         x1 = max(x1, self.x1)

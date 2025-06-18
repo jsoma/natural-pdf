@@ -134,30 +134,6 @@ data = table_area.extract_table('pdfplumber', table_settings=options)
 data
 ```
 
-# 2) Compute a bounding box that covers every header element
-x0 = min(h.x0 for h in headers)
-x1 = max(h.x1 for h in headers)
-top = min(h.top for h in headers)
-
-# 3) Extend the box downward until the next thick horizontal line
-bottom_line = headers[0].below(until='line:horizontal[width>=400]')
-bottom = bottom_line.bottom if bottom_line else page.height
-
-table_region = page.create_region(x0, top, x1, bottom)
-
-# 4) Extract using pdfplumber (simple, fast, no AI)
-data = table_region.extract_table(method='pdfplumber')
-print(f"Got {len(data)} rows from the table!")
-```
-
-Why this works:
-
-* Header labels are almost always the top-left anchors of a table.
-* pdfplumber's heuristics excel once you provide a tight bounding box.
-* No fancy ML models, so it's fast and deterministic.
-
-If your headers have different names, just update the regular expression.  This trick often beats spending time on manual coordinate tweaking.
-
 ## Fix Alignment Issues
 
 When columns don't line up properly:

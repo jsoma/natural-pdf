@@ -63,9 +63,9 @@ def _get_layout_kwargs(
             else:
                 logger.warning(f"Ignoring unsupported layout keyword argument: '{key}'")
 
-    # 4. Ensure layout flag is present, defaulting to True
+    # 4. Ensure layout flag is present, defaulting to False (caller can override)
     if "layout" not in layout_kwargs:
-        layout_kwargs["layout"] = True
+        layout_kwargs["layout"] = False
 
     return layout_kwargs
 
@@ -203,24 +203,42 @@ def generate_text_layout(
         logger.debug("generate_text_layout: No valid character dicts found after filtering.")
         return ""
 
-    # Prepare layout arguments
-    layout_kwargs = _get_layout_kwargs(layout_context_bbox, user_kwargs)
-    use_layout = layout_kwargs.pop("layout", True)  # Extract layout flag, default True
+    # Make a working copy of user_kwargs so we can safely pop custom keys
+    incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
 
-    if not use_layout:
-        # Simple join if layout=False
-        logger.debug("generate_text_layout: Using simple join (layout=False requested).")
-        # Sort before joining if layout is off
-        valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
-        result = "".join(c.get("text", "") for c in valid_char_dicts)  # Use valid chars
-        return result
+    # --- Handle custom 'strip' option ------------------------------------
+    # * strip=True  – post-process the final string to remove leading/trailing
+    #                 whitespace (typically used when layout=False)
+    # * strip=False – preserve whitespace exactly as produced.
+    # Default behaviour depends on the layout flag (see below).
+    explicit_strip_flag = incoming_kwargs.pop("strip", None)  # May be None
+
+    # Prepare layout arguments now that we've removed the non-pdfplumber key
+    layout_kwargs = _get_layout_kwargs(layout_context_bbox, incoming_kwargs)
+    use_layout = layout_kwargs.get("layout", False)
+
+    # Determine final strip behaviour: if caller specified override, honour it;
+    # otherwise default to !use_layout (True when layout=False, False when
+    # layout=True) per user request.
+    strip_result = explicit_strip_flag if explicit_strip_flag is not None else (not use_layout)
 
     try:
-        # Sort chars primarily by top, then x0 before layout analysis
-        # This helps pdfplumber group lines correctly
+        # Sort chars primarily by top, then x0 before layout analysis – required by
+        # pdfplumber so that grouping into lines works deterministically.
         valid_char_dicts.sort(key=lambda c: (c.get("top", 0), c.get("x0", 0)))
+
+        # Build the text map. `layout_kwargs` still contains the caller-specified or
+        # default "layout" flag, which chars_to_textmap will respect.
         textmap = chars_to_textmap(valid_char_dicts, **layout_kwargs)
         result = textmap.as_string
+
+        # ----------------------------------------------------------------
+        # Optional post-processing strip
+        # ----------------------------------------------------------------
+        if strip_result and isinstance(result, str):
+            # Remove trailing spaces on each line then trim leading/trailing
+            # blank lines for a cleaner output while keeping internal newlines.
+            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
     except Exception as e:
         # Fallback to simple join on error
         logger.error(f"generate_text_layout: Error calling chars_to_textmap: {e}", exc_info=False)
@@ -230,5 +248,7 @@ def generate_text_layout(
         # Fallback already has sorted characters if layout was attempted
         # Need to use the valid_char_dicts here too
         result = "".join(c.get("text", "") for c in valid_char_dicts)
+        if strip_result:
+            result = result.strip()
 
     return result
