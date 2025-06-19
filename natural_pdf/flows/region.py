@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, Callable
 
 from pdfplumber.utils.geometry import objects_to_bbox  # For calculating combined bbox
 
@@ -519,3 +519,118 @@ class FlowRegion:
             )
         except Exception:
             return True  # If error during check, assume empty to be safe
+
+    # ------------------------------------------------------------------
+    # Table extraction helpers (delegates to underlying physical regions)
+    # ------------------------------------------------------------------
+
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict] = None,
+        cell_extraction_func: Optional[Callable[["PhysicalRegion"], Optional[str]]] = None,
+        show_progress: bool = False,
+        **kwargs,
+    ) -> List[List[Optional[str]]]:
+        """Extracts a single logical table from the FlowRegion.
+
+        This is a convenience wrapper that iterates through the constituent
+        physical regions **in flow order**, calls their ``extract_table``
+        method, and concatenates the resulting rows.  It mirrors the public
+        interface of :pymeth:`natural_pdf.elements.region.Region.extract_table`.
+
+        Args:
+            method, table_settings, use_ocr, ocr_config, text_options, cell_extraction_func, show_progress:
+                Same as in :pymeth:`Region.extract_table` and are forwarded as-is
+                to each physical region.
+            **kwargs: Additional keyword arguments forwarded to the underlying
+                ``Region.extract_table`` implementation.
+
+        Returns:
+            A list of rows (``List[List[Optional[str]]]``).  Rows returned from
+            consecutive constituent regions are appended in document order.  If
+            no tables are detected in any region, an empty list is returned.
+        """
+
+        if table_settings is None:
+            table_settings = {}
+        if text_options is None:
+            text_options = {}
+
+        if not self.constituent_regions:
+            return []
+
+        aggregated_rows: List[List[Optional[str]]] = []
+
+        for region in self.constituent_regions:
+            try:
+                region_rows = region.extract_table(
+                    method=method,
+                    table_settings=table_settings.copy(),  # Avoid side-effects
+                    use_ocr=use_ocr,
+                    ocr_config=ocr_config,
+                    text_options=text_options.copy(),
+                    cell_extraction_func=cell_extraction_func,
+                    show_progress=show_progress,
+                    **kwargs,
+                )
+
+                # ``region_rows`` can legitimately be [] if no table found.
+                if region_rows:
+                    aggregated_rows.extend(region_rows)
+            except Exception as e:
+                logger.error(
+                    f"FlowRegion.extract_table: Error extracting table from constituent region {region}: {e}",
+                    exc_info=True,
+                )
+
+        return aggregated_rows
+
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        **kwargs,
+    ) -> List[List[List[Optional[str]]]]:
+        """Extract **all** tables from the FlowRegion.
+
+        This simply chains :pymeth:`Region.extract_tables` over each physical
+        region and concatenates their results, preserving flow order.
+
+        Args:
+            method, table_settings: Forwarded to underlying ``Region.extract_tables``.
+            **kwargs: Additional keyword arguments forwarded.
+
+        Returns:
+            A list where each item is a full table (list of rows).  The order of
+            tables follows the order of the constituent regions in the flow.
+        """
+
+        if table_settings is None:
+            table_settings = {}
+
+        if not self.constituent_regions:
+            return []
+
+        all_tables: List[List[List[Optional[str]]]] = []
+
+        for region in self.constituent_regions:
+            try:
+                region_tables = region.extract_tables(
+                    method=method,
+                    table_settings=table_settings.copy(),
+                    **kwargs,
+                )
+                # ``region_tables`` is a list (possibly empty).
+                if region_tables:
+                    all_tables.extend(region_tables)
+            except Exception as e:
+                logger.error(
+                    f"FlowRegion.extract_tables: Error extracting tables from constituent region {region}: {e}",
+                    exc_info=True,
+                )
+
+        return all_tables

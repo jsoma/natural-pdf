@@ -1833,8 +1833,40 @@ class ElementCollection(
             # Mix object bounds with specific overrides
             clipped_elements = collection.clip(obj=container, bottom=page.height/2)
         """
+        # --- NEW BEHAVIOUR: support per-element clipping with sequences --- #
+        from collections.abc import Sequence  # Local import to avoid top-level issues
+
+        # Detect if *obj* is a sequence meant to map one-to-one with the elements
+        clip_objs = None  # type: Optional[List[Any]]
+        if isinstance(obj, ElementCollection):
+            clip_objs = obj.elements
+        elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes)):
+            clip_objs = list(obj)
+
+        if clip_objs is not None:
+            if len(clip_objs) != len(self._elements):
+                raise ValueError(
+                    f"Number of clipping objects ({len(clip_objs)}) does not match number of "
+                    f"elements in collection ({len(self._elements)})."
+                )
+
+            clipped_elements = [
+                el.clip(
+                    obj=clip_obj,
+                    left=left,
+                    top=top,
+                    right=right,
+                    bottom=bottom,
+                )
+                for el, clip_obj in zip(self._elements, clip_objs)
+            ]
+            return ElementCollection(clipped_elements)
+
+        # Fallback to original behaviour: apply same clipping parameters to all elements
         return self.apply(
-            lambda element: element.clip(obj=obj, left=left, top=top, right=right, bottom=bottom)
+            lambda element: element.clip(
+                obj=obj, left=left, top=top, right=right, bottom=bottom
+            )
         )
 
 
@@ -2306,6 +2338,44 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
         # Generate sections
         sections = []
+
+        # --- Helper: build a FlowRegion spanning multiple pages ---
+        def _build_flow_region(start_el, end_el):
+            """Return a FlowRegion that covers from *start_el* to *end_el* (inclusive).
+            If *end_el* is None, the region continues to the bottom of the last
+            page in this PageCollection."""
+            # Local imports to avoid top-level cycles
+            from natural_pdf.elements.region import Region
+            from natural_pdf.flows.flow import Flow
+            from natural_pdf.flows.element import FlowElement
+            from natural_pdf.flows.region import FlowRegion
+
+            start_pg = start_el.page
+            end_pg = end_el.page if end_el is not None else self.pages[-1]
+
+            parts: list[Region] = []
+            # Slice of first page
+            parts.append(Region(start_pg, (0, start_el.top, start_pg.width, start_pg.height)))
+
+            # Full middle pages
+            for pg_idx in range(start_pg.index + 1, end_pg.index):
+                mid_pg = self.pages[pg_idx]
+                parts.append(Region(mid_pg, (0, 0, mid_pg.width, mid_pg.height)))
+
+            # Slice of last page (if distinct)
+            if end_pg is not start_pg:
+                bottom = end_el.bottom if end_el is not None else end_pg.height
+                parts.append(Region(end_pg, (0, 0, end_pg.width, bottom)))
+
+            flow = Flow(segments=parts, arrangement="vertical")
+            src_fe = FlowElement(physical_object=start_el, flow=flow)
+            return FlowRegion(flow=flow,
+                               constituent_regions=parts,
+                               source_flow_element=src_fe,
+                               boundary_element_found=end_el)
+
+        # ------------------------------------------------------------------
+
         current_start = None
 
         for i, boundary in enumerate(section_boundaries):
@@ -2326,50 +2396,9 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                     )
                     sections.append(section)
                 else:
-                    # Create a multi-page section
-                    from natural_pdf.elements.region import Region
-
-                    # Get the start and end pages
-                    start_page = start_element.page
-                    end_page = end_element.page
-
-                    # Create a combined region
-                    combined_region = Region(
-                        start_page, (0, start_element.top, start_page.width, start_page.height)
-                    )
-                    combined_region._spans_pages = True
-                    combined_region._page_range = (start_page.index, end_page.index)
-                    combined_region.start_element = start_element
-                    combined_region.end_element = end_element
-
-                    # Get all elements that fall within this multi-page region
-                    combined_elements = []
-
-                    # Get elements from the first page
-                    first_page_elements = [
-                        e
-                        for e in all_elements
-                        if e.page == start_page and e.top >= start_element.top
-                    ]
-                    combined_elements.extend(first_page_elements)
-
-                    # Get elements from middle pages (if any)
-                    for page_idx in range(start_page.index + 1, end_page.index):
-                        middle_page_elements = [e for e in all_elements if e.page.index == page_idx]
-                        combined_elements.extend(middle_page_elements)
-
-                    # Get elements from the last page
-                    last_page_elements = [
-                        e
-                        for e in all_elements
-                        if e.page == end_page and e.bottom <= end_element.bottom
-                    ]
-                    combined_elements.extend(last_page_elements)
-
-                    # Store the elements in the combined region
-                    combined_region._multi_page_elements = combined_elements
-
-                    sections.append(combined_region)
+                    # Create FlowRegion spanning pages
+                    flow_region = _build_flow_region(start_element, end_element)
+                    sections.append(flow_region)
 
                 current_start = None
 
@@ -2425,54 +2454,9 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 last_page_elements.sort(key=lambda e: (e.top, e.x0))
                 end_element = last_page_elements[-1] if last_page_elements else None
 
-                # Create a multi-page section
-                from natural_pdf.elements.region import Region
-
-                if start_page == last_page:
-                    # Simple case - both on same page
-                    section = start_page.get_section_between(
-                        start_element, end_element, boundary_inclusion
-                    )
-                    sections.append(section)
-                else:
-                    # Create a multi-page section
-                    combined_region = Region(
-                        start_page, (0, start_element.top, start_page.width, start_page.height)
-                    )
-                    combined_region._spans_pages = True
-                    combined_region._page_range = (start_page.index, last_page.index)
-                    combined_region.start_element = start_element
-                    combined_region.end_element = end_element
-
-                    # Get all elements that fall within this multi-page region
-                    combined_elements = []
-
-                    # Get elements from the first page
-                    first_page_elements = [
-                        e
-                        for e in all_elements
-                        if e.page == start_page and e.top >= start_element.top
-                    ]
-                    combined_elements.extend(first_page_elements)
-
-                    # Get elements from middle pages (if any)
-                    for page_idx in range(start_page.index + 1, last_page.index):
-                        middle_page_elements = [e for e in all_elements if e.page.index == page_idx]
-                        combined_elements.extend(middle_page_elements)
-
-                    # Get elements from the last page
-                    last_page_elements = [
-                        e
-                        for e in all_elements
-                        if e.page == last_page
-                        and (end_element is None or e.bottom <= end_element.bottom)
-                    ]
-                    combined_elements.extend(last_page_elements)
-
-                    # Store the elements in the combined region
-                    combined_region._multi_page_elements = combined_elements
-
-                    sections.append(combined_region)
+                # Create FlowRegion spanning multiple pages using helper
+                flow_region = _build_flow_region(start_element, end_element)
+                sections.append(flow_region)
             else:
                 # With start_elements only, create a section to the end of the current page
                 from natural_pdf.elements.region import Region
@@ -2660,13 +2644,13 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
     def to_image(
         self,
-        page_width: int = 300,
+        page_width: Optional[int] = None,
         cols: Optional[int] = 4,
         rows: Optional[int] = None,
         max_pages: Optional[int] = None,
         spacing: int = 10,
-        add_labels: bool = True,
-        show_category: bool = False,  # Add new flag
+        add_labels: bool = True,  # Add new flag
+        show_category: bool = False,
     ) -> Optional["Image.Image"]:
         """
         Generate a grid of page images for this collection.
@@ -2683,6 +2667,16 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         Returns:
             PIL Image of the page grid or None if no pages
         """
+        # Determine default page width from global options if not explicitly provided
+        if page_width is None:
+            try:
+                import natural_pdf
+
+                page_width = natural_pdf.options.image.width or 300
+            except Exception:
+                # Fallback if natural_pdf import fails in some edge context
+                page_width = 300
+
         # Ensure PIL is imported, handle potential ImportError if not done globally/lazily
         try:
             from PIL import Image, ImageDraw, ImageFont
@@ -2980,3 +2974,17 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 # Re-raise the exception caught from the exporter
                 raise e  # Keep the original exception type (ValueError, RuntimeError, etc.)
             # <--- END MODIFIED
+
+    # Alias .to_image() to .show() for convenience
+    def show(
+        self,
+        *args,
+        **kwargs,
+    ) -> Optional["Image.Image"]:
+        """Display pages similarly to ``to_image``.
+
+        This is a thin wrapper around :py:meth:`to_image` so that the API mirrors
+        ElementCollection, where ``show()`` already exists. It forwards all
+        arguments and returns the resulting ``PIL.Image`` instance.
+        """
+        return self.to_image(*args, **kwargs)

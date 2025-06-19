@@ -128,6 +128,32 @@ class ElementSummary:
             ""
         ]
 
+    # Added for better VS Code and other frontends support
+    def _repr_html_(self) -> str:  # type: ignore
+        """Return HTML representation so rich rendering works in more frontends.
+
+        Many notebook frontends (including VS Code) give priority to the
+        ``_repr_html_`` method over Markdown. When available, we convert the
+        generated Markdown to HTML using the *markdown* library. If the
+        library is not installed we simply wrap the Markdown in a ``<pre>``
+        block so that at least the plain-text representation is visible.
+        """
+        md_source = self._to_markdown()
+        try:
+            import markdown as _markdown  # pylint: disable=import-error
+
+            # Convert markdown to HTML. We explicitly enable tables so the
+            # element and inspection summaries render nicely.
+            return _markdown.markdown(md_source, extensions=["tables"])
+        except Exception:  # noqa: BLE001, broad-except
+            # Fallback: present the Markdown as-is inside a <pre> block.
+            escaped = (
+                md_source.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
+            return f"<pre>{escaped}</pre>"
+
 
 class InspectionSummary(ElementSummary):
     """

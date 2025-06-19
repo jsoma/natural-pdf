@@ -22,51 +22,46 @@ question_1 = "What is the inspection date?"
 answer_1 = page.ask(question_1)
 
 # The result dictionary always contains:
+#   question    - original question
 #   answer      – extracted span (string, may be empty)
 #   confidence  – model score 0–1
 #   start / end – indices into page.words
 #   found       – False if confidence < min_confidence
 answer_1
-# ➜ {'answer': 'July 31, 2023', 'confidence': 0.82, 'start': 33, 'end': 36, 'found': True}
 ```
 
 ```python
-# Ask about the company name
-question_2 = "What company was inspected?"
-answer_2 = page.ask(question_2)
-
-# Display the answer dictionary
-answer_2
+page.ask("What company was inspected?")
 ```
 
 ```python
-# Ask about specific content from the table
-question_3 = "What is statute 5.8.3 about?"
-answer_3 = page.ask(question_3)
-
-# Display the answer
-answer_3
+page.ask( "What is statute 5.8.3 about?")
 ```
 
 The results include the extracted `answer`, a `confidence` score (useful for filtering uncertain answers), the `page_num`, and the `source_elements`.
 
 ## Visualising Where the Answer Came From
 
+You can manually access results sources through `answer['source_elements']` but it's much more fun to just use `.show()`.
+
 ```python
-from natural_pdf.elements.collections import ElementCollection
-
-page.clear_highlights()
-
-if answer_1["found"]:
-    words = ElementCollection(page.words[answer_1["start"] : answer_1["end"] + 1])
-    words.show(color="yellow", label=question_1)
-
-page.to_image()
+answer = page.ask("What is the inspection ID?")
+answer.show()
 ```
+
+## Asking an entire PDF
+
+You don't need to select a single page to use `.ask`! It also works for entire PDFs, regions, anything.
+
+```python
+pdf.ask("What company was inspected?")
+```
+
+Notice that it collects the page number for later investigation.
 
 ## Collecting Results into a DataFrame
 
-If you're asking multiple questions, it's often useful to collect the results into a pandas DataFrame for easier analysis.
+If you're asking multiple questions, it's often useful to collect the results into a pandas DataFrame. `page.ask` supports passing a **list of questions** directly. This is far faster than looping because the underlying model is invoked only once.
 
 ```python
 from natural_pdf import PDF
@@ -75,44 +70,27 @@ import pandas as pd
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
-# List of questions to ask
 questions = [
     "What is the inspection date?",
     "What company was inspected?",
     "What is statute 5.8.3 about?",
-    "How many violations were there in total?" # This might be less reliable
+    "How many violations were there in total?"
 ]
 
-# Collect answers for each question
-results = []
-for q in questions:
-    ans = page.ask(q, min_confidence=0.2)
-    ans["question"] = q
-    results.append(ans)
+answers = page.ask(questions, min_confidence=0.2)
 
-cols = ["question", "answer", "confidence", "found"]
-qa_df = pd.DataFrame(results)[cols]
-qa_df
+df = pd.json_normalize(answers)
+df
 ```
 
-This shows how you can iterate through questions, collect the answer dictionaries, and then create a structured DataFrame, making it easy to review questions, answers, and their confidence levels together.
+`pd.json_normalize` flattens the list of answer dictionaries straight into a DataFrame, making it easy to inspect the questions, their extracted answers, and associated confidence scores.
 
 ## TODO
 
 * Demonstrate passing `model="impira/layoutlm-document-qa"` to switch models.
-* Show multi-page QA: iterate over `pdf.pages` and add `page` column to the results.
-* Add batch helper (`pdf.ask_many(questions)`) once implemented.
 
-## Wish List
+## QA Model and Limitations
 
-* Support for highlighting answer automatically via a `show_answer()` helper.
-* Option to return bounding box coordinates directly (`bbox`) in the answer dict.
-* Add `ElementCollection.to_dataframe()` for one-call DataFrame creation.
-
-<div class="admonition note">
-<p class="admonition-title">QA Model and Limitations</p>
-
-    *   The QA system relies on underlying transformer models. Performance and confidence scores vary.
-    *   It works best for questions where the answer is explicitly stated. It cannot synthesize information or perform calculations (e.g., counting items might fail or return text containing a number rather than the count itself).
-    *   You can potentially specify different QA models via the `model=` argument in `page.ask()` if others are configured.
-</div> 
+*   The QA system relies on underlying transformer models. Performance and confidence scores vary.
+*   It works best for questions where the answer is explicitly stated. It cannot synthesize information or perform calculations (e.g., counting items might fail or return text containing a number rather than the count itself).
+*   You can potentially specify different QA models via the `model=` argument in `page.ask()` if others are configured.

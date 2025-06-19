@@ -2235,12 +2235,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
     def ask(
         self,
-        question: str,
+        question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         model: str = None,
         debug: bool = False,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Ask a question about the page content using document QA.
         """
@@ -2824,3 +2824,17 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value
+
+    def inspect(self, limit: int = 30) -> "InspectionSummary":
+        """
+        Inspect all elements on this page with detailed tabular view.
+        Equivalent to page.find_all('*').inspect().
+
+        Args:
+            limit: Maximum elements per type to show (default: 30)
+
+        Returns:
+            InspectionSummary with element tables showing coordinates,
+            properties, and other details for each element
+        """
+        return self.find_all('*').inspect(limit=limit)

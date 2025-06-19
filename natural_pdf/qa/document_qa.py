@@ -119,28 +119,51 @@ class DocumentQA:
     def ask(
         self,
         image: Union[str, Image.Image, np.ndarray],
-        question: str,
+        question: Union[str, List[str], Tuple[str, ...]],
         word_boxes: List = None,
         min_confidence: float = 0.1,
         debug: bool = False,
         debug_output_dir: str = "output",
-    ) -> QAResult:
+    ) -> Union[QAResult, List[QAResult]]:
         """
-        Ask a question about document content.
+        Ask one or more natural-language questions about the supplied document image.
+
+        This method now accepts a single *question* (``str``) **or** an
+        iterable of questions (``list``/``tuple`` of ``str``).  When multiple
+        questions are provided they are executed in a single batch through the
+        underlying transformers pipeline which is considerably faster than
+        looping and calling :py:meth:`ask` repeatedly.
 
         Args:
-            image: PIL Image, numpy array, or path to image file
-            question: Question to ask about the document
-            word_boxes: Optional pre-extracted word boxes [[text, [x0, y0, x1, y1]], ...]
-            min_confidence: Minimum confidence threshold for answers
-            debug: Whether to save debug information
-            debug_output_dir: Directory to save debug files
+            image: PIL ``Image``, ``numpy`` array, or path to an image file.
+            question: A question string *or* a list/tuple of question strings.
+            word_boxes: Optional pre-extracted word-boxes in the LayoutLMv3
+                format ``[[text, [x0, y0, x1, y1]], …]``.
+            min_confidence: Minimum confidence threshold below which an answer
+                will be marked as ``found = False``.
+            debug: If ``True`` intermediate artefacts will be written to
+                *debug_output_dir* to aid troubleshooting.
+            debug_output_dir: Directory where debug artefacts should be saved.
 
         Returns:
-            QAResult instance with answer details
+            • A single :class:`QAResult` when *question* is a string.
+            • A ``list`` of :class:`QAResult`` objects (one per question) when
+              *question* is a list/tuple.
         """
         if not self._is_initialized:
             raise RuntimeError("DocumentQA is not properly initialized")
+
+        # Normalise *questions* to a list so we can treat batch and single
+        # uniformly.  We'll remember if the caller supplied a single question
+        # so that we can preserve the original return type.
+        single_question = False
+        if isinstance(question, str):
+            questions = [question]
+            single_question = True
+        elif isinstance(question, (list, tuple)) and all(isinstance(q, str) for q in question):
+            questions = list(question)
+        else:
+            raise TypeError("'question' must be a string or a list/tuple of strings")
 
         # Process the image
         if isinstance(image, str):
@@ -157,12 +180,16 @@ class DocumentQA:
         else:
             raise TypeError("Image must be a PIL Image, numpy array, or file path")
 
-        # Prepare the query
-        query = {"image": image_obj, "question": question}
+        # ------------------------------------------------------------------
+        # Build the queries for the pipeline (either single dict or list).
+        # ------------------------------------------------------------------
+        def _build_query_dict(q: str):
+            d = {"image": image_obj, "question": q}
+            if word_boxes:
+                d["word_boxes"] = word_boxes
+            return d
 
-        # Add word boxes if provided
-        if word_boxes:
-            query["word_boxes"] = word_boxes
+        queries = [_build_query_dict(q) for q in questions]
 
         # Save debug information if requested
         if debug:
@@ -198,48 +225,79 @@ class DocumentQA:
                 logger.info(f"Word boxes: {word_boxes_path}")
                 logger.info(f"Visualization: {vis_path}")
 
-        # Run the query through the pipeline
-        logger.info(f"Running document QA pipeline with question: {question}")
-        result = self.pipe(query)[0]
-        logger.info(f"Raw result: {result}")
-
-        # Save the result if debugging
-        if debug:
-            result_path = os.path.join(debug_output_dir, "debug_qa_result.json")
-            with open(result_path, "w") as f:
-                # Convert any non-serializable data
-                serializable_result = {
-                    k: (
-                        str(v)
-                        if not isinstance(v, (str, int, float, bool, list, dict, type(None)))
-                        else v
-                    )
-                    for k, v in result.items()
-                }
-                json.dump(serializable_result, f, indent=2)
-
-        # Check confidence against threshold
-        if result["score"] < min_confidence:
-            logger.info(f"Answer confidence {result['score']:.4f} below threshold {min_confidence}")
-            return QAResult(
-                answer="",
-                confidence=result["score"],
-                start=result.get("start", -1),
-                end=result.get("end", -1),
-                found=False,
-            )
-
-        return QAResult(
-            answer=result["answer"],
-            confidence=result["score"],
-            start=result.get("start", 0),
-            end=result.get("end", 0),
-            found=True,
+        # ------------------------------------------------------------------
+        # Run the queries through the pipeline (batch or single) and collect
+        # *only the top answer* for each, mirroring the original behaviour.
+        # ------------------------------------------------------------------
+        logger.info(
+            f"Running document QA pipeline with {len(queries)} question{'s' if len(queries) != 1 else ''}."
         )
 
+        # When we pass a list the pipeline returns a list of per-question
+        # results; each per-question result is itself a list (top-k answers).
+        # We keep only the best answer (index 0) to maintain backwards
+        # compatibility.
+        raw_results = self.pipe(queries if len(queries) > 1 else queries[0])
+
+        # Ensure we always have a list aligned with *questions*
+        if len(queries) == 1:
+            raw_results = [raw_results]
+
+        processed_results: List[QAResult] = []
+
+        for q, res in zip(questions, raw_results):
+            top_res = res[0] if isinstance(res, list) else res  # pipeline may or may not nest
+
+            # Save per-question result in debug mode
+            if debug:
+                # File names: debug_qa_result_0.json, …
+                result_path = os.path.join(debug_output_dir, f"debug_qa_result_{q[:30].replace(' ', '_')}.json")
+                try:
+                    with open(result_path, "w") as f:
+                        serializable = {
+                            k: (
+                                str(v)
+                                if not isinstance(v, (str, int, float, bool, list, dict, type(None)))
+                                else v
+                            )
+                            for k, v in top_res.items()
+                        }
+                        json.dump(serializable, f, indent=2)
+                except Exception as e:
+                    logger.warning(f"Failed to save debug QA result for question '{q}': {e}")
+
+            # Apply confidence threshold
+            if top_res["score"] < min_confidence:
+                qa_res = QAResult(
+                    question=q,
+                    answer="",
+                    confidence=top_res["score"],
+                    start=top_res.get("start", -1),
+                    end=top_res.get("end", -1),
+                    found=False,
+                )
+            else:
+                qa_res = QAResult(
+                    question=q,
+                    answer=top_res["answer"],
+                    confidence=top_res["score"],
+                    start=top_res.get("start", 0),
+                    end=top_res.get("end", 0),
+                    found=True,
+                )
+
+            processed_results.append(qa_res)
+
+        # Return appropriately typed result (single item or list)
+        return processed_results[0] if single_question else processed_results
+
     def ask_pdf_page(
-        self, page, question: str, min_confidence: float = 0.1, debug: bool = False
-    ) -> QAResult:
+        self,
+        page,
+        question: Union[str, List[str], Tuple[str, ...]],
+        min_confidence: float = 0.1,
+        debug: bool = False,
+    ) -> Union[QAResult, List[QAResult]]:
         """
         Ask a question about a specific PDF page.
 
@@ -270,8 +328,8 @@ class DocumentQA:
         page_image.save(temp_path)
 
         try:
-            # Ask the question
-            result = self.ask(
+            # Ask the question(s)
+            result_obj = self.ask(
                 image=temp_path,
                 question=question,
                 word_boxes=word_boxes,
@@ -279,34 +337,35 @@ class DocumentQA:
                 debug=debug,
             )
 
-            # Add page reference to the result
-            result.page_num = page.index
+            # Ensure we have a list for uniform processing
+            results = result_obj if isinstance(result_obj, list) else [result_obj]
 
-            # Add element references if possible
-            if result.found and "start" in result and "end" in result:
-                start_idx = result.start
-                end_idx = result.end
+            for res in results:
+                # Attach page reference
+                res.page_num = page.index
 
-                # Make sure we have valid indices and elements to work with
-                if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
-                    # Find the actual source elements in the original list
-                    # Since word_boxes may have filtered out some elements, we need to map indices
+                # Map answer span back to source elements
+                if res.found and "start" in res and "end" in res:
+                    start_idx = res.start
+                    end_idx = res.end
 
-                    # Get the text from result word boxes
-                    matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
+                    if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
+                        matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
 
-                    # Find corresponding elements in the full element list
-                    source_elements = []
-                    for element in elements:
-                        if hasattr(element, "text") and element.text in matched_texts:
-                            source_elements.append(element)
-                            # Remove from matched texts to avoid duplicates
-                            if element.text in matched_texts:
-                                matched_texts.remove(element.text)
+                        source_elements = []
+                        for element in elements:
+                            if hasattr(element, "text") and element.text in matched_texts:
+                                source_elements.append(element)
+                                if element.text in matched_texts:
+                                    matched_texts.remove(element.text)
 
-                    result.source_elements = ElementCollection(source_elements)
+                        res.source_elements = ElementCollection(source_elements)
 
-            return result
+            # Return result(s) preserving original input type
+            if isinstance(question, (list, tuple)):
+                return results
+            else:
+                return results[0]
 
         finally:
             # Clean up temporary file
@@ -314,8 +373,12 @@ class DocumentQA:
                 os.remove(temp_path)
 
     def ask_pdf_region(
-        self, region, question: str, min_confidence: float = 0.1, debug: bool = False
-    ) -> QAResult:
+        self,
+        region,
+        question: Union[str, List[str], Tuple[str, ...]],
+        min_confidence: float = 0.1,
+        debug: bool = False,
+    ) -> Union[QAResult, List[QAResult]]:
         """
         Ask a question about a specific region of a PDF page.
 
@@ -352,8 +415,8 @@ class DocumentQA:
         region_image.save(temp_path)
 
         try:
-            # Ask the question
-            result = self.ask(
+            # Ask the question(s)
+            result_obj = self.ask(
                 image=temp_path,
                 question=question,
                 word_boxes=word_boxes,
@@ -361,35 +424,29 @@ class DocumentQA:
                 debug=debug,
             )
 
-            # Add region reference to the result
-            result.region = region
-            result.page_num = region.page.index
+            results = result_obj if isinstance(result_obj, list) else [result_obj]
 
-            # Add element references if possible
-            if result.found and "start" in result and "end" in result:
-                start_idx = result.start
-                end_idx = result.end
+            for res in results:
+                res.region = region
+                res.page_num = region.page.index
 
-                # Make sure we have valid indices and elements to work with
-                if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
-                    # Find the actual source elements in the original list
-                    # Since word_boxes may have filtered out some elements, we need to map indices
+                if res.found and "start" in res and "end" in res:
+                    start_idx = res.start
+                    end_idx = res.end
 
-                    # Get the text from result word boxes
-                    matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
+                    if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
+                        matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
 
-                    # Find corresponding elements in the full element list
-                    source_elements = []
-                    for element in elements:
-                        if hasattr(element, "text") and element.text in matched_texts:
-                            source_elements.append(element)
-                            # Remove from matched texts to avoid duplicates
-                            if element.text in matched_texts:
-                                matched_texts.remove(element.text)
+                        source_elements = []
+                        for element in elements:
+                            if hasattr(element, "text") and element.text in matched_texts:
+                                source_elements.append(element)
+                                if element.text in matched_texts:
+                                    matched_texts.remove(element.text)
 
-                    result.source_elements = ElementCollection(source_elements)
+                        res.source_elements = ElementCollection(source_elements)
 
-            return result
+            return results if isinstance(question, (list, tuple)) else results[0]
 
         finally:
             # Clean up temporary file

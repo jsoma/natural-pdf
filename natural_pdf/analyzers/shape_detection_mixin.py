@@ -1490,6 +1490,45 @@ class ShapeDetectionMixin:
 
         element_manager = page_object_for_elements._element_mgr
 
+        # ------------------------------------------------------------------
+        # CLEAN-UP existing table-related regions from earlier runs to avoid duplicates
+        # ------------------------------------------------------------------
+        try:
+            _purge_types = {"table", "table_row", "table_column", "table_cell"}
+
+            if (
+                hasattr(element_manager, "_elements")
+                and "regions" in element_manager._elements
+            ):
+                _orig_len = len(element_manager._elements["regions"])
+                element_manager._elements["regions"] = [
+                    r
+                    for r in element_manager._elements["regions"]
+                    if not (
+                        getattr(r, "source", None) == source_label
+                        and getattr(r, "region_type", None) in _purge_types
+                    )
+                ]
+                _removed = _orig_len - len(element_manager._elements["regions"])
+                if _removed:
+                    logger.info(
+                        f"Removed {_removed} previous table-related regions (source='{source_label}') before regeneration."
+                    )
+
+            if hasattr(page_object_for_elements, "_regions") and "detected" in page_object_for_elements._regions:
+                page_object_for_elements._regions["detected"] = [
+                    r
+                    for r in page_object_for_elements._regions["detected"]
+                    if not (
+                        getattr(r, "source", None) == source_label
+                        and getattr(r, "region_type", None) in _purge_types
+                    )
+                ]
+        except Exception as _cleanup_err:
+            logger.warning(
+                f"Table-region cleanup failed: {_cleanup_err}", exc_info=True
+            )
+
         # Get lines with the specified source
         all_lines = element_manager.lines  # Access lines from the correct element manager
         filtered_lines = [
@@ -1724,6 +1763,7 @@ class ShapeDetectionMixin:
         logger.info(
             f"Created {tables_created} table, {rows_created} rows, {cols_created} columns, and {cells_created} table cells from detected lines (source: '{source_label}') for {self}."
         )
+
         return self
 
 

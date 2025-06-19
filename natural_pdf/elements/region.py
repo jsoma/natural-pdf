@@ -1210,6 +1210,24 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 # Try lattice first, then fall back to stream if no meaningful results
                 logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
 
+                # --- NEW: Prefer already-created table_cell regions if they exist --- #
+                try:
+                    cell_regions_in_table = [
+                        c
+                        for c in self.page.find_all("region[type=table_cell]", apply_exclusions=False)
+                        if self.intersects(c)
+                    ]
+                except Exception as _cells_err:
+                    cell_regions_in_table = []  # Fallback silently
+
+                if cell_regions_in_table:
+                    logger.debug(
+                        f"Region {self.bbox}: Found {len(cell_regions_in_table)} pre-computed table_cell regions – using 'cells' method."
+                    )
+                    return self._extract_table_from_cells(cell_regions_in_table)
+
+                # --------------------------------------------------------------- #
+
                 try:
                     logger.debug(f"Region {self.bbox}: Trying 'lattice' method first...")
                     lattice_result = self.extract_table(
@@ -1905,19 +1923,19 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             logger.info(
                 f"Region {self.bbox}: Removing existing OCR elements before applying new OCR."
             )
-            # Find all OCR elements in this region
-            ocr_selector = "text[source=ocr]"
-            ocr_elements = self.find_all(ocr_selector)
 
+            # Remove existing OCR word elements strictly inside this region
+            ocr_selector = "text[source=ocr]"
+            ocr_elements = self.find_all(ocr_selector, apply_exclusions=False)
             if ocr_elements:
-                logger.info(
-                    f"Region {self.bbox}: Found {len(ocr_elements)} existing OCR elements to remove."
-                )
-                # Remove these elements from their page
                 removed_count = ocr_elements.remove()
-                logger.info(f"Region {self.bbox}: Removed {removed_count} OCR elements.")
+                logger.info(
+                    f"Region {self.bbox}: Removed {removed_count} existing OCR word elements in region before re-applying OCR."
+                )
             else:
-                logger.info(f"Region {self.bbox}: No existing OCR elements found to remove.")
+                logger.info(
+                    f"Region {self.bbox}: No existing OCR word elements found within region to remove."
+                )
 
         ocr_mgr = self.page._parent._ocr_manager
 
@@ -1978,8 +1996,17 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 page_top = self.top + (img_top * scale_y)
                 page_x1 = self.x0 + (img_x1 * scale_x)
                 page_bottom = self.top + (img_bottom * scale_y)
+                raw_conf = result.get("confidence")
+                # Convert confidence to float unless it is None/invalid
+                try:
+                    confidence_val = float(raw_conf) if raw_conf is not None else None
+                except (TypeError, ValueError):
+                    confidence_val = None
+
+                text_val = result.get("text")  # May legitimately be None in detect_only mode
+
                 element_data = {
-                    "text": result["text"],
+                    "text": text_val,
                     "x0": page_x0,
                     "top": page_top,
                     "x1": page_x1,
@@ -1988,7 +2015,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                     "height": page_bottom - page_top,
                     "object_type": "word",
                     "source": "ocr",
-                    "confidence": float(result.get("confidence", 0.0)),
+                    "confidence": confidence_val,
                     "fontname": "OCR",
                     "size": round(pdf_height) if pdf_height > 0 else 10.0,
                     "page_number": self.page.number,
@@ -2324,12 +2351,12 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
     def ask(
         self,
-        question: str,
+        question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         model: str = None,
         debug: bool = False,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Ask a question about the region content using document QA.
 
@@ -2869,5 +2896,99 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value
+
+    # ------------------------------------------------------------------
+    # New helper: build table from pre-computed table_cell regions
+    # ------------------------------------------------------------------
+
+    def _extract_table_from_cells(self, cell_regions: List["Region"]) -> List[List[Optional[str]]]:
+        """Construct a table (list-of-lists) from table_cell regions.
+
+        This assumes each cell Region has metadata.row_index / col_index as written by
+        detect_table_structure_from_lines().  If these keys are missing we will
+        fall back to sorting by geometry.
+        """
+        if not cell_regions:
+            return []
+
+        # Attempt to use explicit indices first
+        all_row_idxs = []
+        all_col_idxs = []
+        for cell in cell_regions:
+            try:
+                r_idx = int(cell.metadata.get("row_index"))
+                c_idx = int(cell.metadata.get("col_index"))
+                all_row_idxs.append(r_idx)
+                all_col_idxs.append(c_idx)
+            except Exception:
+                # Not all cells have indices – clear the lists so we switch to geometric sorting
+                all_row_idxs = []
+                all_col_idxs = []
+                break
+
+        if all_row_idxs and all_col_idxs:
+            num_rows = max(all_row_idxs) + 1
+            num_cols = max(all_col_idxs) + 1
+
+            # Initialise blank grid
+            table_grid: List[List[Optional[str]]] = [[None] * num_cols for _ in range(num_rows)]
+
+            for cell in cell_regions:
+                try:
+                    r_idx = int(cell.metadata.get("row_index"))
+                    c_idx = int(cell.metadata.get("col_index"))
+                    text_val = cell.extract_text(layout=False, apply_exclusions=False).strip()
+                    table_grid[r_idx][c_idx] = text_val if text_val else None
+                except Exception as _err:
+                    # Skip problematic cell
+                    continue
+
+            return table_grid
+
+        # ------------------------------------------------------------------
+        # Fallback: derive order purely from geometry if indices are absent
+        # ------------------------------------------------------------------
+        # Sort unique centers to define ordering
+        try:
+            import numpy as np
+        except ImportError:
+            logger.warning("NumPy required for geometric cell ordering; returning empty result.")
+            return []
+
+        # Build arrays of centers
+        centers = np.array([
+            [(c.x0 + c.x1) / 2.0, (c.top + c.bottom) / 2.0] for c in cell_regions
+        ])
+        xs = centers[:, 0]
+        ys = centers[:, 1]
+
+        # Cluster unique row Y positions and column X positions with a tolerance
+        def _cluster(vals, tol=1.0):
+            sorted_vals = np.sort(vals)
+            groups = [[sorted_vals[0]]]
+            for v in sorted_vals[1:]:
+                if abs(v - groups[-1][-1]) <= tol:
+                    groups[-1].append(v)
+                else:
+                    groups.append([v])
+            return [np.mean(g) for g in groups]
+
+        row_centers = _cluster(ys)
+        col_centers = _cluster(xs)
+
+        num_rows = len(row_centers)
+        num_cols = len(col_centers)
+
+        table_grid: List[List[Optional[str]]] = [[None] * num_cols for _ in range(num_rows)]
+
+        # Assign each cell to nearest row & col center
+        for cell, (cx, cy) in zip(cell_regions, centers):
+            row_idx = int(np.argmin([abs(cy - rc) for rc in row_centers]))
+            col_idx = int(np.argmin([abs(cx - cc) for cc in col_centers]))
+
+            text_val = cell.extract_text(layout=False, apply_exclusions=False).strip()
+            table_grid[row_idx][col_idx] = text_val if text_val else None
+
+        return table_grid
 
 

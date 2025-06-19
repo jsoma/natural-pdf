@@ -269,7 +269,7 @@ def _get_columns_for_type(element_type: str, show_page_column: bool) -> List[str
     base_columns = ['x0', 'top', 'x1', 'bottom']
     
     if element_type == 'word':
-        columns = ['text'] + base_columns + ['font_family', 'size', 'bold', 'italic', 'source', 'confidence']
+        columns = ['text'] + base_columns + ['font_family', 'font_variant', 'size', 'bold', 'italic', 'source', 'confidence']
         # Add color for text elements
         columns.append('color')
     elif element_type == 'rect':
@@ -314,6 +314,16 @@ def _extract_element_value(element: "Element", column: str) -> Any:
                 return font_family
             # Fallback to fontname
             return getattr(element, 'fontname', '')
+        
+        elif column == 'font_variant':
+            variant = getattr(element, 'font_variant', None)
+            if variant:
+                return variant
+            # Fallback – try to derive from fontname if property missing
+            fontname = getattr(element, 'fontname', '')
+            if "+" in fontname:
+                return fontname.split("+", 1)[0]
+            return ''
         
         elif column in ['bold', 'italic']:
             value = getattr(element, column, False)

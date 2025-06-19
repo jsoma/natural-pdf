@@ -863,10 +863,10 @@ class HighlightingService:
             if crop_bbox is not None:
                 cb_x0, cb_top, cb_x1, cb_bottom = crop_bbox
                 # Convert to pixel coordinates using actual scales
-                left_px = int(cb_x0 * actual_scale_x) - 2
-                top_px = int(cb_top * actual_scale_y) - 2
-                right_px = int(cb_x1 * actual_scale_x) + 2
-                bottom_px = int(cb_bottom * actual_scale_y) + 2
+                left_px = int(cb_x0 * actual_scale_x) - 1
+                top_px = int(cb_top * actual_scale_y) - 1
+                right_px = int(cb_x1 * actual_scale_x) + 1
+                bottom_px = int(cb_bottom * actual_scale_y) + 1
 
                 # Safeguard coordinates within bounds
                 left_px = max(0, min(left_px, rendered_image.width - 1))
