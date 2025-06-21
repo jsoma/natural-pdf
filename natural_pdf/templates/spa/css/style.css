@@ -195,6 +195,10 @@ button.secondary:hover {
     /* display: inline-block; /* Remove this if using flex parent */
 }
 
+.image-clip-canvas {
+    min-width: 70%;
+}
+
 .editing-content {
     font-size: 18px;
     text-align: center;

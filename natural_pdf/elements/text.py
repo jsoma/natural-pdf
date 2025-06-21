@@ -43,8 +43,57 @@ class TextElement(Element):
 
     @text.setter
     def text(self, value: str):
-        """Set the text content."""
+        """Set the text content and synchronise underlying char dictionaries (if any)."""
+        # Update the primary text value stored on the object itself
         self._obj["text"] = value
+
+        # --- Keep _char_dicts in sync so downstream utilities (e.g. extract_text)
+        #     that rely on the raw character dictionaries see the corrected text.
+        #     For OCR-generated words we usually have a single representative char
+        #     dict; for native words there may be one per character.
+        # ---------------------------------------------------------------------
+        try:
+            if hasattr(self, "_char_dicts") and isinstance(self._char_dicts, list):
+                if not self._char_dicts:
+                    return  # Nothing to update
+
+                if len(self._char_dicts) == 1:
+                    # Simple case – a single char dict represents the whole text
+                    self._char_dicts[0]["text"] = value
+                else:
+                    # Update character-by-character. If new value is shorter than
+                    # existing char dicts, truncate remaining dicts by setting
+                    # their text to empty string; if longer, extend by repeating
+                    # the last char dict geometry (best-effort fallback).
+                    for idx, char_dict in enumerate(self._char_dicts):
+                        if idx < len(value):
+                            char_dict["text"] = value[idx]
+                        else:
+                            # Clear extra characters from old text
+                            char_dict["text"] = ""
+
+                    # If new text is longer, append additional char dicts based
+                    # on the last available geometry. This is an approximation
+                    # but ensures text length consistency for downstream joins.
+                    if len(value) > len(self._char_dicts):
+                        last_dict = self._char_dicts[-1]
+                        for extra_idx in range(len(self._char_dicts), len(value)):
+                            new_dict = last_dict.copy()
+                            new_dict["text"] = value[extra_idx]
+                            # Advance x0/x1 roughly by average char width if available
+                            char_width = last_dict.get("adv") or (
+                                last_dict.get("width", 0) / max(len(self.text), 1)
+                            )
+                            if isinstance(char_width, (int, float)) and char_width > 0:
+                                shift = char_width * (extra_idx - len(self._char_dicts) + 1)
+                                new_dict["x0"] = last_dict.get("x0", 0) + shift
+                                new_dict["x1"] = last_dict.get("x1", 0) + shift
+                            self._char_dicts.append(new_dict)
+        except Exception as sync_err:  # pragma: no cover
+            # Keep failures silent but logged; better to have outdated chars than crash.
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"TextElement: Failed to sync _char_dicts after text update: {sync_err}")
 
     @property
     def source(self) -> str:

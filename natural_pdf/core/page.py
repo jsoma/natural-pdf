@@ -1994,6 +1994,10 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             )
             return ElementCollection([])  # Return empty collection
 
+        # Clear existing detected regions if 'replace' is specified
+        if existing == "replace":
+            self.clear_detected_layout_regions()
+
         # The analyzer's analyze_layout method already adds regions to the page
         # and its element manager. We just need to retrieve them.
         analyzer.analyze_layout(

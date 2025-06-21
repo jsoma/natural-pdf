@@ -36,7 +36,7 @@ def create_correction_task_package(
     output_zip_path: str,
     overwrite: bool = False,
     suggest=None,
-    resolution: int = 150,
+    resolution: int = 300,
 ) -> None:
     """
     Creates a zip package containing data for an OCR correction task.
@@ -160,8 +160,22 @@ def create_correction_task_package(
 
                 # 3. Prepare region data for manifest
                 page_regions_data = []
-                # Calculate scaling factor from PDF coordinates (72 DPI) to image pixels
-                coord_scale_factor = resolution / 72.0
+                # Calculate scaling factor *from PDF points* to *actual image pixels*.
+                # We prefer using the rendered image dimensions rather than the nominal
+                # resolution value, because the image might have been resized (e.g. via
+                # global `natural_pdf.options.image.width`). This guarantees that the
+                # bounding boxes we write to the manifest always align with the exact
+                # pixel grid of the exported image.
+
+                try:
+                    scale_x = img.width / float(page.width) if page.width else 1.0
+                    scale_y = img.height / float(page.height) if page.height else 1.0
+                except Exception as e:
+                    logger.warning(
+                        f"Could not compute per-axis scale factors for page {page.number}: {e}. "
+                        "Falling back to resolution-based scaling."
+                    )
+                    scale_x = scale_y = resolution / 72.0
 
                 i = -1
                 for elem in tqdm(ocr_elements):
@@ -176,12 +190,12 @@ def create_correction_task_package(
                         continue
                     region_id = f"r_{page.index}_{i}"  # ID unique within page
 
-                    # Scale coordinates to match the 300 DPI image
+                    # Scale coordinates to match the **actual** image dimensions.
                     scaled_bbox = [
-                        elem.x0 * coord_scale_factor,
-                        elem.top * coord_scale_factor,
-                        elem.x1 * coord_scale_factor,
-                        elem.bottom * coord_scale_factor,
+                        elem.x0 * scale_x,
+                        elem.top * scale_y,
+                        elem.x1 * scale_x,
+                        elem.bottom * scale_y,
                     ]
 
                     corrected = elem.text
@@ -191,7 +205,7 @@ def create_correction_task_package(
 
                     page_regions_data.append(
                         {
-                            "resolution": resolution,
+                            "resolution": scale_x * 72.0,
                             "id": region_id,
                             "bbox": scaled_bbox,
                             "ocr_text": elem.text,

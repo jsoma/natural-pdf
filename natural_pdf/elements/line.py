@@ -94,6 +94,14 @@ class LineElement(Element):
         # Vertical if x-change is within tolerance and y-change is significant
         return dx <= tolerance and dy > tolerance
 
+    @property
+    def orientation(self) -> str:
+        """Get the orientation of the line ('horizontal', 'vertical', or 'diagonal')."""
+        if self.is_horizontal:
+            return "horizontal"
+        elif self.is_vertical:
+            return "vertical"
+
     def text_above(self, distance: float = 5, **kwargs) -> Any:
         """
         Get text elements above this line.
@@ -142,7 +150,4 @@ class LineElement(Element):
 
     def __repr__(self) -> str:
         """String representation of the line element."""
-        line_type = (
-            "horizontal" if self.is_horizontal else "vertical" if self.is_vertical else "diagonal"
-        )
-        return f"<LineElement type={line_type} width={self.width:.1f} bbox={self.bbox}>"
+        return f"<LineElement type={self.orientation} width={self.width:.1f} bbox={self.bbox}>"

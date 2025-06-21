@@ -56,8 +56,8 @@ class ElementSummary:
         section_title = name.replace('_', ' ').title()
         
         if isinstance(data, dict):
-            lines = [f"**{section_title}**:"]
-            lines.extend(self._format_dict(data, indent="  "))
+            lines = [f"**{section_title}**:", ""]
+            lines.extend(self._format_dict(data, indent=""))
         elif isinstance(data, list):
             lines = [f"**{section_title}**: {', '.join(str(item) for item in data)}"]
         else:

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import tempfile
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -310,13 +311,39 @@ class DocumentQA:
             QAResult instance with answer details
         """
         # Ensure we have text elements on the page
-        if not page.find_all("text"):
-            # Apply OCR if no text is available
-            logger.info(f"No text elements found on page {page.index}, applying OCR")
-            page.apply_ocr()
+        elements = page.find_all("text")
+        if not elements:
+            # Warn that no text was found and recommend OCR
+            warnings.warn(
+                f"No text elements found on page {page.index}. "
+                "Consider applying OCR first using page.apply_ocr() to extract text from images.",
+                UserWarning
+            )
+            
+            # Return appropriate "not found" result(s)
+            if isinstance(question, (list, tuple)):
+                return [
+                    QAResult(
+                        question=q,
+                        answer="",
+                        confidence=0.0,
+                        start=-1,
+                        end=-1,
+                        found=False,
+                    )
+                    for q in question
+                ]
+            else:
+                return QAResult(
+                    question=question,
+                    answer="",
+                    confidence=0.0,
+                    start=-1,
+                    end=-1,
+                    found=False,
+                )
 
         # Extract word boxes
-        elements = page.find_all("text")
         word_boxes = self._get_word_boxes_from_elements(elements, offset_x=0, offset_y=0)
 
         # Generate a high-resolution image of the page
@@ -393,10 +420,37 @@ class DocumentQA:
         # Get all text elements within the region
         elements = region.find_all("text")
 
-        # Apply OCR if needed
+        # Check if we have text elements
         if not elements:
-            logger.info(f"No text elements found in region, applying OCR")
-            elements = region.apply_ocr()
+            # Warn that no text was found and recommend OCR
+            warnings.warn(
+                f"No text elements found in region on page {region.page.index}. "
+                "Consider applying OCR first using region.apply_ocr() to extract text from images.",
+                UserWarning
+            )
+            
+            # Return appropriate "not found" result(s)
+            if isinstance(question, (list, tuple)):
+                return [
+                    QAResult(
+                        question=q,
+                        answer="",
+                        confidence=0.0,
+                        start=-1,
+                        end=-1,
+                        found=False,
+                    )
+                    for q in question
+                ]
+            else:
+                return QAResult(
+                    question=question,
+                    answer="",
+                    confidence=0.0,
+                    start=-1,
+                    end=-1,
+                    found=False,
+                )
 
         # Extract word boxes adjusted for the cropped region
         x0, top = int(region.x0), int(region.top)
