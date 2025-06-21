@@ -1924,18 +1924,54 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 f"Region {self.bbox}: Removing existing OCR elements before applying new OCR."
             )
 
-            # Remove existing OCR word elements strictly inside this region
-            ocr_selector = "text[source=ocr]"
-            ocr_elements = self.find_all(ocr_selector, apply_exclusions=False)
-            if ocr_elements:
-                removed_count = ocr_elements.remove()
-                logger.info(
-                    f"Region {self.bbox}: Removed {removed_count} existing OCR word elements in region before re-applying OCR."
-                )
-            else:
-                logger.info(
-                    f"Region {self.bbox}: No existing OCR word elements found within region to remove."
-                )
+            # --- Robust removal: iterate through all OCR elements on the page and
+            #     remove those that overlap this region. This avoids reliance on
+            #     identity‐based look-ups that can break if the ElementManager
+            #     rebuilt its internal lists.
+
+            removed_count = 0
+
+            # Helper to remove a single element safely
+            def _safe_remove(elem):
+                nonlocal removed_count
+                success = False
+                if hasattr(elem, "page") and hasattr(elem.page, "_element_mgr"):
+                    etype = getattr(elem, "object_type", "word")
+                    if etype == "word":
+                        etype_key = "words"
+                    elif etype == "char":
+                        etype_key = "chars"
+                    else:
+                        etype_key = etype + "s" if not etype.endswith("s") else etype
+                    try:
+                        success = elem.page._element_mgr.remove_element(elem, etype_key)
+                    except Exception:
+                        success = False
+                if success:
+                    removed_count += 1
+
+            # Remove OCR WORD elements overlapping region
+            for word in list(self.page._element_mgr.words):
+                if getattr(word, "source", None) == "ocr" and self.intersects(word):
+                    _safe_remove(word)
+
+            # Remove OCR CHAR dicts overlapping region
+            for char in list(self.page._element_mgr.chars):
+                # char can be dict or TextElement; normalise
+                char_src = char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                if char_src == "ocr":
+                    # Rough bbox for dicts
+                    if isinstance(char, dict):
+                        cx0, ctop, cx1, cbottom = char.get("x0", 0), char.get("top", 0), char.get("x1", 0), char.get("bottom", 0)
+                    else:
+                        cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
+                    # Quick overlap check
+                    if not (cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom):
+                        _safe_remove(char)
+
+            logger.info(
+                f"Region {self.bbox}: Removed {removed_count} existing OCR elements (words & chars) before re-applying OCR."
+            )
 
         ocr_mgr = self.page._parent._ocr_manager
 

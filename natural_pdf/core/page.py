@@ -1576,8 +1576,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             render_ocr: Whether to render OCR text on highlights.
             resolution: Resolution in DPI for base page image (default: scale * 72).
             include_highlights: Whether to render highlights.
-            exclusions: If 'mask', excluded regions will be whited out on the image.
-                        (default: None).
+            exclusions: Accepts one of the following:
+                        • None  – no masking (default)
+                        • "mask" – mask using solid white (back-compat)
+                        • CSS/HTML colour string (e.g. "red", "#ff0000", "#ff000080")
+                        • Tuple of RGB or RGBA values (ints 0-255 or floats 0-1)
+                        All excluded regions are filled with this colour.
             **kwargs: Additional parameters for pdfplumber.to_image.
 
         Returns:
@@ -1690,7 +1694,52 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             # --- Apply exclusion masking if requested ---
             # This modifies 'rendered_image_component'
             image_after_masking = rendered_image_component  # Start with the rendered image
-            if exclusions == "mask" and self._exclusions:
+
+            # Determine if masking is requested and establish the fill colour
+            mask_requested = exclusions is not None and self._exclusions
+            mask_color: Union[str, Tuple[int, int, int, int]] = "white"  # default
+
+            if mask_requested:
+                if exclusions != "mask":
+                    # Attempt to parse custom colour input
+                    try:
+                        if isinstance(exclusions, tuple):
+                            # Handle RGB/RGBA tuples with ints 0-255 or floats 0-1
+                            processed = []
+                            all_float = all(isinstance(c, float) for c in exclusions)
+                            for i, c in enumerate(exclusions):
+                                if isinstance(c, float):
+                                    val = int(c * 255) if all_float or i == 3 else int(c)
+                                else:
+                                    val = int(c)
+                                processed.append(max(0, min(255, val)))
+                            if len(processed) == 3:
+                                processed.append(255)  # add full alpha
+                            mask_color = tuple(processed)  # type: ignore[assignment]
+                        elif isinstance(exclusions, str):
+                            # Try using the optional 'colour' library for rich parsing
+                            try:
+                                from colour import Color  # type: ignore
+
+                                color_obj = Color(exclusions)
+                                mask_color = (
+                                    int(color_obj.red * 255),
+                                    int(color_obj.green * 255),
+                                    int(color_obj.blue * 255),
+                                    255,
+                                )
+                            except Exception:
+                                # Fallback: if parsing fails, treat as plain string accepted by PIL
+                                mask_color = exclusions  # e.g. "red"
+                        else:
+                            logger.warning(
+                                f"Unsupported exclusions colour spec: {exclusions!r}. Using white."
+                            )
+                    except Exception as colour_parse_err:  # pragma: no cover
+                        logger.warning(
+                            f"Failed to parse exclusions colour {exclusions!r}: {colour_parse_err}. Using white."
+                        )
+
                 try:
                     # Ensure image is mutable (RGB or RGBA)
                     if image_after_masking.mode not in ("RGB", "RGBA"):
@@ -1701,17 +1750,23 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                     )
                     if exclusion_regions:
                         draw = ImageDraw.Draw(image_after_masking)
-                        # Calculate the scaling factor used for the image
+                        # Scaling factor for converting PDF pts → image px
                         img_scale = render_resolution / 72.0
 
+                        # Determine fill colour compatible with current mode
+                        def _mode_compatible(colour):
+                            if isinstance(colour, tuple) and image_after_masking.mode != "RGBA":
+                                return colour[:3]  # drop alpha for RGB images
+                            return colour
+
+                        fill_colour = _mode_compatible(mask_color)
+
                         for region in exclusion_regions:
-                            # Convert PDF points (x0, top, x1, bottom) to image pixels
                             img_x0 = region.x0 * img_scale
                             img_top = region.top * img_scale
                             img_x1 = region.x1 * img_scale
                             img_bottom = region.bottom * img_scale
 
-                            # Draw a white rectangle over the excluded area
                             img_coords = (
                                 max(0, img_x0),
                                 max(0, img_top),
@@ -1719,7 +1774,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                                 min(image_after_masking.height, img_bottom),
                             )
                             if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
-                                draw.rectangle(img_coords, fill="white")
+                                draw.rectangle(img_coords, fill=fill_colour)
                             else:  # pragma: no cover
                                 logger.warning(
                                     f"Skipping invalid exclusion rect for masking: {img_coords}"
