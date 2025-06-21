@@ -6,12 +6,12 @@ Got a PDF that's actually just a bunch of scanned images? Or maybe a PDF where t
 
 Natural PDF supports multiple OCR engines, each with different strengths:
 
-| Engine              | Best For | Speed | Memory | Notes |
-|---------------------|----------|-------|--------|-------|
-| **EasyOCR**         | General documents, handwritten text | Moderate | Higher | Good all-around choice |
-| **PaddleOCR**       | Asian languages, when speed matters | Fast | Efficient | Great for Chinese, Japanese, Korean |
-| **Surya OCR**       | Highest accuracy needed | Moderate | Higher (GPU helps) | Best quality results |
-| **Gemini**          | Complex layouts (via API) | Depends on API | N/A | Requires API key |
+- [EasyOCR](https://github.com/JaidedAI/EasyOCR)
+- [PaddleOCR](https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html)
+- [Surya](https://github.com/datalab-to/surya)
+- [DocTR](https://github.com/mindee/doctr)
+
+What are those strengths??? It honestly doesn't even matter, *it's so easy to try each of them you can just see what works best for you*.
 
 If you try to use an engine that isn't installed, Natural PDF will tell you exactly what to install.
 
@@ -27,7 +27,7 @@ pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-o
 page = pdf.pages[0]
 
 # Apply OCR using the default engine
-ocr_elements = page.apply_ocr(languages=['en'])
+ocr_elements = page.apply_ocr()
 
 # Extract the text (uses OCR results automatically)
 text = page.extract_text()
@@ -68,29 +68,16 @@ easy_opts = EasyOCROptions(
     batch_size=8         # Process multiple regions at once
 )
 ocr_elements = page.apply_ocr(engine='easyocr', options=easy_opts)
-
-# Configure Surya for high-accuracy line detection
-surya_opts = SuryaOCROptions(
-    languages=['en', 'de'],
-    min_confidence=0.4   # Minimum confidence for results
-)
-ocr_elements = page.apply_ocr(engine='surya', options=surya_opts)
 ```
 
-## How OCR Actually Works
+## OCRing regions
 
-When you run `page.apply_ocr()`, here's what happens:
+Don't want to apply OCR to an entire page? You don't need to!
 
 ```python
-# Apply OCR to a page - this adds text elements to the page
-ocr_elements = page.apply_ocr(engine='easyocr')
-print(f"Found {len(ocr_elements)} text elements via OCR")
-
-# You can also OCR just a specific region
-title = page.find('text:contains("Title")')
-if title:
-    content_region = title.below(height=300)
-    region_ocr_elements = content_region.apply_ocr(engine='paddle', languages=['en'])
+# Grab the top half of the page
+region = page.region(0, 0, height=page.height/2, width=page.width)
+region.apply_ocr(engine='paddle')
 ```
 
 *Note: Running OCR again on the same area will replace the previous OCR results.*
@@ -195,7 +182,10 @@ Natural PDF includes a web app for reviewing and correcting OCR results:
    create_correction_task_package(pdf, "correction_package.zip", overwrite=True)
    ```
 
-2. **Start the web app:**
+2. **Visit [the live OCR tool](https://jsoma.github.io/natural-pdf/ocr-tool)** and upload your zip file.
+
+If you're a crazy person, alternatively you can do it locally like this:
+
    ```bash
    # Find where Natural PDF is installed
    NATURAL_PDF_PATH=$(python -c "import site; print(site.getsitepackages()[0])")/natural_pdf
@@ -203,10 +193,9 @@ Natural PDF includes a web app for reviewing and correcting OCR results:
    # Start the web server
    cd $NATURAL_PDF_PATH/templates/spa
    python -m http.server 8000
-   ```
 
-3. **Use the app:**
-   Open `http://localhost:8000` in your browser and drag in your `correction_package.zip` file to review and edit the OCR results.
+   # Open http://localhost:8000 in your browser
+   ```
 
 ## Next Steps
 

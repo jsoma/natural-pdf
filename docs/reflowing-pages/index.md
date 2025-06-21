@@ -57,10 +57,11 @@ print(region.extract_text())
 ## find_all and reflows
 
 Let's say we have a few headers...
+
 ```python
 (
     flow
-    .find_all('text[size=12][width>10]:bold')
+    .find_all('text[width>10]:bold')
     .show()
 )
 ```
@@ -70,9 +71,9 @@ Let's say we have a few headers...
 ```python
 regions = (
     flow
-    .find_all('text[size=12][width>10]:bold')
+    .find_all('text[width>10]:bold')
     .below(
-        until='text[size=12][width>10]:bold|text:contains("Here is a bit")',
+        until='text[width>10]:bold|text:contains("Here is a bit")',
         include_endpoint=False
     )
 )
