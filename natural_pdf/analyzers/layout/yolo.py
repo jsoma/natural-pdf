@@ -92,7 +92,7 @@ class YOLODocLayoutDetector(LayoutDetector):
         """Load the YOLOv10 model based on options."""
         if not self.is_available():
             raise RuntimeError(
-                "YOLO dependencies not installed. Please run: natural-pdf install yolo"
+                "YOLO dependencies not installed. Please run: npdf install yolo"
             )
         self.logger.info(f"Loading YOLO model: {options.model_repo}/{options.model_file}")
         try:
@@ -108,7 +108,7 @@ class YOLODocLayoutDetector(LayoutDetector):
         """Detect layout elements in an image using YOLO."""
         if not self.is_available():
             raise RuntimeError(
-                "YOLO dependencies not installed. Please run: natural-pdf install yolo"
+                "YOLO dependencies not installed. Please run: npdf install yolo"
             )
 
         # Ensure options are the correct type, falling back to defaults if base type passed

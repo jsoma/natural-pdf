@@ -131,7 +131,7 @@ class LayoutManager:
                 # Construct helpful error message with install hint
                 install_hint = ""
                 if engine_name in {"yolo", "paddle", "surya", "docling"}:
-                    install_hint = f"natural-pdf install {engine_name}"
+                    install_hint = f"npdf install {engine_name}"
                 elif engine_name == "tatr":
                     install_hint = "(should be installed with natural-pdf core dependencies)"
                 elif engine_name == "gemini":

@@ -32,7 +32,7 @@ class OCRFactory:
                 return SuryaOCREngine(**kwargs)
             except ImportError:
                 raise ImportError(
-                    "Surya engine requires additional dependencies. " "Install with: natural-pdf install surya"
+                    "Surya engine requires additional dependencies. " "Install with: npdf install surya"
                 )
         elif engine_type == "easyocr":
             try:
@@ -42,7 +42,7 @@ class OCRFactory:
             except ImportError:
                 raise ImportError(
                     "EasyOCR engine requires the 'easyocr' package. "
-                    "Install with: pip install easyocr (or natural-pdf install easyocr when available)"
+                    "Install with: pip install easyocr (or npdf install easyocr when available)"
                 )
         elif engine_type == "paddle":
             try:
@@ -52,7 +52,7 @@ class OCRFactory:
             except ImportError:
                 raise ImportError(
                     "PaddleOCR engine requires 'paddleocr' and 'paddlepaddle'. "
-                    "Install with: natural-pdf install paddle"
+                    "Install with: npdf install paddle"
                 )
         elif engine_type == "doctr":
             try:
@@ -137,9 +137,9 @@ class OCRFactory:
 
         # If we get here, no engines are available
         raise ImportError(
-            "No OCR engines are installed. You can add one via the natural-pdf installer, e.g.:\n"
-            "  natural-pdf install easyocr   # fastest to set up\n"
-            "  natural-pdf install paddle    # best Asian-language accuracy\n"
-            "  natural-pdf install surya     # Surya OCR engine\n"
-            "  natural-pdf install yolo      # Layout detection (YOLO)\n"
+            "No OCR engines are installed. You can add one via the npdf installer, e.g.:\n"
+            "  npdf install easyocr   # fastest to set up\n"
+            "  npdf install paddle    # best Asian-language accuracy\n"
+            "  npdf install surya     # Surya OCR engine\n"
+            "  npdf install yolo      # Layout detection (YOLO)\n"
         )

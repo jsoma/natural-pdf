@@ -94,7 +94,7 @@ class OCRManager:
                 engine_instance = engine_class()  # Instantiate first
                 if not engine_instance.is_available():
                     # Check availability before storing
-                    install_hint = f"natural-pdf install {engine_name}"
+                    install_hint = f"npdf install {engine_name}"
 
                     raise RuntimeError(
                         f"Engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"

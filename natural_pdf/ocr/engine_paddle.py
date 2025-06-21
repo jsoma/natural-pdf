@@ -127,7 +127,7 @@ class PaddleOCREngine(OCREngine):
         except ImportError as e:
             self.logger.error(f"Failed to import PaddleOCR/PaddlePaddle: {e}")
             raise RuntimeError(
-                "paddleocr is not available. Install via: natural-pdf install paddle"
+                "paddleocr is not available. Install via: npdf install paddle"
             ) from e
 
         paddle_options = options if isinstance(options, PaddleOCROptions) else PaddleOCROptions()
