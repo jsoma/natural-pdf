@@ -1,0 +1,338 @@
+/* Styles adapted from ocr_debug.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+header {
+    background-color: #f8f9fa;
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+main {
+    flex-grow: 1;
+    max-width: 1400px; /* Wider for SPA layout */
+    width: 100%;
+    margin: 20px auto;
+    padding: 0 20px; /* Add horizontal padding */
+    box-sizing: border-box;
+}
+
+footer {
+    background-color: #f8f9fa;
+    padding: 10px 20px;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    font-size: 0.9em;
+    color: #666;
+    margin-top: auto;
+}
+
+h1, h2 {
+    color: #2c3e50;
+    margin-top: 0;
+}
+
+.loading-message,
+.initial-message {
+    text-align: center;
+    padding: 40px;
+    font-size: 1.2em;
+    color: #666;
+}
+
+.task-loader {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px dashed #ccc;
+    background-color: #f0f0f0;
+    text-align: center;
+}
+
+.page-section {
+    margin-bottom: 30px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.page-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.page-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.controls-container {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px; /* Increased gap */
+    padding: 15px;
+    background: #eee;
+    border-radius: 4px;
+    position: sticky; /* Make controls sticky */
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid #ddd;
+}
+
+.filter-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+input, select, button {
+    padding: 8px 12px; /* Slightly larger padding */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    vertical-align: middle; /* Align form elements */
+}
+
+input[type="range"] {
+    padding: 0; /* Remove padding for range */
+}
+
+button {
+    background: #4b6bfb;
+    color: white;
+    cursor: pointer;
+    border: none; /* Remove border */
+}
+
+button:hover {
+    background: #3b5de7;
+}
+
+button.secondary {
+    background: #6c757d;
+}
+button.secondary:hover {
+    background: #5a6268;
+}
+
+/* --- NEW FLEXBOX BASED LAYOUT --- */
+.region-list {
+    /* Container for all region items */
+    margin-top: 15px;
+    border: 1px solid #ddd; /* Add border around the list */
+    border-radius: 4px;
+    overflow: hidden; /* Ensures border radius clips children */
+}
+
+.region-item {
+    display: flex;
+    align-items: stretch; /* Make cells same height */
+    border-bottom: 1px solid #ddd; /* Separator line */
+    background-color: #fff;
+}
+.region-item:last-child {
+    border-bottom: none; /* Remove border for the last item */
+}
+
+.confidence-cell {
+    width: 80px; /* Fixed width for confidence */
+    padding: 10px;
+    text-align: center;
+    white-space: nowrap;
+    border-right: 1px solid #ddd; /* Separator line */
+    display: flex; /* Center content vertically */
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Confidence background colors (moved from .confidence) */
+.confidence-cell[data-level="high"] {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+.confidence-cell[data-level="medium"] {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+.confidence-cell[data-level="low"] {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.region-content-cell {
+    flex-grow: 1; /* Take remaining width */
+    padding: 10px;
+    display: flex; /* Use flex to control children */
+    flex-direction: column; /* Stack image and text */
+    /* background-color: #fafafa; /* Optional: Slight background difference */
+}
+
+.image-clip {
+    /* Styles for the image snippet div */
+    position: relative;
+    overflow: hidden;
+    background-repeat: no-repeat;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    margin-bottom: 10px; /* Space below image */
+    /* Use inline style for width/height/background */
+    max-width: 350px; /* Max width within the cell */
+    max-height: 250px; /* Max height */
+    transform-origin: top left;
+    border: 1px solid #ccc;
+    background-color: #f8f8f8; /* Placeholder background */
+    align-self: flex-start; /* Align to start if cell is wider */
+    /* display: inline-block; /* Remove this if using flex parent */
+}
+
+.image-clip-canvas {
+    min-width: 70%;
+}
+
+.editing-content {
+    font-size: 18px;
+    text-align: center;
+}
+
+.text-content-input {
+    /* Styles for the textarea */
+    text-align: center;
+    width: 100%; /* Full width of the cell */
+    font-family: monospace;
+    padding: 8px;
+    font-size: 16px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 50px; /* Slightly taller */
+    box-sizing: border-box;
+}
+
+.text-content-input.modified {
+    border-color: #4b6bfb;
+    background-color: rgba(75, 107, 251, 0.05);
+}
+
+.text-content-input:focus {
+    border-color: #4b6bfb;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(75, 107, 251, 0.25);
+}
+/* --- END NEW FLEXBOX BASED LAYOUT --- */
+
+
+/* --- REMOVED OLD TABLE STYLES --- */
+/*
+.region-table { ... }
+.region-table th, .region-table td { ... }
+.region-table th { ... }
+.region-image { ... }
+.confidence { ... }
+.text-content { ... }
+*/
+/* --- END REMOVED OLD TABLE STYLES --- */
+
+
+.hidden {
+    display: none !important;
+}
+
+.toggle-btn {
+    background: #eee;
+    color: #333;
+    border: 1px solid #ccc;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.toggle-btn:hover {
+    background: #ddd;
+}
+
+.export-btn {
+    margin-left: auto;
+}
+
+.page-image {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    display: none; /* Hidden by default */
+}
+
+.page-image.show {
+    display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 800px) {
+    /* REMOVED table-specific responsive styles */
+    /* 
+    .region-table thead { ... }
+    .region-table, .region-table tbody, .region-table tr, .region-table td { ... }
+    .region-table tr { ... }
+    .region-table td { ... }
+    .region-table td::before { ... }
+    .region-table td:last-child { ... }
+    .region-image, .text-content { ... }
+    .confidence { ... }
+    */
+    
+    /* NEW Flexbox Responsive Styles */
+    .region-item {
+        flex-direction: column; /* Stack columns vertically on mobile */
+        align-items: stretch; /* Make items full width */
+    }
+
+    .confidence-cell {
+        width: auto; /* Allow confidence to take full width */
+        border-right: none; /* Remove right border */
+        border-bottom: 1px solid #ddd; /* Add bottom border */
+        justify-content: flex-start; /* Align text left */
+        padding: 5px 10px; /* Adjust padding */
+    }
+     /* Optional: Add label back using ::before */
+    .confidence-cell::before {
+        content: "Confidence: ";
+        font-weight: bold;
+        margin-right: 5px;
+    }
+
+    .region-content-cell {
+        padding: 10px; /* Reset padding */
+    }
+
+    .image-clip {
+        max-width: 100%; /* Allow image full width */
+        align-self: center; /* Center image */
+        /* Remove fixed max-height? */
+        /* max-height: none; */ 
+    }
+
+    .controls-container {
+        flex-direction: column;
+        align-items: stretch;
+        position: static; /* Unstick controls */
+    }
+
+    .export-btn {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+} 

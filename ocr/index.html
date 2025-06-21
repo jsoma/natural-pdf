@@ -1509,9 +1509,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-ocr-actually-works" class="md-nav__link">
+  <a href="#ocring-regions" class="md-nav__link">
     <span class="md-ellipsis">
-      How OCR Actually Works
+      OCRing regions
     </span>
   </a>
   
@@ -1585,47 +1585,13 @@
 <p>Got a PDF that's actually just a bunch of scanned images? Or maybe a PDF where the text got mangled somehow? OCR (Optical Character Recognition) is your friend. Natural PDF can extract text from image-based PDFs using several different OCR engines.</p>
 <h2 id="which-ocr-engine-should-you-use">Which OCR Engine Should You Use?</h2>
 <p>Natural PDF supports multiple OCR engines, each with different strengths:</p>
-<table>
-<thead>
-<tr>
-<th>Engine</th>
-<th>Best For</th>
-<th>Speed</th>
-<th>Memory</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>EasyOCR</strong></td>
-<td>General documents, handwritten text</td>
-<td>Moderate</td>
-<td>Higher</td>
-<td>Good all-around choice</td>
-</tr>
-<tr>
-<td><strong>PaddleOCR</strong></td>
-<td>Asian languages, when speed matters</td>
-<td>Fast</td>
-<td>Efficient</td>
-<td>Great for Chinese, Japanese, Korean</td>
-</tr>
-<tr>
-<td><strong>Surya OCR</strong></td>
-<td>Highest accuracy needed</td>
-<td>Moderate</td>
-<td>Higher (GPU helps)</td>
-<td>Best quality results</td>
-</tr>
-<tr>
-<td><strong>Gemini</strong></td>
-<td>Complex layouts (via API)</td>
-<td>Depends on API</td>
-<td>N/A</td>
-<td>Requires API key</td>
-</tr>
-</tbody>
-</table>
+<ul>
+<li><a href="https://github.com/JaidedAI/EasyOCR">EasyOCR</a></li>
+<li><a href="https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html">PaddleOCR</a></li>
+<li><a href="https://github.com/datalab-to/surya">Surya</a></li>
+<li><a href="https://github.com/mindee/doctr">DocTR</a></li>
+</ul>
+<p>What are those strengths??? It honestly doesn't even matter, <em>it's so easy to try each of them you can just see what works best for you</em>.</p>
 <p>If you try to use an engine that isn't installed, Natural PDF will tell you exactly what to install.</p>
 <h2 id="basic-ocr-just-make-it-work">Basic OCR: Just Make It Work</h2>
 <p>The simplest approach - just apply OCR to a page and get the text:</p>
@@ -1636,7 +1602,7 @@
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="c1"># Apply OCR using the default engine</span>
-<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">])</span>
+<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
 
 <span class="c1"># Extract the text (uses OCR results automatically)</span>
 <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
@@ -1669,25 +1635,12 @@
     <span class="n">batch_size</span><span class="o">=</span><span class="mi">8</span>         <span class="c1"># Process multiple regions at once</span>
 <span class="p">)</span>
 <span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">easy_opts</span><span class="p">)</span>
-
-<span class="c1"># Configure Surya for high-accuracy line detection</span>
-<span class="n">surya_opts</span> <span class="o">=</span> <span class="n">SuryaOCROptions</span><span class="p">(</span>
-    <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">,</span> <span class="s1">&#39;de&#39;</span><span class="p">],</span>
-    <span class="n">min_confidence</span><span class="o">=</span><span class="mf">0.4</span>   <span class="c1"># Minimum confidence for results</span>
-<span class="p">)</span>
-<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;surya&#39;</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">surya_opts</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="how-ocr-actually-works">How OCR Actually Works</h2>
-<p>When you run <code>page.apply_ocr()</code>, here's what happens:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR to a page - this adds text elements to the page</span>
-<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;easyocr&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ocr_elements</span><span class="p">)</span><span class="si">}</span><span class="s2"> text elements via OCR&quot;</span><span class="p">)</span>
-
-<span class="c1"># You can also OCR just a specific region</span>
-<span class="n">title</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Title&quot;)&#39;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">title</span><span class="p">:</span>
-    <span class="n">content_region</span> <span class="o">=</span> <span class="n">title</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
-    <span class="n">region_ocr_elements</span> <span class="o">=</span> <span class="n">content_region</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">,</span> <span class="n">languages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;en&#39;</span><span class="p">])</span>
+<h2 id="ocring-regions">OCRing regions</h2>
+<p>Don't want to apply OCR to an entire page? You don't need to!</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Grab the top half of the page</span>
+<span class="n">region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">page</span><span class="o">.</span><span class="n">height</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+<span class="n">region</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;paddle&#39;</span><span class="p">)</span>
 </code></pre></div>
 <p><em>Note: Running OCR again on the same area will replace the previous OCR results.</em></p>
 <h2 id="working-with-ocr-results">Working with OCR Results</h2>
@@ -1776,20 +1729,19 @@
 </code></pre></div></p>
 </li>
 <li>
-<p><strong>Start the web app:</strong>
-   <div class="highlight"><pre><span></span><code><span class="c1"># Find where Natural PDF is installed</span>
+<p><strong>Visit <a href="https://jsoma.github.io/natural-pdf/ocr-tool">the live OCR tool</a></strong> and upload your zip file.</p>
+</li>
+</ol>
+<p>If you're a crazy person, alternatively you can do it locally like this:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find where Natural PDF is installed</span>
 <span class="nv">NATURAL_PDF_PATH</span><span class="o">=</span><span class="k">$(</span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import site; print(site.getsitepackages()[0])&quot;</span><span class="k">)</span>/natural_pdf
 
 <span class="c1"># Start the web server</span>
 <span class="nb">cd</span><span class="w"> </span><span class="nv">$NATURAL_PDF_PATH</span>/templates/spa
 python<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">8000</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong>Use the app:</strong>
-   Open <code>http://localhost:8000</code> in your browser and drag in your <code>correction_package.zip</code> file to review and edit the OCR results.</p>
-</li>
-</ol>
+
+<span class="c1"># Open http://localhost:8000 in your browser</span>
+</code></pre></div>
 <h2 id="next-steps">Next Steps</h2>
 <p>Once you've got OCR working:</p>
 <ul>
