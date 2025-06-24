@@ -114,13 +114,9 @@ spatially encloses the current one**.
 # After running a layout model
 page.analyze_layout('tatr')
 
-qty_word  = page.find(text="Qty")
-cell      = qty_word.parent('region[type=table-cell]')   # deepest cell
-row       = cell.parent('region[type=table-row]')        # its row
-table     = row.parent('table')                          # the whole table
-
-# Or get the coloured rectangle behind a heading
-heading_box = heading.parent('rect', mode='overlap')
+text  = page.find(text="Hazardous Materials")
+row       = text.parent('region[type=table-row]')
+row.show(crop=True)
 ```
 
 Parameters

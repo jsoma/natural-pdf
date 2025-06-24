@@ -623,11 +623,16 @@ class HighlightingService:
             logger.debug(f"Rendering page {page_index} with height={to_image_args['height']}.")
             # Actual scale will be calculated after image creation
         else:
-            # Use explicit resolution from kwargs if present, then the resolution param
-            render_resolution = to_image_args.pop(
-                "resolution", resolution
-            )  # Use and remove from kwargs if present
-            to_image_args["resolution"] = render_resolution  # Add it back for the call
+            # Use explicit resolution if provided via kwargs, otherwise fallback to the
+            # `resolution` parameter (which might be None).  If we still end up with
+            # `None`, default to 144 DPI to avoid downstream errors.
+            render_resolution = to_image_args.pop("resolution", resolution)
+            if render_resolution is None:
+                render_resolution = 144
+
+            # Reinstate into kwargs for pdfplumber
+            to_image_args["resolution"] = render_resolution
+
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
             logger.debug(
@@ -778,9 +783,11 @@ class HighlightingService:
             # Resolution is implicitly handled by pdfplumber when height is set
             # after image is created, we will calculate actual_scale_x and actual_scale_y
         else:
-            # Neither width nor height is provided, use resolution.
-            render_resolution = resolution
+            # Neither width nor height is provided, rely on `resolution`.
+            # If `resolution` was explicitly passed as `None`, fall back to 144 DPI.
+            render_resolution = 144 if resolution is None else resolution
             to_image_args["resolution"] = render_resolution
+
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
             logger.debug(

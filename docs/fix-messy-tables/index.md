@@ -296,14 +296,13 @@ often fix "shifted" columns:
 ```python
 from natural_pdf import PDF
 
-pdf = PDF("01-practice.pdf")
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 
 # Drop top 50 pt (header) and bottom 40 pt (footer) on *every* page
 pdf.add_exclusion(lambda p: p.create_region(0, 0, p.width, 50))
 pdf.add_exclusion(lambda p: p.create_region(0, p.height-40, p.width, p.height))
 
-# Now table detection / extraction sees only the body
-pdf.pages.apply(lambda p: p.analyze_layout('tatr') or p).apply(lambda p: p.find('table').extract_table()).apply(lambda t: t[1:]).flatten().to_df(header="first").head()
+pdf.pages[0].extract_table().df
 ```
 
 # rows list-of-lists; wrap in TableResult for convenience

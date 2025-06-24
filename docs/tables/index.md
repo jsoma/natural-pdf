@@ -117,41 +117,23 @@ table_settings = {
 results = page.extract_table(table_settings=table_settings)
 ```
 
-## Saving Your Results
-
-Once you've got your table data, you'll probably want to do something useful with it:
-
-```python
-import pandas as pd
-
-# Quick hand-off to pandas
-df = page.extract_table().df        # or .to_df(header=None)
-df
-```
-
-## Working with TATR Cell Structure
-
-TATR is smart enough to create individual cell regions, but accessing them directly is still a work in progress:
-
-```python
-# This should work but doesn't quite yet - we're working on it!
-# tatr_table.cells
-```
-
 ## Working with the result: `TableResult`
 
-`extract_table()` now returns a **`TableResult`** object – it behaves like
+`extract_table()` returns a **`TableResult`** object – it behaves like
 a regular list of rows *and* offers two convenience shortcuts:
 
 ```python
-tbl = region.extract_table()   # TableResult (Sequence)
+tbl = page.extract_table()
 
-tbl.df                 # quick DataFrame using first row as header
-tbl.to_df(header=None) # no header; let pandas auto-number columns
+# Grab it as a dataframe
+# Shortcut for .to_df() because it's so many letters
+tbl.df
 ```
 
-Because `TableResult` is a `Sequence`, any code that previously iterated over
-`list-of-lists` continues to work unchanged.
+```python
+# First row is NOT headers
+tbl.to_df(header=None)
+```
 
 ## Next Steps
 

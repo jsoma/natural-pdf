@@ -754,7 +754,15 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
             filter_lambda = lambda el: hasattr(el, "underline") and bool(getattr(el, "underline"))
             filter_name = f"pseudo-class :{name}"
         elif name in ("highlight", "highlighted"):
-            filter_lambda = lambda el: hasattr(el, "highlight") and bool(getattr(el, "highlight"))
+            filter_lambda = (
+                lambda el: (
+                    hasattr(el, "is_highlighted")
+                    and bool(getattr(el, "is_highlighted"))
+                )
+                or (
+                    hasattr(el, "highlight") and bool(getattr(el, "highlight"))
+                )
+            )
             filter_name = f"pseudo-class :{name}"
 
         # Check predefined lambda functions (e.g., :first-child, :empty)

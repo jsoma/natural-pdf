@@ -386,9 +386,13 @@ class TextElement(Element):
     # -----------------------------
 
     @property
-    def highlight(self) -> bool:
-        """True if element is highlighted (background marker)."""
-        return bool(self._obj.get("highlight") or self.metadata.get("decoration", {}).get("highlight"))
+    def is_highlighted(self) -> bool:
+        """True if element (char/word) is marked as highlighted in the original PDF."""
+        return bool(
+            self._obj.get("highlight")
+            or self._obj.get("is_highlighted")
+            or self.metadata.get("decoration", {}).get("highlight")
+        )
 
     @property
     def highlight_color(self):
@@ -410,7 +414,7 @@ class TextElement(Element):
             font_style.append("strike")
         if self.underline:
             font_style.append("underline")
-        if self.highlight:
+        if self.is_highlighted:
             font_style.append("highlight")
         style_str = f", style={font_style}" if font_style else ""
 
@@ -424,7 +428,7 @@ class TextElement(Element):
             font_display = f"{font_display} ({base_font})"
 
         color_info = ""
-        if self.highlight and self.highlight_color is not None:
+        if self.is_highlighted and self.highlight_color is not None:
             color_info = f", highlight_color={self.highlight_color}"
 
         return f"<TextElement text='{preview}' font='{font_display}'{variant_str} size={self.size}{style_str}{color_info} bbox={self.bbox}>"
