@@ -468,3 +468,32 @@ class TextElement(Element):
                 info[f"raw_{prop}"] = self._obj[prop]
 
         return info
+
+    @property
+    def visual_text(self) -> str:
+        """Return the text converted to *visual* order using the Unicode BiDi algorithm.
+
+        This helper is intentionally side-effect–free: it does **not** mutate
+        ``self.text`` or the underlying character dictionaries.  It should be
+        used by UI / rendering code that needs human-readable RTL/LTR mixing.
+        """
+        logical = self.text
+        if not logical:
+            return logical
+
+        # Quick check – bail out if no RTL chars to save import/CPU.
+        import unicodedata
+
+        if not any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in logical):
+            return logical
+
+        try:
+            from bidi.algorithm import get_display  # type: ignore
+            from natural_pdf.utils.bidi_mirror import mirror_brackets
+
+            # Convert from logical order to visual order
+            visual = get_display(logical, base_dir="R")
+            return mirror_brackets(visual)
+        except Exception:
+            # If python-bidi is missing or errors, fall back to logical order
+            return logical

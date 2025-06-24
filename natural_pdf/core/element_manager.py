@@ -7,6 +7,7 @@ characters, words, rectangles, and lines extracted from a page.
 
 import logging
 import re
+from contextlib import contextmanager
 from itertools import groupby
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -46,6 +47,33 @@ HIGHLIGHT_DEFAULTS = {
     "color_saturation_min": 0.4,  # HSV S >
     "color_value_min": 0.4,        # HSV V >
 }
+
+
+@contextmanager
+def disable_text_sync():
+    """
+    Temporarily disable text synchronization for performance.
+    
+    This is used when bulk-updating text content where character-level
+    synchronization is not needed, such as during bidi processing.
+    Fixes exponential recursion issue with Arabic/RTL text processing.
+    """
+    # Save original setter
+    original_setter = TextElement.text.fset
+    
+    # Create a fast setter that skips sync
+    def fast_setter(self, value):
+        self._obj["text"] = value
+        # Skip character synchronization for performance
+    
+    # Apply fast setter
+    TextElement.text = property(TextElement.text.fget, fast_setter)
+    
+    try:
+        yield
+    finally:
+        # Restore original setter
+        TextElement.text = property(TextElement.text.fget, original_setter)
 
 class NaturalWordExtractor(WordExtractor):
     """
@@ -208,8 +236,7 @@ class ElementManager:
         yt = pdf_config.get("y_tolerance", 3)
         use_flow = pdf_config.get("use_text_flow", False)
 
-        # Define which attributes to preserve on the merged word object
-        # Should include split attributes + any others needed for filtering (like color)
+        # List of attributes to preserve on word objects
         attributes_to_preserve = list(
             set(
                 self._word_split_attributes
@@ -223,7 +250,7 @@ class ElementManager:
             )
         )
 
-        # -------------------------------------------------------------
+        # ------------------------------------------------------------------
         # NEW: Detect direction (LTR vs RTL) per visual line and feed
         #       pdfplumber's WordExtractor with the correct settings.
         # -------------------------------------------------------------
@@ -271,7 +298,9 @@ class ElementManager:
             # Build a WordExtractor tailored for this line's direction
             if is_rtl_line:
                 line_dir = "ttb"  # horizontal lines stacked top→bottom
-                char_dir = "rtl"  # characters right→left within the line
+                # Feed characters in right→left x-order; extractor can then treat
+                # them as left-to-right so that resulting text stays logical.
+                char_dir = "ltr"
             else:
                 line_dir = "ttb"
                 char_dir = "ltr"
@@ -288,9 +317,8 @@ class ElementManager:
             )
 
             # Prepare character sequence for the extractor:
-            #  • For LTR lines -> left→right order (x0 ascending)
-            #  • For RTL lines -> feed **reversed** list so that neighbouring
-            #    characters appear adjacent when the extractor walks right→left.
+            # Always feed characters in spatial order (x0 ascending)
+            # PDF stores glyphs in visual order, so this gives us the visual sequence
             line_chars_for_extractor = sorted(line_chars, key=lambda c: c.get("x0", 0))
 
             try:
@@ -324,15 +352,18 @@ class ElementManager:
                 # on the whole-line heuristic.
                 rtl_in_word = any(_is_rtl_char(ch.get("text", "")) for ch in char_list)
                 if rtl_in_word:
+                    # Convert from visual order (from PDF) to logical order using bidi
                     try:
                         from bidi.algorithm import get_display  # type: ignore
                         from natural_pdf.utils.bidi_mirror import mirror_brackets
 
-                        word_element.text = mirror_brackets(
-                            get_display(word_element.text, base_dir="R")
-                        )
+                        with disable_text_sync():
+                            # word_element.text is currently in visual order (from PDF)
+                            # Convert to logical order using bidi with auto direction detection
+                            logical_text = get_display(word_element.text, base_dir='L')
+                            # Apply bracket mirroring for logical order
+                            word_element.text = mirror_brackets(logical_text)
                     except Exception:
-                        # Fallback: keep original text if python-bidi fails
                         pass
 
         # ------------------------------------------------------------------
@@ -415,19 +446,6 @@ class ElementManager:
             f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
         )
 
-        # --- Post-processing pass to ensure every word containing RTL characters is
-        #     stored in logical order and with mirrored brackets.  This is a
-        #     safeguard in case the per-line loop above missed some tokens.
-        try:
-            from bidi.algorithm import get_display  # type: ignore
-            from natural_pdf.utils.bidi_mirror import mirror_brackets
-
-            for w in generated_words:
-                if any(_is_rtl_char(ch) for ch in w.text):
-                    w.text = mirror_brackets(get_display(w.text, base_dir="R"))
-        except Exception:
-            pass  # graceful degradation – keep original text
-
         # 4. Load other elements (rects, lines)
         rect_elements = [RectangleElement(r, self._page) for r in self._page._page.rects]
         line_elements = [LineElement(l, self._page) for l in self._page._page.lines]
@@ -462,6 +480,8 @@ class ElementManager:
             self._elements["regions"] = []  # Ensure key exists
 
         logger.debug(f"Page {self._page.number}: Element loading complete.")
+
+        # If per-word BiDi was skipped, generated_words already stay in logical order.
 
     def _prepare_char_dicts(self) -> List[Dict[str, Any]]:
         """
