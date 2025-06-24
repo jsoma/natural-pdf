@@ -46,6 +46,8 @@ page.find('text:contains("\\d+")', regex=True)  # Regex pattern
 ```py
 page.find_all('text:bold')                      # Bold text
 page.find_all('text:italic')                    # Italic text
+page.find_all('text:strike')                    # Struck-through text
+page.find_all('text:underline')                 # Underlined text
 page.find_all('text[size>=12]')                 # Large text
 page.find_all('text[fontname*=Arial]')          # Specific font
 ```

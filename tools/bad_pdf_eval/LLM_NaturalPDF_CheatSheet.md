@@ -43,6 +43,8 @@ text              rect / line / table / image / blob
 [color~=#ff0000]  hexadecimal colour (approx)
 [font_family~=Helv]
 [size>=12]
+:strike           strikeout
+:underline        underlined text
 ```
 
 ### Pseudo-classes

@@ -19,6 +19,25 @@ from natural_pdf.elements.image import ImageElement
 
 logger = logging.getLogger(__name__)
 
+# ------------------------------------------------------------------
+#  Default decoration-detection parameters (magic numbers centralised)
+# ------------------------------------------------------------------
+
+STRIKE_DEFAULTS = {
+    "thickness_tol": 1.5,   # pt ; max height of line/rect to be considered strike
+    "horiz_tol": 1.0,       # pt ; vertical tolerance for horizontality
+    "coverage_ratio": 0.7,  # proportion of glyph width to be overlapped
+    "band_top_frac": 0.35,  # fraction of glyph height above top baseline band
+    "band_bottom_frac": 0.65,  # fraction below top (same used internally)
+}
+
+UNDERLINE_DEFAULTS = {
+    "thickness_tol": 1.5,
+    "horiz_tol": 1.0,
+    "coverage_ratio": 0.8,
+    "band_frac": 0.10,   # height fraction above baseline
+    "below_pad": 0.7,    # pt ; pad below baseline
+}
 
 class NaturalWordExtractor(WordExtractor):
     """
@@ -142,6 +161,19 @@ class ElementManager:
                 exc_info=True,
             )
 
+        # -------------------------------------------------------------
+        # Detect underlines on raw characters (must come after strike so
+        # both attributes are present before word grouping).
+        # -------------------------------------------------------------
+
+        try:
+            self._mark_underline_chars(prepared_char_dicts)
+        except Exception as u_err:  # pragma: no cover
+            logger.warning(
+                f"Page {self._page.number}: Underline detection failed – {u_err}",
+                exc_info=True,
+            )
+
         # Create a mapping from character dict to index for efficient lookup
         char_to_index = {}
         for idx, char_dict in enumerate(prepared_char_dicts):
@@ -162,7 +194,7 @@ class ElementManager:
         # Define which attributes to preserve on the merged word object
         # Should include split attributes + any others needed for filtering (like color)
         attributes_to_preserve = list(
-            set(self._word_split_attributes + ["non_stroking_color", "strike"])
+            set(self._word_split_attributes + ["non_stroking_color", "strike", "underline"])
         )
 
         # -------------------------------------------------------------
@@ -219,7 +251,7 @@ class ElementManager:
                 char_dir = "ltr"
 
             extractor = NaturalWordExtractor(
-                word_split_attributes=self._word_split_attributes + ["strike"],
+                word_split_attributes=self._word_split_attributes + ["strike", "underline"],
                 extra_attrs=attributes_to_preserve,
                 x_tolerance=xt,
                 y_tolerance=yt,
@@ -301,6 +333,21 @@ class ElementManager:
                     w._obj["strike"] = (strike_chars / total_chars) >= 0.6
                 else:
                     w._obj["strike"] = False
+
+                # underline propagation
+                ul_chars = 0
+                if getattr(w, "_char_indices", None):
+                    for idx in w._char_indices:
+                        if 0 <= idx < len(prepared_char_dicts):
+                            if prepared_char_dicts[idx].get("underline"):
+                                ul_chars += 1
+                elif getattr(w, "_char_dicts", None):
+                    ul_chars = sum(1 for ch in w._char_dicts if ch.get("underline"))
+
+                if total_chars:
+                    w._obj["underline"] = (ul_chars / total_chars) >= 0.6
+                else:
+                    w._obj["underline"] = False
 
         generated_words = word_elements
         logger.debug(
@@ -881,3 +928,93 @@ class ElementManager:
                         break  # no need to check further lines
 
         # Done – char_dicts mutated in place
+
+    # ------------------------------------------------------------------
+    #  Underline detection
+    # ------------------------------------------------------------------
+
+    def _mark_underline_chars(
+        self,
+        char_dicts: List[Dict[str, Any]],
+        *,
+        thickness_tol: float = None,
+        horiz_tol: float = None,
+        coverage_ratio: float = None,
+        band_frac: float = None,
+        below_pad: float = None,
+    ) -> None:
+        """Annotate character dicts with ``underline`` flag."""
+
+        # Allow user overrides via PDF._config["underline_detection"]
+        pdf_cfg = getattr(self._page._parent, "_config", {}).get("underline_detection", {})
+
+        thickness_tol = thickness_tol if thickness_tol is not None else pdf_cfg.get("thickness_tol", UNDERLINE_DEFAULTS["thickness_tol"])
+        horiz_tol     = horiz_tol     if horiz_tol     is not None else pdf_cfg.get("horiz_tol", UNDERLINE_DEFAULTS["horiz_tol"])
+        coverage_ratio= coverage_ratio if coverage_ratio is not None else pdf_cfg.get("coverage_ratio", UNDERLINE_DEFAULTS["coverage_ratio"])
+        band_frac     = band_frac     if band_frac     is not None else pdf_cfg.get("band_frac", UNDERLINE_DEFAULTS["band_frac"])
+        below_pad     = below_pad     if below_pad     is not None else pdf_cfg.get("below_pad", UNDERLINE_DEFAULTS["below_pad"])
+
+        raw_lines = list(getattr(self._page._page, "lines", []))
+        raw_rects = list(getattr(self._page._page, "rects", []))
+
+        candidates: List[Tuple[float, float, float, float]] = []
+
+        for ln in raw_lines:
+            y0 = min(ln.get("y0", 0), ln.get("y1", 0))
+            y1 = max(ln.get("y0", 0), ln.get("y1", 0))
+            if abs(y1 - y0) <= horiz_tol and (
+                (ln.get("x1", 0) - ln.get("x0", 0)) < self._page.width * 0.95
+            ):  # ignore full-width rules
+                candidates.append((ln.get("x0", 0), y0, ln.get("x1", 0), y1))
+
+        pg_height = self._page.height
+        for rc in raw_rects:
+            rb0 = rc.get("y0", 0)
+            rb1 = rc.get("y1", 0)
+            y0_raw = min(rb0, rb1)
+            y1_raw = max(rb0, rb1)
+            if (y1_raw - y0_raw) <= thickness_tol and (
+                (rc.get("x1", 0) - rc.get("x0", 0)) < self._page.width * 0.95
+            ):
+                y0 = pg_height - y1_raw
+                y1 = pg_height - y0_raw
+                candidates.append((rc.get("x0", 0), y0, rc.get("x1", 0), y1))
+
+        if not candidates:
+            for ch in char_dicts:
+                ch.setdefault("underline", False)
+            return
+
+        # group candidates by y within tolerance 0.5 to detect repeating table borders
+        y_groups: Dict[int, int] = {}
+        for _, y0, _, y1 in candidates:
+            key = int((y0 + y1) / 2)
+            y_groups[key] = y_groups.get(key, 0) + 1
+
+        table_y = {k for k, v in y_groups.items() if v >= 3}
+
+        # filter out candidates on those y values
+        filtered_candidates = [c for c in candidates if int((c[1]+c[3])/2) not in table_y]
+
+        # annotate chars
+        for ch in char_dicts:
+            ch.setdefault("underline", False)
+            try:
+                x0, top, x1, bottom = ch["x0"], ch["top"], ch["x1"], ch["bottom"]
+            except KeyError:
+                continue
+
+            width = x1 - x0
+            height = bottom - top
+            if width <= 0 or height <= 0:
+                continue
+
+            band_top = bottom - band_frac * height
+            band_bottom = bottom + below_pad  # allow some distance below baseline
+
+            for lx0, ly0, lx1, ly1 in filtered_candidates:
+                if (ly0 >= band_top - 1) and (ly1 <= band_bottom + 1):
+                    overlap = min(x1, lx1) - max(x0, lx0)
+                    if overlap > 0 and (overlap / width) >= coverage_ratio:
+                        ch["underline"] = True
+                        break

@@ -118,6 +118,8 @@ These are powerful filters that let you find elements based on their content or 
 | `:contains('text')` | `text:contains('Report')`       | Elements containing specific text |
 | `:bold`               | `text:bold`                       | Bold text (detected automatically) |
 | `:italic`             | `text:italic`                     | Italic text |
+| `:strike`             | `text:strike`                     | Struck-through text |
+| `:underline`          | `text:underline`                  | Underlined text |
 | `:below(selector)`    | `text:below('line[width>=2]')`   | Elements below another element |
 | `:above(selector)`    | `text:above('text:contains("Summary")')`| Elements above another element |
 | `:near(selector)`     | `text:near('image')`             | Elements close to another element |

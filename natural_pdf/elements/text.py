@@ -372,6 +372,15 @@ class TextElement(Element):
     def struck(self) -> bool:  # noqa: D401
         return self.strike
 
+    # -----------------------------
+    #  Underline decoration
+    # -----------------------------
+
+    @property
+    def underline(self) -> bool:
+        """True if element is underlined."""
+        return bool(self._obj.get("underline") or self.metadata.get("decoration", {}).get("underline"))
+
     def __repr__(self) -> str:
         """String representation of the text element."""
         if self.text:
@@ -385,6 +394,8 @@ class TextElement(Element):
             font_style.append("italic")
         if self.strike:
             font_style.append("strike")
+        if self.underline:
+            font_style.append("underline")
         style_str = f", style={font_style}" if font_style else ""
 
         # Use font_family for display but include raw fontname and variant
