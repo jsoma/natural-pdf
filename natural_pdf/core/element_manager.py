@@ -35,7 +35,7 @@ UNDERLINE_DEFAULTS = {
     "thickness_tol": 1.5,
     "horiz_tol": 1.0,
     "coverage_ratio": 0.8,
-    "band_frac": 0.10,   # height fraction above baseline
+    "band_frac": 0.25,   # height fraction above baseline
     "below_pad": 0.7,    # pt ; pad below baseline
 }
 
