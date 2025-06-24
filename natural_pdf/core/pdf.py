@@ -653,8 +653,6 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise ValueError("Internal error: No selector or text provided.")
 
         selector_obj = parse_selector(effective_selector)
-        kwargs["regex"] = regex
-        kwargs["case"] = case
 
         # Search page by page
         for page in self.pages:
