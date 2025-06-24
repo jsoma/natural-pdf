@@ -1,0 +1,33 @@
+TATR Layout Regions (9 found)
+==================================================
+
+## Collection Inspection (9 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 683 | 525 | 762 | table |
+| 58 | 689 | 515 | 729 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 518 | 735 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 57 | 688 | 515 | 700 | table row |
+| 58 | 711 | 516 | 724 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |

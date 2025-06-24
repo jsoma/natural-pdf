@@ -1,0 +1,128 @@
+{
+  "document": "obR6Dxb_Large table that spans across pages in Serbian _e.",
+  "total_pages": 120,
+  "analyzed_pages": [
+    1,
+    2,
+    3
+  ],
+  "analysis_date": "2025-06-22T16:43:18.130650",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 1743,
+      "text_preview": "BUDITE NA PRAVNOJ STRANI\nonline@paragraf.rs\nwww.paragraf.rs\nPreuzeto iz elektronske pravne baze Paragraf Lex\nUkoliko ovaj propis niste preuzeli sa Paragrafovog sajta ili niste sigurni da li je u pitan...",
+      "table": "4 rows × 1 columns",
+      "table_sample": [
+        [
+          "ZAKON"
+        ],
+        [
+          "O NAKNADAMA ZA KORIŠĆENJE JAVNIH DOBARA"
+        ],
+        [
+          "(\"Sl. glasnik RS\", br. 95/2018, 49/2019, 86/2019 - usklađeni din. izn., 156/2020 - usklađeni din. izn. i 15/2021 -"
+        ]
+      ],
+      "yolo_regions": 19,
+      "tatr_regions": 2,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./enhanced_analysis_10/page_1.png"
+    },
+    "2": {
+      "page_number": 2,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 2115,
+      "text_preview": "Član 3\nNaknade za korišćenje javnih dobara mogu se uvoditi samo ovim zakonom.\nII VRSTE NAKNADA ZA KORIŠĆENJE JAVNIH DOBARA\nVrste naknada\nČlan 4\nOvim zakonom uvode se naknade za korišćenje javnih dobar...",
+      "table": "75 rows × 9 columns",
+      "table_sample": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Član",
+          "3",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Naknade za",
+          "ko",
+          "rišćenje javnih",
+          "dobara",
+          "mogu se uvodi",
+          "ti samo ovim",
+          "zak",
+          "onom.",
+          ""
+        ]
+      ],
+      "yolo_regions": 22,
+      "tatr_regions": 2,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./enhanced_analysis_10/page_2.png"
+    },
+    "3": {
+      "page_number": 3,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 3058,
+      "text_preview": "Valorizovanu vrednost iz stava 1. ovog člana utvrđuje ministarstvo u čijoj su nadležnosti poslovi rudarstva i geoloških\nistraživanja primenom koeficijenta godišnjeg rasta potrošačkih cena na vrednost ...",
+      "table": "68 rows × 9 columns",
+      "table_sample": [
+        [
+          "Valorizovanu vrednost",
+          "iz stava 1. ov",
+          "og člana",
+          "utvrđuje minis",
+          "tarstv",
+          "o u čijoj su n",
+          "adležnosti po",
+          "slovi rudars",
+          "tva i geološ"
+        ],
+        [
+          "istraživanja primenom",
+          "koeficijenta g",
+          "odišnjeg r",
+          "asta potrošač",
+          "kih ce",
+          "na na vredno",
+          "st izvršenih i",
+          "straživanja",
+          "u periodu k"
+        ],
+        [
+          "godinom u kojoj su ge",
+          "ološka istraživ",
+          "anja izvrš",
+          "ena, a završa",
+          "va se",
+          "godinom u k",
+          "ojoj je obvez",
+          "nik naknade",
+          "podneo za"
+        ]
+      ],
+      "yolo_regions": 24,
+      "tatr_regions": 0,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./enhanced_analysis_10/page_3.png"
+    }
+  },
+  "insights": [
+    "Document contains 6916 total characters across 3 analyzed pages",
+    "3 out of 3 pages contain detectable tables",
+    "Complex layout detected - average 21.7 regions per page"
+  ]
+}

@@ -1,0 +1,24 @@
+All Layout Regions (4 found)
+==================================================
+YOLO: 4, TATR: 0, Other: 0
+
+## Collection Inspection (4 elements)
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 179 | 64 | 264 | 73 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 72 | 352 | 592 | plain text |
+| 49 | 75 | 351 | 588 | plain text |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 206 | 589 | 217 | 597 | abandon |

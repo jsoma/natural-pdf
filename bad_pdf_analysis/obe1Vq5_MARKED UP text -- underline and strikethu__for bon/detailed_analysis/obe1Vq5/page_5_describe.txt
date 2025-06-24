@@ -1,0 +1,16 @@
+## Page 5 Summary
+
+**Elements**:
+
+- **text**: 51 elements
+- **rect**: 18 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 50
+    - WP-Phonetic: 1
+  - **sizes**:
+    - 13.0pt: 51
+  - styles: 1 bold

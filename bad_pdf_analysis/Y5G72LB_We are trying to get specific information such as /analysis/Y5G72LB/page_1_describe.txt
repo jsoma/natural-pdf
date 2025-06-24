@@ -1,0 +1,23 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 136 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Arial: 134
+    - Times: 2
+  - **sizes**:
+    - 14.0pt: 107
+    - 10.0pt: 22
+    - 13.0pt: 3
+    - 9.0pt: 2
+    - 11.0pt: 1
+    - 12.0pt: 1
+  - styles: 2 bold, 2 italic
+  - **colors**:
+    - other: 132
+    - black: 4

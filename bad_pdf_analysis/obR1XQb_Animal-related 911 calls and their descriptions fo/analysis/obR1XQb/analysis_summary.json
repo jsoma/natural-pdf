@@ -1,0 +1,534 @@
+{
+  "pdf_name": "obR1XQb.pdf",
+  "pdf_path": "bad_pdf_analysis/obR1XQb_Animal-related 911 calls and their descriptions fo/obR1XQb.pdf",
+  "analysis_timestamp": "2025-06-22T14:35:29.690296",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595,
+        "height": 842
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 106 elements\n- **line**: 6 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 105\n    - Helvetica: 1\n  - **sizes**:\n    - 14.0pt: 85\n    - 12.0pt: 13\n    - 16.0pt: 5\n    - 10.0pt: 2\n    - 6.0pt: 1\n  - styles: 54 bold",
+      "extract_text": {
+        "length": 910,
+        "preview": "CityofNiagaraFalls,NY\\nFOIL#: DATE:\\nFOILREQUESTFORM\\n(AgencyUseOnly)\\nver09.10.2024\\nDepartmenttoReceiveRequest: AddressofDepartment:\\nIherebyapply thefollowingrecords(pleasenumbereachindividualrequest):\\nName:\\nAddress: Signature\\nElectronicDelivery*?\\nPhone:\\nYes No\\nE-Mail:\\nRepresenting:\\n(SelforNameofCompan",
+        "full_text": "CityofNiagaraFalls,NY\nFOIL#: DATE:\nFOILREQUESTFORM\n(AgencyUseOnly)\nver09.10.2024\nDepartmenttoReceiveRequest: AddressofDepartment:\nIherebyapply thefollowingrecords(pleasenumbereachindividualrequest):\nName:\nAddress: Signature\nElectronicDelivery*?\nPhone:\nYes No\nE-Mail:\nRepresenting:\n(SelforNameofCompany/Organization\n*NOCHARGEFOREMAILEDRECORDS-8.5\"X11\"PAPERCOPIESARE25CENTSPERPAGE\nFOR AGENCY USE ONLY\nResultsofFOILRequest:\nReason(s)forRedaction/Denial:\n1.\n2.\n3.\n4.\nAdditionalExplanation(ifnecessary)\nDate:\nStaffSignature (Title)\nNOTICE:YOUHAVEARIGHTTOAPPEALWITHIN30DAYSOFADENIALOFYOURREQUEST\nCOMPLETETHEFORMBELOWANDMAILITTO:ACTINGCORPORATIONCOUNSELAT745MAINST.,\nNIAGARAFALLS,NY14301.[Phone#(716)286-4427].ONSEPARATEPAGES,INCLUDETHEFOILFILE#,\nDATEOFYOURFOILREQUEST,ANDADESCRIPTIONOFTHERECORDSTHATYOUCLAIMWEREDENIED.\nALSOINCLUDETHEREASONSANDEXPLANATIONSFORYOURAPPEAL\nAppellant'sName: Date:\nReturnAddress:\nSignature"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 51,
+        "columns": 5,
+        "data": [
+          [
+            "",
+            "",
+            "FOIL",
+            "REQUEST FORM",
+            ""
+          ],
+          [
+            "",
+            "(AgencyUseOnly)",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "ver09.10.2024",
+            ""
+          ],
+          [
+            "D",
+            "epartment to Receive Reques",
+            "t:",
+            "Address of",
+            "Department:"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "I",
+            "hereby apply the",
+            "following",
+            "records (please number",
+            "each individ"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "Name:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "Address:",
+            "",
+            "",
+            "Signature"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "Electron"
+          ],
+          [
+            "",
+            "Phone:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "Yes"
+          ],
+          [
+            "",
+            "E-Mail:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "Representing:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "(SelforNameofCom",
+            "pany/Organiza",
+            "tion",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "NO",
+            "CHARGE FOR EMAILED R",
+            "ECORDS -",
+            "8.5\" X 11\" PAPER C",
+            "OPIES ARE 2"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "F",
+            "O R A G",
+            "E N C Y U S E O",
+            "N L Y"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "Re",
+            "sults of FOIL Request:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "Reason(s",
+            ") for Redaction/Denia",
+            "l:"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "1.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "2.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "3.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "4.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "Additional",
+            "Explanation (if neces",
+            "sary)"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "Date:"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "Staff Signature",
+            "",
+            "(Title)",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "NOTICE: YOUHAVEA RIGHT",
+            "TOAPPEA",
+            "LWITHIN30DAYSOF",
+            "ADENIALO"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "C",
+            "OMPLETE THEFORMBELOWA",
+            "NDMAILIT",
+            "TO:ACTINGCORPORA",
+            "TIONCOUNS"
+          ],
+          [
+            "NI",
+            "AGARAFALLS,NY14301.[Phon",
+            "e#(716)286",
+            "-4427].ONSEPARATEP",
+            "AGES,INCLU"
+          ],
+          [
+            "AT",
+            "E OFYOURFOILREQUEST,AN",
+            "DADESCRI",
+            "PTIONOFTHERECORD",
+            "STHATYOU"
+          ],
+          [
+            "",
+            "ALSOINCLUDETH",
+            "EREASONS",
+            "ANDEXPLANATIONS",
+            "FORYOURAP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "Appellant'sName:",
+            "",
+            "",
+            "Date:"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "ReturnAddress:",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 1,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              0,
+              404.7630615234375,
+              589.6951293945312,
+              842
+            ],
+            "confidence": 0.5013848543167114
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 353,
+        "yolo_count": 1,
+        "tatr_count": 352,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (353 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 0 | 405 | 590 | 842 | table |\n| 8 | 443 | 590 | 816 | table |\n| 13 | 444 | 444 | 653 | table |\n| 8 | 449 | 590 | 815 | table |\n| 13 | 472 | 421 | 624 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 9 | 448 | 37 | 815 | table column |\n| 9 | 448 | 202 | 815 | table column |\n| 133 | 449 | 590 | 815 | tabl..."
+      },
+      "elements_sample": {
+        "total_count": 1332,
+        "full_inspect": "## Collection Inspection (465 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| City | 213 | 9 | 242 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |\n| of | 246 | 9 | 260 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |\n| Niagara | 264 | 9 | 319 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |\n| Falls, | 323 | 9 | 360 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |\n| NY | 364 | 9 | 387 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |\n| FOIL | 17 | 15 | 51 | 29 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| #: | 55 | 15 | 66 | 29 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| DATE: | 430 | 16 | 473 | 30 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| FOIL | 227 | 29 | 261 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| REQUEST | 265 | 29 | 332 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| FORM | 335 | 29 | 378 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| (AgencyUseOnly) | 73 | 37 | 151 | 47 | Times |  | 10 | False | False | native | 1.00 | #000000 |\n| ver09.10.2024 | 277 | 44 | 317 | 50 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |\n| Address | 324 | 52 | 373 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| of | 376 | 52 | 388 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Department: | 391 | 52 | 468 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Department | 15 | 53 | 87 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| to | 91 | 53 | 102 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Receive | 106 | 53 | 152 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Request: | 155 | 53 | 208 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| I | 18 | 102 | 23 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| hereby | 26 | 102 | 64 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| apply | 68 | 102 | 99 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| the | 184 | 102 | 201 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| following | 205 | 102 | 259 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| records | 263 | 102 | 304 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| (please | 307 | 102 | 347 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| number | 350 | 102 | 393 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| each | 397 | 102 | 422 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| individual | 426 | 102 | 483 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| request): | 486 | 102 | 535 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Name: | 28 | 270 | 65 | 284 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Signature | 392 | 290 | 446 | 304 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Address: | 28 | 292 | 78 | 306 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Electronic | 418 | 306 | 479 | 320 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Delivery*? | 483 | 306 | 547 | 320 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Phone: | 29 | 317 | 68 | 331 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Yes | 445 | 329 | 467 | 343 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| No | 503 | 329 | 520 | 343 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| E-Mail: | 29 | 343 | 73 | 357 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Representing: | 27 | 367 | 105 | 381 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| (SelforNameofCompany/Organization | 112 | 388 | 281 | 398 | Times |  | 10 | False | False | native | 1.00 | #000000 |\n| *NO | 1 | 406 | 29 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| CHARGE | 32 | 406 | 90 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| FOR | 93 | 406 | 120 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| EMAILED | 124 | 406 | 187 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| RECORDS | 190 | 406 | 255 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| - | 258 | 406 | 263 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| 8.5\" | 267 | 406 | 290 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| X | 293 | 406 | 303 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| 11\" | 307 | 406 | 327 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| PAPER | 330 | 406 | 374 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| COPIES | 377 | 406 | 425 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| ARE | 429 | 406 | 457 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| 25 | 460 | 406 | 474 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| CENTS | 478 | 406 | 522 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| PER | 526 | 406 | 552 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| PAGE | 555 | 406 | 592 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| F | 187 | 431 | 196 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| O | 199 | 431 | 210 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| R | 214 | 431 | 224 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| A | 238 | 431 | 248 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| G | 251 | 431 | 262 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| E | 266 | 431 | 275 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| N | 278 | 431 | 289 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| C | 292 | 431 | 302 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Y | 306 | 431 | 316 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| U | 330 | 431 | 340 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| S | 343 | 431 | 351 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| E | 355 | 431 | 364 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| O | 378 | 431 | 389 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| N | 392 | 431 | 402 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| L | 406 | 431 | 415 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Y | 419 | 431 | 429 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Results | 11 | 451 | 55 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| of | 58 | 451 | 70 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| FOIL | 73 | 451 | 108 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Request: | 111 | 451 | 164 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Reason(s) | 209 | 475 | 267 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| for | 271 | 475 | 289 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Redaction/Denial: | 292 | 475 | 400 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| 1. | 11 | 493 | 21 | 507 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| 2. | 11 | 519 | 21 | 533 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| 3. | 11 | 541 | 21 | 555 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| 4. | 10 | 566 | 20 | 580 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Additional | 199 | 586 | 263 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Explanation | 266 | 586 | 340 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| (if | 343 | 586 | 356 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| necessary) | 360 | 586 | 422 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |\n| Date: | 418 | 669 | 448 | 683 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| (Title) | 294 | 690 | 329 | 704 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Staff | 33 | 692 | 60 | 706 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| Signature | 64 | 692 | 117 | 706 | Times |  | 14 | False | False | native | 1.00 | #000000 |\n| NOTICE: | 26 | 715 | 77 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |\n| YOUHAVEA | 80 | 715 | 156 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |\n| RIGHTTOAPPEALWITHIN30DAYSOFADENIALOFYOURREQUEST | 159 | 715 | 571 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |\n| COMPLETE | 15 | 731 | 78 | 743 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| THEFORMBELOWANDMAILITTO:ACTINGCORPORATIONCOUNSELAT... | 81 | 731 | 579 | 743 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| NIAGARAFALLS,NY14301.[Phone#(716)286-4427].ONSEPAR... | 14 | 743 | 580 | 755 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| DATE | 0 | 755 | 32 | 767 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| OFYOURFOILREQUEST,ANDADESCRIPTIONOFTHERECORDSTHATY... | 35 | 755 | 594 | 767 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| ALSOINCLUDETHEREASONSANDEXPLANATIONSFORYOURAPPEAL | 94 | 767 | 500 | 779 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| Appellant'sName: | 29 | 785 | 118 | 797 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| Date: | 399 | 786 | 425 | 798 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| ReturnAddress: | 29 | 806 | 107 | 818 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n| Signature | 399 | 819 | 445 | 831 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 392 | 287 | 571 | 287 | 2 | True | False |\n| 9 | 427 | 580 | 427 | 2 | True | False |\n| 187 | 443 | 429 | 443 | 1 | True | False |\n| 31 | 689 | 223 | 689 | 1 | True | False |\n| 26 | 726 | 571 | 726 | 1 | True | False |\n| 398 | 816 | 578 | 816 | 1 | True | False |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 0 | 405 | 590 | 842 | table |\n| 8 | 443 | 590 | 816 | table |\n| 13 | 444 | 444 | 653 | table |\n| 8 | 449 | 590 | 815 | table |\n| 13 | 472 | 421 | 624 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 9 | 448 | 37 | 815 | table column |\n| 9 | 448 | 202 | 815 | table column |\n| 133 | 449 | 590 | 815 | table column |\n| 19 | 471 | 55 | 622 | table column |\n| 13 | 472 | 107 | 622 | table column |\n| 109 | 472 | 420 | 620 | table column |\n| 262 | 473 | 367 | 623 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 8 | 449 | 590 | 478 | table row |\n| 14 | 472 | 422 | 490 | table row |\n| 8 | 480 | 590 | 512 | table row |\n| 13 | 487 | 421 | 509 | table row |\n| 13 | 509 | 421 | 533 | table row |\n| 8 | 512 | 590 | 535 | table row |\n| 8 | 535 | 590 | 558 | table row |\n| 8 | 557 | 590 | 582 | table row |\n| 13 | 575 | 421 | 613 | table row |\n| 14 | 609 | 422 | 628 | table row |\n| 9 | 646 | 590 | 688 | table row |\n| 8 | 684 | 590 | 710 | table row |\n| 9 | 705 | 590 | 725 | table row |\n| 8 | 726 | 590 | 780 | table row |\n| 8 | 779 | 590 | 799 | table row |\n| 8 | 799 | 590 | 815 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 9 | 449 | 202 | 478 | table-cell |\n| 9 | 449 | 202 | 478 | table-cell |\n| 9 | 449 | 202 | 478 | table-cell |\n| 9 | 449 | 202 | 478 | table-cell |\n| 9 | 449 | 37 | 478 | table-cell |\n| 9 | 449 | 37 | 478 | table-cell |\n| 9 | 449 | 37 | 478 | table-cell |\n| 9 | 449 | 37 | 478 | table-cell |\n| 133 | 449 | 590 | 478 | table-cell |\n| 133 | 449 | 590 | 478 | table-cell |\n| 133 | 449 | 590 | 478 | table-cell |\n| 133 | 449 | 590 | 478 | table-cell |\n| 19 | 471 | 55 | 478 | table-cell |\n| 19 | 471 | 55 | 478 | table-cell |\n| 19 | 471 | 55 | 478 | table-cell |\n| 19 | 471 | 55 | 478 | table-cell |\n| 14 | 472 | 202 | 490 | table-cell |\n| 14 | 472 | 37 | 490 | table-cell |\n| 14 | 472 | 202 | 490 | table-cell |\n| 14 | 472 | 37 | 490 | table-cell |\n| 14 | 472 | 202 | 490 | table-cell |\n| 14 | 472 | 37 | 490 | table-cell |\n| 14 | 472 | 202 | 490 | table-cell |\n| 14 | 472 | 37 | 490 | table-cell |\n| 19 | 472 | 55 | 490 | table-cell |\n| 19 | 472 | 55 | 490 | table-cell |\n| 19 | 472 | 55 | 490 | table-cell |\n| 19 | 472 | 55 | 490 | table-cell |\n| 133 | 472 | 422 | 490 | table-cell |\n| 133 | 472 | 422 | 490 | table-cell |\n| 133 | 472 | 422 | 490 | table-cell |\n| 133 | 472 | 422 | 490 | table-cell |\n| 13 | 472 | 107 | 478 | table-cell |\n| 13 | 472 | 107 | 478 | table-cell |\n| 13 | 472 | 107 | 478 | table-cell |\n| 13 | 472 | 107 | 478 | table-cell |\n| 14 | 472 | 107 | 490 | table-cell |\n| 14 | 472 | 107 | 490 | table-cell |\n| 14 | 472 | 107 | 490 | table-cell |\n| 14 | 472 | 107 | 490 | table-cell |\n| 109 | 472 | 420 | 478 | table-cell |\n| 109 | 472 | 420 | 490 | table-cell |\n| 109 | 472 | 420 | 478 | table-cell |\n| 109 | 472 | 420 | 490 | table-cell |\n| 109 | 472 | 420 | 478 | table-cell |\n| 109 | 472 | 420 | 490 | table-cell |\n| 109 | 472 | 420 | 478 | table-cell |\n| 109 | 472 | 420 | 490 | table-cell |\n| 262 | 473 | 367 | 478 | table-cell |\n| 262 | 473 | 367 | 490 | table-cell |\n| 262 | 473 | 367 | 478 | table-cell |\n| 262 | 473 | 367 | 490 | table-cell |\n| 262 | 473 | 367 | 478 | table-cell |\n| 262 | 473 | 367 | 490 | table-cell |\n| 262 | 473 | 367 | 478 | table-cell |\n| 262 | 473 | 367 | 490 | table-cell |\n| 9 | 480 | 202 | 512 | table-cell |\n| 9 | 480 | 202 | 512 | table-cell |\n| 9 | 480 | 202 | 512 | table-cell |\n| 9 | 480 | 202 | 512 | table-cell |\n| 9 | 480 | 37 | 512 | table-cell |\n| 9 | 480 | 37 | 512 | table-cell |\n| 9 | 480 | 37 | 512 | table-cell |\n| 9 | 480 | 37 | 512 | table-cell |\n| 13 | 480 | 107 | 512 | table-cell |\n| 13 | 480 | 107 | 512 | table-cell |\n| 13 | 480 | 107 | 512 | table-cell |\n| 13 | 480 | 107 | 512 | table-cell |\n| 19 | 480 | 55 | 512 | table-cell |\n| 19 | 480 | 55 | 512 | table-cell |\n| 19 | 480 | 55 | 512 | table-cell |\n| 19 | 480 | 55 | 512 | table-cell |\n| 109 | 480 | 420 | 512 | table-cell |\n| 109 | 480 | 420 | 512 | table-cell |\n| 109 | 480 | 420 | 512 | table-cell |\n| 109 | 480 | 420 | 512 | table-cell |\n| 133 | 480 | 590 | 512 | table-cell |\n| 133 | 480 | 590 | 512 | table-cell |\n| 133 | 480 | 590 | 512 | table-cell |\n| 133 | 480 | 590 | 512 | table-cell |\n| 262 | 480 | 367 | 512 | table-cell |\n| 262 | 480 | 367 | 512 | table-cell |\n| 262 | 480 | 367 | 512 | table-cell |\n| 262 | 480 | 367 | 512 | table-cell |\n| 13 | 487 | 202 | 509 | table-cell |\n| 13 | 487 | 37 | 509 | table-cell |\n| 13 | 487 | 107 | 509 | table-cell |\n| 13 | 487 | 202 | 509 | table-cell |\n| 13 | 487 | 37 | 509 | table-cell |\n| 13 | 487 | 107 | 509 | table-cell |\n| 13 | 487 | 202 | 509 | table-cell |\n| 13 | 487 | 37 | 509 | table-cell |\n| 13 | 487 | 107 | 509 | table-cell |\n| 13 | 487 | 202 | 509 | table-cell |\n| 13 | 487 | 37 | 509 | table-cell |\n| 13 | 487 | 107 | 509 | table-cell |\n| 19 | 487 | 55 | 509 | table-cell |\n| 19 | 487 | 55 | 509 | table-cell |\n| 19 | 487 | 55 | 509 | table-cell |\n| 19 | 487 | 55 | 509 | table-cell |\n| 109 | 487 | 420 | 509 | table-cell |\n| 109 | 487 | 420 | 509 | table-cell |\n| 109 | 487 | 420 | 509 | table-cell |\n| 109 | 487 | 420 | 509 | table-cell |\n| 133 | 487 | 421 | 509 | table-cell |\n| 133 | 487 | 421 | 509 | table-cell |\n| 133 | 487 | 421 | 509 | table-cell |\n| 133 | 487 | 421 | 509 | table-cell |\n| 262 | 487 | 367 | 509 | table-cell |\n| 262 | 487 | 367 | 509 | table-cell |\n| 262 | 487 | 367 | 509 | table-cell |\n| 262 | 487 | 367 | 509 | table-cell |\n| 13 | 509 | 202 | 533 | table-cell |\n| 13 | 509 | 37 | 533 | table-cell |\n| 13 | 509 | 202 | 533 | table-cell |\n| 13 | 509 | 37 | 533 | table-cell |\n| 13 | 509 | 202 | 533 | table-cell |\n| 13 | 509 | 37 | 533 | table-cell |\n| 13 | 509 | 202 | 533 | table-cell |\n| 13 | 509 | 37 | 533 | table-cell |\n| 13 | 509 | 107 | 533 | table-cell |\n| 13 | 509 | 107 | 533 | table-cell |\n| 13 | 509 | 107 | 533 | table-cell |\n| 13 | 509 | 107 | 533 | table-cell |\n| 19 | 509 | 55 | 533 | table-cell |\n| 19 | 509 | 55 | 533 | table-cell |\n| 19 | 509 | 55 | 533 | table-cell |\n| 19 | 509 | 55 | 533 | table-cell |\n| 109 | 509 | 420 | 533 | table-cell |\n| 109 | 509 | 420 | 533 | table-cell |\n| 109 | 509 | 420 | 533 | table-cell |\n| 109 | 509 | 420 | 533 | table-cell |\n| 133 | 509 | 421 | 533 | table-cell |\n| 133 | 509 | 421 | 533 | table-cell |\n| 133 | 509 | 421 | 533 | table-cell |\n| 133 | 509 | 421 | 533 | table-cell |\n| 262 | 509 | 367 | 533 | table-cell |\n| 262 | 509 | 367 | 533 | table-cell |\n| 262 | 509 | 367 | 533 | table-cell |\n| 262 | 509 | 367 | 533 | table-cell |\n| 9 | 512 | 202 | 535 | table-cell |\n| 9 | 512 | 202 | 535 | table-cell |\n| 9 | 512 | 202 | 535 | table-cell |\n| 9 | 512 | 202 | 535 | table-cell |\n| 9 | 512 | 37 | 535 | table-cell |\n| 9 | 512 | 37 | 535 | table-cell |\n| 9 | 512 | 37 | 535 | table-cell |\n| 9 | 512 | 37 | 535 | table-cell |\n| 13 | 512 | 107 | 535 | table-cell |\n| 13 | 512 | 107 | 535 | table-cell |\n| 13 | 512 | 107 | 535 | table-cell |\n| 13 | 512 | 107 | 535 | table-cell |\n| 19 | 512 | 55 | 535 | table-cell |\n| 19 | 512 | 55 | 535 | table-cell |\n| 19 | 512 | 55 | 535 | table-cell |\n| 19 | 512 | 55 | 535 | table-cell |\n| 109 | 512 | 420 | 535 | table-cell |\n| 109 | 512 | 420 | 535 | table-cell |\n| 109 | 512 | 420 | 535 | table-cell |\n| 109 | 512 | 420 | 535 | table-cell |\n| 133 | 512 | 590 | 535 | table-cell |\n| 133 | 512 | 590 | 535 | table-cell |\n| 133 | 512 | 590 | 535 | table-cell |\n| 133 | 512 | 590 | 535 | table-cell |\n| 262 | 512 | 367 | 535 | table-cell |\n| 262 | 512 | 367 | 535 | table-cell |\n| 262 | 512 | 367 | 535 | table-cell |\n| 262 | 512 | 367 | 535 | table-cell |\n| 9 | 535 | 202 | 558 | table-cell |\n| 9 | 535 | 202 | 558 | table-cell |\n| 9 | 535 | 202 | 558 | table-cell |\n| 9 | 535 | 202 | 558 | table-cell |\n| 9 | 535 | 37 | 558 | table-cell |\n| 9 | 535 | 37 | 558 | table-cell |\n| 9 | 535 | 37 | 558 | table-cell |\n| 9 | 535 | 37 | 558 | table-cell |\n| 13 | 535 | 107 | 558 | table-cell |\n| 13 | 535 | 107 | 558 | table-cell |\n| 13 | 535 | 107 | 558 | table-cell |\n| 13 | 535 | 107 | 558 | table-cell |\n| 19 | 535 | 55 | 558 | table-cell |\n| 19 | 535 | 55 | 558 | table-cell |\n| 19 | 535 | 55 | 558 | table-cell |\n| 19 | 535 | 55 | 558 | table-cell |\n| 109 | 535 | 420 | 558 | table-cell |\n| 109 | 535 | 420 | 558 | table-cell |\n| 109 | 535 | 420 | 558 | table-cell |\n| 109 | 535 | 420 | 558 | table-cell |\n| 133 | 535 | 590 | 558 | table-cell |\n| 133 | 535 | 590 | 558 | table-cell |\n| 133 | 535 | 590 | 558 | table-cell |\n| 133 | 535 | 590 | 558 | table-cell |\n| 262 | 535 | 367 | 558 | table-cell |\n| 262 | 535 | 367 | 558 | table-cell |\n| 262 | 535 | 367 | 558 | table-cell |\n| 262 | 535 | 367 | 558 | table-cell |\n| 9 | 557 | 202 | 582 | table-cell |\n| 9 | 557 | 202 | 582 | table-cell |\n| 9 | 557 | 202 | 582 | table-cell |\n| 9 | 557 | 202 | 582 | table-cell |\n| 9 | 557 | 37 | 582 | table-cell |\n| 9 | 557 | 37 | 582 | table-cell |\n| 9 | 557 | 37 | 582 | table-cell |\n| 9 | 557 | 37 | 582 | table-cell |\n| 13 | 557 | 107 | 582 | table-cell |\n| 13 | 557 | 107 | 582 | table-cell |\n| 13 | 557 | 107 | 582 | table-cell |\n| 13 | 557 | 107 | 582 | table-cell |\n| 19 | 557 | 55 | 582 | table-cell |\n| 19 | 557 | 55 | 582 | table-cell |\n| 19 | 557 | 55 | 582 | table-cell |\n| 19 | 557 | 55 | 582 | table-cell |\n| 109 | 557 | 420 | 582 | table-cell |\n| 109 | 557 | 420 | 582 | table-cell |\n| 109 | 557 | 420 | 582 | table-cell |\n| 109 | 557 | 420 | 582 | table-cell |\n| 133 | 557 | 590 | 582 | table-cell |\n| 133 | 557 | 590 | 582 | table-cell |\n| 133 | 557 | 590 | 582 | table-cell |\n| 133 | 557 | 590 | 582 | table-cell |\n| 262 | 557 | 367 | 582 | table-cell |\n| 262 | 557 | 367 | 582 | table-cell |\n| 262 | 557 | 367 | 582 | table-cell |\n| 262 | 557 | 367 | 582 | table-cell |\n| 13 | 575 | 202 | 613 | table-cell |\n| 13 | 575 | 37 | 613 | table-cell |\n| 13 | 575 | 107 | 613 | table-cell |\n| 13 | 575 | 202 | 613 | table-cell |\n| 13 | 575 | 37 | 613 | table-cell |\n| 13 | 575 | 107 | 613 | table-cell |\n| 13 | 575 | 202 | 613 | table-cell |\n| 13 | 575 | 37 | 613 | table-cell |\n| 13 | 575 | 107 | 613 | table-cell |\n| 13 | 575 | 202 | 613 | table-cell |\n| 13 | 575 | 37 | 613 | table-cell |\n| 13 | 575 | 107 | 613 | table-cell |\n| 19 | 575 | 55 | 613 | table-cell |\n| 19 | 575 | 55 | 613 | table-cell |\n| 19 | 575 | 55 | 613 | table-cell |\n| 19 | 575 | 55 | 613 | table-cell |\n| 109 | 575 | 420 | 613 | table-cell |\n| 109 | 575 | 420 | 613 | table-cell |\n| 109 | 575 | 420 | 613 | table-cell |\n| 109 | 575 | 420 | 613 | table-cell |\n| 133 | 575 | 421 | 613 | table-cell |\n| 133 | 575 | 421 | 613 | table-cell |\n| 133 | 575 | 421 | 613 | table-cell |\n| 133 | 575 | 421 | 613 | table-cell |\n| 262 | 575 | 367 | 613 | table-cell |\n| 262 | 575 | 367 | 613 | table-cell |\n| 262 | 575 | 367 | 613 | table-cell |\n| 262 | 575 | 367 | 613 | table-cell |\n| 14 | 609 | 202 | 628 | table-cell |\n| 14 | 609 | 37 | 628 | table-cell |\n| 14 | 609 | 107 | 622 | table-cell |\n| 14 | 609 | 202 | 628 | table-cell |\n| 14 | 609 | 37 | 628 | table-cell |\n| 14 | 609 | 107 | 622 | table-cell |\n| 14 | 609 | 202 | 628 | table-cell |\n| 14 | 609 | 37 | 628 | table-cell |\n| 14 | 609 | 107 | 622 | table-cell |\n| 14 | 609 | 202 | 628 | table-cell |\n| 14 | 609 | 37 | 628 | table-cell |\n| 14 | 609 | 107 | 622 | table-cell |\n| 19 | 609 | 55 | 622 | table-cell |\n| 19 | 609 | 55 | 622 | table-cell |\n| 19 | 609 | 55 | 622 | table-cell |\n| 19 | 609 | 55 | 622 | table-cell |\n| 109 | 609 | 420 | 620 | table-cell |\n| 109 | 609 | 420 | 620 | table-cell |\n| 109 | 609 | 420 | 620 | table-cell |\n| 109 | 609 | 420 | 620 | table-cell |\n| 133 | 609 | 422 | 628 | table-cell |\n| 133 | 609 | 422 | 628 | table-cell |\n| 133 | 609 | 422 | 628 | table-cell |\n| 133 | 609 | 422 | 628 | table-cell |\n| 262 | 609 | 367 | 623 | table-cell |\n| 262 | 609 | 367 | 623 | table-cell |\n| 262 | 609 | 367 | 623 | table-cell |\n| 262 | 609 | 367 | 623 | table-cell |\n| 9 | 646 | 202 | 688 | table-cell |\n| 9 | 646 | 202 | 688 | table-cell |\n| 9 | 646 | 202 | 688 | table-cell |\n| 9 | 646 | 37 | 688 | table-cell |\n| 9 | 646 | 37 | 688 | table-cell |\n| 9 | 646 | 37 | 688 | table-cell |\n| 133 | 646 | 590 | 688 | table-cell |\n| 133 | 646 | 590 | 688 | table-cell |\n| 133 | 646 | 590 | 688 | table-cell |\n| 9 | 684 | 202 | 710 | table-cell |\n| 9 | 684 | 202 | 710 | table-cell |\n| 9 | 684 | 37 | 710 | table-cell |\n| 9 | 684 | 37 | 710 | table-cell |\n| 133 | 684 | 590 | 710 | table-cell |\n| 133 | 684 | 590 | 710 | table-cell |\n| 9 | 705 | 202 | 725 | table-cell |\n| 9 | 705 | 202 | 725 | table-cell |\n| 9 | 705 | 37 | 725 | table-cell |\n| 9 | 705 | 37 | 725 | table-cell |\n| 133 | 705 | 590 | 725 | table-cell |\n| 133 | 705 | 590 | 725 | table-cell |\n| 9 | 726 | 202 | 780 | table-cell |\n| 9 | 726 | 202 | 780 | table-cell |\n| 9 | 726 | 37 | 780 | table-cell |\n| 9 | 726 | 37 | 780 | table-cell |\n| 133 | 726 | 590 | 780 | table-cell |\n| 133 | 726 | 590 | 780 | table-cell |\n| 9 | 779 | 202 | 799 | table-cell |\n| 9 | 779 | 202 | 799 | table-cell |\n| 9 | 779 | 37 | 799 | table-cell |\n| 9 | 779 | 37 | 799 | table-cell |\n| 133 | 779 | 590 | 799 | table-cell |\n| 133 | 779 | 590 | 799 | table-cell |\n| 9 | 799 | 202 | 815 | table-cell |\n| 9 | 799 | 202 | 815 | table-cell |\n| 9 | 799 | 37 | 815 | table-cell |\n| 9 | 799 | 37 | 815 | table-cell |\n| 133 | 799 | 590 | 815 | table-cell |\n| 133 | 799 | 590 | 815 | table-cell |\n\n### Table Projected Row Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 8 | 477 | 590 | 511 | table projected row header |\n| 8 | 512 | 590 | 535 | table projected row header |\n| 8 | 535 | 590 | 558 | table projected row header |\n| 9 | 708 | 590 | 728 | table projected row header |\n| 8 | 727 | 590 | 783 | table projected row header |\n| 9 | 800 | 590 | 815 | table projected row header |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 213.12,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "City",
+            "x0": 213.12,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "i",
+            "x0": 224.672,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "t",
+            "x0": 229.12,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "y",
+            "x0": 234.448,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "o",
+            "x0": 246.448,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "of",
+            "x0": 246.448,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "f",
+            "x0": 254.448,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "N",
+            "x0": 263.776,
+            "top": 8.848999999999933
+          },
+          {
+            "type": "unknown",
+            "text": "Niagara",
+            "x0": 263.776,
+            "top": 8.848999999999933
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obR1XQb_Animal-related 911 calls and their descriptions fo/analysis/obR1XQb/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 33,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              13.26,
+              443.57,
+              443.62,
+              653.09
+            ],
+            "confidence": 0.7774987816810608
+          },
+          {
+            "type": "table",
+            "bbox": [
+              8.44,
+              442.72,
+              590.39,
+              815.6
+            ],
+            "confidence": 0.5862077474594116
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              19.22,
+              471.27,
+              55.07,
+              622.13
+            ],
+            "confidence": 0.458576500415802
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              14.31,
+              608.94,
+              421.78,
+              627.52
+            ],
+            "confidence": 0.6081839799880981
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              262.03,
+              472.77,
+              366.56,
+              622.58
+            ],
+            "confidence": 0.511680006980896
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 47,
+  "pages_analyzed": 1
+}

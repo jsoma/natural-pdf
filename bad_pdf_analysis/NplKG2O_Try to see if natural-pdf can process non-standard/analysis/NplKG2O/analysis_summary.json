@@ -1,0 +1,173 @@
+{
+  "pdf_name": "NplKG2O.pdf",
+  "pdf_path": "bad_pdf_analysis/NplKG2O_Try to see if natural-pdf can process non-standard/NplKG2O.pdf",
+  "analysis_timestamp": "2025-06-22T14:31:33.385177",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 16 elements\n- **rect**: 3 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - SimSun,Regular: 9\n    - Times: 3\n    - SimHei,Regular: 2\n    - Cambria: 1\n    - Calibri: 1\n  - **sizes**:\n    - 15.0pt: 4\n    - 18.0pt: 4\n    - 10.5pt: 2\n    - 24.0pt: 2\n    - 48.0pt: 1\n    - 20.0pt: 1\n    - 11.0pt: 1\n    - 9.0pt: 1\n  - styles: 1 bold",
+      "extract_text": {
+        "length": 67,
+        "preview": "\u300a\u4e2d\u56fd\u5236\u90202025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u521b\u65b0\u7eff\u76ae\u4e66\\n\u300a\u4e2d\u56fd\u5236\u9020 2025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u8def\u7ebf\u56fe\\n\u56fd\u5bb6\u5236\u9020\u5f3a\u56fd\u5efa\u8bbe\u6218\u7565\u54a8\u8be2\u59d4\u5458\u4f1a\\n2015\u5e7410\u6708",
+        "full_text": "\u300a\u4e2d\u56fd\u5236\u90202025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u521b\u65b0\u7eff\u76ae\u4e66\n\u300a\u4e2d\u56fd\u5236\u9020 2025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u8def\u7ebf\u56fe\n\u56fd\u5bb6\u5236\u9020\u5f3a\u56fd\u5efa\u8bbe\u6218\u7565\u54a8\u8be2\u59d4\u5458\u4f1a\n2015\u5e7410\u6708"
+      },
+      "extract_table": {
+        "found": false
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 1,
+        "regions": [
+          {
+            "type": "abandon",
+            "bbox": [
+              137.67410260706143,
+              625.5715390717785,
+              445.46105445605804,
+              680.2706872123663
+            ],
+            "confidence": 0.5391549468040466
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 53,
+        "yolo_count": 1,
+        "tatr_count": 52,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (53 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 138 | 626 | 445 | 680 | abandon |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 142 | 642 | 461 | 839 | table |\n| 149 | 655 | 454 | 833 | table |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 149 | 654 | 453 | 675 | table column header |\n\n### Table Column..."
+      },
+      "elements_sample": {
+        "total_count": 174,
+        "full_inspect": "## Collection Inspection (72 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n|   | 293 | -6 | 304 | 42 | Cambria | ABCDEE | 48 | True | False | native | 1.00 | #000000 |\n| \u300a\u4e2d\u56fd\u5236\u9020 | 3 | 18 | 79 | 33 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |\n| 2025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u521b\u65b0\u7eff\u76ae\u4e66 | 82 | 18 | 293 | 33 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |\n|   | 90 | 75 | 93 | 86 | Times |  | 11 | False | False | native | 1.00 | #000000 |\n| \u300a\u4e2d\u56fd\u5236\u9020 | 91 | 185 | 212 | 209 | SimHei,Regular | ABCDEE | 24 | False | False | native | 1.00 | #000000 |\n| 2025\u300b\u91cd\u70b9\u9886\u57df\u6280\u672f\u8def\u7ebf\u56fe  | 218 | 185 | 519 | 209 | SimHei,Regular | ABCDEE | 24 | False | False | native | 1.00 | #000000 |\n|   | 83 | 215 | 86 | 225 | Times |  | 11 | False | False | native | 1.00 | #000000 |\n| \u56fd\u5bb6\u5236\u9020\u5f3a\u56fd\u5efa\u8bbe\u6218\u7565\u54a8\u8be2\u59d4\u5458\u4f1a | 140 | 630 | 441 | 650 | SimSun,Regular | ABCDEE | 20 | False | False | native | 1.00 | #000000 |\n|   | 441 | 634 | 449 | 649 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |\n|  2015 | 235 | 659 | 280 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u5e74 | 285 | 659 | 303 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| 10 | 308 | 659 | 326 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u6708 | 330 | 659 | 348 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n|                                 | 1 | 662 | 235 | 677 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |\n|   | 348 | 666 | 351 | 678 | Calibri | ABCDEE | 11 | False | False | native | 1.00 | #000000 |\n|   | 108 | 783 | 110 | 792 | Times |  | 9 | False | False | native | 1.00 | #000000 |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 0 | -4 | 597 | 906 | 597 | 910 | #000000 | #9bba58 | 0 |\n| -25 | -4 | 0 | 906 | 26 | 910 | #000000 | #000000 | 0 |\n| 0 | 0 | 595 | 842 | 595 | 842 | #000000 | #000000 | 0 |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 138 | 626 | 445 | 680 | abandon |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 142 | 642 | 461 | 839 | table |\n| 149 | 655 | 454 | 833 | table |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 149 | 654 | 453 | 675 | table column header |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 397 | 654 | 454 | 832 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 149 | 654 | 453 | 674 | table row |\n| 149 | 673 | 453 | 690 | table row |\n| 149 | 684 | 454 | 701 | table row |\n| 149 | 697 | 453 | 714 | table row |\n| 149 | 710 | 454 | 727 | table row |\n| 149 | 711 | 453 | 727 | table row |\n| 149 | 722 | 453 | 738 | table row |\n| 148 | 728 | 454 | 744 | table row |\n| 148 | 752 | 453 | 768 | table row |\n| 148 | 764 | 453 | 780 | table row |\n| 148 | 777 | 453 | 793 | table row |\n| 149 | 781 | 453 | 795 | table row |\n| 149 | 791 | 453 | 807 | table row |\n| 149 | 802 | 453 | 819 | table row |\n| 148 | 807 | 455 | 822 | table row |\n| 148 | 818 | 454 | 833 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 397 | 654 | 453 | 674 | table-cell |\n| 397 | 654 | 453 | 674 | table-cell |\n| 397 | 673 | 453 | 690 | table-cell |\n| 397 | 673 | 453 | 690 | table-cell |\n| 397 | 684 | 454 | 701 | table-cell |\n| 397 | 684 | 454 | 701 | table-cell |\n| 397 | 697 | 453 | 714 | table-cell |\n| 397 | 697 | 453 | 714 | table-cell |\n| 397 | 710 | 454 | 727 | table-cell |\n| 397 | 710 | 454 | 727 | table-cell |\n| 397 | 711 | 453 | 727 | table-cell |\n| 397 | 711 | 453 | 727 | table-cell |\n| 397 | 722 | 453 | 738 | table-cell |\n| 397 | 722 | 453 | 738 | table-cell |\n| 397 | 728 | 454 | 744 | table-cell |\n| 397 | 728 | 454 | 744 | table-cell |\n| 397 | 752 | 453 | 768 | table-cell |\n| 397 | 752 | 453 | 768 | table-cell |\n| 397 | 764 | 453 | 780 | table-cell |\n| 397 | 764 | 453 | 780 | table-cell |\n| 397 | 777 | 453 | 793 | table-cell |\n| 397 | 777 | 453 | 793 | table-cell |\n| 397 | 781 | 453 | 795 | table-cell |\n| 397 | 781 | 453 | 795 | table-cell |\n| 397 | 791 | 453 | 807 | table-cell |\n| 397 | 791 | 453 | 807 | table-cell |\n| 397 | 802 | 453 | 819 | table-cell |\n| 397 | 802 | 453 | 819 | table-cell |\n| 397 | 807 | 454 | 822 | table-cell |\n| 397 | 807 | 454 | 822 | table-cell |\n| 397 | 818 | 454 | 832 | table-cell |\n| 397 | 818 | 454 | 832 | table-cell |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 293.45,
+            "top": -6.264000000000124
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 293.45,
+            "top": -6.264000000000124
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 0.4,
+            "top": -4.25
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": -25.45,
+            "top": -3.7999999999999545
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 0.0,
+            "top": 0.0
+          },
+          {
+            "type": "unknown",
+            "text": "\u300a",
+            "x0": 3.36,
+            "top": 18.194999999999936
+          },
+          {
+            "type": "unknown",
+            "text": "\u300a\u4e2d\u56fd\u5236\u9020",
+            "x0": 3.36,
+            "top": 18.194999999999936
+          },
+          {
+            "type": "unknown",
+            "text": "\u4e2d",
+            "x0": 18.465,
+            "top": 18.194999999999936
+          },
+          {
+            "type": "unknown",
+            "text": "\u56fd",
+            "x0": 33.465,
+            "top": 18.194999999999936
+          },
+          {
+            "type": "unknown",
+            "text": "\u5236",
+            "x0": 48.57,
+            "top": 18.194999999999936
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/NplKG2O_Try to see if natural-pdf can process non-standard/analysis/NplKG2O/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 20,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              142.0877013422819,
+              641.9689995249405,
+              460.7836731543625,
+              838.6803078384797
+            ],
+            "confidence": 0.5351299047470093
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              149.10968053691278,
+              696.8637833729215,
+              453.3921161073826,
+              714.4621111638954
+            ],
+            "confidence": 0.8641855120658875
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              148.69015973154364,
+              780.5958270783847,
+              453.2722530201343,
+              795.2844313539192
+            ],
+            "confidence": 0.5373426675796509
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              149.14963489932887,
+              672.5760912114014,
+              453.4220818791947,
+              689.6444693586698
+            ],
+            "confidence": 0.8675351142883301
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              397.1064080536913,
+              654.2978280285035,
+              454.1412604026846,
+              831.5209881235154
+            ],
+            "confidence": 0.6496289372444153
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 191,
+  "pages_analyzed": 1
+}

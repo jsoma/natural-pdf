@@ -1,0 +1,129 @@
+{
+  "document": "OD49rjM_Just being able to make sense of any of it. It_s b",
+  "total_pages": 34606,
+  "analyzed_pages": [
+    1,
+    17303
+  ],
+  "analysis_date": "2025-06-22T17:14:54.504268",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 2775,
+      "text_preview": "Case:17-03283-LTS Doc#:18235 Filed:09/24/21 Entered:09/24/21 12:18:20 Desc: Main\nDocument Page 1 of 3\nUNITED STATES DISTRICT COURT\nDISTRICT OF PUERTO RICO\n---------------------------------------------...",
+      "character_count": 2854,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "57 rows × 8 columns",
+      "line_detection": {
+        "horizontal_lines": 43,
+        "vertical_lines": 0,
+        "total_lines": 43
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 53,
+        "processing_time": 1.204253911972046
+      },
+      "yolo_types": {
+        "title": 3,
+        "table_row": 42,
+        "plain text": 7,
+        "abandon": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 0.5974218845367432
+      },
+      "selector_large_text": 19,
+      "selector_small_text": 2,
+      "selector_bold_text": 10,
+      "selector_colored_rects": 5,
+      "selector_thin_lines": 5,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/OD49rjM_Just being able to make sense of any of it. It_s b/detailed_analysis_final/page_1.png"
+    },
+    "17303": {
+      "page_number": 17303,
+      "dimensions": "792 × 612 points",
+      "tests_performed": {},
+      "text_length": 2301,
+      "text_preview": "Case:17-03283-LTS Doc#:18235-8 Filed:09/24/21 Entered:09/24/21 12:18:20 Desc:\nExhibit H Page 951 of 9209\nExhibit H\nMaster Mailing List 3\nServed via first class mail\nMMLID NAME ADDRESS 1 ADDRESS 2 ADDR...",
+      "character_count": 2164,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 0.31,
+      "standard_table": "35 rows × 10 columns",
+      "line_detection": {
+        "horizontal_lines": 37,
+        "vertical_lines": 14,
+        "total_lines": 51
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 468
+      },
+      "yolo_analysis": {
+        "regions": 523,
+        "processing_time": 1.400588035583496
+      },
+      "yolo_types": {
+        "title": 1,
+        "table": 2,
+        "table_row": 36,
+        "table_column": 13,
+        "table_cell": 468,
+        "plain text": 1,
+        "abandon": 2
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.5322871208190918
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 33,
+      "selector_bold_text": 20,
+      "selector_colored_rects": 60,
+      "selector_thin_lines": 47,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>554.4]...'. Full selector: '*[width>554.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/OD49rjM_Just being able to make sense of any of it. It_s b/detailed_analysis_final/page_17303.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 17303,
+      "severity": "medium",
+      "details": "Character overlap ratio: 0.31"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling",
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

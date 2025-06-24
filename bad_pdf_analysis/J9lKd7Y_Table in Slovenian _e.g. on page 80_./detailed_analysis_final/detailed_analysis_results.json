@@ -1,0 +1,84 @@
+{
+  "document": "J9lKd7Y_Table in Slovenian _e.g. on page 80_.",
+  "total_pages": 85,
+  "analyzed_pages": [
+    80
+  ],
+  "analysis_date": "2025-06-22T17:16:51.881258",
+  "pages": {
+    "80": {
+      "page_number": 80,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1834,
+      "text_preview": "Ali je vaša šola sprejela katerega od naslednjih ukrepov za pripravo na poučevanje na daljavo?\n(V vsaki vrstici izberite en odgovor.)\nDa, to je bila običajna Da, kot odziv na\npraksa že pred covid-19. ...",
+      "character_count": 1693,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "11 rows × 4 columns",
+      "line_detection": {
+        "horizontal_lines": 31,
+        "vertical_lines": 9,
+        "total_lines": 40
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 240
+      },
+      "yolo_analysis": {
+        "regions": 280,
+        "processing_time": 1.0035531520843506
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 30,
+        "table_column": 8,
+        "table_cell": 240
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.8203277587890625
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 60,
+      "selector_bold_text": 1,
+      "selector_colored_rects": 227,
+      "selector_thin_lines": 89,
+      "potential_text_formatting": 2,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/J9lKd7Y_Table in Slovenian _e.g. on page 80_./detailed_analysis_final/page_80.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "text_formatting",
+      "page": 80,
+      "severity": "medium",
+      "details": "2 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

@@ -220,3 +220,47 @@ class LayoutManager:
                 logger.debug(f"Layout engine '{name}' check failed: {e}")
                 pass
         return available
+
+    def cleanup_detector(self, detector_name: Optional[str] = None) -> int:
+        """
+        Cleanup layout detector instances to free memory.
+        
+        Args:
+            detector_name: Specific detector to cleanup, or None to cleanup all detectors
+            
+        Returns:
+            Number of detectors cleaned up
+        """
+        cleaned_count = 0
+        
+        if detector_name:
+            # Cleanup specific detector
+            detector_name = detector_name.lower()
+            if detector_name in self._detector_instances:
+                detector = self._detector_instances.pop(detector_name)
+                if hasattr(detector, 'cleanup'):
+                    try:
+                        detector.cleanup()
+                    except Exception as e:
+                        logger.debug(f"Detector {detector_name} cleanup method failed: {e}")
+                
+                logger.info(f"Cleaned up layout detector: {detector_name}")
+                cleaned_count = 1
+        else:
+            # Cleanup all detectors
+            for name, detector in list(self._detector_instances.items()):
+                if hasattr(detector, 'cleanup'):
+                    try:
+                        detector.cleanup()
+                    except Exception as e:
+                        logger.debug(f"Detector {name} cleanup method failed: {e}")
+                        
+            # Clear all caches
+            detector_count = len(self._detector_instances)
+            self._detector_instances.clear()
+            
+            if detector_count > 0:
+                logger.info(f"Cleaned up {detector_count} layout detectors")
+            cleaned_count = detector_count
+            
+        return cleaned_count

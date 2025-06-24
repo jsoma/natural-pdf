@@ -1,0 +1,23 @@
+{
+  "document": "NplKG2O_Try to see if natural-pdf can process non-standard",
+  "total_pages": 191,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T16:43:31.319672",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 67,
+      "text_preview": "《中国制造2025》重点领域技术创新绿皮书\n《中国制造 2025》重点领域技术路线图\n国家制造强国建设战略咨询委员会\n2015年10月",
+      "table": "No table detected",
+      "yolo_regions": 1,
+      "tatr_regions": 2,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/NplKG2O_Try to see if natural-pdf can process non-standard/enhanced_analysis_10/page_1.png"
+    }
+  },
+  "insights": [
+    "Document contains 67 total characters across 1 analyzed pages"
+  ]
+}

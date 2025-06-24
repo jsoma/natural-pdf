@@ -1,0 +1,674 @@
+[
+  {
+    "timestamp": 0.28937602043151855,
+    "rss_mb": 1758.703125,
+    "vms_mb": 405165.59375,
+    "python_objects": 752082,
+    "operation": "baseline_start",
+    "page_count": 0,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {}
+  },
+  {
+    "timestamp": 0.542471170425415,
+    "rss_mb": 1746.109375,
+    "vms_mb": 405152.59375,
+    "python_objects": 637107,
+    "operation": "before_load",
+    "page_count": 0,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {}
+  },
+  {
+    "timestamp": 5.6814939975738525,
+    "rss_mb": 1754.703125,
+    "vms_mb": 405148.21875,
+    "python_objects": 725989,
+    "operation": "after_load",
+    "page_count": 0,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "total_pages": 878
+    }
+  },
+  {
+    "timestamp": 6.159040212631226,
+    "rss_mb": 1757.25,
+    "vms_mb": 405148.21875,
+    "python_objects": 733531,
+    "operation": "page_access_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 6.73542332649231,
+    "rss_mb": 1759.96875,
+    "vms_mb": 405148.21875,
+    "python_objects": 744569,
+    "operation": "page_access_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 7.238774061203003,
+    "rss_mb": 1762.109375,
+    "vms_mb": 405148.21875,
+    "python_objects": 753234,
+    "operation": "page_access_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 7.714141368865967,
+    "rss_mb": 1764.109375,
+    "vms_mb": 405148.21875,
+    "python_objects": 761220,
+    "operation": "page_access_4",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 8.223822116851807,
+    "rss_mb": 1766.5625,
+    "vms_mb": 405148.21875,
+    "python_objects": 769519,
+    "operation": "page_access_5",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 8.702345371246338,
+    "rss_mb": 1770.1875,
+    "vms_mb": 405151.21875,
+    "python_objects": 777629,
+    "operation": "page_access_6",
+    "page_count": 6,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 9.189310312271118,
+    "rss_mb": 1772.625,
+    "vms_mb": 405152.21875,
+    "python_objects": 786014,
+    "operation": "page_access_7",
+    "page_count": 7,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 9.700027227401733,
+    "rss_mb": 1774.5625,
+    "vms_mb": 405152.21875,
+    "python_objects": 795240,
+    "operation": "page_access_8",
+    "page_count": 8,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 10.15797233581543,
+    "rss_mb": 1777.78125,
+    "vms_mb": 405154.21875,
+    "python_objects": 802557,
+    "operation": "page_access_9",
+    "page_count": 9,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 10.712302207946777,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812725,
+    "operation": "page_access_10",
+    "page_count": 10,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "page_width": 594.950012207,
+      "page_height": 841.900043944
+    }
+  },
+  {
+    "timestamp": 10.894320249557495,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812732,
+    "operation": "describe_1_error",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 11.073783159255981,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812733,
+    "operation": "describe_2_error",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 11.248078107833862,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812734,
+    "operation": "describe_3_error",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 11.420895338058472,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812735,
+    "operation": "describe_4_error",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 11.593461036682129,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812736,
+    "operation": "describe_5_error",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 11.764393329620361,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812744,
+    "operation": "words_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 11.929846048355103,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812745,
+    "operation": "text_elements_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 375
+    }
+  },
+  {
+    "timestamp": 12.099349021911621,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812746,
+    "operation": "rects_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 12.267715215682983,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812747,
+    "operation": "large_text_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 3
+    }
+  },
+  {
+    "timestamp": 12.435901403427124,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812748,
+    "operation": "words_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 12.601224184036255,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812749,
+    "operation": "text_elements_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 492
+    }
+  },
+  {
+    "timestamp": 12.764855146408081,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812750,
+    "operation": "rects_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 12.932616233825684,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812751,
+    "operation": "large_text_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 13.104705095291138,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812752,
+    "operation": "words_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 13.275026321411133,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812753,
+    "operation": "text_elements_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 369
+    }
+  },
+  {
+    "timestamp": 13.444762229919434,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812754,
+    "operation": "rects_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 13.611299276351929,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812755,
+    "operation": "large_text_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 13.780462265014648,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812756,
+    "operation": "words_4",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 13.946004390716553,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812757,
+    "operation": "text_elements_4",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 320
+    }
+  },
+  {
+    "timestamp": 14.111116170883179,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812758,
+    "operation": "rects_4",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 14.276509284973145,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812759,
+    "operation": "large_text_4",
+    "page_count": 4,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 14.442305088043213,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812760,
+    "operation": "words_5",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 14.609238147735596,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812761,
+    "operation": "text_elements_5",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 339
+    }
+  },
+  {
+    "timestamp": 14.780823230743408,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812762,
+    "operation": "rects_5",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 14.952423334121704,
+    "rss_mb": 1784.234375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812763,
+    "operation": "large_text_5",
+    "page_count": 5,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 15.274936199188232,
+    "rss_mb": 1791.40625,
+    "vms_mb": 405159.21875,
+    "python_objects": 812755,
+    "operation": "image_72dpi_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "595x842"
+    }
+  },
+  {
+    "timestamp": 15.613336086273193,
+    "rss_mb": 1792.9375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812757,
+    "operation": "image_144dpi_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1190x1684"
+    }
+  },
+  {
+    "timestamp": 16.15810203552246,
+    "rss_mb": 1793.390625,
+    "vms_mb": 405159.21875,
+    "python_objects": 812759,
+    "operation": "image_216dpi_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1785x2526"
+    }
+  },
+  {
+    "timestamp": 16.420289039611816,
+    "rss_mb": 1793.4375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812762,
+    "operation": "image_72dpi_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "595x842"
+    }
+  },
+  {
+    "timestamp": 16.78270721435547,
+    "rss_mb": 1793.46875,
+    "vms_mb": 405159.21875,
+    "python_objects": 812764,
+    "operation": "image_144dpi_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1190x1684"
+    }
+  },
+  {
+    "timestamp": 17.374824285507202,
+    "rss_mb": 1794.453125,
+    "vms_mb": 405159.21875,
+    "python_objects": 812766,
+    "operation": "image_216dpi_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1785x2526"
+    }
+  },
+  {
+    "timestamp": 17.63210701942444,
+    "rss_mb": 1795.4375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812769,
+    "operation": "image_72dpi_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "595x842"
+    }
+  },
+  {
+    "timestamp": 17.9808132648468,
+    "rss_mb": 1804.09375,
+    "vms_mb": 405159.21875,
+    "python_objects": 812771,
+    "operation": "image_144dpi_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1190x1684"
+    }
+  },
+  {
+    "timestamp": 18.546317100524902,
+    "rss_mb": 1804.6875,
+    "vms_mb": 405159.21875,
+    "python_objects": 812773,
+    "operation": "image_216dpi_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1785x2526"
+    }
+  },
+  {
+    "timestamp": 20.098790168762207,
+    "rss_mb": 1820.09375,
+    "vms_mb": 405166.59375,
+    "python_objects": 826009,
+    "operation": "layout_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 5
+    }
+  },
+  {
+    "timestamp": 21.060248136520386,
+    "rss_mb": 1832.15625,
+    "vms_mb": 405167.140625,
+    "python_objects": 826048,
+    "operation": "layout_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 1
+    }
+  },
+  {
+    "timestamp": 21.9897301197052,
+    "rss_mb": 1844.78125,
+    "vms_mb": 405167.140625,
+    "python_objects": 826087,
+    "operation": "layout_3",
+    "page_count": 3,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 1
+    }
+  },
+  {
+    "timestamp": 32.17750024795532,
+    "rss_mb": 3700.234375,
+    "vms_mb": 406999.59375,
+    "python_objects": 833303,
+    "operation": "ocr_1",
+    "page_count": 1,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "ocr"
+    }
+  },
+  {
+    "timestamp": 41.2942373752594,
+    "rss_mb": 3709.265625,
+    "vms_mb": 407000.59375,
+    "python_objects": 834051,
+    "operation": "ocr_2",
+    "page_count": 2,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {
+      "operation_type": "ocr"
+    }
+  },
+  {
+    "timestamp": 41.466501235961914,
+    "rss_mb": 3709.265625,
+    "vms_mb": 407000.59375,
+    "python_objects": 834052,
+    "operation": "test_complete",
+    "page_count": 0,
+    "pdf_name": "OCR 0802030-56.2022.8.14.0060_C\u00f3pia integral_Fazenda Marrocos",
+    "additional_info": {}
+  }
+]

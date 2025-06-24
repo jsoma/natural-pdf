@@ -1,0 +1,53 @@
+PREC REPORT-GROUP DETAIL General Election OFFICIAL RESULTS
+Chambers County, Texas
+November 8, 2016
+Run Date:ll/18/16 04:44 PM Report EL30A Page 0001-01
+0001 PCT 1 -WALLISVILLE .
+TOTAL VOTES % MAIL &M ANUAL EARLY VDT -1 EARLY VDT -2 EM BALLOT ELECTION DAY
+REGISTERED VOTERS -TOTAL 589
+BALLOTS CAST -TOTAL. 363 14 51 116 19 163
+VOTER TURNOUT -TOTAL 61.63
+Straight Party
+Vote for 1
+Republican Party (REP) 149 78.84 8 25 45 11 60
+Democratic Party (DEM) 36 19.05 2 6 11 1 16
+Libertarian Party CLIB). 3 1.59 0 0 1 0 2
+Green Party CGRN). 1 .53 0 0 0 0 1
+Total 189 10 31 57 12 79
+Over Votes 0 0 0 0 0 0
+Under Votes 174 4 20 59 7 84
+President and Vice President
+Vote for 1
+Donald J. Trump I Mike Pence (REP) 295 81.94 12 44 98 18 123
+Hillary Clinton I Tim Kaine CDEM) 59 16.39 2 7 15 1 34
+Gary Johnson I William Weld CLIB) 5 1.39 0 0 3 0 2
+Jill Stein I Ajamu Baraka CGRN) 1 .28 0 0 0 0 1
+WRITE· IN. 0 0 0 0 0 0
+Total 360 14 51 116 19 160
+Over Votes 0 0 0 0 0 0
+Under Votes 3 0 0 0 0 3
+U.S. Representative. District 36
+Vote for 1
+Brian Babin CREP). 287 91.40 11 40 98 18 120
+Hal J. Ridley Jr. CGRN). 27 8.60 0 1 5 0 21
+Total 314 11 41 103 18 141
+Over Votes 0 0 0 0 0 0
+Under Votes 49 3 10 13 1 22
+Railroad Commissioner
+Vote for 1
+Wayne Christian CREP) 266 77.78 11 40 86 16 113
+Grady Yarbrough (DEM) 61 17.84 2 8 15 2 34
+Mark Miller (LIB). 14 4.09 0 0. 7 1 6
+Martina Salinas CGRN) 1 .29 0 0 0 0 1
+Total 342 13 48 108 19 154
+Over Votes 0 0 0 0 0 0
+Under Votes 21 1 3 8 0 9
+Justice, Supreme Court. Place 3
+Vote for 1
+Debra Lehrmann (REP). 260 77.38 11 38 89 17 105
+Mike Westergren CDEM) 58 17.26 2 7 12 1 36
+Kathie Glass (LIB) . 15 4.46 0 .0 6 1 8
+Rodolfo.Rivera Munoz CGRN). 3 .89 0 0 1 0 2
+Total 336 13 45 108 19 151
+Over Votes 0 0 0 0 0 0
+Under Votes 27 1 6 8 0 12

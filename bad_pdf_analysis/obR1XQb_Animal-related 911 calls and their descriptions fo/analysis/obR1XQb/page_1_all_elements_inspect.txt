@@ -1,0 +1,501 @@
+## Collection Inspection (465 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| City | 213 | 9 | 242 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |
+| of | 246 | 9 | 260 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |
+| Niagara | 264 | 9 | 319 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |
+| Falls, | 323 | 9 | 360 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |
+| NY | 364 | 9 | 387 | 25 | Times |  | 16 | True | False | native | 1.00 | #000000 |
+| FOIL | 17 | 15 | 51 | 29 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| #: | 55 | 15 | 66 | 29 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| DATE: | 430 | 16 | 473 | 30 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| FOIL | 227 | 29 | 261 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| REQUEST | 265 | 29 | 332 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| FORM | 335 | 29 | 378 | 43 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| (AgencyUseOnly) | 73 | 37 | 151 | 47 | Times |  | 10 | False | False | native | 1.00 | #000000 |
+| ver09.10.2024 | 277 | 44 | 317 | 50 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |
+| Address | 324 | 52 | 373 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| of | 376 | 52 | 388 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Department: | 391 | 52 | 468 | 66 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Department | 15 | 53 | 87 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| to | 91 | 53 | 102 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Receive | 106 | 53 | 152 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Request: | 155 | 53 | 208 | 67 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| I | 18 | 102 | 23 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| hereby | 26 | 102 | 64 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| apply | 68 | 102 | 99 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| the | 184 | 102 | 201 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| following | 205 | 102 | 259 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| records | 263 | 102 | 304 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| (please | 307 | 102 | 347 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| number | 350 | 102 | 393 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| each | 397 | 102 | 422 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| individual | 426 | 102 | 483 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| request): | 486 | 102 | 535 | 116 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Name: | 28 | 270 | 65 | 284 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Signature | 392 | 290 | 446 | 304 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Address: | 28 | 292 | 78 | 306 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Electronic | 418 | 306 | 479 | 320 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Delivery*? | 483 | 306 | 547 | 320 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Phone: | 29 | 317 | 68 | 331 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Yes | 445 | 329 | 467 | 343 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| No | 503 | 329 | 520 | 343 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| E-Mail: | 29 | 343 | 73 | 357 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Representing: | 27 | 367 | 105 | 381 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| (SelforNameofCompany/Organization | 112 | 388 | 281 | 398 | Times |  | 10 | False | False | native | 1.00 | #000000 |
+| *NO | 1 | 406 | 29 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| CHARGE | 32 | 406 | 90 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| FOR | 93 | 406 | 120 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| EMAILED | 124 | 406 | 187 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| RECORDS | 190 | 406 | 255 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| - | 258 | 406 | 263 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| 8.5" | 267 | 406 | 290 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| X | 293 | 406 | 303 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| 11" | 307 | 406 | 327 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| PAPER | 330 | 406 | 374 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| COPIES | 377 | 406 | 425 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| ARE | 429 | 406 | 457 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| 25 | 460 | 406 | 474 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| CENTS | 478 | 406 | 522 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| PER | 526 | 406 | 552 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| PAGE | 555 | 406 | 592 | 420 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| F | 187 | 431 | 196 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| O | 199 | 431 | 210 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| R | 214 | 431 | 224 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| A | 238 | 431 | 248 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| G | 251 | 431 | 262 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| E | 266 | 431 | 275 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| N | 278 | 431 | 289 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| C | 292 | 431 | 302 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Y | 306 | 431 | 316 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| U | 330 | 431 | 340 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| S | 343 | 431 | 351 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| E | 355 | 431 | 364 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| O | 378 | 431 | 389 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| N | 392 | 431 | 402 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| L | 406 | 431 | 415 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Y | 419 | 431 | 429 | 445 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Results | 11 | 451 | 55 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| of | 58 | 451 | 70 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| FOIL | 73 | 451 | 108 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Request: | 111 | 451 | 164 | 465 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Reason(s) | 209 | 475 | 267 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| for | 271 | 475 | 289 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Redaction/Denial: | 292 | 475 | 400 | 489 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| 1. | 11 | 493 | 21 | 507 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| 2. | 11 | 519 | 21 | 533 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| 3. | 11 | 541 | 21 | 555 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| 4. | 10 | 566 | 20 | 580 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Additional | 199 | 586 | 263 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Explanation | 266 | 586 | 340 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| (if | 343 | 586 | 356 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| necessary) | 360 | 586 | 422 | 600 | Times |  | 14 | True | False | native | 1.00 | #000000 |
+| Date: | 418 | 669 | 448 | 683 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| (Title) | 294 | 690 | 329 | 704 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Staff | 33 | 692 | 60 | 706 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| Signature | 64 | 692 | 117 | 706 | Times |  | 14 | False | False | native | 1.00 | #000000 |
+| NOTICE: | 26 | 715 | 77 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |
+| YOUHAVEA | 80 | 715 | 156 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |
+| RIGHTTOAPPEALWITHIN30DAYSOFADENIALOFYOURREQUEST | 159 | 715 | 571 | 727 | Times |  | 12 | True | False | native | 1.00 | #000000 |
+| COMPLETE | 15 | 731 | 78 | 743 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| THEFORMBELOWANDMAILITTO:ACTINGCORPORATIONCOUNSELAT... | 81 | 731 | 579 | 743 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| NIAGARAFALLS,NY14301.[Phone#(716)286-4427].ONSEPAR... | 14 | 743 | 580 | 755 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| DATE | 0 | 755 | 32 | 767 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| OFYOURFOILREQUEST,ANDADESCRIPTIONOFTHERECORDSTHATY... | 35 | 755 | 594 | 767 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| ALSOINCLUDETHEREASONSANDEXPLANATIONSFORYOURAPPEAL | 94 | 767 | 500 | 779 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| Appellant'sName: | 29 | 785 | 118 | 797 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| Date: | 399 | 786 | 425 | 798 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| ReturnAddress: | 29 | 806 | 107 | 818 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+| Signature | 399 | 819 | 445 | 831 | Times |  | 12 | False | False | native | 1.00 | #000000 |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 392 | 287 | 571 | 287 | 2 | True | False |
+| 9 | 427 | 580 | 427 | 2 | True | False |
+| 187 | 443 | 429 | 443 | 1 | True | False |
+| 31 | 689 | 223 | 689 | 1 | True | False |
+| 26 | 726 | 571 | 726 | 1 | True | False |
+| 398 | 816 | 578 | 816 | 1 | True | False |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 0 | 405 | 590 | 842 | table |
+| 8 | 443 | 590 | 816 | table |
+| 13 | 444 | 444 | 653 | table |
+| 8 | 449 | 590 | 815 | table |
+| 13 | 472 | 421 | 624 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 9 | 448 | 37 | 815 | table column |
+| 9 | 448 | 202 | 815 | table column |
+| 133 | 449 | 590 | 815 | table column |
+| 19 | 471 | 55 | 622 | table column |
+| 13 | 472 | 107 | 622 | table column |
+| 109 | 472 | 420 | 620 | table column |
+| 262 | 473 | 367 | 623 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 8 | 449 | 590 | 478 | table row |
+| 14 | 472 | 422 | 490 | table row |
+| 8 | 480 | 590 | 512 | table row |
+| 13 | 487 | 421 | 509 | table row |
+| 13 | 509 | 421 | 533 | table row |
+| 8 | 512 | 590 | 535 | table row |
+| 8 | 535 | 590 | 558 | table row |
+| 8 | 557 | 590 | 582 | table row |
+| 13 | 575 | 421 | 613 | table row |
+| 14 | 609 | 422 | 628 | table row |
+| 9 | 646 | 590 | 688 | table row |
+| 8 | 684 | 590 | 710 | table row |
+| 9 | 705 | 590 | 725 | table row |
+| 8 | 726 | 590 | 780 | table row |
+| 8 | 779 | 590 | 799 | table row |
+| 8 | 799 | 590 | 815 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 9 | 449 | 202 | 478 | table-cell |
+| 9 | 449 | 202 | 478 | table-cell |
+| 9 | 449 | 202 | 478 | table-cell |
+| 9 | 449 | 202 | 478 | table-cell |
+| 9 | 449 | 37 | 478 | table-cell |
+| 9 | 449 | 37 | 478 | table-cell |
+| 9 | 449 | 37 | 478 | table-cell |
+| 9 | 449 | 37 | 478 | table-cell |
+| 133 | 449 | 590 | 478 | table-cell |
+| 133 | 449 | 590 | 478 | table-cell |
+| 133 | 449 | 590 | 478 | table-cell |
+| 133 | 449 | 590 | 478 | table-cell |
+| 19 | 471 | 55 | 478 | table-cell |
+| 19 | 471 | 55 | 478 | table-cell |
+| 19 | 471 | 55 | 478 | table-cell |
+| 19 | 471 | 55 | 478 | table-cell |
+| 14 | 472 | 202 | 490 | table-cell |
+| 14 | 472 | 37 | 490 | table-cell |
+| 14 | 472 | 202 | 490 | table-cell |
+| 14 | 472 | 37 | 490 | table-cell |
+| 14 | 472 | 202 | 490 | table-cell |
+| 14 | 472 | 37 | 490 | table-cell |
+| 14 | 472 | 202 | 490 | table-cell |
+| 14 | 472 | 37 | 490 | table-cell |
+| 19 | 472 | 55 | 490 | table-cell |
+| 19 | 472 | 55 | 490 | table-cell |
+| 19 | 472 | 55 | 490 | table-cell |
+| 19 | 472 | 55 | 490 | table-cell |
+| 133 | 472 | 422 | 490 | table-cell |
+| 133 | 472 | 422 | 490 | table-cell |
+| 133 | 472 | 422 | 490 | table-cell |
+| 133 | 472 | 422 | 490 | table-cell |
+| 13 | 472 | 107 | 478 | table-cell |
+| 13 | 472 | 107 | 478 | table-cell |
+| 13 | 472 | 107 | 478 | table-cell |
+| 13 | 472 | 107 | 478 | table-cell |
+| 14 | 472 | 107 | 490 | table-cell |
+| 14 | 472 | 107 | 490 | table-cell |
+| 14 | 472 | 107 | 490 | table-cell |
+| 14 | 472 | 107 | 490 | table-cell |
+| 109 | 472 | 420 | 478 | table-cell |
+| 109 | 472 | 420 | 490 | table-cell |
+| 109 | 472 | 420 | 478 | table-cell |
+| 109 | 472 | 420 | 490 | table-cell |
+| 109 | 472 | 420 | 478 | table-cell |
+| 109 | 472 | 420 | 490 | table-cell |
+| 109 | 472 | 420 | 478 | table-cell |
+| 109 | 472 | 420 | 490 | table-cell |
+| 262 | 473 | 367 | 478 | table-cell |
+| 262 | 473 | 367 | 490 | table-cell |
+| 262 | 473 | 367 | 478 | table-cell |
+| 262 | 473 | 367 | 490 | table-cell |
+| 262 | 473 | 367 | 478 | table-cell |
+| 262 | 473 | 367 | 490 | table-cell |
+| 262 | 473 | 367 | 478 | table-cell |
+| 262 | 473 | 367 | 490 | table-cell |
+| 9 | 480 | 202 | 512 | table-cell |
+| 9 | 480 | 202 | 512 | table-cell |
+| 9 | 480 | 202 | 512 | table-cell |
+| 9 | 480 | 202 | 512 | table-cell |
+| 9 | 480 | 37 | 512 | table-cell |
+| 9 | 480 | 37 | 512 | table-cell |
+| 9 | 480 | 37 | 512 | table-cell |
+| 9 | 480 | 37 | 512 | table-cell |
+| 13 | 480 | 107 | 512 | table-cell |
+| 13 | 480 | 107 | 512 | table-cell |
+| 13 | 480 | 107 | 512 | table-cell |
+| 13 | 480 | 107 | 512 | table-cell |
+| 19 | 480 | 55 | 512 | table-cell |
+| 19 | 480 | 55 | 512 | table-cell |
+| 19 | 480 | 55 | 512 | table-cell |
+| 19 | 480 | 55 | 512 | table-cell |
+| 109 | 480 | 420 | 512 | table-cell |
+| 109 | 480 | 420 | 512 | table-cell |
+| 109 | 480 | 420 | 512 | table-cell |
+| 109 | 480 | 420 | 512 | table-cell |
+| 133 | 480 | 590 | 512 | table-cell |
+| 133 | 480 | 590 | 512 | table-cell |
+| 133 | 480 | 590 | 512 | table-cell |
+| 133 | 480 | 590 | 512 | table-cell |
+| 262 | 480 | 367 | 512 | table-cell |
+| 262 | 480 | 367 | 512 | table-cell |
+| 262 | 480 | 367 | 512 | table-cell |
+| 262 | 480 | 367 | 512 | table-cell |
+| 13 | 487 | 202 | 509 | table-cell |
+| 13 | 487 | 37 | 509 | table-cell |
+| 13 | 487 | 107 | 509 | table-cell |
+| 13 | 487 | 202 | 509 | table-cell |
+| 13 | 487 | 37 | 509 | table-cell |
+| 13 | 487 | 107 | 509 | table-cell |
+| 13 | 487 | 202 | 509 | table-cell |
+| 13 | 487 | 37 | 509 | table-cell |
+| 13 | 487 | 107 | 509 | table-cell |
+| 13 | 487 | 202 | 509 | table-cell |
+| 13 | 487 | 37 | 509 | table-cell |
+| 13 | 487 | 107 | 509 | table-cell |
+| 19 | 487 | 55 | 509 | table-cell |
+| 19 | 487 | 55 | 509 | table-cell |
+| 19 | 487 | 55 | 509 | table-cell |
+| 19 | 487 | 55 | 509 | table-cell |
+| 109 | 487 | 420 | 509 | table-cell |
+| 109 | 487 | 420 | 509 | table-cell |
+| 109 | 487 | 420 | 509 | table-cell |
+| 109 | 487 | 420 | 509 | table-cell |
+| 133 | 487 | 421 | 509 | table-cell |
+| 133 | 487 | 421 | 509 | table-cell |
+| 133 | 487 | 421 | 509 | table-cell |
+| 133 | 487 | 421 | 509 | table-cell |
+| 262 | 487 | 367 | 509 | table-cell |
+| 262 | 487 | 367 | 509 | table-cell |
+| 262 | 487 | 367 | 509 | table-cell |
+| 262 | 487 | 367 | 509 | table-cell |
+| 13 | 509 | 202 | 533 | table-cell |
+| 13 | 509 | 37 | 533 | table-cell |
+| 13 | 509 | 202 | 533 | table-cell |
+| 13 | 509 | 37 | 533 | table-cell |
+| 13 | 509 | 202 | 533 | table-cell |
+| 13 | 509 | 37 | 533 | table-cell |
+| 13 | 509 | 202 | 533 | table-cell |
+| 13 | 509 | 37 | 533 | table-cell |
+| 13 | 509 | 107 | 533 | table-cell |
+| 13 | 509 | 107 | 533 | table-cell |
+| 13 | 509 | 107 | 533 | table-cell |
+| 13 | 509 | 107 | 533 | table-cell |
+| 19 | 509 | 55 | 533 | table-cell |
+| 19 | 509 | 55 | 533 | table-cell |
+| 19 | 509 | 55 | 533 | table-cell |
+| 19 | 509 | 55 | 533 | table-cell |
+| 109 | 509 | 420 | 533 | table-cell |
+| 109 | 509 | 420 | 533 | table-cell |
+| 109 | 509 | 420 | 533 | table-cell |
+| 109 | 509 | 420 | 533 | table-cell |
+| 133 | 509 | 421 | 533 | table-cell |
+| 133 | 509 | 421 | 533 | table-cell |
+| 133 | 509 | 421 | 533 | table-cell |
+| 133 | 509 | 421 | 533 | table-cell |
+| 262 | 509 | 367 | 533 | table-cell |
+| 262 | 509 | 367 | 533 | table-cell |
+| 262 | 509 | 367 | 533 | table-cell |
+| 262 | 509 | 367 | 533 | table-cell |
+| 9 | 512 | 202 | 535 | table-cell |
+| 9 | 512 | 202 | 535 | table-cell |
+| 9 | 512 | 202 | 535 | table-cell |
+| 9 | 512 | 202 | 535 | table-cell |
+| 9 | 512 | 37 | 535 | table-cell |
+| 9 | 512 | 37 | 535 | table-cell |
+| 9 | 512 | 37 | 535 | table-cell |
+| 9 | 512 | 37 | 535 | table-cell |
+| 13 | 512 | 107 | 535 | table-cell |
+| 13 | 512 | 107 | 535 | table-cell |
+| 13 | 512 | 107 | 535 | table-cell |
+| 13 | 512 | 107 | 535 | table-cell |
+| 19 | 512 | 55 | 535 | table-cell |
+| 19 | 512 | 55 | 535 | table-cell |
+| 19 | 512 | 55 | 535 | table-cell |
+| 19 | 512 | 55 | 535 | table-cell |
+| 109 | 512 | 420 | 535 | table-cell |
+| 109 | 512 | 420 | 535 | table-cell |
+| 109 | 512 | 420 | 535 | table-cell |
+| 109 | 512 | 420 | 535 | table-cell |
+| 133 | 512 | 590 | 535 | table-cell |
+| 133 | 512 | 590 | 535 | table-cell |
+| 133 | 512 | 590 | 535 | table-cell |
+| 133 | 512 | 590 | 535 | table-cell |
+| 262 | 512 | 367 | 535 | table-cell |
+| 262 | 512 | 367 | 535 | table-cell |
+| 262 | 512 | 367 | 535 | table-cell |
+| 262 | 512 | 367 | 535 | table-cell |
+| 9 | 535 | 202 | 558 | table-cell |
+| 9 | 535 | 202 | 558 | table-cell |
+| 9 | 535 | 202 | 558 | table-cell |
+| 9 | 535 | 202 | 558 | table-cell |
+| 9 | 535 | 37 | 558 | table-cell |
+| 9 | 535 | 37 | 558 | table-cell |
+| 9 | 535 | 37 | 558 | table-cell |
+| 9 | 535 | 37 | 558 | table-cell |
+| 13 | 535 | 107 | 558 | table-cell |
+| 13 | 535 | 107 | 558 | table-cell |
+| 13 | 535 | 107 | 558 | table-cell |
+| 13 | 535 | 107 | 558 | table-cell |
+| 19 | 535 | 55 | 558 | table-cell |
+| 19 | 535 | 55 | 558 | table-cell |
+| 19 | 535 | 55 | 558 | table-cell |
+| 19 | 535 | 55 | 558 | table-cell |
+| 109 | 535 | 420 | 558 | table-cell |
+| 109 | 535 | 420 | 558 | table-cell |
+| 109 | 535 | 420 | 558 | table-cell |
+| 109 | 535 | 420 | 558 | table-cell |
+| 133 | 535 | 590 | 558 | table-cell |
+| 133 | 535 | 590 | 558 | table-cell |
+| 133 | 535 | 590 | 558 | table-cell |
+| 133 | 535 | 590 | 558 | table-cell |
+| 262 | 535 | 367 | 558 | table-cell |
+| 262 | 535 | 367 | 558 | table-cell |
+| 262 | 535 | 367 | 558 | table-cell |
+| 262 | 535 | 367 | 558 | table-cell |
+| 9 | 557 | 202 | 582 | table-cell |
+| 9 | 557 | 202 | 582 | table-cell |
+| 9 | 557 | 202 | 582 | table-cell |
+| 9 | 557 | 202 | 582 | table-cell |
+| 9 | 557 | 37 | 582 | table-cell |
+| 9 | 557 | 37 | 582 | table-cell |
+| 9 | 557 | 37 | 582 | table-cell |
+| 9 | 557 | 37 | 582 | table-cell |
+| 13 | 557 | 107 | 582 | table-cell |
+| 13 | 557 | 107 | 582 | table-cell |
+| 13 | 557 | 107 | 582 | table-cell |
+| 13 | 557 | 107 | 582 | table-cell |
+| 19 | 557 | 55 | 582 | table-cell |
+| 19 | 557 | 55 | 582 | table-cell |
+| 19 | 557 | 55 | 582 | table-cell |
+| 19 | 557 | 55 | 582 | table-cell |
+| 109 | 557 | 420 | 582 | table-cell |
+| 109 | 557 | 420 | 582 | table-cell |
+| 109 | 557 | 420 | 582 | table-cell |
+| 109 | 557 | 420 | 582 | table-cell |
+| 133 | 557 | 590 | 582 | table-cell |
+| 133 | 557 | 590 | 582 | table-cell |
+| 133 | 557 | 590 | 582 | table-cell |
+| 133 | 557 | 590 | 582 | table-cell |
+| 262 | 557 | 367 | 582 | table-cell |
+| 262 | 557 | 367 | 582 | table-cell |
+| 262 | 557 | 367 | 582 | table-cell |
+| 262 | 557 | 367 | 582 | table-cell |
+| 13 | 575 | 202 | 613 | table-cell |
+| 13 | 575 | 37 | 613 | table-cell |
+| 13 | 575 | 107 | 613 | table-cell |
+| 13 | 575 | 202 | 613 | table-cell |
+| 13 | 575 | 37 | 613 | table-cell |
+| 13 | 575 | 107 | 613 | table-cell |
+| 13 | 575 | 202 | 613 | table-cell |
+| 13 | 575 | 37 | 613 | table-cell |
+| 13 | 575 | 107 | 613 | table-cell |
+| 13 | 575 | 202 | 613 | table-cell |
+| 13 | 575 | 37 | 613 | table-cell |
+| 13 | 575 | 107 | 613 | table-cell |
+| 19 | 575 | 55 | 613 | table-cell |
+| 19 | 575 | 55 | 613 | table-cell |
+| 19 | 575 | 55 | 613 | table-cell |
+| 19 | 575 | 55 | 613 | table-cell |
+| 109 | 575 | 420 | 613 | table-cell |
+| 109 | 575 | 420 | 613 | table-cell |
+| 109 | 575 | 420 | 613 | table-cell |
+| 109 | 575 | 420 | 613 | table-cell |
+| 133 | 575 | 421 | 613 | table-cell |
+| 133 | 575 | 421 | 613 | table-cell |
+| 133 | 575 | 421 | 613 | table-cell |
+| 133 | 575 | 421 | 613 | table-cell |
+| 262 | 575 | 367 | 613 | table-cell |
+| 262 | 575 | 367 | 613 | table-cell |
+| 262 | 575 | 367 | 613 | table-cell |
+| 262 | 575 | 367 | 613 | table-cell |
+| 14 | 609 | 202 | 628 | table-cell |
+| 14 | 609 | 37 | 628 | table-cell |
+| 14 | 609 | 107 | 622 | table-cell |
+| 14 | 609 | 202 | 628 | table-cell |
+| 14 | 609 | 37 | 628 | table-cell |
+| 14 | 609 | 107 | 622 | table-cell |
+| 14 | 609 | 202 | 628 | table-cell |
+| 14 | 609 | 37 | 628 | table-cell |
+| 14 | 609 | 107 | 622 | table-cell |
+| 14 | 609 | 202 | 628 | table-cell |
+| 14 | 609 | 37 | 628 | table-cell |
+| 14 | 609 | 107 | 622 | table-cell |
+| 19 | 609 | 55 | 622 | table-cell |
+| 19 | 609 | 55 | 622 | table-cell |
+| 19 | 609 | 55 | 622 | table-cell |
+| 19 | 609 | 55 | 622 | table-cell |
+| 109 | 609 | 420 | 620 | table-cell |
+| 109 | 609 | 420 | 620 | table-cell |
+| 109 | 609 | 420 | 620 | table-cell |
+| 109 | 609 | 420 | 620 | table-cell |
+| 133 | 609 | 422 | 628 | table-cell |
+| 133 | 609 | 422 | 628 | table-cell |
+| 133 | 609 | 422 | 628 | table-cell |
+| 133 | 609 | 422 | 628 | table-cell |
+| 262 | 609 | 367 | 623 | table-cell |
+| 262 | 609 | 367 | 623 | table-cell |
+| 262 | 609 | 367 | 623 | table-cell |
+| 262 | 609 | 367 | 623 | table-cell |
+| 9 | 646 | 202 | 688 | table-cell |
+| 9 | 646 | 202 | 688 | table-cell |
+| 9 | 646 | 202 | 688 | table-cell |
+| 9 | 646 | 37 | 688 | table-cell |
+| 9 | 646 | 37 | 688 | table-cell |
+| 9 | 646 | 37 | 688 | table-cell |
+| 133 | 646 | 590 | 688 | table-cell |
+| 133 | 646 | 590 | 688 | table-cell |
+| 133 | 646 | 590 | 688 | table-cell |
+| 9 | 684 | 202 | 710 | table-cell |
+| 9 | 684 | 202 | 710 | table-cell |
+| 9 | 684 | 37 | 710 | table-cell |
+| 9 | 684 | 37 | 710 | table-cell |
+| 133 | 684 | 590 | 710 | table-cell |
+| 133 | 684 | 590 | 710 | table-cell |
+| 9 | 705 | 202 | 725 | table-cell |
+| 9 | 705 | 202 | 725 | table-cell |
+| 9 | 705 | 37 | 725 | table-cell |
+| 9 | 705 | 37 | 725 | table-cell |
+| 133 | 705 | 590 | 725 | table-cell |
+| 133 | 705 | 590 | 725 | table-cell |
+| 9 | 726 | 202 | 780 | table-cell |
+| 9 | 726 | 202 | 780 | table-cell |
+| 9 | 726 | 37 | 780 | table-cell |
+| 9 | 726 | 37 | 780 | table-cell |
+| 133 | 726 | 590 | 780 | table-cell |
+| 133 | 726 | 590 | 780 | table-cell |
+| 9 | 779 | 202 | 799 | table-cell |
+| 9 | 779 | 202 | 799 | table-cell |
+| 9 | 779 | 37 | 799 | table-cell |
+| 9 | 779 | 37 | 799 | table-cell |
+| 133 | 779 | 590 | 799 | table-cell |
+| 133 | 779 | 590 | 799 | table-cell |
+| 9 | 799 | 202 | 815 | table-cell |
+| 9 | 799 | 202 | 815 | table-cell |
+| 9 | 799 | 37 | 815 | table-cell |
+| 9 | 799 | 37 | 815 | table-cell |
+| 133 | 799 | 590 | 815 | table-cell |
+| 133 | 799 | 590 | 815 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 8 | 477 | 590 | 511 | table projected row header |
+| 8 | 512 | 590 | 535 | table projected row header |
+| 8 | 535 | 590 | 558 | table projected row header |
+| 9 | 708 | 590 | 728 | table projected row header |
+| 8 | 727 | 590 | 783 | table projected row header |
+| 9 | 800 | 590 | 815 | table projected row header |

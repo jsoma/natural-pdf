@@ -1,0 +1,18 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 447 elements
+- **rect**: 13 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Helvetica: 330
+    - Arial: 117
+  - **sizes**:
+    - 7.0pt: 220
+    - 6.5pt: 218
+    - 5.5pt: 9
+  - styles: 40 bold

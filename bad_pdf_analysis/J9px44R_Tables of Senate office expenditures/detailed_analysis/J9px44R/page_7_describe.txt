@@ -1,0 +1,18 @@
+## Page 7 Summary
+
+**Elements**:
+
+- **text**: 67 elements
+- **rect**: 2 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 66
+    - Century: 1
+  - **sizes**:
+    - 7.0pt: 63
+    - 7.5pt: 3
+    - 10.0pt: 1
+  - styles: 14 bold

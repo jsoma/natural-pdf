@@ -1,0 +1,430 @@
+{
+  "pdf_path": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZ5yq_The long table _Annex 6_ spanning across pages fro/eqrZ5yq.pdf",
+  "target_pages": [
+    89,
+    90,
+    91,
+    92
+  ],
+  "analysis_timestamp": "2025-06-22T16:41:46.265487",
+  "results": {
+    "89": {
+      "page_number": 89,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "ERROR: object of type 'ElementSummary' has no len()",
+      "extract_text": {
+        "length": 716,
+        "preview": "yIsI Ms Y: Syllyllys yTlynMyyTl sll\nsMyTyyMlls yTl\n9919 Slydlyyy lyd yyyylyylyy\nylylyl lydyylyy ly ylly ly lyyylllll yyy lyllylyyy ly yyyylyl dlyy1\n\u00b7 r r r r r r r r r r y r r\nr r r r r r rr r r\n\u00b7 r r...",
+        "full_text": "yIsI Ms Y: Syllyllys yTlynMyyTl sll\nsMyTyyMlls yTl\n9919 Slydlyyy lyd yyyylyylyy\nylylyl lydyylyy ly ylly ly lyyylllll yyy lyllylyyy ly yyyylyl dlyy1\n\u00b7 r r r r r r r r r r y r r\nr r r r r r rr r r\n\u00b7 r r r y r r r r r r r\ne\n\u00b7 r r r r r r rr r r r r r r\nr r r r r r r r\nr r\n\u00b7 r r r r r r r\nr r r\n\u00b7 rr r r r r r r rr\nrr r y r r r\n\u00b7 r r r r r r r r r r\nr r r r r r r r r\nr r r\n\u00b7 r r rr r r r r r\nr r r r r r r r r r r r r r\n\u00b7 r r r r r r e r r r\nr r r r rr r r\n\u00b7 rr r r r r r r r r\nr r r r r r r r\nr r t r r r r r\nr r r r r r r r r r r r\nr r\n\u00b7 rr r r r r r r r r r s r\nr r r r r r r r r r r r\nr r rr r r r r rr r r r\nr r rr r r r r r r r r n r\nr n y r r r r r r r\nr rr r r r\n\u00b7 e r r r r r r r r r r\nr r r r r r - r r r r r"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 2,
+        "columns": 1,
+        "data": [
+          [
+            "e r r r r r r r r r r"
+          ],
+          [
+            "r r r r r r - r r r r r"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 5,
+        "regions": []
+      },
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 4,
+        "regions": []
+      },
+      "image_path": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZ5yq_The long table _Annex 6_ spanning across pages fro/enhanced_analysis/page_89.png"
+    },
+    "90": {
+      "page_number": 90,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "ERROR: object of type 'ElementSummary' has no len()",
+      "extract_text": {
+        "length": 456,
+        "preview": "\u00b7 r r r r r r r\nr r r r r r r r r\nr r r r r r y r r r r r\nr r r r r r r r r r r\nr r r r r r r\nr r r r r rr r r r r r r r\n\u00b7 r r r r r r r\nn Y r\n\u00b7 e r r r r r r - r r r\nr r r r r r r r\nr r rr r r r\n\u00b7 r ...",
+        "full_text": "\u00b7 r r r r r r r\nr r r r r r r r r\nr r r r r r y r r r r r\nr r r r r r r r r r r\nr r r r r r r\nr r r r r rr r r r r r r r\n\u00b7 r r r r r r r\nn Y r\n\u00b7 e r r r r r r - r r r\nr r r r r r r r\nr r rr r r r\n\u00b7 r r r r r r r r\nr r r r i e r r r r\nr rr e r r r rr r rt r\nr r r rr i rt\n\u00b7 r r r r r r r r r\nr r r r r -r r r r r\n\u00b7 y r r r r r r r r r\nr r r r r r r r r rrr\nr r r r r\n\u00b7 r r r r r r r r r r\nr r r r r r r r r r\nr r r r r r r r r r\n\u00b7 r r r r t r r r r r\nrr r r"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 5,
+        "columns": 1,
+        "data": [
+          [
+            "r r r r r r r r r"
+          ],
+          [
+            "r r r r r -r r r r r"
+          ],
+          [
+            "y r r r r r r r r r"
+          ],
+          [
+            "r r r r r r r r r rrr"
+          ],
+          [
+            "r r r r r"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 2,
+        "regions": []
+      },
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 98,
+        "regions": []
+      },
+      "image_path": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZ5yq_The long table _Annex 6_ spanning across pages fro/enhanced_analysis/page_90.png"
+    },
+    "91": {
+      "page_number": 91,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "ERROR: object of type 'ElementSummary' has no len()",
+      "extract_text": {
+        "length": 734,
+        "preview": "4 44 13-1 4 4 44 l 4 44 44 44\ntttttt gttttd tditdtit\n160\nt d\nitit\nit\nd\nittig1\n1\n1\n16\n36\n40\n00\n0\nt 160\nit 110\nd t 100\ntttt 6\n9\n600\n0\ntt 60\ndtttt\niti\n6\n4\n3\n6\n100\n0\n0\n0\n0\n6064 6066 6066 6066 6069 6066 60...",
+        "full_text": "4 44 13-1 4 4 44 l 4 44 44 44\ntttttt gttttd tditdtit\n160\nt d\nitit\nit\nd\nittig1\n1\n1\n16\n36\n40\n00\n0\nt 160\nit 110\nd t 100\ntttt 6\n9\n600\n0\ntt 60\ndtttt\niti\n6\n4\n3\n6\n100\n0\n0\n0\n0\n6064 6066 6066 6066 6069 6066 6090 6091 6096 6093 6094 6096\nrtti\nidtti i dt xtt\n0\nd d0y 4d 6t xt 4t d6t .t dttttd\ngd idtti 6) gd idtti 6)\ntitith .x gd idtti gd idtti 6) gd idtti 9)\ngd idtti 6) ddtti ) gd idtti 6))\nr r r r r r r nY r r r r r\nt r r r r r r r r r\ni r r s r r r r r r r r r\nrr r r r r r r r r r\n\u00b7 r r r r r r r r r r r\nr r r r rr r r r\nr r r r r r r r r r r\nr r r r\n\u00b7 r r r r r r i r\nr r r r r r r r r nY r r\nr(cid:4) r r r (cid:1) r r r r r\nr r r y r r r nY r r rr\nr r y r r r r r r\nr r r r r r r r r\nr r r r r r r r r r\n\u00b7 r r r r r r r r r\nr r r r r r"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 65,
+        "columns": 21,
+        "data": [
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "4",
+            "44",
+            "13-1",
+            "4 4 44",
+            "l",
+            "4 44 4",
+            "4 4",
+            "4",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "tt",
+            "tttt",
+            "g",
+            "tttt",
+            "d t",
+            "d",
+            "itd",
+            "tit",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "t",
+            "",
+            "i\nt",
+            "160\n160",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 5,
+        "regions": []
+      },
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "image_path": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZ5yq_The long table _Annex 6_ spanning across pages fro/enhanced_analysis/page_91.png"
+    },
+    "92": {
+      "page_number": 92,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "ERROR: object of type 'ElementSummary' has no len()",
+      "extract_text": {
+        "length": 990,
+        "preview": "\u00b7 r r r r r r r r re i r\nr r e r r r r re r\nrr r r r r r r r r r r\n\u00b7 r(cid:4) r r r r rr r r r\nr r r r r r r r e r r\nr r y r r r r r y e re\nr e r r r r r r r r r re\ni e r r r r r r r r\nr r r r r r r r...",
+        "full_text": "\u00b7 r r r r r r r r re i r\nr r e r r r r re r\nrr r r r r r r r r r r\n\u00b7 r(cid:4) r r r r rr r r r\nr r r r r r r r e r r\nr r y r r r r r y e re\nr e r r r r r r r r r re\ni e r r r r r r r r\nr r r r r r r r r r r r r r\nr r r\n9919 slyyyylydlllyyy\nrr r r r r r r r r r r\nr r rr r r r r r r t\nr r r r r r r r r r r s r r r\nr r r r r r r r y r r r r t r\nr r r r r r r r r\nr r r r r r r r rr r r r r\nr r r r r r r r r\nr r r r t r r r r\nr r r r r r r r r r r r r\nr r r ; r r r r r y\nr r r t r r r r r r rr r r\nr rr r r r r r r r ; r r r r\nr r r r r r r r r r r r\nr r y r r r r r r r\nr r rr r r r r; r r r r r r\nr r r r r r r r r r r r r r y\nr r r r r r rr r r r r r r r\nr r r r r r r r rr rr\ny rr r r r r r rr r r r\nr r r r r r r r r r y r r r\nrr r r r r r r r r r r\nr r r rr r r r r r r r r r\nrr r r r\nr r r r r r r r r r r rr r\nr r s r r r r r r r\nr r r r r r r r r r rr r r r r\nr r r r r r r r r r r r r s r r r\nr r r r r r r y r r r r r r r\nr r r r r r r r r r r r r r r\nr r y r r r r r r r r r r r"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 58,
+        "columns": 30,
+        "data": [
+          [
+            "",
+            "",
+            "\u00b7",
+            "",
+            "r",
+            "r",
+            "",
+            "r",
+            "",
+            "",
+            "",
+            "r",
+            "r",
+            "r",
+            "",
+            "",
+            "r",
+            "",
+            "",
+            "",
+            "r",
+            "",
+            "",
+            "re",
+            "i",
+            "r",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "r",
+            "",
+            "r",
+            "e",
+            "",
+            "r",
+            "",
+            "",
+            "r",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "r",
+            "",
+            "r",
+            "",
+            "",
+            "",
+            "",
+            "re",
+            "",
+            "",
+            "r",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "rr",
+            "",
+            "",
+            "",
+            "r",
+            "r",
+            "r",
+            "",
+            "",
+            "r",
+            "r",
+            "r",
+            "",
+            "r",
+            "r",
+            "r",
+            "r",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 10,
+        "regions": []
+      },
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 13,
+        "regions": []
+      },
+      "image_path": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZ5yq_The long table _Annex 6_ spanning across pages fro/enhanced_analysis/page_92.png"
+    }
+  }
+}

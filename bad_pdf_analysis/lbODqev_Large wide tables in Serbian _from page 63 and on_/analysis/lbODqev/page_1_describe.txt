@@ -1,0 +1,16 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **rect**: 183 elements
+- **text**: 84 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 80
+    - Arial: 4
+  - **sizes**:
+    - 12.0pt: 84
+  - styles: 9 bold, 1 italic

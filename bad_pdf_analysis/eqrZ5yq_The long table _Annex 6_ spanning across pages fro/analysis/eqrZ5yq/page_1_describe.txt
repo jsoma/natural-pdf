@@ -1,0 +1,17 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 29 elements
+- **rect**: 2 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 29
+  - **sizes**:
+    - 16.0pt: 25
+    - 20.5pt: 2
+    - 18.0pt: 2
+  - styles: 28 bold

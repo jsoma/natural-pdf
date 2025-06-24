@@ -1,0 +1,77 @@
+{
+  "document": "eqQ4NoQ_data table",
+  "total_pages": 2,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T17:14:10.629418",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "792 × 612 points",
+      "tests_performed": {},
+      "text_length": 3102,
+      "text_preview": "FEBRUARY 2014 M27 (BUS) ALPHABETIC LISTING BY TYPE ABLPDM27\nOF ACTIVE LICENSES 3/19/2014\nOKLAHOMA ABLE COMMISSION\nLICENSE PREMISE\nNUMBER TYPE DBA NAME LICENSEE NAME ADDRESS CITY ST ZIP PHONE NUMBER EX...",
+      "character_count": 3850,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.12,
+      "standard_table": "47 rows × 14 columns",
+      "line_detection": {
+        "horizontal_lines": 35,
+        "vertical_lines": 5,
+        "total_lines": 40
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 136
+      },
+      "yolo_analysis": {
+        "regions": 178,
+        "processing_time": 1.1044960021972656
+      },
+      "yolo_types": {
+        "table": 2,
+        "abandon": 2,
+        "table_row": 34,
+        "table_column": 4,
+        "table_cell": 136
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 1.0324110984802246
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 0,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 13,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>554.4]...'. Full selector: '*[width>554.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqQ4NoQ_data table/detailed_analysis_final/page_1.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

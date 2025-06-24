@@ -1,0 +1,222 @@
+{
+  "pdf_name": "eqrZZbq.pdf",
+  "pdf_path": "bad_pdf_analysis/eqrZZbq_The categorize chart _E1_ on page 4_ The chart_tab/eqrZZbq.pdf",
+  "analysis_timestamp": "2025-06-22T14:32:34.921207",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.276,
+        "height": 841.89
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 12 elements\n- **rect**: 5 elements\n- **line**: 1 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - STXihei: 8\n    - AdobeHeitiStd-Regular: 3\n    - SimHei: 1\n  - **sizes**:\n    - 12.0pt: 7\n    - 35.0pt: 3\n    - 15.0pt: 2",
+      "extract_text": {
+        "length": 56,
+        "preview": "\u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662\\n\u4eba\u673a\u5171\u5b58\u7684\u65b0\u7eaa\u5143\uff1a\\n\u81ea\u52a8\u5316\u3001\u5c31\u4e1a\u548c\u751f\u4ea7\u529b\\n2017\u5e741\u6708\\n\u9ea6\u80af\u9521\u5168\u7403\\n\u7814\u7a76\u9662\\n\u7814\u7a76\\n\u6d1e\u89c1\\n\u5f71\u54cd",
+        "full_text": "\u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662\n\u4eba\u673a\u5171\u5b58\u7684\u65b0\u7eaa\u5143\uff1a\n\u81ea\u52a8\u5316\u3001\u5c31\u4e1a\u548c\u751f\u4ea7\u529b\n2017\u5e741\u6708\n\u9ea6\u80af\u9521\u5168\u7403\n\u7814\u7a76\u9662\n\u7814\u7a76\n\u6d1e\u89c1\n\u5f71\u54cd"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 3,
+        "columns": 3,
+        "data": [
+          [
+            "\u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662\n\u4eba\u673a\u5171\u5b58\u7684\u65b0\u7eaa\u5143\uff1a\n\u81ea\u52a8\u5316\u3001\u5c31\u4e1a\u548c\u751f\u4ea7\u529b\n2017\u5e741\u6708",
+            "\u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662\n\u4eba\u673a\u5171\u5b58\u7684\u65b0\u7eaa\u5143\uff1a\n\u81ea\u52a8\u5316\u3001\u5c31\u4e1a\u548c\u751f\u4ea7\u529b\n2017\u5e741\u6708",
+            null
+          ],
+          [
+            "\u9ea6\u80af\u9521\u5168\u7403\n\u7814\u7a76\u9662\n\u7814\u7a76\n\u6d1e\u89c1\n\u5f71\u54cd",
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            "\u9ea6\u80af\u9521\u5168\u7403\n\u7814\u7a76\u9662\n\u7814\u7a76\n\u6d1e\u89c1\n\u5f71\u54cd"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 4,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              176.5266490448817,
+              252.01054499555937,
+              250.42479282865588,
+              270.331561235079
+            ],
+            "confidence": 0.8043978810310364
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              175.42281274455024,
+              12.014985927300895,
+              309.90753161928313,
+              29.181095158017445
+            ],
+            "confidence": 0.7216132879257202
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              177.0374413717385,
+              96.1218784302374,
+              301.62289948943476,
+              115.34551721305576
+            ],
+            "confidence": 0.5857784748077393
+          },
+          {
+            "type": "figure",
+            "bbox": [
+              0,
+              290.04822336881006,
+              595.276,
+              841.89
+            ],
+            "confidence": 0.5514752268791199
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 13,
+        "yolo_count": 4,
+        "tatr_count": 9,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (13 elements)\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 175 | 12 | 310 | 29 | plain text |\n| 177 | 96 | 302 | 115 | plain text |\n| 177 | 252 | 250 | 270 | plain text |\n\n### Figure Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 0 | 290 | 595 | 842 | figure |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 121 | 763 | 526 | 821 | table ..."
+      },
+      "elements_sample": {
+        "total_count": 84,
+        "full_inspect": "## Collection Inspection (31 elements)\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 164 | -11 | 607 | 289 | 443 | 301 | #000000 | #ffffff | 0 |\n| 0 | 0 | 595 | 842 | 595 | 842 | #000000 | #e7e8e8 | 0 |\n| 0 | 547 | 607 | 853 | 607 | 306 | #000000 | #000000 | 0 |\n| 507 | 666 | 595 | 842 | 89 | 175 | #000000 | #ffffff | 0 |\n| 516 | 676 | 586 | 767 | 69 | 91 | #000000 | #ffffff | 0 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 175 | 12 | 310 | 29 | plain text |\n| 177 | 96 | 302 | 115 | plain text |\n| 177 | 252 | 250 | 270 | plain text |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| \u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662 | 177 | 100 | 299 | 115 | STXihei | IIFGZS | 15 | False | False | native | 1.00 | #000000 |\n| \u4eba\u673a\u5171\u5b58\u7684\u65b0\u7eaa\u5143\uff1a   | 177 | 131 | 497 | 166 | AdobeHeitiStd-Regular | AECKRI | 35 | False | False | native | 1.00 | #000000 |\n|   | 509 | 167 | 526 | 202 | SimHei | JCQHNQ | 35 | False | False | native | 1.00 | #000000 |\n| \u81ea\u52a8\u5316\u3001\u5c31\u4e1a\u548c\u751f\u4ea7\u529b | 177 | 172 | 509 | 207 | AdobeHeitiStd-Regular | AECKRI | 35 | False | False | native | 1.00 | #000000 |\n| 2017\u5e741\u6708 | 177 | 256 | 249 | 271 | AdobeHeitiStd-Regular | AECKRI | 15 | False | False | native | 1.00 | #000000 |\n| \u9ea6\u80af\u9521\u5168\u7403 | 517 | 677 | 578 | 689 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |\n| \u7814\u7a76\u9662 | 517 | 694 | 553 | 706 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |\n| \u7814\u7a76 | 517 | 719 | 541 | 731 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |\n|   | 541 | 719 | 544 | 731 | STXihei | WQGMNQ | 12 | False | False | native | 1.00 | #000000 |\n| \u6d1e\u89c1 | 517 | 736 | 541 | 748 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |\n|   | 541 | 736 | 544 | 748 | STXihei | WQGMNQ | 12 | False | False | native | 1.00 | #000000 |\n| \u5f71\u54cd | 517 | 753 | 541 | 765 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |\n\n### Figure Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 0 | 290 | 595 | 842 | figure |\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 516 | 710 | 580 | 710 | 1 | True | False |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 121 | 763 | 526 | 821 | table |\n| 121 | 765 | 519 | 820 | table |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 121 | 764 | 520 | 774 | table row |\n| 121 | 771 | 519 | 785 | table row |\n| 120 | 780 | 520 | 793 | table row |\n| 120 | 791 | 519 | 805 | table row |\n| 120 | 798 | 519 | 811 | table row |\n| 120 | 808 | 521 | 820 | table row |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 120 | 764 | 521 | 775 | table column header |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 163.992,
+            "top": -11.337999999999965
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 0.0,
+            "top": 0.0
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 175.42281274455024,
+            "top": 12.014985927300895
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 177.0374413717385,
+            "top": 96.1218784302374
+          },
+          {
+            "type": "unknown",
+            "text": "\u9ea6",
+            "x0": 177.1654,
+            "top": 99.85770000000002
+          },
+          {
+            "type": "unknown",
+            "text": "\u9ea6\u80af\u9521\u5168\u7403\u7814\u7a76\u9662",
+            "x0": 177.1654,
+            "top": 99.85770000000002
+          },
+          {
+            "type": "unknown",
+            "text": "\u80af",
+            "x0": 192.3124,
+            "top": 99.85770000000002
+          },
+          {
+            "type": "unknown",
+            "text": "\u9521",
+            "x0": 207.9034,
+            "top": 99.85770000000002
+          },
+          {
+            "type": "unknown",
+            "text": "\u5168",
+            "x0": 223.1104,
+            "top": 99.85770000000002
+          },
+          {
+            "type": "unknown",
+            "text": "\u7403",
+            "x0": 238.5589,
+            "top": 99.85770000000002
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/eqrZZbq_The categorize chart _E1_ on page 4_ The chart_tab/analysis/eqrZZbq/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 9,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              120.76312275167784,
+              763.0902958432305,
+              525.5108513422819,
+              821.1927042755344
+            ],
+            "confidence": 0.5881683230400085
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              120.75313489932886,
+              771.4092089073634,
+              519.358334295302,
+              785.0474269596199
+            ],
+            "confidence": 0.5925347805023193
+          },
+          {
+            "type": "table column header",
+            "bbox": [
+              120.2537422818792,
+              764.0901652019003,
+              521.3958561744965,
+              775.468678503563
+            ],
+            "confidence": 0.4191911518573761
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              120.20380302013422,
+              780.1380684085511,
+              520.4170466442952,
+              793.0863766033254
+            ],
+            "confidence": 0.7087894082069397
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              120.46348718120805,
+              797.5457939429929,
+              518.5193546979865,
+              810.5840903800475
+            ],
+            "confidence": 0.564700186252594
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 13,
+  "pages_analyzed": 1
+}

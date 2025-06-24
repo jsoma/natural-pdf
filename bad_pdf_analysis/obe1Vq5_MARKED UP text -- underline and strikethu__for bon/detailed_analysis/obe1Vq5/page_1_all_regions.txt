@@ -1,0 +1,50 @@
+All Layout Regions (15 found)
+==================================================
+YOLO: 6, TATR: 9, Other: 0
+
+## Collection Inspection (15 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 50 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 283 | 690 | 329 | 719 | abandon |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 71 | 85 | 542 | 123 | plain text |
+| 281 | 220 | 331 | 235 | plain text |
+| 47 | 264 | 543 | 641 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 683 | 525 | 762 | table |
+| 58 | 689 | 515 | 729 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 518 | 735 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 57 | 688 | 515 | 700 | table row |
+| 58 | 711 | 516 | 724 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |

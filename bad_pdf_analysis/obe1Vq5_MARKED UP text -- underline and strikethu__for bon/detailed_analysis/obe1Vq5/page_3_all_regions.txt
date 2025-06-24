@@ -1,0 +1,150 @@
+All Layout Regions (110 found)
+==================================================
+YOLO: 5, TATR: 105, Other: 0
+
+## Collection Inspection (110 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 50 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 282 | 690 | 330 | 719 | abandon |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 83 | 63 | 542 | 103 | plain text |
+| 63 | 79 | 544 | 645 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 79 | 201 | 538 | 630 | table |
+| 80 | 219 | 537 | 614 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 219 | 147 | 615 | table column |
+| 102 | 219 | 538 | 614 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 219 | 537 | 237 | table row |
+| 80 | 237 | 537 | 260 | table row |
+| 80 | 260 | 537 | 282 | table row |
+| 80 | 282 | 537 | 304 | table row |
+| 80 | 305 | 537 | 327 | table row |
+| 80 | 327 | 537 | 350 | table row |
+| 80 | 350 | 537 | 372 | table row |
+| 80 | 372 | 537 | 395 | table row |
+| 80 | 396 | 537 | 418 | table row |
+| 80 | 418 | 537 | 441 | table row |
+| 80 | 441 | 537 | 463 | table row |
+| 80 | 463 | 537 | 485 | table row |
+| 80 | 485 | 537 | 508 | table row |
+| 80 | 507 | 537 | 530 | table row |
+| 80 | 530 | 537 | 552 | table row |
+| 80 | 552 | 537 | 574 | table row |
+| 80 | 574 | 537 | 597 | table row |
+| 80 | 597 | 537 | 615 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 219 | 147 | 237 | table-cell |
+| 80 | 219 | 147 | 237 | table-cell |
+| 102 | 219 | 537 | 237 | table-cell |
+| 102 | 219 | 537 | 237 | table-cell |
+| 80 | 237 | 147 | 260 | table-cell |
+| 80 | 237 | 147 | 260 | table-cell |
+| 102 | 237 | 537 | 260 | table-cell |
+| 102 | 237 | 537 | 260 | table-cell |
+| 80 | 260 | 147 | 282 | table-cell |
+| 80 | 260 | 147 | 282 | table-cell |
+| 102 | 260 | 537 | 282 | table-cell |
+| 102 | 260 | 537 | 282 | table-cell |
+| 80 | 282 | 147 | 304 | table-cell |
+| 80 | 282 | 147 | 304 | table-cell |
+| 102 | 282 | 537 | 304 | table-cell |
+| 102 | 282 | 537 | 304 | table-cell |
+| 80 | 305 | 147 | 327 | table-cell |
+| 80 | 305 | 147 | 327 | table-cell |
+| 102 | 305 | 537 | 327 | table-cell |
+| 102 | 305 | 537 | 327 | table-cell |
+| 80 | 327 | 147 | 350 | table-cell |
+| 80 | 327 | 147 | 350 | table-cell |
+| 102 | 327 | 537 | 350 | table-cell |
+| 102 | 327 | 537 | 350 | table-cell |
+| 80 | 350 | 147 | 372 | table-cell |
+| 80 | 350 | 147 | 372 | table-cell |
+| 102 | 350 | 537 | 372 | table-cell |
+| 102 | 350 | 537 | 372 | table-cell |
+| 80 | 372 | 147 | 395 | table-cell |
+| 80 | 372 | 147 | 395 | table-cell |
+| 102 | 372 | 537 | 395 | table-cell |
+| 102 | 372 | 537 | 395 | table-cell |
+| 80 | 396 | 147 | 418 | table-cell |
+| 80 | 396 | 147 | 418 | table-cell |
+| 102 | 396 | 537 | 418 | table-cell |
+| 102 | 396 | 537 | 418 | table-cell |
+| 80 | 418 | 147 | 441 | table-cell |
+| 80 | 418 | 147 | 441 | table-cell |
+| 102 | 418 | 537 | 441 | table-cell |
+| 102 | 418 | 537 | 441 | table-cell |
+| 80 | 441 | 147 | 463 | table-cell |
+| 80 | 441 | 147 | 463 | table-cell |
+| 102 | 441 | 537 | 463 | table-cell |
+| 102 | 441 | 537 | 463 | table-cell |
+| 80 | 463 | 147 | 485 | table-cell |
+| 80 | 463 | 147 | 485 | table-cell |
+| 102 | 463 | 537 | 485 | table-cell |
+| 102 | 463 | 537 | 485 | table-cell |
+| 80 | 485 | 147 | 508 | table-cell |
+| 80 | 485 | 147 | 508 | table-cell |
+| 102 | 485 | 537 | 508 | table-cell |
+| 102 | 485 | 537 | 508 | table-cell |
+| 80 | 507 | 147 | 530 | table-cell |
+| 80 | 507 | 147 | 530 | table-cell |
+| 102 | 507 | 537 | 530 | table-cell |
+| 102 | 507 | 537 | 530 | table-cell |
+| 80 | 530 | 147 | 552 | table-cell |
+| 80 | 530 | 147 | 552 | table-cell |
+| 102 | 530 | 537 | 552 | table-cell |
+| 102 | 530 | 537 | 552 | table-cell |
+| 80 | 552 | 147 | 574 | table-cell |
+| 80 | 552 | 147 | 574 | table-cell |
+| 102 | 552 | 537 | 574 | table-cell |
+| 102 | 552 | 537 | 574 | table-cell |
+| 80 | 574 | 147 | 597 | table-cell |
+| 80 | 574 | 147 | 597 | table-cell |
+| 102 | 574 | 537 | 597 | table-cell |
+| 102 | 574 | 537 | 597 | table-cell |
+| 80 | 597 | 147 | 615 | table-cell |
+| 80 | 597 | 147 | 615 | table-cell |
+| 102 | 597 | 537 | 614 | table-cell |
+| 102 | 597 | 537 | 614 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 237 | 537 | 259 | table projected row header |
+| 80 | 350 | 537 | 372 | table projected row header |
+| 80 | 395 | 537 | 416 | table projected row header |
+| 80 | 396 | 537 | 418 | table projected row header |
+| 80 | 441 | 537 | 463 | table projected row header |
+| 80 | 464 | 537 | 485 | table projected row header |
+| 80 | 485 | 537 | 507 | table projected row header |
+| 80 | 508 | 537 | 530 | table projected row header |
+| 80 | 531 | 537 | 553 | table projected row header |
+| 80 | 553 | 537 | 574 | table projected row header |
+| 80 | 575 | 537 | 598 | table projected row header |

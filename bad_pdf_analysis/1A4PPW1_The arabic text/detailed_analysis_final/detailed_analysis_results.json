@@ -1,0 +1,118 @@
+{
+  "document": "1A4PPW1_The arabic text",
+  "total_pages": 23,
+  "analyzed_pages": [
+    1,
+    11
+  ],
+  "analysis_date": "2025-06-22T17:14:18.665997",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "481.89 × 680.315 points",
+      "tests_performed": {},
+      "text_length": 1330,
+      "text_preview": "2022 ةنس سرام 6 ىف )رركم( 9 ددعلا - ةيمسرلا ةديرلجا 2\n2022 ةنسل 8 مقر نوناق\nةيحايسلاو ةيقدنفلا تآشنملا نوناق رادصإ نأشب\nبعشلا مساب\nةيروهمجلا سيئر\n؛ هانردصأ دقو ، هصن ىتلآا نوناقلا باونلا سلجم ررق\n)ىلو...",
+      "character_count": 1306,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "47 rows × 6 columns",
+      "line_detection": {
+        "horizontal_lines": 16,
+        "vertical_lines": 0,
+        "total_lines": 16
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 26,
+        "processing_time": 1.004012107849121
+      },
+      "yolo_types": {
+        "abandon": 1,
+        "table_row": 15,
+        "title": 4,
+        "plain text": 6
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 0.498964786529541
+      },
+      "selector_large_text": 28,
+      "selector_small_text": 0,
+      "selector_bold_text": 1,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>337.323]...'. Full selector: '*[width>337.323]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/1A4PPW1_The arabic text/detailed_analysis_final/page_1.png"
+    },
+    "11": {
+      "page_number": 11,
+      "dimensions": "481.89 × 680.315 points",
+      "tests_performed": {},
+      "text_length": 1447,
+      "text_preview": "2022 ةنس سرام 6 ىف )رركم( 9 ددعلا - ةيمسرلا ةديرلجا 12\n: ) 12 ( ةداـــــم\nهب صخرملا اهطاـــشن ىـــف وأ ةأـــشنملا ىف ىرـــهوج لـــيدعت ىأ ءارـــجإ زوـــجي لا\nهيلع صوصنملا ةنياعملا مسر دادس دعبو تاءارج...",
+      "character_count": 1415,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.08,
+      "standard_table": "47 rows × 9 columns",
+      "line_detection": {
+        "horizontal_lines": 17,
+        "vertical_lines": 0,
+        "total_lines": 17
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 25,
+        "processing_time": 0.6426270008087158
+      },
+      "yolo_types": {
+        "abandon": 1,
+        "table_row": 16,
+        "plain text": 7,
+        "isolate_formula": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 0.1540520191192627
+      },
+      "selector_large_text": 29,
+      "selector_small_text": 0,
+      "selector_bold_text": 1,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>337.323]...'. Full selector: '*[width>337.323]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/1A4PPW1_The arabic text/detailed_analysis_final/page_11.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

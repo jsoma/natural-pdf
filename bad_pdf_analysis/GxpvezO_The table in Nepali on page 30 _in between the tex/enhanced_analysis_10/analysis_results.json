@@ -1,0 +1,69 @@
+{
+  "document": "GxpvezO_The table in Nepali on page 30 _in between the tex",
+  "total_pages": 33,
+  "analyzed_pages": [
+    30
+  ],
+  "analysis_date": "2025-06-22T16:43:00.996038",
+  "pages": {
+    "30": {
+      "page_number": 30,
+      "dimensions": "612 × 792 points",
+      "text_length": 2852,
+      "text_preview": "cg';\"rL -(_\n- bkmf @^ sf] pkbkmf -!_ / bkmf @& sf] pkbkmf -!_ ;Fu ;DalGwt _\ngd\"gf lng] tyf gd\"gf k|of]u ug]{ tl/sf\n!= /f;folgs dn k/LIf0f ug{ lg/LIfsn] gd\"gf ln+bf ug'{kg]{ ;fdfGo sfo{ljlw M gd\"gf ln+...",
+      "table": "57 rows × 12 columns",
+      "table_sample": [
+        [
+          "f;fo",
+          "lg",
+          "s d",
+          "n k/LIf0",
+          "f ug{ lg/LIf",
+          "sn] gd\"gf ln+",
+          "bf ug'{kg]{",
+          ";fdfGo sfo{",
+          "ljlw M gd\"",
+          "gf ln+bf b]xfosf] s",
+          "fo{ljlw kfngf",
+          "ug'{ kg]{5 M"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "-s_",
+          "3f",
+          "d÷k",
+          "fgL ePs",
+          "f] 7fp+sf] g",
+          "d'gf lng' x'Fb}g",
+          ".",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "yolo_regions": 14,
+      "tatr_regions": 1,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/GxpvezO_The table in Nepali on page 30 _in between the tex/enhanced_analysis_10/page_30.png"
+    }
+  },
+  "insights": [
+    "Document contains 2852 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables",
+    "Complex layout detected - average 14.0 regions per page"
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "document": "obR6Dxb_Large table that spans across pages in Serbian _e.",
+  "total_pages": 120,
+  "analyzed_pages": [
+    1,
+    60
+  ],
+  "analysis_date": "2025-06-22T17:16:41.159680",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "595.32 × 841.92 points",
+      "tests_performed": {},
+      "text_length": 1743,
+      "text_preview": "BUDITE NA PRAVNOJ STRANI\nonline@paragraf.rs\nwww.paragraf.rs\nPreuzeto iz elektronske pravne baze Paragraf Lex\nUkoliko ovaj propis niste preuzeli sa Paragrafovog sajta ili niste sigurni da li je u pitan...",
+      "character_count": 1773,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 0.34,
+      "standard_table": "4 rows × 1 columns",
+      "line_detection": {
+        "horizontal_lines": 49,
+        "vertical_lines": 0,
+        "total_lines": 49
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 67,
+        "processing_time": 0.9921419620513916
+      },
+      "yolo_types": {
+        "abandon": 3,
+        "title": 5,
+        "table_row": 48,
+        "figure": 1,
+        "plain text": 10
+      },
+      "tatr_analysis": {
+        "table_regions": 2,
+        "processing_time": 0.6311240196228027
+      },
+      "selector_large_text": 8,
+      "selector_small_text": 0,
+      "selector_bold_text": 21,
+      "selector_colored_rects": 27,
+      "selector_thin_lines": 14,
+      "potential_text_formatting": 3,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.724]...'. Full selector: '*[width>416.724]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./detailed_analysis_final/page_1.png"
+    },
+    "60": {
+      "page_number": 60,
+      "dimensions": "595.32 × 841.92 points",
+      "tests_performed": {},
+      "text_length": 2653,
+      "text_preview": "brojevima i adresama, odnosno od dodele numeracije u toj godini, na dan 31. decembra godine za koju se naknada plaća,\nsrazmerno periodu obavljanja delatnosti elektronskih komunikacija.\nPlaćanje utvrđe...",
+      "character_count": 2686,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "73 rows × 8 columns",
+      "line_detection": {
+        "horizontal_lines": 32,
+        "vertical_lines": 0,
+        "total_lines": 32
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 57,
+        "processing_time": 0.6779358386993408
+      },
+      "yolo_types": {
+        "plain text": 18,
+        "table_row": 31,
+        "title": 8
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.9553029537200928
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 0,
+      "selector_bold_text": 8,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.724]...'. Full selector: '*[width>416.724]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./detailed_analysis_final/page_60.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 1,
+      "severity": "medium",
+      "details": "Character overlap ratio: 0.34"
+    },
+    {
+      "type": "text_formatting",
+      "page": 1,
+      "severity": "medium",
+      "details": "3 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling",
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

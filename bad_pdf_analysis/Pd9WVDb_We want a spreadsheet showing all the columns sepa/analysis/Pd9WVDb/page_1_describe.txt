@@ -1,0 +1,16 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 311 elements
+- **rect**: 40 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - AptosNarrow: 297
+    - AptosNarrow,Bold: 14
+  - **sizes**:
+    - 5.5pt: 311
+  - styles: 14 bold

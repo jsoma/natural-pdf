@@ -1,0 +1,250 @@
+{
+  "pdf_name": "ober4db.pdf",
+  "pdf_path": "bad_pdf_analysis/ober4db_The graph and table on page 180 and 181/ober4db.pdf",
+  "analysis_timestamp": "2025-06-22T14:31:46.030331",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 521.362,
+        "height": 728.337
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 74 elements\n- **line**: 18 elements\n- **rect**: 1 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - E-BZ: 35\n    - FZSSK--GBK1-0: 28\n    - FZHTK--GBK1-0: 2\n    - E-FZ: 2\n    - E-F7: 2\n    - FZLTXIHJW--GB1-0: 1\n    - FZY1K--GBK1-0: 1\n    - FZLTKHK--GBK1-0: 1\n    - FZLTHJW--GB1-0: 1\n    - FZBIAOYSK--GBK1-0: 1\n  - **sizes**:\n    - 10.5pt: 55\n    - 9.0pt: 11\n    - 18.5pt: 2\n    - 8.5pt: 1\n    - 20.5pt: 1\n    - 9.5pt: 1\n    - 16.0pt: 1\n    - 12.5pt: 1\n    - 11.0pt: 1\n  - **colors**:\n    - black: 67\n    - other: 7",
+      "extract_text": {
+        "length": 428,
+        "preview": "\u5317\u4eac\u4e2d\u6587\u5929\u5730\u6587\u5316\u827a\u672f\u6709\u9650\u516c\u53f8\u6392\u7248 \u53cc\u8272\u7248\\n\uff23\uff2b \uff16\uff15\uff12\uff16\uff13\uff12\uff19\uff16\\n\u603b\u62a5\u544a\u00b7\u6280\u672f\u62a5\u544a\\n\u603b \u62a5 \u544a\\n\udbc0\uddb0 \uff11\\n\u6280\u672f\u62a5\u544a\\n\u4e00 \u8c03\u67e5\u80cc\u666f\u4ecb\u7ecd\\n\uff08\u4e00\uff09\u8c03\u67e5\u80cc\u666f\\n\u968f\u7740\u4e2d\u56fd\u7ecf\u6d4e\u8fdb\u5165 \u65b0\u5e38\u6001 \u5c31\u4e1a\u7684\u5b8f\u89c2\u73af\u5883\u53d1\u751f\u4e86\u5de8\u5927\u7684\u53d8\u5316 \u5927\u5b66\\n\u201c \u201d\uff0c \uff0c\\n\u751f\u5c31\u4e1a\u518d\u6b21\u6210\u4e3a\u793e\u4f1a\u5173\u6ce8\u7684\u91cd\u5927\u95ee\u9898 \u6559\u80b2\u90e8\u5173\u4e8e\u505a\u597d \u5c4a\u5168\u56fd\u666e\u901a\u9ad8\u7b49\\n\u3002 \u300a \uff12\uff10\uff11\uff16\\n\u5b66\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u5de5\u4f5c\u7684\u901a\u77e5 \u4e2d\u6307\u51fa \u8981\u8fdb\u4e00\u6b65\u52a0\u5f3a\u6bd5\u4e1a\u751f\u5c31\u4e1a\u6570\u636e\u4fe1\\n\u300b \uff1a \u201c\\n\u606f\u76d1\u7763\u7ba1\u7406\u5de5\u4f5c \u5b8c\u5584\u6bd5\u4e1a\u751f\u5b9e\u540d\u67e5\u8be2\u5c31\u4e1a\u72b6\u51b5\u529f\u80fd \u786e\u4fdd\u5c31\u4e1a\u6570\u636e\u4fe1\u606f\u771f\\n\uff0c \uff0c\\n\u5b9e \u51c6\u786e \u901a\u77e5\u4e2d\u660e\u786e\u63d0\u51fa \u8fdb\u4e00\u6b65\u5b8c\u5584\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a\u53d1\\n\u3001 \u3002\u201d \uff1a \u201c\\n\u5e03\u5236\u5ea6 \u5404\u5730\u5404\u9ad8\u6821\u8981\u5728\u6bcf\u5e74\u5e74\u5e95\u524d\u7f16\u5236\u548c\u53d1\u5e03\u5c31\u4e1a\u8d28\u91cf",
+        "full_text": "\u5317\u4eac\u4e2d\u6587\u5929\u5730\u6587\u5316\u827a\u672f\u6709\u9650\u516c\u53f8\u6392\u7248 \u53cc\u8272\u7248\n\uff23\uff2b \uff16\uff15\uff12\uff16\uff13\uff12\uff19\uff16\n\u603b\u62a5\u544a\u00b7\u6280\u672f\u62a5\u544a\n\u603b \u62a5 \u544a\n\udbc0\uddb0 \uff11\n\u6280\u672f\u62a5\u544a\n\u4e00 \u8c03\u67e5\u80cc\u666f\u4ecb\u7ecd\n\uff08\u4e00\uff09\u8c03\u67e5\u80cc\u666f\n\u968f\u7740\u4e2d\u56fd\u7ecf\u6d4e\u8fdb\u5165 \u65b0\u5e38\u6001 \u5c31\u4e1a\u7684\u5b8f\u89c2\u73af\u5883\u53d1\u751f\u4e86\u5de8\u5927\u7684\u53d8\u5316 \u5927\u5b66\n\u201c \u201d\uff0c \uff0c\n\u751f\u5c31\u4e1a\u518d\u6b21\u6210\u4e3a\u793e\u4f1a\u5173\u6ce8\u7684\u91cd\u5927\u95ee\u9898 \u6559\u80b2\u90e8\u5173\u4e8e\u505a\u597d \u5c4a\u5168\u56fd\u666e\u901a\u9ad8\u7b49\n\u3002 \u300a \uff12\uff10\uff11\uff16\n\u5b66\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u5de5\u4f5c\u7684\u901a\u77e5 \u4e2d\u6307\u51fa \u8981\u8fdb\u4e00\u6b65\u52a0\u5f3a\u6bd5\u4e1a\u751f\u5c31\u4e1a\u6570\u636e\u4fe1\n\u300b \uff1a \u201c\n\u606f\u76d1\u7763\u7ba1\u7406\u5de5\u4f5c \u5b8c\u5584\u6bd5\u4e1a\u751f\u5b9e\u540d\u67e5\u8be2\u5c31\u4e1a\u72b6\u51b5\u529f\u80fd \u786e\u4fdd\u5c31\u4e1a\u6570\u636e\u4fe1\u606f\u771f\n\uff0c \uff0c\n\u5b9e \u51c6\u786e \u901a\u77e5\u4e2d\u660e\u786e\u63d0\u51fa \u8fdb\u4e00\u6b65\u5b8c\u5584\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a\u53d1\n\u3001 \u3002\u201d \uff1a \u201c\n\u5e03\u5236\u5ea6 \u5404\u5730\u5404\u9ad8\u6821\u8981\u5728\u6bcf\u5e74\u5e74\u5e95\u524d\u7f16\u5236\u548c\u53d1\u5e03\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a \u5c06\u521b\u65b0\n\uff0c \uff0c\n\u521b\u4e1a\u76f8\u5173\u60c5\u51b5\u4ee5\u53ca\u6709\u5c31\u4e1a\u610f\u613f\u5c1a\u672a\u5c31\u4e1a\u6bd5\u4e1a\u751f \u5347\u5b66 \u6682\u4e0d\u5c31\u4e1a\u7b49\u5185\u5bb9\u7eb3\u5165\n\u3001 \u3001\n\u5c31\u4e1a\u8d28\u91cf\u62a5\u544a \u66f4\u52a0\u79d1\u5b66 \u5ba2\u89c2\u5730\u53cd\u6620\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u72b6\u51b5\u548c\u7279\u70b9\n\uff0c \u3001 \u3002\u201d\n\u5c31\u4e1a\u4fe1\u606f\u8ddf\u8e2a\u8c03\u67e5\u548c\u516c\u5f00\u53d1\u5e03\u5236\u5ea6\u662f\u4fc3\u8fdb\u5c31\u4e1a\u7684\u6709\u6548\u65b9\u6cd5 \u5c31\u4e1a\u8d28\u91cf\n\u3002 \u201c\n\uff10\uff10\uff11"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 28,
+        "columns": 1,
+        "data": [
+          [
+            "\udbc0\uddb0 \uff11"
+          ],
+          [
+            ""
+          ],
+          [
+            "\u6280\u672f\u62a5\u544a"
+          ],
+          [
+            ""
+          ],
+          [
+            "\u8c03\u67e5\u80cc\u666f\u4ecb\u7ecd"
+          ],
+          [
+            ""
+          ],
+          [
+            ""
+          ],
+          [
+            ""
+          ],
+          [
+            "\u5c31\u4e1a\u7684\u5b8f\u89c2\u73af\u5883\u53d1\u751f\u4e86\u5de8\u5927\u7684\u53d8\u5316 \u5927\u5b66"
+          ],
+          [
+            "\u201d\uff0c \uff0c"
+          ],
+          [
+            "\u95ee\u9898 \u6559\u80b2\u90e8\u5173\u4e8e\u505a\u597d \u5c4a\u5168\u56fd\u666e\u901a\u9ad8\u7b49"
+          ],
+          [
+            "\u3002 \u300a \uff12\uff10\uff11\uff16"
+          ],
+          [
+            "\u4e2d\u6307\u51fa \u8981\u8fdb\u4e00\u6b65\u52a0\u5f3a\u6bd5\u4e1a\u751f\u5c31\u4e1a\u6570\u636e\u4fe1"
+          ],
+          [
+            "\uff1a \u201c"
+          ],
+          [
+            "\u540d\u67e5\u8be2\u5c31\u4e1a\u72b6\u51b5\u529f\u80fd \u786e\u4fdd\u5c31\u4e1a\u6570\u636e\u4fe1\u606f\u771f"
+          ],
+          [
+            "\uff0c"
+          ],
+          [
+            "\u8fdb\u4e00\u6b65\u5b8c\u5584\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a\u53d1"
+          ],
+          [
+            ""
+          ],
+          [
+            "\u5e95\u524d\u7f16\u5236\u548c\u53d1\u5e03\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a \u5c06\u521b\u65b0"
+          ],
+          [
+            "\uff0c"
+          ],
+          [
+            "\u672a\u5c31\u4e1a\u6bd5\u4e1a\u751f \u5347\u5b66 \u6682\u4e0d\u5c31\u4e1a\u7b49\u5185\u5bb9\u7eb3\u5165"
+          ],
+          [
+            "\u3001 \u3001"
+          ],
+          [
+            "\u5730\u53cd\u6620\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u72b6\u51b5\u548c\u7279\u70b9"
+          ],
+          [
+            "\u3002\u201d"
+          ],
+          [
+            "\u5e03\u5236\u5ea6\u662f\u4fc3\u8fdb\u5c31\u4e1a\u7684\u6709\u6548\u65b9\u6cd5 \u5c31\u4e1a\u8d28\u91cf"
+          ],
+          [
+            "\u3002 \u201c"
+          ],
+          [
+            ""
+          ],
+          [
+            "\uff10\uff10\uff11"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 6,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              66.31965823858212,
+              477.24497280721033,
+              454.87088946011534,
+              636.523677601454
+            ],
+            "confidence": 0.9845861196517944
+          },
+          {
+            "type": "title",
+            "bbox": [
+              95.2994998005272,
+              446.9215701260037,
+              180.0625258078942,
+              462.0966077153863
+            ],
+            "confidence": 0.9162827730178833
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              88.29562760853564,
+              641.2948276215278,
+              454.2448983883328,
+              656.9251087649197
+            ],
+            "confidence": 0.9076042175292969
+          },
+          {
+            "type": "title",
+            "bbox": [
+              192.1229766161666,
+              177.53589765706383,
+              328.7839534065703,
+              205.14927579928928
+            ],
+            "confidence": 0.9043373465538025
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              434.2482012424306,
+              673.5563000759549,
+              453.8117396284576,
+              684.7084993823242
+            ],
+            "confidence": 0.8981996178627014
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 6,
+        "yolo_count": 6,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (6 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 192 | 178 | 329 | 205 | title |\n| 200 | 405 | 322 | 422 | title |\n| 95 | 447 | 180 | 462 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 66 | 477 | 455 | 637 | plain text |\n| 88 | 641 | 454 | 657 | plain text |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| ..."
+      },
+      "elements_sample": {
+        "total_count": 474,
+        "full_inspect": "## Collection Inspection (99 elements)\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 18 | 10 | 18 | 18 | 0 | False | True |\n| 27 | 10 | 27 | 18 | 0 | False | True |\n| 495 | 10 | 495 | 18 | 0 | False | True |\n| 503 | 10 | 503 | 18 | 0 | False | True |\n| 10 | 18 | 18 | 18 | 0 | True | False |\n| 503 | 18 | 512 | 18 | 0 | True | False |\n| 10 | 27 | 18 | 27 | 0 | True | False |\n| 503 | 27 | 512 | 27 | 0 | True | False |\n| 401 | 91 | 415 | 91 | 0 | True | False |\n| 88 | 222 | 434 | 222 | 0 | True | False |\n| 10 | 702 | 18 | 702 | 0 | True | False |\n| 503 | 702 | 512 | 702 | 0 | True | False |\n| 10 | 710 | 18 | 710 | 0 | True | False |\n| 503 | 710 | 512 | 710 | 0 | True | False |\n| 18 | 710 | 18 | 718 | 0 | False | True |\n| 27 | 710 | 27 | 718 | 0 | False | True |\n| 495 | 710 | 495 | 718 | 0 | False | True |\n| 503 | 710 | 503 | 718 | 0 | False | True |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| \u5317\u4eac\u4e2d\u6587\u5929\u5730\u6587\u5316\u827a\u672f\u6709\u9650\u516c\u53f8\u6392\u7248 | 166 | 10 | 316 | 20 | FZHTK--GBK1-0 | FBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u53cc\u8272\u7248 | 383 | 10 | 411 | 20 | FZHTK--GBK1-0 | FBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 110 | 18 | 112 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 119 | 18 | 122 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 129 | 18 | 131 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 138 | 18 | 140 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \uff23 | 147 | 18 | 153 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #00ffff |\n| \uff2b | 156 | 18 | 163 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \uff16\uff15\uff12\uff16\uff13\uff12\uff19\uff16\u3000 | 318 | 18 | 358 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 365 | 18 | 367 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u3000 | 374 | 18 | 376 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |\n| \u603b\u62a5\u544a\u00b7\u6280\u672f\u62a5\u544a | 326 | 88 | 397 | 96 | FZLTXIHJW--GB1-0 | GBCDEE | 9 | False | False | native | 1.00 | #00ffff |\n| \u603b\u3000\u62a5\u3000\u544a | 201 | 197 | 320 | 217 | FZY1K--GBK1-0 | HBCDEE | 21 | False | False | native | 1.00 | #00b2b2 |\n| \u3000 | 256 | 228 | 258 | 238 | E-FZ | IBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \udbc0\uddb0 | 412 | 307 | 417 | 325 | E-F7 | JBCDEE | 19 | False | False | native | 1.00 | #00ffff |\n| \uff11 | 422 | 307 | 433 | 325 | E-F7 | JBCDEE | 19 | False | False | native | 1.00 | #00ffff |\n| \u6280\u672f\u62a5\u544a | 358 | 334 | 433 | 350 | FZLTKHK--GBK1-0 | KBCDEE | 16 | False | False | native | 1.00 | #00ffff |\n| \u4e00\u3000\u8c03\u67e5\u80cc\u666f\u4ecb\u7ecd | 207 | 405 | 314 | 418 | FZLTHJW--GB1-0 | LBCDEE | 13 | False | False | native | 1.00 | #000000 |\n| \uff08\u4e00\uff09\u8c03\u67e5\u80cc\u666f | 109 | 441 | 187 | 452 | FZBIAOYSK--GBK1-0 | MBCDEE | 11 | False | False | native | 1.00 | #00ffff |\n| \u968f\u7740\u4e2d\u56fd\u7ecf\u6d4e\u8fdb\u5165 | 109 | 472 | 190 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u65b0\u5e38\u6001 | 201 | 472 | 232 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c31\u4e1a\u7684\u5b8f\u89c2\u73af\u5883\u53d1\u751f\u4e86\u5de8\u5927\u7684\u53d8\u5316 | 248 | 472 | 403 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5927\u5b66 | 413 | 472 | 434 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3000 | 88 | 480 | 90 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3000 | 98 | 480 | 101 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u201c | 196 | 480 | 201 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u201d\uff0c | 232 | 480 | 243 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 403 | 480 | 408 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u751f\u5c31\u4e1a\u518d\u6b21\u6210\u4e3a\u793e\u4f1a\u5173\u6ce8\u7684\u91cd\u5927\u95ee\u9898 | 88 | 491 | 251 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u6559\u80b2\u90e8\u5173\u4e8e\u505a\u597d | 267 | 491 | 338 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c4a\u5168\u56fd\u666e\u901a\u9ad8\u7b49 | 362 | 491 | 434 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3002 | 251 | 499 | 256 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u300a | 261 | 499 | 266 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff12\uff10\uff11\uff16 | 340 | 499 | 359 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5b66\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u5de5\u4f5c\u7684\u901a\u77e5 | 88 | 510 | 231 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u4e2d\u6307\u51fa | 242 | 510 | 272 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u8981\u8fdb\u4e00\u6b65\u52a0\u5f3a\u6bd5\u4e1a\u751f\u5c31\u4e1a\u6570\u636e\u4fe1 | 289 | 510 | 434 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u300b | 231 | 518 | 236 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff1a | 272 | 518 | 277 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u201c | 282 | 518 | 288 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u606f\u76d1\u7763\u7ba1\u7406\u5de5\u4f5c | 88 | 529 | 159 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5b8c\u5584\u6bd5\u4e1a\u751f\u5b9e\u540d\u67e5\u8be2\u5c31\u4e1a\u72b6\u51b5\u529f\u80fd | 169 | 529 | 328 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u786e\u4fdd\u5c31\u4e1a\u6570\u636e\u4fe1\u606f\u771f | 338 | 529 | 434 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 159 | 537 | 164 | 547 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 328 | 537 | 333 | 547 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5b9e | 88 | 548 | 98 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u51c6\u786e | 108 | 548 | 129 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u901a\u77e5\u4e2d\u660e\u786e\u63d0\u51fa | 145 | 548 | 216 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u8fdb\u4e00\u6b65\u5b8c\u5584\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a\u53d1 | 233 | 548 | 434 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3001 | 98 | 556 | 103 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3002\u201d | 129 | 556 | 139 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff1a | 216 | 556 | 221 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u201c | 227 | 556 | 232 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5e03\u5236\u5ea6 | 88 | 567 | 119 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5404\u5730\u5404\u9ad8\u6821\u8981\u5728\u6bcf\u5e74\u5e74\u5e95\u524d\u7f16\u5236\u548c\u53d1\u5e03\u5c31\u4e1a\u8d28\u91cf\u5e74\u5ea6\u62a5\u544a | 129 | 567 | 392 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c06\u521b\u65b0 | 402 | 567 | 434 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 118 | 575 | 124 | 585 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 392 | 575 | 397 | 585 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u521b\u4e1a\u76f8\u5173\u60c5\u51b5\u4ee5\u53ca\u6709\u5c31\u4e1a\u610f\u613f\u5c1a\u672a\u5c31\u4e1a\u6bd5\u4e1a\u751f | 88 | 586 | 297 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5347\u5b66 | 307 | 586 | 328 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u6682\u4e0d\u5c31\u4e1a\u7b49\u5185\u5bb9\u7eb3\u5165 | 338 | 586 | 434 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3001 | 296 | 594 | 302 | 604 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3001 | 328 | 594 | 333 | 604 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c31\u4e1a\u8d28\u91cf\u62a5\u544a | 88 | 605 | 149 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u66f4\u52a0\u79d1\u5b66 | 159 | 605 | 200 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5ba2\u89c2\u5730\u53cd\u6620\u9ad8\u6821\u6bd5\u4e1a\u751f\u5c31\u4e1a\u521b\u4e1a\u72b6\u51b5\u548c\u7279\u70b9 | 210 | 605 | 404 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff0c | 149 | 613 | 154 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3001 | 200 | 613 | 205 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3002\u201d | 404 | 613 | 414 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c31\u4e1a\u4fe1\u606f\u8ddf\u8e2a\u8c03\u67e5\u548c\u516c\u5f00\u53d1\u5e03\u5236\u5ea6\u662f\u4fc3\u8fdb\u5c31\u4e1a\u7684\u6709\u6548\u65b9\u6cd5 | 109 | 624 | 372 | 634 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u5c31\u4e1a\u8d28\u91cf | 391 | 624 | 433 | 634 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u3002 | 373 | 632 | 378 | 642 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \u201c | 384 | 632 | 390 | 642 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |\n| \uff10\uff10\uff11 | 418 | 652 | 434 | 662 | E-FZ | IBCDEE | 10 | False | False | native | 1.00 | #000000 |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 88 | 58 | 434 | 100 | 346 | 43 | #000000 | #ffffff | 0 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 192 | 178 | 329 | 205 | title |\n| 200 | 405 | 322 | 422 | title |\n| 95 | 447 | 180 | 462 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 66 | 477 | 455 | 637 | plain text |\n| 88 | 641 | 454 | 657 | plain text |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 434 | 674 | 454 | 685 | abandon |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 18.2870026,
+            "top": 9.844995599999947
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 26.826004,
+            "top": 9.844995599999947
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 494.5350037,
+            "top": 9.844995599999947
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 503.0740051,
+            "top": 9.844995599999947
+          },
+          {
+            "type": "unknown",
+            "text": "\u5317",
+            "x0": 165.78,
+            "top": 10.389523999999938
+          },
+          {
+            "type": "unknown",
+            "text": "\u5317\u4eac\u4e2d\u6587\u5929\u5730\u6587\u5316\u827a\u672f\u6709\u9650\u516c\u53f8\u6392\u7248",
+            "x0": 165.78,
+            "top": 10.389523999999938
+          },
+          {
+            "type": "unknown",
+            "text": "\u4eac",
+            "x0": 175.191578,
+            "top": 10.389523999999938
+          },
+          {
+            "type": "unknown",
+            "text": "\u4e2d",
+            "x0": 184.603156,
+            "top": 10.389523999999938
+          },
+          {
+            "type": "unknown",
+            "text": "\u6587",
+            "x0": 194.014734,
+            "top": 10.389523999999938
+          },
+          {
+            "type": "unknown",
+            "text": "\u5929",
+            "x0": 203.426312,
+            "top": 10.389523999999938
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/ober4db_The graph and table on page 180 and 181/analysis/ober4db/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 200,
+  "pages_analyzed": 1
+}

@@ -1,0 +1,193 @@
+{
+  "pdf_name": "b5eVqGg.pdf",
+  "pdf_path": "bad_pdf_analysis/b5eVqGg_Math formulas in Russian _e.g. on page 181__/b5eVqGg.pdf",
+  "analysis_timestamp": "2025-06-22T14:33:26.424130",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.276,
+        "height": 841.89001
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 16 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Tahoma: 16\n  - **sizes**:\n    - 24.0pt: 11\n    - 14.0pt: 5\n  - styles: 2 bold\n  - **colors**:\n    - black: 14\n    - other: 2",
+      "extract_text": {
+        "length": 430,
+        "preview": "\u041f\u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u041f\u0440\u0430\u0432\u0438\u0442\u0435\u043b\u044c\u0441\u0442\u0432\u0430 \u0420\u0424 \u043e\u0442\\n29.12.2011 N 1178\\n(\u0440\u0435\u0434. \u043e\u0442 19.01.2022)\\n\"\u041e \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0438 \u0432 \u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445\\n\u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432 \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\"\\n(\u0432\u043c\u0435\u0441\u0442\u0435 \u0441 \"\u041e\u0441\u043d\u043e\u0432\u0430\u043c\u0438 \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u044f \u0432\\n\u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445 \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432\\n\u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\", \"\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u043c\u0438\\n\u0433\u043e\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f (\u043f\u0435\u0440\u0435\u0441\u043c\u043e\u0442\u0440\u0430,\\n",
+        "full_text": "\u041f\u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u041f\u0440\u0430\u0432\u0438\u0442\u0435\u043b\u044c\u0441\u0442\u0432\u0430 \u0420\u0424 \u043e\u0442\n29.12.2011 N 1178\n(\u0440\u0435\u0434. \u043e\u0442 19.01.2022)\n\"\u041e \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0438 \u0432 \u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445\n\u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432 \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\"\n(\u0432\u043c\u0435\u0441\u0442\u0435 \u0441 \"\u041e\u0441\u043d\u043e\u0432\u0430\u043c\u0438 \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u044f \u0432\n\u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445 \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432\n\u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\", \"\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u043c\u0438\n\u0433\u043e\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f (\u043f\u0435\u0440\u0435\u0441\u043c\u043e\u0442\u0440\u0430,\n\u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u044f) \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432\n\u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\")\n\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442 \u043f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u041a\u043e\u043d\u0441\u0443\u043b\u044c\u0442\u0430\u043d\u0442\u041f\u043b\u044e\u0441\nwww.consultant.ru\n\u0414\u0430\u0442\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f: 07.02.2022"
+      },
+      "extract_table": {
+        "found": false
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 3,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              38.85703348282679,
+              248.2316074902735,
+              562.1148549448308,
+              568.8310186796174
+            ],
+            "confidence": 0.7976347208023071
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              203.49631930818492,
+              708.9259970082342,
+              396.1472476993023,
+              725.8128899155365
+            ],
+            "confidence": 0.5849706530570984
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              33.85594819938096,
+              47.97290807413445,
+              341.77587647447007,
+              122.2343280568058
+            ],
+            "confidence": 0.5431352853775024
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 82,
+        "yolo_count": 3,
+        "tatr_count": 79,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (82 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 48 | 342 | 122 | abandon |\n| 203 | 709 | 396 | 726 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 39 | 248 | 562 | 569 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 708 | 400 | 778 | table |\n| 65 | 709 | 408 | 785 | table |\n\n###..."
+      },
+      "elements_sample": {
+        "total_count": 516,
+        "full_inspect": "## Collection Inspection (98 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 48 | 342 | 122 | abandon |\n| 203 | 709 | 396 | 726 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 39 | 248 | 562 | 569 | plain text |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| \u041f\u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u041f\u0440\u0430\u0432\u0438\u0442\u0435\u043b\u044c\u0441\u0442\u0432\u0430 \u0420\u0424 \u043e\u0442 | 94 | 252 | 505 | 276 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| 29.12.2011 N 1178 | 199 | 281 | 401 | 305 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| (\u0440\u0435\u0434. \u043e\u0442 19.01.2022) | 188 | 310 | 411 | 334 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \"\u041e \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0438 \u0432 \u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445 | 46 | 339 | 554 | 363 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432 \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\" | 97 | 368 | 503 | 392 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| (\u0432\u043c\u0435\u0441\u0442\u0435 \u0441 \"\u041e\u0441\u043d\u043e\u0432\u0430\u043c\u0438 \u0446\u0435\u043d\u043e\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u044f \u0432 | 75 | 397 | 525 | 421 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u043e\u0431\u043b\u0430\u0441\u0442\u0438 \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u0443\u0435\u043c\u044b\u0445 \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432 | 80 | 426 | 519 | 450 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\", \"\u041f\u0440\u0430\u0432\u0438\u043b\u0430\u043c\u0438 | 117 | 455 | 483 | 479 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u0433\u043e\u0441\u0443\u0434\u0430\u0440\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0440\u0435\u0433\u0443\u043b\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f (\u043f\u0435\u0440\u0435\u0441\u043c\u043e\u0442\u0440\u0430, | 39 | 484 | 560 | 508 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u044f) \u0446\u0435\u043d (\u0442\u0430\u0440\u0438\u0444\u043e\u0432) \u0432 | 135 | 513 | 465 | 537 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u044d\u043b\u0435\u043a\u0442\u0440\u043e\u044d\u043d\u0435\u0440\u0433\u0435\u0442\u0438\u043a\u0435\") | 186 | 542 | 414 | 566 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |\n| \u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442 \u043f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d | 154 | 642 | 309 | 656 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |\n| \u041a\u043e\u043d\u0441\u0443\u043b\u044c\u0442\u0430\u043d\u0442\u041f\u043b\u044e\u0441 | 314 | 642 | 446 | 656 | Tahoma | HPDFAB | 14 | True | False | native | 1.00 | #0000ff |\n| www.consultant.ru | 232 | 676 | 368 | 690 | Tahoma | HPDFAB | 14 | True | False | native | 1.00 | #0000ff |\n| \u0414\u0430\u0442\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f: 07.02.2022 | 206 | 710 | 394 | 724 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |\n|   | 293 | 727 | 297 | 741 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 708 | 400 | 778 | table |\n| 65 | 709 | 408 | 785 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 68 | 708 | 105 | 779 | table column |\n| 271 | 708 | 401 | 779 | table column |\n| 236 | 708 | 291 | 779 | table column |\n| 171 | 709 | 239 | 780 | table column |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 69 | 708 | 402 | 726 | table column header |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 709 | 401 | 727 | table row |\n| 70 | 727 | 401 | 741 | table row |\n| 70 | 735 | 401 | 748 | table row |\n| 70 | 740 | 400 | 752 | table row |\n| 69 | 751 | 400 | 763 | table row |\n| 70 | 756 | 400 | 769 | table row |\n| 69 | 762 | 401 | 772 | table row |\n| 69 | 769 | 401 | 779 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 709 | 105 | 727 | table-cell |\n| 70 | 709 | 105 | 727 | table-cell |\n| 171 | 709 | 239 | 727 | table-cell |\n| 171 | 709 | 239 | 727 | table-cell |\n| 236 | 709 | 291 | 727 | table-cell |\n| 236 | 709 | 291 | 727 | table-cell |\n| 271 | 709 | 401 | 727 | table-cell |\n| 271 | 709 | 401 | 727 | table-cell |\n| 70 | 727 | 105 | 741 | table-cell |\n| 70 | 727 | 105 | 741 | table-cell |\n| 171 | 727 | 239 | 741 | table-cell |\n| 171 | 727 | 239 | 741 | table-cell |\n| 236 | 727 | 291 | 741 | table-cell |\n| 236 | 727 | 291 | 741 | table-cell |\n| 271 | 727 | 401 | 741 | table-cell |\n| 271 | 727 | 401 | 741 | table-cell |\n| 70 | 735 | 105 | 748 | table-cell |\n| 70 | 735 | 105 | 748 | table-cell |\n| 171 | 735 | 239 | 748 | table-cell |\n| 171 | 735 | 239 | 748 | table-cell |\n| 236 | 735 | 291 | 748 | table-cell |\n| 236 | 735 | 291 | 748 | table-cell |\n| 271 | 735 | 401 | 748 | table-cell |\n| 271 | 735 | 401 | 748 | table-cell |\n| 70 | 740 | 105 | 752 | table-cell |\n| 70 | 740 | 105 | 752 | table-cell |\n| 171 | 740 | 239 | 752 | table-cell |\n| 171 | 740 | 239 | 752 | table-cell |\n| 236 | 740 | 291 | 752 | table-cell |\n| 236 | 740 | 291 | 752 | table-cell |\n| 271 | 740 | 400 | 752 | table-cell |\n| 271 | 740 | 400 | 752 | table-cell |\n| 69 | 751 | 105 | 763 | table-cell |\n| 69 | 751 | 105 | 763 | table-cell |\n| 171 | 751 | 239 | 763 | table-cell |\n| 171 | 751 | 239 | 763 | table-cell |\n| 236 | 751 | 291 | 763 | table-cell |\n| 236 | 751 | 291 | 763 | table-cell |\n| 271 | 751 | 400 | 763 | table-cell |\n| 271 | 751 | 400 | 763 | table-cell |\n| 70 | 756 | 105 | 769 | table-cell |\n| 70 | 756 | 105 | 769 | table-cell |\n| 171 | 756 | 239 | 769 | table-cell |\n| 171 | 756 | 239 | 769 | table-cell |\n| 236 | 756 | 291 | 769 | table-cell |\n| 236 | 756 | 291 | 769 | table-cell |\n| 271 | 756 | 400 | 769 | table-cell |\n| 271 | 756 | 400 | 769 | table-cell |\n| 69 | 762 | 105 | 772 | table-cell |\n| 69 | 762 | 105 | 772 | table-cell |\n| 171 | 762 | 239 | 772 | table-cell |\n| 171 | 762 | 239 | 772 | table-cell |\n| 236 | 762 | 291 | 772 | table-cell |\n| 236 | 762 | 291 | 772 | table-cell |\n| 271 | 762 | 401 | 772 | table-cell |\n| 271 | 762 | 401 | 772 | table-cell |\n| 69 | 769 | 105 | 779 | table-cell |\n| 69 | 769 | 105 | 779 | table-cell |\n| 171 | 769 | 239 | 779 | table-cell |\n| 171 | 769 | 239 | 779 | table-cell |\n| 236 | 769 | 291 | 779 | table-cell |\n| 236 | 769 | 291 | 779 | table-cell |\n| 271 | 769 | 401 | 779 | table-cell |\n| 271 | 769 | 401 | 779 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 33.85594819938096,
+            "top": 47.97290807413445
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 38.85703348282679,
+            "top": 248.2316074902735
+          },
+          {
+            "type": "unknown",
+            "text": "\u041f",
+            "x0": 94.32764,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u041f\u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u041f\u0440\u0430\u0432\u0438\u0442\u0435\u043b\u044c\u0441\u0442\u0432\u0430 \u0420\u0424",
+            "x0": 94.32764,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u043e",
+            "x0": 110.52764,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u0441",
+            "x0": 123.53564,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u0442",
+            "x0": 134.59964000000002,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u0430",
+            "x0": 145.78364,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u043d",
+            "x0": 158.35964,
+            "top": 251.86897999999997
+          },
+          {
+            "type": "unknown",
+            "text": "\u043e",
+            "x0": 171.84764,
+            "top": 251.86897999999997
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/b5eVqGg_Math formulas in Russian _e.g. on page 181__/analysis/b5eVqGg/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 15,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              64.64138040268456,
+              708.8573902488123,
+              407.9038899328859,
+              784.967446734798
+            ],
+            "confidence": 0.6789842844009399
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              69.56539161073826,
+              734.9439821263657,
+              401.4417494630872,
+              748.3422316916865
+            ],
+            "confidence": 0.5210239887237549
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              171.19178926174496,
+              708.6774137621139,
+              238.70967114093958,
+              779.6381429897862
+            ],
+            "confidence": 0.457394003868103
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              236.38250154362413,
+              708.3574555635391,
+              291.09595671140937,
+              778.7882540248218
+            ],
+            "confidence": 0.40395811200141907
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              69.91496644295302,
+              708.8673889425178,
+              400.5827941610738,
+              727.3449749102138
+            ],
+            "confidence": 0.7689652442932129
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 222,
+  "pages_analyzed": 1
+}

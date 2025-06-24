@@ -1,0 +1,20 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 89 elements
+- **rect**: 3 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Preeti: 86
+    - Times: 2
+    - Fontasy Himali: 1
+  - **sizes**:
+    - 14.0pt: 84
+    - 18.0pt: 2
+    - 16.0pt: 1
+    - 11.0pt: 1
+    - 12.0pt: 1

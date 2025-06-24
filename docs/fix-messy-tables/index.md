@@ -80,6 +80,24 @@ page.show()
 data = table_area.extract_table()
 ```
 
+<aside style="background: #fff8dc; padding: 10px; border-left: 4px solid #f90;">
+  <strong>Pro-tip:</strong> Instead of measuring 120&nbsp;px below the header, try an
+  <code>until=...</code> anchor—your script survives if the table grows or the scan
+  resolution changes.
+
+  ```python
+  header = page.find(text="Violations":bold)
+  body   = header.below(
+      until="text:contains('Total violations')",
+      include_endpoint=False
+  )
+  data = body.extract_table()
+  ```
+
+  In most cases that one extra <code>until=</code> makes the difference between a
+  brittle coordinate hack and a reusable extractor.
+</aside>
+
 ## Define Table Boundaries Using Header Labels (pdfplumber)
 
 Sometimes the easiest trick is to let the **column headers** tell you exactly where the table starts and ends.  
@@ -175,8 +193,8 @@ page.show()  # See all highlighted tables
 
 # Save each table separately
 import pandas as pd
-for i, data in enumerate(all_data):
-    df = pd.DataFrame(data)
+for i, tbl in enumerate(all_data):
+    df = tbl.to_df(header="first")
     df.to_csv(f"table_{i+1}.csv", index=False)
 ```
 
@@ -268,3 +286,35 @@ page.show()
 - Use layout detection to separate them first
 - Define manual regions for each table
 - Process tables in reading order 
+
+## Auto-ignore headers & footers with exclusions
+
+Before you even think about column alignment, make sure **repeated page furniture**
+(running headers, footers, page numbers) is out of the way.  Two lines of code
+often fix "shifted" columns:
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("01-practice.pdf")
+
+# Drop top 50 pt (header) and bottom 40 pt (footer) on *every* page
+pdf.add_exclusion(lambda p: p.create_region(0, 0, p.width, 50))
+pdf.add_exclusion(lambda p: p.create_region(0, p.height-40, p.width, p.height))
+
+# Now table detection / extraction sees only the body
+pdf.pages.apply(lambda p: p.analyze_layout('tatr') or p).apply(lambda p: p.find('table').extract_table()).apply(lambda t: t[1:]).flatten().to_df(header="first").head()
+```
+
+# rows list-of-lists; wrap in TableResult for convenience
+rows = (
+    pdf.pages
+       .apply(lambda p: p.analyze_layout('tatr') or p)
+       .apply(lambda p: p.find('table').extract_table())
+       .apply(lambda t: t[1:])     # skip header repetition
+       .flatten()
+)
+
+from natural_pdf.tables import TableResult
+df = TableResult(rows).to_df(header="first")
+print(df.head())

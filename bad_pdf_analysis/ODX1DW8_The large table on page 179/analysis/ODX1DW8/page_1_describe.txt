@@ -1,0 +1,25 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 15 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Simplified Arabic,Bold: 11
+    - Helvetica: 2
+    - Simplified Arabic: 1
+    - Arial: 1
+  - **sizes**:
+    - 14.0pt: 7
+    - 24.0pt: 4
+    - 28.0pt: 1
+    - 22.0pt: 1
+    - 18.0pt: 1
+    - 12.0pt: 1
+  - styles: 13 bold
+  - **colors**:
+    - other: 13
+    - black: 2

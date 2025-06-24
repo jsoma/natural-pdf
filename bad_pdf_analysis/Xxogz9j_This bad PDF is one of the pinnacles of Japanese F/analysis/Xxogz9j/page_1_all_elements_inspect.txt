@@ -1,0 +1,8 @@
+## Collection Inspection (2 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 1048 | 424 | 3123 | 3628 | table |
+| 3304 | 426 | 5388 | 3628 | table |

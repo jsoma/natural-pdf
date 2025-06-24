@@ -164,7 +164,7 @@ class FlowElementCollection(MutableSequence[T_FEC]):
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
         default_color: Optional[Union[Tuple, str]] = "orange",  # A distinct color for FEC show
@@ -273,7 +273,7 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                     else getattr(page_obj, "page_number", 1) - 1
                 ),
                 temporary_highlights=temp_highlights_for_page,
-                scale=scale,
+                resolution=resolution,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,
@@ -480,7 +480,7 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
         default_color: Optional[Union[Tuple, str]] = "darkviolet",  # A distinct color for FRC show
@@ -565,7 +565,7 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                     else getattr(page_obj, "page_number", 1) - 1
                 ),
                 temporary_highlights=temp_highlights_for_page,
-                scale=scale,
+                resolution=resolution,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,

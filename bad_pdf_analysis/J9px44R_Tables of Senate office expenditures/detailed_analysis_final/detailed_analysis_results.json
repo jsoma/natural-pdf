@@ -1,0 +1,126 @@
+{
+  "document": "J9px44R_Tables of Senate office expenditures",
+  "total_pages": 2979,
+  "analyzed_pages": [
+    1,
+    1489
+  ],
+  "analysis_date": "2025-06-22T17:16:55.732150",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "423 × 657 points",
+      "tests_performed": {},
+      "text_length": 260,
+      "text_preview": "1\n118 2t dh S C eo ssn ig or ne ss \" SENATE ! DO 1C 1U 8–M 1E 3N T\nR E P O R T\nOFTHE\nSECRETARY OF THE\nSENATE\nFROM\nApril 1, 2024 to September 30, 2024\nPart I\nNOVEMBER13, 2024—Ordered to lie on the tabl...",
+      "character_count": 245,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.29,
+      "standard_table": "2 rows × 1 columns",
+      "line_detection": {
+        "horizontal_lines": 3,
+        "vertical_lines": 2,
+        "total_lines": 5
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 2
+      },
+      "yolo_analysis": {
+        "regions": 6,
+        "processing_time": 0.9835970401763916
+      },
+      "yolo_types": {
+        "table": 1,
+        "table_row": 2,
+        "table_column": 1,
+        "table_cell": 2
+      },
+      "tatr_analysis": {
+        "table_regions": 1,
+        "processing_time": 0.7457337379455566
+      },
+      "selector_large_text": 2,
+      "selector_small_text": 12,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>296.09999999999997]...'. Full selector: '*[width>296.09999999999997]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/J9px44R_Tables of Senate office expenditures/detailed_analysis_final/page_1.png"
+    },
+    "1489": {
+      "page_number": 1489,
+      "dimensions": "657 × 423 points",
+      "tests_performed": {},
+      "text_length": 2983,
+      "text_preview": "DOCUMENT NO. PODA STT EE\nD\nPAYEE NAME OBLIGA DTI AO TN E/ SSERVICE DESCRIPTION AMOUNT ($)\nSTART END\nDKAI20240306 09/06/2024 MIA L FISHER 07/23/2024 07/24/2024 STAFF INCIDENTALS $23.84\nSTAFF PER DIEM $...",
+      "character_count": 2781,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.23,
+      "standard_table": "3 rows × 7 columns",
+      "line_detection": {
+        "horizontal_lines": 3,
+        "vertical_lines": 5,
+        "total_lines": 8
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 8
+      },
+      "yolo_analysis": {
+        "regions": 16,
+        "processing_time": 0.7069411277770996
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 2,
+        "table_column": 4,
+        "table_cell": 8
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.4860999584197998
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 194,
+      "selector_bold_text": 10,
+      "selector_colored_rects": 2,
+      "selector_thin_lines": 2,
+      "potential_text_formatting": 1,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>459.9]...'. Full selector: '*[width>459.9]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/J9px44R_Tables of Senate office expenditures/detailed_analysis_final/page_1489.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "text_formatting",
+      "page": 1489,
+      "severity": "medium",
+      "details": "1 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

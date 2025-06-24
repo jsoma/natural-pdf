@@ -1,0 +1,123 @@
+## Collection Inspection (97 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| TABLE OF CONTENTS  | 180 | 64 | 265 | 71 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+|   | 397 | 81 | 399 | 88 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+|    | 300 | 81 | 303 | 88 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+| VOLUME I   | 303 | 81 | 343 | 88 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   VOLUME II | 355 | 81 | 397 | 88 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   SUMMARY OF TRANSACTIONS BY APPROPRIATION | 23 | 97 | 204 | 104 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|  .................................................... | 204 | 97 | 305 | 104 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| A-1 – A-7  | 310 | 97 | 341 | 104 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| A-1 – A-7  | 366 | 97 | 396 | 104 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   DETAILED AND SUMMARY STATEMENT OF EXPENDITURES | 23 | 113 | 231 | 120 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   | 231 | 113 | 233 | 120 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| EXPENSE ALLOWANCES OF THE VICE PRESIDENT, PRESIDEN... | 53 | 129 | 271 | 136 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   | 53 | 137 | 55 | 143 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 67 | 137 | 69 | 143 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 53 | 137 | 55 | 144 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|  PRO | 55 | 137 | 71 | 144 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|  TEMPORE, MAJORITY AND MINORITY LEADERS,   | 71 | 137 | 245 | 144 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   MAJORITY AND MINORITY WHIPS, CHAIRMEN OF THE   | 53 | 146 | 249 | 152 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   MAJORITY AND MINORITY CONFERENCE COMMITTEES   | 53 | 153 | 254 | 160 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   AND CHAIRMEN OF THE MAJORITY AND MINORITY POLICY... | 53 | 161 | 268 | 168 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   | 53 | 169 | 55 | 175 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 67 | 169 | 69 | 175 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MMITTEES  | 67 | 169 | 107 | 176 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   CO | 53 | 169 | 67 | 176 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 178 | 305 | 184 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-1 – B-33  | 310 | 178 | 343 | 184 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 53 | 192 | 55 | 199 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| REPRESENTATION ALLOWANCES FOR THE MAJORITY AND  | 53 | 193 | 260 | 200 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   | 53 | 201 | 55 | 207 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 67 | 201 | 69 | 207 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   MIN | 53 | 201 | 71 | 208 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| ORITY LEADERS  | 71 | 201 | 130 | 208 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 210 | 305 | 216 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-34 – B-39  | 310 | 210 | 347 | 216 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|   | 53 | 224 | 55 | 231 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SALARIES, OFFICERS AND EMPLOYEES  | 53 | 225 | 190 | 232 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|  COMMITTEE ON APPROPRIATIONS  | 67 | 232 | 182 | 240 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 242 | 305 | 248 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-40 – B-44  | 310 | 242 | 347 | 248 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  CHAPLAIN, OFFICE OF THE  | 67 | 249 | 157 | 256 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 – FY 24/26 ................................. | 77 | 257 | 305 | 264 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-45 – B-52  | 310 | 257 | 347 | 264 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  VICE PRESIDENT HARRIS, OFFICE OF  | 67 | 264 | 189 | 272 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 273 | 305 | 280 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-53 – B-56  | 310 | 273 | 347 | 280 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  PRESIDENT PRO TEMPORE - DEMOCRAT, OFFICE OF  | 67 | 281 | 238 | 288 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 290 | 305 | 296 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-57 – B-59  | 310 | 290 | 347 | 296 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| M  | 67 | 296 | 73 | 304 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| AJORITY LEADER – DEMOCRAT, OFFICE OF  | 73 | 297 | 217 | 304 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024...………………………………………………………………. B-60... | 77 | 305 | 346 | 312 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| M  | 67 | 312 | 73 | 320 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| AJORITY WHIP – DEMOCRAT, OFFICE OF  | 73 | 314 | 207 | 320 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………. B-65 –... | 77 | 322 | 347 | 328 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  CONFERENCE OF THE MAJORITY – DEMOCRAT  | 67 | 328 | 223 | 336 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-68 –... | 77 | 337 | 349 | 344 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  MAJORITY POLICY COMMITTEE – DEMOCRAT  | 67 | 344 | 220 | 352 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-71 –... | 77 | 353 | 349 | 360 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|    CONFERENCE OF THE MAJORITY – DEMOCRAT, SECRETAR... | 63 | 360 | 278 | 368 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-75 –... | 77 | 369 | 345 | 376 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| P RES PRO TEM EMERITUS – REPUBLICAN, OFFICE OF  | 67 | 376 | 242 | 384 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-78 –... | 77 | 385 | 347 | 392 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| M  | 67 | 392 | 73 | 400 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| INORITY LEADER – REPUBLICAN, OFFICE OF  | 73 | 393 | 221 | 400 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-81 –... | 77 | 401 | 347 | 408 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| M  | 67 | 408 | 73 | 416 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| INORITY WHIP – REPUBLICAN, OFFICE OF  | 73 | 410 | 212 | 416 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-85 –... | 77 | 417 | 349 | 424 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  CONFERENCE OF THE MINORITY – REPUBLICAN  | 67 | 424 | 227 | 432 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-88 –... | 77 | 433 | 347 | 440 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  MINORITY POLICY COMMITTEE – REPUBLICAN  | 67 | 440 | 224 | 448 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-91 –... | 77 | 449 | 347 | 456 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  CONFERENCE OF THE MINORITY – REPUBLICAN, SECRETAR... | 67 | 456 | 282 | 464 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-94 –... | 77 | 465 | 347 | 472 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  SECRETARY FOR THE MAJORITY – DEMOCRAT, OFFICE OF  | 67 | 472 | 261 | 480 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-97 –... | 77 | 481 | 347 | 488 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  SECRETARY FOR THE MINORITY – REPUBLICAN, OFFICE O... | 67 | 488 | 265 | 496 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024…………………………………………………………………  B-100 ... | 77 | 497 | 354 | 504 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+|  SERGEANT AT ARMS AND DOORKEEPER, OFFICE OF  | 67 | 505 | 240 | 512 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 77 | 513 | 305 | 520 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-103 – B-128  | 310 | 513 | 354 | 520 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SECRETARY OF THE SENATE, OFFICE OF  | 67 | 521 | 202 | 528 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY X....................................... | 77 | 529 | 305 | 536 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-129 – B-139  | 310 | 529 | 354 | 536 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| EMPLOYEES COMPENSATION FUND (P.L. 113-76)  | 67 | 537 | 226 | 544 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 ............................................. | 77 | 546 | 305 | 552 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-140  | 310 | 546 | 329 | 552 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| PAYMENT TO NEXT OF KIN OF SENATOR  | 53 | 561 | 196 | 568 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| FY X  ............................................... | 77 | 569 | 305 | 576 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-141  | 310 | 569 | 329 | 576 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| (v) | 207 | 590 | 216 | 598 | Century |  | 8 | False | False | native | 1.00 | #000000 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 179 | 64 | 264 | 73 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 72 | 352 | 592 | plain text |
+| 49 | 75 | 351 | 588 | plain text |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 303 | 89 | 339 | 90 | 36 | 1 | #000000 | #000000 | 0 |
+| 358 | 89 | 397 | 90 | 38 | 1 | #000000 | #000000 | 0 |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 206 | 589 | 217 | 597 | abandon |

@@ -1,0 +1,345 @@
+{
+  "pdf_name": "Pd1KBb1.pdf",
+  "pdf_path": "bad_pdf_analysis/Pd1KBb1_the data table _of election results_/Pd1KBb1.pdf",
+  "analysis_timestamp": "2025-06-22T14:30:40.979925",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 842.04,
+        "height": 594.96
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 125 elements\n- **rect**: 33 elements\n- **line**: 26 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Sakkal Majalla: 96\n    - Sakkal Majalla,Bold: 26\n    - Arabic Typesetting: 3\n  - **sizes**:\n    - 16.0pt: 96\n    - 13.0pt: 12\n    - 12.0pt: 4\n    - 22.0pt: 3\n    - 14.0pt: 2\n    - 3.0pt: 2\n    - 20.0pt: 1\n    - 3.5pt: 1\n    - 2.5pt: 1\n    - 5.0pt: 1\n    - 4.0pt: 1\n    - 9.5pt: 1\n  - styles: 26 bold",
+      "extract_text": {
+        "length": 765,
+        "preview": "2014 \u0629\u064a\u0639\u064a\u0634\u0631\u062a\u0644\u0627 \u062a\u0628\u0627\u0627\u062e\u062a\u0646\u0627\u0644\u0627\\n\u0646\u064a\u0646\u062f\u0645 \u0629\u0631\u0626\u0627\u062f \u062c\u0626\u0627\u062a\u0646 \u0641\u0634\u0643 \u0629\u0642\u0631\u0648\\n\u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u0648\u0645\u062c\u0645 \u0629\u064a\u062f\u0645\u062a\u0639\u0644\u0645\u0627 \u0628\u0633\u062d \u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627 \u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u064a\u0632\u0648\u062a\\n\u0627\u0647 \u0628\\n\u0629\u0631\\n\u062d \u0626\u0631 \u0627\u062f\u0635 \u0644\u0627\u0644\u0645 \u0628\u0627\\n\u0646\u064a\u0646\u062f\u0645 \u0646\u064a\u0646\u062f\u0645\\n\u0641\u0648\u0644\u062e\u0645 \u064a\u062f\u064a\u0633 \u0633\u064a\u062c\u0631\u062c \u0646\u0648\u062f\u064a\u0645 \u0629\u0628\u0631\u062c\\n\u0629\u0645\u0648\u062d \u0629\u0628\u0631\u062c\\n\u0645\u064a\u062c\u0623 \u0629\u0628\u0631\u062c \u0634\u0627\u062f\u062e \u064a\u0646\u0628 \u0646\u0627\u062f\u0631\u0642 \u0646\u0628\\n\u0629\u062d\u0634\u0631\u062a\u0644\u0645\u0627 \u062a\u0627\u0645\u0626\u0627\u0642\u0644\u0627\\n\u0627\u0644\u062a\u0631\u062a\u064a\u0628\\n\u0629\u064a\u0628\u0627\u062e\u062a\u0646\u0644\u0627\u0627 \u0629\u064a\u0644\u0627\u0645\u0634\u0644\u0627 \u0629\u064a\u0628\u0648\u0646\u062c\u0644\u0627 \u0642\u0648\u0633\u0644\u0627\\n426 63 43 56 58 49 55 33 32 37",
+        "full_text": "2014 \u0629\u064a\u0639\u064a\u0634\u0631\u062a\u0644\u0627 \u062a\u0628\u0627\u0627\u062e\u062a\u0646\u0627\u0644\u0627\n\u0646\u064a\u0646\u062f\u0645 \u0629\u0631\u0626\u0627\u062f \u062c\u0626\u0627\u062a\u0646 \u0641\u0634\u0643 \u0629\u0642\u0631\u0648\n\u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u0648\u0645\u062c\u0645 \u0629\u064a\u062f\u0645\u062a\u0639\u0644\u0645\u0627 \u0628\u0633\u062d \u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627 \u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u064a\u0632\u0648\u062a\n\u0627\u0647 \u0628\n\u0629\u0631\n\u062d \u0626\u0631 \u0627\u062f\u0635 \u0644\u0627\u0644\u0645 \u0628\u0627\n\u0646\u064a\u0646\u062f\u0645 \u0646\u064a\u0646\u062f\u0645\n\u0641\u0648\u0644\u062e\u0645 \u064a\u062f\u064a\u0633 \u0633\u064a\u062c\u0631\u062c \u0646\u0648\u062f\u064a\u0645 \u0629\u0628\u0631\u062c\n\u0629\u0645\u0648\u062d \u0629\u0628\u0631\u062c\n\u0645\u064a\u062c\u0623 \u0629\u0628\u0631\u062c \u0634\u0627\u062f\u062e \u064a\u0646\u0628 \u0646\u0627\u062f\u0631\u0642 \u0646\u0628\n\u0629\u062d\u0634\u0631\u062a\u0644\u0645\u0627 \u062a\u0627\u0645\u0626\u0627\u0642\u0644\u0627\n\u0627\u0644\u062a\u0631\u062a\u064a\u0628\n\u0629\u064a\u0628\u0627\u062e\u062a\u0646\u0644\u0627\u0627 \u0629\u064a\u0644\u0627\u0645\u0634\u0644\u0627 \u0629\u064a\u0628\u0648\u0646\u062c\u0644\u0627 \u0642\u0648\u0633\u0644\u0627\n426 63 43 56 58 49 55 33 32 37 \u0628\u0639\u0634\u0644\u0627 \u0629\u0637\u0644\u0633 \u0642\u064a\u0642\u062d\u062a \u0644\u062c\u0623 \u0646\u0645 \u0629\u0645\u0626\u0627\u0642\n1\n3 001 419 806 197 289 217 616 59 118 280 \u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0641\u0644\u0627\u062d\u062a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642\n2\n387 50 60 42 64 28 41 20 42 40 \u0629\u064a\u0645\u0646\u062a\u0644\u0627\u0648 \u0629\u0644\u0627\u062f\u0639\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642\n3\n1 193 135 87 43 170 167 327 39 181 44 \u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627 \u0628\u0632\u062d\u0644\u0627 \u0629\u0645\u0626\u0627\u0642\n4\n430 117 62 31 43 28 42 23 38 46 \u062f\u063a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642\n5\n3 066 93 127 123 1 422 322 640 68 36 235 \u0633\u0646\u0648\u062a \u0642\u0627\u0641\u0622 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642\n6\n203 14 15 22 33 23 30 6 7 53 \u0621\u0627\u0641\u0648\u0644\u0627\u0648 \u062d\u0627\u062a\u0641\u0646\u0644\u0627\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642\n7\n192 14 13 14 20 18 21 7 7 78 \u064a \u0633\u0646\u0648\u062a\u0644\u0627 \u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0628\u0627\u0628\u0634\u0644\u0627 \u062f\u0627\u062d\u062a\u0627 \u0629\u0645\u0626\u0627\u0642\n8"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 12,
+        "columns": 12,
+        "data": [
+          [
+            "2014 \u0629\u064a\u0639\u064a\u0634\u0631\u062a\u0644\u0627 \u062a\u0628\u0627\u0627\u062e\u062a\u0646\u0627\u0644\u0627",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "\u0646\u064a\u0646\u062f\u0645 \u0629\u0631\u0626\u0627\u062f \u062c\u0626\u0627\u062a\u0646 \u0641\u0634\u0643 \u0629\u0642\u0631\u0648",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "\u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u0648\u0645\u062c\u0645\n\u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627\n\u0629\u0631\u0626\u0627\u062f\u0644\u0627\u0628\n\u0629\u064a\u0628\u0627\u062e\u062a\u0646\u0644\u0627\u0627",
+            "\u0629\u064a\u062f\u0645\u062a\u0639\u0644\u0645\u0627 \u0628\u0633\u062d \u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627 \u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u064a\u0632\u0648\u062a",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\u0629\u062d\u0634\u0631\u062a\u0644\u0645\u0627 \u062a\u0627\u0645\u0626\u0627\u0642\u0644\u0627",
+            "\u0627\n\u0644\n\u062a\u0631\n\u062a\n\u064a\n\u0628"
+          ],
+          [
+            null,
+            "\u0646\u064a\u0646\u062f\u0645\n\u0629\u064a\u0644\u0627\u0645\u0634\u0644\u0627",
+            "\u0646\u064a\u0646\u062f\u0645\n\u0629\u064a\u0628\u0648\u0646\u062c\u0644\u0627",
+            "\u0641\u0648\u0644\u062e\u0645 \u064a\u062f\u064a\u0633",
+            "\u0633\u064a\u062c\u0631\u062c",
+            "\u0646\u0648\u062f\u064a\u0645 \u0629\u0628\u0631\u062c",
+            "\u0629\u0645\u0648\u062d \u0629\u0628\u0631\u062c\n\u0642\u0648\u0633\u0644\u0627",
+            "\u0645\u064a\u062c\u0623 \u0629\u0628\u0631\u062c",
+            "\u0634\u0627\u062f\u062e \u064a\u0646\u0628",
+            "\u0646\u0627\u062f\u0631\u0642 \u0646\u0628",
+            null,
+            null
+          ],
+          [
+            "426",
+            "63",
+            "43",
+            "56",
+            "58",
+            "49",
+            "55",
+            "33",
+            "32",
+            "37",
+            "\u0628\u0639\u0634\u0644\u0627 \u0629\u0637\u0644\u0633 \u0642\u064a\u0642\u062d\u062a \u0644\u062c\u0623 \u0646\u0645 \u0629\u0645\u0626\u0627\u0642",
+            "1"
+          ],
+          [
+            "3 001",
+            "419",
+            "806",
+            "197",
+            "289",
+            "217",
+            "616",
+            "59",
+            "118",
+            "280",
+            "\u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0641\u0644\u0627\u062d\u062a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642",
+            "2"
+          ],
+          [
+            "387",
+            "50",
+            "60",
+            "42",
+            "64",
+            "28",
+            "41",
+            "20",
+            "42",
+            "40",
+            "\u0629\u064a\u0645\u0646\u062a\u0644\u0627\u0648 \u0629\u0644\u0627\u062f\u0639\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642",
+            "3"
+          ],
+          [
+            "1 193",
+            "135",
+            "87",
+            "43",
+            "170",
+            "167",
+            "327",
+            "39",
+            "181",
+            "44",
+            "\u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627 \u0628\u0632\u062d\u0644\u0627 \u0629\u0645\u0626\u0627\u0642",
+            "4"
+          ],
+          [
+            "430",
+            "117",
+            "62",
+            "31",
+            "43",
+            "28",
+            "42",
+            "23",
+            "38",
+            "46",
+            "\u062f\u063a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642",
+            "5"
+          ],
+          [
+            "3 066",
+            "93",
+            "127",
+            "123",
+            "1 422",
+            "322",
+            "640",
+            "68",
+            "36",
+            "235",
+            "\u0633\u0646\u0648\u062a \u0642\u0627\u0641\u0622 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642",
+            "6"
+          ],
+          [
+            "203",
+            "14",
+            "15",
+            "22",
+            "33",
+            "23",
+            "30",
+            "6",
+            "7",
+            "53",
+            "\u0621\u0627\u0641\u0648\u0644\u0627\u0648 \u062d\u0627\u062a\u0641\u0646\u0644\u0627\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642",
+            "7"
+          ],
+          [
+            "192",
+            "14",
+            "13",
+            "14",
+            "20",
+            "18",
+            "21",
+            "7",
+            "7",
+            "78",
+            "\u064a \u0633\u0646\u0648\u062a\u0644\u0627 \u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0628\u0627\u0628\u0634\u0644\u0627 \u062f\u0627\u062d\u062a\u0627 \u0629\u0645\u0626\u0627\u0642",
+            "8"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 1,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              3.825995340415167,
+              49.91906437259963,
+              775.8892214433663,
+              520.5747422367385
+            ],
+            "confidence": 0.8943405151367188
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 270,
+        "yolo_count": 1,
+        "tatr_count": 269,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (270 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 4 | 50 | 776 | 521 | table |\n| 10 | 107 | 772 | 506 | table |\n| 11 | 120 | 769 | 503 | table |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 11 | 119 | 769 | 151 | table row |\n| 11 | 151 | 769 | 187 | table row |\n| 11 | 188 | 769 | 228 | table row |\n| 11 | 227 | 769 | 268 | table row |\n| 10 | 268 | 769 | 309 | ta..."
+      },
+      "elements_sample": {
+        "total_count": 1096,
+        "full_inspect": "## Collection Inspection (454 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 4 | 50 | 776 | 521 | table |\n| 10 | 107 | 772 | 506 | table |\n| 11 | 120 | 769 | 503 | table |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 7 | 54 | 8 | 518 | 1 | 464 | #000000 | #000000 | 0 |\n| 8 | 54 | 778 | 55 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 54 | 777 | 86 | 770 | 31 | #000000 | #c0504d | 0 |\n| 777 | 55 | 778 | 518 | 1 | 464 | #000000 | #000000 | 0 |\n| 8 | 85 | 778 | 86 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 86 | 777 | 116 | 770 | 30 | #000000 | #ebf0de | 0 |\n| 8 | 115 | 778 | 116 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 115 | 777 | 189 | 770 | 73 | #000000 | #ffc000 | 0 |\n| 71 | 116 | 72 | 518 | 1 | 403 | #000000 | #000000 | 0 |\n| 551 | 116 | 551 | 518 | 1 | 403 | #000000 | #000000 | 0 |\n| 746 | 116 | 747 | 518 | 1 | 403 | #000000 | #000000 | 0 |\n| 72 | 149 | 551 | 150 | 479 | 1 | #000000 | #000000 | 0 |\n| 131 | 150 | 132 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 192 | 150 | 193 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 252 | 150 | 253 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 299 | 150 | 300 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 352 | 150 | 353 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 408 | 150 | 409 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 455 | 150 | 456 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 503 | 150 | 504 | 518 | 1 | 368 | #000000 | #000000 | 0 |\n| 8 | 188 | 778 | 189 | 770 | 1 | #000000 | #000000 | 0 |\n| 8 | 229 | 778 | 230 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 230 | 777 | 271 | 770 | 41 | #000000 | #e4fc8d | 0 |\n| 8 | 271 | 778 | 271 | 770 | 1 | #000000 | #000000 | 0 |\n| 8 | 312 | 778 | 313 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 312 | 777 | 353 | 770 | 41 | #000000 | #e4fc8d | 0 |\n| 8 | 353 | 778 | 354 | 770 | 1 | #000000 | #000000 | 0 |\n| 8 | 394 | 778 | 395 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 395 | 777 | 436 | 770 | 41 | #000000 | #e4fc8d | 0 |\n| 8 | 435 | 778 | 436 | 770 | 1 | #000000 | #000000 | 0 |\n| 8 | 476 | 778 | 477 | 770 | 1 | #000000 | #000000 | 0 |\n| 7 | 477 | 777 | 518 | 770 | 41 | #000000 | #e4fc8d | 0 |\n| 8 | 518 | 778 | 518 | 770 | 1 | #000000 | #000000 | 0 |\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 7 | 54 | 7 | 518 | 0 | False | True |\n| 8 | 54 | 778 | 54 | 0 | True | False |\n| 777 | 55 | 777 | 518 | 0 | False | True |\n| 8 | 85 | 778 | 85 | 0 | True | False |\n| 8 | 115 | 778 | 115 | 0 | True | False |\n| 71 | 116 | 71 | 518 | 0 | False | True |\n| 551 | 116 | 551 | 518 | 0 | False | True |\n| 746 | 116 | 746 | 518 | 0 | False | True |\n| 72 | 149 | 551 | 149 | 0 | True | False |\n| 131 | 150 | 131 | 518 | 0 | False | True |\n| 192 | 150 | 192 | 518 | 0 | False | True |\n| 252 | 150 | 252 | 518 | 0 | False | True |\n| 299 | 150 | 299 | 518 | 0 | False | True |\n| 352 | 150 | 352 | 518 | 0 | False | True |\n| 408 | 150 | 408 | 518 | 0 | False | True |\n| 455 | 150 | 455 | 518 | 0 | False | True |\n| 503 | 150 | 503 | 518 | 0 | False | True |\n| 8 | 188 | 778 | 188 | 0 | True | False |\n| 8 | 229 | 778 | 229 | 0 | True | False |\n| 8 | 271 | 778 | 271 | 0 | True | False |\n| 8 | 312 | 778 | 312 | 0 | True | False |\n| 8 | 353 | 778 | 353 | 0 | True | False |\n| 8 | 394 | 778 | 394 | 0 | True | False |\n| 8 | 435 | 778 | 435 | 0 | True | False |\n| 8 | 476 | 778 | 476 | 0 | True | False |\n| 8 | 518 | 778 | 518 | 0 | True | False |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| \u0644 | 398 | 58 | 401 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |\n|  2014 \u0629\u064a\u0639\u064a\u0634\u0631\u062a | 322 | 58 | 398 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |\n| \u0627 \u062a\u0628\u0627\u0627\u062e\u062a\u0646\u0627\u0644\u0627  | 401 | 58 | 464 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |\n| \u0646\u064a\u0646\u062f\u0645 \u0629\u0631\u0626\u0627\u062f \u062c\u0626\u0627\u062a\u0646 \u0641\u0634\u0643 \u0629\u0642\u0631\u0648 | 306 | 89 | 480 | 110 | Sakkal Majalla,Bold | ABCDEE | 20 | True | False | native | 1.00 | #000000 |\n|  \u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u0648\u0645\u062c\u0645 | 9 | 121 | 70 | 133 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |\n| \u0629\u064a\u062f\u0645\u062a\u0639\u0644\u0645\u0627 \u0628\u0633\u062d \u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627  \u062a\u0627\u0648\u0635\u0644\u0623\u0627 \u0639\u064a\u0632\u0648\u062a | 222 | 124 | 401 | 139 | Sakkal Majalla,Bold | ABCDEE | 14 | True | False | native | 1.00 | #000000 |\n| \u0627 | 756 | 137 | 770 | 140 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |\n|  \u0627\u0647\u0628 \u062d\u0631\u0635\u0644\u0645\u0627  | 20 | 138 | 61 | 150 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |\n| \u0644 | 756 | 140 | 770 | 144 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |\n| \u062a | 756 | 144 | 770 | 147 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |\n| \u0629\u062d\u0634\u0631\u062a\u0644\u0645\u0627 \u062a\u0627\u0645\u0626\u0627\u0642\u0644\u0627 | 611 | 144 | 686 | 158 | Sakkal Majalla,Bold | ABCDEE | 14 | True | False | native | 1.00 | #000000 |\n| \u0631 | 756 | 147 | 770 | 152 | Sakkal Majalla,Bold | ABCDEE | 5 | True | False | native | 1.00 | #000000 |\n| \u062a | 756 | 150 | 770 | 153 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |\n| \u064a | 756 | 153 | 770 | 157 | Sakkal Majalla,Bold | ABCDEE | 4 | True | False | native | 1.00 | #000000 |\n|  \u0629\u0631\u0626\u0627\u062f\u0644\u0627\u0628 | 25 | 154 | 55 | 166 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |\n|  \u0646\u064a\u0646\u062f\u0645 | 89 | 154 | 115 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n|  \u0646\u064a\u0646\u062f\u0645 | 150 | 154 | 175 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n|  \u0629\u0645\u0648\u062d \u0629\u0628\u0631\u062c | 358 | 154 | 404 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0628 | 756 | 157 | 770 | 167 | Sakkal Majalla,Bold | ABCDEE | 9 | True | False | native | 1.00 | #000000 |\n| \u0646\u0648\u062f\u064a\u0645 \u0629\u0628\u0631\u062c | 303 | 162 | 350 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0641\u0648\u0644\u062e\u0645 \u064a\u062f\u064a\u0633 | 195 | 163 | 250 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0633\u064a\u062c\u0631\u062c | 260 | 163 | 292 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0645\u064a\u062c\u0623 \u0629\u0628\u0631\u062c | 412 | 163 | 452 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0634\u0627\u062f\u062e \u064a\u0646\u0628 | 460 | 163 | 499 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0646\u0627\u062f\u0631\u0642 \u0646\u0628 | 510 | 163 | 545 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0629\u064a\u0628\u0627\u062e\u062a\u0646\u0644\u0627\u0627 | 22 | 170 | 57 | 182 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |\n| \u0642\u0648\u0633\u0644\u0627 | 368 | 170 | 394 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0629\u064a\u0644\u0627\u0645\u0634\u0644\u0627 | 84 | 171 | 119 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0629\u064a\u0628\u0648\u0646\u062c\u0644\u0627 | 145 | 171 | 178 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |\n| \u0628\u0639\u0634\u0644\u0627 \u0629\u0637\u0644\u0633 \u0642\u064a\u0642\u062d\u062a \u0644\u062c\u0623 \u0646\u0645 \u0629\u0645\u0626\u0627\u0642 | 566 | 201 | 732 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 426 | 30 | 201 | 49 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 63 | 95 | 201 | 108 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 43 | 156 | 201 | 168 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 56 | 216 | 201 | 229 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 58 | 270 | 201 | 282 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 49 | 320 | 201 | 333 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 55 | 374 | 201 | 387 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 33 | 425 | 201 | 438 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 32 | 473 | 201 | 486 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 37 | 521 | 201 | 534 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 1 | 759 | 211 | 766 | 227 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0641\u0644\u0627\u062d\u062a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642 | 575 | 242 | 723 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 3 001 | 25 | 242 | 54 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 419 | 92 | 242 | 111 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 806 | 152 | 242 | 172 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 197 | 213 | 242 | 232 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 289 | 266 | 242 | 286 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 217 | 317 | 242 | 336 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 616 | 371 | 242 | 390 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 59 | 425 | 242 | 438 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 118 | 470 | 242 | 489 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 280 | 518 | 242 | 537 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 2 | 759 | 253 | 766 | 269 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u0629\u064a\u0645\u0646\u062a\u0644\u0627\u0648 \u0629\u0644\u0627\u062f\u0639\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642 | 585 | 283 | 712 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 387 | 30 | 283 | 49 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 50 | 95 | 283 | 108 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 60 | 156 | 283 | 168 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 42 | 216 | 283 | 229 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 64 | 270 | 283 | 282 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 28 | 320 | 283 | 333 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 41 | 374 | 283 | 387 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 20 | 425 | 283 | 438 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 42 | 473 | 283 | 486 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 40 | 521 | 283 | 534 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 3 | 759 | 294 | 766 | 310 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627 \u0628\u0632\u062d\u0644\u0627 \u0629\u0645\u0626\u0627\u0642 | 596 | 324 | 702 | 340 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 1 193 | 25 | 325 | 54 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 135 | 92 | 325 | 111 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 87 | 156 | 325 | 168 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 43 | 216 | 325 | 229 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 170 | 266 | 325 | 286 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 167 | 317 | 325 | 336 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 327 | 371 | 325 | 390 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 39 | 425 | 325 | 438 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 181 | 470 | 325 | 489 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 44 | 521 | 325 | 534 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 4 | 759 | 335 | 766 | 351 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u062f\u063a\u0644\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642 | 612 | 365 | 686 | 381 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 430 | 30 | 366 | 49 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 117 | 92 | 366 | 111 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 62 | 156 | 366 | 168 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 31 | 216 | 366 | 229 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 43 | 270 | 366 | 282 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 28 | 320 | 366 | 333 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 42 | 374 | 366 | 387 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 23 | 425 | 366 | 438 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 38 | 473 | 366 | 486 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 46 | 521 | 366 | 534 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 5 | 759 | 376 | 766 | 392 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u0633\u0646\u0648\u062a \u0642\u0627\u0641\u0622 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642 | 597 | 406 | 701 | 422 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 3 066 | 25 | 407 | 54 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 93 | 95 | 407 | 108 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 127 | 152 | 407 | 172 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 123 | 213 | 407 | 232 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 1 422 | 262 | 407 | 290 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 322 | 317 | 407 | 336 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 640 | 371 | 407 | 390 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 68 | 425 | 407 | 438 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 36 | 473 | 407 | 486 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 235 | 518 | 407 | 537 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 6 | 759 | 417 | 766 | 433 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u0621\u0627\u0641\u0648\u0644\u0627\u0648 \u062d\u0627\u062a\u0641\u0646\u0644\u0627\u0627 \u0628\u0632\u062d \u0629\u0645\u0626\u0627\u0642 | 587 | 448 | 711 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 203 | 30 | 448 | 49 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 14 | 95 | 448 | 108 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 15 | 156 | 448 | 168 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 22 | 216 | 448 | 229 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 33 | 270 | 448 | 282 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 23 | 320 | 448 | 333 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 30 | 374 | 448 | 387 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 6 | 429 | 448 | 435 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 7 | 476 | 448 | 483 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 53 | 521 | 448 | 534 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 7 | 759 | 458 | 766 | 474 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| \u064a \u0633\u0646\u0648\u062a\u0644\u0627 \u064a\u0637\u0627\u0631\u0642\u0645\u064a\u062f\u0644\u0627 \u0628\u0627\u0628\u0634\u0644\u0627 \u062f\u0627\u062d\u062a\u0627 \u0629\u0645\u0626\u0627\u0642 | 557 | 489 | 741 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 192 | 30 | 489 | 49 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 14 | 95 | 489 | 108 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 13 | 156 | 489 | 168 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 14 | 216 | 489 | 229 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 20 | 270 | 489 | 282 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 18 | 320 | 489 | 333 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 21 | 374 | 489 | 387 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 7 | 429 | 489 | 435 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 7 | 476 | 489 | 483 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 78 | 521 | 489 | 534 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n| 8 | 759 | 500 | 766 | 516 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 11 | 119 | 769 | 151 | table row |\n| 11 | 151 | 769 | 187 | table row |\n| 11 | 188 | 769 | 228 | table row |\n| 11 | 227 | 769 | 268 | table row |\n| 10 | 268 | 769 | 309 | table row |\n| 11 | 310 | 769 | 352 | table row |\n| 11 | 352 | 769 | 394 | table row |\n| 11 | 394 | 769 | 434 | table row |\n| 11 | 434 | 769 | 476 | table row |\n| 11 | 476 | 769 | 503 | table row |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 11 | 120 | 769 | 187 | table column header |\n\n### Table Spanning Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 11 | 120 | 73 | 187 | table spanning cell |\n| 558 | 120 | 740 | 187 | table spanning cell |\n| 747 | 120 | 769 | 187 | table spanning cell |\n| 71 | 120 | 558 | 149 | table spanning cell |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 748 | 120 | 769 | 503 | table column |\n| 455 | 120 | 505 | 503 | table column |\n| 11 | 120 | 73 | 503 | table column |\n| 503 | 120 | 555 | 503 | table column |\n| 252 | 120 | 298 | 503 | table column |\n| 74 | 120 | 130 | 503 | table column |\n| 186 | 120 | 252 | 503 | table column |\n| 407 | 120 | 456 | 503 | table column |\n| 130 | 120 | 186 | 503 | table column |\n| 298 | 121 | 353 | 503 | table column |\n| 354 | 121 | 406 | 503 | table column |\n| 555 | 121 | 749 | 503 | table column |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 748 | 120 | 769 | 151 | table-cell |\n| 748 | 120 | 769 | 151 | table-cell |\n| 455 | 120 | 505 | 151 | table-cell |\n| 455 | 120 | 505 | 151 | table-cell |\n| 11 | 120 | 73 | 151 | table-cell |\n| 11 | 120 | 73 | 151 | table-cell |\n| 503 | 120 | 555 | 151 | table-cell |\n| 503 | 120 | 555 | 151 | table-cell |\n| 252 | 120 | 298 | 151 | table-cell |\n| 252 | 120 | 298 | 151 | table-cell |\n| 74 | 120 | 130 | 151 | table-cell |\n| 74 | 120 | 130 | 151 | table-cell |\n| 186 | 120 | 252 | 151 | table-cell |\n| 186 | 120 | 252 | 151 | table-cell |\n| 407 | 120 | 456 | 151 | table-cell |\n| 407 | 120 | 456 | 151 | table-cell |\n| 130 | 120 | 186 | 151 | table-cell |\n| 130 | 120 | 186 | 151 | table-cell |\n| 298 | 121 | 353 | 151 | table-cell |\n| 298 | 121 | 353 | 151 | table-cell |\n| 354 | 121 | 406 | 151 | table-cell |\n| 354 | 121 | 406 | 151 | table-cell |\n| 555 | 121 | 749 | 151 | table-cell |\n| 555 | 121 | 749 | 151 | table-cell |\n| 11 | 151 | 73 | 187 | table-cell |\n| 11 | 151 | 73 | 187 | table-cell |\n| 74 | 151 | 130 | 187 | table-cell |\n| 74 | 151 | 130 | 187 | table-cell |\n| 130 | 151 | 186 | 187 | table-cell |\n| 130 | 151 | 186 | 187 | table-cell |\n| 186 | 151 | 252 | 187 | table-cell |\n| 186 | 151 | 252 | 187 | table-cell |\n| 252 | 151 | 298 | 187 | table-cell |\n| 252 | 151 | 298 | 187 | table-cell |\n| 298 | 151 | 353 | 187 | table-cell |\n| 298 | 151 | 353 | 187 | table-cell |\n| 354 | 151 | 406 | 187 | table-cell |\n| 354 | 151 | 406 | 187 | table-cell |\n| 407 | 151 | 456 | 187 | table-cell |\n| 407 | 151 | 456 | 187 | table-cell |\n| 455 | 151 | 505 | 187 | table-cell |\n| 455 | 151 | 505 | 187 | table-cell |\n| 503 | 151 | 555 | 187 | table-cell |\n| 503 | 151 | 555 | 187 | table-cell |\n| 555 | 151 | 749 | 187 | table-cell |\n| 555 | 151 | 749 | 187 | table-cell |\n| 748 | 151 | 769 | 187 | table-cell |\n| 748 | 151 | 769 | 187 | table-cell |\n| 11 | 188 | 73 | 228 | table-cell |\n| 11 | 188 | 73 | 228 | table-cell |\n| 74 | 188 | 130 | 228 | table-cell |\n| 74 | 188 | 130 | 228 | table-cell |\n| 130 | 188 | 186 | 228 | table-cell |\n| 130 | 188 | 186 | 228 | table-cell |\n| 186 | 188 | 252 | 228 | table-cell |\n| 186 | 188 | 252 | 228 | table-cell |\n| 252 | 188 | 298 | 228 | table-cell |\n| 252 | 188 | 298 | 228 | table-cell |\n| 298 | 188 | 353 | 228 | table-cell |\n| 298 | 188 | 353 | 228 | table-cell |\n| 354 | 188 | 406 | 228 | table-cell |\n| 354 | 188 | 406 | 228 | table-cell |\n| 407 | 188 | 456 | 228 | table-cell |\n| 407 | 188 | 456 | 228 | table-cell |\n| 455 | 188 | 505 | 228 | table-cell |\n| 455 | 188 | 505 | 228 | table-cell |\n| 503 | 188 | 555 | 228 | table-cell |\n| 503 | 188 | 555 | 228 | table-cell |\n| 555 | 188 | 749 | 228 | table-cell |\n| 555 | 188 | 749 | 228 | table-cell |\n| 748 | 188 | 769 | 228 | table-cell |\n| 748 | 188 | 769 | 228 | table-cell |\n| 11 | 227 | 73 | 268 | table-cell |\n| 11 | 227 | 73 | 268 | table-cell |\n| 74 | 227 | 130 | 268 | table-cell |\n| 74 | 227 | 130 | 268 | table-cell |\n| 130 | 227 | 186 | 268 | table-cell |\n| 130 | 227 | 186 | 268 | table-cell |\n| 186 | 227 | 252 | 268 | table-cell |\n| 186 | 227 | 252 | 268 | table-cell |\n| 252 | 227 | 298 | 268 | table-cell |\n| 252 | 227 | 298 | 268 | table-cell |\n| 298 | 227 | 353 | 268 | table-cell |\n| 298 | 227 | 353 | 268 | table-cell |\n| 354 | 227 | 406 | 268 | table-cell |\n| 354 | 227 | 406 | 268 | table-cell |\n| 407 | 227 | 456 | 268 | table-cell |\n| 407 | 227 | 456 | 268 | table-cell |\n| 455 | 227 | 505 | 268 | table-cell |\n| 455 | 227 | 505 | 268 | table-cell |\n| 503 | 227 | 555 | 268 | table-cell |\n| 503 | 227 | 555 | 268 | table-cell |\n| 555 | 227 | 749 | 268 | table-cell |\n| 555 | 227 | 749 | 268 | table-cell |\n| 748 | 227 | 769 | 268 | table-cell |\n| 748 | 227 | 769 | 268 | table-cell |\n| 11 | 268 | 73 | 309 | table-cell |\n| 11 | 268 | 73 | 309 | table-cell |\n| 74 | 268 | 130 | 309 | table-cell |\n| 74 | 268 | 130 | 309 | table-cell |\n| 130 | 268 | 186 | 309 | table-cell |\n| 130 | 268 | 186 | 309 | table-cell |\n| 186 | 268 | 252 | 309 | table-cell |\n| 186 | 268 | 252 | 309 | table-cell |\n| 252 | 268 | 298 | 309 | table-cell |\n| 252 | 268 | 298 | 309 | table-cell |\n| 298 | 268 | 353 | 309 | table-cell |\n| 298 | 268 | 353 | 309 | table-cell |\n| 354 | 268 | 406 | 309 | table-cell |\n| 354 | 268 | 406 | 309 | table-cell |\n| 407 | 268 | 456 | 309 | table-cell |\n| 407 | 268 | 456 | 309 | table-cell |\n| 455 | 268 | 505 | 309 | table-cell |\n| 455 | 268 | 505 | 309 | table-cell |\n| 503 | 268 | 555 | 309 | table-cell |\n| 503 | 268 | 555 | 309 | table-cell |\n| 555 | 268 | 749 | 309 | table-cell |\n| 555 | 268 | 749 | 309 | table-cell |\n| 748 | 268 | 769 | 309 | table-cell |\n| 748 | 268 | 769 | 309 | table-cell |\n| 11 | 310 | 73 | 352 | table-cell |\n| 11 | 310 | 73 | 352 | table-cell |\n| 74 | 310 | 130 | 352 | table-cell |\n| 74 | 310 | 130 | 352 | table-cell |\n| 130 | 310 | 186 | 352 | table-cell |\n| 130 | 310 | 186 | 352 | table-cell |\n| 186 | 310 | 252 | 352 | table-cell |\n| 186 | 310 | 252 | 352 | table-cell |\n| 252 | 310 | 298 | 352 | table-cell |\n| 252 | 310 | 298 | 352 | table-cell |\n| 298 | 310 | 353 | 352 | table-cell |\n| 298 | 310 | 353 | 352 | table-cell |\n| 354 | 310 | 406 | 352 | table-cell |\n| 354 | 310 | 406 | 352 | table-cell |\n| 407 | 310 | 456 | 352 | table-cell |\n| 407 | 310 | 456 | 352 | table-cell |\n| 455 | 310 | 505 | 352 | table-cell |\n| 455 | 310 | 505 | 352 | table-cell |\n| 503 | 310 | 555 | 352 | table-cell |\n| 503 | 310 | 555 | 352 | table-cell |\n| 555 | 310 | 749 | 352 | table-cell |\n| 555 | 310 | 749 | 352 | table-cell |\n| 748 | 310 | 769 | 352 | table-cell |\n| 748 | 310 | 769 | 352 | table-cell |\n| 11 | 352 | 73 | 394 | table-cell |\n| 11 | 352 | 73 | 394 | table-cell |\n| 74 | 352 | 130 | 394 | table-cell |\n| 74 | 352 | 130 | 394 | table-cell |\n| 130 | 352 | 186 | 394 | table-cell |\n| 130 | 352 | 186 | 394 | table-cell |\n| 186 | 352 | 252 | 394 | table-cell |\n| 186 | 352 | 252 | 394 | table-cell |\n| 252 | 352 | 298 | 394 | table-cell |\n| 252 | 352 | 298 | 394 | table-cell |\n| 298 | 352 | 353 | 394 | table-cell |\n| 298 | 352 | 353 | 394 | table-cell |\n| 354 | 352 | 406 | 394 | table-cell |\n| 354 | 352 | 406 | 394 | table-cell |\n| 407 | 352 | 456 | 394 | table-cell |\n| 407 | 352 | 456 | 394 | table-cell |\n| 455 | 352 | 505 | 394 | table-cell |\n| 455 | 352 | 505 | 394 | table-cell |\n| 503 | 352 | 555 | 394 | table-cell |\n| 503 | 352 | 555 | 394 | table-cell |\n| 555 | 352 | 749 | 394 | table-cell |\n| 555 | 352 | 749 | 394 | table-cell |\n| 748 | 352 | 769 | 394 | table-cell |\n| 748 | 352 | 769 | 394 | table-cell |\n| 11 | 394 | 73 | 434 | table-cell |\n| 11 | 394 | 73 | 434 | table-cell |\n| 74 | 394 | 130 | 434 | table-cell |\n| 74 | 394 | 130 | 434 | table-cell |\n| 130 | 394 | 186 | 434 | table-cell |\n| 130 | 394 | 186 | 434 | table-cell |\n| 186 | 394 | 252 | 434 | table-cell |\n| 186 | 394 | 252 | 434 | table-cell |\n| 252 | 394 | 298 | 434 | table-cell |\n| 252 | 394 | 298 | 434 | table-cell |\n| 298 | 394 | 353 | 434 | table-cell |\n| 298 | 394 | 353 | 434 | table-cell |\n| 354 | 394 | 406 | 434 | table-cell |\n| 354 | 394 | 406 | 434 | table-cell |\n| 407 | 394 | 456 | 434 | table-cell |\n| 407 | 394 | 456 | 434 | table-cell |\n| 455 | 394 | 505 | 434 | table-cell |\n| 455 | 394 | 505 | 434 | table-cell |\n| 503 | 394 | 555 | 434 | table-cell |\n| 503 | 394 | 555 | 434 | table-cell |\n| 555 | 394 | 749 | 434 | table-cell |\n| 555 | 394 | 749 | 434 | table-cell |\n| 748 | 394 | 769 | 434 | table-cell |\n| 748 | 394 | 769 | 434 | table-cell |\n| 11 | 434 | 73 | 476 | table-cell |\n| 11 | 434 | 73 | 476 | table-cell |\n| 74 | 434 | 130 | 476 | table-cell |\n| 74 | 434 | 130 | 476 | table-cell |\n| 130 | 434 | 186 | 476 | table-cell |\n| 130 | 434 | 186 | 476 | table-cell |\n| 186 | 434 | 252 | 476 | table-cell |\n| 186 | 434 | 252 | 476 | table-cell |\n| 252 | 434 | 298 | 476 | table-cell |\n| 252 | 434 | 298 | 476 | table-cell |\n| 298 | 434 | 353 | 476 | table-cell |\n| 298 | 434 | 353 | 476 | table-cell |\n| 354 | 434 | 406 | 476 | table-cell |\n| 354 | 434 | 406 | 476 | table-cell |\n| 407 | 434 | 456 | 476 | table-cell |\n| 407 | 434 | 456 | 476 | table-cell |\n| 455 | 434 | 505 | 476 | table-cell |\n| 455 | 434 | 505 | 476 | table-cell |\n| 503 | 434 | 555 | 476 | table-cell |\n| 503 | 434 | 555 | 476 | table-cell |\n| 555 | 434 | 749 | 476 | table-cell |\n| 555 | 434 | 749 | 476 | table-cell |\n| 748 | 434 | 769 | 476 | table-cell |\n| 748 | 434 | 769 | 476 | table-cell |\n| 11 | 476 | 73 | 503 | table-cell |\n| 11 | 476 | 73 | 503 | table-cell |\n| 74 | 476 | 130 | 503 | table-cell |\n| 74 | 476 | 130 | 503 | table-cell |\n| 130 | 476 | 186 | 503 | table-cell |\n| 130 | 476 | 186 | 503 | table-cell |\n| 186 | 476 | 252 | 503 | table-cell |\n| 186 | 476 | 252 | 503 | table-cell |\n| 252 | 476 | 298 | 503 | table-cell |\n| 252 | 476 | 298 | 503 | table-cell |\n| 298 | 476 | 353 | 503 | table-cell |\n| 298 | 476 | 353 | 503 | table-cell |\n| 354 | 476 | 406 | 503 | table-cell |\n| 354 | 476 | 406 | 503 | table-cell |\n| 407 | 476 | 456 | 503 | table-cell |\n| 407 | 476 | 456 | 503 | table-cell |\n| 455 | 476 | 505 | 503 | table-cell |\n| 455 | 476 | 505 | 503 | table-cell |\n| 503 | 476 | 555 | 503 | table-cell |\n| 503 | 476 | 555 | 503 | table-cell |\n| 555 | 476 | 749 | 503 | table-cell |\n| 555 | 476 | 749 | 503 | table-cell |\n| 748 | 476 | 769 | 503 | table-cell |\n| 748 | 476 | 769 | 503 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 3.825995340415167,
+            "top": 49.91906437259963
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 6.72,
+            "top": 53.996000000000095
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 7.68,
+            "top": 54.0
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 6.78,
+            "top": 54.06000000000006
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 7.74,
+            "top": 54.06000000000006
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 7.2,
+            "top": 54.476
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 776.86,
+            "top": 54.95600000000002
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 776.92,
+            "top": 55.01999999999998
+          },
+          {
+            "type": "unknown",
+            "text": "\u0644",
+            "x0": 398.233,
+            "top": 57.63151999999991
+          },
+          {
+            "type": "unknown",
+            "text": "\u0644",
+            "x0": 398.233,
+            "top": 57.63151999999991
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/Pd1KBb1_the data table _of election results_/analysis/Pd1KBb1/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 29,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              9.938669039145907,
+              106.67282823529413,
+              771.7401480427046,
+              505.9859818487395
+            ],
+            "confidence": 0.9990113973617554
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              74.09552455516014,
+              120.35190857142858,
+              130.14162704626335,
+              502.7262010084034
+            ],
+            "confidence": 0.9999748468399048
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              10.847632740213522,
+              226.54476907563028,
+              768.7835188612099,
+              267.71200134453784
+            ],
+            "confidence": 0.9998382329940796
+          },
+          {
+            "type": "table spanning cell",
+            "bbox": [
+              10.727769395017793,
+              119.82194420168068,
+              72.77702775800711,
+              187.47739563025212
+            ],
+            "confidence": 0.9985591769218445
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              555.46671886121,
+              120.66188773109245,
+              748.8262718861209,
+              502.6862036974791
+            ],
+            "confidence": 0.9999908208847046
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 4,
+  "pages_analyzed": 1
+}

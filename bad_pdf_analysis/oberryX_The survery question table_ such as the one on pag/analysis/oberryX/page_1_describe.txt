@@ -1,0 +1,27 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 164 elements
+- **rect**: 147 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Calibri: 117
+    - Arial: 34
+    - SymbolMT: 10
+    - Times: 3
+  - **sizes**:
+    - 5.5pt: 55
+    - 8.0pt: 43
+    - 11.0pt: 26
+    - 10.0pt: 15
+    - 9.0pt: 13
+    - 14.0pt: 8
+    - 26.0pt: 4
+  - styles: 23 bold, 5 italic
+  - **colors**:
+    - black: 108
+    - other: 56

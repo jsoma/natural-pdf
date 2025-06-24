@@ -1,0 +1,126 @@
+{
+  "document": "2EAOEvb_The text_ without beeing divided in 2 columns and ",
+  "total_pages": 196,
+  "analyzed_pages": [
+    1,
+    98
+  ],
+  "analysis_date": "2025-06-22T17:14:27.187370",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "595.276 × 793.701 points",
+      "tests_performed": {},
+      "text_length": 145,
+      "text_preview": "5202/621\nºN\nCE\nA\nÉTA\nADAZILAUTA\n|\n9891\nED\nÁRAEC\nOD\nODATSE\nOD\nOÃÇIUTITSNOC\nCONSTITUIÇÃO\nDO ESTADO DO CEARÁ DE 1989\nATUALIZADA ATÉ A EC Nº 126/2025",
+      "character_count": 155,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 6.22,
+      "standard_table": "No table detected",
+      "yolo_analysis": {
+        "regions": 3,
+        "processing_time": 1.6947779655456543
+      },
+      "yolo_types": {
+        "abandon": 1,
+        "title": 1,
+        "plain text": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 0.8501391410827637
+      },
+      "selector_large_text": 8,
+      "selector_small_text": 55,
+      "selector_bold_text": 45,
+      "selector_colored_rects": 1,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.69319999999993]...'. Full selector: '*[width>416.69319999999993]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/2EAOEvb_The text_ without beeing divided in 2 columns and /detailed_analysis_final/page_1.png"
+    },
+    "98": {
+      "page_number": 98,
+      "dimensions": "595.276 × 793.701 points",
+      "tests_performed": {},
+      "text_length": 4652,
+      "text_preview": "Art. 177. O soldado, cabo e sargento, da Polícia Militar e do Corpo de Bombeiros, CAPÍTULO V\nque tenham o segundo grau completo ou equivalente, com limite de trinta anos DA SEGURANÇA PÚBLICA E DA DEFE...",
+      "character_count": 4617,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.23,
+      "standard_table": "95 rows × 11 columns",
+      "line_detection": {
+        "horizontal_lines": 43,
+        "vertical_lines": 2,
+        "total_lines": 45
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 42
+      },
+      "yolo_analysis": {
+        "regions": 111,
+        "processing_time": 0.8605730533599854
+      },
+      "yolo_types": {
+        "title": 4,
+        "plain text": 18,
+        "table": 1,
+        "table_row": 42,
+        "table_column": 1,
+        "table_cell": 42,
+        "abandon": 3
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 0.4024968147277832
+      },
+      "selector_large_text": 2,
+      "selector_small_text": 6,
+      "selector_bold_text": 29,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.69319999999993]...'. Full selector: '*[width>416.69319999999993]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/2EAOEvb_The text_ without beeing divided in 2 columns and /detailed_analysis_final/page_98.png"
+    }
+  },
+  "capabilities_tested": {
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true,
+    "line_detection": true,
+    "table_from_lines": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 1,
+      "severity": "high",
+      "details": "Character overlap ratio: 6.22"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling",
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors",
+        "line_detection",
+        "table_from_lines"
+      ]
+    },
+    "priority_issues": [
+      {
+        "type": "dense_text",
+        "page": 1,
+        "severity": "high",
+        "details": "Character overlap ratio: 6.22"
+      }
+    ]
+  }
+}

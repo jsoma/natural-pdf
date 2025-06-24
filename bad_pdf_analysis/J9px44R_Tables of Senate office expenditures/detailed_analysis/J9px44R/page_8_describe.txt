@@ -1,0 +1,18 @@
+## Page 8 Summary
+
+**Elements**:
+
+- **text**: 99 elements
+- **rect**: 2 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 98
+    - Century: 1
+  - **sizes**:
+    - 7.0pt: 95
+    - 7.5pt: 3
+    - 10.0pt: 1
+  - styles: 22 bold

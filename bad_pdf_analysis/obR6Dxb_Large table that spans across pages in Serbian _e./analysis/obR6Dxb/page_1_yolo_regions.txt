@@ -1,0 +1,43 @@
+YOLO Layout Regions (19 found)
+==================================================
+
+## Collection Inspection (19 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 28 | 280 | 100 | abandon |
+| 417 | 42 | 565 | 86 | abandon |
+| 252 | 769 | 347 | 781 | abandon |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 150 | 103 | 449 | 118 | title |
+| 230 | 423 | 369 | 439 | title |
+| 282 | 474 | 316 | 487 | title |
+| 275 | 538 | 324 | 551 | title |
+| 282 | 561 | 317 | 574 | title |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 31 | 125 | 565 | 262 | figure |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 41 | 271 | 556 | 300 | plain text |
+| 249 | 451 | 350 | 464 | plain text |
+| 34 | 493 | 558 | 527 | plain text |
+| 36 | 580 | 319 | 592 | plain text |
+| 35 | 598 | 386 | 610 | plain text |
+| 35 | 617 | 543 | 641 | plain text |
+| 35 | 646 | 553 | 680 | plain text |
+| 35 | 685 | 559 | 709 | plain text |
+| 35 | 716 | 557 | 740 | plain text |
+| 34 | 745 | 441 | 758 | plain text |

@@ -1,0 +1,70 @@
+{
+  "document": "ober4db_The graph and table on page 180 and 181",
+  "total_pages": 200,
+  "analyzed_pages": [
+    180,
+    181
+  ],
+  "analysis_date": "2025-06-22T16:43:22.889838",
+  "pages": {
+    "180": {
+      "page_number": 180,
+      "dimensions": "521.362 × 728.337 points",
+      "text_length": 385,
+      "text_preview": "北京中文天地文化艺术有限公司排版 双色版\nＣＫ ６５２６３２９６\n就业蓝皮书·本科\n􀆰 １３\n第三章\n能力、知识及素养提升\n一 基本工作能力评价\n（一）背景介绍\n工作能力： 从事某项职业工作必须具备的能力 分为职业工作能力和基\n，\n本工作能力 职业工作能力是从事某一职业特殊需要的能力 基本工作能力\n。 ，\n是所有工作都必须具备的能力 麦可思参考美国 标准 把基本工作\n， ＳＣＡＮＳ ，\n能力分为 ...",
+      "table": "28 rows × 2 columns",
+      "table_sample": [
+        [
+          "第三章",
+          ""
+        ],
+        [
+          "",
+          ""
+        ],
+        [
+          "能力、知识及素养提升",
+          ""
+        ]
+      ],
+      "yolo_regions": 10,
+      "tatr_regions": 0,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/ober4db_The graph and table on page 180 and 181/enhanced_analysis_10/page_180.png"
+    },
+    "181": {
+      "page_number": 181,
+      "dimensions": "521.362 × 728.337 points",
+      "text_length": 1096,
+      "text_preview": "北京中文天地文化艺术有限公司排版 双色版\nＣＫ ６５２６３２９６\n分报告三·第三章 能力、知识及素养提升\n表３－３－１ 基本工作能力定义及序号\n序号 五大类能力 名称 描述\n理解与交流能力 理解性阅读 理解工作文件的句子和段落\n１\n理解与交流能力 积极聆听 理解对方讲话的要点适当地提出问题\n２ ，\n理解与交流能力 有效的口头沟通 交谈中有效果地传递信息\n３\n理解与交流能力 积极学习 理解信息中的启...",
+      "table": "31 rows × 4 columns",
+      "table_sample": [
+        [
+          "序号",
+          "五大类能力",
+          "名称",
+          "描述"
+        ],
+        [
+          null,
+          "理解与交流能力",
+          "理解性阅读",
+          null
+        ],
+        [
+          "２",
+          "理解与交流能力",
+          "积极聆听",
+          "理解对方讲话的要点 适当地提出问题\n，"
+        ]
+      ],
+      "yolo_regions": 3,
+      "tatr_regions": 3,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/ober4db_The graph and table on page 180 and 181/enhanced_analysis_10/page_181.png"
+    }
+  },
+  "insights": [
+    "Document contains 1481 total characters across 2 analyzed pages",
+    "2 out of 2 pages contain detectable tables",
+    "Complex layout detected - average 6.5 regions per page"
+  ]
+}

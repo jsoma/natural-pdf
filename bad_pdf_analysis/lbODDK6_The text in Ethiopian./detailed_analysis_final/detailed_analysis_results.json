@@ -1,0 +1,118 @@
+{
+  "document": "lbODDK6_The text in Ethiopian.",
+  "total_pages": 65,
+  "analyzed_pages": [
+    1,
+    32
+  ],
+  "analysis_date": "2025-06-22T17:14:21.532649",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1998,
+      "text_preview": "የኢትዮጵያ ፌደራላዊ ዲሞክራሲያዊ ሪፐብሊክ\nፌደራል ነጋሪት ጋዜጣ\nFEDERAL NEGARIT GAZETTE\nOF THE FEDERAL DEMOCRATIC REPUBLIC OF ETHIOPIA\nሃያ አራ ተኛ ዓመ ት ቁጥር ፲ ፪ 24thYear No.12\nአዲስ አበባ ታህሳስ ፮ ቀን ፪ሺ፲ ዓ.ም በኢትዮጵያ ፌደራላዊ ዲሞክራሲያዊ ሪፐብሊ...",
+      "character_count": 2093,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.23,
+      "standard_table": "73 rows × 10 columns",
+      "line_detection": {
+        "horizontal_lines": 16,
+        "vertical_lines": 1,
+        "total_lines": 17
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 31,
+        "processing_time": 1.153432846069336
+      },
+      "yolo_types": {
+        "title": 4,
+        "table_row": 15,
+        "plain text": 10,
+        "abandon": 2
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 0.5309557914733887
+      },
+      "selector_large_text": 5,
+      "selector_small_text": 26,
+      "selector_bold_text": 16,
+      "selector_colored_rects": 32,
+      "selector_thin_lines": 22,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODDK6_The text in Ethiopian./detailed_analysis_final/page_1.png"
+    },
+    "32": {
+      "page_number": 32,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1942,
+      "text_preview": "ገፅ ፲ ሺ ፲ ፌደራል ነጋሪት ጋዜጣ ቁጥር ፲፪ ታህሳስ ፮ ቀን ፪ሺ፲ ዓ.ም Federal Negarit Gazette No.12, 15th December, 2017…….page 1 0 0 1 0\n፪/ ማንኛውም የመንግስት መስሪያ ቤት የሥራ 2/ Any government institution shall ensure that its\nአካባቢ...",
+      "character_count": 2011,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.16,
+      "standard_table": "66 rows × 9 columns",
+      "line_detection": {
+        "horizontal_lines": 11,
+        "vertical_lines": 1,
+        "total_lines": 12
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 24,
+        "processing_time": 0.8096780776977539
+      },
+      "yolo_types": {
+        "abandon": 2,
+        "table_row": 10,
+        "plain text": 8,
+        "title": 4
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.8202831745147705
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 20,
+      "selector_bold_text": 4,
+      "selector_colored_rects": 16,
+      "selector_thin_lines": 13,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODDK6_The text in Ethiopian./detailed_analysis_final/page_32.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

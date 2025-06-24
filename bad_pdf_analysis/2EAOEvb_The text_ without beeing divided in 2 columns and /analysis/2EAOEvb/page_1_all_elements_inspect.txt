@@ -1,0 +1,104 @@
+## Collection Inspection (78 elements)
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 0 | 0 | 595 | 794 | 595 | 794 | #000000 | #ffffff | 0 |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 193 | 32 | 386 | 70 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 5202 | -30 | 38 | -21 | 57 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| / | -30 | 57 | -21 | 60 | MyriadPro-Regular-Identity-H | LWOXIH | 3 | False | False | native | 1.00 | #ffffff |
+| 621 | -30 | 60 | -21 | 73 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+|   | -30 | 74 | -21 | 76 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| º | -30 | 76 | -21 | 79 | MyriadPro-Regular-Identity-H | LWOXIH | 3 | False | False | native | 1.00 | #ffffff |
+| N | -30 | 80 | -21 | 86 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+|   | -30 | 86 | -21 | 88 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| C | -30 | 88 | -21 | 94 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| E | -30 | 94 | -21 | 98 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+|   | -30 | 99 | -21 | 101 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 101 | -21 | 107 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+|   | -30 | 107 | -21 | 109 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| É | -30 | 109 | -21 | 114 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| T | -30 | 114 | -21 | 118 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 118 | -21 | 124 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+|   | -30 | 124 | -21 | 126 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 126 | -21 | 132 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+| D | -30 | 132 | -21 | 138 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 138 | -21 | 143 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+| Z | -30 | 144 | -21 | 149 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| I | -30 | 149 | -21 | 151 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |
+| L | -30 | 151 | -21 | 155 | MyriadPro-Regular-Identity-H | LWOXIH | 4 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 156 | -21 | 161 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+| U | -30 | 161 | -21 | 167 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+| T | -30 | 167 | -21 | 172 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |
+| A | -30 | 171 | -21 | 177 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |
+|    | -33 | 177 | -18 | 182 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+|      | -33 | 182 | -19 | 192 | AsapCondensed-Light | ELGARL | 2 | False | False | native | 1.00 | #ffffff |
+| | | -33 | 193 | -19 | 195 | AsapCondensed-Light | ELGARL | 3 | False | False | native | 1.00 | #ffffff |
+|          | -33 | 196 | -18 | 216 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| 9891 | -33 | 216 | -18 | 243 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+|   | -33 | 244 | -18 | 246 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| E | -33 | 246 | -18 | 252 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| D | -33 | 253 | -18 | 261 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+|   | -33 | 261 | -18 | 263 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| Á | -33 | 264 | -18 | 271 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+| R | -33 | 272 | -18 | 279 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+| A | -33 | 279 | -18 | 286 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+| E | -33 | 287 | -18 | 293 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| C | -33 | 293 | -18 | 300 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+|   | -33 | 300 | -18 | 302 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| O | -33 | 303 | -18 | 311 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| D | -33 | 311 | -18 | 319 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+|   | -33 | 320 | -18 | 322 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| O | -33 | 323 | -18 | 331 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| D | -33 | 331 | -18 | 339 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| A | -33 | 340 | -18 | 347 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+| T | -33 | 347 | -18 | 353 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| S | -33 | 353 | -18 | 359 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| E | -33 | 360 | -18 | 366 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+|   | -33 | 367 | -18 | 369 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| O | -33 | 369 | -18 | 378 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| D | -33 | 378 | -18 | 386 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+|    | -33 | 386 | -18 | 391 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |
+| O | -33 | 392 | -18 | 400 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| Ã | -33 | 400 | -18 | 407 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |
+| Ç | -33 | 408 | -18 | 414 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| I | -33 | 415 | -18 | 418 | AsapCondensed-Black | ZTVBZV | 4 | True | False | native | 1.00 | #ffffff |
+| U | -33 | 419 | -18 | 427 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| T | -33 | 428 | -18 | 434 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| I | -33 | 434 | -18 | 438 | AsapCondensed-Black | ZTVBZV | 4 | True | False | native | 1.00 | #ffffff |
+| T | -33 | 438 | -18 | 444 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| S | -33 | 445 | -18 | 451 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| N | -33 | 451 | -18 | 460 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| O | -33 | 460 | -18 | 469 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |
+| C | -33 | 469 | -18 | 475 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |
+| CO | 119 | 601 | 183 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| N | 186 | 601 | 221 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| S | 224 | 601 | 250 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| TITU | 253 | 601 | 364 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| IÇ | 367 | 601 | 413 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| ÃO | 417 | 601 | 483 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |
+| DO ESTADO DO CEARÁ DE 1989 | 118 | 667 | 484 | 697 | AsapCondensed-Bold | WMHJJB | 30 | True | False | native | 1.00 | #ffffff |
+| ATUALIZADA ATÉ A EC Nº 126/2025 | 195 | 708 | 407 | 720 | MyriadPro-Regular-Identity-H | LWOXIH | 12 | False | False | native | 1.00 | #ffffff |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 112 | 590 | 488 | 697 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 190 | 704 | 410 | 722 | plain text |

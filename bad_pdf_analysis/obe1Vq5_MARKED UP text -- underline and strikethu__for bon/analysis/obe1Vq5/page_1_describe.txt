@@ -1,0 +1,14 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 51 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 51
+  - **sizes**:
+    - 13.0pt: 47
+    - 7.5pt: 4

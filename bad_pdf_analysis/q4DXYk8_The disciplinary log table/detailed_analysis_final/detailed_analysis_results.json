@@ -1,0 +1,68 @@
+{
+  "document": "q4DXYk8_The disciplinary log table",
+  "total_pages": 5,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T17:16:26.827692",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "791.9996 × 611.9997999999999 points",
+      "tests_performed": {},
+      "text_length": 4260,
+      "text_preview": "Inc: OPA Number Inc: Occurred date Off: Last name Off: First name Alleg: Allegation Alleg: Finding Alleg: Oversight finding Act: Action taken Act: Days or hours suspendedclosed purged on I7n/c1: 7N/a1...",
+      "character_count": 4127,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 0.43,
+      "table_error": "Bounding box (0, 0, 791.9996, 611.9997999999999) is not fully within parent page bounding box (-11.9906, -11.962200000000053, 780.009, 600.0375999999999)",
+      "yolo_analysis": {
+        "regions": 2,
+        "processing_time": 3.9630160331726074
+      },
+      "yolo_types": {
+        "table": 1,
+        "abandon": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 2.411175012588501
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 184,
+      "selector_bold_text": 10,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>554.39972]...'. Full selector: '*[width>554.39972]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/q4DXYk8_The disciplinary log table/detailed_analysis_final/page_1.png"
+    }
+  },
+  "capabilities_tested": {
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 1,
+      "severity": "medium",
+      "details": "Character overlap ratio: 0.43"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "medium",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

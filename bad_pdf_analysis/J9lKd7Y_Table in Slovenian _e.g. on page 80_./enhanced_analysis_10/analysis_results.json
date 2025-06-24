@@ -1,0 +1,44 @@
+{
+  "document": "J9lKd7Y_Table in Slovenian _e.g. on page 80_.",
+  "total_pages": 85,
+  "analyzed_pages": [
+    80
+  ],
+  "analysis_date": "2025-06-22T16:43:07.531421",
+  "pages": {
+    "80": {
+      "page_number": 80,
+      "dimensions": "612 × 792 points",
+      "text_length": 1834,
+      "text_preview": "Ali je vaša šola sprejela katerega od naslednjih ukrepov za pripravo na poučevanje na daljavo?\n(V vsaki vrstici izberite en odgovor.)\nDa, to je bila običajna Da, kot odziv na\npraksa že pred covid-19. ...",
+      "table": "11 rows × 4 columns",
+      "table_sample": [
+        [
+          "",
+          "Da, to je bila običajna\npraksa že pred\ncovidom-19.",
+          "Da, kot odziv na\ncovid-19.",
+          "Ne."
+        ],
+        [
+          "Usposabljanje profesorjev/-ic za uporabo videokomunikacijskih\nprogramov (npr. Zoom™, Microsoft® Teams, Arnes VID/JITSI, Skype™) za\npouk na daljavo.",
+          "SC223Q01JA01",
+          "SC223Q01JA02",
+          "SC223Q01JA03"
+        ],
+        [
+          "Usposabljanje dijakov/-inj za uporabo videokomunikacijskih programov\n(npr. Zoom™, Microsoft® Teams, Arnes VID/JITSI, Skype™) za pouk na\ndaljavo.",
+          "SC223Q02JA01",
+          "SC223Q02JA02",
+          "SC223Q02JA03"
+        ]
+      ],
+      "yolo_regions": 1,
+      "tatr_regions": 3,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/J9lKd7Y_Table in Slovenian _e.g. on page 80_./enhanced_analysis_10/page_80.png"
+    }
+  },
+  "insights": [
+    "Document contains 1834 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables"
+  ]
+}

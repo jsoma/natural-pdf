@@ -1,0 +1,64 @@
+{
+  "document": "eqQ4N7q_election results data table",
+  "total_pages": 1,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T17:14:07.841017",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612.48 × 791.76 points",
+      "tests_performed": {},
+      "text_length": 1755,
+      "text_preview": "PREC REPORT-GROUP DETAIL General Election OFFICIAL RESULTS\nChambers County, Texas\nNovember 8, 2016\nRun Date:ll/18/16 04:44 PM Report EL30A Page 0001-01\n0001 PCT 1 -WALLISVILLE .\nTOTAL VOTES % MAIL &M ...",
+      "character_count": 1756,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "60 rows × 12 columns",
+      "line_detection": {
+        "horizontal_lines": 0,
+        "vertical_lines": 0,
+        "total_lines": 0
+      },
+      "yolo_analysis": {
+        "regions": 2,
+        "processing_time": 1.1082379817962646
+      },
+      "yolo_types": {
+        "table": 1,
+        "table_caption": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 1.121851921081543
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 0,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.736]...'. Full selector: '*[width>428.736]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqQ4N7q_election results data table/detailed_analysis_final/page_1.png"
+    }
+  },
+  "capabilities_tested": {
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "low",
+    "processing_recommendations": [],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

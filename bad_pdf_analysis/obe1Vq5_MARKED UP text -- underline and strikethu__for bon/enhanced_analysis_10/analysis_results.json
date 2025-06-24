@@ -1,0 +1,54 @@
+{
+  "document": "obe1Vq5_MARKED UP text -- underline and strikethu__for bon",
+  "total_pages": 8,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T16:43:33.310490",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "text_length": 1781,
+      "text_preview": "25 LC 57 0207S/AP\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\n103rd\nA BILL TO BE ENTITLED\nAN ACT\n1 To amend...",
+      "table": "45 rows × 7 columns",
+      "table_sample": [
+        [
+          "",
+          "25",
+          "",
+          "",
+          "",
+          "",
+          "LC 57 0207S/AP"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "House Bill",
+          "89 (AS PASSED",
+          "HOUSE A",
+          "ND SENATE",
+          ")",
+          ""
+        ]
+      ],
+      "yolo_regions": 6,
+      "tatr_regions": 2,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/enhanced_analysis_10/page_1.png"
+    }
+  },
+  "insights": [
+    "Document contains 1781 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables",
+    "Complex layout detected - average 6.0 regions per page"
+  ]
+}

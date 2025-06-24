@@ -1,0 +1,14 @@
+## Page 4 Summary
+
+**Elements**:
+
+- **text**: 56 elements
+- **rect**: 26 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 56
+  - **sizes**:
+    - 13.0pt: 56

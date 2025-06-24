@@ -1,0 +1,289 @@
+## Collection Inspection (238 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 206 | 35 | 216 | 45 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| ix | 207 | 36 | 216 | 46 | Century |  | 10 | False | False | native | 1.00 | #000000 |
+| REPORT CONTENT AND ADDITIONAL CLARIFICATION NOTES | 49 | 62 | 381 | 72 | Times | CICFLF | 11 | True | False | native | 1.00 | #000000 |
+|   | 381 | 63 | 383 | 72 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Pursuant to the Legislative Branch Appropriations ... | 29 | 95 | 383 | 105 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| sections B and C are compiled for each office of t... | 29 | 106 | 394 | 115 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| of expenditures relating to personnel compensation... | 29 | 117 | 380 | 126 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| contractual services, and acquisition of assets.  ... | 29 | 127 | 397 | 137 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| electronic form on the website of the Senate in a ... | 29 | 138 | 318 | 147 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Additional Clarifications and Comments: | 29 | 178 | 187 | 187 | Times | CICFLH | 9 | True | True | native | 1.00 | #000000 |
+|   | 186 | 178 | 189 | 187 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 1. | 29 | 198 | 35 | 207 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| All cities mentioned are in the Senator’s home sta... | 56 | 198 | 351 | 207 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 2. | 29 | 218 | 35 | 227 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Salaries reported in the payroll abstract are for ... | 56 | 218 | 362 | 227 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| September 30, 2024 unless otherwise indicated. | 56 | 228 | 233 | 238 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 3. | 29 | 248 | 35 | 258 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| For the Senate National Security Working Group acc... | 56 | 248 | 369 | 258 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Items appropriation, the detailed payroll informat... | 56 | 259 | 352 | 268 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| designated to the Senate National Security Working... | 56 | 270 | 347 | 279 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Senator, Committee or Leadership office. | 56 | 280 | 210 | 290 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 4. | 29 | 300 | 35 | 310 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Detailed payroll information for the reported six ... | 56 | 300 | 358 | 310 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| payroll adjustments included in the summary of net... | 56 | 311 | 370 | 320 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| possible due to the timing of posting adjustments. | 56 | 322 | 241 | 331 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 5. | 29 | 342 | 35 | 351 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Pursuant to P.L. 108-83, Section 10 (2 U.S.C. § 45... | 56 | 342 | 342 | 351 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| noncontiguous State may pay a high cost of living ... | 56 | 352 | 370 | 362 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| in that State.  The allowance paid under this sect... | 56 | 363 | 371 | 372 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| payroll information reported by payee name, but is... | 56 | 374 | 343 | 383 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| summary of net payroll expenses. | 56 | 384 | 181 | 394 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 6. | 29 | 404 | 35 | 413 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Sec. 1094 of P.L. 117-81 established the Afghanist... | 56 | 404 | 345 | 413 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| legislative branch. For this six-month period, the... | 56 | 415 | 350 | 424 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| behalf of the Commission from the contingent fund ... | 56 | 426 | 370 | 435 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| to be reimbursed as agreed to by the Department of... | 56 | 436 | 282 | 445 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| 7. | 29 | 456 | 35 | 465 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Beginning in fiscal year 2019, Legislative Branch ... | 56 | 456 | 354 | 465 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Senators’ offices with an allocation for the sole ... | 56 | 467 | 357 | 476 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| This allocation cannot be combined with the Senato... | 56 | 477 | 370 | 487 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+| Expense Account, and is listed directly following ... | 56 | 488 | 332 | 497 | Times | CICFLG | 9 | False | False | native | 1.00 | #000000 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 48 | 61 | 382 | 75 | title |
+| 27 | 178 | 187 | 190 | title |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 27 | 85 | 403 | 96 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 96 | 403 | 107 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 107 | 403 | 117 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 117 | 403 | 128 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 128 | 403 | 139 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 139 | 403 | 149 | 375 | 11 | #000000 | #000000 | 0 |
+| 27 | 149 | 403 | 160 | 375 | 11 | #000000 | #000000 | 0 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 27 | 96 | 396 | 150 | plain text |
+| 26 | 196 | 373 | 501 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 28 | 200 | 371 | 609 | table |
+| 27 | 214 | 370 | 579 | table |
+| 28 | 221 | 371 | 585 | table |
+| 27 | 248 | 371 | 556 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 27 | 211 | 45 | 580 | table column |
+| 43 | 216 | 370 | 579 | table column |
+| 27 | 247 | 45 | 556 | table column |
+| 45 | 248 | 371 | 555 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 27 | 217 | 370 | 244 | table row |
+| 27 | 244 | 370 | 297 | table row |
+| 27 | 248 | 371 | 296 | table row |
+| 27 | 296 | 371 | 337 | table row |
+| 27 | 297 | 370 | 337 | table row |
+| 27 | 337 | 370 | 399 | table row |
+| 27 | 338 | 371 | 397 | table row |
+| 27 | 399 | 371 | 454 | table row |
+| 27 | 400 | 370 | 452 | table row |
+| 27 | 452 | 370 | 559 | table row |
+| 27 | 453 | 371 | 544 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 27 | 217 | 45 | 244 | table-cell |
+| 27 | 217 | 45 | 244 | table-cell |
+| 27 | 217 | 45 | 244 | table-cell |
+| 43 | 217 | 370 | 244 | table-cell |
+| 43 | 217 | 370 | 244 | table-cell |
+| 43 | 217 | 370 | 244 | table-cell |
+| 27 | 244 | 45 | 297 | table-cell |
+| 27 | 244 | 45 | 297 | table-cell |
+| 27 | 244 | 45 | 297 | table-cell |
+| 27 | 244 | 45 | 297 | table-cell |
+| 43 | 244 | 370 | 297 | table-cell |
+| 43 | 244 | 370 | 297 | table-cell |
+| 43 | 244 | 370 | 297 | table-cell |
+| 43 | 244 | 370 | 297 | table-cell |
+| 27 | 247 | 45 | 297 | table-cell |
+| 27 | 247 | 45 | 297 | table-cell |
+| 27 | 247 | 45 | 297 | table-cell |
+| 27 | 247 | 45 | 297 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 27 | 248 | 45 | 296 | table-cell |
+| 43 | 248 | 370 | 296 | table-cell |
+| 43 | 248 | 370 | 296 | table-cell |
+| 43 | 248 | 370 | 296 | table-cell |
+| 43 | 248 | 370 | 296 | table-cell |
+| 45 | 248 | 370 | 297 | table-cell |
+| 45 | 248 | 371 | 296 | table-cell |
+| 45 | 248 | 370 | 297 | table-cell |
+| 45 | 248 | 371 | 296 | table-cell |
+| 45 | 248 | 370 | 297 | table-cell |
+| 45 | 248 | 371 | 296 | table-cell |
+| 45 | 248 | 370 | 297 | table-cell |
+| 45 | 248 | 371 | 296 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 27 | 296 | 45 | 337 | table-cell |
+| 43 | 296 | 370 | 337 | table-cell |
+| 43 | 296 | 370 | 337 | table-cell |
+| 43 | 296 | 370 | 337 | table-cell |
+| 43 | 296 | 370 | 337 | table-cell |
+| 45 | 296 | 371 | 337 | table-cell |
+| 45 | 296 | 371 | 337 | table-cell |
+| 45 | 296 | 371 | 337 | table-cell |
+| 45 | 296 | 371 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 27 | 297 | 45 | 337 | table-cell |
+| 43 | 297 | 370 | 337 | table-cell |
+| 43 | 297 | 370 | 337 | table-cell |
+| 43 | 297 | 370 | 337 | table-cell |
+| 43 | 297 | 370 | 337 | table-cell |
+| 45 | 297 | 370 | 337 | table-cell |
+| 45 | 297 | 370 | 337 | table-cell |
+| 45 | 297 | 370 | 337 | table-cell |
+| 45 | 297 | 370 | 337 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 27 | 337 | 45 | 399 | table-cell |
+| 43 | 337 | 370 | 399 | table-cell |
+| 43 | 337 | 370 | 399 | table-cell |
+| 43 | 337 | 370 | 399 | table-cell |
+| 43 | 337 | 370 | 399 | table-cell |
+| 45 | 337 | 370 | 399 | table-cell |
+| 45 | 337 | 370 | 399 | table-cell |
+| 45 | 337 | 370 | 399 | table-cell |
+| 45 | 337 | 370 | 399 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 27 | 338 | 45 | 397 | table-cell |
+| 43 | 338 | 370 | 397 | table-cell |
+| 43 | 338 | 370 | 397 | table-cell |
+| 43 | 338 | 370 | 397 | table-cell |
+| 43 | 338 | 370 | 397 | table-cell |
+| 45 | 338 | 371 | 397 | table-cell |
+| 45 | 338 | 371 | 397 | table-cell |
+| 45 | 338 | 371 | 397 | table-cell |
+| 45 | 338 | 371 | 397 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 27 | 399 | 45 | 454 | table-cell |
+| 43 | 399 | 370 | 454 | table-cell |
+| 43 | 399 | 370 | 454 | table-cell |
+| 43 | 399 | 370 | 454 | table-cell |
+| 43 | 399 | 370 | 454 | table-cell |
+| 45 | 399 | 371 | 454 | table-cell |
+| 45 | 399 | 371 | 454 | table-cell |
+| 45 | 399 | 371 | 454 | table-cell |
+| 45 | 399 | 371 | 454 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 27 | 400 | 45 | 452 | table-cell |
+| 43 | 400 | 370 | 452 | table-cell |
+| 43 | 400 | 370 | 452 | table-cell |
+| 43 | 400 | 370 | 452 | table-cell |
+| 43 | 400 | 370 | 452 | table-cell |
+| 45 | 400 | 370 | 452 | table-cell |
+| 45 | 400 | 370 | 452 | table-cell |
+| 45 | 400 | 370 | 452 | table-cell |
+| 45 | 400 | 370 | 452 | table-cell |
+| 27 | 452 | 45 | 559 | table-cell |
+| 27 | 452 | 45 | 556 | table-cell |
+| 27 | 452 | 45 | 559 | table-cell |
+| 27 | 452 | 45 | 556 | table-cell |
+| 27 | 452 | 45 | 559 | table-cell |
+| 27 | 452 | 45 | 556 | table-cell |
+| 27 | 452 | 45 | 559 | table-cell |
+| 27 | 452 | 45 | 556 | table-cell |
+| 43 | 452 | 370 | 559 | table-cell |
+| 43 | 452 | 370 | 559 | table-cell |
+| 43 | 452 | 370 | 559 | table-cell |
+| 43 | 452 | 370 | 559 | table-cell |
+| 45 | 452 | 370 | 555 | table-cell |
+| 45 | 452 | 370 | 555 | table-cell |
+| 45 | 452 | 370 | 555 | table-cell |
+| 45 | 452 | 370 | 555 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 27 | 453 | 45 | 544 | table-cell |
+| 43 | 453 | 370 | 544 | table-cell |
+| 43 | 453 | 370 | 544 | table-cell |
+| 43 | 453 | 370 | 544 | table-cell |
+| 43 | 453 | 370 | 544 | table-cell |
+| 45 | 453 | 371 | 544 | table-cell |
+| 45 | 453 | 371 | 544 | table-cell |
+| 45 | 453 | 371 | 544 | table-cell |
+| 45 | 453 | 371 | 544 | table-cell |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 27 | 248 | 371 | 296 | table column header |

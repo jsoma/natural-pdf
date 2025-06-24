@@ -867,6 +867,28 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             >>> page.region(right=200, width=50)  # Region from x=150 to x=200
             >>> page.region(top=100, bottom=200, width="full") # Explicit full width
         """
+        # ------------------------------------------------------------------
+        # Percentage support – convert strings like "30%" to absolute values
+        # based on page dimensions.  X-axis params (left, right, width) use
+        # page.width; Y-axis params (top, bottom, height) use page.height.
+        # ------------------------------------------------------------------
+
+        def _pct_to_abs(val, axis: str):
+            if isinstance(val, str) and val.strip().endswith("%"):
+                try:
+                    pct = float(val.strip()[:-1]) / 100.0
+                except ValueError:
+                    return val  # leave unchanged if not a number
+                return pct * (self.width if axis == "x" else self.height)
+            return val
+
+        left = _pct_to_abs(left, "x")
+        right = _pct_to_abs(right, "x")
+        width = _pct_to_abs(width, "x")
+        top = _pct_to_abs(top, "y")
+        bottom = _pct_to_abs(bottom, "y")
+        height = _pct_to_abs(height, "y")
+
         # --- Type checking and basic validation ---
         is_width_numeric = isinstance(width, (int, float))
         is_width_string = isinstance(width, str)
@@ -1136,6 +1158,40 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             layout_context_bbox=page_bbox,
             user_kwargs=kwargs,  # Pass original user kwargs
         )
+
+        # --- Optional: apply Unicode BiDi algorithm for mixed RTL/LTR correctness ---
+        apply_bidi = kwargs.get("bidi", True)
+        if apply_bidi and result:
+            # Quick check for any RTL character
+            import unicodedata
+
+            def _contains_rtl(s):
+                return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
+
+            if _contains_rtl(result):
+                try:
+                    from bidi.algorithm import get_display  # type: ignore
+                    from natural_pdf.utils.bidi_mirror import mirror_brackets
+
+                    result = "\n".join(
+                        mirror_brackets(
+                            get_display(
+                                line,
+                                base_dir=(
+                                    "R"
+                                    if any(
+                                        unicodedata.bidirectional(ch)
+                                        in ("R", "AL", "AN")
+                                        for ch in line
+                                    )
+                                    else "L"
+                                ),
+                            )
+                        )
+                        for line in result.split("\n")
+                    )
+                except ModuleNotFoundError:
+                    pass  # silently skip if python-bidi not available
 
         logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
         return result
@@ -1440,7 +1496,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: float = 144,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
@@ -1450,7 +1506,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         Generates and returns an image of the page with persistent highlights rendered.
 
         Args:
-            scale: Scale factor for rendering.
+            resolution: Resolution in DPI for rendering (default: 144 DPI, equivalent to previous scale=2.0).
             width: Optional width for the output image.
             labels: Whether to include a legend for labels.
             legend_position: Position of the legend.
@@ -1460,7 +1516,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             PIL Image object of the page with highlights, or None if rendering fails.
         """
         return self.to_image(
-            scale=scale,
+            resolution=resolution,
             width=width,
             labels=labels,
             legend_position=legend_position,
@@ -1471,13 +1527,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
     def save_image(
         self,
         filename: str,
-        scale: float = 2.0,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
         render_ocr: bool = False,
         include_highlights: bool = True,  # Allow saving without highlights
-        resolution: Optional[float] = None,
+        resolution: float = 144,
         **kwargs,
     ) -> "Page":
         """
@@ -1485,13 +1540,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
         Args:
             filename: Path to save the image to.
-            scale: Scale factor for rendering highlights.
             width: Optional width for the output image.
             labels: Whether to include a legend.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text.
             include_highlights: Whether to render highlights.
-            resolution: Resolution for base image rendering.
+            resolution: Resolution in DPI for base image rendering (default: 144 DPI, equivalent to previous scale=2.0).
             **kwargs: Additional args for pdfplumber's to_image.
 
         Returns:
@@ -1500,7 +1554,6 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         # Use to_image to generate and save the image
         self.to_image(
             path=filename,
-            scale=scale,
             width=width,
             labels=labels,
             legend_position=legend_position,
@@ -1554,7 +1607,6 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
     def to_image(
         self,
         path: Optional[str] = None,
-        scale: float = 2.0,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
@@ -1569,12 +1621,11 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
         Args:
             path: Optional path to save the image to.
-            scale: Scale factor for rendering highlights.
             width: Optional width for the output image.
             labels: Whether to include a legend for highlights.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text on highlights.
-            resolution: Resolution in DPI for base page image (default: scale * 72).
+            resolution: Resolution in DPI for base page image. If None, uses global setting or defaults to 144 DPI.
             include_highlights: Whether to render highlights.
             exclusions: Accepts one of the following:
                         • None  – no masking (default)
@@ -1593,11 +1644,13 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         # Use global options if parameters are not explicitly set
         if width is None:
             width = natural_pdf.options.image.width
-        if resolution is None and natural_pdf.options.image.resolution is not None:
-            resolution = natural_pdf.options.image.resolution
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
         # 1. Create cache key (excluding path)
         cache_key_parts = [
-            scale,
             width,
             labels,
             legend_position,
@@ -1641,7 +1694,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             rendered_image_component: Optional[Image.Image] = (
                 None  # Renamed from 'image' in original
             )
-            render_resolution = resolution if resolution is not None else scale * 72
+            render_resolution = resolution
             thread_id = threading.current_thread().name
             logger.debug(
                 f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image..."
@@ -1658,11 +1711,10 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                         # Delegate rendering to the central service
                         rendered_image_component = self._highlighter.render_page(
                             page_index=self.index,
-                            scale=scale,
+                            resolution=render_resolution,
                             labels=labels,
                             legend_position=legend_position,
                             render_ocr=render_ocr,
-                            resolution=render_resolution,  # Pass the calculated resolution
                             **kwargs,
                         )
                     else:
@@ -2336,7 +2388,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
     def show_preview(
         self,
         temporary_highlights: List[Dict],
-        scale: float = 2.0,
+        resolution: float = 144,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
@@ -2349,7 +2401,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         Args:
             temporary_highlights: List of highlight data dictionaries (as prepared by
                                   ElementCollection._prepare_highlight_data).
-            scale: Scale factor for rendering.
+            resolution: Resolution in DPI for rendering (default: 144 DPI, equivalent to previous scale=2.0).
             width: Optional width for the output image.
             labels: Whether to include a legend.
             legend_position: Position of the legend.
@@ -2363,7 +2415,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             img = self._highlighter.render_preview(
                 page_index=self.index,
                 temporary_highlights=temporary_highlights,
-                scale=scale,
+                resolution=resolution,
                 labels=labels,
                 legend_position=legend_position,
                 render_ocr=render_ocr,
@@ -2897,3 +2949,17 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             properties, and other details for each element
         """
         return self.find_all('*').inspect(limit=limit)
+
+    @property
+    def lines(self) -> List[Any]:
+        """Get all line elements on this page."""
+        return self._element_mgr.lines
+
+    # ------------------------------------------------------------------
+    # Image elements
+    # ------------------------------------------------------------------
+
+    @property
+    def images(self) -> List[Any]:
+        """Get all embedded raster images on this page."""
+        return self._element_mgr.images

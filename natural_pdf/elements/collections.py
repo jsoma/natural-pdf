@@ -859,7 +859,7 @@ class ElementCollection(
         distinct: bool = False,
         include_attrs: Optional[List[str]] = None,
         # --- Rendering Parameters ---
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,  # Use 'labels' consistent with service
         legend_position: str = "right",
         render_ocr: bool = False,
@@ -884,7 +884,7 @@ class ElementCollection(
             label_format: F-string to format group labels if group_by is used.
             distinct: Highlight each element distinctly (overrides group_by/label).
             include_attrs: Attributes to display on individual highlights.
-            scale: Scale factor for rendering image.
+            resolution: Resolution in DPI for rendering (uses global options if not specified, defaults to 144 DPI).
             labels: Whether to include a legend for the temporary highlights.
             legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
             render_ocr: Whether to render OCR text.
@@ -900,6 +900,18 @@ class ElementCollection(
         Raises:
             ValueError: If the collection is empty or elements are on different pages/PDFs.
         """
+        # Apply global options as defaults, but allow explicit parameters to override
+        import natural_pdf
+
+        # Use global options if parameters are not explicitly set
+        if width is None:
+            width = natural_pdf.options.image.width
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+
         if not self._elements:
             raise ValueError("Cannot show an empty collection.")
 
@@ -967,7 +979,7 @@ class ElementCollection(
             img = service.render_preview(
                 page_index=page.index,
                 temporary_highlights=highlight_data_list,
-                scale=scale,
+                resolution=resolution,
                 width=width,  # Pass the width parameter
                 labels=labels,  # Use 'labels'
                 legend_position=legend_position,
@@ -982,7 +994,7 @@ class ElementCollection(
     def save(
         self,
         filename: str,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
@@ -993,7 +1005,7 @@ class ElementCollection(
 
         Args:
             filename: Path to save the image to
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (uses global options if not specified, defaults to 144 DPI)
             width: Optional width for the output image in pixels
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
@@ -1002,10 +1014,22 @@ class ElementCollection(
         Returns:
             Self for method chaining
         """
+        # Apply global options as defaults, but allow explicit parameters to override
+        import natural_pdf
+
+        # Use global options if parameters are not explicitly set
+        if width is None:
+            width = natural_pdf.options.image.width
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+
         # Use to_image to generate and save the image
         self.to_image(
             path=filename,
-            scale=scale,
+            resolution=resolution,
             width=width,
             labels=labels,
             legend_position=legend_position,
@@ -1016,7 +1040,7 @@ class ElementCollection(
     def to_image(
         self,
         path: Optional[str] = None,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         width: Optional[int] = None,
         labels: bool = True,
         legend_position: str = "right",
@@ -1028,7 +1052,7 @@ class ElementCollection(
 
         Args:
             path: Optional path to save the image to
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (uses global options if not specified, defaults to 144 DPI)
             width: Optional width for the output image in pixels (height calculated to maintain aspect ratio)
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
@@ -1043,7 +1067,7 @@ class ElementCollection(
             # Generate the image using to_image
             return page.to_image(
                 path=path,
-                scale=scale,
+                resolution=resolution,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,
@@ -1774,7 +1798,7 @@ class ElementCollection(
         self,
         padding: int = 1,
         threshold: float = 0.95,
-        resolution: float = 150,
+        resolution: Optional[float] = None,
         show_progress: bool = True,
     ) -> "ElementCollection":
         """
@@ -1786,12 +1810,20 @@ class ElementCollection(
         Args:
             padding: Number of pixels to keep as padding after trimming (default: 1)
             threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
-            resolution: Resolution for image rendering in DPI (default: 150)
+            resolution: Resolution for image rendering in DPI (default: uses global options, fallback to 144 DPI)
             show_progress: Whether to show a progress bar for the trimming operation
 
         Returns:
             New ElementCollection with trimmed regions
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         return self.apply(
             lambda element: element.trim(
                 padding=padding, threshold=threshold, resolution=resolution

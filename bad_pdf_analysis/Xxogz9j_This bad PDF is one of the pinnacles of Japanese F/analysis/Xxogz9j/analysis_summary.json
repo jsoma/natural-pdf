@@ -1,0 +1,84 @@
+{
+  "pdf_name": "Xxogz9j.pdf",
+  "pdf_path": "bad_pdf_analysis/Xxogz9j_This bad PDF is one of the pinnacles of Japanese F/Xxogz9j.pdf",
+  "analysis_timestamp": "2025-06-22T14:35:15.983813",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 6295.5,
+        "height": 4016.25
+      },
+      "describe": "## Page 1 Summary\n\n**Message**: No elements found on page",
+      "extract_text": {
+        "length": 0,
+        "preview": "",
+        "full_text": ""
+      },
+      "extract_table": {
+        "found": false
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 2,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              1047.5062826949124,
+              423.87934028790727,
+              3123.2329042233537,
+              3628.3304972573837
+            ],
+            "confidence": 0.7867856025695801
+          },
+          {
+            "type": "table",
+            "bbox": [
+              3303.7798441556088,
+              425.92568056364394,
+              5387.9363381605135,
+              3627.7158659407237
+            ],
+            "confidence": 0.738675057888031
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 2,
+        "yolo_count": 2,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (2 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 1048 | 424 | 3123 | 3628 | table |\n| 3304 | 426 | 5388 | 3628 | table |"
+      },
+      "elements_sample": {
+        "total_count": 2,
+        "full_inspect": "## Collection Inspection (2 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 1048 | 424 | 3123 | 3628 | table |\n| 3304 | 426 | 5388 | 3628 | table |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 1047.5062826949124,
+            "top": 423.87934028790727
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 3303.7798441556088,
+            "top": 425.92568056364394
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/Xxogz9j_This bad PDF is one of the pinnacles of Japanese F/analysis/Xxogz9j/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 7,
+  "pages_analyzed": 1
+}

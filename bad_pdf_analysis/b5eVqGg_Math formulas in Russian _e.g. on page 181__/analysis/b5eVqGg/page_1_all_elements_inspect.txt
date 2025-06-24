@@ -1,0 +1,139 @@
+## Collection Inspection (98 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 48 | 342 | 122 | abandon |
+| 203 | 709 | 396 | 726 | abandon |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 248 | 562 | 569 | plain text |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| Постановление Правительства РФ от | 94 | 252 | 505 | 276 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| 29.12.2011 N 1178 | 199 | 281 | 401 | 305 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| (ред. от 19.01.2022) | 188 | 310 | 411 | 334 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| "О ценообразовании в области регулируемых | 46 | 339 | 554 | 363 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| цен (тарифов) в электроэнергетике" | 97 | 368 | 503 | 392 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| (вместе с "Основами ценообразования в | 75 | 397 | 525 | 421 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| области регулируемых цен (тарифов) в | 80 | 426 | 519 | 450 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| электроэнергетике", "Правилами | 117 | 455 | 483 | 479 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| государственного регулирования (пересмотра, | 39 | 484 | 560 | 508 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| применения) цен (тарифов) в | 135 | 513 | 465 | 537 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| электроэнергетике") | 186 | 542 | 414 | 566 | Tahoma | HPDFAA | 24 | False | False | native | 1.00 | #000000 |
+| Документ предоставлен | 154 | 642 | 309 | 656 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |
+| КонсультантПлюс | 314 | 642 | 446 | 656 | Tahoma | HPDFAB | 14 | True | False | native | 1.00 | #0000ff |
+| www.consultant.ru | 232 | 676 | 368 | 690 | Tahoma | HPDFAB | 14 | True | False | native | 1.00 | #0000ff |
+| Дата сохранения: 07.02.2022 | 206 | 710 | 394 | 724 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |
+|   | 293 | 727 | 297 | 741 | Tahoma | HPDFAA | 14 | False | False | native | 1.00 | #000000 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 708 | 400 | 778 | table |
+| 65 | 709 | 408 | 785 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 68 | 708 | 105 | 779 | table column |
+| 271 | 708 | 401 | 779 | table column |
+| 236 | 708 | 291 | 779 | table column |
+| 171 | 709 | 239 | 780 | table column |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 69 | 708 | 402 | 726 | table column header |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 709 | 401 | 727 | table row |
+| 70 | 727 | 401 | 741 | table row |
+| 70 | 735 | 401 | 748 | table row |
+| 70 | 740 | 400 | 752 | table row |
+| 69 | 751 | 400 | 763 | table row |
+| 70 | 756 | 400 | 769 | table row |
+| 69 | 762 | 401 | 772 | table row |
+| 69 | 769 | 401 | 779 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 709 | 105 | 727 | table-cell |
+| 70 | 709 | 105 | 727 | table-cell |
+| 171 | 709 | 239 | 727 | table-cell |
+| 171 | 709 | 239 | 727 | table-cell |
+| 236 | 709 | 291 | 727 | table-cell |
+| 236 | 709 | 291 | 727 | table-cell |
+| 271 | 709 | 401 | 727 | table-cell |
+| 271 | 709 | 401 | 727 | table-cell |
+| 70 | 727 | 105 | 741 | table-cell |
+| 70 | 727 | 105 | 741 | table-cell |
+| 171 | 727 | 239 | 741 | table-cell |
+| 171 | 727 | 239 | 741 | table-cell |
+| 236 | 727 | 291 | 741 | table-cell |
+| 236 | 727 | 291 | 741 | table-cell |
+| 271 | 727 | 401 | 741 | table-cell |
+| 271 | 727 | 401 | 741 | table-cell |
+| 70 | 735 | 105 | 748 | table-cell |
+| 70 | 735 | 105 | 748 | table-cell |
+| 171 | 735 | 239 | 748 | table-cell |
+| 171 | 735 | 239 | 748 | table-cell |
+| 236 | 735 | 291 | 748 | table-cell |
+| 236 | 735 | 291 | 748 | table-cell |
+| 271 | 735 | 401 | 748 | table-cell |
+| 271 | 735 | 401 | 748 | table-cell |
+| 70 | 740 | 105 | 752 | table-cell |
+| 70 | 740 | 105 | 752 | table-cell |
+| 171 | 740 | 239 | 752 | table-cell |
+| 171 | 740 | 239 | 752 | table-cell |
+| 236 | 740 | 291 | 752 | table-cell |
+| 236 | 740 | 291 | 752 | table-cell |
+| 271 | 740 | 400 | 752 | table-cell |
+| 271 | 740 | 400 | 752 | table-cell |
+| 69 | 751 | 105 | 763 | table-cell |
+| 69 | 751 | 105 | 763 | table-cell |
+| 171 | 751 | 239 | 763 | table-cell |
+| 171 | 751 | 239 | 763 | table-cell |
+| 236 | 751 | 291 | 763 | table-cell |
+| 236 | 751 | 291 | 763 | table-cell |
+| 271 | 751 | 400 | 763 | table-cell |
+| 271 | 751 | 400 | 763 | table-cell |
+| 70 | 756 | 105 | 769 | table-cell |
+| 70 | 756 | 105 | 769 | table-cell |
+| 171 | 756 | 239 | 769 | table-cell |
+| 171 | 756 | 239 | 769 | table-cell |
+| 236 | 756 | 291 | 769 | table-cell |
+| 236 | 756 | 291 | 769 | table-cell |
+| 271 | 756 | 400 | 769 | table-cell |
+| 271 | 756 | 400 | 769 | table-cell |
+| 69 | 762 | 105 | 772 | table-cell |
+| 69 | 762 | 105 | 772 | table-cell |
+| 171 | 762 | 239 | 772 | table-cell |
+| 171 | 762 | 239 | 772 | table-cell |
+| 236 | 762 | 291 | 772 | table-cell |
+| 236 | 762 | 291 | 772 | table-cell |
+| 271 | 762 | 401 | 772 | table-cell |
+| 271 | 762 | 401 | 772 | table-cell |
+| 69 | 769 | 105 | 779 | table-cell |
+| 69 | 769 | 105 | 779 | table-cell |
+| 171 | 769 | 239 | 779 | table-cell |
+| 171 | 769 | 239 | 779 | table-cell |
+| 236 | 769 | 291 | 779 | table-cell |
+| 236 | 769 | 291 | 779 | table-cell |
+| 271 | 769 | 401 | 779 | table-cell |
+| 271 | 769 | 401 | 779 | table-cell |

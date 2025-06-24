@@ -1,0 +1,229 @@
+{
+  "pdf_name": "obR6Dxb.pdf",
+  "pdf_path": "bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./obR6Dxb.pdf",
+  "analysis_timestamp": "2025-06-22T14:33:52.990002",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 52 elements\n- **rect**: 27 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Arial: 28\n    - Calibri: 12\n    - OpenSans-Bold: 7\n    - OpenSans: 5\n  - **sizes**:\n    - 9.5pt: 15\n    - 12.0pt: 8\n    - 10.5pt: 8\n    - 11.0pt: 7\n    - 10.0pt: 5\n    - 14.0pt: 4\n    - 17.5pt: 1\n    - 18.0pt: 1\n    - 16.0pt: 1\n    - 11.5pt: 1\n    - 13.5pt: 1\n  - styles: 21 bold, 8 italic\n  - **colors**:\n    - black: 34\n    - other: 18",
+      "extract_text": {
+        "length": 1743,
+        "preview": "BUDITE NA PRAVNOJ STRANI\\nonline@paragraf.rs\\nwww.paragraf.rs\\nPreuzeto iz elektronske pravne baze Paragraf Lex\\nUkoliko ovaj propis niste preuzeli sa Paragrafovog sajta ili niste sigurni da li je u pitanju va\u017ee\u0107a verzija propisa,\\nposlednju verziju mo\u017eete na\u0107i OVDE.\\nZAKON\\nO NAKNADAMA ZA KORI\u0160\u0106ENJE JAVNI",
+        "full_text": "BUDITE NA PRAVNOJ STRANI\nonline@paragraf.rs\nwww.paragraf.rs\nPreuzeto iz elektronske pravne baze Paragraf Lex\nUkoliko ovaj propis niste preuzeli sa Paragrafovog sajta ili niste sigurni da li je u pitanju va\u017ee\u0107a verzija propisa,\nposlednju verziju mo\u017eete na\u0107i OVDE.\nZAKON\nO NAKNADAMA ZA KORI\u0160\u0106ENJE JAVNIH DOBARA\n(\"Sl. glasnik RS\", br. 95/2018, 49/2019, 86/2019 - uskla\u0111eni din. izn., 156/2020 - uskla\u0111eni din. izn. i 15/2021 -\ndop. uskla\u0111enih din. izn.)\nI UVODNE ODREDBE\nPredmet ure\u0111ivanja\n\u010clan 1\nOvim zakonom ure\u0111uju se naknade za kori\u0161\u0107enje javnih dobara, i to: obveznik pla\u0107anja, osnovica, visina, na\u010din utvr\u0111ivanja i\npla\u0107anja, pripadnost prihoda od naknade, kao i druga pitanja od zna\u010daja za utvr\u0111ivanje i pla\u0107anje naknada za kori\u0161\u0107enje\njavnih dobara.\nDefinicije\n\u010clan 2\nPojedini izrazi upotrebljeni u ovom zakonu imaju slede\u0107e zna\u010denje:\n1) naknada je javni prihod koji se napla\u0107uje za kori\u0161\u0107enje odre\u0111enog javnog dobra;\n2) javno dobro je prirodno bogatstvo, odnosno dobro od op\u0161teg interesa i dobro u op\u0161toj upotrebi (u daljem tekstu: javno\ndobro);\n3) kori\u0161\u0107enje javnog dobra, u smislu ovog zakona, podrazumeva neposredno kori\u0161\u0107enje javnog dobra na osnovu zakona ili\nugovora ili vr\u0161enje neposrednog uticaja na raspolo\u017eivost, kvalitet ili neku drugu osobinu javnog dobra \u010dinjenjem ili\nne\u010dinjenjem;\n4) obveznik pla\u0107anja naknade za kori\u0161\u0107enje javnog dobra je pravno lice, preduzetnik ili fizi\u010dko lice (u daljem tekstu: obveznik\nnaknade) koje koristi javno dobro;\n5) osnovica za utvr\u0111ivanje naknade za kori\u0161\u0107enje javnog dobra (u daljem tekstu: osnovica) je jedinica mere, vrednost dobra\nkoje se koristi ili prihod koji se ostvaruje;\n6) visina naknade je nov\u010dani iznos za kori\u0161\u0107enje javnog dobra (u daljem tekstu: visina naknade).\nUvo\u0111enje naknada"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 4,
+        "columns": 1,
+        "data": [
+          [
+            "ZAKON"
+          ],
+          [
+            "O NAKNADAMA ZA KORI\u0160\u0106ENJE JAVNIH DOBARA"
+          ],
+          [
+            "(\"Sl. glasnik RS\", br. 95/2018, 49/2019, 86/2019 - uskla\u0111eni din. izn., 156/2020 - uskla\u0111eni din. izn. i 15/2021 -"
+          ],
+          [
+            "dop. uskla\u0111enih din. izn.)"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 19,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              34.15421726559633,
+              492.88492832355996,
+              557.946125099131,
+              527.2509865600875
+            ],
+            "confidence": 0.9489091038703918
+          },
+          {
+            "type": "figure",
+            "bbox": [
+              31.192196102526367,
+              125.05519477898603,
+              564.5977070648399,
+              261.5641046823968
+            ],
+            "confidence": 0.9353654384613037
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              416.7877821257931,
+              41.79331193430123,
+              565.4304960519676,
+              85.83092507840335
+            ],
+            "confidence": 0.932328999042511
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              35.585851492401744,
+              579.701508035184,
+              319.3242495276944,
+              592.3223791010985
+            ],
+            "confidence": 0.9131748676300049
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              34.61270463956283,
+              616.7481587273604,
+              543.0276187809683,
+              640.8062975059382
+            ],
+            "confidence": 0.906786322593689
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 48,
+        "yolo_count": 19,
+        "tatr_count": 29,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (48 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 39 | 28 | 280 | 100 | abandon |\n| 417 | 42 | 565 | 86 | abandon |\n| 252 | 769 | 347 | 781 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 150 | 103 | 449 | 118 | title |\n| 230 | 423 | 369 | 439 | title |\n| 282 | 474 | 316 | 487 | title |\n| 275 | 538 | 324 | 551 | title |\n| 282 | 561 | 317 | 574 | title |\n\n..."
+      },
+      "elements_sample": {
+        "total_count": 1900,
+        "full_inspect": "## Collection Inspection (127 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 39 | 28 | 280 | 100 | abandon |\n| 417 | 42 | 565 | 86 | abandon |\n| 252 | 769 | 347 | 781 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n|    | 563 | 29 | 568 | 40 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |\n| BUDITE NA PRAV | 418 | 44 | 504 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #313d4f |\n| N | 504 | 44 | 511 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #000000 |\n| OJ STRANI | 512 | 44 | 563 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #313d4f |\n|   | 563 | 44 | 565 | 56 | Calibri | BCDGEE | 12 | True | False | native | 1.00 | #313d4f |\n|   | 471 | 59 | 474 | 71 | Calibri | BCDGEE | 12 | True | False | native | 1.00 | #313d4f |\n| online@paragraf.rs | 474 | 59 | 563 | 70 | Calibri | BCDGEE | 11 | True | False | native | 1.00 | #0462c1 |\n|   | 563 | 59 | 565 | 70 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #313d4f |\n| www.paragraf.rs  | 488 | 74 | 565 | 85 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #0462c1 |\n|   | 540 | 88 | 542 | 100 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #313d4f |\n| Preuzeto iz elektronske pravne baze  | 151 | 105 | 371 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #000000 |\n| Paragraf Lex | 372 | 105 | 447 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #1f4e79 |\n|   | 447 | 105 | 450 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #000000 |\n|   | 135 | 160 | 139 | 174 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |\n|   | 242 | 248 | 246 | 262 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |\n|   | 345 | 249 | 349 | 263 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |\n|   | 134 | 250 | 138 | 264 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |\n|     | 454 | 252 | 461 | 263 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |\n|   | 565 | 252 | 567 | 263 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |\n| Ukoliko ovaj propis niste preuzeli sa Paragrafovog... | 45 | 274 | 314 | 284 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #767070 |\n| niste sigurni da li je u pitanju va\u017ee\u0107a verzija pr... | 314 | 274 | 554 | 284 | OpenSans | BCDJEE | 10 | False | False | native | 1.00 | #767070 |\n|   | 554 | 274 | 557 | 284 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #767070 |\n| .  | 381 | 288 | 387 | 298 | Arial |  | 11 | False | False | native | 1.00 | #cc0000 |\n| poslednju verziju mo\u017eete na\u0107i  | 214 | 288 | 355 | 298 | OpenSans | BCDJEE | 10 | False | False | native | 1.00 | #767070 |\n| OVDE | 355 | 288 | 381 | 298 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #0462c1 |\n| ZAKON  | 268 | 324 | 335 | 342 | Arial |  | 18 | True | False | native | 1.00 | #ffe8be |\n|   | 497 | 356 | 502 | 374 | Arial |  | 18 | True | False | native | 1.00 | #000000 |\n| O NAKNADAMA ZA KORI\u0160\u0106ENJE JAVNIH DOBARA | 102 | 357 | 496 | 373 | Arial |  | 16 | True | False | native | 1.00 | #000000 |\n| (\"Sl. glasnik RS\", br. 95/2018, 49/2019, 86/2019 -... | 44 | 384 | 558 | 395 | Arial |  | 11 | False | True | native | 1.00 | #ffe8be |\n| dop. uskla\u0111enih din. izn.)   | 241 | 396 | 363 | 407 | Arial |  | 11 | False | True | native | 1.00 | #ffe8be |\n|    | 36 | 412 | 42 | 423 | Arial |  | 12 | False | False | native | 1.00 | #000000 |\n| I UVODNE ODREDBE   | 231 | 425 | 375 | 439 | Arial |  | 14 | False | False | native | 1.00 | #000000 |\n| Predmet ure\u0111ivanja   | 250 | 452 | 354 | 463 | Arial |  | 11 | True | True | native | 1.00 | #000000 |\n| \u010clan 1   | 283 | 476 | 321 | 487 | Arial |  | 11 | True | False | native | 1.00 | #000000 |\n| Ovim zakonom ure\u0111uju se naknade za kori\u0161\u0107enje javn... | 36 | 494 | 558 | 504 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| pla\u0107anja, pripadnost prihoda od naknade, kao i dru... | 36 | 505 | 543 | 515 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| javnih dobara.   | 36 | 516 | 101 | 526 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| Definicije   | 276 | 539 | 328 | 550 | Arial |  | 11 | True | True | native | 1.00 | #000000 |\n| \u010clan 2   | 283 | 563 | 321 | 574 | Arial |  | 11 | True | False | native | 1.00 | #000000 |\n| Pojedini izrazi upotrebljeni u ovom zakonu imaju s... | 36 | 581 | 323 | 591 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 1) naknada je javni prihod koji se napla\u0107uje za ko... | 36 | 600 | 389 | 609 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 2) javno dobro je prirodno bogatstvo, odnosno dobr... | 36 | 618 | 543 | 628 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| dobro);   | 36 | 629 | 71 | 639 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 3) kori\u0161\u0107enje javnog dobra, u smislu ovog zakona, ... | 36 | 648 | 554 | 657 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| ugovora ili vr\u0161enje neposrednog uticaja na raspolo... | 36 | 658 | 514 | 668 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| ne\u010dinjenjem;   | 36 | 669 | 95 | 679 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 4) obveznik pla\u0107anja naknade za kori\u0161\u0107enje javnog ... | 36 | 688 | 561 | 697 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| naknade) koje koristi javno dobro;   | 36 | 699 | 183 | 708 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 5) osnovica za utvr\u0111ivanje naknade za kori\u0161\u0107enje j... | 36 | 717 | 557 | 727 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| koje se koristi ili prihod koji se ostvaruje;   | 36 | 728 | 210 | 738 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| 6) visina naknade je nov\u010dani iznos za kori\u0161\u0107enje j... | 36 | 746 | 446 | 756 | Arial |  | 9 | False | False | native | 1.00 | #000000 |\n| Uvo\u0111enje naknada   | 253 | 770 | 352 | 780 | Arial |  | 11 | True | True | native | 1.00 | #000000 |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 474 | 69 | 563 | 70 | 88 | 1 | #000000 | #0462c1 | 0 |\n| 488 | 83 | 563 | 84 | 75 | 1 | #000000 | #0462c1 | 0 |\n| 372 | 115 | 447 | 115 | 76 | 1 | #000000 | #1f4e79 | 0 |\n| 355 | 297 | 381 | 297 | 27 | 0 | #000000 | #0462c1 | 0 |\n| 36 | 306 | 37 | 309 | 1 | 3 | #000000 | #000000 | 0 |\n| 36 | 306 | 37 | 307 | 1 | 1 | #000000 | #000000 | 0 |\n| 37 | 306 | 562 | 307 | 525 | 1 | #000000 | #000000 | 0 |\n| 562 | 306 | 563 | 309 | 1 | 3 | #000000 | #000000 | 0 |\n| 562 | 306 | 563 | 307 | 1 | 1 | #000000 | #000000 | 0 |\n| 37 | 307 | 562 | 309 | 525 | 2 | #000000 | #a31e1c | 0 |\n| 36 | 309 | 37 | 409 | 1 | 100 | #000000 | #000000 | 0 |\n| 36 | 309 | 39 | 407 | 2 | 98 | #000000 | #a31e1c | 0 |\n| 39 | 309 | 560 | 407 | 521 | 98 | #000000 | #a31e1c | 0 |\n| 39 | 309 | 560 | 351 | 521 | 42 | #000000 | #a31e1c | 0 |\n| 560 | 309 | 562 | 407 | 2 | 98 | #000000 | #a31e1c | 0 |\n| 562 | 309 | 563 | 409 | 1 | 100 | #000000 | #000000 | 0 |\n| 39 | 351 | 560 | 383 | 521 | 32 | #000000 | #a31e1c | 0 |\n| 39 | 383 | 560 | 395 | 521 | 12 | #000000 | #a31e1c | 0 |\n| 39 | 383 | 560 | 395 | 521 | 12 | #000000 | #000000 | 0 |\n| 39 | 395 | 560 | 407 | 521 | 12 | #000000 | #a31e1c | 0 |\n| 39 | 395 | 560 | 407 | 521 | 12 | #000000 | #000000 | 0 |\n| 37 | 407 | 562 | 409 | 525 | 2 | #000000 | #a31e1c | 0 |\n| 36 | 409 | 37 | 410 | 1 | 1 | #000000 | #000000 | 0 |\n| 36 | 409 | 37 | 410 | 1 | 1 | #000000 | #000000 | 0 |\n| 37 | 409 | 562 | 410 | 525 | 1 | #000000 | #000000 | 0 |\n| 562 | 409 | 563 | 410 | 1 | 1 | #000000 | #000000 | 0 |\n| 562 | 409 | 563 | 410 | 1 | 1 | #000000 | #000000 | 0 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 150 | 103 | 449 | 118 | title |\n| 230 | 423 | 369 | 439 | title |\n| 282 | 474 | 316 | 487 | title |\n| 275 | 538 | 324 | 551 | title |\n| 282 | 561 | 317 | 574 | title |\n\n### Figure Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 31 | 125 | 565 | 262 | figure |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 41 | 271 | 556 | 300 | plain text |\n| 249 | 451 | 350 | 464 | plain text |\n| 34 | 493 | 558 | 527 | plain text |\n| 36 | 580 | 319 | 592 | plain text |\n| 35 | 598 | 386 | 610 | plain text |\n| 35 | 617 | 543 | 641 | plain text |\n| 35 | 646 | 553 | 680 | plain text |\n| 35 | 685 | 559 | 709 | plain text |\n| 35 | 716 | 557 | 740 | plain text |\n| 34 | 745 | 441 | 758 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 35 | 593 | 556 | 743 | table |\n| 35 | 597 | 555 | 737 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 597 | 556 | 737 | table column |\n| 35 | 597 | 51 | 737 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 597 | 555 | 612 | table row |\n| 35 | 612 | 555 | 642 | table row |\n| 35 | 642 | 555 | 682 | table row |\n| 35 | 681 | 555 | 711 | table row |\n| 35 | 711 | 555 | 737 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 597 | 555 | 612 | table-cell |\n| 70 | 597 | 555 | 612 | table-cell |\n| 35 | 597 | 51 | 612 | table-cell |\n| 35 | 597 | 51 | 612 | table-cell |\n| 35 | 612 | 51 | 642 | table-cell |\n| 35 | 612 | 51 | 642 | table-cell |\n| 70 | 612 | 555 | 642 | table-cell |\n| 70 | 612 | 555 | 642 | table-cell |\n| 35 | 642 | 51 | 682 | table-cell |\n| 35 | 642 | 51 | 682 | table-cell |\n| 70 | 642 | 555 | 682 | table-cell |\n| 70 | 642 | 555 | 682 | table-cell |\n| 35 | 681 | 51 | 711 | table-cell |\n| 35 | 681 | 51 | 711 | table-cell |\n| 70 | 681 | 555 | 711 | table-cell |\n| 70 | 681 | 555 | 711 | table-cell |\n| 35 | 711 | 51 | 737 | table-cell |\n| 35 | 711 | 51 | 737 | table-cell |\n| 70 | 711 | 555 | 737 | table-cell |\n| 70 | 711 | 555 | 737 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 38.66610384819492,
+            "top": 28.175676984990858
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 562.66,
+            "top": 29.159999999999968
+          },
+          {
+            "type": "unknown",
+            "text": "  ",
+            "x0": 562.66,
+            "top": 29.159999999999968
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 565.18,
+            "top": 29.159999999999968
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 416.7877821257931,
+            "top": 41.79331193430123
+          },
+          {
+            "type": "unknown",
+            "text": "B",
+            "x0": 418.27,
+            "top": 43.91999999999996
+          },
+          {
+            "type": "unknown",
+            "text": "BUDITE NA PRAV",
+            "x0": 418.27,
+            "top": 43.91999999999996
+          },
+          {
+            "type": "unknown",
+            "text": "U",
+            "x0": 425.002,
+            "top": 43.91999999999996
+          },
+          {
+            "type": "unknown",
+            "text": "D",
+            "x0": 432.78999999999996,
+            "top": 43.91999999999996
+          },
+          {
+            "type": "unknown",
+            "text": "I",
+            "x0": 440.34999999999997,
+            "top": 43.91999999999996
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obR6Dxb_Large table that spans across pages in Serbian _e./analysis/obR6Dxb/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 9,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              34.87016979865772,
+              592.5936912114014,
+              555.5354436241611,
+              742.5194451306413
+            ],
+            "confidence": 0.6485885381698608
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              34.550534899328866,
+              597.2632475059382,
+              50.891869127516784,
+              737.1399562945368
+            ],
+            "confidence": 0.9527101516723633
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              34.62045503355705,
+              612.431806175772,
+              555.2957174496645,
+              641.6090337292161
+            ],
+            "confidence": 0.9996356964111328
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              70.45951812080537,
+              597.0532674584323,
+              555.5154664429531,
+              736.9699724465557
+            ],
+            "confidence": 0.9972127079963684
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              34.52056912751679,
+              641.859009976247,
+              555.3156946308726,
+              681.5352399049881
+            ],
+            "confidence": 0.9988526105880737
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 120,
+  "pages_analyzed": 1
+}

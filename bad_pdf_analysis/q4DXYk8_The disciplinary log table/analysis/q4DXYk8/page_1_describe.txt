@@ -1,0 +1,16 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 184 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Calibri: 183
+    - Helvetica: 1
+  - **sizes**:
+    - 5.0pt: 183
+    - 8.0pt: 1
+  - styles: 10 bold

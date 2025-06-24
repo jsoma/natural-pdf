@@ -1,0 +1,23 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 25 elements
+- **rect**: 3 elements
+- **line**: 1 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - DejaVuSans-Oblique: 19
+    - DejaVuSans-BoldOblique: 4
+    - DejaVuSans: 2
+  - **sizes**:
+    - 7.5pt: 23
+    - 5.0pt: 1
+    - 8.0pt: 1
+  - styles: 4 bold, 23 italic
+  - **colors**:
+    - black: 23
+    - other: 2

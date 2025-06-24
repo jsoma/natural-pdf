@@ -1,0 +1,64 @@
+## Collection Inspection (38 elements)
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 28 | 28 | 583 | 764 | 555 | 735 | #000000 | #e7e7e7 | 0 |
+| 28 | 28 | 583 | 382 | 555 | 354 | #000000 | #acc483 | 0 |
+| 34 | 60 | 577 | 349 | 543 | 289 | #000000 | #ffffff | 0 |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| Dobrodošli v Vprašalniku za šolo raziskave PISA. | 43 | 73 | 224 | 80 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Hvala za sodelovanje v tej raziskavi. V tem vpraša... | 43 | 89 | 309 | 97 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| splošnih podatkih o šoli, | 66 | 97 | 156 | 105 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| upravljanju šole, | 66 | 105 | 128 | 113 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| učnem osebju, | 66 | 113 | 121 | 121 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| ocenjevanju in vrednotenju, | 66 | 121 | 171 | 129 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| ciljnih skupinah, | 66 | 130 | 127 | 137 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| šolski klimi. | 66 | 138 | 109 | 145 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| S temi podatki bomo ugotavljali podobnosti in razl... | 43 | 160 | 541 | 167 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| izkazali pri preizkusu znanja. Z dobljenimi podatk... | 43 | 168 | 568 | 175 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| uspeh dijakov in dijakinj, tako v državi kot med d... | 43 | 176 | 260 | 183 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Prosimo, vprašalnik naj izpolni ravnateljica oziro... | 43 | 184 | 550 | 191 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| boste potrebovali približno 45 minut. | 43 | 192 | 182 | 199 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Pri nekaterih vprašanjih boste potrebovali pomoč s... | 43 | 200 | 502 | 208 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |
+|   | 506 | 200 | 508 | 208 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Če ne poznate točnega odgovora na vprašanje, bo za... | 43 | 208 | 433 | 216 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Gumb "Naprej", ki omogoča prehod na naslednje vpra... | 43 | 224 | 568 | 232 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| tega gumba pomakniti na dno zaslona. | 43 | 232 | 190 | 240 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| Vaši odgovori so anonimni. Primerjali jih bomo z o... | 43 | 257 | 539 | 264 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |
+| rezultate, v katerih imena šol ne bodo omenjena. | 43 | 265 | 252 | 272 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |
+| Pomembno: | 43 | 289 | 93 | 297 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |
+|  V tem vprašalniku uporabljamo besedo šola za poim... | 93 | 289 | 562 | 297 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| da pri vseh vprašanjih odgovore oblikujete le gled... | 43 | 297 | 503 | 305 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |
+| SCIntro1 | 37 | 343 | 59 | 348 | DejaVuSans | QPFBAA | 5 | False | False | native | 1.00 | #878787 |
+|   | 28 | 384 | 31 | 392 | DejaVuSans | QPFBAA | 8 | False | False | native | 1.00 | #333333 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 42 | 88 | 310 | 97 | plain text |
+| 56 | 97 | 171 | 145 | plain text |
+| 42 | 158 | 570 | 182 | plain text |
+| 42 | 183 | 552 | 199 | plain text |
+| 42 | 200 | 507 | 216 | plain text |
+| 42 | 222 | 567 | 241 | plain text |
+| 42 | 255 | 540 | 274 | plain text |
+| 189 | 288 | 560 | 306 | plain text |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 377 | 304 | 501 | 304 | 1 | True | False |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 35 | 341 | 60 | 349 | abandon |

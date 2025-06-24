@@ -1,0 +1,102 @@
+## Collection Inspection (66 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 50 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 283 | 690 | 329 | 719 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| House Bill 89 (AS PASSED HOUSE AND SENATE) | 72 | 65 | 355 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| th | 263 | 86 | 269 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |
+| th | 346 | 86 | 352 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |
+| th | 447 | 86 | 453 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |
+| , Wade of the 9 | 269 | 87 | 346 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| , Gambill of the 15 | 352 | 87 | 447 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| , and Hong of the | 453 | 87 | 540 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| By: Representatives Cooper of the 45 | 72 | 87 | 263 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| rd | 91 | 109 | 98 | 116 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |
+|   | 98 | 110 | 101 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 103 | 72 | 110 | 91 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| A BILL TO BE ENTITLED | 232 | 199 | 380 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| AN ACT | 282 | 222 | 330 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 1 | 51 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| To amend Chapter 2A of Title 31 of the Official Co... | 72 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 2 | 51 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| department of public health, so as to require heal... | 72 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 3 | 51 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| pharmacies to provide the Maternal Mortality Revie... | 72 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 4 | 51 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| to provide for the establishment of the Regional P... | 72 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 5 | 51 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| provide for its composition and duties; to provide... | 72 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 6 | 51 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| the commissioner of public health; to require that... | 72 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 7 | 51 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| regional perinatal center provide the department o... | 72 | 401 | 540 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 8 | 51 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| provide that such department present a plan every ... | 72 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 9 | 51 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| amend Code Section 37-3-166 of the Official Code o... | 72 | 445 | 540 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 10 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| treatment of clinical records, when release permit... | 72 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 11 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| liability for disclosure, and notice to sheriff of... | 72 | 490 | 540 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 12 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| clinical records of a deceased patient or deceased... | 72 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 13 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Review Committee; to amend Code Section 45-16-24 o... | 72 | 535 | 540 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 14 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Annotated, relating to notification of suspicious ... | 72 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 15 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| examiner's inquiry, and written report of inquiry,... | 72 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 16 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| medical examiner's inquiry for pregnant female dea... | 72 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 17 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| center; to provide for related matters; to repeal ... | 72 | 624 | 526 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| - 1 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 71 | 85 | 542 | 123 | plain text |
+| 281 | 220 | 331 | 235 | plain text |
+| 47 | 264 | 543 | 641 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 683 | 525 | 762 | table |
+| 58 | 689 | 515 | 729 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 518 | 735 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 57 | 688 | 515 | 700 | table row |
+| 58 | 711 | 516 | 724 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 688 | 515 | 700 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |
+| 458 | 711 | 516 | 724 | table-cell |

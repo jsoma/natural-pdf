@@ -244,7 +244,7 @@ class FlowRegion:
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
         color: Optional[Union[Tuple, str]] = "fuchsia",
@@ -258,6 +258,21 @@ class FlowRegion:
         """
         Generates and returns a PIL Image of relevant pages with constituent regions highlighted.
         If multiple pages are involved, they are stacked into a single image.
+        
+        Args:
+            resolution: Resolution in DPI for page rendering. If None, uses global setting or defaults to 144 DPI.
+            labels: Whether to include a legend for highlights.
+            legend_position: Position of the legend ('right', 'bottom', 'top', 'left').
+            color: Color for highlighting the constituent regions.
+            label_prefix: Prefix for region labels (e.g., 'FlowPart').
+            width: Optional width for the output image (overrides resolution).
+            stack_direction: Direction to stack multiple pages ('vertical' or 'horizontal').
+            stack_gap: Gap in pixels between stacked pages.
+            stack_background_color: RGB background color for the stacked image.
+            **kwargs: Additional arguments passed to the underlying rendering methods.
+        
+        Returns:
+            PIL Image of the rendered pages with highlighted regions, or None if rendering fails.
         """
         if not self.constituent_regions:
             logger.info("FlowRegion.show() called with no constituent regions.")
@@ -350,7 +365,7 @@ class FlowRegion:
                     else getattr(page_obj, "page_number", 1) - 1
                 ),
                 temporary_highlights=temp_highlights_for_page,
-                scale=scale,
+                resolution=resolution,
                 width=width,
                 labels=labels,  # Pass through labels
                 legend_position=legend_position,

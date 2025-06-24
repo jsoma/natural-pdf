@@ -295,3 +295,53 @@ class OCRManager:
                 )  # Log check failures at debug level
                 pass  # Ignore engines that fail to instantiate or check
         return available
+
+    def cleanup_engine(self, engine_name: Optional[str] = None) -> int:
+        """
+        Cleanup OCR engine instances to free memory.
+        
+        Args:
+            engine_name: Specific engine to cleanup, or None to cleanup all engines
+            
+        Returns:
+            Number of engines cleaned up
+        """
+        cleaned_count = 0
+        
+        if engine_name:
+            # Cleanup specific engine
+            engine_name = engine_name.lower()
+            if engine_name in self._engine_instances:
+                engine = self._engine_instances.pop(engine_name)
+                if hasattr(engine, 'cleanup'):
+                    try:
+                        engine.cleanup()
+                    except Exception as e:
+                        logger.debug(f"Engine {engine_name} cleanup method failed: {e}")
+                
+                # Clear associated locks
+                self._engine_locks.pop(engine_name, None)
+                self._engine_inference_locks.pop(engine_name, None)
+                
+                logger.info(f"Cleaned up OCR engine: {engine_name}")
+                cleaned_count = 1
+        else:
+            # Cleanup all engines
+            for name, engine in list(self._engine_instances.items()):
+                if hasattr(engine, 'cleanup'):
+                    try:
+                        engine.cleanup()
+                    except Exception as e:
+                        logger.debug(f"Engine {name} cleanup method failed: {e}")
+                        
+            # Clear all caches
+            engine_count = len(self._engine_instances)
+            self._engine_instances.clear()
+            self._engine_locks.clear()
+            self._engine_inference_locks.clear()
+            
+            if engine_count > 0:
+                logger.info(f"Cleaned up {engine_count} OCR engines")
+            cleaned_count = engine_count
+            
+        return cleaned_count

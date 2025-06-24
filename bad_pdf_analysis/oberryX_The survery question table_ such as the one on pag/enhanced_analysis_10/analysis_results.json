@@ -1,0 +1,75 @@
+{
+  "document": "oberryX_The survery question table_ such as the one on pag",
+  "total_pages": 56,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T16:43:26.300511",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "595.22 × 842 points",
+      "text_length": 1004,
+      "text_preview": "OECCD Prrogrammme for\nInnternattionall Studdent AAssesssmentt 20122\nČeská rrepublika\nDatum ttestování (Hla v n í šetření PISA 2012)\n2012\nORGANISATION FOOR ECONOMIC Den Měěsíc\nCO‐OPERATION AND DEVELOPM...",
+      "table": "20 rows × 14 columns",
+      "table_sample": [
+        [
+          "",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "",
+          "",
+          "",
+          "il for Educatioo",
+          "nal Research",
+          "(ACER, Austráá",
+          "lie)"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "Člen",
+          "ové konsorcia",
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "",
+          "",
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "yolo_regions": 7,
+      "tatr_regions": 1,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/oberryX_The survery question table_ such as the one on pag/enhanced_analysis_10/page_1.png"
+    }
+  },
+  "insights": [
+    "Document contains 1004 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables",
+    "Complex layout detected - average 7.0 regions per page"
+  ]
+}

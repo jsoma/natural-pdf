@@ -1,0 +1,42 @@
+## Collection Inspection (16 elements)
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 0 | 0 | 720 | 540 | 720 | 540 | #000000 | #000000 | 0 |
+| 28 | 178 | 693 | 280 | 665 | 102 | #000000 | #000000 | 0 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 6 | 709 | 102 | plain text |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 脱炭素イノベーションによる地域循環共生圏構築事業のうち | 227 | 9 | 713 | 27 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 「地域再エネ等の活用による持続可能な自立・分散型地域エネルギー | 155 | 35 | 713 | 53 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| システムや脱炭素型地域交通モデルの構築支援事業」 | 281 | 57 | 713 | 75 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 公募説明会 | 623 | 83 | 713 | 101 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 地域循環共生圏の創造 | 213 | 194 | 508 | 223 | Meiryo-Bold | ABCDEE | 30 | True | False | native | 1.00 | #000000 |
+| －日本発の脱炭素化・SDGｓ構想－ | 121 | 226 | 600 | 255 | Meiryo-Bold | ABCDEE | 30 | True | False | native | 1.00 | #000000 |
+| 令和元年7月 | 298 | 324 | 423 | 346 | Meiryo | ABCDEE | 22 | False | False | native | 1.00 | #000000 |
+| 環境省 | 244 | 356 | 322 | 382 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |
+| 地球環境局 | 348 | 356 | 477 | 382 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |
+| 地球温暖化対策課 | 115 | 394 | 321 | 419 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |
+| 地球温暖化対策事業室 | 348 | 394 | 606 | 419 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 43 | 181 | 97 | abandon |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 121 | 191 | 599 | 260 | title |

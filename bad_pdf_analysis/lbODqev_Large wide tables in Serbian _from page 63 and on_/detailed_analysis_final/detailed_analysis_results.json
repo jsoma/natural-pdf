@@ -1,0 +1,90 @@
+{
+  "document": "lbODqev_Large wide tables in Serbian _from page 63 and on_",
+  "total_pages": 252,
+  "analyzed_pages": [
+    63
+  ],
+  "analysis_date": "2025-06-22T17:16:38.437024",
+  "pages": {
+    "63": {
+      "page_number": 63,
+      "dimensions": "595.32 × 841.92 points",
+      "tests_performed": {},
+      "text_length": 2190,
+      "text_preview": "Раздео Глава Програм Функција П а Пр ко т риг ор в ја н ем ко асс ттк /а клЕ аск ио фно им кас цка и ја ОПИС Укупна средства\n1 2 3 4 5 6 7 8\n1 НАРОДНА СКУПШТИНА 4.297.325.000\nИзвори финансирања за раз...",
+      "character_count": 2017,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 0.42,
+      "standard_table": "98 rows × 10 columns",
+      "line_detection": {
+        "horizontal_lines": 11,
+        "vertical_lines": 0,
+        "total_lines": 11
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 12,
+        "processing_time": 0.960411787033081
+      },
+      "yolo_types": {
+        "table": 1,
+        "table_row": 10,
+        "abandon": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 1.0313129425048828
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 152,
+      "selector_bold_text": 31,
+      "selector_colored_rects": 11,
+      "selector_thin_lines": 11,
+      "potential_text_formatting": 2,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.724]...'. Full selector: '*[width>416.724]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODqev_Large wide tables in Serbian _from page 63 and on_/detailed_analysis_final/page_63.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 63,
+      "severity": "medium",
+      "details": "Character overlap ratio: 0.42"
+    },
+    {
+      "type": "text_formatting",
+      "page": 63,
+      "severity": "medium",
+      "details": "2 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "medium",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling",
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

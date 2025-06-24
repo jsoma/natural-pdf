@@ -1,0 +1,613 @@
+{
+  "pdf_name": "GxpvezO.pdf",
+  "pdf_path": "bad_pdf_analysis/GxpvezO_The table in Nepali on page 30 _in between the tex/GxpvezO.pdf",
+  "analysis_timestamp": "2025-06-22T14:33:01.417457",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.44,
+        "height": 841.68
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 89 elements\n- **rect**: 3 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Preeti: 86\n    - Times: 2\n    - Fontasy Himali: 1\n  - **sizes**:\n    - 14.0pt: 84\n    - 18.0pt: 2\n    - 16.0pt: 1\n    - 11.0pt: 1\n    - 12.0pt: 1",
+      "extract_text": {
+        "length": 1631,
+        "preview": "/f;folgs dn -lgoGq0f_ cfb]z, @)%%\\nklxnf] ;+zf]wg ldlt M @)%&\u00f7)$\u00f7!^\\ncfjZos kbfy{ lgoGq0f -clwsf/_ P]g, @)!& sf] bkmf # / * n] lbPsf] clwsf/ k|of]u\\nu/L g]kfn ;/sf/n] b]xfosf] cfb]z hf/L u/]sf] 5 .\\n!= ;+lIfKt gfd / k|f/DeM-!_ o; cfb]zsf] gfd \u00e6/f;folgs dn -lgoGq0f_ -klxnf] ;+zf]wg_\\ncfb]z, @)%&\u00c6/x]sf] 5 ",
+        "full_text": "/f;folgs dn -lgoGq0f_ cfb]z, @)%%\nklxnf] ;+zf]wg ldlt M @)%&\u00f7)$\u00f7!^\ncfjZos kbfy{ lgoGq0f -clwsf/_ P]g, @)!& sf] bkmf # / * n] lbPsf] clwsf/ k|of]u\nu/L g]kfn ;/sf/n] b]xfosf] cfb]z hf/L u/]sf] 5 .\n!= ;+lIfKt gfd / k|f/DeM-!_ o; cfb]zsf] gfd \u00e6/f;folgs dn -lgoGq0f_ -klxnf] ;+zf]wg_\ncfb]z, @)%&\u00c6/x]sf] 5 .\n-@_ of] cfb]z t'?Gt k|f/De x'g]5 .\n@= kl/efiffM ljifo jf k|;+un] csf]{ cy{ gnfu]df o; cfb]zdf,\n-s_ \u00e6P]g\u00c6 eGgfn] cfjZos kbfy{ lgoGq0f -clwsf/_ P]g, @)!& ;Demg\"\nk5{ .\n-v_ \u00e6dGqfno\u00c6 eGgfn] g]kfn ;/sf/, s[lif ljsf; dGqfno ;Demg\" k5{ .\n-u_ \u00e6/f;folgs dn\u00c6 eGgfn] bkmf % adf]lhdsf] :k]l;lkms]zgdf ;dfj]z\ns'g} /f;folgs dn ;Demg' k5{ / ;f] zAbn] dGqfnon] ;do ;dodf\ng]kfn /fhkqdf ;\"rgf k|sfzg u/L /f;folgs dn egL tf]lslbPsf] s'g}\nkbfy{{ ;d]tnfO{ hgfpF5 .\n-3_ \u00e6;e]{o/\u00c6eGgfn] /f;folgs dnsf] kl/df0f / u'0f:t/sf] ;j]{If0f ug]{\nsfdsf] nflu bkmf * sf] pkbkmf -@_ adf]lhd dGqfnoaf6 dfGotf k|fKt\n;+:yf ;Demg' k5{ .\n-\u00aa_ \u00e6pTkfbs\u00c6 eGgfn] g]kfnleq /f;folgs dn pTkfbg jf ;lDd>0f ug{\n;Sg] ;+oGq jf ;'ljwf eO{ bkmf !$ adf]lhd /f;folgs dnsf]\n/lhi6\u00ab]zgsf] k|df0fkq k|fKt JolQm jf ;+:yf ;Demg' k5{ .\n-r_ \u00e6k}7f/Lstf{\u00c6 eGgfn] s\"g} ljb]zL d'n'saf6 g]kfnleq /f;folgs dn\nk}7f/L ug]{ JolQm jf ;+:yf ;Demg' k5{ .\n-5_ \u00e6l8n/\u00c6 eGgfn] /f;folgs dn k|ToIf ?kdf laqmL ljt/0f ug]{ JolQm jf\n;+:yf jf To:tf] JolQm jf ;+:yfsf] Ph]G6 ;Demg' k5{ / ;f] zAbn]\n/f;folgs dn laqmL ljt/0f ug]{ pTkfbs jf k}7f/Lstf{nfO{ ;d]t\nhgfpF5 .\n-h_ \u00e6lg/LIfs\u00c6 eGgfn] bkmf @@ adf]lhd lgo'Qm ePsf] jf tf]lsPsf]\n/f;folgs dn lg/LIfs ;Demg' k5{ .\n-em_ \u00e6cflwsfl/s ljZn]ifs\u00c6 eGgfn] /f;folgs dnsf] u'0f:t/sf] k/LIf0f ug{\no; cfb]z adf]lhd dGqfnoaf6 lgo'Qm /f;folgs dnsf] ljZn]if0f ug]{\nJoltm ;Demg' k5{ .\n1"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 44,
+        "columns": 7,
+        "data": [
+          [
+            "",
+            "",
+            "",
+            "klxnf] ;+",
+            "zf]wg ld",
+            "lt M",
+            "@)%&\u00f7)$\u00f7!^"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "s kbfy{",
+            "lgoGq0f -clwsf/_",
+            "P]g, @)!&",
+            "sf] bkmf # /",
+            "* n] l",
+            "bPsf]",
+            "clwsf/ k|of]u"
+          ],
+          [
+            "kfn ;/s",
+            "f/n] b]xfosf] cfb]z",
+            "hf/L u/]sf]",
+            "5 .",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "gfd / k|f",
+            "/DeM-!_ o; cfb]z",
+            "sf] gfd \u00e6/f",
+            ";folgs dn",
+            "-lgoGq",
+            "0f_ -",
+            "klxnf] ;+zf]wg_"
+          ],
+          [
+            "@)%&\u00c6/x]",
+            "sf] 5 .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "cfb]z t'?",
+            "Gt k|f/De x'g]5 .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "fM ljifo j",
+            "f k|;+un] csf]{ cy{",
+            "gnfu]df o;",
+            "cfb]zdf,",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-s_",
+            "\u00e6P]g\u00c6 eGgfn] cfj",
+            "Zos kbfy{",
+            "lgoGq0f -",
+            "clwsf/_",
+            "P]g,",
+            "@)!& ;Demg\""
+          ],
+          [
+            "",
+            "k5{ .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-v_",
+            "\u00e6dGqfno\u00c6 eGgfn]",
+            "g]kfn ;/sf/",
+            ", s[lif ljsf",
+            "; dGqfn",
+            "o ;",
+            "Demg\" k5{ ."
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-u_",
+            "\u00e6/f;folgs dn\u00c6",
+            "eGgfn] bkmf",
+            "% adf]lhd",
+            "sf] :k]l;",
+            "lkms",
+            "]zgdf ;dfj]z"
+          ],
+          [
+            "",
+            "s'g} /f;folgs dn",
+            ";Demg' k5",
+            "{ / ;f] zAb",
+            "n] dGqf",
+            "non]",
+            ";do ;dodf"
+          ],
+          [
+            "",
+            "g]kfn /fhkqdf ;\"",
+            "rgf k|sfzg",
+            "u/L /f;fol",
+            "gs dn",
+            "egL",
+            "tf]lslbPsf] s'g}"
+          ],
+          [
+            "",
+            "kbfy{{ ;d]tnfO{ hg",
+            "fpF5 .",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-3_",
+            "\u00e6;e]{o/\u00c6eGgfn] /f",
+            ";folgs dn",
+            "sf] kl/df0f",
+            "/ u'0f",
+            ":t/s",
+            "f] ;j]{If0f ug]{"
+          ],
+          [
+            "",
+            "sfdsf] nflu bkmf",
+            "* sf] pkbkm",
+            "f -@_ adf]lh",
+            "d dGqf",
+            "noaf",
+            "6 dfGotf k|fKt"
+          ],
+          [
+            "",
+            ";+:yf ;Demg' k5{ .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-\u00aa_",
+            "\u00e6pTkfbs\u00c6 eGgfn]",
+            "g]kfnleq /f",
+            ";folgs d",
+            "n pTkfb",
+            "g j",
+            "f ;lDd>0f ug{"
+          ],
+          [
+            "",
+            ";Sg] ;+oGq jf",
+            ";'ljwf eO{",
+            "bkmf !$",
+            "adf]lhd",
+            "/f;",
+            "folgs dnsf]"
+          ],
+          [
+            "",
+            "/lhi6\u00ab]zgsf] k|df0f",
+            "kq k|fKt JolQ",
+            "m jf ;+:yf",
+            ";Demg'",
+            "k5{ .",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-r_",
+            "\u00e6k}7f/Lstf{\u00c6 eGgf",
+            "n] s\"g} ljb]z",
+            "L d'n'saf6",
+            "g]kfnl",
+            "eq",
+            "/f;folgs dn"
+          ],
+          [
+            "",
+            "k}7f/L ug]{ JolQm j",
+            "f ;+:yf ;Dem",
+            "g' k5{ .",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-5_",
+            "\u00e6l8n/\u00c6 eGgfn] /f",
+            ";folgs dn",
+            "k|ToIf ?kdf",
+            "laqmL l",
+            "jt/0",
+            "f ug]{ JolQm jf"
+          ],
+          [
+            "",
+            ";+:yf jf To:tf] J",
+            "olQm jf ;+:",
+            "yfsf] Ph]G6",
+            ";Demg",
+            "' k5",
+            "{ / ;f] zAbn]"
+          ],
+          [
+            "",
+            "/f;folgs dn la",
+            "qmL ljt/0f",
+            "ug]{ pTkfb",
+            "s jf",
+            "k}7f/L",
+            "stf{nfO{ ;d]t"
+          ],
+          [
+            "",
+            "hgfpF5 .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-h_",
+            "\u00e6lg/LIfs\u00c6 eGgfn]",
+            "bkmf @@",
+            "adf]lhd l",
+            "go'Qm",
+            "ePsf]",
+            "jf tf]lsPsf]"
+          ],
+          [
+            "",
+            "/f;folgs dn lg/",
+            "LIfs ;Demg'",
+            "k5{ .",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "-em_",
+            "\u00e6cflwsfl/s ljZn]i",
+            "fs\u00c6 eGgfn]",
+            "/f;folgs",
+            "dnsf] u'",
+            "0f:t/",
+            "sf] k/LIf0f ug{"
+          ],
+          [
+            "",
+            "o; cfb]z adf]lhd",
+            "dGqfnoaf6",
+            "lgo'Qm /f",
+            ";folgs",
+            "dns",
+            "f] ljZn]if0f ug]{"
+          ],
+          [
+            "",
+            "Joltm ;Demg' k5{ .",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 8,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              145.40595781159882,
+              201.8593356286998,
+              525.6924248816983,
+              231.78954575781015
+            ],
+            "confidence": 0.8681727647781372
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              174.63484677103543,
+              311.9073247551635,
+              527.0288145170276,
+              706.4922615540565
+            ],
+            "confidence": 0.8670697808265686
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              141.12001063609284,
+              271.83756750111337,
+              290.0238384354355,
+              287.5704165642165
+            ],
+            "confidence": 0.8414635062217712
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              107.00527482820038,
+              236.98389048959183,
+              525.4318667090499,
+              267.2012381554103
+            ],
+            "confidence": 0.824175238609314
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              311.42043287443636,
+              738.9381168175196,
+              320.09449554238546,
+              751.6538024351432
+            ],
+            "confidence": 0.8186895847320557
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 539,
+        "yolo_count": 8,
+        "tatr_count": 531,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (539 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 207 | 113 | 424 | 134 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 361 | 162 | 526 | 178 | plain text |\n| 145 | 202 | 526 | 232 | plain text |\n| 107 | 237 | 525 | 267 | plain text |\n| 141 | 272 | 290 | 288 | plain text |\n| 108 | 292 | 393 | 308 | plain text |\n| 175 | 312 | 527 | 706 | plain text |\n\n##..."
+      },
+      "elements_sample": {
+        "total_count": 2286,
+        "full_inspect": "## Collection Inspection (631 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 207 | 113 | 424 | 134 | title |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| /f;folgs dn -lgoGq0f_ cfb]z, @)%%  | 209 | 115 | 428 | 133 | Preeti | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n|   | 316 | 140 | 322 | 158 | Preeti | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| klxnf] ;+zf]wg ldlt M @)%&\u00f7)$\u00f7!^  | 363 | 164 | 528 | 178 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n|   | 108 | 184 | 113 | 198 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n|   | 108 | 204 | 113 | 218 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| cfjZos kbfy{ lgoGq0f -clwsf/_ P]g, @)!& sf] bkmf #... | 148 | 204 | 528 | 218 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| u/L g]kfn ;/sf/n] b]xfosf] cfb]z hf/L u/]sf] 5 .  | 148 | 219 | 368 | 233 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| !=  | 108 | 239 | 121 | 253 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;+lIfKt gfd / k|f/DeM-!_ o; cfb]zsf] gfd \u00e6/f;folgs... | 143 | 239 | 528 | 253 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| cfb]z, @)%&\u00c6/x]sf] 5 .  | 143 | 253 | 249 | 267 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -@_ of] cfb]z t'?Gt k|f/De x'g]5 .  | 143 | 274 | 292 | 288 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| @=  | 108 | 294 | 122 | 308 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| kl/efiffM ljifo jf k|;+un] csf]{ cy{ gnfu]df o; cf... | 144 | 294 | 396 | 308 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -s_  | 179 | 314 | 198 | 328 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6P]g\u00c6 eGgfn] cfjZos kbfy{ lgoGq0f  | 216 | 314 | 392 | 328 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -clwsf/_ P]g, @)!& ;Demg\"            | 395 | 314 | 574 | 328 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| k5{ .  | 216 | 329 | 241 | 343 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -v_  | 179 | 349 | 198 | 363 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6dGqfno\u00c6 eGgfn] g]kfn ;/sf/, s[lif ljsf; dGqfno ;D... | 216 | 349 | 513 | 363 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -u_  | 179 | 369 | 197 | 383 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6/f;folgs dn\u00c6 eGgfn] bkmf % adf]lhdsf] :k]l;lkms]z... | 216 | 369 | 528 | 383 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| s'g} /f;folgs dn ;Demg' k5{ / ;f] zAbn] dGqfnon] ;... | 216 | 383 | 528 | 398 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| g]kfn /fhkqdf ;\"rgf k|sfzg u/L /f;folgs dn egL tf]... | 216 | 398 | 528 | 412 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| kbfy{{ ;d]tnfO{ hgfpF5 .   | 216 | 412 | 332 | 426 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -3_  | 179 | 432 | 197 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6;e]{o/\u00c6eGgfn]  | 216 | 432 | 284 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /f;folgs  | 288 | 432 | 334 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| dnsf]  | 338 | 432 | 368 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| kl/df0f  | 371 | 432 | 407 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /  | 410 | 432 | 420 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| u'0f:t/sf]  | 423 | 432 | 469 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;j]{If0f  | 473 | 432 | 507 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ug]{  | 510 | 432 | 528 | 446 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| sfdsf] nflu bkmf * sf] pkbkmf -@_ adf]lhd dGqfnoaf... | 216 | 447 | 528 | 461 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;+:yf ;Demg' k5{ .   | 216 | 461 | 305 | 475 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -\u00aa_  | 179 | 481 | 196 | 495 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6pTkfbs\u00c6 eGgfn] g]kfnleq /f;folgs dn pTkfbg jf ;lD... | 216 | 481 | 528 | 495 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;Sg]  | 216 | 496 | 239 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;+oGq  | 244 | 496 | 272 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| jf  | 277 | 496 | 291 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;'ljwf  | 296 | 496 | 326 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| eO{  | 331 | 496 | 349 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| bkmf  | 354 | 496 | 376 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| !$  | 381 | 496 | 398 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| adf]lhd  | 403 | 496 | 442 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /f;folgs  | 447 | 496 | 493 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| dnsf]  | 498 | 496 | 528 | 510 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /lhi6\u00ab]zgsf] k|df0fkq k|fKt JolQm jf ;+:yf ;Demg' ... | 216 | 510 | 459 | 524 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -r_  | 179 | 530 | 198 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6k}7f/Lstf{\u00c6  | 216 | 530 | 271 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| eGgfn]  | 274 | 530 | 306 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| s\"g}  | 310 | 530 | 329 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ljb]zL  | 333 | 530 | 363 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| d'n'saf6  | 366 | 530 | 409 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| g]kfnleq  | 412 | 530 | 456 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /f;folgs  | 459 | 530 | 506 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| dn  | 509 | 530 | 528 | 544 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| k}7f/L ug]{ JolQm jf ;+:yf ;Demg' k5{ .   | 216 | 545 | 391 | 559 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -5_  | 179 | 565 | 198 | 579 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6l8n/\u00c6 eGgfn] /f;folgs dn k|ToIf ?kdf laqmL ljt/0f... | 216 | 565 | 528 | 579 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;+:yf jf To:tf] JolQm jf ;+:yfsf] Ph]G6 ;Demg' k5{... | 216 | 579 | 533 | 593 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /f;folgs  | 216 | 594 | 262 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| dn  | 266 | 594 | 285 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| laqmL  | 289 | 594 | 315 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ljt/0f  | 319 | 594 | 351 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ug]{  | 355 | 594 | 373 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| pTkfbs  | 377 | 594 | 415 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| jf  | 419 | 594 | 433 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| k}7f/Lstf{nfO{  | 437 | 594 | 498 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ;d]t    | 502 | 594 | 537 | 608 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| hgfpF5 .   | 216 | 608 | 264 | 622 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -h_  | 179 | 628 | 198 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6lg/LIfs\u00c6  | 216 | 628 | 263 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| eGgfn]  | 268 | 628 | 300 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| bkmf  | 305 | 628 | 328 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| @@  | 333 | 628 | 349 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| adf]lhd  | 354 | 628 | 393 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| lgo'Qm  | 398 | 628 | 428 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| ePsf]  | 434 | 628 | 462 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| jf  | 467 | 628 | 481 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| tf]lsPsf]  | 486 | 628 | 528 | 642 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| /f;folgs dn lg/LIfs ;Demg' k5{ .  | 216 | 642 | 376 | 657 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| -em_  | 179 | 663 | 200 | 677 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| \u00e6cflwsfl/s ljZn]ifs\u00c6 eGgfn] /f;folgs dnsf] u'0f:t/... | 216 | 663 | 528 | 677 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| o; cfb]z adf]lhd dGqfnoaf6 lgo'Qm /f;folgs dnsf] l... | 216 | 677 | 528 | 691 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n| Joltm ;Demg' k5{ .  | 216 | 691 | 301 | 705 | Preeti | ABCDEE | 14 | False | False | native | 1.00 | #000000 |\n|   | 108 | 740 | 112 | 756 | Times |  | 16 | False | False | native | 1.00 | #000000 |\n| 1  | 313 | 741 | 323 | 752 | Fontasy Himali | ABCDEE | 11 | False | False | native | 1.00 | #000000 |\n|   | 108 | 757 | 111 | 769 | Times |  | 12 | False | False | native | 1.00 | #000000 |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 209 | 131 | 422 | 132 | 214 | 0 | #000000 | #000000 | 0 |\n| 143 | 252 | 234 | 252 | 91 | 0 | #000000 | #000000 | 0 |\n| 144 | 306 | 179 | 307 | 35 | 0 | #000000 | #000000 | 0 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 361 | 162 | 526 | 178 | plain text |\n| 145 | 202 | 526 | 232 | plain text |\n| 107 | 237 | 525 | 267 | plain text |\n| 141 | 272 | 290 | 288 | plain text |\n| 108 | 292 | 393 | 308 | plain text |\n| 175 | 312 | 527 | 706 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 163 | 247 | 514 | 765 | table |\n| 163 | 270 | 514 | 749 | table |\n| 165 | 460 | 520 | 746 | table |\n| 178 | 480 | 520 | 742 | table |\n| 173 | 543 | 519 | 753 | table |\n| 178 | 562 | 518 | 751 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 163 | 269 | 208 | 749 | table column |\n| 207 | 270 | 513 | 750 | table column |\n| 178 | 479 | 205 | 739 | table column |\n| 205 | 479 | 519 | 735 | table column |\n| 178 | 562 | 205 | 751 | table column |\n| 205 | 563 | 519 | 751 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 163 | 271 | 513 | 290 | table row |\n| 163 | 289 | 513 | 310 | table row |\n| 163 | 309 | 513 | 345 | table row |\n| 163 | 346 | 514 | 368 | table row |\n| 163 | 366 | 514 | 428 | table row |\n| 163 | 432 | 513 | 479 | table row |\n| 163 | 475 | 513 | 522 | table row |\n| 178 | 479 | 519 | 523 | table row |\n| 163 | 492 | 513 | 534 | table row |\n| 178 | 523 | 519 | 560 | table row |\n| 163 | 535 | 513 | 570 | table row |\n| 178 | 559 | 519 | 623 | table row |\n| 178 | 561 | 519 | 620 | table row |\n| 163 | 568 | 513 | 629 | table row |\n| 178 | 621 | 519 | 658 | table row |\n| 163 | 636 | 513 | 668 | table row |\n| 178 | 637 | 520 | 672 | table row |\n| 178 | 655 | 519 | 725 | table row |\n| 178 | 663 | 520 | 729 | table row |\n| 163 | 669 | 513 | 733 | table row |\n| 163 | 730 | 513 | 750 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 163 | 271 | 208 | 290 | table-cell |\n| 163 | 271 | 208 | 290 | table-cell |\n| 207 | 271 | 513 | 290 | table-cell |\n| 207 | 271 | 513 | 290 | table-cell |\n| 163 | 289 | 208 | 310 | table-cell |\n| 163 | 289 | 208 | 310 | table-cell |\n| 207 | 289 | 513 | 310 | table-cell |\n| 207 | 289 | 513 | 310 | table-cell |\n| 163 | 309 | 208 | 345 | table-cell |\n| 163 | 309 | 208 | 345 | table-cell |\n| 207 | 309 | 513 | 345 | table-cell |\n| 207 | 309 | 513 | 345 | table-cell |\n| 163 | 346 | 208 | 368 | table-cell |\n| 163 | 346 | 208 | 368 | table-cell |\n| 207 | 346 | 513 | 368 | table-cell |\n| 207 | 346 | 513 | 368 | table-cell |\n| 163 | 366 | 208 | 428 | table-cell |\n| 163 | 366 | 208 | 428 | table-cell |\n| 207 | 366 | 513 | 428 | table-cell |\n| 207 | 366 | 513 | 428 | table-cell |\n| 163 | 432 | 208 | 479 | table-cell |\n| 163 | 432 | 208 | 479 | table-cell |\n| 163 | 432 | 208 | 479 | table-cell |\n| 207 | 432 | 513 | 479 | table-cell |\n| 207 | 432 | 513 | 479 | table-cell |\n| 207 | 432 | 513 | 479 | table-cell |\n| 163 | 475 | 208 | 522 | table-cell |\n| 163 | 475 | 208 | 522 | table-cell |\n| 163 | 475 | 208 | 522 | table-cell |\n| 163 | 475 | 208 | 522 | table-cell |\n| 207 | 475 | 513 | 522 | table-cell |\n| 207 | 475 | 513 | 522 | table-cell |\n| 207 | 475 | 513 | 522 | table-cell |\n| 207 | 475 | 513 | 522 | table-cell |\n| 178 | 479 | 208 | 523 | table-cell |\n| 178 | 479 | 208 | 523 | table-cell |\n| 178 | 479 | 208 | 523 | table-cell |\n| 178 | 479 | 208 | 523 | table-cell |\n| 207 | 479 | 513 | 523 | table-cell |\n| 207 | 479 | 513 | 523 | table-cell |\n| 207 | 479 | 513 | 523 | table-cell |\n| 207 | 479 | 513 | 523 | table-cell |\n| 178 | 479 | 205 | 479 | table-cell |\n| 178 | 479 | 205 | 522 | table-cell |\n| 178 | 479 | 205 | 523 | table-cell |\n| 178 | 479 | 205 | 479 | table-cell |\n| 178 | 479 | 205 | 522 | table-cell |\n| 178 | 479 | 205 | 523 | table-cell |\n| 178 | 479 | 205 | 522 | table-cell |\n| 178 | 479 | 205 | 523 | table-cell |\n| 178 | 479 | 205 | 479 | table-cell |\n| 178 | 479 | 205 | 522 | table-cell |\n| 178 | 479 | 205 | 523 | table-cell |\n| 205 | 479 | 513 | 479 | table-cell |\n| 205 | 479 | 513 | 522 | table-cell |\n| 205 | 479 | 519 | 523 | table-cell |\n| 205 | 479 | 513 | 479 | table-cell |\n| 205 | 479 | 513 | 522 | table-cell |\n| 205 | 479 | 519 | 523 | table-cell |\n| 205 | 479 | 513 | 522 | table-cell |\n| 205 | 479 | 519 | 523 | table-cell |\n| 205 | 479 | 513 | 479 | table-cell |\n| 205 | 479 | 513 | 522 | table-cell |\n| 205 | 479 | 519 | 523 | table-cell |\n| 163 | 492 | 208 | 534 | table-cell |\n| 163 | 492 | 208 | 534 | table-cell |\n| 163 | 492 | 208 | 534 | table-cell |\n| 163 | 492 | 208 | 534 | table-cell |\n| 178 | 492 | 205 | 534 | table-cell |\n| 178 | 492 | 205 | 534 | table-cell |\n| 178 | 492 | 205 | 534 | table-cell |\n| 178 | 492 | 205 | 534 | table-cell |\n| 205 | 492 | 513 | 534 | table-cell |\n| 205 | 492 | 513 | 534 | table-cell |\n| 205 | 492 | 513 | 534 | table-cell |\n| 205 | 492 | 513 | 534 | table-cell |\n| 207 | 492 | 513 | 534 | table-cell |\n| 207 | 492 | 513 | 534 | table-cell |\n| 207 | 492 | 513 | 534 | table-cell |\n| 207 | 492 | 513 | 534 | table-cell |\n| 178 | 523 | 208 | 560 | table-cell |\n| 178 | 523 | 205 | 560 | table-cell |\n| 178 | 523 | 208 | 560 | table-cell |\n| 178 | 523 | 205 | 560 | table-cell |\n| 178 | 523 | 208 | 560 | table-cell |\n| 178 | 523 | 205 | 560 | table-cell |\n| 178 | 523 | 208 | 560 | table-cell |\n| 178 | 523 | 205 | 560 | table-cell |\n| 178 | 523 | 208 | 560 | table-cell |\n| 178 | 523 | 205 | 560 | table-cell |\n| 205 | 523 | 519 | 560 | table-cell |\n| 205 | 523 | 519 | 560 | table-cell |\n| 205 | 523 | 519 | 560 | table-cell |\n| 205 | 523 | 519 | 560 | table-cell |\n| 205 | 523 | 519 | 560 | table-cell |\n| 207 | 523 | 513 | 560 | table-cell |\n| 207 | 523 | 513 | 560 | table-cell |\n| 207 | 523 | 513 | 560 | table-cell |\n| 207 | 523 | 513 | 560 | table-cell |\n| 207 | 523 | 513 | 560 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 163 | 535 | 208 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 178 | 535 | 205 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 205 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 207 | 535 | 513 | 570 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 178 | 559 | 208 | 623 | table-cell |\n| 178 | 559 | 205 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 205 | 559 | 519 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 207 | 559 | 513 | 623 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 178 | 561 | 208 | 620 | table-cell |\n| 178 | 561 | 205 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 205 | 561 | 519 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 207 | 561 | 513 | 620 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 570 | table-cell |\n| 178 | 562 | 205 | 623 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 178 | 562 | 205 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 205 | 563 | 513 | 570 | table-cell |\n| 205 | 563 | 519 | 623 | table-cell |\n| 205 | 563 | 519 | 620 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 163 | 568 | 208 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 178 | 568 | 205 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 205 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 207 | 568 | 513 | 629 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 208 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 178 | 621 | 205 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 205 | 621 | 519 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 207 | 621 | 513 | 658 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 163 | 636 | 208 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 178 | 636 | 205 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 205 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 207 | 636 | 513 | 668 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 208 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 178 | 637 | 205 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 205 | 637 | 519 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 207 | 637 | 513 | 672 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 208 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 178 | 655 | 205 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 205 | 655 | 519 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 207 | 655 | 513 | 725 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 208 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 178 | 663 | 205 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 205 | 663 | 519 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 207 | 663 | 513 | 729 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 163 | 669 | 208 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 178 | 669 | 205 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 205 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 207 | 669 | 513 | 733 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 163 | 730 | 208 | 749 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 739 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 178 | 730 | 205 | 750 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 735 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 205 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n| 207 | 730 | 513 | 750 | table-cell |\n\n### Table Spanning Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 178 | 654 | 205 | 752 | table spanning cell |\n| 163 | 659 | 207 | 750 | table spanning cell |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 311 | 739 | 320 | 752 | abandon |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 206.7765693859126,
+            "top": 113.36594153469927
+          },
+          {
+            "type": "unknown",
+            "text": "/",
+            "x0": 208.97,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "/f;folgs dn -lgoGq0f_ cfb]z, @",
+            "x0": 208.97,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "f",
+            "x0": 215.162,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": ";",
+            "x0": 218.888,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "f",
+            "x0": 228.518,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "o",
+            "x0": 232.244,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "l",
+            "x0": 240.65,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "g",
+            "x0": 243.944,
+            "top": 115.27999999999997
+          },
+          {
+            "type": "unknown",
+            "text": "s",
+            "x0": 252.368,
+            "top": 115.27999999999997
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/GxpvezO_The table in Nepali on page 30 _in between the tex/analysis/GxpvezO/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 35,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              165.27456241610741,
+              460.2450185273159,
+              519.8011369127516,
+              746.0963401425178
+            ],
+            "confidence": 0.5405598878860474
+          },
+          {
+            "type": "table",
+            "bbox": [
+              172.7375436241611,
+              542.9835619952494,
+              518.9719167785236,
+              753.3535809976246
+            ],
+            "confidence": 0.5312811732292175
+          },
+          {
+            "type": "table",
+            "bbox": [
+              163.4562724832215,
+              246.90612826603322,
+              514.026567785235,
+              764.909187648456
+            ],
+            "confidence": 0.7165352702140808
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              177.85273288590608,
+              523.3910109263658,
+              519.4714469798658,
+              559.537268408551
+            ],
+            "confidence": 0.9995200634002686
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              204.9172791946309,
+              478.8879306413301,
+              519.1517476510068,
+              735.3604218527315
+            ],
+            "confidence": 0.9996743202209473
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 33,
+  "pages_analyzed": 1
+}

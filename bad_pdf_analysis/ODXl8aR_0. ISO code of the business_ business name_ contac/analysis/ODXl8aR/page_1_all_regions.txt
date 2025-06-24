@@ -1,0 +1,74 @@
+All Layout Regions (34 found)
+==================================================
+YOLO: 4, TATR: 30, Other: 0
+
+## Collection Inspection (34 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 336 | 40 | 540 | 65 | abandon |
+| 76 | 43 | 250 | 74 | abandon |
+| 76 | 719 | 532 | 756 | abandon |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 153 | 161 | 459 | 182 | title |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 525 | 213 | table row |
+| 73 | 214 | 525 | 250 | table row |
+| 73 | 250 | 525 | 275 | table row |
+| 73 | 278 | 525 | 311 | table row |
+| 73 | 311 | 525 | 327 | table row |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 525 | 327 | table |
+| 73 | 197 | 527 | 330 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 231 | 327 | table column |
+| 276 | 197 | 525 | 327 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 231 | 213 | table-cell |
+| 73 | 197 | 231 | 213 | table-cell |
+| 276 | 197 | 525 | 213 | table-cell |
+| 276 | 197 | 525 | 213 | table-cell |
+| 73 | 214 | 231 | 250 | table-cell |
+| 73 | 214 | 231 | 250 | table-cell |
+| 276 | 214 | 525 | 250 | table-cell |
+| 276 | 214 | 525 | 250 | table-cell |
+| 73 | 250 | 231 | 275 | table-cell |
+| 73 | 250 | 231 | 275 | table-cell |
+| 276 | 250 | 525 | 275 | table-cell |
+| 276 | 250 | 525 | 275 | table-cell |
+| 73 | 278 | 231 | 311 | table-cell |
+| 73 | 278 | 231 | 311 | table-cell |
+| 276 | 278 | 525 | 311 | table-cell |
+| 276 | 278 | 525 | 311 | table-cell |
+| 73 | 311 | 231 | 327 | table-cell |
+| 73 | 311 | 231 | 327 | table-cell |
+| 276 | 311 | 525 | 327 | table-cell |
+| 276 | 311 | 525 | 327 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 250 | 525 | 275 | table projected row header |

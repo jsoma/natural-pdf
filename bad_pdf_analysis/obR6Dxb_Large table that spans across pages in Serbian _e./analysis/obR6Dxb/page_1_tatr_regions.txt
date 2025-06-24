@@ -1,0 +1,53 @@
+TATR Layout Regions (29 found)
+==================================================
+
+## Collection Inspection (29 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 35 | 593 | 556 | 743 | table |
+| 35 | 597 | 555 | 737 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 597 | 556 | 737 | table column |
+| 35 | 597 | 51 | 737 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 597 | 555 | 612 | table row |
+| 35 | 612 | 555 | 642 | table row |
+| 35 | 642 | 555 | 682 | table row |
+| 35 | 681 | 555 | 711 | table row |
+| 35 | 711 | 555 | 737 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 597 | 555 | 612 | table-cell |
+| 70 | 597 | 555 | 612 | table-cell |
+| 35 | 597 | 51 | 612 | table-cell |
+| 35 | 597 | 51 | 612 | table-cell |
+| 35 | 612 | 51 | 642 | table-cell |
+| 35 | 612 | 51 | 642 | table-cell |
+| 70 | 612 | 555 | 642 | table-cell |
+| 70 | 612 | 555 | 642 | table-cell |
+| 35 | 642 | 51 | 682 | table-cell |
+| 35 | 642 | 51 | 682 | table-cell |
+| 70 | 642 | 555 | 682 | table-cell |
+| 70 | 642 | 555 | 682 | table-cell |
+| 35 | 681 | 51 | 711 | table-cell |
+| 35 | 681 | 51 | 711 | table-cell |
+| 70 | 681 | 555 | 711 | table-cell |
+| 70 | 681 | 555 | 711 | table-cell |
+| 35 | 711 | 51 | 737 | table-cell |
+| 35 | 711 | 51 | 737 | table-cell |
+| 70 | 711 | 555 | 737 | table-cell |
+| 70 | 711 | 555 | 737 | table-cell |

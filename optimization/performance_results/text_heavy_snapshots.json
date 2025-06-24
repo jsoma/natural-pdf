@@ -1,0 +1,650 @@
+[
+  {
+    "timestamp": 0.042387962341308594,
+    "rss_mb": 246.34375,
+    "vms_mb": 402287.125,
+    "python_objects": 226284,
+    "operation": "baseline_start",
+    "page_count": 0,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {}
+  },
+  {
+    "timestamp": 0.08167457580566406,
+    "rss_mb": 247.96875,
+    "vms_mb": 402287.125,
+    "python_objects": 226285,
+    "operation": "before_load",
+    "page_count": 0,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {}
+  },
+  {
+    "timestamp": 2.5797529220581055,
+    "rss_mb": 269.328125,
+    "vms_mb": 402295.125,
+    "python_objects": 276740,
+    "operation": "after_load",
+    "page_count": 0,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "total_pages": 1224
+    }
+  },
+  {
+    "timestamp": 2.6984477043151855,
+    "rss_mb": 272.109375,
+    "vms_mb": 402295.125,
+    "python_objects": 277347,
+    "operation": "page_access_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 2.745166778564453,
+    "rss_mb": 274.25,
+    "vms_mb": 402295.125,
+    "python_objects": 277385,
+    "operation": "page_access_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 2.8189775943756104,
+    "rss_mb": 274.6875,
+    "vms_mb": 402295.125,
+    "python_objects": 277834,
+    "operation": "page_access_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 4.116744756698608,
+    "rss_mb": 303.828125,
+    "vms_mb": 402304.578125,
+    "python_objects": 289372,
+    "operation": "page_access_4",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 4.842505931854248,
+    "rss_mb": 330.921875,
+    "vms_mb": 402322.59375,
+    "python_objects": 314989,
+    "operation": "page_access_5",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 4.895597696304321,
+    "rss_mb": 330.953125,
+    "vms_mb": 402322.59375,
+    "python_objects": 315006,
+    "operation": "page_access_6",
+    "page_count": 6,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 4.957772731781006,
+    "rss_mb": 332.9375,
+    "vms_mb": 402322.59375,
+    "python_objects": 315149,
+    "operation": "page_access_7",
+    "page_count": 7,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 5.010588884353638,
+    "rss_mb": 335.484375,
+    "vms_mb": 402322.59375,
+    "python_objects": 315162,
+    "operation": "page_access_8",
+    "page_count": 8,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612.0,
+      "page_height": 792.0
+    }
+  },
+  {
+    "timestamp": 5.831702709197998,
+    "rss_mb": 378.75,
+    "vms_mb": 402357.609375,
+    "python_objects": 340718,
+    "operation": "page_access_9",
+    "page_count": 9,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612,
+      "page_height": 792
+    }
+  },
+  {
+    "timestamp": 6.506531715393066,
+    "rss_mb": 409.0,
+    "vms_mb": 402375.609375,
+    "python_objects": 366246,
+    "operation": "page_access_10",
+    "page_count": 10,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "page_width": 612,
+      "page_height": 792
+    }
+  },
+  {
+    "timestamp": 6.569635629653931,
+    "rss_mb": 411.859375,
+    "vms_mb": 402375.609375,
+    "python_objects": 366253,
+    "operation": "describe_1_error",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 6.635405778884888,
+    "rss_mb": 411.890625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366252,
+    "operation": "describe_2_error",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 6.700761795043945,
+    "rss_mb": 411.890625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366255,
+    "operation": "describe_3_error",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 6.767519950866699,
+    "rss_mb": 411.890625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366256,
+    "operation": "describe_4_error",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 6.8355207443237305,
+    "rss_mb": 412.03125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366257,
+    "operation": "describe_5_error",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "error": "object of type 'ElementSummary' has no len()"
+    }
+  },
+  {
+    "timestamp": 6.899723768234253,
+    "rss_mb": 412.421875,
+    "vms_mb": 402375.609375,
+    "python_objects": 366264,
+    "operation": "words_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 6.964836835861206,
+    "rss_mb": 412.484375,
+    "vms_mb": 402375.609375,
+    "python_objects": 366265,
+    "operation": "text_elements_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 6
+    }
+  },
+  {
+    "timestamp": 7.030568838119507,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366266,
+    "operation": "rects_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 1
+    }
+  },
+  {
+    "timestamp": 7.095412969589233,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366267,
+    "operation": "large_text_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 6
+    }
+  },
+  {
+    "timestamp": 7.1599438190460205,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366268,
+    "operation": "words_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 7.227121829986572,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366269,
+    "operation": "text_elements_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 7.293863773345947,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366270,
+    "operation": "rects_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 1
+    }
+  },
+  {
+    "timestamp": 7.359580755233765,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366271,
+    "operation": "large_text_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 7.424821615219116,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366272,
+    "operation": "words_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 7.490963935852051,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366273,
+    "operation": "text_elements_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 6
+    }
+  },
+  {
+    "timestamp": 7.554121971130371,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366274,
+    "operation": "rects_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 1
+    }
+  },
+  {
+    "timestamp": 7.618854761123657,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366275,
+    "operation": "large_text_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 6
+    }
+  },
+  {
+    "timestamp": 7.6854777336120605,
+    "rss_mb": 412.53125,
+    "vms_mb": 402375.609375,
+    "python_objects": 366276,
+    "operation": "words_4",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 7.750982761383057,
+    "rss_mb": 415.359375,
+    "vms_mb": 402375.609375,
+    "python_objects": 366277,
+    "operation": "text_elements_4",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 31
+    }
+  },
+  {
+    "timestamp": 7.8143298625946045,
+    "rss_mb": 415.359375,
+    "vms_mb": 402375.609375,
+    "python_objects": 366278,
+    "operation": "rects_4",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 1
+    }
+  },
+  {
+    "timestamp": 7.880968809127808,
+    "rss_mb": 415.359375,
+    "vms_mb": 402375.609375,
+    "python_objects": 366279,
+    "operation": "large_text_4",
+    "page_count": 4,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 2
+    }
+  },
+  {
+    "timestamp": 7.950031757354736,
+    "rss_mb": 418.15625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366280,
+    "operation": "words_5",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "words",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 8.016186714172363,
+    "rss_mb": 418.15625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366281,
+    "operation": "text_elements_5",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "text_elements",
+      "element_count": 42
+    }
+  },
+  {
+    "timestamp": 8.080825805664062,
+    "rss_mb": 418.15625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366282,
+    "operation": "rects_5",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "rects",
+      "element_count": 0
+    }
+  },
+  {
+    "timestamp": 8.146294593811035,
+    "rss_mb": 418.15625,
+    "vms_mb": 402375.609375,
+    "python_objects": 366283,
+    "operation": "large_text_5",
+    "page_count": 5,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "large_text",
+      "element_count": 1
+    }
+  },
+  {
+    "timestamp": 8.23127555847168,
+    "rss_mb": 422.140625,
+    "vms_mb": 402375.734375,
+    "python_objects": 366400,
+    "operation": "image_72dpi_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "612x792"
+    }
+  },
+  {
+    "timestamp": 8.312628984451294,
+    "rss_mb": 444.578125,
+    "vms_mb": 402375.734375,
+    "python_objects": 366392,
+    "operation": "image_144dpi_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1224x1584"
+    }
+  },
+  {
+    "timestamp": 8.405828714370728,
+    "rss_mb": 493.640625,
+    "vms_mb": 402424.390625,
+    "python_objects": 366394,
+    "operation": "image_216dpi_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1836x2376"
+    }
+  },
+  {
+    "timestamp": 8.47771167755127,
+    "rss_mb": 494.0,
+    "vms_mb": 402424.390625,
+    "python_objects": 366397,
+    "operation": "image_72dpi_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "612x792"
+    }
+  },
+  {
+    "timestamp": 8.557156801223755,
+    "rss_mb": 519.015625,
+    "vms_mb": 402424.390625,
+    "python_objects": 366399,
+    "operation": "image_144dpi_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1224x1584"
+    }
+  },
+  {
+    "timestamp": 8.643437623977661,
+    "rss_mb": 535.09375,
+    "vms_mb": 402440.390625,
+    "python_objects": 366401,
+    "operation": "image_216dpi_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1836x2376"
+    }
+  },
+  {
+    "timestamp": 8.717692852020264,
+    "rss_mb": 535.3125,
+    "vms_mb": 402440.390625,
+    "python_objects": 366404,
+    "operation": "image_72dpi_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 72,
+      "image_size": "612x792"
+    }
+  },
+  {
+    "timestamp": 8.800137758255005,
+    "rss_mb": 558.015625,
+    "vms_mb": 402440.390625,
+    "python_objects": 366406,
+    "operation": "image_144dpi_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 144,
+      "image_size": "1224x1584"
+    }
+  },
+  {
+    "timestamp": 8.889364957809448,
+    "rss_mb": 574.109375,
+    "vms_mb": 402456.390625,
+    "python_objects": 366408,
+    "operation": "image_216dpi_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "resolution": 216,
+      "image_size": "1836x2376"
+    }
+  },
+  {
+    "timestamp": 32.41994595527649,
+    "rss_mb": 1699.234375,
+    "vms_mb": 405158.59375,
+    "python_objects": 789397,
+    "operation": "layout_1",
+    "page_count": 1,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 3
+    }
+  },
+  {
+    "timestamp": 33.31084966659546,
+    "rss_mb": 1726.796875,
+    "vms_mb": 405166.59375,
+    "python_objects": 789401,
+    "operation": "layout_2",
+    "page_count": 2,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 0
+    }
+  },
+  {
+    "timestamp": 34.191160678863525,
+    "rss_mb": 1758.03125,
+    "vms_mb": 405166.59375,
+    "python_objects": 789494,
+    "operation": "layout_3",
+    "page_count": 3,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {
+      "operation_type": "layout",
+      "layout_regions": 3
+    }
+  },
+  {
+    "timestamp": 34.35586380958557,
+    "rss_mb": 1758.03125,
+    "vms_mb": 405166.59375,
+    "python_objects": 789493,
+    "operation": "test_complete",
+    "page_count": 0,
+    "pdf_name": "appendix_fy2026",
+    "additional_info": {}
+  }
+]

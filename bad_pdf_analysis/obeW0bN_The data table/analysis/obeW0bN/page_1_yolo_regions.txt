@@ -1,0 +1,10 @@
+YOLO Layout Regions (1 found)
+==================================================
+
+## Collection Inspection (1 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 120 | 205 | 462 | 677 | table |

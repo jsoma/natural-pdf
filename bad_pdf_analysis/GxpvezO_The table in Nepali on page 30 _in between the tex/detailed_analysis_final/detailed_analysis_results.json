@@ -1,0 +1,85 @@
+{
+  "document": "GxpvezO_The table in Nepali on page 30 _in between the tex",
+  "total_pages": 33,
+  "analyzed_pages": [
+    30
+  ],
+  "analysis_date": "2025-06-22T17:16:49.274268",
+  "pages": {
+    "30": {
+      "page_number": 30,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 2852,
+      "text_preview": "cg';\"rL -(_\n- bkmf @^ sf] pkbkmf -!_ / bkmf @& sf] pkbkmf -!_ ;Fu ;DalGwt _\ngd\"gf lng] tyf gd\"gf k|of]u ug]{ tl/sf\n!= /f;folgs dn k/LIf0f ug{ lg/LIfsn] gd\"gf ln+bf ug'{kg]{ ;fdfGo sfo{ljlw M gd\"gf ln+...",
+      "character_count": 2868,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.1,
+      "standard_table": "57 rows × 12 columns",
+      "line_detection": {
+        "horizontal_lines": 20,
+        "vertical_lines": 0,
+        "total_lines": 20
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 33,
+        "processing_time": 1.111788034439087
+      },
+      "yolo_types": {
+        "title": 2,
+        "table_row": 19,
+        "plain text": 10,
+        "table": 1,
+        "abandon": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 1,
+        "processing_time": 0.6885578632354736
+      },
+      "selector_large_text": 4,
+      "selector_small_text": 0,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 9,
+      "selector_thin_lines": 9,
+      "potential_text_formatting": 1,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/GxpvezO_The table in Nepali on page 30 _in between the tex/detailed_analysis_final/page_30.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "text_formatting",
+      "page": 30,
+      "severity": "medium",
+      "details": "1 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

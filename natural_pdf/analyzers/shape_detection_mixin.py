@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import binary_closing, binary_opening, gaussian_filter1d
 from scipy.signal import find_peaks
+from sklearn.cluster import MiniBatchKMeans
+from scipy.ndimage import label as nd_label, find_objects
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -1763,6 +1765,232 @@ class ShapeDetectionMixin:
         logger.info(
             f"Created {tables_created} table, {rows_created} rows, {cols_created} columns, and {cells_created} table cells from detected lines (source: '{source_label}') for {self}."
         )
+
+        return self
+
+    def detect_blobs(
+        self,
+        k: Optional[int] = None,
+        tolerance: float = 40.0,
+        min_area_pts: float = 400.0,
+        resolution: int = 150,
+        replace: bool = True,
+        source_label: str = "detected",
+        overlap_threshold: float = 0.5,
+    ) -> "ShapeDetectionMixin":
+        """Detect colour blobs on a page/region and convert them to Region objects.
+
+        Args:
+            k: Desired number of colour clusters. ``None`` → automatically choose k
+               (2‒15) using the elbow/knee method on inertia.
+            tolerance: Maximum Delta-E CIE2000 distance at which two colour
+               clusters are merged (40 ≈ perceptually "very similar"). Higher
+               values merge more shades; set 0 to disable.
+            min_area_pts: Ignore components whose bounding-box area in PDF points² is
+               smaller than this value.
+            resolution: DPI used for rasterising the page/region before detection.
+            replace: If *True* purge existing ``region[type=blob]`` that share the
+               same ``source_label`` before adding new ones.
+            source_label: Stored in ``region.source`` so callers can distinguish
+               between different detection passes.
+            overlap_threshold: After blobs are built, discard any blob whose
+                area overlaps vector elements (rects/words/lines/curves) by
+                more than this fraction (0‒1).  Use this instead of pixel
+                masking so large painted areas are not cut by text boxes.
+        """
+        import numpy as np
+        from scipy.ndimage import label as nd_label, find_objects
+
+        # Acquire raster image & scale info
+        cv_image, scale_factor, origin_offset_pdf, page_obj = self._get_image_for_detection(resolution)
+        if cv_image is None or page_obj is None:
+            return self  # nothing to do
+        img_arr = cv_image.reshape(-1, 3).astype(np.float32) / 255.0  # normalised
+
+        # No pre-masking of vector boxes; cluster entire image.
+        h, w, _ = cv_image.shape
+        unmasked_pixels = np.full(img_arr.shape[0], True, dtype=bool)
+        img_arr_unmasked = img_arr  # cluster all pixels
+
+        # ── choose k ────────────────────────────────────────────────────────────
+        if k is None:
+            inertias = []
+            ks = list(range(2, 16))  # 2 … 15
+            for _k in ks:
+                km = MiniBatchKMeans(n_clusters=_k, random_state=0, batch_size=1024)
+                km.fit(img_arr_unmasked[:: max(1, img_arr_unmasked.shape[0] // 50000)])  # subsample
+                inertias.append(km.inertia_)
+            # knee: biggest drop in inertia
+            diffs = np.diff(inertias)
+            knee_idx = int(np.argmin(diffs))  # most negative diff
+            k = ks[knee_idx]
+        # fit final model
+        kmeans = MiniBatchKMeans(n_clusters=k, random_state=0, batch_size=1024)
+        full_labels = kmeans.fit_predict(img_arr_unmasked)
+        centroids = kmeans.cluster_centers_  # in 0-1 RGB
+        h, w, _ = cv_image.shape
+        full_label_flat = np.full(img_arr.shape[0], -1, dtype=int)
+        full_label_flat[unmasked_pixels] = full_labels
+        labels_img = full_label_flat.reshape(h, w)
+
+        # ------------------------------------------------------------------
+        # Merge clusters whose centroid colours are perceptually close
+        # (Delta-E CIE2000 < tolerance).  We first identify the most frequent
+        # cluster (likely background) and do NOT merge *into* it so that real
+        # colourful blobs don't disappear when tolerance is large.
+        # ------------------------------------------------------------------
+        try:
+            from colormath2.color_conversions import convert_color
+            from colormath2.color_diff import delta_e_cie2000
+            from colormath2.color_objects import LabColor, sRGBColor
+
+            # Compute pixel counts per cluster to locate background
+            counts = np.bincount(full_labels, minlength=k)
+            bg_cluster = int(np.argmax(counts))  # largest cluster by pixel count
+
+            lab_centroids = [convert_color(sRGBColor(*rgb), LabColor) for rgb in centroids]
+
+            # Union-find parent array
+            parent = list(range(k))
+
+            def find(x):
+                while parent[x] != x:
+                    parent[x] = parent[parent[x]]
+                    x = parent[x]
+                return x
+
+            def union(a, b):
+                ra, rb = find(a), find(b)
+                if ra != rb:
+                    parent[rb] = ra
+
+            for i in range(k):
+                for j in range(i + 1, k):
+                    if bg_cluster in (i, j):
+                        continue  # never merge INTO background
+                    if delta_e_cie2000(lab_centroids[i], lab_centroids[j]) < tolerance:
+                        union(i, j)
+
+            # Remap every cluster id to its root parent
+            root_map = [find(idx) for idx in range(k)]
+            for old_id, new_id in enumerate(root_map):
+                if old_id != new_id:
+                    full_label_flat[full_label_flat == old_id] = new_id
+
+        except ImportError:
+            # colormath2 not available – skip merging
+            pass
+
+        labels_img = full_label_flat.reshape(h, w)
+
+        # ── optional purge ──
+        if replace and hasattr(page_obj, "_element_mgr"):
+            old_blobs = [r for r in page_obj._element_mgr.regions if getattr(r, "region_type", None) == "blob" and getattr(r, "source", None) == source_label]
+            for r in old_blobs:
+                try:
+                    page_obj._element_mgr.regions.remove(r)
+                except ValueError:
+                    pass
+
+        # ── iterate clusters ───────────────────────────────────────────────────
+        unique_clusters = [cid for cid in np.unique(labels_img) if cid >= 0]
+        for c_idx in unique_clusters:
+            mask = labels_img == c_idx
+            # clean tiny specks to avoid too many components
+            mask_small = binary_opening(mask, structure=np.ones((3, 3)))
+            # Bridge small gaps so contiguous paint isn't split by tiny holes
+            if not mask_small.any():
+                continue
+            comp_labels, n_comps = nd_label(mask_small)
+            if n_comps == 0:
+                continue
+            slices = find_objects(comp_labels)
+            for comp_idx, sl in enumerate(slices):
+                if sl is None:
+                    continue
+                y0, y1 = sl[0].start, sl[0].stop
+                x0, x1 = sl[1].start, sl[1].stop
+                # bbox area in pixels → in pts²
+                area_pixels = (y1 - y0) * (x1 - x0)
+                area_pts = area_pixels * (scale_factor ** 2)
+
+                # Skip tiny regions
+                if area_pts < min_area_pts:
+                    continue
+
+                # Skip page-background blocks (≥80 % page area)
+                page_area_pts = page_obj.width * page_obj.height
+                if area_pts / page_area_pts > 0.8:
+                    continue
+
+                # Compute mean colour of the component
+                comp_pixels = cv_image[y0:y1, x0:x1]
+                avg_rgb = comp_pixels.mean(axis=(0, 1)) / 255.0  # 0-1 range
+                # Skip almost-white / almost-black near-grayscale areas (likely background or text)
+                brightness = float(np.mean(avg_rgb))
+                color_std = float(np.std(avg_rgb))
+                if color_std < 0.05 and (brightness < 0.2 or brightness > 0.95):
+                    continue
+
+                # ----------------------------------------------------------------
+                # Check overlap with characters BEFORE creating the Region.
+                # If more than overlap_threshold of the blob area is covered by
+                # any characters we discard it as likely text fill.
+                # ----------------------------------------------------------------
+
+                region_bbox_pdf = (
+                    origin_offset_pdf[0] + x0 * scale_factor,
+                    origin_offset_pdf[1] + y0 * scale_factor,
+                    origin_offset_pdf[0] + x1 * scale_factor,
+                    origin_offset_pdf[1] + y1 * scale_factor,
+                )
+
+                rx0, rtop, rx1, rbot = region_bbox_pdf
+                region_area_pts = (rx1 - rx0) * (rbot - rtop)
+                if region_area_pts == 0:
+                    continue
+
+                chars = getattr(page_obj, "chars", []) or []
+                overlap_area = 0.0
+                for ch in chars:
+                    vx0, vtop, vx1, vbot = ch.x0, ch.top, ch.x1, ch.bottom
+                    ix0 = max(rx0, vx0)
+                    iy0 = max(rtop, vtop)
+                    ix1 = min(rx1, vx1)
+                    iy1 = min(rbot, vbot)
+                    if ix1 > ix0 and iy1 > iy0:
+                        overlap_area += (ix1 - ix0) * (iy1 - iy0)
+                        if overlap_area / region_area_pts >= overlap_threshold:
+                            break
+
+                if overlap_area / region_area_pts >= overlap_threshold:
+                    continue  # skip, mostly text
+
+                # Map to PDF coords and create region after passing overlap test
+                pdf_x0, pdf_top, pdf_x1, pdf_bottom = region_bbox_pdf
+
+                from natural_pdf.elements.region import Region
+                region = Region(page_obj, (pdf_x0, pdf_top, pdf_x1, pdf_bottom))
+                region.region_type = "blob"
+                region.normalized_type = "blob"
+                region.source = source_label
+                # Produce compact web colour using the 'colour' library if available
+                try:
+                    from colour import Color  # type: ignore
+
+                    hex_str = str(Color(rgb=tuple(avg_rgb)))  # gives named/shortest rep
+                except Exception:
+                    hex_str = "#{:02x}{:02x}{:02x}".format(
+                        int(avg_rgb[0] * 255), int(avg_rgb[1] * 255), int(avg_rgb[2] * 255)
+                    )
+                region.rgb = tuple(map(float, avg_rgb))  # numeric backup
+                region.color = hex_str
+                region.fill = hex_str
+
+                # Store readable colour for inspection tables
+                region.metadata["color_hex"] = hex_str
+
+                page_obj._element_mgr.add_region(region)
 
         return self
 

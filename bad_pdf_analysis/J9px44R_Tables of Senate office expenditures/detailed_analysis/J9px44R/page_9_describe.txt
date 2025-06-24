@@ -1,0 +1,18 @@
+## Page 9 Summary
+
+**Elements**:
+
+- **text**: 40 elements
+- **rect**: 7 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 39
+    - Century: 1
+  - **sizes**:
+    - 9.5pt: 38
+    - 10.0pt: 1
+    - 11.0pt: 1
+  - styles: 2 bold, 1 italic

@@ -1,0 +1,22 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **line**: 44 elements
+- **text**: 29 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - NewCenturySchlbk-Roman: 26
+    - SpecV01: 2
+    - NewCenturySchlbk-Italic: 1
+  - **sizes**:
+    - 8.0pt: 12
+    - 6.0pt: 7
+    - 7.0pt: 4
+    - 12.0pt: 3
+    - 18.0pt: 2
+    - 1.0pt: 1
+  - styles: 1 italic

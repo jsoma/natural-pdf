@@ -1,0 +1,17 @@
+YOLO Layout Regions (3 found)
+==================================================
+
+## Collection Inspection (3 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 48 | 342 | 122 | abandon |
+| 203 | 709 | 396 | 726 | abandon |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 248 | 562 | 569 | plain text |

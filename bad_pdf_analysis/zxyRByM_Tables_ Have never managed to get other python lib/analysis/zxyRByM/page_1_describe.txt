@@ -1,0 +1,22 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 78 elements
+- **rect**: 60 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Georgia: 78
+  - **sizes**:
+    - 9.0pt: 49
+    - 9.5pt: 19
+    - 8.5pt: 6
+    - 12.0pt: 3
+    - 21.0pt: 1
+  - styles: 17 bold
+  - **colors**:
+    - black: 66
+    - other: 12

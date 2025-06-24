@@ -1,0 +1,62 @@
+All Layout Regions (22 found)
+==================================================
+YOLO: 8, TATR: 14, Other: 0
+
+## Collection Inspection (22 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 50 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 283 | 690 | 330 | 719 | abandon |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 268 | 108 | 343 | 124 | title |
+| 268 | 420 | 343 | 437 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 59 | 129 | 543 | 393 | plain text |
+| 56 | 444 | 461 | 461 | plain text |
+| 48 | 532 | 544 | 664 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 85 | 634 | 537 | 706 | table |
+| 88 | 644 | 536 | 704 | table |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 536 | 664 | table row |
+| 89 | 685 | 536 | 704 | table row |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 185 | 704 | table column |
+| 182 | 645 | 538 | 704 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 185 | 664 | table-cell |
+| 89 | 644 | 185 | 664 | table-cell |
+| 182 | 645 | 536 | 664 | table-cell |
+| 182 | 645 | 536 | 664 | table-cell |
+| 89 | 685 | 185 | 704 | table-cell |
+| 89 | 685 | 185 | 704 | table-cell |
+| 182 | 685 | 536 | 704 | table-cell |
+| 182 | 685 | 536 | 704 | table-cell |

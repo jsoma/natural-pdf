@@ -1,0 +1,19 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 28 elements
+- **line**: 1 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Baghdad: 20
+    - AhabSubhead: 7
+    - Arial: 1
+  - **sizes**:
+    - 15.0pt: 24
+    - 14.0pt: 3
+    - 20.0pt: 1
+  - styles: 1 bold

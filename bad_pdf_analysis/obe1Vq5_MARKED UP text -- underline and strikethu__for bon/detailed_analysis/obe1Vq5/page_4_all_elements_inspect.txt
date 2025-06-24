@@ -1,0 +1,219 @@
+## Collection Inspection (173 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 448 | 36 | 541 | 51 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 283 | 690 | 330 | 719 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 66 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| regional perinatal center for the proper managemen... | 90 | 65 | 540 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 67 | 45 | 87 | 58 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| needed; | 90 | 87 | 130 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 68 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (4)  An adequate transport system is available in ... | 90 | 110 | 540 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 69 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| mothers and infants and specifically considers: | 90 | 132 | 333 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 70 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (A)  The distance and travel time between referrin... | 99 | 154 | 540 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 71 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| centers; | 99 | 177 | 140 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 72 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (B)  The types of vehicles used for transport and ... | 99 | 199 | 540 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 73 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| vehicles; and | 99 | 222 | 167 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 74 | 45 | 244 | 58 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (C)  The need for upgraded vehicles and transport ... | 99 | 244 | 441 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 75 | 45 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (5)  Each regional perinatal center provides: | 90 | 266 | 318 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 76 | 45 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (A)  Consultation for patients requiring special s... | 99 | 289 | 495 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 77 | 45 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (B)  Coordination and assurance of follow-up medic... | 99 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 78 | 45 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| patients requiring special services; | 99 | 334 | 278 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 79 | 45 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (C)  Educational support to ensure quality care in... | 99 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 80 | 45 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| healthcare in the region; | 99 | 378 | 225 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 81 | 45 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (D)  An annual education plan with all birthing ce... | 99 | 401 | 456 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 82 | 45 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (E)  Compilation and analysis of perinatal data fr... | 99 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 83 | 45 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| and | 99 | 445 | 118 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 84 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (F)  Coordination of perinatal health services wit... | 99 | 468 | 428 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 85 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (e)  When changes to the regional perinatal center... | 81 | 490 | 540 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 86 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| recommendation by the advisory committee, the depa... | 81 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 87 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| to the Office of Planning and Budget prior to the ... | 81 | 535 | 540 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 88 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| session seeking appropriations to implement such c... | 81 | 557 | 387 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 89 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 31-2A-72. | 81 | 602 | 135 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 90 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| A hospital interested in being designated as a reg... | 81 | 624 | 540 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 91 | 45 | 647 | 58 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| department of  the following: | 81 | 647 | 233 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| - 4 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 71 | 52 | 544 | 581 | plain text |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 90 | 76 | 540 | 77 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 99 | 130 | 99 | 40 | 1 | #000000 | #000000 | 0 |
+| 90 | 121 | 540 | 122 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 143 | 333 | 144 | 243 | 1 | #000000 | #000000 | 0 |
+| 99 | 166 | 540 | 166 | 441 | 1 | #000000 | #000000 | 0 |
+| 99 | 188 | 140 | 189 | 40 | 1 | #000000 | #000000 | 0 |
+| 99 | 210 | 540 | 211 | 441 | 1 | #000000 | #000000 | 0 |
+| 99 | 233 | 167 | 234 | 68 | 1 | #000000 | #000000 | 0 |
+| 99 | 255 | 441 | 256 | 342 | 1 | #000000 | #000000 | 0 |
+| 90 | 278 | 318 | 278 | 228 | 1 | #000000 | #000000 | 0 |
+| 99 | 300 | 495 | 301 | 396 | 1 | #000000 | #000000 | 0 |
+| 99 | 322 | 540 | 323 | 441 | 1 | #000000 | #000000 | 0 |
+| 99 | 345 | 278 | 345 | 179 | 1 | #000000 | #000000 | 0 |
+| 99 | 367 | 540 | 368 | 441 | 1 | #000000 | #000000 | 0 |
+| 99 | 390 | 225 | 390 | 126 | 1 | #000000 | #000000 | 0 |
+| 99 | 412 | 456 | 413 | 356 | 1 | #000000 | #000000 | 0 |
+| 99 | 434 | 540 | 435 | 441 | 1 | #000000 | #000000 | 0 |
+| 99 | 457 | 118 | 457 | 19 | 1 | #000000 | #000000 | 0 |
+| 99 | 479 | 428 | 480 | 328 | 1 | #000000 | #000000 | 0 |
+| 81 | 501 | 540 | 502 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 524 | 540 | 525 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 546 | 540 | 547 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 569 | 387 | 569 | 305 | 1 | #000000 | #000000 | 0 |
+| 81 | 613 | 135 | 614 | 54 | 1 | #000000 | #000000 | 0 |
+| 81 | 636 | 540 | 636 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 658 | 233 | 659 | 152 | 1 | #000000 | #000000 | 0 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 82 | 125 | 536 | 595 | table |
+| 81 | 144 | 535 | 570 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 139 | 95 | 570 | table column |
+| 110 | 148 | 537 | 569 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 192 | 535 | 215 | table row |
+| 81 | 237 | 535 | 260 | table row |
+| 81 | 261 | 535 | 283 | table row |
+| 81 | 283 | 535 | 305 | table row |
+| 81 | 304 | 535 | 327 | table row |
+| 81 | 327 | 535 | 350 | table row |
+| 81 | 375 | 535 | 397 | table row |
+| 81 | 397 | 535 | 419 | table row |
+| 81 | 418 | 535 | 440 | table row |
+| 81 | 437 | 535 | 465 | table row |
+| 81 | 464 | 535 | 486 | table row |
+| 81 | 485 | 535 | 508 | table row |
+| 81 | 508 | 535 | 530 | table row |
+| 81 | 530 | 535 | 551 | table row |
+| 81 | 551 | 535 | 570 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 192 | 95 | 215 | table-cell |
+| 81 | 192 | 95 | 215 | table-cell |
+| 110 | 192 | 535 | 215 | table-cell |
+| 110 | 192 | 535 | 215 | table-cell |
+| 81 | 237 | 95 | 260 | table-cell |
+| 81 | 237 | 95 | 260 | table-cell |
+| 110 | 237 | 535 | 260 | table-cell |
+| 110 | 237 | 535 | 260 | table-cell |
+| 81 | 261 | 95 | 283 | table-cell |
+| 81 | 261 | 95 | 283 | table-cell |
+| 110 | 261 | 535 | 283 | table-cell |
+| 110 | 261 | 535 | 283 | table-cell |
+| 81 | 283 | 95 | 305 | table-cell |
+| 81 | 283 | 95 | 305 | table-cell |
+| 110 | 283 | 535 | 305 | table-cell |
+| 110 | 283 | 535 | 305 | table-cell |
+| 81 | 304 | 95 | 327 | table-cell |
+| 81 | 304 | 95 | 327 | table-cell |
+| 110 | 304 | 535 | 327 | table-cell |
+| 110 | 304 | 535 | 327 | table-cell |
+| 81 | 327 | 95 | 350 | table-cell |
+| 81 | 327 | 95 | 350 | table-cell |
+| 110 | 327 | 535 | 350 | table-cell |
+| 110 | 327 | 535 | 350 | table-cell |
+| 81 | 375 | 95 | 397 | table-cell |
+| 81 | 375 | 95 | 397 | table-cell |
+| 110 | 375 | 535 | 397 | table-cell |
+| 110 | 375 | 535 | 397 | table-cell |
+| 81 | 397 | 95 | 419 | table-cell |
+| 81 | 397 | 95 | 419 | table-cell |
+| 110 | 397 | 535 | 419 | table-cell |
+| 110 | 397 | 535 | 419 | table-cell |
+| 81 | 418 | 95 | 440 | table-cell |
+| 81 | 418 | 95 | 440 | table-cell |
+| 110 | 418 | 535 | 440 | table-cell |
+| 110 | 418 | 535 | 440 | table-cell |
+| 81 | 437 | 95 | 465 | table-cell |
+| 81 | 437 | 95 | 465 | table-cell |
+| 110 | 437 | 535 | 465 | table-cell |
+| 110 | 437 | 535 | 465 | table-cell |
+| 81 | 464 | 95 | 486 | table-cell |
+| 81 | 464 | 95 | 486 | table-cell |
+| 110 | 464 | 535 | 486 | table-cell |
+| 110 | 464 | 535 | 486 | table-cell |
+| 81 | 485 | 95 | 508 | table-cell |
+| 81 | 485 | 95 | 508 | table-cell |
+| 110 | 485 | 535 | 508 | table-cell |
+| 110 | 485 | 535 | 508 | table-cell |
+| 81 | 508 | 95 | 530 | table-cell |
+| 81 | 508 | 95 | 530 | table-cell |
+| 110 | 508 | 535 | 530 | table-cell |
+| 110 | 508 | 535 | 530 | table-cell |
+| 81 | 530 | 95 | 551 | table-cell |
+| 81 | 530 | 95 | 551 | table-cell |
+| 110 | 530 | 535 | 551 | table-cell |
+| 110 | 530 | 535 | 551 | table-cell |
+| 81 | 551 | 95 | 570 | table-cell |
+| 81 | 551 | 95 | 570 | table-cell |
+| 110 | 551 | 535 | 569 | table-cell |
+| 110 | 551 | 535 | 569 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 261 | 535 | 284 | table projected row header |
+| 81 | 327 | 535 | 349 | table projected row header |
+| 81 | 374 | 535 | 397 | table projected row header |
+| 81 | 439 | 535 | 464 | table projected row header |
+| 81 | 464 | 535 | 485 | table projected row header |
+| 81 | 485 | 535 | 507 | table projected row header |
+| 81 | 508 | 535 | 530 | table projected row header |
+| 81 | 530 | 535 | 551 | table projected row header |

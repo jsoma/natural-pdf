@@ -1,0 +1,160 @@
+{
+  "pdf_name": "ODX1DW8.pdf",
+  "pdf_path": "bad_pdf_analysis/ODX1DW8_The large table on page 179/ODX1DW8.pdf",
+  "analysis_timestamp": "2025-06-22T14:32:47.348681",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.32,
+        "height": 841.92
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 15 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Simplified Arabic,Bold: 11\n    - Helvetica: 2\n    - Simplified Arabic: 1\n    - Arial: 1\n  - **sizes**:\n    - 14.0pt: 7\n    - 24.0pt: 4\n    - 28.0pt: 1\n    - 22.0pt: 1\n    - 18.0pt: 1\n    - 12.0pt: 1\n  - styles: 13 bold\n  - **colors**:\n    - other: 13\n    - black: 2",
+      "extract_text": {
+        "length": 70,
+        "preview": "\u0629\u064a\u0633\u0646\u0648\u062a\u0644\u0627 \u0629\u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627\\n2020-2016 \u0629\u064a\u0645\u0646\u062a\u0644\u0627 \u0637\u0637\u062e\u0645\\n\u064a\u0644\u0645\u062c\u0644\u0627 \u0649\u0648\u062a\u062d\u0645\u0644\u0627 :\u0644\u0648\u0644\u0623\u0627 \u062f\u0644\u062c\u0645\u0644\u0627",
+        "full_text": "\u0629\u064a\u0633\u0646\u0648\u062a\u0644\u0627 \u0629\u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627\n2020-2016 \u0629\u064a\u0645\u0646\u062a\u0644\u0627 \u0637\u0637\u062e\u0645\n\u064a\u0644\u0645\u062c\u0644\u0627 \u0649\u0648\u062a\u062d\u0645\u0644\u0627 :\u0644\u0648\u0644\u0623\u0627 \u062f\u0644\u062c\u0645\u0644\u0627"
+      },
+      "extract_table": {
+        "found": false
+      },
+      "analyze_layout": {
+        "found": false
+      },
+      "regions": {
+        "found": true,
+        "total_count": 47,
+        "yolo_count": 0,
+        "tatr_count": 47,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (47 elements)\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 133 | 666 | 405 | 790 | table |\n| 139 | 671 | 397 | 784 | table |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 138 | 668 | 399 | 680 | table column header |\n| 138 | 669 | 400 | 691 | table column header |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 1..."
+      },
+      "elements_sample": {
+        "total_count": 141,
+        "full_inspect": "## Collection Inspection (62 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n|   | 255 | 153 | 259 | 168 | Simplified Arabic | BHMMNF | 14 | False | False | native | 1.00 | #000000 |\n|  \u0629\u064a\u0633\u0646\u0648\u062a\u0644\u0627 \u0629\u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627 | 240 | 184 | 335 | 198 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #ff0000 |\n|   | 503 | 214 | 507 | 228 | Helvetica |  | 14 | False | False | native | 1.00 | #000000 |\n|   | 284 | 251 | 288 | 265 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |\n|   | 284 | 289 | 288 | 303 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |\n|   | 284 | 326 | 288 | 340 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |\n|   | 284 | 363 | 288 | 377 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |\n| 2020-2016 | 167 | 405 | 282 | 429 | Helvetica |  | 24 | True | False | native | 1.00 | #ff0000 |\n|   | 154 | 405 | 161 | 429 | Arial | AUQYJG | 24 | True | False | native | 1.00 | #ff0000 |\n|  \u0629\u064a\u0645\u0646\u062a\u0644\u0627 \u0637\u0637\u062e\u0645 | 282 | 410 | 414 | 438 | Simplified Arabic,Bold | BFWVUL | 28 | True | False | native | 1.00 | #ff0000 |\n| \u064a\u0644\u0645\u062c\u0644\u0627 \u0649\u0648\u062a\u062d\u0645\u0644\u0627 :\u0644\u0648\u0644\u0623\u0627 \u062f\u0644\u062c\u0645\u0644\u0627 | 175 | 466 | 407 | 492 | Simplified Arabic,Bold | BFWVUL | 24 | True | False | native | 1.00 | #ff0000 |\n|   | 162 | 468 | 170 | 492 | Simplified Arabic,Bold | BFWVUL | 24 | True | False | native | 1.00 | #ff0000 |\n|   | 280 | 521 | 287 | 543 | Simplified Arabic,Bold | BFWVUL | 22 | True | False | native | 1.00 | #ff0000 |\n|   | 279 | 568 | 290 | 586 | Simplified Arabic,Bold | AKJKLX | 18 | True | False | native | 1.00 | #ff0000 |\n|   | 285 | 785 | 288 | 797 | Simplified Arabic,Bold | AKJKLX | 12 | True | False | native | 1.00 | #ff0000 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 133 | 666 | 405 | 790 | table |\n| 139 | 671 | 397 | 784 | table |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 138 | 668 | 399 | 680 | table column header |\n| 138 | 669 | 400 | 691 | table column header |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 139 | 669 | 397 | 679 | table row |\n| 139 | 677 | 397 | 688 | table row |\n| 139 | 685 | 398 | 698 | table row |\n| 139 | 693 | 398 | 706 | table row |\n| 139 | 703 | 398 | 715 | table row |\n| 138 | 710 | 398 | 723 | table row |\n| 139 | 723 | 397 | 736 | table row |\n| 139 | 732 | 397 | 744 | table row |\n| 139 | 741 | 397 | 753 | table row |\n| 138 | 746 | 398 | 757 | table row |\n| 139 | 753 | 397 | 765 | table row |\n| 139 | 761 | 397 | 774 | table row |\n| 138 | 766 | 398 | 777 | table row |\n| 138 | 774 | 398 | 785 | table row |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 358 | 670 | 400 | 785 | table column |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 358 | 670 | 397 | 679 | table-cell |\n| 358 | 670 | 397 | 679 | table-cell |\n| 358 | 677 | 397 | 688 | table-cell |\n| 358 | 677 | 397 | 688 | table-cell |\n| 358 | 685 | 398 | 698 | table-cell |\n| 358 | 685 | 398 | 698 | table-cell |\n| 358 | 693 | 398 | 706 | table-cell |\n| 358 | 693 | 398 | 706 | table-cell |\n| 358 | 703 | 398 | 715 | table-cell |\n| 358 | 703 | 398 | 715 | table-cell |\n| 358 | 710 | 398 | 723 | table-cell |\n| 358 | 710 | 398 | 723 | table-cell |\n| 358 | 723 | 397 | 736 | table-cell |\n| 358 | 723 | 397 | 736 | table-cell |\n| 358 | 732 | 397 | 744 | table-cell |\n| 358 | 732 | 397 | 744 | table-cell |\n| 358 | 741 | 397 | 753 | table-cell |\n| 358 | 741 | 397 | 753 | table-cell |\n| 358 | 746 | 398 | 757 | table-cell |\n| 358 | 746 | 398 | 757 | table-cell |\n| 358 | 753 | 397 | 765 | table-cell |\n| 358 | 753 | 397 | 765 | table-cell |\n| 358 | 761 | 397 | 774 | table-cell |\n| 358 | 761 | 397 | 774 | table-cell |\n| 358 | 766 | 398 | 777 | table-cell |\n| 358 | 766 | 398 | 777 | table-cell |\n| 358 | 774 | 398 | 785 | table-cell |\n| 358 | 774 | 398 | 785 | table-cell |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 254.57,
+            "top": 153.4911199999999
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 254.57,
+            "top": 153.4911199999999
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 239.57,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": " \u0629\u064a\u0633\u0646\u0648\u062a\u0644\u0627 \u0629\u064a\u0631\u0648\u0647\u0645\u062c\u0644\u0627",
+            "x0": 239.57,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u0629",
+            "x0": 246.77,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u064a",
+            "x0": 252.52640000000002,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u0633",
+            "x0": 256.33124000000004,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u0646",
+            "x0": 264.76928000000004,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u0648",
+            "x0": 267.64748000000003,
+            "top": 183.92131999999992
+          },
+          {
+            "type": "unknown",
+            "text": "\u062a",
+            "x0": 273.97952000000004,
+            "top": 183.92131999999992
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/ODX1DW8_The large table on page 179/analysis/ODX1DW8/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 19,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              133.1678899328859,
+              666.3866793349168,
+              405.1072691275168,
+              789.5649748218526
+            ],
+            "confidence": 0.6224936246871948
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              138.90134093959733,
+              693.2241292161519,
+              397.52592885906046,
+              705.9629187648455
+            ],
+            "confidence": 0.8607388734817505
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              138.31201409395976,
+              745.5791543942992,
+              397.715712080537,
+              757.1480551068884
+            ],
+            "confidence": 0.6685425639152527
+          },
+          {
+            "type": "table column header",
+            "bbox": [
+              137.52291543624165,
+              669.1364180522565,
+              400.23283691275174,
+              690.9843420427552
+            ],
+            "confidence": 0.4970124065876007
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              139.3308503355705,
+              677.0456665083135,
+              397.0364879194631,
+              687.9046346793349
+            ],
+            "confidence": 0.8011963367462158
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 185,
+  "pages_analyzed": 1
+}

@@ -1,0 +1,72 @@
+## Collection Inspection (31 elements)
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 164 | -11 | 607 | 289 | 443 | 301 | #000000 | #ffffff | 0 |
+| 0 | 0 | 595 | 842 | 595 | 842 | #000000 | #e7e8e8 | 0 |
+| 0 | 547 | 607 | 853 | 607 | 306 | #000000 | #000000 | 0 |
+| 507 | 666 | 595 | 842 | 89 | 175 | #000000 | #ffffff | 0 |
+| 516 | 676 | 586 | 767 | 69 | 91 | #000000 | #ffffff | 0 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 175 | 12 | 310 | 29 | plain text |
+| 177 | 96 | 302 | 115 | plain text |
+| 177 | 252 | 250 | 270 | plain text |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 麦肯锡全球研究院 | 177 | 100 | 299 | 115 | STXihei | IIFGZS | 15 | False | False | native | 1.00 | #000000 |
+| 人机共存的新纪元：   | 177 | 131 | 497 | 166 | AdobeHeitiStd-Regular | AECKRI | 35 | False | False | native | 1.00 | #000000 |
+|   | 509 | 167 | 526 | 202 | SimHei | JCQHNQ | 35 | False | False | native | 1.00 | #000000 |
+| 自动化、就业和生产力 | 177 | 172 | 509 | 207 | AdobeHeitiStd-Regular | AECKRI | 35 | False | False | native | 1.00 | #000000 |
+| 2017年1月 | 177 | 256 | 249 | 271 | AdobeHeitiStd-Regular | AECKRI | 15 | False | False | native | 1.00 | #000000 |
+| 麦肯锡全球 | 517 | 677 | 578 | 689 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |
+| 研究院 | 517 | 694 | 553 | 706 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |
+| 研究 | 517 | 719 | 541 | 731 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |
+|   | 541 | 719 | 544 | 731 | STXihei | WQGMNQ | 12 | False | False | native | 1.00 | #000000 |
+| 洞见 | 517 | 736 | 541 | 748 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |
+|   | 541 | 736 | 544 | 748 | STXihei | WQGMNQ | 12 | False | False | native | 1.00 | #000000 |
+| 影响 | 517 | 753 | 541 | 765 | STXihei | IIFGZS | 12 | False | False | native | 1.00 | #000000 |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 0 | 290 | 595 | 842 | figure |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 516 | 710 | 580 | 710 | 1 | True | False |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 121 | 763 | 526 | 821 | table |
+| 121 | 765 | 519 | 820 | table |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 121 | 764 | 520 | 774 | table row |
+| 121 | 771 | 519 | 785 | table row |
+| 120 | 780 | 520 | 793 | table row |
+| 120 | 791 | 519 | 805 | table row |
+| 120 | 798 | 519 | 811 | table row |
+| 120 | 808 | 521 | 820 | table row |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 120 | 764 | 521 | 775 | table column header |

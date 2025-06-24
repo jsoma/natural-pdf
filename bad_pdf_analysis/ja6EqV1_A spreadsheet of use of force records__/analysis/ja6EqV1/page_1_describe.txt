@@ -1,0 +1,14 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 54348 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - F2: 54328
+    - F1: 20
+  - **sizes**:
+    - 2.0pt: 54348

@@ -1,0 +1,11 @@
+All Layout Regions (1 found)
+==================================================
+YOLO: 1, TATR: 0, Other: 0
+
+## Collection Inspection (1 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 49 | 50 | 741 | 548 | table |

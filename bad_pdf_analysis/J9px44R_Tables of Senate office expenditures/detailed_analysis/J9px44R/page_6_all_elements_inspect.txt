@@ -1,0 +1,334 @@
+## Collection Inspection (288 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 206 | 35 | 216 | 44 | abandon |
+| 289 | 80 | 385 | 90 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| vi | 207 | 36 | 216 | 46 | Century |  | 10 | False | False | native | 1.00 | #000000 |
+| TABLE OF CONTENTS  | 166 | 63 | 251 | 70 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+|   | 383 | 80 | 385 | 87 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+|    | 286 | 80 | 290 | 87 | Times | CICFLF | 8 | True | False | native | 1.00 | #000000 |
+| VOLUME I   | 290 | 80 | 329 | 87 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+|   VOLUME II | 341 | 80 | 383 | 87 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| MISCELLANEOUS ITEMS  | 40 | 104 | 127 | 111 | Times | CICFLF | 7 | True | False | native | 1.00 | #000000 |
+| COMMITTEE ON APPROPRIATIONS  | 53 | 112 | 169 | 119 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 120 | 340 | 127 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| OFFICE OF THE CHAPLAIN  | 53 | 128 | 142 | 135 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 136 | 340 | 143 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| VICE PRESIDENT HARRIS, OFFICE OF  | 53 | 145 | 176 | 151 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2023 ............................................. | 64 | 152 | 316 | 159 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MAJORITY WHIP – DEMOCRAT, OFFICE OF  | 53 | 160 | 194 | 167 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 ............................................. | 64 | 168 | 316 | 175 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY CONFERENCE COMMITTEE – DEMOCRAT  | 53 | 177 | 226 | 183 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 …………………………………………………………….……………… B-156  | 64 | 184 | 316 | 191 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MAJORITY CONFERENCE COMMITTEE – DEMOCRAT  | 53 | 192 | 227 | 199 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 21/23 - FY 24/26.……………………………………………………..………… B-1... | 64 | 200 | 340 | 207 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY POLICY COMMITTEE – DEMOCRAT  | 53 | 209 | 206 | 215 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 ..................... …………………………………………………... | 64 | 217 | 318 | 223 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MAJORITY POLICY COMMITTEE – DEMOCRAT  | 53 | 224 | 206 | 231 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 21/23 - FY 24/26  .......... ………………………………………………... | 64 | 232 | 340 | 239 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SECRETARY FOR THE MAJORITY – DEMOCRAT  | 53 | 241 | 209 | 247 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2024  ......……………………………………………………………………….   B-16... | 64 | 249 | 316 | 255 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY LEADER – REPUBLICAN, OFFICE OF  | 53 | 256 | 208 | 263 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 64 | 264 | 340 | 271 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY WHIP – REPUBLICAN, OFFICE OF  | 53 | 272 | 198 | 279 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2022 – FY 2024 ................................... | 64 | 281 | 340 | 287 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MAJORITY CONFERENCE COMMITTEE – REPUBLICAN  | 53 | 288 | 232 | 295 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 ............................................ | 64 | 296 | 316 | 303 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY CONFERENCE COMMITTEE – REPUBLICAN  | 53 | 304 | 231 | 311 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 21/23 - FY 24/26 ................................. | 64 | 312 | 340 | 319 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MAJORITY POLICY COMMITTEE – REPUBLICAN  | 53 | 320 | 211 | 327 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 ............................................ | 64 | 328 | 318 | 335 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MINORITY POLICY COMMITTEE – REPUBLICAN  | 53 | 336 | 211 | 343 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 21/23 – FY 24/26 ................................. | 64 | 345 | 340 | 351 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SECRETARY FOR THE MINORITY – REPUBLICAN  | 53 | 352 | 213 | 359 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 2023 – FY 2024  .................................. | 64 | 360 | 292 | 367 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| B-198 – B-199  | 297 | 360 | 340 | 367 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SENATE CHILD CARE CENTER  | 53 | 368 | 154 | 375 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 377 | 340 | 383 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| CONSULTANTS  | 53 | 384 | 105 | 391 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 392 | 340 | 399 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FEDERAL EMPLOYEES COMPENSATION ACCOUNT  | 53 | 400 | 221 | 407 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 408 | 342 | 415 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FOREIGN TRAVEL  | 53 | 416 | 115 | 423 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 424 | 340 | 431 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| POSTAGE  | 53 | 432 | 87 | 439 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 440 | 340 | 447 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| MOBILE COMMUNICATIONS DEVICES  | 53 | 448 | 179 | 455 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 456 | 340 | 463 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| RESERVE FOR CONTINGENCIES  | 53 | 464 | 159 | 471 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 473 | 340 | 479 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FOREIGN DIGNITARIES, RECEPTION OF  | 53 | 480 | 183 | 487 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 488 | 340 | 495 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| RESOLUTION AND REORGANIZATION RESERVE  | 53 | 496 | 212 | 503 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 505 | 340 | 511 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| SENATE NATIONAL SECURITY WORKING GROUP  | 53 | 512 | 216 | 519 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 520 | 340 | 527 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| STATIONERY  | 53 | 528 | 99 | 535 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 536 | 340 | 543 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| STUDENT LOANS  | 53 | 545 | 112 | 551 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY 20/22 - FY 24/26 ................................. | 64 | 552 | 340 | 559 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| CARES ACT EMERG. APPROP. P.L. 116-136  | 53 | 560 | 189 | 567 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY X    ............................................. | 64 | 568 | 316 | 575 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| EMERGENCY APPROPRIATION  | 53 | 576 | 155 | 583 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+| FY X    ............................................. | 64 | 584 | 316 | 591 | Times | CICFLG | 7 | False | False | native | 1.00 | #000000 |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 290 | 88 | 326 | 89 | 36 | 1 | #000000 | #000000 | 0 |
+| 345 | 88 | 383 | 89 | 38 | 1 | #000000 | #000000 | 0 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 51 | 106 | 342 | 597 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 51 | 117 | 339 | 591 | table |
+| 53 | 119 | 338 | 590 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 265 | 119 | 338 | 590 | table column |
+| 53 | 120 | 262 | 590 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 53 | 119 | 338 | 130 | table row |
+| 53 | 131 | 338 | 143 | table row |
+| 53 | 131 | 338 | 149 | table row |
+| 53 | 146 | 338 | 156 | table row |
+| 53 | 150 | 338 | 168 | table row |
+| 53 | 168 | 338 | 186 | table row |
+| 53 | 184 | 338 | 201 | table row |
+| 52 | 196 | 338 | 210 | table row |
+| 53 | 201 | 338 | 218 | table row |
+| 53 | 210 | 338 | 221 | table row |
+| 53 | 216 | 338 | 234 | table row |
+| 53 | 227 | 338 | 239 | table row |
+| 53 | 232 | 338 | 250 | table row |
+| 53 | 244 | 338 | 255 | table row |
+| 53 | 249 | 338 | 266 | table row |
+| 53 | 262 | 338 | 274 | table row |
+| 53 | 264 | 338 | 281 | table row |
+| 53 | 280 | 338 | 298 | table row |
+| 53 | 295 | 338 | 312 | table row |
+| 53 | 311 | 338 | 329 | table row |
+| 53 | 326 | 338 | 343 | table row |
+| 53 | 345 | 338 | 361 | table row |
+| 53 | 352 | 338 | 368 | table row |
+| 53 | 357 | 338 | 374 | table row |
+| 53 | 365 | 338 | 382 | table row |
+| 53 | 374 | 338 | 390 | table row |
+| 53 | 381 | 338 | 398 | table row |
+| 53 | 388 | 338 | 405 | table row |
+| 53 | 395 | 338 | 412 | table row |
+| 53 | 404 | 338 | 420 | table row |
+| 53 | 409 | 338 | 426 | table row |
+| 53 | 433 | 338 | 451 | table row |
+| 53 | 451 | 338 | 468 | table row |
+| 53 | 470 | 338 | 487 | table row |
+| 53 | 485 | 338 | 501 | table row |
+| 53 | 501 | 338 | 518 | table row |
+| 53 | 515 | 338 | 532 | table row |
+| 53 | 530 | 338 | 547 | table row |
+| 53 | 546 | 338 | 563 | table row |
+| 53 | 561 | 338 | 574 | table row |
+| 53 | 573 | 338 | 583 | table row |
+| 53 | 583 | 338 | 590 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 265 | 119 | 338 | 130 | table-cell |
+| 265 | 119 | 338 | 130 | table-cell |
+| 53 | 120 | 262 | 130 | table-cell |
+| 53 | 120 | 262 | 130 | table-cell |
+| 53 | 131 | 262 | 143 | table-cell |
+| 53 | 131 | 262 | 143 | table-cell |
+| 265 | 131 | 338 | 143 | table-cell |
+| 265 | 131 | 338 | 143 | table-cell |
+| 53 | 131 | 262 | 149 | table-cell |
+| 53 | 131 | 262 | 149 | table-cell |
+| 265 | 131 | 338 | 149 | table-cell |
+| 265 | 131 | 338 | 149 | table-cell |
+| 53 | 146 | 262 | 156 | table-cell |
+| 53 | 146 | 262 | 156 | table-cell |
+| 265 | 146 | 338 | 156 | table-cell |
+| 265 | 146 | 338 | 156 | table-cell |
+| 53 | 150 | 262 | 168 | table-cell |
+| 53 | 150 | 262 | 168 | table-cell |
+| 265 | 150 | 338 | 168 | table-cell |
+| 265 | 150 | 338 | 168 | table-cell |
+| 53 | 168 | 262 | 186 | table-cell |
+| 53 | 168 | 262 | 186 | table-cell |
+| 265 | 168 | 338 | 186 | table-cell |
+| 265 | 168 | 338 | 186 | table-cell |
+| 53 | 184 | 262 | 201 | table-cell |
+| 53 | 184 | 262 | 201 | table-cell |
+| 265 | 184 | 338 | 201 | table-cell |
+| 265 | 184 | 338 | 201 | table-cell |
+| 53 | 196 | 262 | 210 | table-cell |
+| 53 | 196 | 262 | 210 | table-cell |
+| 265 | 196 | 338 | 210 | table-cell |
+| 265 | 196 | 338 | 210 | table-cell |
+| 53 | 201 | 262 | 218 | table-cell |
+| 53 | 201 | 262 | 218 | table-cell |
+| 265 | 201 | 338 | 218 | table-cell |
+| 265 | 201 | 338 | 218 | table-cell |
+| 53 | 210 | 262 | 221 | table-cell |
+| 53 | 210 | 262 | 221 | table-cell |
+| 265 | 210 | 338 | 221 | table-cell |
+| 265 | 210 | 338 | 221 | table-cell |
+| 53 | 216 | 262 | 234 | table-cell |
+| 53 | 216 | 262 | 234 | table-cell |
+| 265 | 216 | 338 | 234 | table-cell |
+| 265 | 216 | 338 | 234 | table-cell |
+| 53 | 227 | 262 | 239 | table-cell |
+| 53 | 227 | 262 | 239 | table-cell |
+| 265 | 227 | 338 | 239 | table-cell |
+| 265 | 227 | 338 | 239 | table-cell |
+| 53 | 232 | 262 | 250 | table-cell |
+| 53 | 232 | 262 | 250 | table-cell |
+| 265 | 232 | 338 | 250 | table-cell |
+| 265 | 232 | 338 | 250 | table-cell |
+| 53 | 244 | 262 | 255 | table-cell |
+| 53 | 244 | 262 | 255 | table-cell |
+| 265 | 244 | 338 | 255 | table-cell |
+| 265 | 244 | 338 | 255 | table-cell |
+| 53 | 249 | 262 | 266 | table-cell |
+| 53 | 249 | 262 | 266 | table-cell |
+| 265 | 249 | 338 | 266 | table-cell |
+| 265 | 249 | 338 | 266 | table-cell |
+| 53 | 262 | 262 | 274 | table-cell |
+| 53 | 262 | 262 | 274 | table-cell |
+| 265 | 262 | 338 | 274 | table-cell |
+| 265 | 262 | 338 | 274 | table-cell |
+| 53 | 264 | 262 | 281 | table-cell |
+| 53 | 264 | 262 | 281 | table-cell |
+| 265 | 264 | 338 | 281 | table-cell |
+| 265 | 264 | 338 | 281 | table-cell |
+| 53 | 280 | 262 | 298 | table-cell |
+| 53 | 280 | 262 | 298 | table-cell |
+| 265 | 280 | 338 | 298 | table-cell |
+| 265 | 280 | 338 | 298 | table-cell |
+| 53 | 295 | 262 | 312 | table-cell |
+| 53 | 295 | 262 | 312 | table-cell |
+| 265 | 295 | 338 | 312 | table-cell |
+| 265 | 295 | 338 | 312 | table-cell |
+| 53 | 311 | 262 | 329 | table-cell |
+| 53 | 311 | 262 | 329 | table-cell |
+| 265 | 311 | 338 | 329 | table-cell |
+| 265 | 311 | 338 | 329 | table-cell |
+| 53 | 326 | 262 | 343 | table-cell |
+| 53 | 326 | 262 | 343 | table-cell |
+| 265 | 326 | 338 | 343 | table-cell |
+| 265 | 326 | 338 | 343 | table-cell |
+| 53 | 345 | 262 | 361 | table-cell |
+| 53 | 345 | 262 | 361 | table-cell |
+| 265 | 345 | 338 | 361 | table-cell |
+| 265 | 345 | 338 | 361 | table-cell |
+| 53 | 352 | 262 | 368 | table-cell |
+| 53 | 352 | 262 | 368 | table-cell |
+| 265 | 352 | 338 | 368 | table-cell |
+| 265 | 352 | 338 | 368 | table-cell |
+| 53 | 357 | 262 | 374 | table-cell |
+| 53 | 357 | 262 | 374 | table-cell |
+| 265 | 357 | 338 | 374 | table-cell |
+| 265 | 357 | 338 | 374 | table-cell |
+| 53 | 365 | 262 | 382 | table-cell |
+| 53 | 365 | 262 | 382 | table-cell |
+| 265 | 365 | 338 | 382 | table-cell |
+| 265 | 365 | 338 | 382 | table-cell |
+| 53 | 374 | 262 | 390 | table-cell |
+| 53 | 374 | 262 | 390 | table-cell |
+| 265 | 374 | 338 | 390 | table-cell |
+| 265 | 374 | 338 | 390 | table-cell |
+| 53 | 381 | 262 | 398 | table-cell |
+| 53 | 381 | 262 | 398 | table-cell |
+| 265 | 381 | 338 | 398 | table-cell |
+| 265 | 381 | 338 | 398 | table-cell |
+| 53 | 388 | 262 | 405 | table-cell |
+| 53 | 388 | 262 | 405 | table-cell |
+| 265 | 388 | 338 | 405 | table-cell |
+| 265 | 388 | 338 | 405 | table-cell |
+| 53 | 395 | 262 | 412 | table-cell |
+| 53 | 395 | 262 | 412 | table-cell |
+| 265 | 395 | 338 | 412 | table-cell |
+| 265 | 395 | 338 | 412 | table-cell |
+| 53 | 404 | 262 | 420 | table-cell |
+| 53 | 404 | 262 | 420 | table-cell |
+| 265 | 404 | 338 | 420 | table-cell |
+| 265 | 404 | 338 | 420 | table-cell |
+| 53 | 409 | 262 | 426 | table-cell |
+| 53 | 409 | 262 | 426 | table-cell |
+| 265 | 409 | 338 | 426 | table-cell |
+| 265 | 409 | 338 | 426 | table-cell |
+| 53 | 433 | 262 | 451 | table-cell |
+| 53 | 433 | 262 | 451 | table-cell |
+| 265 | 433 | 338 | 451 | table-cell |
+| 265 | 433 | 338 | 451 | table-cell |
+| 53 | 451 | 262 | 468 | table-cell |
+| 53 | 451 | 262 | 468 | table-cell |
+| 265 | 451 | 338 | 468 | table-cell |
+| 265 | 451 | 338 | 468 | table-cell |
+| 53 | 470 | 262 | 487 | table-cell |
+| 53 | 470 | 262 | 487 | table-cell |
+| 265 | 470 | 338 | 487 | table-cell |
+| 265 | 470 | 338 | 487 | table-cell |
+| 53 | 485 | 262 | 501 | table-cell |
+| 53 | 485 | 262 | 501 | table-cell |
+| 265 | 485 | 338 | 501 | table-cell |
+| 265 | 485 | 338 | 501 | table-cell |
+| 53 | 501 | 262 | 518 | table-cell |
+| 53 | 501 | 262 | 518 | table-cell |
+| 265 | 501 | 338 | 518 | table-cell |
+| 265 | 501 | 338 | 518 | table-cell |
+| 53 | 515 | 262 | 532 | table-cell |
+| 53 | 515 | 262 | 532 | table-cell |
+| 265 | 515 | 338 | 532 | table-cell |
+| 265 | 515 | 338 | 532 | table-cell |
+| 53 | 530 | 262 | 547 | table-cell |
+| 53 | 530 | 262 | 547 | table-cell |
+| 265 | 530 | 338 | 547 | table-cell |
+| 265 | 530 | 338 | 547 | table-cell |
+| 53 | 546 | 262 | 563 | table-cell |
+| 53 | 546 | 262 | 563 | table-cell |
+| 265 | 546 | 338 | 563 | table-cell |
+| 265 | 546 | 338 | 563 | table-cell |
+| 53 | 561 | 262 | 574 | table-cell |
+| 53 | 561 | 262 | 574 | table-cell |
+| 265 | 561 | 338 | 574 | table-cell |
+| 265 | 561 | 338 | 574 | table-cell |
+| 53 | 573 | 262 | 583 | table-cell |
+| 53 | 573 | 262 | 583 | table-cell |
+| 265 | 573 | 338 | 583 | table-cell |
+| 265 | 573 | 338 | 583 | table-cell |
+| 53 | 583 | 262 | 590 | table-cell |
+| 53 | 583 | 262 | 590 | table-cell |
+| 265 | 583 | 338 | 590 | table-cell |
+| 265 | 583 | 338 | 590 | table-cell |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 53 | 119 | 338 | 130 | table column header |

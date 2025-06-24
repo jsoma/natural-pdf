@@ -1,0 +1,142 @@
+{
+  "pdf_name": "2EAOEvb.pdf",
+  "pdf_path": "bad_pdf_analysis/2EAOEvb_The text_ without beeing divided in 2 columns and /2EAOEvb.pdf",
+  "analysis_timestamp": "2025-06-22T14:34:33.761852",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.276,
+        "height": 793.701
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 74 elements\n- **rect**: 1 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - AsapCondensed-Black: 44\n    - MyriadPro-Regular-Identity-H: 27\n    - AsapCondensed-Light: 2\n    - AsapCondensed-Bold: 1\n  - **sizes**:\n    - 2.0pt: 15\n    - 6.0pt: 8\n    - 4.5pt: 7\n    - 5.5pt: 7\n    - 6.5pt: 7\n    - 8.5pt: 7\n    - 60.0pt: 6\n    - 7.0pt: 5\n    - 8.0pt: 4\n    - 3.0pt: 3\n    - 3.5pt: 2\n    - 5.0pt: 1\n    - 30.0pt: 1\n    - 12.0pt: 1\n  - styles: 45 bold",
+      "extract_text": {
+        "length": 145,
+        "preview": "5202/621\\n\u00baN\\nCE\\nA\\n\u00c9TA\\nADAZILAUTA\\n|\\n9891\\nED\\n\u00c1RAEC\\nOD\\nODATSE\\nOD\\nO\u00c3\u00c7IUTITSNOC\\nCONSTITUI\u00c7\u00c3O\\nDO ESTADO DO CEAR\u00c1 DE 1989\\nATUALIZADA AT\u00c9 A EC N\u00ba 126/2025",
+        "full_text": "5202/621\n\u00baN\nCE\nA\n\u00c9TA\nADAZILAUTA\n|\n9891\nED\n\u00c1RAEC\nOD\nODATSE\nOD\nO\u00c3\u00c7IUTITSNOC\nCONSTITUI\u00c7\u00c3O\nDO ESTADO DO CEAR\u00c1 DE 1989\nATUALIZADA AT\u00c9 A EC N\u00ba 126/2025"
+      },
+      "extract_table": {
+        "found": false
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 3,
+        "regions": [
+          {
+            "type": "title",
+            "bbox": [
+              112.20265331636979,
+              589.5276102414072,
+              488.1600326593386,
+              697.4813270963962
+            ],
+            "confidence": 0.8471412658691406
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              190.45099783908918,
+              704.2918107934755,
+              409.6952536805428,
+              721.635313836547
+            ],
+            "confidence": 0.7122073769569397
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              192.55147049861625,
+              32.04639546966072,
+              385.55255894767197,
+              70.30564515883016
+            ],
+            "confidence": 0.6275166273117065
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 3,
+        "yolo_count": 3,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (3 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 193 | 32 | 386 | 70 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 112 | 590 | 488 | 697 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 190 | 704 | 410 | 722 | plain text |"
+      },
+      "elements_sample": {
+        "total_count": 233,
+        "full_inspect": "## Collection Inspection (78 elements)\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 0 | 0 | 595 | 794 | 595 | 794 | #000000 | #ffffff | 0 |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 193 | 32 | 386 | 70 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 5202 | -30 | 38 | -21 | 57 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| / | -30 | 57 | -21 | 60 | MyriadPro-Regular-Identity-H | LWOXIH | 3 | False | False | native | 1.00 | #ffffff |\n| 621 | -30 | 60 | -21 | 73 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n|   | -30 | 74 | -21 | 76 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| \u00ba | -30 | 76 | -21 | 79 | MyriadPro-Regular-Identity-H | LWOXIH | 3 | False | False | native | 1.00 | #ffffff |\n| N | -30 | 80 | -21 | 86 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n|   | -30 | 86 | -21 | 88 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| C | -30 | 88 | -21 | 94 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| E | -30 | 94 | -21 | 98 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n|   | -30 | 99 | -21 | 101 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 101 | -21 | 107 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n|   | -30 | 107 | -21 | 109 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| \u00c9 | -30 | 109 | -21 | 114 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| T | -30 | 114 | -21 | 118 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 118 | -21 | 124 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n|   | -30 | 124 | -21 | 126 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 126 | -21 | 132 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n| D | -30 | 132 | -21 | 138 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 138 | -21 | 143 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n| Z | -30 | 144 | -21 | 149 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| I | -30 | 149 | -21 | 151 | MyriadPro-Regular-Identity-H | LWOXIH | 2 | False | False | native | 1.00 | #ffffff |\n| L | -30 | 151 | -21 | 155 | MyriadPro-Regular-Identity-H | LWOXIH | 4 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 156 | -21 | 161 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n| U | -30 | 161 | -21 | 167 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n| T | -30 | 167 | -21 | 172 | MyriadPro-Regular-Identity-H | LWOXIH | 5 | False | False | native | 1.00 | #ffffff |\n| A | -30 | 171 | -21 | 177 | MyriadPro-Regular-Identity-H | LWOXIH | 6 | False | False | native | 1.00 | #ffffff |\n|    | -33 | 177 | -18 | 182 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n|      | -33 | 182 | -19 | 192 | AsapCondensed-Light | ELGARL | 2 | False | False | native | 1.00 | #ffffff |\n| | | -33 | 193 | -19 | 195 | AsapCondensed-Light | ELGARL | 3 | False | False | native | 1.00 | #ffffff |\n|          | -33 | 196 | -18 | 216 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| 9891 | -33 | 216 | -18 | 243 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n|   | -33 | 244 | -18 | 246 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| E | -33 | 246 | -18 | 252 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| D | -33 | 253 | -18 | 261 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n|   | -33 | 261 | -18 | 263 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| \u00c1 | -33 | 264 | -18 | 271 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n| R | -33 | 272 | -18 | 279 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n| A | -33 | 279 | -18 | 286 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n| E | -33 | 287 | -18 | 293 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| C | -33 | 293 | -18 | 300 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n|   | -33 | 300 | -18 | 302 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| O | -33 | 303 | -18 | 311 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| D | -33 | 311 | -18 | 319 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n|   | -33 | 320 | -18 | 322 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| O | -33 | 323 | -18 | 331 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| D | -33 | 331 | -18 | 339 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| A | -33 | 340 | -18 | 347 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n| T | -33 | 347 | -18 | 353 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| S | -33 | 353 | -18 | 359 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| E | -33 | 360 | -18 | 366 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n|   | -33 | 367 | -18 | 369 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| O | -33 | 369 | -18 | 378 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| D | -33 | 378 | -18 | 386 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n|    | -33 | 386 | -18 | 391 | AsapCondensed-Black | ZTVBZV | 2 | True | False | native | 1.00 | #ffffff |\n| O | -33 | 392 | -18 | 400 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| \u00c3 | -33 | 400 | -18 | 407 | AsapCondensed-Black | ZTVBZV | 7 | True | False | native | 1.00 | #ffffff |\n| \u00c7 | -33 | 408 | -18 | 414 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| I | -33 | 415 | -18 | 418 | AsapCondensed-Black | ZTVBZV | 4 | True | False | native | 1.00 | #ffffff |\n| U | -33 | 419 | -18 | 427 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| T | -33 | 428 | -18 | 434 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| I | -33 | 434 | -18 | 438 | AsapCondensed-Black | ZTVBZV | 4 | True | False | native | 1.00 | #ffffff |\n| T | -33 | 438 | -18 | 444 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| S | -33 | 445 | -18 | 451 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| N | -33 | 451 | -18 | 460 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| O | -33 | 460 | -18 | 469 | AsapCondensed-Black | ZTVBZV | 8 | True | False | native | 1.00 | #ffffff |\n| C | -33 | 469 | -18 | 475 | AsapCondensed-Black | ZTVBZV | 6 | True | False | native | 1.00 | #ffffff |\n| CO | 119 | 601 | 183 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| N | 186 | 601 | 221 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| S | 224 | 601 | 250 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| TITU | 253 | 601 | 364 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| I\u00c7 | 367 | 601 | 413 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| \u00c3O | 417 | 601 | 483 | 661 | AsapCondensed-Black | ZTVBZV | 60 | True | False | native | 1.00 | #ffffff |\n| DO ESTADO DO CEAR\u00c1 DE 1989 | 118 | 667 | 484 | 697 | AsapCondensed-Bold | WMHJJB | 30 | True | False | native | 1.00 | #ffffff |\n| ATUALIZADA AT\u00c9 A EC N\u00ba 126/2025 | 195 | 708 | 407 | 720 | MyriadPro-Regular-Identity-H | LWOXIH | 12 | False | False | native | 1.00 | #ffffff |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 112 | 590 | 488 | 697 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 190 | 704 | 410 | 722 | plain text |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 0.0,
+            "top": 0.0
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 192.55147049861625,
+            "top": 32.04639546966072
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": -29.8092,
+            "top": 37.830933600000094
+          },
+          {
+            "type": "unknown",
+            "text": "5202",
+            "x0": -29.8092,
+            "top": 37.830933600000094
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": -29.8092,
+            "top": 42.6420978000001
+          },
+          {
+            "type": "unknown",
+            "text": "0",
+            "x0": -29.8092,
+            "top": 47.20630110000013
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": -29.8092,
+            "top": 51.92599830000006
+          },
+          {
+            "type": "unknown",
+            "text": "/",
+            "x0": -29.8092,
+            "top": 56.77374930000008
+          },
+          {
+            "type": "unknown",
+            "text": "/",
+            "x0": -29.8092,
+            "top": 56.77374930000008
+          },
+          {
+            "type": "unknown",
+            "text": "6",
+            "x0": -29.8092,
+            "top": 59.97509430000014
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/2EAOEvb_The text_ without beeing divided in 2 columns and /analysis/2EAOEvb/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 196,
+  "pages_analyzed": 1
+}

@@ -1,0 +1,42 @@
+{
+  "document": "eqrZZbq_The categorize chart _E1_ on page 4_ The chart_tab",
+  "total_pages": 13,
+  "analyzed_pages": [
+    4
+  ],
+  "analysis_date": "2025-06-22T16:43:28.286024",
+  "pages": {
+    "4": {
+      "page_number": 4,
+      "dimensions": "1190.55 × 841.89 points",
+      "text_length": 2929,
+      "text_preview": "配线工人）3。另一些自动化技术则对中等技能工人的影响更为显著4。但随着技 析显示人力仍然不可替代：我们预测的生产力进步只有在人类与机器共事的情况下才\n术的进步，高技能和低技能工作自动化的可能性将进一步增大，两极现象将有所 能实现。\n减弱。\n 自动化将对全球范围内各行各业产生深远的影响。毋庸置疑，自动化是全球现 评估全球工作场所的自动化潜力\n象，但中国、日本、印度和美国受到的影响将尤其明显：这四大...",
+      "table": "83 rows × 3 columns",
+      "table_sample": [
+        [
+          "",
+          "配线工人）3。另一些自动化技术则对中等技能工人的影响更为显著4。但随着技",
+          "析显示人力仍然不可替代：我们预测的生产力进步只有在人类与机器共事的情况下才"
+        ],
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "术的进步，高技能和低技能工作自动化的可能性将进一步增大，两极现象将有所",
+          "能实现。"
+        ]
+      ],
+      "yolo_regions": 18,
+      "tatr_regions": 4,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/eqrZZbq_The categorize chart _E1_ on page 4_ The chart_tab/enhanced_analysis_10/page_4.png"
+    }
+  },
+  "insights": [
+    "Document contains 2929 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables",
+    "Complex layout detected - average 18.0 regions per page"
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "pdf_name": "J9lKd7Y.pdf",
+  "pdf_path": "bad_pdf_analysis/J9lKd7Y_Table in Slovenian _e.g. on page 80_./J9lKd7Y.pdf",
+  "analysis_timestamp": "2025-06-22T14:34:05.268101",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 25 elements\n- **rect**: 3 elements\n- **line**: 1 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - DejaVuSans-Oblique: 19\n    - DejaVuSans-BoldOblique: 4\n    - DejaVuSans: 2\n  - **sizes**:\n    - 7.5pt: 23\n    - 5.0pt: 1\n    - 8.0pt: 1\n  - styles: 4 bold, 23 italic\n  - **colors**:\n    - black: 23\n    - other: 2",
+      "extract_text": {
+        "length": 1552,
+        "preview": "Dobrodo\u0161li v Vpra\u0161alniku za \u0161olo raziskave PISA.\\nHvala za sodelovanje v tej raziskavi. V tem vpra\u0161alniku so vpra\u0161anja o:\\nsplo\u0161nih podatkih o \u0161oli,\\nupravljanju \u0161ole,\\nu\u010dnem osebju,\\nocenjevanju in vrednotenju,\\nciljnih skupinah,\\n\u0161olski klimi.\\nS temi podatki bomo ugotavljali podobnosti in razlike med \u0161ol",
+        "full_text": "Dobrodo\u0161li v Vpra\u0161alniku za \u0161olo raziskave PISA.\nHvala za sodelovanje v tej raziskavi. V tem vpra\u0161alniku so vpra\u0161anja o:\nsplo\u0161nih podatkih o \u0161oli,\nupravljanju \u0161ole,\nu\u010dnem osebju,\nocenjevanju in vrednotenju,\nciljnih skupinah,\n\u0161olski klimi.\nS temi podatki bomo ugotavljali podobnosti in razlike med \u0161olami, da bi bolje razumeli ozadje dose\u017ekov, ki jih bodo dijaki in dijakinje\nizkazali pri preizkusu znanja. Z dobljenimi podatki bomo lahko na primer ugotovili, kak\u0161en vpliv ima porazdelitev virov za delovanje \u0161ole na\nuspeh dijakov in dijakinj, tako v dr\u017eavi kot med dr\u017eavami.\nProsimo, vpra\u0161alnik naj izpolni ravnateljica oziroma ravnatelj ali pomo\u010dnica oziroma pomo\u010dnik ravnatelja. Za izpolnjevanje vpra\u0161alnika\nboste potrebovali pribli\u017eno 45 minut.\nPri nekaterih vpra\u0161anjih boste potrebovali pomo\u010d sodelavcev. Pri odgovarjanju se lahko posvetujete z njimi.\n\u010ce ne poznate to\u010dnega odgovora na vpra\u0161anje, bo za namene raziskave zado\u0161\u010dala tudi pribli\u017ena ocena.\nGumb \"Naprej\", ki omogo\u010da prehod na naslednje vpra\u0161anje, najdete v spodnjem desnem kotu zaslona. V\u010dasih se boste morali za dostop do\ntega gumba pomakniti na dno zaslona.\nVa\u0161i odgovori so anonimni. Primerjali jih bomo z odgovori iz drugih \u0161ol ter statisti\u010dno izra\u010dunali skupne in povpre\u010dne\nrezultate, v katerih imena \u0161ol ne bodo omenjena.\nPomembno: V tem vpra\u0161alniku uporabljamo besedo \u0161ola za poimenovanje posameznih izobra\u017eevalnih programov na \u0161olah. Prosimo vas,\nda pri vseh vpra\u0161anjih odgovore oblikujete le glede na dijakinje in dijake va\u0161e \u0161ole, ki so v tem izobra\u017eevalnem programu.\nSCIntro1"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 2,
+        "columns": 1,
+        "data": [
+          [
+            "Dobrodo\u0161li v Vpra\u0161alniku za \u0161olo raziskave PISA.\nHvala za sodelovanje v tej raziskavi. V tem vpra\u0161alniku so vpra\u0161anja o:\nsplo\u0161nih podatkih o \u0161oli,\nupravljanju \u0161ole,\nu\u010dnem osebju,\nocenjevanju in vrednotenju,\nciljnih skupinah,\n\u0161olski klimi.\nS temi podatki bomo ugotavljali podobnosti in razlike med \u0161olami, da bi bolje razumeli ozadje dose\u017ekov, ki jih bodo dijaki in dijakinje\nizkazali pri preizkusu znanja. Z dobljenimi podatki bomo lahko na primer ugotovili, kak\u0161en vpliv ima porazdelitev virov za delovanje \u0161ole na\nuspeh dijakov in dijakinj, tako v dr\u017eavi kot med dr\u017eavami.\nProsimo, vpra\u0161alnik naj izpolni ravnateljica oziroma ravnatelj ali pomo\u010dnica oziroma pomo\u010dnik ravnatelja. Za izpolnjevanje vpra\u0161alnika\nboste potrebovali pribli\u017eno 45 minut.\nPri nekaterih vpra\u0161anjih boste potrebovali pomo\u010d sodelavcev. Pri odgovarjanju se lahko posvetujete z njimi.\n\u010ce ne poznate to\u010dnega odgovora na vpra\u0161anje, bo za namene raziskave zado\u0161\u010dala tudi pribli\u017ena ocena.\nGumb \"Naprej\", ki omogo\u010da prehod na naslednje vpra\u0161anje, najdete v spodnjem desnem kotu zaslona. V\u010dasih se boste morali za dostop do\ntega gumba pomakniti na dno zaslona.\nVa\u0161i odgovori so anonimni. Primerjali jih bomo z odgovori iz drugih \u0161ol ter statisti\u010dno izra\u010dunali skupne in povpre\u010dne\nrezultate, v katerih imena \u0161ol ne bodo omenjena.\nPomembno: V tem vpra\u0161alniku uporabljamo besedo \u0161ola za poimenovanje posameznih izobra\u017eevalnih programov na \u0161olah. Prosimo vas,\nda pri vseh vpra\u0161anjih odgovore oblikujete le glede na dijakinje in dijake va\u0161e \u0161ole, ki so v tem izobra\u017eevalnem programu.\nSCIntro1"
+          ],
+          [
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 9,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              42.31364822387695,
+              254.61276245117188,
+              540.4889526367188,
+              273.6359558105469
+            ],
+            "confidence": 0.9014171957969666
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              41.947654724121094,
+              222.19573974609375,
+              567.4080810546875,
+              240.87106323242188
+            ],
+            "confidence": 0.895720899105072
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              42.32701110839844,
+              157.541259765625,
+              570.2176513671875,
+              182.1799774169922
+            ],
+            "confidence": 0.8839171528816223
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              41.78715133666992,
+              199.5147705078125,
+              507.0672912597656,
+              216.34927368164062
+            ],
+            "confidence": 0.8639319539070129
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              42.32233428955078,
+              183.00076293945312,
+              551.8977661132812,
+              198.57398986816406
+            ],
+            "confidence": 0.7942359447479248
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 9,
+        "yolo_count": 9,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (9 elements)\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 42 | 88 | 310 | 97 | plain text |\n| 56 | 97 | 171 | 145 | plain text |\n| 42 | 158 | 570 | 182 | plain text |\n| 42 | 183 | 552 | 199 | plain text |\n| 42 | 200 | 507 | 216 | plain text |\n| 42 | 222 | 567 | 241 | plain text |\n| 42 | 255 | 540 | 274 | plain text |\n| 189 | 288 | 560 | 306 | plain text |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|-----..."
+      },
+      "elements_sample": {
+        "total_count": 1571,
+        "full_inspect": "## Collection Inspection (38 elements)\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 28 | 28 | 583 | 764 | 555 | 735 | #000000 | #e7e7e7 | 0 |\n| 28 | 28 | 583 | 382 | 555 | 354 | #000000 | #acc483 | 0 |\n| 34 | 60 | 577 | 349 | 543 | 289 | #000000 | #ffffff | 0 |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| Dobrodo\u0161li v Vpra\u0161alniku za \u0161olo raziskave PISA. | 43 | 73 | 224 | 80 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| Hvala za sodelovanje v tej raziskavi. V tem vpra\u0161a... | 43 | 89 | 309 | 97 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| splo\u0161nih podatkih o \u0161oli, | 66 | 97 | 156 | 105 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| upravljanju \u0161ole, | 66 | 105 | 128 | 113 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| u\u010dnem osebju, | 66 | 113 | 121 | 121 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| ocenjevanju in vrednotenju, | 66 | 121 | 171 | 129 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| ciljnih skupinah, | 66 | 130 | 127 | 137 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| \u0161olski klimi. | 66 | 138 | 109 | 145 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| S temi podatki bomo ugotavljali podobnosti in razl... | 43 | 160 | 541 | 167 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| izkazali pri preizkusu znanja. Z dobljenimi podatk... | 43 | 168 | 568 | 175 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| uspeh dijakov in dijakinj, tako v dr\u017eavi kot med d... | 43 | 176 | 260 | 183 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| Prosimo, vpra\u0161alnik naj izpolni ravnateljica oziro... | 43 | 184 | 550 | 191 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| boste potrebovali pribli\u017eno 45 minut. | 43 | 192 | 182 | 199 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| Pri nekaterih vpra\u0161anjih boste potrebovali pomo\u010d s... | 43 | 200 | 502 | 208 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |\n|   | 506 | 200 | 508 | 208 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| \u010ce ne poznate to\u010dnega odgovora na vpra\u0161anje, bo za... | 43 | 208 | 433 | 216 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| Gumb \"Naprej\", ki omogo\u010da prehod na naslednje vpra... | 43 | 224 | 568 | 232 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| tega gumba pomakniti na dno zaslona. | 43 | 232 | 190 | 240 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| Va\u0161i odgovori so anonimni. Primerjali jih bomo z o... | 43 | 257 | 539 | 264 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |\n| rezultate, v katerih imena \u0161ol ne bodo omenjena. | 43 | 265 | 252 | 272 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |\n| Pomembno: | 43 | 289 | 93 | 297 | DejaVuSans-BoldOblique | QFFBAA | 8 | True | True | native | 1.00 | #000000 |\n|  V tem vpra\u0161alniku uporabljamo besedo \u0161ola za poim... | 93 | 289 | 562 | 297 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| da pri vseh vpra\u0161anjih odgovore oblikujete le gled... | 43 | 297 | 503 | 305 | DejaVuSans-Oblique | QKFBAA | 8 | False | True | native | 1.00 | #000000 |\n| SCIntro1 | 37 | 343 | 59 | 348 | DejaVuSans | QPFBAA | 5 | False | False | native | 1.00 | #878787 |\n|   | 28 | 384 | 31 | 392 | DejaVuSans | QPFBAA | 8 | False | False | native | 1.00 | #333333 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 42 | 88 | 310 | 97 | plain text |\n| 56 | 97 | 171 | 145 | plain text |\n| 42 | 158 | 570 | 182 | plain text |\n| 42 | 183 | 552 | 199 | plain text |\n| 42 | 200 | 507 | 216 | plain text |\n| 42 | 222 | 567 | 241 | plain text |\n| 42 | 255 | 540 | 274 | plain text |\n| 189 | 288 | 560 | 306 | plain text |\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 377 | 304 | 501 | 304 | 1 | True | False |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 35 | 341 | 60 | 349 | abandon |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 28.32,
+            "top": 28.320001000000047
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 28.32,
+            "top": 28.320001000000047
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 34.09999992,
+            "top": 60.11000056
+          },
+          {
+            "type": "unknown",
+            "text": "D",
+            "x0": 42.7699998,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "Dobrodo\u0161li v Vpra\u0161alniku za \u0161o",
+            "x0": 42.7699998,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "o",
+            "x0": 48.54999972,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "b",
+            "x0": 53.146905906375,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "r",
+            "x0": 57.915405840375,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "o",
+            "x0": 61.004093297625,
+            "top": 72.86410096377472
+          },
+          {
+            "type": "unknown",
+            "text": "d",
+            "x0": 65.600999484,
+            "top": 72.86410096377472
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/J9lKd7Y_Table in Slovenian _e.g. on page 80_./analysis/J9lKd7Y/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 85,
+  "pages_analyzed": 1
+}

@@ -1,0 +1,57 @@
+TATR Layout Regions (23 found)
+==================================================
+
+## Collection Inspection (23 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 85 | 386 | 251 | table |
+| 39 | 104 | 385 | 244 | table |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 103 | 385 | 170 | table row |
+| 39 | 175 | 385 | 206 | table row |
+| 39 | 205 | 385 | 244 | table row |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 103 | 385 | 170 | table column header |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 104 | 300 | 245 | table column |
+| 298 | 104 | 385 | 244 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 104 | 300 | 170 | table-cell |
+| 39 | 104 | 300 | 170 | table-cell |
+| 298 | 104 | 385 | 170 | table-cell |
+| 298 | 104 | 385 | 170 | table-cell |
+| 39 | 175 | 300 | 206 | table-cell |
+| 39 | 175 | 300 | 206 | table-cell |
+| 298 | 175 | 385 | 206 | table-cell |
+| 298 | 175 | 385 | 206 | table-cell |
+| 39 | 205 | 300 | 244 | table-cell |
+| 39 | 205 | 300 | 244 | table-cell |
+| 298 | 205 | 385 | 244 | table-cell |
+| 298 | 205 | 385 | 244 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 171 | 385 | 198 | table projected row header |
+| 39 | 177 | 385 | 208 | table projected row header |
+| 39 | 210 | 385 | 245 | table projected row header |

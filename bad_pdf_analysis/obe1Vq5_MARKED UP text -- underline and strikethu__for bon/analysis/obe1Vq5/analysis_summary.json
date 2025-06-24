@@ -1,0 +1,622 @@
+{
+  "pdf_name": "obe1Vq5.pdf",
+  "pdf_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/obe1Vq5.pdf",
+  "analysis_timestamp": "2025-06-22T14:28:50.358085",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 51 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 51\n  - **sizes**:\n    - 13.0pt: 47\n    - 7.5pt: 4",
+      "extract_text": {
+        "length": 1781,
+        "preview": "25 LC 57 0207S/AP\\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\\n103rd\\nA BILL TO BE ENTITLED\\nAN ACT\\n1 To amend Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the\\n2 department of p",
+        "full_text": "25 LC 57 0207S/AP\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\n103rd\nA BILL TO BE ENTITLED\nAN ACT\n1 To amend Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the\n2 department of public health, so as to require healthcare providers, healthcare facilities, and\n3 pharmacies to provide the Maternal Mortality Review Committee with psychiatric records;\n4 to provide for the establishment of the Regional Perinatal Center Advisory Committee; to\n5 provide for its composition and duties; to provide for assessment and recommendations to\n6 the commissioner of public health; to require that hospitals interested in being a designated\n7 regional perinatal center provide the department of public health with certain criteria; to\n8 provide that such department present a plan every four years; to provide for definitions; to\n9 amend Code Section 37-3-166 of the Official Code of Georgia Annotated, relating to\n10 treatment of clinical records, when release permitted, scope of privileged communications,\n11 liability for disclosure, and notice to sheriff of discharge, so as to permit the release of\n12 clinical records of a deceased patient or deceased former patient to the Maternal Mortality\n13 Review Committee; to amend Code Section 45-16-24 of the Official Code of Georgia\n14 Annotated, relating to notification of suspicious or unusual deaths, court ordered medical\n15 examiner's inquiry, and written report of inquiry, so as to remove the requirement that a\n16 medical examiner's inquiry for pregnant female deaths be done through a regional perinatal\n17 center; to provide for related matters; to repeal conflicting laws; and for other purposes.\nH. B. 89\n- 1 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 45,
+        "columns": 7,
+        "data": [
+          [
+            "",
+            "25",
+            "",
+            "",
+            "",
+            "",
+            "LC 57 0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "House Bill",
+            "89 (AS PASSED",
+            "HOUSE A",
+            "ND SENATE",
+            ")",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "By: Represe",
+            "ntatives Cooper o",
+            "f the 45th,",
+            "Wade of the 9th",
+            ", Gambill of the 15th",
+            ", and Hong of the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "103rd",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "A BILL",
+            "TO BE ENTIT",
+            "LED",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "AN ACT",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "1",
+            "To amend C",
+            "hapter 2A of Titl",
+            "e 31 of the",
+            "Official Code",
+            "of Georgia Annotat",
+            "ed, relating to the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "2",
+            "department",
+            "of public health,",
+            "so as to re",
+            "quire healthcar",
+            "e providers, healthc",
+            "are facilities, and"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "3",
+            "pharmacies",
+            "to provide the Ma",
+            "ternal Mo",
+            "rtality Review",
+            "Committee with ps",
+            "ychiatric records;"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "4",
+            "to provide f",
+            "or the establishm",
+            "ent of the",
+            "Regional Perin",
+            "atal Center Adviso",
+            "ry Committee; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "5",
+            "provide for",
+            "its composition a",
+            "nd duties;",
+            "to provide for",
+            "assessment and rec",
+            "ommendations to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "6",
+            "the commis",
+            "sioner of public h",
+            "ealth; to re",
+            "quire that hosp",
+            "itals interested in b",
+            "eing a designated"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "7",
+            "regional pe",
+            "rinatal center pro",
+            "vide the d",
+            "epartment of p",
+            "ublic health with c",
+            "ertain criteria; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "8",
+            "provide that",
+            "such department",
+            "present a",
+            "plan every fou",
+            "r years; to provide f",
+            "or definitions; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "9",
+            "amend Cod",
+            "e Section 37-3-1",
+            "66 of the",
+            "Official Code",
+            "of Georgia Anno",
+            "tated, relating to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "10",
+            "treatment of",
+            "clinical records,",
+            "when rele",
+            "ase permitted,",
+            "scope of privileged",
+            "communications,"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "11",
+            "liability for",
+            "disclosure, and",
+            "notice to s",
+            "heriff of disch",
+            "arge, so as to perm",
+            "it the release of"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "12",
+            "clinical reco",
+            "rds of a deceased",
+            "patient o",
+            "r deceased form",
+            "er patient to the M",
+            "aternal Mortality"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "13",
+            "Review Co",
+            "mmittee; to ame",
+            "nd Code S",
+            "ection 45-16-",
+            "24 of the Official",
+            "Code of Georgia"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "14",
+            "Annotated,",
+            "relating to notific",
+            "ation of s",
+            "uspicious or un",
+            "usual deaths, court",
+            "ordered medical"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "15",
+            "examiner's",
+            "inquiry, and writt",
+            "en report",
+            "of inquiry, so",
+            "as to remove the re",
+            "quirement that a"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "16",
+            "medical exa",
+            "miner's inquiry fo",
+            "r pregnan",
+            "t female deaths",
+            "be done through a",
+            "regional perinatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "17",
+            "center; to pr",
+            "ovide for related",
+            "matters; t",
+            "o repeal conflic",
+            "ting laws; and for o",
+            "ther purposes."
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 6,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              46.56047439575195,
+              263.8218994140625,
+              542.800537109375,
+              641.26806640625
+            ],
+            "confidence": 0.9703598022460938
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.56439208984375,
+              690.4210815429688,
+              329.4434814453125,
+              718.9207153320312
+            ],
+            "confidence": 0.8502583503723145
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              449.0079345703125,
+              37.05219650268555,
+              541.185791015625,
+              50.167091369628906
+            ],
+            "confidence": 0.8435638546943665
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              70.63126373291016,
+              85.05166625976562,
+              541.7432861328125,
+              122.71043395996094
+            ],
+            "confidence": 0.779698371887207
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.9029769897461,
+              37.49531555175781,
+              85.85454559326172,
+              49.826873779296875
+            ],
+            "confidence": 0.7396846413612366
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 15,
+        "yolo_count": 6,
+        "tatr_count": 9,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (15 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 329 | 719 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 85 | 542 | 123 | plain text |\n| 281 | 220 | 331 | 235 | plain text |\n| 47 | 264 | 543 | 641 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |..."
+      },
+      "elements_sample": {
+        "total_count": 1806,
+        "full_inspect": "## Collection Inspection (66 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 329 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| House Bill 89 (AS PASSED HOUSE AND SENATE) | 72 | 65 | 355 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| th | 263 | 86 | 269 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| th | 346 | 86 | 352 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| th | 447 | 86 | 453 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| , Wade of the 9 | 269 | 87 | 346 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| , Gambill of the 15 | 352 | 87 | 447 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| , and Hong of the | 453 | 87 | 540 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| By: Representatives Cooper of the 45 | 72 | 87 | 263 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| rd | 91 | 109 | 98 | 116 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n|   | 98 | 110 | 101 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 103 | 72 | 110 | 91 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| A BILL TO BE ENTITLED | 232 | 199 | 380 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| AN ACT | 282 | 222 | 330 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 1 | 51 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| To amend Chapter 2A of Title 31 of the Official Co... | 72 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 2 | 51 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| department of public health, so as to require heal... | 72 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 3 | 51 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| pharmacies to provide the Maternal Mortality Revie... | 72 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 4 | 51 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| to provide for the establishment of the Regional P... | 72 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 5 | 51 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| provide for its composition and duties; to provide... | 72 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 6 | 51 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| the commissioner of public health; to require that... | 72 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 7 | 51 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| regional perinatal center provide the department o... | 72 | 401 | 540 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 8 | 51 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| provide that such department present a plan every ... | 72 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 9 | 51 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| amend Code Section 37-3-166 of the Official Code o... | 72 | 445 | 540 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 10 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| treatment of clinical records, when release permit... | 72 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 11 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| liability for disclosure, and notice to sheriff of... | 72 | 490 | 540 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 12 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| clinical records of a deceased patient or deceased... | 72 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 13 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Review Committee; to amend Code Section 45-16-24 o... | 72 | 535 | 540 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 14 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Annotated, relating to notification of suspicious ... | 72 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 15 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| examiner's inquiry, and written report of inquiry,... | 72 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 16 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| medical examiner's inquiry for pregnant female dea... | 72 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 17 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| center; to provide for related matters; to repeal ... | 72 | 624 | 526 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 1 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 85 | 542 | 123 | plain text |\n| 281 | 220 | 331 | 235 | plain text |\n| 47 | 264 | 543 | 641 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 49 | 683 | 525 | 762 | table |\n| 58 | 689 | 515 | 729 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 458 | 688 | 518 | 735 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 57 | 688 | 515 | 700 | table row |\n| 58 | 711 | 516 | 724 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 458 | 688 | 515 | 700 | table-cell |\n| 458 | 688 | 515 | 700 | table-cell |\n| 458 | 711 | 516 | 724 | table-cell |\n| 458 | 711 | 516 | 724 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 449.0079345703125,
+            "top": 37.05219650268555
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.9029769897461,
+            "top": 37.49531555175781
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/analysis/obe1Vq5/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 5,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              49.45,
+              683.23,
+              525.22,
+              761.78
+            ],
+            "confidence": 0.8684764504432678
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              458.4,
+              687.56,
+              517.6700000000001,
+              734.75
+            ],
+            "confidence": 0.4557524621486664
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              57.86,
+              711.22,
+              515.6700000000001,
+              724.5
+            ],
+            "confidence": 0.6647287011146545
+          },
+          {
+            "type": "table",
+            "bbox": [
+              57.68,
+              688.56,
+              515.4300000000001,
+              729.32
+            ],
+            "confidence": 0.9817523956298828
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              57.35,
+              687.59,
+              515.48,
+              700.49
+            ],
+            "confidence": 0.8353040814399719
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 8,
+  "pages_analyzed": 1
+}

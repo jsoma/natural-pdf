@@ -224,6 +224,18 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     selector = selector.strip()
 
+    # ------------------------------------------------------------------
+    # Handle wildcard selector (leading "*")
+    # ------------------------------------------------------------------
+    # A selector can start with "*" to denote "any element type", optionally
+    # followed by attribute blocks or pseudo-classes – e.g. *[width>100].
+    # We strip the asterisk but keep the remainder so the normal attribute
+    # / pseudo-class parsing logic can proceed.
+
+    if selector.startswith("*"):
+        # Keep everything *after* the asterisk (attributes, pseudos, etc.).
+        selector = selector[1:].strip()
+
     # --- Handle OR operators first (| or ,) ---
     # Check if selector contains OR operators at the top level only
     # (not inside quotes, parentheses, or brackets)
@@ -252,13 +264,6 @@ def parse_selector(selector: str) -> Dict[str, Any]:
             return result
 
     # --- Continue with single selector parsing (existing logic) ---
-
-    # --- Handle wildcard selector explicitly ---
-    if selector == "*":
-        # Wildcard matches any type, already the default.
-        # Clear selector so the loop doesn't run and error out.
-        selector = ""
-    # --- END NEW ---
 
     # 1. Extract type (optional, at the beginning)
     # Only run if selector wasn't '*'

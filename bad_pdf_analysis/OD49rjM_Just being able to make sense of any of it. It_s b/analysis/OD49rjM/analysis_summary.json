@@ -1,0 +1,736 @@
+{
+  "pdf_name": "OD49rjM.pdf",
+  "pdf_path": "bad_pdf_analysis/OD49rjM_Just being able to make sense of any of it. It_s b/OD49rjM.pdf",
+  "analysis_timestamp": "2025-06-22T14:29:34.185873",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 117 elements\n- **rect**: 5 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 111\n    - LiberationSans: 2\n    - SymbolMT: 2\n    - Arial: 2\n  - **sizes**:\n    - 12.0pt: 104\n    - 10.0pt: 11\n    - 8.0pt: 1\n    - 6.5pt: 1\n  - styles: 10 bold, 8 italic\n  - **colors**:\n    - black: 115\n    - other: 2",
+      "extract_text": {
+        "length": 2775,
+        "preview": "Case:17-03283-LTS Doc#:18235 Filed:09/24/21 Entered:09/24/21 12:18:20 Desc: Main\\nDocument Page 1 of 3\\nUNITED STATES DISTRICT COURT\\nDISTRICT OF PUERTO RICO\\n-------------------------------------------------------------x\\nIn re: PROMESA\\nTitle III\\nTHE FINANCIAL OVERSIGHT AND\\nMANAGEMENT BOARD FOR PUERTO R",
+        "full_text": "Case:17-03283-LTS Doc#:18235 Filed:09/24/21 Entered:09/24/21 12:18:20 Desc: Main\nDocument Page 1 of 3\nUNITED STATES DISTRICT COURT\nDISTRICT OF PUERTO RICO\n-------------------------------------------------------------x\nIn re: PROMESA\nTitle III\nTHE FINANCIAL OVERSIGHT AND\nMANAGEMENT BOARD FOR PUERTO RICO,\nNo. 17 BK 3283-LTS\nas representative of\n(Jointly Administered)\nTHE COMMONWEALTH OF PUERTO RICO, et al.\nDebtors.1\n-------------------------------------------------------------x\nCERTIFICATE OF SERVICE\nI, Jessica Berman, depose and say that I am employed by Prime Clerk LLC (\u201cPrime\nClerk\u201d), the solicitation, notice, and claims agent for the Debtors in the above-captioned cases\nunder Title III of the Puerto Rico Oversight, Management, and Economic Stability Act\n(PROMESA).\nOn August 3, 2021, at my direction and under my supervision, employees of Prime Clerk\ncaused the following documents to be served by the method set forth on the Master Service List\nattached hereto as Exhibit A:\n\uf0b7 Notice of (I) Approval of Disclosure Statement, (II) Establishment of Record Dates, (III)\nHearing on Confirmation of the Plan of Adjustment and Procedures for Objection to\nConfirmation of the Plan of Adjustment, (IV) Procedures and Deadline for Voting on the\nPlan of Adjustment and Making Certain Elections Thereunder, a copy of which is attached\nhereto as Exhibit B, (the \u201cConfirmation Hearing Notice\u201d)\n\uf0b7 Notice of Entry of Order Establishing Preliminary Confirmation Submission and\nDiscovery Procedures, and Directing Notice to Creditors of the Same, a copy of which is\nattached hereto as Exhibit C, (the \u201cFinal Confirmation Discovery Notice\u201d)\n1 The Debtors in these Title III Cases, along with each Debtor\u2019s respective Title III case number and the last four (4)\ndigits of each Debtor\u2019s federal tax identification number, as applicable, are the (i) Commonwealth of Puerto Rico\n(Bankruptcy Case No. 17 BK 3283-LTS) (Last Four Digits of Federal Tax ID: 3481); (ii) Puerto Rico Sales Tax\nFinancing Corporation (\u201cCOFINA\u201d) (Bankruptcy Case No. 17 BK 3284-LTS) (Last Four Digits of Federal Tax ID:\n8474); (iii) Puerto Rico Highways and Transportation Authority (\u201cHTA\u201d) (Bankruptcy Case No. 17 BK 3567-LTS)\n(Last Four Digits of Federal Tax ID: 3808); (iv) Employees Retirement System of the Government of the\nCommonwealth of Puerto Rico (\u201cERS\u201d) (Bankruptcy Case No. 17 BK 3566-LTS) (Last Four Digits of Federal Tax\nID: 9686); and (v) Puerto Rico Electric Power Authority (\u201cPREPA\u201d) (Bankruptcy Case No. 17 BK 4780-LTS) (Last\nFour Digits of Federal Tax ID: 3747); and (vi) Puerto Rico Public Buildings Authority (\u201cPBA\u201d) (Bankruptcy Case\nNo. 19-BK-5523-LTS) (Last Four Digits of Federal Tax ID: 3801) (Title III case numbers are listed as Bankruptcy\nCase numbers due to software limitations)."
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 57,
+        "columns": 8,
+        "data": [
+          [
+            "se:17-03283-",
+            "LTS Do",
+            "c#:18235 F",
+            "iled:09/2",
+            "4/21 En",
+            "tered:09/2",
+            "4/21 12:18:20",
+            "Desc: M"
+          ],
+          [
+            "",
+            "",
+            "Doc",
+            "ument",
+            "Page 1",
+            "of 3",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "UNITED",
+            "STATE",
+            "S DISTR",
+            "ICT COU",
+            "RT",
+            ""
+          ],
+          [
+            "",
+            "",
+            "DIST",
+            "RICT O",
+            "F PUER",
+            "TO RICO",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "------------------",
+            "-----------",
+            "-----------------",
+            "----------",
+            "-----x",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "In re:",
+            "",
+            "",
+            "",
+            "",
+            "PROME",
+            "SA",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Title III",
+            "",
+            ""
+          ],
+          [
+            "THE FINANC",
+            "IAL OVE",
+            "RSIGHT AN",
+            "D",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "MANAGEME",
+            "NT BOA",
+            "RD FOR PUE",
+            "RTO RI",
+            "CO,",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "No. 17 B",
+            "K 3283-LTS",
+            ""
+          ],
+          [
+            "as repr",
+            "esentative",
+            "of",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "(Jointly",
+            "Administered)",
+            ""
+          ],
+          [
+            "THE COMMO",
+            "NWEAL",
+            "TH OF PUER",
+            "TO RIC",
+            "O, et al.",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "Debtors.1",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "------------------",
+            "-----------",
+            "-----------------",
+            "----------",
+            "-----x",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "CERT",
+            "IFICAT",
+            "E OF SE",
+            "RVICE",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "I, Jessic",
+            "a Berman",
+            ", depose and",
+            "say tha",
+            "t I am em",
+            "ployed by",
+            "Prime Clerk LLC",
+            "(\u201cPrime"
+          ],
+          [
+            "Clerk\u201d), the sol",
+            "icitation,",
+            "notice, and cl",
+            "aims ag",
+            "ent for the",
+            "Debtors i",
+            "n the above-captio",
+            "ned cases"
+          ],
+          [
+            "under Title III",
+            "of the",
+            "Puerto Rico",
+            "Oversig",
+            "ht, Mana",
+            "gement, an",
+            "d Economic Stab",
+            "ility Act"
+          ],
+          [
+            "(PROMESA).",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "On Aug",
+            "ust 3, 202",
+            "1, at my direc",
+            "tion and",
+            "under my",
+            "supervisio",
+            "n, employees of Pr",
+            "ime Clerk"
+          ],
+          [
+            "caused the follo",
+            "wing doc",
+            "uments to be",
+            "served b",
+            "y the meth",
+            "od set fort",
+            "h on the Master Se",
+            "rvice List"
+          ],
+          [
+            "attached hereto",
+            "as Exhibi",
+            "t A:",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "\uf0b7 Notice o",
+            "f (I) App",
+            "roval of Discl",
+            "osure St",
+            "atement, (I",
+            "I) Establish",
+            "ment of Record D",
+            "ates, (III)"
+          ],
+          [
+            "Hearing",
+            "on Confi",
+            "rmation of t",
+            "he Plan",
+            "of Adjust",
+            "ment and P",
+            "rocedures for Ob",
+            "jection to"
+          ],
+          [
+            "Confirm",
+            "ation of t",
+            "he Plan of Ad",
+            "justment",
+            ", (IV) Pro",
+            "cedures and",
+            "Deadline for Voti",
+            "ng on the"
+          ],
+          [
+            "Plan of",
+            "Adjustmen",
+            "t and Making",
+            "Certain",
+            "Elections",
+            "Thereunder",
+            ", a copy of which i",
+            "s attached"
+          ],
+          [
+            "hereto a",
+            "s Exhibit",
+            "B, (the \u201cConf",
+            "irmation",
+            "Hearing",
+            "Notice\u201d)",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "\uf0b7 Notice",
+            "of Entry",
+            "of Order E",
+            "stablishi",
+            "ng Prelim",
+            "inary Con",
+            "firmation Submis",
+            "sion and"
+          ],
+          [
+            "Discove",
+            "ry Proced",
+            "ures, and Dire",
+            "cting No",
+            "tice to Cr",
+            "editors of t",
+            "he Same, a copy o",
+            "f which is"
+          ],
+          [
+            "attached",
+            "hereto as",
+            "Exhibit C, (t",
+            "he \u201cFina",
+            "l Confirm",
+            "ation Disc",
+            "overy Notice\u201d)",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "1 The Debtors in th",
+            "ese Title III",
+            "Cases, along wi",
+            "th each D",
+            "ebtor\u2019s respe",
+            "ctive Title III",
+            "case number and the",
+            "last four (4)"
+          ],
+          [
+            "digits of each Deb",
+            "tor\u2019s federa",
+            "l tax identificati",
+            "on numbe",
+            "r, as applica",
+            "ble, are the (",
+            "i) Commonwealth of",
+            "Puerto Rico"
+          ],
+          [
+            "(Bankruptcy Case",
+            "No. 17 BK",
+            "3283-LTS) (La",
+            "st Four Di",
+            "gits of Fede",
+            "ral Tax ID:",
+            "3481); (ii) Puerto Ric",
+            "o Sales Tax"
+          ],
+          [
+            "Financing Corpora",
+            "tion (\u201cCOFI",
+            "NA\u201d) (Bankrup",
+            "tcy Case N",
+            "o. 17 BK 3",
+            "284-LTS) (La",
+            "st Four Digits of Fede",
+            "ral Tax ID:"
+          ],
+          [
+            "8474); (iii) Puerto",
+            "Rico Highw",
+            "ays and Transp",
+            "ortation A",
+            "uthority (\u201cH",
+            "TA\u201d) (Bankru",
+            "ptcy Case No. 17 BK",
+            "3567-LTS)"
+          ],
+          [
+            "(Last Four Digits",
+            "of Federal",
+            "Tax ID: 3808",
+            "); (iv) E",
+            "mployees R",
+            "etirement Sy",
+            "stem of the Governm",
+            "ent of the"
+          ],
+          [
+            "Commonwealth of",
+            "Puerto Ric",
+            "o (\u201cERS\u201d) (Bank",
+            "ruptcy Ca",
+            "se No. 17 B",
+            "K 3566-LTS)",
+            "(Last Four Digits of",
+            "Federal Tax"
+          ],
+          [
+            "ID: 9686); and (v)",
+            "Puerto Rico",
+            "Electric Power",
+            "Authority",
+            "(\u201cPREPA\u201d)",
+            "(Bankruptcy",
+            "Case No. 17 BK 4780",
+            "-LTS) (Last"
+          ],
+          [
+            "Four Digits of Fed",
+            "eral Tax ID",
+            ": 3747); and (vi",
+            ") Puerto R",
+            "ico Public B",
+            "uildings Aut",
+            "hority (\u201cPBA\u201d) (Bank",
+            "ruptcy Case"
+          ],
+          [
+            "No. 19-BK-5523-L",
+            "TS) (Last F",
+            "our Digits of Fe",
+            "deral Tax",
+            "ID: 3801) (",
+            "Title III case",
+            "numbers are listed as",
+            "Bankruptcy"
+          ],
+          [
+            "Case numbers due",
+            "to software",
+            "limitations).",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 11,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              71.1021957397461,
+              314.264404296875,
+              541.6363525390625,
+              369.5956726074219
+            ],
+            "confidence": 0.9513305425643921
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              71.15709686279297,
+              383.3162841796875,
+              541.430908203125,
+              426.36328125
+            ],
+            "confidence": 0.949573278427124
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.46136474609375,
+              593.2489624023438,
+              541.5609741210938,
+              721.0702514648438
+            ],
+            "confidence": 0.9215709567070007
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              89.69094848632812,
+              439.052490234375,
+              541.670166015625,
+              509.2163391113281
+            ],
+            "confidence": 0.9213855266571045
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              89.60739135742188,
+              523.3568115234375,
+              541.4898681640625,
+              565.0126953125
+            ],
+            "confidence": 0.891596794128418
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 11,
+        "yolo_count": 11,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (11 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 58 | 11 | 555 | 37 | title |\n| 214 | 72 | 419 | 100 | title |\n| 225 | 286 | 387 | 301 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 112 | 194 | 208 | 207 | plain text |\n| 77 | 221 | 340 | 235 | plain text |\n| 214 | 248 | 260 | 261 | plain text |\n| 71 | 314 | 542 | 370 | plain text |\n| 71 | 383 | 541 | 4..."
+      },
+      "elements_sample": {
+        "total_count": 2987,
+        "full_inspect": "## Collection Inspection (133 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 58 | 11 | 555 | 37 | title |\n| 214 | 72 | 419 | 100 | title |\n| 225 | 286 | 387 | 301 | title |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| Case:17-03283-LTS   Doc#:18235   Filed:09/24/21   ... | 59 | 13 | 553 | 25 | LiberationSans | AMEOBT | 12 | False | False | native | 1.00 | #0000ff |\n| Document     Page 1 of 3 | 240 | 25 | 372 | 37 | LiberationSans | AMEOBT | 12 | False | False | native | 1.00 | #0000ff |\n| UNITED STATES DISTRICT COURT  | 215 | 74 | 421 | 86 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n| DISTRICT OF PUERTO RICO  | 234 | 88 | 402 | 100 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n|   | 365 | 101 | 368 | 113 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 101 | 355 | 113 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| --------------------------------------------------... | 77 | 106 | 330 | 118 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 115 | 368 | 127 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 115 | 355 | 127 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| In re:  | 77 | 126 | 106 | 138 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| PROMESA  | 365 | 129 | 424 | 141 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 129 | 355 | 141 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 77 | 140 | 80 | 152 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Title III  | 365 | 143 | 405 | 155 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 143 | 355 | 155 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| THE FINANCIAL OVERSIGHT AND   | 77 | 153 | 274 | 165 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 157 | 368 | 169 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 157 | 355 | 169 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| MANAGEMENT BOARD FOR PUERTO RICO,  | 77 | 167 | 323 | 179 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 170 | 368 | 182 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 170 | 355 | 182 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 77 | 181 | 80 | 193 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 352 | 184 | 355 | 196 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| No. 17 BK 3283-LTS  | 365 | 184 | 472 | 196 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|             as representative of  | 77 | 195 | 210 | 207 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 198 | 368 | 210 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 77 | 209 | 80 | 221 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| (Jointly Administered)  | 365 | 212 | 477 | 224 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| THE COMMONWEALTH OF PUERTO RICO,  | 77 | 222 | 315 | 234 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| et al. | 315 | 222 | 339 | 234 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |\n|   | 339 | 222 | 342 | 234 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 482 | 226 | 485 | 238 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 77 | 236 | 80 | 248 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 239 | 368 | 251 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| 1 | 256 | 249 | 260 | 257 | Times | APVLSQ | 8 | False | False | native | 1.00 | #000000 |\n|   | 77 | 250 | 80 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 113 | 250 | 116 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|                       Debtors. | 149 | 250 | 256 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 260 | 250 | 263 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 253 | 368 | 265 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 365 | 267 | 368 | 279 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| --------------------------------------------------... | 77 | 268 | 330 | 280 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| CERTIFICATE OF SERVICE  | 226 | 288 | 389 | 300 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n|   | 72 | 302 | 75 | 314 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| I, Jessica Berman, depose and say that I am employ... | 108 | 316 | 510 | 328 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Prime  | 510 | 316 | 543 | 328 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |\n| Clerk | 72 | 329 | 99 | 341 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |\n| \u201d), the solicitation, notice, and claims agent for... | 99 | 329 | 543 | 341 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| under  | 72 | 343 | 102 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Title  | 107 | 343 | 132 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| III  | 137 | 343 | 152 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| of  | 156 | 343 | 169 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| the  | 174 | 343 | 191 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Puerto  | 196 | 343 | 230 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Rico  | 234 | 343 | 260 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Oversight,  | 264 | 343 | 317 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Management,  | 322 | 343 | 390 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| and  | 394 | 343 | 415 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Economic  | 419 | 343 | 470 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Stability  | 475 | 343 | 518 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Act  | 523 | 343 | 543 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| (PROMESA).  | 72 | 357 | 142 | 369 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 72 | 371 | 75 | 383 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| On August 3, 2021, at my direction and under my su... | 108 | 385 | 543 | 397 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| caused the following documents to be served by the... | 72 | 398 | 543 | 410 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| attached hereto as  | 72 | 412 | 161 | 424 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Exhibit A | 161 | 412 | 211 | 424 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n| :   | 211 | 412 | 220 | 424 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 72 | 426 | 75 | 438 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 96 | 441 | 99 | 453 | Arial | AAAAAJ | 12 | False | False | native | 1.00 | #000000 |\n| Notice of (I) Approval of Disclosure Statement, (I... | 108 | 441 | 543 | 453 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| \uf0b7 | 90 | 441 | 96 | 453 | SymbolMT | ASJHEV | 12 | False | False | native | 1.00 | #000000 |\n| Hearing on Confirmation of the Plan of Adjustment ... | 108 | 454 | 543 | 466 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Confirmation of the Plan of Adjustment, (IV) Proce... | 108 | 468 | 543 | 480 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Plan of Adjustment and Making Certain Elections Th... | 108 | 482 | 543 | 494 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| hereto as  | 108 | 496 | 154 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Exhibit B,  | 154 | 496 | 209 | 508 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n| (the | 209 | 496 | 228 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|  \u201c | 228 | 496 | 237 | 508 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |\n| Confirmation Hearing Notice | 237 | 496 | 384 | 508 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |\n| \u201d | 384 | 496 | 391 | 508 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |\n| )  | 391 | 496 | 398 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 72 | 510 | 75 | 522 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 96 | 524 | 99 | 536 | Arial | AAAAAJ | 12 | False | False | native | 1.00 | #000000 |\n| Notice  | 108 | 524 | 143 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| of  | 148 | 524 | 161 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Entry  | 166 | 524 | 196 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| of  | 200 | 524 | 213 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Order  | 218 | 524 | 249 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Establishing  | 254 | 524 | 317 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Preliminary  | 322 | 524 | 381 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Confirmation  | 386 | 524 | 454 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Submission  | 459 | 524 | 518 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| and  | 523 | 524 | 543 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| \uf0b7 | 90 | 524 | 96 | 536 | SymbolMT | ASJHEV | 12 | False | False | native | 1.00 | #000000 |\n| Discovery Procedures, and Directing Notice to Cred... | 108 | 538 | 543 | 550 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| attached hereto as  | 108 | 552 | 197 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Exhibit C | 197 | 552 | 247 | 564 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |\n| , (the \u201c | 247 | 552 | 280 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| Final Confirmation Discovery Notice | 280 | 552 | 464 | 564 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |\n| \u201d | 464 | 552 | 471 | 564 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |\n| )  | 471 | 552 | 478 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 108 | 566 | 111 | 578 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 252 | 566 | 255 | 578 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n|   | 216 | 582 | 219 | 594 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |\n| 1 | 72 | 594 | 75 | 601 | Times | APVLSQ | 6 | False | False | native | 1.00 | #000000 |\n|  The Debtors in these Title III Cases, along with ... | 75 | 595 | 543 | 605 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| digits of each Debtor\u2019s federal tax identification... | 72 | 606 | 543 | 617 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| (Bankruptcy Case No. 17 BK 3283-LTS) (Last Four Di... | 72 | 618 | 543 | 628 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| Financing Corporation (\u201cCOFINA\u201d) (Bankruptcy Case ... | 72 | 629 | 542 | 639 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| 8474); (iii) Puerto Rico Highways and Transportati... | 72 | 641 | 542 | 651 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| (Last Four Digits of Federal Tax ID: 3808); (iv) E... | 72 | 653 | 543 | 663 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| Commonwealth of Puerto Rico (\u201cERS\u201d) (Bankruptcy Ca... | 72 | 664 | 542 | 674 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| ID: 9686); and (v) Puerto Rico Electric Power Auth... | 72 | 675 | 542 | 686 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| Four Digits of Federal Tax ID: 3747); and (vi) Pue... | 72 | 687 | 543 | 697 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| No. 19-BK-5523-LTS) (Last Four Digits of Federal T... | 72 | 698 | 542 | 708 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n| Case numbers due to software limitations).    | 72 | 710 | 251 | 720 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 112 | 194 | 208 | 207 | plain text |\n| 77 | 221 | 340 | 235 | plain text |\n| 214 | 248 | 260 | 261 | plain text |\n| 71 | 314 | 542 | 370 | plain text |\n| 71 | 383 | 541 | 426 | plain text |\n| 90 | 439 | 542 | 509 | plain text |\n| 90 | 523 | 541 | 565 | plain text |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 226 | 299 | 386 | 300 | 159 | 1 | #000000 | #000000 | 0 |\n| 161 | 423 | 211 | 424 | 50 | 1 | #000000 | #000000 | 0 |\n| 154 | 507 | 203 | 508 | 49 | 1 | #000000 | #000000 | 0 |\n| 197 | 563 | 247 | 564 | 50 | 1 | #000000 | #000000 | 0 |\n| 72 | 588 | 216 | 588 | 144 | 1 | #000000 | #000000 | 0 |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 70 | 593 | 542 | 721 | abandon |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 57.63228225708008,
+            "top": 10.516497611999512
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 59.05,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "Case:17-03283-LTS   Doc#:18235",
+            "x0": 59.05,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "a",
+            "x0": 67.714,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "s",
+            "x0": 74.386,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "e",
+            "x0": 80.386,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": ":",
+            "x0": 87.05799999999999,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 90.382,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "7",
+            "x0": 97.054,
+            "top": 12.990000000000009
+          },
+          {
+            "type": "unknown",
+            "text": "-",
+            "x0": 103.726,
+            "top": 12.990000000000009
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/OD49rjM_Just being able to make sense of any of it. It_s b/analysis/OD49rjM/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 34606,
+  "pages_analyzed": 1
+}

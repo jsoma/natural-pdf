@@ -1,0 +1,3489 @@
+{
+  "pdf_name": "obe1Vq5.pdf",
+  "pdf_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/obe1Vq5.pdf",
+  "analysis_timestamp": "2025-06-22T15:09:15.218335",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 51 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 51\n  - **sizes**:\n    - 13.0pt: 47\n    - 7.5pt: 4",
+      "extract_text": {
+        "length": 1781,
+        "preview": "25 LC 57 0207S/AP\\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\\n103rd\\nA BILL TO BE ENTITLED\\nAN ACT\\n1 To amend Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the\\n2 department of p",
+        "full_text": "25 LC 57 0207S/AP\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\n103rd\nA BILL TO BE ENTITLED\nAN ACT\n1 To amend Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the\n2 department of public health, so as to require healthcare providers, healthcare facilities, and\n3 pharmacies to provide the Maternal Mortality Review Committee with psychiatric records;\n4 to provide for the establishment of the Regional Perinatal Center Advisory Committee; to\n5 provide for its composition and duties; to provide for assessment and recommendations to\n6 the commissioner of public health; to require that hospitals interested in being a designated\n7 regional perinatal center provide the department of public health with certain criteria; to\n8 provide that such department present a plan every four years; to provide for definitions; to\n9 amend Code Section 37-3-166 of the Official Code of Georgia Annotated, relating to\n10 treatment of clinical records, when release permitted, scope of privileged communications,\n11 liability for disclosure, and notice to sheriff of discharge, so as to permit the release of\n12 clinical records of a deceased patient or deceased former patient to the Maternal Mortality\n13 Review Committee; to amend Code Section 45-16-24 of the Official Code of Georgia\n14 Annotated, relating to notification of suspicious or unusual deaths, court ordered medical\n15 examiner's inquiry, and written report of inquiry, so as to remove the requirement that a\n16 medical examiner's inquiry for pregnant female deaths be done through a regional perinatal\n17 center; to provide for related matters; to repeal conflicting laws; and for other purposes.\nH. B. 89\n- 1 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 45,
+        "columns": 7,
+        "data": [
+          [
+            "",
+            "25",
+            "",
+            "",
+            "",
+            "",
+            "LC 57 0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "House Bill",
+            "89 (AS PASSED",
+            "HOUSE A",
+            "ND SENATE",
+            ")",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "By: Represe",
+            "ntatives Cooper o",
+            "f the 45th,",
+            "Wade of the 9th",
+            ", Gambill of the 15th",
+            ", and Hong of the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "103rd",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "A BILL",
+            "TO BE ENTIT",
+            "LED",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "AN ACT",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "1",
+            "To amend C",
+            "hapter 2A of Titl",
+            "e 31 of the",
+            "Official Code",
+            "of Georgia Annotat",
+            "ed, relating to the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "2",
+            "department",
+            "of public health,",
+            "so as to re",
+            "quire healthcar",
+            "e providers, healthc",
+            "are facilities, and"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "3",
+            "pharmacies",
+            "to provide the Ma",
+            "ternal Mo",
+            "rtality Review",
+            "Committee with ps",
+            "ychiatric records;"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "4",
+            "to provide f",
+            "or the establishm",
+            "ent of the",
+            "Regional Perin",
+            "atal Center Adviso",
+            "ry Committee; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "5",
+            "provide for",
+            "its composition a",
+            "nd duties;",
+            "to provide for",
+            "assessment and rec",
+            "ommendations to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "6",
+            "the commis",
+            "sioner of public h",
+            "ealth; to re",
+            "quire that hosp",
+            "itals interested in b",
+            "eing a designated"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "7",
+            "regional pe",
+            "rinatal center pro",
+            "vide the d",
+            "epartment of p",
+            "ublic health with c",
+            "ertain criteria; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "8",
+            "provide that",
+            "such department",
+            "present a",
+            "plan every fou",
+            "r years; to provide f",
+            "or definitions; to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "9",
+            "amend Cod",
+            "e Section 37-3-1",
+            "66 of the",
+            "Official Code",
+            "of Georgia Anno",
+            "tated, relating to"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "10",
+            "treatment of",
+            "clinical records,",
+            "when rele",
+            "ase permitted,",
+            "scope of privileged",
+            "communications,"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "11",
+            "liability for",
+            "disclosure, and",
+            "notice to s",
+            "heriff of disch",
+            "arge, so as to perm",
+            "it the release of"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "12",
+            "clinical reco",
+            "rds of a deceased",
+            "patient o",
+            "r deceased form",
+            "er patient to the M",
+            "aternal Mortality"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "13",
+            "Review Co",
+            "mmittee; to ame",
+            "nd Code S",
+            "ection 45-16-",
+            "24 of the Official",
+            "Code of Georgia"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "14",
+            "Annotated,",
+            "relating to notific",
+            "ation of s",
+            "uspicious or un",
+            "usual deaths, court",
+            "ordered medical"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "15",
+            "examiner's",
+            "inquiry, and writt",
+            "en report",
+            "of inquiry, so",
+            "as to remove the re",
+            "quirement that a"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "16",
+            "medical exa",
+            "miner's inquiry fo",
+            "r pregnan",
+            "t female deaths",
+            "be done through a",
+            "regional perinatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "17",
+            "center; to pr",
+            "ovide for related",
+            "matters; t",
+            "o repeal conflic",
+            "ting laws; and for o",
+            "ther purposes."
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 6,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              46.56047439575195,
+              263.8218994140625,
+              542.800537109375,
+              641.26806640625
+            ],
+            "confidence": 0.9703598022460938
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.56439208984375,
+              690.4210815429688,
+              329.4434814453125,
+              718.9207153320312
+            ],
+            "confidence": 0.8502583503723145
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              449.0079345703125,
+              37.05219650268555,
+              541.185791015625,
+              50.167091369628906
+            ],
+            "confidence": 0.8435638546943665
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              70.63126373291016,
+              85.05166625976562,
+              541.7432861328125,
+              122.71043395996094
+            ],
+            "confidence": 0.779698371887207
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.9029769897461,
+              37.49531555175781,
+              85.85454559326172,
+              49.826873779296875
+            ],
+            "confidence": 0.7396846413612366
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 15,
+        "yolo_count": 6,
+        "tatr_count": 9,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (15 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 329 | 719 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 85 | 542 | 123 | plain text |\n| 281 | 220 | 331 | 235 | plain text |\n| 47 | 264 | 543 | 641 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |..."
+      },
+      "elements_sample": {
+        "total_count": 1806,
+        "full_inspect": "## Collection Inspection (66 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 329 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| House Bill 89 (AS PASSED HOUSE AND SENATE) | 72 | 65 | 355 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| th | 263 | 86 | 269 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| th | 346 | 86 | 352 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| th | 447 | 86 | 453 | 94 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n| , Wade of the 9 | 269 | 87 | 346 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| , Gambill of the 15 | 352 | 87 | 447 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| , and Hong of the | 453 | 87 | 540 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| By: Representatives Cooper of the 45 | 72 | 87 | 263 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| rd | 91 | 109 | 98 | 116 | Times | IIDEBA | 8 | False | False | native | 1.00 | #000000 |\n|   | 98 | 110 | 101 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 103 | 72 | 110 | 91 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| A BILL TO BE ENTITLED | 232 | 199 | 380 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| AN ACT | 282 | 222 | 330 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 1 | 51 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| To amend Chapter 2A of Title 31 of the Official Co... | 72 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 2 | 51 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| department of public health, so as to require heal... | 72 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 3 | 51 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| pharmacies to provide the Maternal Mortality Revie... | 72 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 4 | 51 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| to provide for the establishment of the Regional P... | 72 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 5 | 51 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| provide for its composition and duties; to provide... | 72 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 6 | 51 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| the commissioner of public health; to require that... | 72 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 7 | 51 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| regional perinatal center provide the department o... | 72 | 401 | 540 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 8 | 51 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| provide that such department present a plan every ... | 72 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 9 | 51 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| amend Code Section 37-3-166 of the Official Code o... | 72 | 445 | 540 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 10 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| treatment of clinical records, when release permit... | 72 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 11 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| liability for disclosure, and notice to sheriff of... | 72 | 490 | 540 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 12 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| clinical records of a deceased patient or deceased... | 72 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 13 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Review Committee; to amend Code Section 45-16-24 o... | 72 | 535 | 540 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 14 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Annotated, relating to notification of suspicious ... | 72 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 15 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| examiner's inquiry, and written report of inquiry,... | 72 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 16 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| medical examiner's inquiry for pregnant female dea... | 72 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 17 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| center; to provide for related matters; to repeal ... | 72 | 624 | 526 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 1 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 85 | 542 | 123 | plain text |\n| 281 | 220 | 331 | 235 | plain text |\n| 47 | 264 | 543 | 641 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 49 | 683 | 525 | 762 | table |\n| 58 | 689 | 515 | 729 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 458 | 688 | 518 | 735 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 57 | 688 | 515 | 700 | table row |\n| 58 | 711 | 516 | 724 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 458 | 688 | 515 | 700 | table-cell |\n| 458 | 688 | 515 | 700 | table-cell |\n| 458 | 711 | 516 | 724 | table-cell |\n| 458 | 711 | 516 | 724 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 449.0079345703125,
+            "top": 37.05219650268555
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.9029769897461,
+            "top": 37.49531555175781
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis/obe1Vq5/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 5,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              49.45,
+              683.23,
+              525.22,
+              761.78
+            ],
+            "confidence": 0.8684764504432678
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              458.4,
+              687.56,
+              517.6700000000001,
+              734.75
+            ],
+            "confidence": 0.4557524621486664
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              57.86,
+              711.22,
+              515.6700000000001,
+              724.5
+            ],
+            "confidence": 0.6647287011146545
+          },
+          {
+            "type": "table",
+            "bbox": [
+              57.68,
+              688.56,
+              515.4300000000001,
+              729.32
+            ],
+            "confidence": 0.9817523956298828
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              57.35,
+              687.59,
+              515.48,
+              700.49
+            ],
+            "confidence": 0.8353040814399719
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    },
+    {
+      "page_number": 2,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 2 Summary\n\n**Elements**:\n\n- **text**: 53 elements\n- **rect**: 9 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 50\n    - WP-Phonetic: 3\n  - **sizes**:\n    - 13.0pt: 53\n  - styles: 2 bold",
+      "extract_text": {
+        "length": 1580,
+        "preview": "25 LC 57 0207S/AP\\n18 BE IT ENACTED BY THE GENERAL ASSEMBLY OF GEORGIA:\\n19 SECTION 1.\\n20 Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the department\\n21 of public health, is amended by revising subsection (d) of Code Section 31-2A-16, relating\\n22 to Maternal Mortality ",
+        "full_text": "25 LC 57 0207S/AP\n18 BE IT ENACTED BY THE GENERAL ASSEMBLY OF GEORGIA:\n19 SECTION 1.\n20 Chapter 2A of Title 31 of the Official Code of Georgia Annotated, relating to the department\n21 of public health, is amended by revising subsection (d) of Code Section 31-2A-16, relating\n22 to Maternal Mortality Review Committee established, as follows:\n23 \"(d)(1) Health care providers licensed pursuant to Title 43, health care facilities licensed\n24 pursuant to Chapter 7 of Title 31, and pharmacies licensed pursuant to Chapter 4 of Title\n25 26 shall provide reasonable access to the committee to all relevant medical records\n26 associated with a case under review by the committee within 30 days of receiving a\n27 request for such records, unless prohibited by state or federal law.\n28 (2) A health care provider, health care facility, or pharmacy providing access to medical\n29 and psychiatric records pursuant to this Code section shall not be held liable for civil\n30 damages or be subject to any criminal or disciplinary action for good faith efforts in\n31 providing such records.\"\n32 SECTION 2.\n33 Said chapter is further amended by adding a new article to read as follows:\n34 \"ARTICLE 4\n35 31-2A-70.\n36 As used in this article, the term:\n37 (1) 'Advisory committee' or 'committee' means the Regional Perinatal Center Advisory\n38 Committee established pursuant to Code Section 31-2A-71.\n39 (2) 'Regional perinatal center' means a specially qualified hospital identified by the\n40 department and designated to a specific geographic region to lead collaboration between\nH. B. 89\n- 2 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 50,
+        "columns": 7,
+        "data": [
+          [
+            "25",
+            "",
+            "",
+            "",
+            "",
+            "LC 57",
+            "0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "18",
+            "BE I",
+            "T ENACTED",
+            "BY THE GEN",
+            "ERAL ASSEMBL",
+            "Y OF GEORGIA",
+            ":"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "19",
+            "",
+            "",
+            "SEC",
+            "TION 1.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "20 Ch",
+            "apter 2A of",
+            "Title 31 of the",
+            "Official Code",
+            "of Georgia Annotate",
+            "d, relating to the",
+            "department"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "21 of p",
+            "ublic healt",
+            "h, is amended",
+            "by revising su",
+            "bsection (d) of Code",
+            "Section 31-2A-",
+            "16, relating"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "22 to",
+            "Maternal M",
+            "ortality Revie",
+            "w Committee",
+            "established, as follo",
+            "ws:",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "23",
+            "\"(d)(1) Hea",
+            "lth care provi",
+            "ders licensed p",
+            "ursuant to Title 43, h",
+            "ealth care facilit",
+            "ies licensed"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "24",
+            "pursuant to",
+            "Chapter 7 of",
+            "Title 31, and ph",
+            "armacies licensed p",
+            "ursuant to Chapt",
+            "er 4 of Title"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "25",
+            "26 shall pr",
+            "ovide reasona",
+            "ble access to",
+            "the committee to a",
+            "ll relevant medi",
+            "cal records"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "26",
+            "associated",
+            "with a case u",
+            "nder review b",
+            "y the committee wi",
+            "thin 30 days of",
+            "receiving a"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "27",
+            "request for",
+            "such records,",
+            "unless prohibi",
+            "ted by state or feder",
+            "al law.",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "28",
+            "(2) A healt",
+            "h care provide",
+            "r, health care f",
+            "acility, or pharmacy",
+            "providing access",
+            "to medical"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "29",
+            "and psychi",
+            "atric records",
+            "pursuant to thi",
+            "s Code section shall",
+            "not be held liab",
+            "le for civil"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "30",
+            "damages or",
+            "be subject to",
+            "any criminal",
+            "or disciplinary acti",
+            "on for good fait",
+            "h efforts in"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "31",
+            "providing s",
+            "uch records.\"",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "32",
+            "",
+            "",
+            "SEC",
+            "TION 2.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "33 Sai",
+            "d chapter is",
+            "further amen",
+            "ded by adding",
+            "a new article to read",
+            "as follows:",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "34",
+            "",
+            "",
+            "\"AR",
+            "TICLE 4",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "35 3",
+            "1-2A-70.",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "36 A",
+            "s used in th",
+            "is article, the",
+            "term:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "37",
+            "(1) 'Adviso",
+            "ry committee",
+            "' or 'committee",
+            "' means the Regiona",
+            "l Perinatal Cente",
+            "r Advisory"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "38",
+            "Committee",
+            "established p",
+            "ursuant to Cod",
+            "e Section 31-2A-71.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "39",
+            "(2) 'Regio",
+            "nal perinatal",
+            "center' means",
+            "a specially qualifie",
+            "d hospital identi",
+            "fied by the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "40",
+            "department",
+            "and designate",
+            "d to a specific",
+            "geographic region to",
+            "lead collaborati",
+            "on between"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "H",
+            ". B. 89",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "- 2 -",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 8,
+        "regions": [
+          {
+            "type": "abandon",
+            "bbox": [
+              448.777587890625,
+              36.614864349365234,
+              541.4124145507812,
+              50.41610336303711
+            ],
+            "confidence": 0.8253920674324036
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.55638885498047,
+              37.39535903930664,
+              85.83466339111328,
+              49.70904541015625
+            ],
+            "confidence": 0.796887993812561
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              59.474151611328125,
+              128.67750549316406,
+              542.9492797851562,
+              392.70794677734375
+            ],
+            "confidence": 0.7857404351234436
+          },
+          {
+            "type": "title",
+            "bbox": [
+              268.2472229003906,
+              107.52684783935547,
+              342.7606506347656,
+              123.74368286132812
+            ],
+            "confidence": 0.7715513110160828
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.6083679199219,
+              690.1585083007812,
+              329.6277770996094,
+              719.2642211914062
+            ],
+            "confidence": 0.7526949644088745
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 22,
+        "yolo_count": 8,
+        "tatr_count": 14,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (22 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 330 | 719 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 268 | 108 | 343 | 124 | title |\n| 268 | 420 | 343 | 437 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 59 | 1..."
+      },
+      "elements_sample": {
+        "total_count": 1620,
+        "full_inspect": "## Collection Inspection (84 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 330 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 18 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| BE IT ENACTED BY THE GENERAL ASSEMBLY OF GEORGIA: | 123 | 65 | 489 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 19 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| SECTION 1. | 270 | 110 | 342 | 123 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |\n| 20 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Chapter 2A of Title 31 of the Official Code of Geo... | 72 | 132 | 540 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 21 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| of public health, is amended by revising subsectio... | 72 | 154 | 540 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 22 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| to Maternal Mortality Review Committee established... | 72 | 177 | 415 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 23 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (d)(1)  Health care providers licensed pursuant to... | 94 | 199 | 540 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| \" | 90 | 200 | 94 | 213 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |\n| 24 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| pursuant to Chapter 7 of Title 31, and pharmacies ... | 90 | 222 | 540 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 25 | 45 | 244 | 58 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 26 shall provide reasonable access to the committe... | 90 | 244 | 540 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 26 | 45 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| associated with a case under review by the committ... | 90 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 27 | 45 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| request for such records, unless prohibited by sta... | 90 | 289 | 431 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 28 | 45 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (2)  A health care provider, health care facility,... | 90 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 29 | 45 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| and psychiatric records pursuant to this Code sect... | 90 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 30 | 45 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| damages or be subject to any criminal or disciplin... | 90 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31 | 45 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| providing such records. | 90 | 378 | 212 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| \" | 212 | 379 | 216 | 392 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |\n| 32 | 45 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| SECTION 2. | 270 | 423 | 342 | 436 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |\n| 33 | 45 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Said chapter is further amended by adding a new ar... | 72 | 445 | 460 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 34 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| ARTICLE 4 | 276 | 490 | 340 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| \" | 272 | 491 | 276 | 504 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |\n| 35 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31-2A-70. | 81 | 535 | 135 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 36 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| As used in this article, the term: | 81 | 557 | 247 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 37 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (1)  'Advisory committee' or 'committee' means the... | 90 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 38 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Committee established pursuant to Code Section 31-... | 90 | 602 | 399 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 39 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (2)  'Regional perinatal center' means a specially... | 90 | 624 | 540 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 40 | 45 | 647 | 58 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| department and designated to a specific geographic... | 90 | 647 | 540 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 2 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 268 | 108 | 343 | 124 | title |\n| 268 | 420 | 343 | 437 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 59 | 129 | 543 | 393 | plain text |\n| 56 | 444 | 461 | 461 | plain text |\n| 48 | 532 | 544 | 664 | plain text |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 214 | 300 | 428 | 301 | 214 | 1 | #000000 | #000000 | 0 |\n| 90 | 345 | 170 | 345 | 80 | 1 | #000000 | #000000 | 0 |\n| 276 | 501 | 340 | 502 | 64 | 1 | #000000 | #000000 | 0 |\n| 81 | 546 | 135 | 547 | 54 | 1 | #000000 | #000000 | 0 |\n| 81 | 569 | 246 | 569 | 165 | 1 | #000000 | #000000 | 0 |\n| 90 | 591 | 540 | 592 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 613 | 399 | 614 | 309 | 1 | #000000 | #000000 | 0 |\n| 90 | 636 | 540 | 636 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 658 | 540 | 659 | 450 | 1 | #000000 | #000000 | 0 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 85 | 634 | 537 | 706 | table |\n| 88 | 644 | 536 | 704 | table |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 89 | 644 | 536 | 664 | table row |\n| 89 | 685 | 536 | 704 | table row |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 89 | 644 | 185 | 704 | table column |\n| 182 | 645 | 538 | 704 | table column |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 89 | 644 | 185 | 664 | table-cell |\n| 89 | 644 | 185 | 664 | table-cell |\n| 182 | 645 | 536 | 664 | table-cell |\n| 182 | 645 | 536 | 664 | table-cell |\n| 89 | 685 | 185 | 704 | table-cell |\n| 89 | 685 | 185 | 704 | table-cell |\n| 182 | 685 | 536 | 704 | table-cell |\n| 182 | 685 | 536 | 704 | table-cell |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 448.777587890625,
+            "top": 36.614864349365234
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.55638885498047,
+            "top": 37.39535903930664
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis/obe1Vq5/page_2.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 6,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              84.62,
+              633.78,
+              536.58,
+              706.2
+            ],
+            "confidence": 0.7505907416343689
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              182.49,
+              644.53,
+              538.4200000000001,
+              704.25
+            ],
+            "confidence": 0.9301288723945618
+          },
+          {
+            "type": "table",
+            "bbox": [
+              88.47,
+              644.22,
+              535.78,
+              704.19
+            ],
+            "confidence": 0.9846585988998413
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              88.53,
+              685.4,
+              536.05,
+              704.2
+            ],
+            "confidence": 0.8517221212387085
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              88.98,
+              644.43,
+              185.12,
+              704.34
+            ],
+            "confidence": 0.9100440144538879
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    },
+    {
+      "page_number": 3,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 3 Summary\n\n**Elements**:\n\n- **text**: 54 elements\n- **rect**: 25 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 54\n  - **sizes**:\n    - 13.0pt: 54",
+      "extract_text": {
+        "length": 1885,
+        "preview": "25 LC 57 0207S/AP\\n41 hospitals and providers to increase the likelihood that deliveries are performed in a\\n42 hospital with an appropriate level of care for mothers and infants.\\n43 31-2A-71.\\n44 (a) There is established the Regional Perinatal Center Advisory Committee for the purpose\\n45 of considerin",
+        "full_text": "25 LC 57 0207S/AP\n41 hospitals and providers to increase the likelihood that deliveries are performed in a\n42 hospital with an appropriate level of care for mothers and infants.\n43 31-2A-71.\n44 (a) There is established the Regional Perinatal Center Advisory Committee for the purpose\n45 of considering and making recommendations to the commissioner concerning the addition,\n46 reduction, or transition of regional perinatal centers in this state. The committee shall\n47 advise the commissioner on the estimated costs to the department necessary to implement\n48 such recommendations.\n49 (b) The Regional Perinatal Center Advisory Committee shall be composed of not less\n50 than 11 nor more than 21 members to be appointed by the commissioner, who shall appoint\n51 one of such members to serve as chairperson. All appointments to the committee shall be\n52 for a term of four years. A member shall serve until his or her successor has been duly\n53 appointed. The commissioner may reappoint any member.\n54 (c) The advisory committee shall meet upon the call of the chairperson appointed pursuant\n55 to subsection (b) of this Code section.\n56 (d) Beginning on July 1, 2026, and every four years thereafter, the department, in\n57 conjunction with the advisory committee, shall assess and make recommendations to the\n58 commissioner on the adequacy of the regional perinatal system and consider hospital or\n59 labor and delivery closures. Such assessment shall evaluate whether:\n60 (1) Perinatal facilities in each region are equipped and prepared to stabilize infants and\n61 mothers before transport;\n62 (2) Coordination exists between maternity care in each region and regional perinatal\n63 centers;\n64 (3) All identified high-risk pregnancies and deliveries are promptly evaluated in\n65 consultation with regional perinatal centers and referred to the appropriate designated\nH. B. 89\n- 3 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 54,
+        "columns": 8,
+        "data": [
+          [
+            "2",
+            "5",
+            "",
+            "",
+            "",
+            "",
+            "LC 57",
+            "0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "41",
+            "hospitals and",
+            "provi",
+            "ders to inc",
+            "rease the like",
+            "lihood th",
+            "at deliveries are perf",
+            "ormed in a"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "42",
+            "hospital with",
+            "an app",
+            "ropriate lev",
+            "el of care for",
+            "mothers a",
+            "nd infants.",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "43",
+            "31-2A-71.",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "44",
+            "(a) There is est",
+            "ablishe",
+            "d the Regio",
+            "nal Perinatal",
+            "Center Ad",
+            "visory Committee for t",
+            "he purpose"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "45",
+            "of considering",
+            "and ma",
+            "king recom",
+            "mendations to",
+            "the comm",
+            "issioner concerning th",
+            "e addition,"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "46",
+            "reduction, or t",
+            "ransitio",
+            "n of region",
+            "al perinatal",
+            "centers in",
+            "this state. The comm",
+            "ittee shall"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "47",
+            "advise the com",
+            "missio",
+            "ner on the e",
+            "stimated cost",
+            "s to the de",
+            "partment necessary to",
+            "implement"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "48",
+            "such recomme",
+            "ndation",
+            "s.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "49",
+            "(b) The Regi",
+            "onal Pe",
+            "rinatal Cen",
+            "ter Advisory",
+            "Committe",
+            "e shall be composed",
+            "of not less"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "50",
+            "than 11 nor mo",
+            "re than",
+            "21 member",
+            "s to be appoin",
+            "ted by the",
+            "commissioner, who sh",
+            "all appoint"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "51",
+            "one of such me",
+            "mbers",
+            "to serve as",
+            "chairperson.",
+            "All appoi",
+            "ntments to the commit",
+            "tee shall be"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "52",
+            "for a term of f",
+            "our yea",
+            "rs. A mem",
+            "ber shall ser",
+            "ve until hi",
+            "s or her successor has",
+            "been duly"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "53",
+            "appointed. Th",
+            "e comm",
+            "issioner m",
+            "ay reappoint",
+            "any memb",
+            "er.",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "54",
+            "(c) The adviso",
+            "ry com",
+            "mittee shall",
+            "meet upon th",
+            "e call of th",
+            "e chairperson appointe",
+            "d pursuant"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "55",
+            "to subsection (",
+            "b) of th",
+            "is Code sec",
+            "tion.",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "56",
+            "(d) Beginnin",
+            "g on J",
+            "uly 1, 2026",
+            ", and every",
+            "four year",
+            "s thereafter, the dep",
+            "artment, in"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "57",
+            "conjunction w",
+            "ith the",
+            "advisory co",
+            "mmittee, shal",
+            "l assess an",
+            "d make recommendat",
+            "ions to the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "58",
+            "commissioner",
+            "on the",
+            "adequacy o",
+            "f the regiona",
+            "l perinatal",
+            "system and consider",
+            "hospital or"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "59",
+            "labor and deliv",
+            "ery clo",
+            "sures. Suc",
+            "h assessment",
+            "shall eval",
+            "uate whether:",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "60",
+            "(1) Perinatal",
+            "faciliti",
+            "es in each r",
+            "egion are equ",
+            "ipped and",
+            "prepared to stabilize",
+            "infants and"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "61",
+            "mothers befo",
+            "re tran",
+            "sport;",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "62",
+            "(2) Coordin",
+            "ation e",
+            "xists betwe",
+            "en maternity",
+            "care in ea",
+            "ch region and regiona",
+            "l perinatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "63",
+            "centers;",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "64",
+            "(3) All ide",
+            "ntified",
+            "high-risk",
+            "pregnancies a",
+            "nd delive",
+            "ries are promptly ev",
+            "aluated in"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "65",
+            "consultation",
+            "with re",
+            "gional peri",
+            "natal centers",
+            "and referr",
+            "ed to the appropriate",
+            "designated"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "H. B. 8",
+            "9",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "- 3 -",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 5,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              62.970767974853516,
+              78.56040954589844,
+              543.7298583984375,
+              644.5276489257812
+            ],
+            "confidence": 0.842728853225708
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              448.7877197265625,
+              36.890926361083984,
+              541.2373046875,
+              50.497459411621094
+            ],
+            "confidence": 0.8369632363319397
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.4407958984375,
+              690.0830078125,
+              329.7249755859375,
+              719.2457275390625
+            ],
+            "confidence": 0.8316147923469543
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.62020111083984,
+              37.456485748291016,
+              85.82771301269531,
+              49.80139923095703
+            ],
+            "confidence": 0.7807207107543945
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              83.22407531738281,
+              63.15376281738281,
+              542.2725219726562,
+              102.90489196777344
+            ],
+            "confidence": 0.6363303661346436
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 110,
+        "yolo_count": 5,
+        "tatr_count": 105,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (110 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 282 | 690 | 330 | 719 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 83 | 63 | 542 | 103 | plain text |\n| 63 | 79 | 544 | 645 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n|..."
+      },
+      "elements_sample": {
+        "total_count": 2034,
+        "full_inspect": "## Collection Inspection (189 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 50 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 282 | 690 | 330 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 41 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| hospitals and providers to increase the likelihood... | 90 | 65 | 540 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 42 | 45 | 87 | 58 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| hospital with an appropriate level of care for mot... | 90 | 87 | 429 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 43 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31-2A-71. | 81 | 132 | 135 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 44 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (a)  There is established the Regional Perinatal C... | 81 | 154 | 540 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 45 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| of considering and making recommendations to the c... | 81 | 177 | 540 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 46 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| reduction, or transition of regional perinatal cen... | 81 | 199 | 540 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 47 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| advise the commissioner on the estimated costs to ... | 81 | 222 | 540 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 48 | 45 | 244 | 58 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| such recommendations. | 81 | 244 | 204 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 49 | 45 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (b)  The Regional Perinatal Center Advisory Commit... | 81 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 50 | 45 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| than 11 nor more than 21 members to be appointed b... | 81 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 51 | 45 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| one of such members to serve as  chairperson.  All... | 81 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 52 | 45 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| for a term of four years.  A member shall serve un... | 81 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 53 | 45 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| appointed.  The commissioner may reappoint any mem... | 81 | 356 | 386 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 54 | 45 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (c)  The advisory committee shall meet upon the ca... | 81 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 55 | 45 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| to subsection (b) of this Code section. | 81 | 401 | 278 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 56 | 45 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (d)  Beginning on July 1, 2026, and every four yea... | 81 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 57 | 45 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| conjunction with the advisory committee, shall ass... | 81 | 445 | 540 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 58 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| commissioner on the adequacy of the regional perin... | 81 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 59 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| labor and delivery closures.  Such assessment shal... | 81 | 490 | 441 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 60 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (1)  Perinatal facilities in each region are equip... | 90 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 61 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| mothers before transport; | 90 | 535 | 221 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 62 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (2)  Coordination exists between maternity care in... | 90 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 63 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| centers; | 90 | 580 | 130 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 64 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (3)  All identified high-risk pregnancies and deli... | 90 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 65 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| consultation with regional perinatal centers and r... | 90 | 624 | 540 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 3 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 83 | 63 | 542 | 103 | plain text |\n| 63 | 79 | 544 | 645 | plain text |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 90 | 76 | 540 | 77 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 99 | 429 | 99 | 339 | 1 | #000000 | #000000 | 0 |\n| 81 | 143 | 135 | 144 | 54 | 1 | #000000 | #000000 | 0 |\n| 81 | 166 | 540 | 166 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 188 | 540 | 189 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 210 | 540 | 211 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 233 | 540 | 234 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 255 | 204 | 256 | 122 | 1 | #000000 | #000000 | 0 |\n| 81 | 278 | 540 | 278 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 300 | 540 | 301 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 322 | 540 | 323 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 345 | 540 | 345 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 367 | 386 | 368 | 305 | 1 | #000000 | #000000 | 0 |\n| 81 | 390 | 540 | 390 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 412 | 278 | 413 | 196 | 1 | #000000 | #000000 | 0 |\n| 81 | 434 | 540 | 435 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 457 | 540 | 457 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 479 | 540 | 480 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 501 | 441 | 502 | 359 | 1 | #000000 | #000000 | 0 |\n| 90 | 524 | 540 | 525 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 546 | 221 | 547 | 131 | 1 | #000000 | #000000 | 0 |\n| 90 | 569 | 540 | 569 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 591 | 130 | 592 | 40 | 1 | #000000 | #000000 | 0 |\n| 90 | 613 | 540 | 614 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 636 | 540 | 636 | 450 | 1 | #000000 | #000000 | 0 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 79 | 201 | 538 | 630 | table |\n| 80 | 219 | 537 | 614 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 80 | 219 | 147 | 615 | table column |\n| 102 | 219 | 538 | 614 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 80 | 219 | 537 | 237 | table row |\n| 80 | 237 | 537 | 260 | table row |\n| 80 | 260 | 537 | 282 | table row |\n| 80 | 282 | 537 | 304 | table row |\n| 80 | 305 | 537 | 327 | table row |\n| 80 | 327 | 537 | 350 | table row |\n| 80 | 350 | 537 | 372 | table row |\n| 80 | 372 | 537 | 395 | table row |\n| 80 | 396 | 537 | 418 | table row |\n| 80 | 418 | 537 | 441 | table row |\n| 80 | 441 | 537 | 463 | table row |\n| 80 | 463 | 537 | 485 | table row |\n| 80 | 485 | 537 | 508 | table row |\n| 80 | 507 | 537 | 530 | table row |\n| 80 | 530 | 537 | 552 | table row |\n| 80 | 552 | 537 | 574 | table row |\n| 80 | 574 | 537 | 597 | table row |\n| 80 | 597 | 537 | 615 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 80 | 219 | 147 | 237 | table-cell |\n| 80 | 219 | 147 | 237 | table-cell |\n| 102 | 219 | 537 | 237 | table-cell |\n| 102 | 219 | 537 | 237 | table-cell |\n| 80 | 237 | 147 | 260 | table-cell |\n| 80 | 237 | 147 | 260 | table-cell |\n| 102 | 237 | 537 | 260 | table-cell |\n| 102 | 237 | 537 | 260 | table-cell |\n| 80 | 260 | 147 | 282 | table-cell |\n| 80 | 260 | 147 | 282 | table-cell |\n| 102 | 260 | 537 | 282 | table-cell |\n| 102 | 260 | 537 | 282 | table-cell |\n| 80 | 282 | 147 | 304 | table-cell |\n| 80 | 282 | 147 | 304 | table-cell |\n| 102 | 282 | 537 | 304 | table-cell |\n| 102 | 282 | 537 | 304 | table-cell |\n| 80 | 305 | 147 | 327 | table-cell |\n| 80 | 305 | 147 | 327 | table-cell |\n| 102 | 305 | 537 | 327 | table-cell |\n| 102 | 305 | 537 | 327 | table-cell |\n| 80 | 327 | 147 | 350 | table-cell |\n| 80 | 327 | 147 | 350 | table-cell |\n| 102 | 327 | 537 | 350 | table-cell |\n| 102 | 327 | 537 | 350 | table-cell |\n| 80 | 350 | 147 | 372 | table-cell |\n| 80 | 350 | 147 | 372 | table-cell |\n| 102 | 350 | 537 | 372 | table-cell |\n| 102 | 350 | 537 | 372 | table-cell |\n| 80 | 372 | 147 | 395 | table-cell |\n| 80 | 372 | 147 | 395 | table-cell |\n| 102 | 372 | 537 | 395 | table-cell |\n| 102 | 372 | 537 | 395 | table-cell |\n| 80 | 396 | 147 | 418 | table-cell |\n| 80 | 396 | 147 | 418 | table-cell |\n| 102 | 396 | 537 | 418 | table-cell |\n| 102 | 396 | 537 | 418 | table-cell |\n| 80 | 418 | 147 | 441 | table-cell |\n| 80 | 418 | 147 | 441 | table-cell |\n| 102 | 418 | 537 | 441 | table-cell |\n| 102 | 418 | 537 | 441 | table-cell |\n| 80 | 441 | 147 | 463 | table-cell |\n| 80 | 441 | 147 | 463 | table-cell |\n| 102 | 441 | 537 | 463 | table-cell |\n| 102 | 441 | 537 | 463 | table-cell |\n| 80 | 463 | 147 | 485 | table-cell |\n| 80 | 463 | 147 | 485 | table-cell |\n| 102 | 463 | 537 | 485 | table-cell |\n| 102 | 463 | 537 | 485 | table-cell |\n| 80 | 485 | 147 | 508 | table-cell |\n| 80 | 485 | 147 | 508 | table-cell |\n| 102 | 485 | 537 | 508 | table-cell |\n| 102 | 485 | 537 | 508 | table-cell |\n| 80 | 507 | 147 | 530 | table-cell |\n| 80 | 507 | 147 | 530 | table-cell |\n| 102 | 507 | 537 | 530 | table-cell |\n| 102 | 507 | 537 | 530 | table-cell |\n| 80 | 530 | 147 | 552 | table-cell |\n| 80 | 530 | 147 | 552 | table-cell |\n| 102 | 530 | 537 | 552 | table-cell |\n| 102 | 530 | 537 | 552 | table-cell |\n| 80 | 552 | 147 | 574 | table-cell |\n| 80 | 552 | 147 | 574 | table-cell |\n| 102 | 552 | 537 | 574 | table-cell |\n| 102 | 552 | 537 | 574 | table-cell |\n| 80 | 574 | 147 | 597 | table-cell |\n| 80 | 574 | 147 | 597 | table-cell |\n| 102 | 574 | 537 | 597 | table-cell |\n| 102 | 574 | 537 | 597 | table-cell |\n| 80 | 597 | 147 | 615 | table-cell |\n| 80 | 597 | 147 | 615 | table-cell |\n| 102 | 597 | 537 | 614 | table-cell |\n| 102 | 597 | 537 | 614 | table-cell |\n\n### Table Projected Row Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 80 | 237 | 537 | 259 | table projected row header |\n| 80 | 350 | 537 | 372 | table projected row header |\n| 80 | 395 | 537 | 416 | table projected row header |\n| 80 | 396 | 537 | 418 | table projected row header |\n| 80 | 441 | 537 | 463 | table projected row header |\n| 80 | 464 | 537 | 485 | table projected row header |\n| 80 | 485 | 537 | 507 | table projected row header |\n| 80 | 508 | 537 | 530 | table projected row header |\n| 80 | 531 | 537 | 553 | table projected row header |\n| 80 | 553 | 537 | 574 | table projected row header |\n| 80 | 575 | 537 | 598 | table projected row header |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 448.7877197265625,
+            "top": 36.890926361083984
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.62020111083984,
+            "top": 37.456485748291016
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis/obe1Vq5/page_3.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 33,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              78.79,
+              200.52,
+              537.66,
+              629.91
+            ],
+            "confidence": 0.8005176782608032
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              80.25,
+              463.73,
+              536.8199999999999,
+              485.41
+            ],
+            "confidence": 0.6747133135795593
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              80.3,
+              282.19,
+              536.89,
+              304.42
+            ],
+            "confidence": 0.8480469584465027
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              80.39,
+              507.6,
+              536.94,
+              530.48
+            ],
+            "confidence": 0.6443911194801331
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              80.4,
+              236.86,
+              537.06,
+              259.07
+            ],
+            "confidence": 0.5835975408554077
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    },
+    {
+      "page_number": 4,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 4 Summary\n\n**Elements**:\n\n- **text**: 56 elements\n- **rect**: 26 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 56\n  - **sizes**:\n    - 13.0pt: 56",
+      "extract_text": {
+        "length": 1631,
+        "preview": "25 LC 57 0207S/AP\\n66 regional perinatal center for the proper management and treatment of such conditions as\\n67 needed;\\n68 (4) An adequate transport system is available in the region for the transfer of high-risk\\n69 mothers and infants and specifically considers:\\n70 (A) The distance and travel time ",
+        "full_text": "25 LC 57 0207S/AP\n66 regional perinatal center for the proper management and treatment of such conditions as\n67 needed;\n68 (4) An adequate transport system is available in the region for the transfer of high-risk\n69 mothers and infants and specifically considers:\n70 (A) The distance and travel time between referring hospitals and regional perinatal\n71 centers;\n72 (B) The types of vehicles used for transport and whether a need exists for additional\n73 vehicles; and\n74 (C) The need for upgraded vehicles and transport equipment; and\n75 (5) Each regional perinatal center provides:\n76 (A) Consultation for patients requiring special services, including transport;\n77 (B) Coordination and assurance of follow-up medical care for maternal and neonatal\n78 patients requiring special services;\n79 (C) Educational support to ensure quality care in institutions involved in perinatal\n80 healthcare in the region;\n81 (D) An annual education plan with all birthing centers in the region;\n82 (E) Compilation and analysis of perinatal data from the center and referring hospitals;\n83 and\n84 (F) Coordination of perinatal health services within the region.\n85 (e) When changes to the regional perinatal centers are approved by the department after\n86 recommendation by the advisory committee, the department shall submit a budget request\n87 to the Office of Planning and Budget prior to the General Assembly's next legislative\n88 session seeking appropriations to implement such changes.\n89 31-2A-72.\n90 A hospital interested in being designated as a regional perinatal center shall notify the\n91 department of the following:\nH. B. 89\n- 4 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 56,
+        "columns": 9,
+        "data": [
+          [
+            "2",
+            "5",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "LC 57",
+            "0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "66",
+            "re",
+            "gional perinatal c",
+            "enter for the",
+            "proper man",
+            "agement a",
+            "nd treatment",
+            "of such co",
+            "nditions as"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "67",
+            "n",
+            "eeded;",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "68",
+            "(4",
+            ") An adequate tra",
+            "nsport syst",
+            "em is availab",
+            "le in the r",
+            "egion for the",
+            "transfer o",
+            "f high-risk"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "69",
+            "m",
+            "others and infants",
+            "and specifi",
+            "cally consid",
+            "ers:",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "70",
+            "",
+            "(A) The distance",
+            "and travel",
+            "time betwee",
+            "n referrin",
+            "g hospitals an",
+            "d regiona",
+            "l perinatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "71",
+            "",
+            "centers;",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "72",
+            "",
+            "(B) The types of",
+            "vehicles use",
+            "d for transp",
+            "ort and wh",
+            "ether a need",
+            "exists for",
+            "additional"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "73",
+            "",
+            "vehicles; and",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "74",
+            "",
+            "(C) The need for",
+            "upgraded v",
+            "ehicles and t",
+            "ransport e",
+            "quipment; an",
+            "d",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "75",
+            "(5",
+            ") Each regional p",
+            "erinatal cen",
+            "ter provides",
+            ":",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "76",
+            "",
+            "(A) Consultation",
+            "for patients",
+            "requiring sp",
+            "ecial serv",
+            "ices, includin",
+            "g transpor",
+            "t;"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "77",
+            "",
+            "(B) Coordination",
+            "and assura",
+            "nce of follow",
+            "-up medic",
+            "al care for m",
+            "aternal an",
+            "d neonatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "78",
+            "",
+            "patients requiring",
+            "special serv",
+            "ices;",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "79",
+            "",
+            "(C) Educational",
+            "support to",
+            "ensure quali",
+            "ty care in",
+            "institutions i",
+            "nvolved i",
+            "n perinatal"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "80",
+            "",
+            "healthcare in the r",
+            "egion;",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "81",
+            "",
+            "(D) An annual ed",
+            "ucation pla",
+            "n with all bir",
+            "thing cent",
+            "ers in the reg",
+            "ion;",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "82",
+            "",
+            "(E) Compilation a",
+            "nd analysis",
+            "of perinatal",
+            "data from",
+            "the center an",
+            "d referring",
+            "hospitals;"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "83",
+            "",
+            "and",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "84",
+            "",
+            "(F) Coordination",
+            "of perinatal",
+            "health servi",
+            "ces within",
+            "the region.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "85",
+            "(e)",
+            "When changes to",
+            "the regiona",
+            "l perinatal c",
+            "enters are",
+            "approved by",
+            "the depart",
+            "ment after"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "86",
+            "rec",
+            "ommendation by t",
+            "he advisory",
+            "committee, t",
+            "he depart",
+            "ment shall sub",
+            "mit a bud",
+            "get request"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "87",
+            "to t",
+            "he Office of Plan",
+            "ning and B",
+            "udget prior",
+            "to the Ge",
+            "neral Assemb",
+            "ly's next",
+            "legislative"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "88",
+            "ses",
+            "sion seeking appro",
+            "priations to",
+            "implement",
+            "such chan",
+            "ges.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "89",
+            "31-",
+            "2A-72.",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "90",
+            "A h",
+            "ospital interested",
+            "in being de",
+            "signated as",
+            "a regiona",
+            "l perinatal ce",
+            "nter shall",
+            "notify the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "91",
+            "dep",
+            "artment of the fo",
+            "llowing:",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "H. B.",
+            "89",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "- 4 -",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 4,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              70.55728912353516,
+              51.66061019897461,
+              544.2556762695312,
+              580.5186767578125
+            ],
+            "confidence": 0.9027162194252014
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.65494537353516,
+              37.45133590698242,
+              85.84541320800781,
+              49.70640563964844
+            ],
+            "confidence": 0.8000428080558777
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              448.3806457519531,
+              36.43800354003906,
+              541.3527221679688,
+              50.86152267456055
+            ],
+            "confidence": 0.7627826929092407
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.5904235839844,
+              690.0365600585938,
+              329.6599426269531,
+              718.94189453125
+            ],
+            "confidence": 0.7021029591560364
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 91,
+        "yolo_count": 4,
+        "tatr_count": 87,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (91 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 448 | 36 | 541 | 51 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 330 | 719 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 52 | 544 | 581 | plain text |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 82 | 125 | 536 | 595 | table |\n| 81 |..."
+      },
+      "elements_sample": {
+        "total_count": 1762,
+        "full_inspect": "## Collection Inspection (173 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 448 | 36 | 541 | 51 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 283 | 690 | 330 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 66 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| regional perinatal center for the proper managemen... | 90 | 65 | 540 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 67 | 45 | 87 | 58 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| needed; | 90 | 87 | 130 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 68 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (4)  An adequate transport system is available in ... | 90 | 110 | 540 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 69 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| mothers and infants and specifically considers: | 90 | 132 | 333 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 70 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (A)  The distance and travel time between referrin... | 99 | 154 | 540 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 71 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| centers; | 99 | 177 | 140 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 72 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (B)  The types of vehicles used for transport and ... | 99 | 199 | 540 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 73 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| vehicles; and | 99 | 222 | 167 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 74 | 45 | 244 | 58 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (C)  The need for upgraded vehicles and transport ... | 99 | 244 | 441 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 75 | 45 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (5)  Each regional perinatal center provides: | 90 | 266 | 318 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 76 | 45 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (A)  Consultation for patients requiring special s... | 99 | 289 | 495 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 77 | 45 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (B)  Coordination and assurance of follow-up medic... | 99 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 78 | 45 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| patients requiring special services; | 99 | 334 | 278 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 79 | 45 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (C)  Educational support to ensure quality care in... | 99 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 80 | 45 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| healthcare in the region; | 99 | 378 | 225 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 81 | 45 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (D)  An annual education plan with all birthing ce... | 99 | 401 | 456 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 82 | 45 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (E)  Compilation and analysis of perinatal data fr... | 99 | 423 | 540 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 83 | 45 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| and | 99 | 445 | 118 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 84 | 45 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (F)  Coordination of perinatal health services wit... | 99 | 468 | 428 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 85 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (e)  When changes to the regional perinatal center... | 81 | 490 | 540 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 86 | 45 | 513 | 58 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| recommendation by the advisory committee, the depa... | 81 | 513 | 540 | 526 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 87 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| to the Office of Planning and Budget prior to the ... | 81 | 535 | 540 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 88 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| session seeking appropriations to implement such c... | 81 | 557 | 387 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 89 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31-2A-72. | 81 | 602 | 135 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 90 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| A hospital interested in being designated as a reg... | 81 | 624 | 540 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 91 | 45 | 647 | 58 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| department of  the following: | 81 | 647 | 233 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 4 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 71 | 52 | 544 | 581 | plain text |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 90 | 76 | 540 | 77 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 99 | 130 | 99 | 40 | 1 | #000000 | #000000 | 0 |\n| 90 | 121 | 540 | 122 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 143 | 333 | 144 | 243 | 1 | #000000 | #000000 | 0 |\n| 99 | 166 | 540 | 166 | 441 | 1 | #000000 | #000000 | 0 |\n| 99 | 188 | 140 | 189 | 40 | 1 | #000000 | #000000 | 0 |\n| 99 | 210 | 540 | 211 | 441 | 1 | #000000 | #000000 | 0 |\n| 99 | 233 | 167 | 234 | 68 | 1 | #000000 | #000000 | 0 |\n| 99 | 255 | 441 | 256 | 342 | 1 | #000000 | #000000 | 0 |\n| 90 | 278 | 318 | 278 | 228 | 1 | #000000 | #000000 | 0 |\n| 99 | 300 | 495 | 301 | 396 | 1 | #000000 | #000000 | 0 |\n| 99 | 322 | 540 | 323 | 441 | 1 | #000000 | #000000 | 0 |\n| 99 | 345 | 278 | 345 | 179 | 1 | #000000 | #000000 | 0 |\n| 99 | 367 | 540 | 368 | 441 | 1 | #000000 | #000000 | 0 |\n| 99 | 390 | 225 | 390 | 126 | 1 | #000000 | #000000 | 0 |\n| 99 | 412 | 456 | 413 | 356 | 1 | #000000 | #000000 | 0 |\n| 99 | 434 | 540 | 435 | 441 | 1 | #000000 | #000000 | 0 |\n| 99 | 457 | 118 | 457 | 19 | 1 | #000000 | #000000 | 0 |\n| 99 | 479 | 428 | 480 | 328 | 1 | #000000 | #000000 | 0 |\n| 81 | 501 | 540 | 502 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 524 | 540 | 525 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 546 | 540 | 547 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 569 | 387 | 569 | 305 | 1 | #000000 | #000000 | 0 |\n| 81 | 613 | 135 | 614 | 54 | 1 | #000000 | #000000 | 0 |\n| 81 | 636 | 540 | 636 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 658 | 233 | 659 | 152 | 1 | #000000 | #000000 | 0 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 82 | 125 | 536 | 595 | table |\n| 81 | 144 | 535 | 570 | table |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 80 | 139 | 95 | 570 | table column |\n| 110 | 148 | 537 | 569 | table column |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 81 | 192 | 535 | 215 | table row |\n| 81 | 237 | 535 | 260 | table row |\n| 81 | 261 | 535 | 283 | table row |\n| 81 | 283 | 535 | 305 | table row |\n| 81 | 304 | 535 | 327 | table row |\n| 81 | 327 | 535 | 350 | table row |\n| 81 | 375 | 535 | 397 | table row |\n| 81 | 397 | 535 | 419 | table row |\n| 81 | 418 | 535 | 440 | table row |\n| 81 | 437 | 535 | 465 | table row |\n| 81 | 464 | 535 | 486 | table row |\n| 81 | 485 | 535 | 508 | table row |\n| 81 | 508 | 535 | 530 | table row |\n| 81 | 530 | 535 | 551 | table row |\n| 81 | 551 | 535 | 570 | table row |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 81 | 192 | 95 | 215 | table-cell |\n| 81 | 192 | 95 | 215 | table-cell |\n| 110 | 192 | 535 | 215 | table-cell |\n| 110 | 192 | 535 | 215 | table-cell |\n| 81 | 237 | 95 | 260 | table-cell |\n| 81 | 237 | 95 | 260 | table-cell |\n| 110 | 237 | 535 | 260 | table-cell |\n| 110 | 237 | 535 | 260 | table-cell |\n| 81 | 261 | 95 | 283 | table-cell |\n| 81 | 261 | 95 | 283 | table-cell |\n| 110 | 261 | 535 | 283 | table-cell |\n| 110 | 261 | 535 | 283 | table-cell |\n| 81 | 283 | 95 | 305 | table-cell |\n| 81 | 283 | 95 | 305 | table-cell |\n| 110 | 283 | 535 | 305 | table-cell |\n| 110 | 283 | 535 | 305 | table-cell |\n| 81 | 304 | 95 | 327 | table-cell |\n| 81 | 304 | 95 | 327 | table-cell |\n| 110 | 304 | 535 | 327 | table-cell |\n| 110 | 304 | 535 | 327 | table-cell |\n| 81 | 327 | 95 | 350 | table-cell |\n| 81 | 327 | 95 | 350 | table-cell |\n| 110 | 327 | 535 | 350 | table-cell |\n| 110 | 327 | 535 | 350 | table-cell |\n| 81 | 375 | 95 | 397 | table-cell |\n| 81 | 375 | 95 | 397 | table-cell |\n| 110 | 375 | 535 | 397 | table-cell |\n| 110 | 375 | 535 | 397 | table-cell |\n| 81 | 397 | 95 | 419 | table-cell |\n| 81 | 397 | 95 | 419 | table-cell |\n| 110 | 397 | 535 | 419 | table-cell |\n| 110 | 397 | 535 | 419 | table-cell |\n| 81 | 418 | 95 | 440 | table-cell |\n| 81 | 418 | 95 | 440 | table-cell |\n| 110 | 418 | 535 | 440 | table-cell |\n| 110 | 418 | 535 | 440 | table-cell |\n| 81 | 437 | 95 | 465 | table-cell |\n| 81 | 437 | 95 | 465 | table-cell |\n| 110 | 437 | 535 | 465 | table-cell |\n| 110 | 437 | 535 | 465 | table-cell |\n| 81 | 464 | 95 | 486 | table-cell |\n| 81 | 464 | 95 | 486 | table-cell |\n| 110 | 464 | 535 | 486 | table-cell |\n| 110 | 464 | 535 | 486 | table-cell |\n| 81 | 485 | 95 | 508 | table-cell |\n| 81 | 485 | 95 | 508 | table-cell |\n| 110 | 485 | 535 | 508 | table-cell |\n| 110 | 485 | 535 | 508 | table-cell |\n| 81 | 508 | 95 | 530 | table-cell |\n| 81 | 508 | 95 | 530 | table-cell |\n| 110 | 508 | 535 | 530 | table-cell |\n| 110 | 508 | 535 | 530 | table-cell |\n| 81 | 530 | 95 | 551 | table-cell |\n| 81 | 530 | 95 | 551 | table-cell |\n| 110 | 530 | 535 | 551 | table-cell |\n| 110 | 530 | 535 | 551 | table-cell |\n| 81 | 551 | 95 | 570 | table-cell |\n| 81 | 551 | 95 | 570 | table-cell |\n| 110 | 551 | 535 | 569 | table-cell |\n| 110 | 551 | 535 | 569 | table-cell |\n\n### Table Projected Row Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 81 | 261 | 535 | 284 | table projected row header |\n| 81 | 327 | 535 | 349 | table projected row header |\n| 81 | 374 | 535 | 397 | table projected row header |\n| 81 | 439 | 535 | 464 | table projected row header |\n| 81 | 464 | 535 | 485 | table projected row header |\n| 81 | 485 | 535 | 507 | table projected row header |\n| 81 | 508 | 535 | 530 | table projected row header |\n| 81 | 530 | 535 | 551 | table projected row header |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 448.3806457519531,
+            "top": 36.43800354003906
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.65494537353516,
+            "top": 37.45133590698242
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis/obe1Vq5/page_4.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 27,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              81.95,
+              124.98,
+              535.85,
+              595.42
+            ],
+            "confidence": 0.7959202527999878
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              80.17,
+              138.74,
+              95.12,
+              570.24
+            ],
+            "confidence": 0.9131500124931335
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              81.02,
+              464.27,
+              534.96,
+              485.31
+            ],
+            "confidence": 0.5754519104957581
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              81.01,
+              485.44,
+              534.95,
+              507.13
+            ],
+            "confidence": 0.501212477684021
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              81.04,
+              304.15,
+              534.98,
+              327.28999999999996
+            ],
+            "confidence": 0.6358214616775513
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    },
+    {
+      "page_number": 5,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 5 Summary\n\n**Elements**:\n\n- **text**: 51 elements\n- **rect**: 18 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Times: 50\n    - WP-Phonetic: 1\n  - **sizes**:\n    - 13.0pt: 51\n  - styles: 1 bold",
+      "extract_text": {
+        "length": 1622,
+        "preview": "25 LC 57 0207S/AP\\n92 (1) Such hospital's ability to meet the standards for regional perinatal centers;\\n93 (2) Any additional funding necessary to bring such hospital up to standard;\\n94 (3) Any special planning problems in such hospital's perinatal region, including, but not\\n95 limited to, transporta",
+        "full_text": "25 LC 57 0207S/AP\n92 (1) Such hospital's ability to meet the standards for regional perinatal centers;\n93 (2) Any additional funding necessary to bring such hospital up to standard;\n94 (3) Any special planning problems in such hospital's perinatal region, including, but not\n95 limited to, transportation, shortage of facilities, and personnel;\n96 (4) A description of perinatal care currently being provided;\n97 (5) A description of services that can be provided by the center in patient care, education,\n98 and consultation to hospitals within the perinatal region; and\n99 (6) Any other information requested by the department.\n100 31-2A-73.\n101 Beginning on July 1, 2026, and every four years thereafter, the department shall present a\n102 plan to the Governor, the Speaker of the House of Representatives, and the President of the\n103 Senate for the designated perinatal centers in every region of the state. Such plan shall\n104 include funding considerations to aid hospitals in meeting the standards and for continuing\n105 requirements, including, but not limited to, patient care, professional education, training\n106 programs, and physical facilities.\n107 31-2A-74.\n108 The department shall be authorized to promulgate rules and regulations to carry out the\n109 purposes of this article.\"\n110 SECTION 3.\n111 Code Section 37-3-166 of the Official Code of Georgia Annotated, relating to treatment of\n112 clinical records, when release permitted, scope of privileged communications, liability for\n113 disclosure, and notice to sheriff of discharge, is amended by revising subsection (a) as\n114 follows:\nH. B. 89\n- 5 -"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 49,
+        "columns": 8,
+        "data": [
+          [
+            "2",
+            "5",
+            "",
+            "",
+            "",
+            "",
+            "LC 57",
+            "0207S/AP"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "92",
+            "",
+            "(1) Such hospital's",
+            "ability to meet",
+            "the standard",
+            "s for regional per",
+            "inatal center",
+            "s;"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "93",
+            "",
+            "(2) Any additional",
+            "funding necess",
+            "ary to bring",
+            "such hospital up",
+            "to standard;",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "94",
+            "",
+            "(3) Any special pla",
+            "nning problems",
+            "in such hosp",
+            "ital's perinatal re",
+            "gion, includi",
+            "ng, but not"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "95",
+            "",
+            "limited to, transport",
+            "ation, shortage",
+            "of facilities,",
+            "and personnel;",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "96",
+            "",
+            "(4) A description o",
+            "f perinatal care",
+            "currently be",
+            "ing provided;",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "97",
+            "",
+            "(5) A description of",
+            "services that ca",
+            "n be provide",
+            "d by the center in",
+            "patient care,",
+            "education,"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "98",
+            "",
+            "and consultation to",
+            "hospitals withi",
+            "n the perinat",
+            "al region; and",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "99",
+            "",
+            "(6) Any other infor",
+            "mation request",
+            "ed by the de",
+            "partment.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "100",
+            "3",
+            "1-2A-73.",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "101",
+            "B",
+            "eginning on July 1,",
+            "2026, and ever",
+            "y four years",
+            "thereafter, the de",
+            "partment sha",
+            "ll present a"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "102",
+            "pl",
+            "an to the Governor,",
+            "the Speaker of t",
+            "he House of",
+            "Representatives,",
+            "and the Pres",
+            "ident of the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "103",
+            "S",
+            "enate for the design",
+            "ated perinatal c",
+            "enters in ev",
+            "ery region of the",
+            "state. Such",
+            "plan shall"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "104",
+            "in",
+            "clude funding consi",
+            "derations to aid",
+            "hospitals in",
+            "meeting the stand",
+            "ards and for",
+            "continuing"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "105",
+            "re",
+            "quirements, includi",
+            "ng, but not lim",
+            "ited to, patie",
+            "nt care, professio",
+            "nal educatio",
+            "n, training"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "106",
+            "pr",
+            "ograms, and physic",
+            "al facilities.",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "107",
+            "3",
+            "1-2A-74.",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "108",
+            "T",
+            "he department shall",
+            "be authorized",
+            "to promulga",
+            "te rules and regu",
+            "lations to ca",
+            "rry out the"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "109",
+            "p",
+            "urposes of this artic",
+            "le.\"",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "110",
+            "",
+            "",
+            "",
+            "SECTION",
+            "3.",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "111 C",
+            "o",
+            "de Section 37-3-166",
+            "of the Official",
+            "Code of Ge",
+            "orgia Annotated,",
+            "relating to tr",
+            "eatment of"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "112 cl",
+            "in",
+            "ical records, when",
+            "release permitte",
+            "d, scope of",
+            "privileged comm",
+            "unications, l",
+            "iability for"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "113 di",
+            "s",
+            "closure, and notice",
+            "to sheriff of d",
+            "ischarge, is",
+            "amended by rev",
+            "ising subsec",
+            "tion (a) as"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "114 fo",
+            "ll",
+            "ows:",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "H. B. 89",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 8,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              84.49724578857422,
+              62.027950286865234,
+              543.3901977539062,
+              238.22552490234375
+            ],
+            "confidence": 0.9073063731193542
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              282.4722595214844,
+              690.0174560546875,
+              329.7247009277344,
+              719.2697143554688
+            ],
+            "confidence": 0.845222532749176
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              448.6441650390625,
+              36.61597442626953,
+              541.4627075195312,
+              50.55802917480469
+            ],
+            "confidence": 0.807427704334259
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              70.57937622070312,
+              37.41352844238281,
+              85.90303802490234,
+              49.76937484741211
+            ],
+            "confidence": 0.7855955958366394
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              36.03357696533203,
+              264.7169494628906,
+              542.5192260742188,
+              417.0115051269531
+            ],
+            "confidence": 0.7520365118980408
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 8,
+        "yolo_count": 8,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (8 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 51 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 282 | 690 | 330 | 719 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 84 | 62 | 543 | 238 | plain text |\n| 36 | 265 | 543 | 417 | plain text |\n| 36 | 443 | 543 | 506 | plain text |\n| 36 | 554 | 544 | 639 | plain text |\n\n### Title Element..."
+      },
+      "elements_sample": {
+        "total_count": 1658,
+        "full_inspect": "## Collection Inspection (77 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 449 | 37 | 541 | 51 | abandon |\n| 71 | 37 | 86 | 50 | abandon |\n| 282 | 690 | 330 | 719 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 92 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (1)  Such hospital's ability to meet the standards... | 90 | 65 | 495 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 93 | 45 | 87 | 58 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (2)  Any additional funding necessary to bring suc... | 90 | 87 | 482 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 94 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (3)  Any special planning problems in such hospita... | 90 | 110 | 540 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 95 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| limited to, transportation, shortage of facilities... | 90 | 132 | 413 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 96 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (4)  A description of perinatal care currently bei... | 90 | 154 | 408 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 97 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (5)  A description of services that can be provide... | 90 | 177 | 540 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 98 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| and consultation to hospitals within the perinatal... | 90 | 199 | 404 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 99 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| (6)  Any other information requested by the depart... | 90 | 222 | 381 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 100 | 38 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31-2A-73. | 81 | 266 | 135 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 101 | 38 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Beginning on July 1, 2026, and every four years th... | 81 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 102 | 38 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| plan to the Governor, the Speaker of the House of ... | 81 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 103 | 38 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Senate for the designated perinatal centers in eve... | 81 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 104 | 38 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| include funding considerations to aid hospitals in... | 81 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 105 | 38 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| requirements, including, but not limited to, patie... | 81 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 106 | 38 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| programs, and physical facilities. | 81 | 401 | 253 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 107 | 38 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 31-2A-74. | 81 | 445 | 135 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 108 | 38 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| The department shall be authorized to promulgate r... | 81 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 109 | 38 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| purposes of this article. | 81 | 490 | 202 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| \" | 202 | 491 | 206 | 504 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |\n| 110 | 38 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| SECTION 3. | 270 | 535 | 342 | 548 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |\n| 111 | 38 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| Code Section 37-3-166 of the Official Code of Geor... | 72 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 112 | 38 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| clinical records, when release permitted, scope of... | 72 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 113 | 38 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| disclosure, and notice to sheriff of discharge, is... | 72 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| 114 | 38 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| follows: | 72 | 624 | 114 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n| - 5 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 84 | 62 | 543 | 238 | plain text |\n| 36 | 265 | 543 | 417 | plain text |\n| 36 | 443 | 543 | 506 | plain text |\n| 36 | 554 | 544 | 639 | plain text |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 90 | 76 | 495 | 77 | 405 | 1 | #000000 | #000000 | 0 |\n| 90 | 99 | 482 | 99 | 392 | 1 | #000000 | #000000 | 0 |\n| 90 | 121 | 540 | 122 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 143 | 413 | 144 | 323 | 1 | #000000 | #000000 | 0 |\n| 90 | 166 | 408 | 166 | 318 | 1 | #000000 | #000000 | 0 |\n| 90 | 188 | 540 | 189 | 450 | 1 | #000000 | #000000 | 0 |\n| 90 | 210 | 404 | 211 | 314 | 1 | #000000 | #000000 | 0 |\n| 90 | 233 | 381 | 234 | 291 | 1 | #000000 | #000000 | 0 |\n| 81 | 278 | 135 | 278 | 54 | 1 | #000000 | #000000 | 0 |\n| 81 | 300 | 540 | 301 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 322 | 540 | 323 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 345 | 540 | 345 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 367 | 540 | 368 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 390 | 540 | 390 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 412 | 253 | 413 | 172 | 1 | #000000 | #000000 | 0 |\n| 81 | 457 | 135 | 457 | 54 | 1 | #000000 | #000000 | 0 |\n| 81 | 479 | 540 | 480 | 459 | 1 | #000000 | #000000 | 0 |\n| 81 | 501 | 202 | 502 | 121 | 1 | #000000 | #000000 | 0 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 268 | 532 | 343 | 549 | title |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 448.6441650390625,
+            "top": 36.61597442626953
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 70.57937622070312,
+            "top": 37.41352844238281
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "25",
+            "x0": 72.0,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 78.48,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "L",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "LC 57 0207S/AP",
+            "x0": 450.719712,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 458.63827200000003,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 467.2825920000001,
+            "top": 37.95936000000006
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 470.5225920000001,
+            "top": 37.95936000000006
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis/obe1Vq5/page_5.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 8,
+  "pages_analyzed": 5
+}

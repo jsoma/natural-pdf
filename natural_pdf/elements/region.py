@@ -26,6 +26,11 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
+# ------------------------------------------------------------------
+# Table utilities
+# ------------------------------------------------------------------
+from natural_pdf.tables import TableResult
+
 # --- End Classification Imports --- #
 
 
@@ -590,8 +595,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
     def to_image(
         self,
-        scale: float = 2.0,
-        resolution: float = 150,
+        resolution: Optional[float] = None,
         crop: bool = False,
         include_highlights: bool = True,
         **kwargs,
@@ -600,7 +604,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Generate an image of just this region.
 
         Args:
-            resolution: Resolution in DPI for rendering (default: 150)
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             crop: If True, only crop the region without highlighting its boundaries
             include_highlights: Whether to include existing highlights (default: True)
             **kwargs: Additional parameters for page.to_image()
@@ -608,6 +612,14 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             PIL Image of just this region
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         # Handle the case where user wants the cropped region to have a specific width
         page_kwargs = kwargs.copy()
         effective_resolution = resolution  # Start with the provided resolution
@@ -633,7 +645,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         # First get the full page image with highlights if requested
         page_image = self._page.to_image(
-            scale=scale,
             resolution=effective_resolution,
             include_highlights=include_highlights,
             **page_kwargs,
@@ -683,7 +694,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
         # Add a default color for standalone show
@@ -696,7 +707,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Show the page with just this region highlighted temporarily.
 
         Args:
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
             color: Color to highlight this region (default: blue)
@@ -709,6 +720,14 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             PIL Image of the page with only this region highlighted
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         if not self._page:
             raise ValueError("Region must be associated with a page to show.")
 
@@ -737,7 +756,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         return service.render_preview(
             page_index=self._page.index,
             temporary_highlights=[temp_highlight_data],
-            scale=scale,
+            resolution=resolution,
             width=width,  # Pass the width parameter
             labels=labels,
             legend_position=legend_position,
@@ -745,31 +764,39 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         )
 
     def save(
-        self, filename: str, scale: float = 2.0, labels: bool = True, legend_position: str = "right"
+        self, filename: str, resolution: Optional[float] = None, labels: bool = True, legend_position: str = "right"
     ) -> "Region":
         """
         Save the page with this region highlighted to an image file.
 
         Args:
             filename: Path to save the image to
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
 
         Returns:
             Self for method chaining
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         # Highlight this region if not already highlighted
         self.highlight()
 
         # Save the highlighted image
-        self._page.save_image(filename, scale=scale, labels=labels, legend_position=legend_position)
+        self._page.save_image(filename, resolution=resolution, labels=labels, legend_position=legend_position)
         return self
 
     def save_image(
         self,
         filename: str,
-        resolution: float = 150,
+        resolution: Optional[float] = None,
         crop: bool = False,
         include_highlights: bool = True,
         **kwargs,
@@ -779,7 +806,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         Args:
             filename: Path to save the image to
-            resolution: Resolution in DPI for rendering (default: 150)
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             crop: If True, only crop the region without highlighting its boundaries
             include_highlights: Whether to include existing highlights (default: True)
             **kwargs: Additional parameters for page.to_image()
@@ -787,6 +814,14 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             Self for method chaining
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         # Get the region image
         image = self.to_image(
             resolution=resolution,
@@ -803,7 +838,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self,
         padding: int = 1,
         threshold: float = 0.95,
-        resolution: float = 150,
+        resolution: Optional[float] = None,
         pre_shrink: float = 0.5,
     ) -> "Region":
         """
@@ -817,7 +852,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
                       Higher values mean more strict whitespace detection.
                       E.g., 0.95 means if 95% of pixels in a row/column are white, consider it whitespace.
-            resolution: Resolution for image rendering in DPI (default: 150)
+            resolution: Resolution for image rendering in DPI (default: uses global options, fallback to 144 DPI)
             pre_shrink: Amount to shrink region before trimming, then expand back after (default: 0.5)
                        This helps avoid detecting box borders/slivers as content.
 
@@ -834,6 +869,14 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             # Conservative trimming with more padding
             loose = region.trim(padding=3, threshold=0.98)
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
+        
         # Pre-shrink the region to avoid box slivers
         work_region = (
             self.expand(left=-pre_shrink, right=-pre_shrink, top=-pre_shrink, bottom=-pre_shrink)
@@ -1172,7 +1215,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         # --- NEW: Add tqdm control option --- #
         show_progress: bool = False,  # Controls progress bar for text method
-    ) -> List[List[Optional[str]]]:  # Return type allows Optional[str] for cells
+    ) -> TableResult:  # Return type allows Optional[str] for cells
         """
         Extract a table from this region.
 
@@ -1224,7 +1267,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                     logger.debug(
                         f"Region {self.bbox}: Found {len(cell_regions_in_table)} pre-computed table_cell regions – using 'cells' method."
                     )
-                    return self._extract_table_from_cells(cell_regions_in_table)
+                    return TableResult(self._extract_table_from_cells(cell_regions_in_table))
 
                 # --------------------------------------------------------------- #
 
@@ -1280,18 +1323,20 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         # Use the selected method
         if effective_method == "tatr":
-            return self._extract_table_tatr(use_ocr=use_ocr, ocr_config=ocr_config)
+            table_rows = self._extract_table_tatr(use_ocr=use_ocr, ocr_config=ocr_config)
         elif effective_method == "text":
             current_text_options = text_options.copy()
             current_text_options["cell_extraction_func"] = cell_extraction_func
             current_text_options["show_progress"] = show_progress
-            return self._extract_table_text(**current_text_options)
+            table_rows = self._extract_table_text(**current_text_options)
         elif effective_method == "pdfplumber":
-            return self._extract_table_plumber(table_settings)
+            table_rows = self._extract_table_plumber(table_settings)
         else:
             raise ValueError(
                 f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
             )
+
+        return TableResult(table_rows)
 
     def extract_tables(
         self,

@@ -1,0 +1,18 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 412 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 408
+    - Helvetica: 4
+  - **sizes**:
+    - 10.0pt: 405
+    - 9.0pt: 5
+    - 11.5pt: 1
+    - 8.5pt: 1
+  - styles: 4 italic

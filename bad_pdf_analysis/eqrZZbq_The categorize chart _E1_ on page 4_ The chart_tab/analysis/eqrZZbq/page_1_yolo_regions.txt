@@ -1,0 +1,18 @@
+YOLO Layout Regions (4 found)
+==================================================
+
+## Collection Inspection (4 elements)
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 175 | 12 | 310 | 29 | plain text |
+| 177 | 96 | 302 | 115 | plain text |
+| 177 | 252 | 250 | 270 | plain text |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 0 | 290 | 595 | 842 | figure |

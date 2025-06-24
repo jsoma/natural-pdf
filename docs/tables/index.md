@@ -124,8 +124,8 @@ Once you've got your table data, you'll probably want to do something useful wit
 ```python
 import pandas as pd
 
-# Convert to a pandas DataFrame for easy manipulation
-df = pd.DataFrame(page.extract_table())
+# Quick hand-off to pandas
+df = page.extract_table().df        # or .to_df(header=None)
 df
 ```
 
@@ -137,6 +137,21 @@ TATR is smart enough to create individual cell regions, but accessing them direc
 # This should work but doesn't quite yet - we're working on it!
 # tatr_table.cells
 ```
+
+## Working with the result: `TableResult`
+
+`extract_table()` now returns a **`TableResult`** object – it behaves like
+a regular list of rows *and* offers two convenience shortcuts:
+
+```python
+tbl = region.extract_table()   # TableResult (Sequence)
+
+tbl.df                 # quick DataFrame using first row as header
+tbl.to_df(header=None) # no header; let pandas auto-number columns
+```
+
+Because `TableResult` is a `Sequence`, any code that previously iterated over
+`list-of-lists` continues to work unchanged.
 
 ## Next Steps
 

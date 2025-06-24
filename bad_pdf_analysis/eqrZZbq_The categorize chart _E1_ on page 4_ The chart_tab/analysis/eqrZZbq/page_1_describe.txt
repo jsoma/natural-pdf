@@ -1,0 +1,19 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 12 elements
+- **rect**: 5 elements
+- **line**: 1 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - STXihei: 8
+    - AdobeHeitiStd-Regular: 3
+    - SimHei: 1
+  - **sizes**:
+    - 12.0pt: 7
+    - 35.0pt: 3
+    - 15.0pt: 2

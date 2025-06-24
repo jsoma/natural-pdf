@@ -1,0 +1,31 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 52 elements
+- **rect**: 27 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Arial: 28
+    - Calibri: 12
+    - OpenSans-Bold: 7
+    - OpenSans: 5
+  - **sizes**:
+    - 9.5pt: 15
+    - 12.0pt: 8
+    - 10.5pt: 8
+    - 11.0pt: 7
+    - 10.0pt: 5
+    - 14.0pt: 4
+    - 17.5pt: 1
+    - 18.0pt: 1
+    - 16.0pt: 1
+    - 11.5pt: 1
+    - 13.5pt: 1
+  - styles: 21 bold, 8 italic
+  - **colors**:
+    - black: 34
+    - other: 18

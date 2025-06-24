@@ -1,0 +1,244 @@
+TATR Layout Regions (215 found)
+==================================================
+
+## Collection Inspection (215 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 51 | 117 | 339 | 591 | table |
+| 53 | 119 | 338 | 590 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 265 | 119 | 338 | 590 | table column |
+| 53 | 120 | 262 | 590 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 53 | 119 | 338 | 130 | table row |
+| 53 | 131 | 338 | 143 | table row |
+| 53 | 131 | 338 | 149 | table row |
+| 53 | 146 | 338 | 156 | table row |
+| 53 | 150 | 338 | 168 | table row |
+| 53 | 168 | 338 | 186 | table row |
+| 53 | 184 | 338 | 201 | table row |
+| 52 | 196 | 338 | 210 | table row |
+| 53 | 201 | 338 | 218 | table row |
+| 53 | 210 | 338 | 221 | table row |
+| 53 | 216 | 338 | 234 | table row |
+| 53 | 227 | 338 | 239 | table row |
+| 53 | 232 | 338 | 250 | table row |
+| 53 | 244 | 338 | 255 | table row |
+| 53 | 249 | 338 | 266 | table row |
+| 53 | 262 | 338 | 274 | table row |
+| 53 | 264 | 338 | 281 | table row |
+| 53 | 280 | 338 | 298 | table row |
+| 53 | 295 | 338 | 312 | table row |
+| 53 | 311 | 338 | 329 | table row |
+| 53 | 326 | 338 | 343 | table row |
+| 53 | 345 | 338 | 361 | table row |
+| 53 | 352 | 338 | 368 | table row |
+| 53 | 357 | 338 | 374 | table row |
+| 53 | 365 | 338 | 382 | table row |
+| 53 | 374 | 338 | 390 | table row |
+| 53 | 381 | 338 | 398 | table row |
+| 53 | 388 | 338 | 405 | table row |
+| 53 | 395 | 338 | 412 | table row |
+| 53 | 404 | 338 | 420 | table row |
+| 53 | 409 | 338 | 426 | table row |
+| 53 | 433 | 338 | 451 | table row |
+| 53 | 451 | 338 | 468 | table row |
+| 53 | 470 | 338 | 487 | table row |
+| 53 | 485 | 338 | 501 | table row |
+| 53 | 501 | 338 | 518 | table row |
+| 53 | 515 | 338 | 532 | table row |
+| 53 | 530 | 338 | 547 | table row |
+| 53 | 546 | 338 | 563 | table row |
+| 53 | 561 | 338 | 574 | table row |
+| 53 | 573 | 338 | 583 | table row |
+| 53 | 583 | 338 | 590 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 265 | 119 | 338 | 130 | table-cell |
+| 265 | 119 | 338 | 130 | table-cell |
+| 53 | 120 | 262 | 130 | table-cell |
+| 53 | 120 | 262 | 130 | table-cell |
+| 53 | 131 | 262 | 143 | table-cell |
+| 53 | 131 | 262 | 143 | table-cell |
+| 265 | 131 | 338 | 143 | table-cell |
+| 265 | 131 | 338 | 143 | table-cell |
+| 53 | 131 | 262 | 149 | table-cell |
+| 53 | 131 | 262 | 149 | table-cell |
+| 265 | 131 | 338 | 149 | table-cell |
+| 265 | 131 | 338 | 149 | table-cell |
+| 53 | 146 | 262 | 156 | table-cell |
+| 53 | 146 | 262 | 156 | table-cell |
+| 265 | 146 | 338 | 156 | table-cell |
+| 265 | 146 | 338 | 156 | table-cell |
+| 53 | 150 | 262 | 168 | table-cell |
+| 53 | 150 | 262 | 168 | table-cell |
+| 265 | 150 | 338 | 168 | table-cell |
+| 265 | 150 | 338 | 168 | table-cell |
+| 53 | 168 | 262 | 186 | table-cell |
+| 53 | 168 | 262 | 186 | table-cell |
+| 265 | 168 | 338 | 186 | table-cell |
+| 265 | 168 | 338 | 186 | table-cell |
+| 53 | 184 | 262 | 201 | table-cell |
+| 53 | 184 | 262 | 201 | table-cell |
+| 265 | 184 | 338 | 201 | table-cell |
+| 265 | 184 | 338 | 201 | table-cell |
+| 53 | 196 | 262 | 210 | table-cell |
+| 53 | 196 | 262 | 210 | table-cell |
+| 265 | 196 | 338 | 210 | table-cell |
+| 265 | 196 | 338 | 210 | table-cell |
+| 53 | 201 | 262 | 218 | table-cell |
+| 53 | 201 | 262 | 218 | table-cell |
+| 265 | 201 | 338 | 218 | table-cell |
+| 265 | 201 | 338 | 218 | table-cell |
+| 53 | 210 | 262 | 221 | table-cell |
+| 53 | 210 | 262 | 221 | table-cell |
+| 265 | 210 | 338 | 221 | table-cell |
+| 265 | 210 | 338 | 221 | table-cell |
+| 53 | 216 | 262 | 234 | table-cell |
+| 53 | 216 | 262 | 234 | table-cell |
+| 265 | 216 | 338 | 234 | table-cell |
+| 265 | 216 | 338 | 234 | table-cell |
+| 53 | 227 | 262 | 239 | table-cell |
+| 53 | 227 | 262 | 239 | table-cell |
+| 265 | 227 | 338 | 239 | table-cell |
+| 265 | 227 | 338 | 239 | table-cell |
+| 53 | 232 | 262 | 250 | table-cell |
+| 53 | 232 | 262 | 250 | table-cell |
+| 265 | 232 | 338 | 250 | table-cell |
+| 265 | 232 | 338 | 250 | table-cell |
+| 53 | 244 | 262 | 255 | table-cell |
+| 53 | 244 | 262 | 255 | table-cell |
+| 265 | 244 | 338 | 255 | table-cell |
+| 265 | 244 | 338 | 255 | table-cell |
+| 53 | 249 | 262 | 266 | table-cell |
+| 53 | 249 | 262 | 266 | table-cell |
+| 265 | 249 | 338 | 266 | table-cell |
+| 265 | 249 | 338 | 266 | table-cell |
+| 53 | 262 | 262 | 274 | table-cell |
+| 53 | 262 | 262 | 274 | table-cell |
+| 265 | 262 | 338 | 274 | table-cell |
+| 265 | 262 | 338 | 274 | table-cell |
+| 53 | 264 | 262 | 281 | table-cell |
+| 53 | 264 | 262 | 281 | table-cell |
+| 265 | 264 | 338 | 281 | table-cell |
+| 265 | 264 | 338 | 281 | table-cell |
+| 53 | 280 | 262 | 298 | table-cell |
+| 53 | 280 | 262 | 298 | table-cell |
+| 265 | 280 | 338 | 298 | table-cell |
+| 265 | 280 | 338 | 298 | table-cell |
+| 53 | 295 | 262 | 312 | table-cell |
+| 53 | 295 | 262 | 312 | table-cell |
+| 265 | 295 | 338 | 312 | table-cell |
+| 265 | 295 | 338 | 312 | table-cell |
+| 53 | 311 | 262 | 329 | table-cell |
+| 53 | 311 | 262 | 329 | table-cell |
+| 265 | 311 | 338 | 329 | table-cell |
+| 265 | 311 | 338 | 329 | table-cell |
+| 53 | 326 | 262 | 343 | table-cell |
+| 53 | 326 | 262 | 343 | table-cell |
+| 265 | 326 | 338 | 343 | table-cell |
+| 265 | 326 | 338 | 343 | table-cell |
+| 53 | 345 | 262 | 361 | table-cell |
+| 53 | 345 | 262 | 361 | table-cell |
+| 265 | 345 | 338 | 361 | table-cell |
+| 265 | 345 | 338 | 361 | table-cell |
+| 53 | 352 | 262 | 368 | table-cell |
+| 53 | 352 | 262 | 368 | table-cell |
+| 265 | 352 | 338 | 368 | table-cell |
+| 265 | 352 | 338 | 368 | table-cell |
+| 53 | 357 | 262 | 374 | table-cell |
+| 53 | 357 | 262 | 374 | table-cell |
+| 265 | 357 | 338 | 374 | table-cell |
+| 265 | 357 | 338 | 374 | table-cell |
+| 53 | 365 | 262 | 382 | table-cell |
+| 53 | 365 | 262 | 382 | table-cell |
+| 265 | 365 | 338 | 382 | table-cell |
+| 265 | 365 | 338 | 382 | table-cell |
+| 53 | 374 | 262 | 390 | table-cell |
+| 53 | 374 | 262 | 390 | table-cell |
+| 265 | 374 | 338 | 390 | table-cell |
+| 265 | 374 | 338 | 390 | table-cell |
+| 53 | 381 | 262 | 398 | table-cell |
+| 53 | 381 | 262 | 398 | table-cell |
+| 265 | 381 | 338 | 398 | table-cell |
+| 265 | 381 | 338 | 398 | table-cell |
+| 53 | 388 | 262 | 405 | table-cell |
+| 53 | 388 | 262 | 405 | table-cell |
+| 265 | 388 | 338 | 405 | table-cell |
+| 265 | 388 | 338 | 405 | table-cell |
+| 53 | 395 | 262 | 412 | table-cell |
+| 53 | 395 | 262 | 412 | table-cell |
+| 265 | 395 | 338 | 412 | table-cell |
+| 265 | 395 | 338 | 412 | table-cell |
+| 53 | 404 | 262 | 420 | table-cell |
+| 53 | 404 | 262 | 420 | table-cell |
+| 265 | 404 | 338 | 420 | table-cell |
+| 265 | 404 | 338 | 420 | table-cell |
+| 53 | 409 | 262 | 426 | table-cell |
+| 53 | 409 | 262 | 426 | table-cell |
+| 265 | 409 | 338 | 426 | table-cell |
+| 265 | 409 | 338 | 426 | table-cell |
+| 53 | 433 | 262 | 451 | table-cell |
+| 53 | 433 | 262 | 451 | table-cell |
+| 265 | 433 | 338 | 451 | table-cell |
+| 265 | 433 | 338 | 451 | table-cell |
+| 53 | 451 | 262 | 468 | table-cell |
+| 53 | 451 | 262 | 468 | table-cell |
+| 265 | 451 | 338 | 468 | table-cell |
+| 265 | 451 | 338 | 468 | table-cell |
+| 53 | 470 | 262 | 487 | table-cell |
+| 53 | 470 | 262 | 487 | table-cell |
+| 265 | 470 | 338 | 487 | table-cell |
+| 265 | 470 | 338 | 487 | table-cell |
+| 53 | 485 | 262 | 501 | table-cell |
+| 53 | 485 | 262 | 501 | table-cell |
+| 265 | 485 | 338 | 501 | table-cell |
+| 265 | 485 | 338 | 501 | table-cell |
+| 53 | 501 | 262 | 518 | table-cell |
+| 53 | 501 | 262 | 518 | table-cell |
+| 265 | 501 | 338 | 518 | table-cell |
+| 265 | 501 | 338 | 518 | table-cell |
+| 53 | 515 | 262 | 532 | table-cell |
+| 53 | 515 | 262 | 532 | table-cell |
+| 265 | 515 | 338 | 532 | table-cell |
+| 265 | 515 | 338 | 532 | table-cell |
+| 53 | 530 | 262 | 547 | table-cell |
+| 53 | 530 | 262 | 547 | table-cell |
+| 265 | 530 | 338 | 547 | table-cell |
+| 265 | 530 | 338 | 547 | table-cell |
+| 53 | 546 | 262 | 563 | table-cell |
+| 53 | 546 | 262 | 563 | table-cell |
+| 265 | 546 | 338 | 563 | table-cell |
+| 265 | 546 | 338 | 563 | table-cell |
+| 53 | 561 | 262 | 574 | table-cell |
+| 53 | 561 | 262 | 574 | table-cell |
+| 265 | 561 | 338 | 574 | table-cell |
+| 265 | 561 | 338 | 574 | table-cell |
+| 53 | 573 | 262 | 583 | table-cell |
+| 53 | 573 | 262 | 583 | table-cell |
+| 265 | 573 | 338 | 583 | table-cell |
+| 265 | 573 | 338 | 583 | table-cell |
+| 53 | 583 | 262 | 590 | table-cell |
+| 53 | 583 | 262 | 590 | table-cell |
+| 265 | 583 | 338 | 590 | table-cell |
+| 265 | 583 | 338 | 590 | table-cell |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 53 | 119 | 338 | 130 | table column header |

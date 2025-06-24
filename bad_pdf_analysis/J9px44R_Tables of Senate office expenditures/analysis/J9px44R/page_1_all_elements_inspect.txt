@@ -1,0 +1,84 @@
+## Collection Inspection (73 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 1  | 336 | -59 | 337 | -58 | NewCenturySchlbk-Roman | CIGAKN | 1 | False | False | native | 1.00 | #000000 |
+| 118th Congress  | 60 | 44 | 120 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| D | 313 | 44 | 319 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+|   | 354 | 44 | 356 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| OCUMENT | 319 | 46 | 354 | 52 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| "  | 128 | 50 | 133 | 57 | SpecV01 | CIGAKQ | 7 | False | False | native | 1.00 | #000000 |
+| SENATE  | 194 | 50 | 231 | 58 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| ! | 293 | 50 | 296 | 57 | SpecV01 | CIGAKQ | 7 | False | False | native | 1.00 | #000000 |
+| 2d Session  | 69 | 54 | 110 | 62 | NewCenturySchlbk-Italic | CIGAKP | 8 | False | True | native | 1.00 | #000000 |
+| 118–13  | 320 | 54 | 349 | 62 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| R E P O R T  | 171 | 134 | 255 | 146 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |
+| OFTHE | 197 | 178 | 226 | 185 | NewCenturySchlbk-Roman | CIGAKN | 7 | False | False | native | 1.00 | #000000 |
+| SECRETARY OF THE  | 114 | 215 | 314 | 233 | NewCenturySchlbk-Roman | CIGAKN | 18 | False | False | native | 1.00 | #000000 |
+| SENATE  | 173 | 245 | 255 | 263 | NewCenturySchlbk-Roman | CIGAKN | 18 | False | False | native | 1.00 | #000000 |
+| FROM | 200 | 295 | 223 | 302 | NewCenturySchlbk-Roman | CIGAKN | 7 | False | False | native | 1.00 | #000000 |
+| April 1, 2024 to September 30, 2024  | 104 | 332 | 322 | 344 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |
+| Part I  | 194 | 374 | 233 | 386 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |
+| N | 116 | 522 | 122 | 530 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| 13, 2024—Ordered to lie on the table  | 160 | 522 | 309 | 530 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| OVEMBER | 122 | 524 | 156 | 530 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| . | 145 | 552 | 147 | 560 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| .  | 151 | 552 | 156 | 560 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| US | 140 | 554 | 151 | 560 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| GOVERNMENT PUBLISHING OFFICE | 157 | 554 | 282 | 560 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| :  | 227 | 564 | 231 | 572 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+|   | 246 | 564 | 248 | 572 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |
+| 2024 | 232 | 566 | 246 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| WASHINGTON  | 176 | 566 | 225 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+| 56–944  | 64 | 566 | 86 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 53 | 37 | 371 | 37 | 1 | True | False |
+| 53 | 37 | 53 | 590 | 1 | False | True |
+| 371 | 37 | 371 | 590 | 1 | False | True |
+| 53 | 72 | 371 | 72 | 1 | True | False |
+| 212 | 449 | 213 | 449 | 0 | True | False |
+| 212 | 449 | 213 | 449 | 0 | True | False |
+| 204 | 450 | 205 | 450 | 0 | False | False |
+| 211 | 450 | 214 | 450 | 0 | True | False |
+| 220 | 450 | 220 | 450 | 0 | False | False |
+| 204 | 450 | 205 | 450 | 0 | False | False |
+| 211 | 450 | 214 | 450 | 0 | True | False |
+| 220 | 450 | 220 | 450 | 0 | False | False |
+| 204 | 451 | 220 | 451 | 0 | True | False |
+| 204 | 451 | 220 | 451 | 0 | True | False |
+| 204 | 451 | 220 | 451 | 0 | True | False |
+| 204 | 451 | 220 | 451 | 0 | True | False |
+| 204 | 452 | 220 | 452 | 0 | True | False |
+| 204 | 452 | 220 | 452 | 0 | True | False |
+| 204 | 453 | 220 | 453 | 0 | True | False |
+| 204 | 453 | 220 | 453 | 0 | True | False |
+| 204 | 453 | 220 | 453 | 0 | True | False |
+| 204 | 453 | 220 | 453 | 0 | True | False |
+| 204 | 454 | 220 | 454 | 0 | True | False |
+| 204 | 454 | 220 | 454 | 0 | True | False |
+| 205 | 455 | 205 | 457 | 0 | False | True |
+| 206 | 455 | 206 | 458 | 0 | False | True |
+| 206 | 455 | 206 | 459 | 0 | False | True |
+| 218 | 455 | 218 | 460 | 0 | False | True |
+| 219 | 455 | 219 | 459 | 0 | False | True |
+| 219 | 455 | 219 | 458 | 0 | False | True |
+| 207 | 455 | 207 | 462 | 0 | False | True |
+| 208 | 455 | 208 | 462 | 0 | False | True |
+| 208 | 455 | 208 | 463 | 0 | False | True |
+| 210 | 455 | 210 | 464 | 0 | False | True |
+| 210 | 455 | 210 | 465 | 0 | False | True |
+| 211 | 455 | 211 | 465 | 0 | False | True |
+| 213 | 455 | 213 | 466 | 0 | False | True |
+| 213 | 455 | 213 | 465 | 0 | False | True |
+| 214 | 455 | 214 | 465 | 0 | False | True |
+| 215 | 455 | 215 | 463 | 0 | False | True |
+| 216 | 455 | 216 | 463 | 0 | False | True |
+| 217 | 455 | 217 | 462 | 0 | False | True |
+| 197 | 542 | 227 | 542 | 0 | True | False |
+| 53 | 590 | 371 | 590 | 1 | True | False |

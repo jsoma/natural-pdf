@@ -15,6 +15,7 @@ from pdfplumber.utils.text import WordExtractor
 from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.rect import RectangleElement
 from natural_pdf.elements.text import TextElement
+from natural_pdf.elements.image import ImageElement
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,16 @@ class ElementManager:
             f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
         )
 
+        # Create a mapping from character dict to index for efficient lookup
+        char_to_index = {}
+        for idx, char_dict in enumerate(prepared_char_dicts):
+            key = (
+                char_dict.get("x0", 0),
+                char_dict.get("top", 0),
+                char_dict.get("text", ""),
+            )
+            char_to_index[key] = idx
+
         # 2. Instantiate the custom word extractor
         # Get config settings from the parent PDF or use defaults
         pdf_config = getattr(self._page._parent, "_config", {})
@@ -136,43 +147,142 @@ class ElementManager:
         # Should include split attributes + any others needed for filtering (like color)
         attributes_to_preserve = list(set(self._word_split_attributes + ["non_stroking_color"]))
 
-        # Pass our configured attributes for splitting
-        extractor = NaturalWordExtractor(
-            word_split_attributes=self._word_split_attributes,
-            extra_attrs=attributes_to_preserve,
-            x_tolerance=xt,
-            y_tolerance=yt,
-            keep_blank_chars=True,
-            use_text_flow=use_flow,
-            # Assuming default directions are okay, configure if needed
-            # line_dir=..., char_dir=...
+        # -------------------------------------------------------------
+        # NEW: Detect direction (LTR vs RTL) per visual line and feed
+        #       pdfplumber's WordExtractor with the correct settings.
+        # -------------------------------------------------------------
+        import unicodedata
+
+        def _is_rtl_char(ch: str) -> bool:
+            """Return True if the character has an RTL bidi class."""
+            if not ch:
+                return False
+            # If string has more than one character take first (works for most PDFs)
+            first = ch[0]
+            try:
+                return unicodedata.bidirectional(first) in ("R", "AL", "AN")
+            except Exception:
+                return False
+
+        # Helper: group characters into visual lines using y-tolerance
+        sorted_chars_for_line_grouping = sorted(
+            prepared_char_dicts,
+            key=lambda c: (round(c.get("top", 0) / max(yt, 1)) * yt, c.get("x0", 0)),
         )
 
-        # 3. Generate words using the extractor
-        generated_words = []
-        if prepared_char_dicts:
-            # Sort chars primarily by upright status, then page reading order
-            # Grouping by upright is crucial for WordExtractor's direction logic
-            sorted_chars_for_extraction = sorted(
-                prepared_char_dicts,
-                key=lambda c: (c.get("upright", True), round(c.get("top", 0)), c.get("x0", 0)),
+        lines: List[List[Dict[str, Any]]] = []
+        current_line_key = None
+        for char_dict in sorted_chars_for_line_grouping:
+            top_val = char_dict.get("top", 0)
+            line_key = round(top_val / max(yt, 1))  # bucket index
+            if current_line_key is None or line_key != current_line_key:
+                # start new line bucket
+                lines.append([])
+                current_line_key = line_key
+            lines[-1].append(char_dict)
+
+        word_elements: List[TextElement] = []
+        # Process each line separately with direction detection
+        for line_chars in lines:
+            if not line_chars:
+                continue
+            # Determine RTL ratio
+            rtl_count = sum(1 for ch in line_chars if _is_rtl_char(ch.get("text", "")))
+            ltr_count = len(line_chars) - rtl_count
+            # Consider RTL if it has strictly more RTL than LTR strong characters
+            is_rtl_line = rtl_count > ltr_count
+
+            # Build a WordExtractor tailored for this line's direction
+            if is_rtl_line:
+                line_dir = "ttb"  # horizontal lines stacked top→bottom
+                char_dir = "rtl"  # characters right→left within the line
+            else:
+                line_dir = "ttb"
+                char_dir = "ltr"
+
+            extractor = NaturalWordExtractor(
+                word_split_attributes=self._word_split_attributes,
+                extra_attrs=attributes_to_preserve,
+                x_tolerance=xt,
+                y_tolerance=yt,
+                keep_blank_chars=True,
+                use_text_flow=use_flow,
+                line_dir=line_dir,
+                char_dir=char_dir,
             )
 
-            word_tuples = extractor.iter_extract_tuples(sorted_chars_for_extraction)
+            # Prepare character sequence for the extractor:
+            #  • For LTR lines -> left→right order (x0 ascending)
+            #  • For RTL lines -> feed **reversed** list so that neighbouring
+            #    characters appear adjacent when the extractor walks right→left.
+            line_chars_for_extractor = sorted(line_chars, key=lambda c: c.get("x0", 0))
+
+            try:
+                word_tuples = extractor.iter_extract_tuples(line_chars_for_extractor)
+            except Exception as e:  # pragma: no cover
+                logger.error(
+                    f"Word extraction failed on line (rtl={is_rtl_line}) of page {self._page.number}: {e}",
+                    exc_info=True,
+                )
+                word_tuples = []
+
             for word_dict, char_list in word_tuples:
-                # Convert the generated word_dict to a TextElement
-                word_dict["_char_dicts"] = char_list
+                # Memory optimisation for char indices
+                char_indices = []
+                for char_dict in char_list:
+                    key = (
+                        char_dict.get("x0", 0),
+                        char_dict.get("top", 0),
+                        char_dict.get("text", ""),
+                    )
+                    # char_to_index dict built earlier in load_elements
+                    if key in char_to_index:
+                        char_indices.append(char_to_index[key])
+                word_dict["_char_indices"] = char_indices
+                word_dict["_char_dicts"] = char_list  # keep for back-compat
+                # Create and append TextElement
                 word_element = self._create_word_element(word_dict)
-                generated_words.append(word_element)
+                word_elements.append(word_element)
+
+                # Decide if this individual word contains RTL characters; safer than relying
+                # on the whole-line heuristic.
+                rtl_in_word = any(_is_rtl_char(ch.get("text", "")) for ch in char_list)
+                if rtl_in_word:
+                    try:
+                        from bidi.algorithm import get_display  # type: ignore
+                        from natural_pdf.utils.bidi_mirror import mirror_brackets
+
+                        word_element.text = mirror_brackets(
+                            get_display(word_element.text, base_dir="R")
+                        )
+                    except Exception:
+                        # Fallback: keep original text if python-bidi fails
+                        pass
+
+        generated_words = word_elements
         logger.debug(
             f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
         )
 
+        # --- Post-processing pass to ensure every word containing RTL characters is
+        #     stored in logical order and with mirrored brackets.  This is a
+        #     safeguard in case the per-line loop above missed some tokens.
+        try:
+            from bidi.algorithm import get_display  # type: ignore
+            from natural_pdf.utils.bidi_mirror import mirror_brackets
+
+            for w in generated_words:
+                if any(_is_rtl_char(ch) for ch in w.text):
+                    w.text = mirror_brackets(get_display(w.text, base_dir="R"))
+        except Exception:
+            pass  # graceful degradation – keep original text
+
         # 4. Load other elements (rects, lines)
         rect_elements = [RectangleElement(r, self._page) for r in self._page._page.rects]
         line_elements = [LineElement(l, self._page) for l in self._page._page.lines]
+        image_elements = [ImageElement(i, self._page) for i in self._page._page.images]
         logger.debug(
-            f"Page {self._page.number}: Loaded {len(rect_elements)} rects, {len(line_elements)} lines."
+            f"Page {self._page.number}: Loaded {len(rect_elements)} rects, {len(line_elements)} lines, {len(image_elements)} images."
         )
 
         # 5. Create the final elements dictionary
@@ -183,6 +293,7 @@ class ElementManager:
             "words": generated_words,
             "rects": rect_elements,
             "lines": line_elements,
+            "images": image_elements,
         }
 
         # Add regions if they exist
@@ -549,6 +660,12 @@ class ElementManager:
         """Get all region elements."""
         self.load_elements()
         return self._elements.get("regions", [])
+
+    @property
+    def images(self):
+        """Get all image elements."""
+        self.load_elements()
+        return self._elements.get("images", [])
 
     def remove_ocr_elements(self):
         """

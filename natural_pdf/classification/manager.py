@@ -448,3 +448,70 @@ class ClassificationManager:
             raise ClassificationError(
                 f"Batch classification failed using model '{model_id}'. Error: {e}"
             ) from e
+
+    def cleanup_models(self, model_id: Optional[str] = None) -> int:
+        """
+        Cleanup classification models to free memory.
+        
+        Args:
+            model_id: Specific model to cleanup, or None to cleanup all models
+            
+        Returns:
+            Number of models cleaned up
+        """
+        global _PIPELINE_CACHE, _TOKENIZER_CACHE, _MODEL_CACHE
+        
+        cleaned_count = 0
+        
+        if model_id:
+            # Cleanup specific model - search cache keys that contain the model_id
+            keys_to_remove = [key for key in _PIPELINE_CACHE.keys() if model_id in key]
+            for key in keys_to_remove:
+                pipeline = _PIPELINE_CACHE.pop(key, None)
+                if pipeline and hasattr(pipeline, 'model'):
+                    # Try to cleanup GPU memory if using torch
+                    try:
+                        torch = _get_torch()
+                        if hasattr(pipeline.model, 'to'):
+                            pipeline.model.to('cpu')  # Move to CPU
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()  # Clear GPU cache
+                    except Exception as e:
+                        logger.debug(f"GPU cleanup failed for model {model_id}: {e}")
+                
+                cleaned_count += 1
+                logger.info(f"Cleaned up classification pipeline: {key}")
+            
+            # Also cleanup tokenizer and model caches for this model
+            tokenizer_keys = [key for key in _TOKENIZER_CACHE.keys() if model_id in key]
+            for key in tokenizer_keys:
+                _TOKENIZER_CACHE.pop(key, None)
+            
+            model_keys = [key for key in _MODEL_CACHE.keys() if model_id in key]
+            for key in model_keys:
+                _MODEL_CACHE.pop(key, None)
+                
+        else:
+            # Cleanup all models
+            for key, pipeline in list(_PIPELINE_CACHE.items()):
+                if hasattr(pipeline, 'model'):
+                    try:
+                        torch = _get_torch()
+                        if hasattr(pipeline.model, 'to'):
+                            pipeline.model.to('cpu')  # Move to CPU
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()  # Clear GPU cache
+                    except Exception as e:
+                        logger.debug(f"GPU cleanup failed for pipeline {key}: {e}")
+            
+            # Clear all caches
+            pipeline_count = len(_PIPELINE_CACHE)
+            _PIPELINE_CACHE.clear()
+            _TOKENIZER_CACHE.clear()
+            _MODEL_CACHE.clear()
+            
+            if pipeline_count > 0:
+                logger.info(f"Cleaned up {pipeline_count} classification models")
+            cleaned_count = pipeline_count
+            
+        return cleaned_count

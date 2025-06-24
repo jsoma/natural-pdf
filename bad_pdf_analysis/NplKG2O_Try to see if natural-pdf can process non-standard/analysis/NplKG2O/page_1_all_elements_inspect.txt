@@ -1,0 +1,113 @@
+## Collection Inspection (72 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+|   | 293 | -6 | 304 | 42 | Cambria | ABCDEE | 48 | True | False | native | 1.00 | #000000 |
+| 《中国制造 | 3 | 18 | 79 | 33 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |
+| 2025》重点领域技术创新绿皮书 | 82 | 18 | 293 | 33 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |
+|   | 90 | 75 | 93 | 86 | Times |  | 11 | False | False | native | 1.00 | #000000 |
+| 《中国制造 | 91 | 185 | 212 | 209 | SimHei,Regular | ABCDEE | 24 | False | False | native | 1.00 | #000000 |
+| 2025》重点领域技术路线图  | 218 | 185 | 519 | 209 | SimHei,Regular | ABCDEE | 24 | False | False | native | 1.00 | #000000 |
+|   | 83 | 215 | 86 | 225 | Times |  | 11 | False | False | native | 1.00 | #000000 |
+| 国家制造强国建设战略咨询委员会 | 140 | 630 | 441 | 650 | SimSun,Regular | ABCDEE | 20 | False | False | native | 1.00 | #000000 |
+|   | 441 | 634 | 449 | 649 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |
+|  2015 | 235 | 659 | 280 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 年 | 285 | 659 | 303 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 10 | 308 | 659 | 326 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+| 月 | 330 | 659 | 348 | 677 | SimSun,Regular | ABCDEE | 18 | False | False | native | 1.00 | #000000 |
+|                                 | 1 | 662 | 235 | 677 | SimSun,Regular | ABCDEE | 15 | False | False | native | 1.00 | #000000 |
+|   | 348 | 666 | 351 | 678 | Calibri | ABCDEE | 11 | False | False | native | 1.00 | #000000 |
+|   | 108 | 783 | 110 | 792 | Times |  | 9 | False | False | native | 1.00 | #000000 |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 0 | -4 | 597 | 906 | 597 | 910 | #000000 | #9bba58 | 0 |
+| -25 | -4 | 0 | 906 | 26 | 910 | #000000 | #000000 | 0 |
+| 0 | 0 | 595 | 842 | 595 | 842 | #000000 | #000000 | 0 |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 138 | 626 | 445 | 680 | abandon |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 142 | 642 | 461 | 839 | table |
+| 149 | 655 | 454 | 833 | table |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 149 | 654 | 453 | 675 | table column header |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 397 | 654 | 454 | 832 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 149 | 654 | 453 | 674 | table row |
+| 149 | 673 | 453 | 690 | table row |
+| 149 | 684 | 454 | 701 | table row |
+| 149 | 697 | 453 | 714 | table row |
+| 149 | 710 | 454 | 727 | table row |
+| 149 | 711 | 453 | 727 | table row |
+| 149 | 722 | 453 | 738 | table row |
+| 148 | 728 | 454 | 744 | table row |
+| 148 | 752 | 453 | 768 | table row |
+| 148 | 764 | 453 | 780 | table row |
+| 148 | 777 | 453 | 793 | table row |
+| 149 | 781 | 453 | 795 | table row |
+| 149 | 791 | 453 | 807 | table row |
+| 149 | 802 | 453 | 819 | table row |
+| 148 | 807 | 455 | 822 | table row |
+| 148 | 818 | 454 | 833 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 397 | 654 | 453 | 674 | table-cell |
+| 397 | 654 | 453 | 674 | table-cell |
+| 397 | 673 | 453 | 690 | table-cell |
+| 397 | 673 | 453 | 690 | table-cell |
+| 397 | 684 | 454 | 701 | table-cell |
+| 397 | 684 | 454 | 701 | table-cell |
+| 397 | 697 | 453 | 714 | table-cell |
+| 397 | 697 | 453 | 714 | table-cell |
+| 397 | 710 | 454 | 727 | table-cell |
+| 397 | 710 | 454 | 727 | table-cell |
+| 397 | 711 | 453 | 727 | table-cell |
+| 397 | 711 | 453 | 727 | table-cell |
+| 397 | 722 | 453 | 738 | table-cell |
+| 397 | 722 | 453 | 738 | table-cell |
+| 397 | 728 | 454 | 744 | table-cell |
+| 397 | 728 | 454 | 744 | table-cell |
+| 397 | 752 | 453 | 768 | table-cell |
+| 397 | 752 | 453 | 768 | table-cell |
+| 397 | 764 | 453 | 780 | table-cell |
+| 397 | 764 | 453 | 780 | table-cell |
+| 397 | 777 | 453 | 793 | table-cell |
+| 397 | 777 | 453 | 793 | table-cell |
+| 397 | 781 | 453 | 795 | table-cell |
+| 397 | 781 | 453 | 795 | table-cell |
+| 397 | 791 | 453 | 807 | table-cell |
+| 397 | 791 | 453 | 807 | table-cell |
+| 397 | 802 | 453 | 819 | table-cell |
+| 397 | 802 | 453 | 819 | table-cell |
+| 397 | 807 | 454 | 822 | table-cell |
+| 397 | 807 | 454 | 822 | table-cell |
+| 397 | 818 | 454 | 832 | table-cell |
+| 397 | 818 | 454 | 832 | table-cell |

@@ -1,0 +1,130 @@
+## Collection Inspection (84 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 50 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 283 | 690 | 330 | 719 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 18 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| BE IT ENACTED BY THE GENERAL ASSEMBLY OF GEORGIA: | 123 | 65 | 489 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 19 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| SECTION 1. | 270 | 110 | 342 | 123 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |
+| 20 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Chapter 2A of Title 31 of the Official Code of Geo... | 72 | 132 | 540 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 21 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| of public health, is amended by revising subsectio... | 72 | 154 | 540 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 22 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| to Maternal Mortality Review Committee established... | 72 | 177 | 415 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 23 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (d)(1)  Health care providers licensed pursuant to... | 94 | 199 | 540 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| " | 90 | 200 | 94 | 213 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |
+| 24 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| pursuant to Chapter 7 of Title 31, and pharmacies ... | 90 | 222 | 540 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 25 | 45 | 244 | 58 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 26 shall provide reasonable access to the committe... | 90 | 244 | 540 | 257 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 26 | 45 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| associated with a case under review by the committ... | 90 | 266 | 540 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 27 | 45 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| request for such records, unless prohibited by sta... | 90 | 289 | 431 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 28 | 45 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (2)  A health care provider, health care facility,... | 90 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 29 | 45 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| and psychiatric records pursuant to this Code sect... | 90 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 30 | 45 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| damages or be subject to any criminal or disciplin... | 90 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 31 | 45 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| providing such records. | 90 | 378 | 212 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| " | 212 | 379 | 216 | 392 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |
+| 32 | 45 | 423 | 58 | 436 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| SECTION 2. | 270 | 423 | 342 | 436 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |
+| 33 | 45 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Said chapter is further amended by adding a new ar... | 72 | 445 | 460 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 34 | 45 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| ARTICLE 4 | 276 | 490 | 340 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| " | 272 | 491 | 276 | 504 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |
+| 35 | 45 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 31-2A-70. | 81 | 535 | 135 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 36 | 45 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| As used in this article, the term: | 81 | 557 | 247 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 37 | 45 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (1)  'Advisory committee' or 'committee' means the... | 90 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 38 | 45 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Committee established pursuant to Code Section 31-... | 90 | 602 | 399 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 39 | 45 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (2)  'Regional perinatal center' means a specially... | 90 | 624 | 540 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 40 | 45 | 647 | 58 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| department and designated to a specific geographic... | 90 | 647 | 540 | 660 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| - 2 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 268 | 108 | 343 | 124 | title |
+| 268 | 420 | 343 | 437 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 59 | 129 | 543 | 393 | plain text |
+| 56 | 444 | 461 | 461 | plain text |
+| 48 | 532 | 544 | 664 | plain text |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 214 | 300 | 428 | 301 | 214 | 1 | #000000 | #000000 | 0 |
+| 90 | 345 | 170 | 345 | 80 | 1 | #000000 | #000000 | 0 |
+| 276 | 501 | 340 | 502 | 64 | 1 | #000000 | #000000 | 0 |
+| 81 | 546 | 135 | 547 | 54 | 1 | #000000 | #000000 | 0 |
+| 81 | 569 | 246 | 569 | 165 | 1 | #000000 | #000000 | 0 |
+| 90 | 591 | 540 | 592 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 613 | 399 | 614 | 309 | 1 | #000000 | #000000 | 0 |
+| 90 | 636 | 540 | 636 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 658 | 540 | 659 | 450 | 1 | #000000 | #000000 | 0 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 85 | 634 | 537 | 706 | table |
+| 88 | 644 | 536 | 704 | table |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 536 | 664 | table row |
+| 89 | 685 | 536 | 704 | table row |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 185 | 704 | table column |
+| 182 | 645 | 538 | 704 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 89 | 644 | 185 | 664 | table-cell |
+| 89 | 644 | 185 | 664 | table-cell |
+| 182 | 645 | 536 | 664 | table-cell |
+| 182 | 645 | 536 | 664 | table-cell |
+| 89 | 685 | 185 | 704 | table-cell |
+| 89 | 685 | 185 | 704 | table-cell |
+| 182 | 685 | 536 | 704 | table-cell |
+| 182 | 685 | 536 | 704 | table-cell |

@@ -1,0 +1,76 @@
+{
+  "document": "b5eVqGg_Math formulas in Russian _e.g. on page 181__",
+  "total_pages": 222,
+  "analyzed_pages": [
+    181
+  ],
+  "analysis_date": "2025-06-22T17:16:36.362763",
+  "pages": {
+    "181": {
+      "page_number": 181,
+      "dimensions": "595.276 × 841.89001 points",
+      "tests_performed": {},
+      "text_length": 1593,
+      "text_preview": "Постановление Правительства РФ от 29.12.2011 N 1178\n(ред. от 19.01.2022) Документ предоставленКонсультантПлюс\nДата сохранения: 07.02.2022\n\"О ценообразовании в области регулируемых цен (...\nгде:\nte - п...",
+      "character_count": 1564,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.04,
+      "standard_table": "43 rows × 4 columns",
+      "line_detection": {
+        "horizontal_lines": 33,
+        "vertical_lines": 0,
+        "total_lines": 33
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 50,
+        "processing_time": 0.963690996170044
+      },
+      "yolo_types": {
+        "abandon": 5,
+        "table_row": 32,
+        "isolate_formula": 3,
+        "plain text": 10
+      },
+      "tatr_analysis": {
+        "table_regions": 2,
+        "processing_time": 0.5784611701965332
+      },
+      "selector_large_text": 1,
+      "selector_small_text": 0,
+      "selector_bold_text": 4,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>416.69319999999993]...'. Full selector: '*[width>416.69319999999993]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/b5eVqGg_Math formulas in Russian _e.g. on page 181__/detailed_analysis_final/page_181.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

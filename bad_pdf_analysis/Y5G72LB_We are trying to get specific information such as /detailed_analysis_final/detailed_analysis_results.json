@@ -1,0 +1,119 @@
+{
+  "document": "Y5G72LB_We are trying to get specific information such as ",
+  "total_pages": 22,
+  "analyzed_pages": [
+    1,
+    11
+  ],
+  "analysis_date": "2025-06-22T17:13:28.104155",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "583 × 851 points",
+      "tests_performed": {},
+      "text_length": 804,
+      "text_preview": "011-23235058\nCENTRAL OFFICE 011-23235099\nAjoyShavan,15Com.IndrajitGuptaMarg,NewDelhi-110002 \\..i...,\\\nE-mail:cpiofindia@gmaiJ.com,nationalcouncil@communistparty.in,Web:www.communistparty.in\nD.RAJA\nGen...",
+      "character_count": 750,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.19,
+      "standard_table": "31 rows × 2 columns",
+      "line_detection": {
+        "horizontal_lines": 16,
+        "vertical_lines": 0,
+        "total_lines": 16
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 27,
+        "processing_time": 12.539989948272705
+      },
+      "yolo_types": {
+        "table_row": 15,
+        "abandon": 1,
+        "plain text": 9,
+        "figure": 2
+      },
+      "tatr_analysis": {
+        "table_regions": 0,
+        "processing_time": 3.9800949096679688
+      },
+      "selector_large_text": 110,
+      "selector_small_text": 0,
+      "selector_bold_text": 2,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>408.09999999999997]...'. Full selector: '*[width>408.09999999999997]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/Y5G72LB_We are trying to get specific information such as /detailed_analysis_final/page_1.png"
+    },
+    "11": {
+      "page_number": 11,
+      "dimensions": "590 × 843 points",
+      "tests_performed": {},
+      "text_length": 1339,
+      "text_preview": "Gross Expenditure by Political Party incurred/authorized for the Candidate(s) other than general party\nG\n~ropaganda (both atParty Central Headquarters andStatelDist.!Local units)\n. .\nDescription Amoun...",
+      "character_count": 1230,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "47 rows × 6 columns",
+      "line_detection": {
+        "horizontal_lines": 32,
+        "vertical_lines": 4,
+        "total_lines": 36
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 93
+      },
+      "yolo_analysis": {
+        "regions": 130,
+        "processing_time": 0.8193926811218262
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 31,
+        "table_column": 3,
+        "table_cell": 93,
+        "abandon": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.5657672882080078
+      },
+      "selector_large_text": 26,
+      "selector_small_text": 2,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>413.0]...'. Full selector: '*[width>413.0]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/Y5G72LB_We are trying to get specific information such as /detailed_analysis_final/page_11.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

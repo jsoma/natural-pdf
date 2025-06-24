@@ -1,0 +1,9 @@
+TATR Layout Analysis
+==================================================
+Found 25 regions:
+
+1. table at [25.35, 354.75, 571.91, 705.46] (conf: 1.00)
+2. table column at [232.21, 364.45, 276.62, 702.44] (conf: 1.00)
+3. table row at [25.04, 443.62, 570.97, 473.02] (conf: 0.92)
+4. table column at [441.52, 364.22, 514.22, 702.39] (conf: 1.00)
+5. table projected row header at [25.11, 528.74, 570.99, 552.56] (conf: 0.93)

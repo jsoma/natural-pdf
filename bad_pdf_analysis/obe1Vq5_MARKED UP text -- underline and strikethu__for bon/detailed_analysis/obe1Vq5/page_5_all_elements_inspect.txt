@@ -1,0 +1,103 @@
+## Collection Inspection (77 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 449 | 37 | 541 | 51 | abandon |
+| 71 | 37 | 86 | 50 | abandon |
+| 282 | 690 | 330 | 719 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 25 | 72 | 38 | 85 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| LC 57 0207S/AP | 451 | 38 | 540 | 51 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 92 | 45 | 65 | 58 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (1)  Such hospital's ability to meet the standards... | 90 | 65 | 495 | 78 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 93 | 45 | 87 | 58 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (2)  Any additional funding necessary to bring suc... | 90 | 87 | 482 | 100 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 94 | 45 | 110 | 58 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (3)  Any special planning problems in such hospita... | 90 | 110 | 540 | 123 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 95 | 45 | 132 | 58 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| limited to, transportation, shortage of facilities... | 90 | 132 | 413 | 145 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 96 | 45 | 154 | 58 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (4)  A description of perinatal care currently bei... | 90 | 154 | 408 | 167 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 97 | 45 | 177 | 58 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (5)  A description of services that can be provide... | 90 | 177 | 540 | 190 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 98 | 45 | 199 | 58 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| and consultation to hospitals within the perinatal... | 90 | 199 | 404 | 212 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 99 | 45 | 222 | 58 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| (6)  Any other information requested by the depart... | 90 | 222 | 381 | 235 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 100 | 38 | 266 | 58 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 31-2A-73. | 81 | 266 | 135 | 279 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 101 | 38 | 289 | 58 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Beginning on July 1, 2026, and every four years th... | 81 | 289 | 540 | 302 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 102 | 38 | 311 | 58 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| plan to the Governor, the Speaker of the House of ... | 81 | 311 | 540 | 324 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 103 | 38 | 333 | 58 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Senate for the designated perinatal centers in eve... | 81 | 334 | 540 | 346 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 104 | 38 | 356 | 58 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| include funding considerations to aid hospitals in... | 81 | 356 | 540 | 369 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 105 | 38 | 378 | 58 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| requirements, including, but not limited to, patie... | 81 | 378 | 540 | 391 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 106 | 38 | 401 | 58 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| programs, and physical facilities. | 81 | 401 | 253 | 414 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 107 | 38 | 445 | 58 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 31-2A-74. | 81 | 445 | 135 | 458 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 108 | 38 | 468 | 58 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| The department shall be authorized to promulgate r... | 81 | 468 | 540 | 481 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 109 | 38 | 490 | 58 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| purposes of this article. | 81 | 490 | 202 | 503 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| " | 202 | 491 | 206 | 504 | WP-Phonetic | IIDENN | 13 | False | False | native | 1.00 | #000000 |
+| 110 | 38 | 535 | 58 | 548 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| SECTION 3. | 270 | 535 | 342 | 548 | Times | IIDELN | 13 | True | False | native | 1.00 | #000000 |
+| 111 | 38 | 557 | 58 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| Code Section 37-3-166 of the Official Code of Geor... | 72 | 557 | 540 | 570 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 112 | 38 | 580 | 58 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| clinical records, when release permitted, scope of... | 72 | 580 | 540 | 593 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 113 | 38 | 602 | 58 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| disclosure, and notice to sheriff of discharge, is... | 72 | 602 | 540 | 615 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| 114 | 38 | 624 | 58 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| follows: | 72 | 624 | 114 | 637 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| H. B. 89 | 284 | 692 | 328 | 705 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+| - 5 - | 295 | 707 | 317 | 720 | Times | IIDEBA | 13 | False | False | native | 1.00 | #000000 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 84 | 62 | 543 | 238 | plain text |
+| 36 | 265 | 543 | 417 | plain text |
+| 36 | 443 | 543 | 506 | plain text |
+| 36 | 554 | 544 | 639 | plain text |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 90 | 76 | 495 | 77 | 405 | 1 | #000000 | #000000 | 0 |
+| 90 | 99 | 482 | 99 | 392 | 1 | #000000 | #000000 | 0 |
+| 90 | 121 | 540 | 122 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 143 | 413 | 144 | 323 | 1 | #000000 | #000000 | 0 |
+| 90 | 166 | 408 | 166 | 318 | 1 | #000000 | #000000 | 0 |
+| 90 | 188 | 540 | 189 | 450 | 1 | #000000 | #000000 | 0 |
+| 90 | 210 | 404 | 211 | 314 | 1 | #000000 | #000000 | 0 |
+| 90 | 233 | 381 | 234 | 291 | 1 | #000000 | #000000 | 0 |
+| 81 | 278 | 135 | 278 | 54 | 1 | #000000 | #000000 | 0 |
+| 81 | 300 | 540 | 301 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 322 | 540 | 323 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 345 | 540 | 345 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 367 | 540 | 368 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 390 | 540 | 390 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 412 | 253 | 413 | 172 | 1 | #000000 | #000000 | 0 |
+| 81 | 457 | 135 | 457 | 54 | 1 | #000000 | #000000 | 0 |
+| 81 | 479 | 540 | 480 | 459 | 1 | #000000 | #000000 | 0 |
+| 81 | 501 | 202 | 502 | 121 | 1 | #000000 | #000000 | 0 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 268 | 532 | 343 | 549 | title |

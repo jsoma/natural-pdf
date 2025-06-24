@@ -70,16 +70,16 @@ class HighlightRenderer:
         page: Page,
         base_image: Image.Image,
         highlights: List[Highlight],
-        scale: float,
+        scale_factor: float,
         render_ocr: bool,
     ):
         self.page = page  # Keep page reference for OCR rendering
         self.base_image = base_image.convert("RGBA")  # Ensure RGBA
         self.highlights = highlights
-        self.scale = scale
+        self.scale_factor = scale_factor  # Renamed from scale to scale_factor for clarity
         self.render_ocr = render_ocr
         self.result_image = self.base_image.copy()
-        self.vertex_size = max(3, int(2 * self.scale))  # Size of corner markers
+        self.vertex_size = max(3, int(2 * self.scale_factor))  # Size of corner markers
 
     def render(self) -> Image.Image:
         """Executes the rendering process."""
@@ -98,7 +98,7 @@ class HighlightRenderer:
             scaled_bbox = None
 
             if highlight.is_polygon:
-                scaled_polygon = [(p[0] * self.scale, p[1] * self.scale) for p in highlight.polygon]
+                scaled_polygon = [(p[0] * self.scale_factor, p[1] * self.scale_factor) for p in highlight.polygon]
                 # Draw polygon fill and border
                 draw.polygon(
                     scaled_polygon, fill=highlight.color, outline=highlight.border_color, width=2
@@ -113,10 +113,10 @@ class HighlightRenderer:
             else:  # Rectangle
                 x0, top, x1, bottom = highlight.bbox
                 x0_s, top_s, x1_s, bottom_s = (
-                    x0 * self.scale,
-                    top * self.scale,
-                    x1 * self.scale,
-                    bottom * self.scale,
+                    x0 * self.scale_factor,
+                    top * self.scale_factor,
+                    x1 * self.scale_factor,
+                    bottom * self.scale_factor,
                 )
                 scaled_bbox = [x0_s, top_s, x1_s, bottom_s]
                 # Draw rectangle fill and border
@@ -159,15 +159,15 @@ class HighlightRenderer:
         """Draws attribute key-value pairs on the highlight."""
         try:
             # Slightly larger font, scaled
-            font_size = max(10, int(8 * self.scale))
+            font_size = max(10, int(8 * self.scale_factor))
             # Prioritize monospace fonts for better alignment
             font = ImageFont.truetype("Arial.ttf", font_size)  # Fallback sans-serif
         except IOError:
             font = ImageFont.load_default()
             font_size = 10  # Reset size for default font
 
-        line_height = font_size + int(4 * self.scale)  # Scaled line spacing
-        bg_padding = int(3 * self.scale)
+        line_height = font_size + int(4 * self.scale_factor)  # Scaled line spacing
+        bg_padding = int(3 * self.scale_factor)
         max_width = 0
         text_lines = []
 
@@ -191,8 +191,8 @@ class HighlightRenderer:
         total_height = line_height * len(text_lines)
 
         # Position near top-right corner with padding
-        x = bbox_scaled[2] - int(2 * self.scale) - max_width
-        y = bbox_scaled[1] + int(2 * self.scale)
+        x = bbox_scaled[2] - int(2 * self.scale_factor) - max_width
+        y = bbox_scaled[1] + int(2 * self.scale_factor)
 
         # Draw background rectangle (semi-transparent white)
         bg_x0 = x - bg_padding
@@ -244,10 +244,10 @@ class HighlightRenderer:
         for element in ocr_elements:
             x0, top, x1, bottom = element.bbox
             x0_s, top_s, x1_s, bottom_s = (
-                x0 * self.scale,
-                top * self.scale,
-                x1 * self.scale,
-                bottom * self.scale,
+                x0 * self.scale_factor,
+                top * self.scale_factor,
+                x1 * self.scale_factor,
+                bottom * self.scale_factor,
             )
             box_w, box_h = x1_s - x0_s, bottom_s - top_s
 
@@ -581,11 +581,10 @@ class HighlightingService:
     def render_page(
         self,
         page_index: int,
-        scale: float = 2.0,
+        resolution: float = 144,
         labels: bool = True,
         legend_position: str = "right",
         render_ocr: bool = False,
-        resolution: Optional[float] = None,
         **kwargs,  # Pass other args to pdfplumber.page.to_image if needed
     ) -> Optional[Image.Image]:
         """
@@ -594,12 +593,11 @@ class HighlightingService:
 
         Args:
             page_index: The 0-based index of the page to render.
-            scale: Scale factor for rendering highlights if width/height/resolution not in kwargs.
+            resolution: Resolution (DPI) for the base page image if width/height not in kwargs.
+                       Defaults to 144 DPI (equivalent to previous scale=2.0).
             labels: Whether to include a legend for highlights.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text on the image.
-            resolution: Optional resolution (DPI) for the base page image if width/height not in kwargs.
-                       Defaults to scale * 72 if not otherwise specified.
             kwargs: Additional keyword arguments for pdfplumber's page.to_image (e.g., width, height).
 
         Returns:
@@ -625,12 +623,10 @@ class HighlightingService:
             logger.debug(f"Rendering page {page_index} with height={to_image_args['height']}.")
             # Actual scale will be calculated after image creation
         else:
-            # Use explicit resolution from kwargs if present, then the resolution param, then scale
+            # Use explicit resolution from kwargs if present, then the resolution param
             render_resolution = to_image_args.pop(
                 "resolution", resolution
             )  # Use and remove from kwargs if present
-            if render_resolution is None:
-                render_resolution = scale * 72
             to_image_args["resolution"] = render_resolution  # Add it back for the call
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
@@ -657,11 +653,11 @@ class HighlightingService:
                 if page_obj.width > 0:
                     actual_scale_x = base_image_pil.width / page_obj.width
                 else:
-                    actual_scale_x = scale  # Fallback
+                    actual_scale_x = resolution / 72.0  # Fallback to resolution-based scale
                 if page_obj.height > 0:
                     actual_scale_y = base_image_pil.height / page_obj.height
                 else:
-                    actual_scale_y = scale  # Fallback
+                    actual_scale_y = resolution / 72.0  # Fallback to resolution-based scale
                 logger.debug(
                     f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f}"
                 )
@@ -682,14 +678,20 @@ class HighlightingService:
                 page=page_obj,
                 base_image=base_image_pil,
                 highlights=highlights_on_page,
-                scale=renderer_scale,  # Use the determined actual scale
+                scale_factor=renderer_scale,  # Use the determined actual scale
                 render_ocr=render_ocr,
             )
             rendered_image = renderer.render()
         else:
             if render_ocr:
                 # Still render OCR even if no highlights, using the determined actual scale
-                renderer = HighlightRenderer(page_obj, base_image_pil, [], renderer_scale, True)
+                renderer = HighlightRenderer(
+                    page=page_obj,
+                    base_image=base_image_pil,
+                    highlights=[],
+                    scale_factor=renderer_scale,
+                    render_ocr=True,
+                )
                 rendered_image = renderer.render()
             else:
                 rendered_image = base_image_pil  # No highlights, no OCR requested
@@ -722,11 +724,10 @@ class HighlightingService:
         self,
         page_index: int,
         temporary_highlights: List[Dict],
-        scale: float = 2.0,
+        resolution: float = 144,
         labels: bool = True,
         legend_position: str = "right",
         render_ocr: bool = False,
-        resolution: Optional[float] = None,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> Optional[Image.Image]:
@@ -737,11 +738,11 @@ class HighlightingService:
         Args:
             page_index: Index of the page to render.
             temporary_highlights: List of highlight data dicts (from ElementCollection._prepare).
-            scale: Original scale factor for rendering, used if width/height are not provided.
+            resolution: Resolution (DPI) for base page image rendering if width/height not used.
+                       Defaults to 144 DPI (equivalent to previous scale=2.0).
             labels: Whether to include a legend.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text.
-            resolution: Resolution for base page image rendering if width/height not used.
             crop_bbox: Optional bounding box (x0, top, x1, bottom) in PDF coordinate
                 space to crop the output image to, before legends or other overlays are
                 applied. If None, no cropping is performed.
@@ -777,8 +778,8 @@ class HighlightingService:
             # Resolution is implicitly handled by pdfplumber when height is set
             # after image is created, we will calculate actual_scale_x and actual_scale_y
         else:
-            # Neither width nor height is provided, use resolution or scale.
-            render_resolution = resolution if resolution is not None else scale * 72
+            # Neither width nor height is provided, use resolution.
+            render_resolution = resolution
             to_image_args["resolution"] = render_resolution
             actual_scale_x = render_resolution / 72.0
             actual_scale_y = render_resolution / 72.0
@@ -804,11 +805,11 @@ class HighlightingService:
                 if page_obj.width > 0:
                     actual_scale_x = base_image_pil.width / page_obj.width
                 else:
-                    actual_scale_x = scale  # Fallback to original scale
+                    actual_scale_x = resolution / 72.0  # Fallback to resolution-based scale
                 if page_obj.height > 0:
                     actual_scale_y = base_image_pil.height / page_obj.height
                 else:
-                    actual_scale_y = scale  # Fallback to original scale
+                    actual_scale_y = resolution / 72.0  # Fallback to resolution-based scale
                 logger.debug(
                     f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f} from image size {base_image_pil.size} and page size ({page_obj.width}, {page_obj.height})"
                 )
@@ -855,7 +856,11 @@ class HighlightingService:
             renderer_scale = actual_scale_x
 
             renderer = HighlightRenderer(
-                page_obj, base_image_pil, preview_highlights, renderer_scale, render_ocr
+                page=page_obj,
+                base_image=base_image_pil,
+                highlights=preview_highlights,
+                scale_factor=renderer_scale,
+                render_ocr=render_ocr,
             )
             rendered_image = renderer.render()
 

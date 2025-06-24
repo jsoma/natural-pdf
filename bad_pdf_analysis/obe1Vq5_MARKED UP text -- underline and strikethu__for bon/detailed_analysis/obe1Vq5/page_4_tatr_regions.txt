@@ -1,0 +1,116 @@
+TATR Layout Regions (87 found)
+==================================================
+
+## Collection Inspection (87 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 82 | 125 | 536 | 595 | table |
+| 81 | 144 | 535 | 570 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 80 | 139 | 95 | 570 | table column |
+| 110 | 148 | 537 | 569 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 192 | 535 | 215 | table row |
+| 81 | 237 | 535 | 260 | table row |
+| 81 | 261 | 535 | 283 | table row |
+| 81 | 283 | 535 | 305 | table row |
+| 81 | 304 | 535 | 327 | table row |
+| 81 | 327 | 535 | 350 | table row |
+| 81 | 375 | 535 | 397 | table row |
+| 81 | 397 | 535 | 419 | table row |
+| 81 | 418 | 535 | 440 | table row |
+| 81 | 437 | 535 | 465 | table row |
+| 81 | 464 | 535 | 486 | table row |
+| 81 | 485 | 535 | 508 | table row |
+| 81 | 508 | 535 | 530 | table row |
+| 81 | 530 | 535 | 551 | table row |
+| 81 | 551 | 535 | 570 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 192 | 95 | 215 | table-cell |
+| 81 | 192 | 95 | 215 | table-cell |
+| 110 | 192 | 535 | 215 | table-cell |
+| 110 | 192 | 535 | 215 | table-cell |
+| 81 | 237 | 95 | 260 | table-cell |
+| 81 | 237 | 95 | 260 | table-cell |
+| 110 | 237 | 535 | 260 | table-cell |
+| 110 | 237 | 535 | 260 | table-cell |
+| 81 | 261 | 95 | 283 | table-cell |
+| 81 | 261 | 95 | 283 | table-cell |
+| 110 | 261 | 535 | 283 | table-cell |
+| 110 | 261 | 535 | 283 | table-cell |
+| 81 | 283 | 95 | 305 | table-cell |
+| 81 | 283 | 95 | 305 | table-cell |
+| 110 | 283 | 535 | 305 | table-cell |
+| 110 | 283 | 535 | 305 | table-cell |
+| 81 | 304 | 95 | 327 | table-cell |
+| 81 | 304 | 95 | 327 | table-cell |
+| 110 | 304 | 535 | 327 | table-cell |
+| 110 | 304 | 535 | 327 | table-cell |
+| 81 | 327 | 95 | 350 | table-cell |
+| 81 | 327 | 95 | 350 | table-cell |
+| 110 | 327 | 535 | 350 | table-cell |
+| 110 | 327 | 535 | 350 | table-cell |
+| 81 | 375 | 95 | 397 | table-cell |
+| 81 | 375 | 95 | 397 | table-cell |
+| 110 | 375 | 535 | 397 | table-cell |
+| 110 | 375 | 535 | 397 | table-cell |
+| 81 | 397 | 95 | 419 | table-cell |
+| 81 | 397 | 95 | 419 | table-cell |
+| 110 | 397 | 535 | 419 | table-cell |
+| 110 | 397 | 535 | 419 | table-cell |
+| 81 | 418 | 95 | 440 | table-cell |
+| 81 | 418 | 95 | 440 | table-cell |
+| 110 | 418 | 535 | 440 | table-cell |
+| 110 | 418 | 535 | 440 | table-cell |
+| 81 | 437 | 95 | 465 | table-cell |
+| 81 | 437 | 95 | 465 | table-cell |
+| 110 | 437 | 535 | 465 | table-cell |
+| 110 | 437 | 535 | 465 | table-cell |
+| 81 | 464 | 95 | 486 | table-cell |
+| 81 | 464 | 95 | 486 | table-cell |
+| 110 | 464 | 535 | 486 | table-cell |
+| 110 | 464 | 535 | 486 | table-cell |
+| 81 | 485 | 95 | 508 | table-cell |
+| 81 | 485 | 95 | 508 | table-cell |
+| 110 | 485 | 535 | 508 | table-cell |
+| 110 | 485 | 535 | 508 | table-cell |
+| 81 | 508 | 95 | 530 | table-cell |
+| 81 | 508 | 95 | 530 | table-cell |
+| 110 | 508 | 535 | 530 | table-cell |
+| 110 | 508 | 535 | 530 | table-cell |
+| 81 | 530 | 95 | 551 | table-cell |
+| 81 | 530 | 95 | 551 | table-cell |
+| 110 | 530 | 535 | 551 | table-cell |
+| 110 | 530 | 535 | 551 | table-cell |
+| 81 | 551 | 95 | 570 | table-cell |
+| 81 | 551 | 95 | 570 | table-cell |
+| 110 | 551 | 535 | 569 | table-cell |
+| 110 | 551 | 535 | 569 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 81 | 261 | 535 | 284 | table projected row header |
+| 81 | 327 | 535 | 349 | table projected row header |
+| 81 | 374 | 535 | 397 | table projected row header |
+| 81 | 439 | 535 | 464 | table projected row header |
+| 81 | 464 | 535 | 485 | table projected row header |
+| 81 | 485 | 535 | 507 | table projected row header |
+| 81 | 508 | 535 | 530 | table projected row header |
+| 81 | 530 | 535 | 551 | table projected row header |

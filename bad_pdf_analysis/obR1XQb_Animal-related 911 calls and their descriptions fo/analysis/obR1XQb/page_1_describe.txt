@@ -1,0 +1,20 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 106 elements
+- **line**: 6 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 105
+    - Helvetica: 1
+  - **sizes**:
+    - 14.0pt: 85
+    - 12.0pt: 13
+    - 16.0pt: 5
+    - 10.0pt: 2
+    - 6.0pt: 1
+  - styles: 54 bold

@@ -1,0 +1,349 @@
+## Collection Inspection (318 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+|   | 290 | 18 | 296 | 44 | Times |  | 26 | False | False | native | 1.00 | #000000 |
+| OECCD Prrogrammme for  | 172 | 48 | 413 | 74 | Times |  | 26 | False | False | native | 1.00 | #000000 |
+| Innternattionall Studdent AAssesssmentt 20122  | 86 | 78 | 499 | 104 | Times |  | 26 | False | False | native | 1.00 | #000000 |
+| Č | 404 | 168 | 408 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |
+| eská | 408 | 168 | 425 | 177 | Calibri | BCPCDG | 9 | False | True | native | 1.00 | #000000 |
+|   | 425 | 168 | 427 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |
+| rrepublika | 427 | 168 | 462 | 177 | Calibri | BCPCDG | 9 | False | True | native | 1.00 | #000000 |
+|   | 462 | 168 | 464 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |
+|   | 333 | 169 | 335 | 178 | Arial | EQNPUL | 9 | False | False | native | 1.00 | #000000 |
+| Datum | 345 | 195 | 373 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+|   | 373 | 195 | 375 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+| ttestování | 375 | 195 | 412 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+|   | 412 | 195 | 415 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+| ( | 415 | 195 | 418 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+| Hla  v  n  í šetře | 418 | 195 | 465 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+| ní | 465 | 195 | 472 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+|   | 472 | 195 | 474 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+| PISA | 475 | 195 | 492 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+|   | 492 | 195 | 495 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+| 20 | 495 | 195 | 505 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+| 12)  | 505 | 195 | 520 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+|   | 123 | 220 | 129 | 246 | Calibri | BCNMPH | 26 | False | False | native | 1.00 | #000000 |
+| 201 | 493 | 223 | 508 | 233 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |
+| 2  | 508 | 223 | 516 | 233 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |
+|   | 463 | 227 | 465 | 236 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |
+| ěě | 429 | 236 | 434 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |
+| síc | 435 | 236 | 444 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |
+|   | 444 | 236 | 446 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |
+| Den | 355 | 236 | 370 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |
+|   | 370 | 236 | 372 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |
+| M | 422 | 236 | 429 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |
+| ORGANISATION | 14 | 241 | 49 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+|   | 49 | 241 | 51 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| FOOR | 51 | 241 | 60 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+|   | 60 | 241 | 61 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| ECONOMIC | 61 | 241 | 86 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+|    | 86 | 241 | 89 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| AND | 50 | 247 | 60 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+|   | 60 | 247 | 62 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| DEVELOPMENT | 62 | 247 | 96 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+| CO | 14 | 247 | 21 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+| ‐ | 21 | 247 | 23 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| OPERATION | 22 | 247 | 49 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |
+|   | 49 | 247 | 50 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 96 | 247 | 97 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 254 | 15 | 260 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 261 | 15 | 266 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 268 | 15 | 273 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 274 | 15 | 280 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 281 | 15 | 286 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| Žákovskký | 225 | 284 | 276 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |
+|   | 276 | 284 | 280 | 298 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |
+| dotazník | 280 | 284 | 328 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |
+|   | 328 | 284 | 331 | 298 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |
+| – | 331 | 284 | 338 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |
+|   | 14 | 288 | 15 | 293 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 294 | 15 | 300 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| verze | 225 | 301 | 255 | 315 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |
+|   | 255 | 301 | 258 | 315 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |
+| A | 258 | 301 | 266 | 315 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |
+|   | 14 | 301 | 15 | 307 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|    | 14 | 308 | 17 | 313 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 315 | 15 | 320 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 321 | 15 | 327 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 328 | 15 | 334 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 335 | 15 | 340 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 341 | 15 | 347 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 348 | 15 | 354 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 355 | 15 | 360 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 362 | 15 | 367 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 368 | 15 | 374 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 375 | 15 | 380 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 382 | 15 | 387 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 388 | 15 | 394 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 395 | 15 | 401 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 402 | 15 | 407 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 408 | 15 | 414 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 415 | 15 | 421 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 422 | 15 | 427 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 429 | 15 | 434 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 435 | 15 | 441 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 442 | 15 | 448 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 449 | 15 | 454 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 456 | 15 | 461 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 462 | 15 | 468 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 469 | 15 | 474 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 476 | 15 | 481 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 482 | 15 | 488 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 489 | 15 | 495 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 543 | 569 | 545 | 574 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 574 | 15 | 579 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 581 | 15 | 586 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+| Tento | 65 | 589 | 91 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 91 | 589 | 93 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| proojekt | 93 | 589 | 125 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 126 | 589 | 128 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| je | 128 | 589 | 136 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 136 | 589 | 139 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| spoluufinancován | 139 | 589 | 212 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 212 | 589 | 214 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| Evropským | 214 | 589 | 263 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 263 | 589 | 265 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| ssociálním | 265 | 589 | 308 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 308 | 589 | 311 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| fonndem | 311 | 589 | 345 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 345 | 589 | 348 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| a | 348 | 589 | 353 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 353 | 589 | 356 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| státnním | 356 | 589 | 389 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 389 | 589 | 392 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| rozpo | 392 | 589 | 417 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+| č | 417 | 589 | 422 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| teem | 422 | 589 | 441 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|  Č | 441 | 589 | 449 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| eské | 449 | 589 | 469 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 469 | 589 | 472 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+| reppubliky. | 472 | 589 | 516 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |
+|   | 516 | 589 | 518 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |
+|   | 14 | 601 | 15 | 606 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 608 | 15 | 613 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |
+|   | 14 | 615 | 16 | 625 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #49442a |
+|   | 305 | 640 | 308 | 648 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Č | 305 | 649 | 311 | 657 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |
+| lenové konsorcia | 311 | 649 | 376 | 657 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|   | 305 | 658 | 308 | 666 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Australian Counccil for Educatioonal Research (ACE... | 312 | 668 | 552 | 676 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 668 | 309 | 676 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 669 | 311 | 677 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| cApStAn Linguistic Quality Conntrol (Belgie)  | 312 | 678 | 480 | 686 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 678 | 309 | 686 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 679 | 311 | 687 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| Deutsches Instituut für Internatioonale Pädagoggis... | 312 | 687 | 553 | 695 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 687 | 309 | 695 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 688 | 311 | 696 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| (DIPF, N | 323 | 697 | 354 | 705 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| ě | 354 | 697 | 359 | 705 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |
+| meckko)  | 359 | 697 | 388 | 705 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Educational Testing Service (ETTS, USA)  | 312 | 706 | 465 | 714 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 706 | 309 | 714 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 707 | 311 | 715 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| Insstitutt for Lærerutdanning og Skoleutviklingg (... | 312 | 716 | 540 | 724 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 716 | 309 | 724 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 717 | 311 | 725 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| Leiibniz - Institutee for Science annd Mathematicc... | 312 | 726 | 533 | 734 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 726 | 309 | 734 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 727 | 311 | 735 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| (IPN, N | 323 | 735 | 349 | 743 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| ě | 349 | 735 | 354 | 743 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |
+| meckoo)  | 354 | 735 | 384 | 743 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Nattional Institutefor Educationnal Policy Reseear... | 312 | 745 | 572 | 753 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 745 | 309 | 753 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 746 | 311 | 754 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| Thee Tao Initiativee: CRP - Henri TTudor and Univv... | 312 | 755 | 573 | 763 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 755 | 309 | 763 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 755 | 311 | 763 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| EMACS (Lucemmbursko)  | 323 | 764 | 414 | 772 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Unité d'analyse ddes systèmes eet des pratiques d'... | 312 | 773 | 556 | 781 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 774 | 309 | 782 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 774 | 311 | 782 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+| (aSPe, Belgie) | 323 | 783 | 377 | 791 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+| Weestat (USA)  | 312 | 792 | 365 | 800 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+|  | 305 | 792 | 309 | 800 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |
+|   | 309 | 793 | 311 | 801 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |
+|   | 269 | 802 | 272 | 810 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 84 | 46 | 495 | 103 | title |
+| 304 | 647 | 377 | 658 | title |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 6 | 105 | 54 | 105 | 48 | 0 | #000000 | #000000 | 0 |
+| 54 | 105 | 108 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 108 | 105 | 161 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 161 | 105 | 215 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 215 | 105 | 269 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 269 | 105 | 323 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 376 | 105 | 430 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 430 | 105 | 484 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 484 | 105 | 538 | 105 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 105 | 573 | 105 | 36 | 0 | #000000 | #000000 | 0 |
+| 327 | 187 | 328 | 188 | 0 | 0 | #000000 | #000000 | 0 |
+| 327 | 187 | 376 | 188 | 49 | 0 | #000000 | #000000 | 0 |
+| 376 | 187 | 430 | 188 | 54 | 0 | #000000 | #000000 | 0 |
+| 430 | 187 | 484 | 188 | 54 | 0 | #000000 | #000000 | 0 |
+| 484 | 187 | 538 | 188 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 187 | 539 | 188 | 1 | 0 | #000000 | #000000 | 0 |
+| 327 | 188 | 328 | 210 | 0 | 22 | #000000 | #000000 | 0 |
+| 538 | 188 | 539 | 210 | 0 | 22 | #000000 | #000000 | 0 |
+| 327 | 210 | 376 | 210 | 49 | 0 | #000000 | #000000 | 0 |
+| 376 | 210 | 430 | 210 | 54 | 0 | #000000 | #000000 | 0 |
+| 430 | 210 | 484 | 210 | 54 | 0 | #000000 | #000000 | 0 |
+| 484 | 210 | 538 | 210 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 210 | 539 | 210 | 1 | 0 | #000000 | #000000 | 0 |
+| 327 | 210 | 328 | 246 | 0 | 35 | #000000 | #000000 | 0 |
+| 397 | 210 | 398 | 246 | 0 | 35 | #000000 | #000000 | 0 |
+| 468 | 210 | 468 | 246 | 0 | 35 | #000000 | #000000 | 0 |
+| 538 | 210 | 539 | 246 | 0 | 35 | #000000 | #000000 | 0 |
+| 333 | 231 | 376 | 231 | 44 | 0 | #000000 | #000000 | 0 |
+| 376 | 231 | 392 | 231 | 15 | 0 | #000000 | #000000 | 0 |
+| 403 | 231 | 430 | 231 | 27 | 0 | #000000 | #000000 | 0 |
+| 430 | 231 | 463 | 231 | 33 | 0 | #000000 | #000000 | 0 |
+| 327 | 245 | 376 | 246 | 49 | 0 | #000000 | #000000 | 0 |
+| 376 | 245 | 397 | 246 | 21 | 0 | #000000 | #000000 | 0 |
+| 398 | 245 | 430 | 246 | 33 | 0 | #000000 | #000000 | 0 |
+| 430 | 245 | 468 | 246 | 38 | 0 | #000000 | #000000 | 0 |
+| 468 | 245 | 484 | 246 | 15 | 0 | #000000 | #000000 | 0 |
+| 484 | 245 | 538 | 246 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 245 | 538 | 246 | 1 | 0 | #000000 | #000000 | 0 |
+| 538 | 245 | 539 | 246 | 0 | 0 | #000000 | #000000 | 0 |
+| 591 | 638 | 594 | 639 | 3 | 0 | #000000 | #000000 | 0 |
+| 594 | 638 | 594 | 820 | 0 | 182 | #000000 | #000000 | 0 |
+| 7 | 638 | 7 | 639 | 0 | 0 | #000000 | #000000 | 0 |
+| 7 | 638 | 54 | 639 | 47 | 0 | #000000 | #000000 | 0 |
+| 54 | 638 | 108 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 108 | 638 | 161 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 161 | 638 | 215 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 215 | 638 | 269 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 269 | 638 | 323 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 376 | 638 | 430 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 430 | 638 | 484 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 484 | 638 | 538 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 638 | 591 | 639 | 54 | 0 | #000000 | #000000 | 0 |
+| 591 | 639 | 594 | 820 | 2 | 181 | #000000 | #000000 | 0 |
+| 7 | 639 | 7 | 820 | 0 | 181 | #000000 | #000000 | 0 |
+| 263 | 639 | 264 | 820 | 0 | 181 | #000000 | #000000 | 0 |
+| 264 | 639 | 269 | 820 | 5 | 181 | #000000 | #000000 | 0 |
+| 269 | 639 | 323 | 820 | 54 | 181 | #000000 | #000000 | 0 |
+| 269 | 639 | 323 | 648 | 53 | 9 | #000000 | #000000 | 0 |
+| 376 | 639 | 430 | 676 | 54 | 37 | #000000 | #000000 | 0 |
+| 430 | 639 | 484 | 676 | 54 | 37 | #000000 | #000000 | 0 |
+| 484 | 639 | 538 | 676 | 54 | 37 | #000000 | #000000 | 0 |
+| 538 | 639 | 591 | 820 | 54 | 181 | #000000 | #000000 | 0 |
+| 538 | 639 | 589 | 676 | 51 | 37 | #000000 | #000000 | 0 |
+| 269 | 648 | 323 | 657 | 53 | 9 | #000000 | #000000 | 0 |
+| 305 | 656 | 323 | 657 | 17 | 1 | #000000 | #000000 | 0 |
+| 269 | 657 | 323 | 666 | 53 | 9 | #000000 | #000000 | 0 |
+| 269 | 666 | 323 | 676 | 53 | 10 | #000000 | #000000 | 0 |
+| 269 | 676 | 323 | 686 | 53 | 10 | #000000 | #000000 | 0 |
+| 376 | 676 | 430 | 686 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 676 | 484 | 686 | 54 | 10 | #000000 | #000000 | 0 |
+| 484 | 676 | 538 | 696 | 54 | 20 | #000000 | #000000 | 0 |
+| 538 | 676 | 589 | 696 | 51 | 20 | #000000 | #000000 | 0 |
+| 269 | 686 | 323 | 696 | 53 | 10 | #000000 | #000000 | 0 |
+| 376 | 686 | 430 | 696 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 686 | 484 | 696 | 54 | 10 | #000000 | #000000 | 0 |
+| 376 | 696 | 430 | 705 | 54 | 9 | #000000 | #000000 | 0 |
+| 269 | 696 | 323 | 714 | 53 | 19 | #000000 | #000000 | 0 |
+| 430 | 696 | 484 | 714 | 54 | 19 | #000000 | #000000 | 0 |
+| 484 | 696 | 538 | 724 | 54 | 29 | #000000 | #000000 | 0 |
+| 538 | 696 | 589 | 724 | 51 | 29 | #000000 | #000000 | 0 |
+| 376 | 705 | 430 | 714 | 54 | 10 | #000000 | #000000 | 0 |
+| 269 | 714 | 323 | 724 | 53 | 10 | #000000 | #000000 | 0 |
+| 376 | 714 | 430 | 724 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 714 | 484 | 724 | 54 | 10 | #000000 | #000000 | 0 |
+| 269 | 724 | 323 | 734 | 53 | 10 | #000000 | #000000 | 0 |
+| 376 | 724 | 430 | 734 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 724 | 484 | 734 | 54 | 10 | #000000 | #000000 | 0 |
+| 484 | 724 | 538 | 734 | 54 | 10 | #000000 | #000000 | 0 |
+| 538 | 724 | 589 | 753 | 51 | 29 | #000000 | #000000 | 0 |
+| 269 | 734 | 323 | 753 | 53 | 19 | #000000 | #000000 | 0 |
+| 376 | 734 | 430 | 743 | 54 | 9 | #000000 | #000000 | 0 |
+| 430 | 734 | 484 | 753 | 54 | 19 | #000000 | #000000 | 0 |
+| 484 | 734 | 538 | 753 | 54 | 19 | #000000 | #000000 | 0 |
+| 376 | 743 | 430 | 753 | 54 | 10 | #000000 | #000000 | 0 |
+| 269 | 753 | 323 | 763 | 53 | 10 | #000000 | #000000 | 0 |
+| 376 | 753 | 430 | 763 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 753 | 484 | 763 | 54 | 10 | #000000 | #000000 | 0 |
+| 484 | 753 | 538 | 763 | 54 | 10 | #000000 | #000000 | 0 |
+| 538 | 753 | 589 | 763 | 51 | 10 | #000000 | #000000 | 0 |
+| 269 | 763 | 323 | 782 | 53 | 19 | #000000 | #000000 | 0 |
+| 376 | 763 | 430 | 772 | 54 | 9 | #000000 | #000000 | 0 |
+| 430 | 763 | 484 | 782 | 54 | 19 | #000000 | #000000 | 0 |
+| 484 | 763 | 538 | 782 | 54 | 19 | #000000 | #000000 | 0 |
+| 538 | 763 | 589 | 782 | 51 | 19 | #000000 | #000000 | 0 |
+| 376 | 772 | 430 | 782 | 54 | 10 | #000000 | #000000 | 0 |
+| 269 | 782 | 323 | 801 | 53 | 19 | #000000 | #000000 | 0 |
+| 376 | 782 | 430 | 810 | 54 | 28 | #000000 | #000000 | 0 |
+| 430 | 782 | 484 | 810 | 54 | 28 | #000000 | #000000 | 0 |
+| 484 | 782 | 538 | 810 | 54 | 28 | #000000 | #000000 | 0 |
+| 538 | 782 | 589 | 810 | 51 | 28 | #000000 | #000000 | 0 |
+| 269 | 801 | 323 | 810 | 53 | 9 | #000000 | #000000 | 0 |
+| 376 | 810 | 430 | 820 | 54 | 10 | #000000 | #000000 | 0 |
+| 430 | 810 | 484 | 820 | 54 | 10 | #000000 | #000000 | 0 |
+| 484 | 810 | 538 | 820 | 54 | 10 | #000000 | #000000 | 0 |
+| 591 | 820 | 594 | 828 | 2 | 8 | #000000 | #000000 | 0 |
+| 594 | 820 | 594 | 820 | 0 | 0 | #000000 | #000000 | 0 |
+| 7 | 820 | 54 | 821 | 47 | 0 | #000000 | #000000 | 0 |
+| 54 | 820 | 108 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 108 | 820 | 161 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 161 | 820 | 215 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 215 | 820 | 269 | 821 | 54 | 0 | #000000 | #000000 | 0 |
+| 269 | 820 | 323 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 376 | 820 | 430 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 430 | 820 | 484 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 484 | 820 | 538 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 538 | 820 | 591 | 829 | 54 | 8 | #000000 | #000000 | 0 |
+| 594 | 820 | 594 | 829 | 0 | 9 | #000000 | #000000 | 0 |
+| 7 | 821 | 7 | 829 | 0 | 9 | #000000 | #000000 | 0 |
+| 7 | 821 | 54 | 829 | 46 | 8 | #000000 | #000000 | 0 |
+| 13 | 821 | 54 | 827 | 41 | 7 | #000000 | #000000 | 0 |
+| 215 | 821 | 263 | 829 | 48 | 8 | #000000 | #000000 | 0 |
+| 215 | 821 | 258 | 827 | 43 | 7 | #000000 | #000000 | 0 |
+| 263 | 821 | 264 | 829 | 0 | 9 | #000000 | #000000 | 0 |
+| 264 | 821 | 269 | 829 | 5 | 8 | #000000 | #000000 | 0 |
+| 591 | 829 | 594 | 829 | 2 | 0 | #000000 | #000000 | 0 |
+| 594 | 829 | 594 | 829 | 0 | 0 | #000000 | #000000 | 0 |
+| 7 | 829 | 54 | 829 | 47 | 0 | #000000 | #000000 | 0 |
+| 54 | 829 | 108 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 108 | 829 | 161 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 161 | 829 | 215 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 215 | 829 | 263 | 829 | 48 | 0 | #000000 | #000000 | 0 |
+| 264 | 829 | 269 | 829 | 5 | 0 | #000000 | #000000 | 0 |
+| 269 | 829 | 323 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 376 | 829 | 430 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 430 | 829 | 484 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 484 | 829 | 538 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+| 538 | 829 | 591 | 829 | 54 | 0 | #000000 | #000000 | 0 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 326 | 186 | 540 | 247 | table |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 222 | 282 | 340 | 315 | plain text |
+| 62 | 587 | 518 | 601 | plain text |
+| 304 | 666 | 570 | 802 | plain text |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 36 | 491 | 546 | 575 | abandon |

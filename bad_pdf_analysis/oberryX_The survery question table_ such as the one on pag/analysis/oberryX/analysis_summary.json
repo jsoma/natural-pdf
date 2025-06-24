@@ -1,0 +1,486 @@
+{
+  "pdf_name": "oberryX.pdf",
+  "pdf_path": "bad_pdf_analysis/oberryX_The survery question table_ such as the one on pag/oberryX.pdf",
+  "analysis_timestamp": "2025-06-22T14:31:58.427055",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 595.22,
+        "height": 842
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 164 elements\n- **rect**: 147 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Calibri: 117\n    - Arial: 34\n    - SymbolMT: 10\n    - Times: 3\n  - **sizes**:\n    - 5.5pt: 55\n    - 8.0pt: 43\n    - 11.0pt: 26\n    - 10.0pt: 15\n    - 9.0pt: 13\n    - 14.0pt: 8\n    - 26.0pt: 4\n  - styles: 23 bold, 5 italic\n  - **colors**:\n    - black: 108\n    - other: 56",
+      "extract_text": {
+        "length": 1004,
+        "preview": "OECCD Prrogrammme for\\nInnternattionall Studdent AAssesssmentt 20122\\n\u010cesk\u00e1 rrepublika\\nDatum ttestov\u00e1n\u00ed (Hla v n \u00ed \u0161et\u0159en\u00ed PISA 2012)\\n2012\\nORGANISATION FOOR ECONOMIC Den M\u011b\u011bs\u00edc\\nCO\u2010OPERATION AND DEVELOPMENT\\n\u017d\u00e1kovskk\u00fd dotazn\u00edk \u2013\\nverze A\\nTento proojekt je spoluufinancov\u00e1n Evropsk\u00fdm ssoci\u00e1ln\u00edm fonndem a s",
+        "full_text": "OECCD Prrogrammme for\nInnternattionall Studdent AAssesssmentt 20122\n\u010cesk\u00e1 rrepublika\nDatum ttestov\u00e1n\u00ed (Hla v n \u00ed \u0161et\u0159en\u00ed PISA 2012)\n2012\nORGANISATION FOOR ECONOMIC Den M\u011b\u011bs\u00edc\nCO\u2010OPERATION AND DEVELOPMENT\n\u017d\u00e1kovskk\u00fd dotazn\u00edk \u2013\nverze A\nTento proojekt je spoluufinancov\u00e1n Evropsk\u00fdm ssoci\u00e1ln\u00edm fonndem a st\u00e1tnn\u00edm rozpo\u010dteem \u010cesk\u00e9 reppubliky.\n\u010clenov\u00e9 konsorcia\n\uf0b7 Australian Counccil for Educatioonal Research (ACER, Austr\u00e1\u00e1lie)\n\uf0b7 cApStAn Linguistic Quality Conntrol (Belgie)\n\uf0b7 Deutsches Instituut f\u00fcr Internatioonale P\u00e4dagoggische Forschuung\n(DIPF, N\u011bmeckko)\n\uf0b7 Educational Testing Service (ETTS, USA)\n\uf0b7 Insstitutt for L\u00e6rerutdanning og Skoleutviklingg (ILS, Norsko)\n\uf0b7 Leiibniz - Institutee for Science annd Mathematiccs Education\n(IPN, N\u011bmeckoo)\n\uf0b7 Nattional Institutefor Educationnal Policy Reseearch (NIER, Jaaponsko)\n\uf0b7 Thee Tao Initiativee: CRP - Henri TTudor and Univversit\u00e9 de Luxeembourg\nEMACS (Lucemmbursko)\n\uf0b7 Unit\u00e9 d'analyse ddes syst\u00e8mes eet des pratiques d'enseignemment\n(aSPe, Belgie)\n\uf0b7 Weestat (USA)"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 20,
+        "columns": 14,
+        "data": [
+          [
+            "",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "",
+            "",
+            "",
+            "il for Educatioo",
+            "nal Research",
+            "(ACER, Austr\u00e1\u00e1",
+            "lie)"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\u010clen",
+            "ov\u00e9 konsorcia",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "",
+            "",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Au",
+            "stralian Councc",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 cA",
+            "pStAn Linguis",
+            "tic Quality Con",
+            "ntrol (Belgie)",
+            "ische Forschuu",
+            "ng"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 De",
+            "utsches Instituu",
+            "t f\u00fcr Internatio",
+            "onale P\u00e4dagogg",
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Ed",
+            "(DIPF, N\u011bmec",
+            "kko)",
+            "TTS, USA)",
+            "(ILS, Norsko)",
+            ""
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "ucational Test",
+            "ing Service (E",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Inss",
+            "titutt for L\u00e6re",
+            "rutdanning og",
+            "Skoleutviklingg",
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Leii",
+            "bniz - Institutee",
+            "for Science a",
+            "nnd Mathematicc",
+            "s Education",
+            "ponsko)"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Na",
+            "(IPN, N\u011bmecko",
+            "o)",
+            "al Policy Resee",
+            "arch (NIER, Jaa",
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "ttional Institute",
+            "for Educationn",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Th",
+            "ee Tao Initiativee",
+            ": CRP - Henri",
+            "TTudor and Uni",
+            "vversit\u00e9 de Lux",
+            "eembourg"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Un",
+            "EMACS (Luce",
+            "mmbursko)",
+            "t des pratique",
+            "s d'enseignemm",
+            "ent"
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "it\u00e9 d'analyse dd",
+            "es syst\u00e8mes ee",
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "\uf0b7 Wee",
+            "(aSPe, Belgie)",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "stat (USA)",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "",
+            "",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 7,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              326.21387376618867,
+              186.48858642578125,
+              540.2207841010382,
+              246.68971252441406
+            ],
+            "confidence": 0.9614400863647461
+          },
+          {
+            "type": "title",
+            "bbox": [
+              84.15110809223765,
+              45.69696044921875,
+              494.5853656241398,
+              102.91502380371094
+            ],
+            "confidence": 0.9351221919059753
+          },
+          {
+            "type": "title",
+            "bbox": [
+              304.23858170886973,
+              646.6150512695312,
+              377.41554536653047,
+              657.747802734375
+            ],
+            "confidence": 0.8636084794998169
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              304.1222485607583,
+              665.799072265625,
+              569.8424890996946,
+              802.1712646484375
+            ],
+            "confidence": 0.82383793592453
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              61.94186586815239,
+              587.0467529296875,
+              518.1461958958159,
+              601.0330810546875
+            ],
+            "confidence": 0.718294620513916
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 7,
+        "yolo_count": 7,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (7 elements)\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 84 | 46 | 495 | 103 | title |\n| 304 | 647 | 377 | 658 | title |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 326 | 186 | 540 | 247 | table |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 222 | 282 | 340 | 315 | plain text |\n| 62 | 587 | 518 | 601 | plain text |\n| 30..."
+      },
+      "elements_sample": {
+        "total_count": 1375,
+        "full_inspect": "## Collection Inspection (318 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n|   | 290 | 18 | 296 | 44 | Times |  | 26 | False | False | native | 1.00 | #000000 |\n| OECCD Prrogrammme for  | 172 | 48 | 413 | 74 | Times |  | 26 | False | False | native | 1.00 | #000000 |\n| Innternattionall Studdent AAssesssmentt 20122  | 86 | 78 | 499 | 104 | Times |  | 26 | False | False | native | 1.00 | #000000 |\n| \u010c | 404 | 168 | 408 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |\n| esk\u00e1 | 408 | 168 | 425 | 177 | Calibri | BCPCDG | 9 | False | True | native | 1.00 | #000000 |\n| \u00a0 | 425 | 168 | 427 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |\n| rrepublika | 427 | 168 | 462 | 177 | Calibri | BCPCDG | 9 | False | True | native | 1.00 | #000000 |\n| \u00a0 | 462 | 168 | 464 | 177 | Calibri | BCPCCF | 9 | False | True | native | 1.00 | #000000 |\n|   | 333 | 169 | 335 | 178 | Arial | EQNPUL | 9 | False | False | native | 1.00 | #000000 |\n| Datum | 345 | 195 | 373 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 373 | 195 | 375 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| ttestov\u00e1n\u00ed | 375 | 195 | 412 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 412 | 195 | 415 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| ( | 415 | 195 | 418 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| Hla\u00a0 v  n  \u00ed \u0161et\u0159e | 418 | 195 | 465 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| n\u00ed | 465 | 195 | 472 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 472 | 195 | 474 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| PISA | 475 | 195 | 492 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 492 | 195 | 495 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| 20 | 495 | 195 | 505 | 205 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| 12)\u00a0 | 505 | 195 | 520 | 205 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 123 | 220 | 129 | 246 | Calibri | BCNMPH | 26 | False | False | native | 1.00 | #000000 |\n| 201 | 493 | 223 | 508 | 233 | Calibri | BCNOIN | 10 | False | False | native | 1.00 | #000000 |\n| 2\u00a0 | 508 | 223 | 516 | 233 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 463 | 227 | 465 | 236 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |\n| \u011b\u011b | 429 | 236 | 434 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |\n| s\u00edc | 435 | 236 | 444 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 444 | 236 | 446 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |\n| Den | 355 | 236 | 370 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 370 | 236 | 372 | 245 | Calibri | BCNMPH | 9 | False | False | native | 1.00 | #000000 |\n| M | 422 | 236 | 429 | 245 | Calibri | BCNOIN | 9 | False | False | native | 1.00 | #000000 |\n| ORGANISATION | 14 | 241 | 49 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 49 | 241 | 51 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| FOOR | 51 | 241 | 60 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 60 | 241 | 61 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| ECONOMIC | 61 | 241 | 86 | 246 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0\u00a0 | 86 | 241 | 89 | 246 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| AND | 50 | 247 | 60 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 60 | 247 | 62 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| DEVELOPMENT | 62 | 247 | 96 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| CO | 14 | 247 | 21 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u2010 | 21 | 247 | 23 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| OPERATION | 22 | 247 | 49 | 253 | Calibri | BCNOIN | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 49 | 247 | 50 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 96 | 247 | 97 | 253 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 254 | 15 | 260 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 261 | 15 | 266 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 268 | 15 | 273 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 274 | 15 | 280 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 281 | 15 | 286 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u017d\u00e1kovskk\u00fd | 225 | 284 | 276 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 276 | 284 | 280 | 298 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |\n| dotazn\u00edk | 280 | 284 | 328 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 328 | 284 | 331 | 298 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |\n| \u2013 | 331 | 284 | 338 | 298 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 14 | 288 | 15 | 293 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 294 | 15 | 300 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| verze | 225 | 301 | 255 | 315 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 255 | 301 | 258 | 315 | Calibri | BCNMPH | 14 | False | False | native | 1.00 | #000000 |\n| A | 258 | 301 | 266 | 315 | Calibri | BCNOIN | 14 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 14 | 301 | 15 | 307 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0\u00a0 | 14 | 308 | 17 | 313 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 315 | 15 | 320 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 321 | 15 | 327 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 328 | 15 | 334 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 335 | 15 | 340 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 341 | 15 | 347 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 348 | 15 | 354 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 355 | 15 | 360 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 362 | 15 | 367 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 368 | 15 | 374 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 375 | 15 | 380 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 382 | 15 | 387 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 388 | 15 | 394 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 395 | 15 | 401 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 402 | 15 | 407 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 408 | 15 | 414 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 415 | 15 | 421 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 422 | 15 | 427 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 429 | 15 | 434 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 435 | 15 | 441 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 442 | 15 | 448 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 449 | 15 | 454 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 456 | 15 | 461 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 462 | 15 | 468 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 469 | 15 | 474 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 476 | 15 | 481 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 482 | 15 | 488 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 489 | 15 | 495 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 543 | 569 | 545 | 574 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 574 | 15 | 579 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 581 | 15 | 586 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| Tento | 65 | 589 | 91 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 91 | 589 | 93 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| proojekt | 93 | 589 | 125 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 126 | 589 | 128 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| je | 128 | 589 | 136 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 136 | 589 | 139 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| spoluufinancov\u00e1n | 139 | 589 | 212 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 212 | 589 | 214 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| Evropsk\u00fdm | 214 | 589 | 263 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 263 | 589 | 265 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| ssoci\u00e1ln\u00edm | 265 | 589 | 308 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 308 | 589 | 311 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| fonndem | 311 | 589 | 345 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 345 | 589 | 348 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| a | 348 | 589 | 353 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 353 | 589 | 356 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| st\u00e1tnn\u00edm | 356 | 589 | 389 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 389 | 589 | 392 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| rozpo | 392 | 589 | 417 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u010d | 417 | 589 | 422 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| teem | 422 | 589 | 441 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0\u010c | 441 | 589 | 449 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| esk\u00e9 | 449 | 589 | 469 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 469 | 589 | 472 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| reppubliky. | 472 | 589 | 516 | 600 | Calibri | BCNOIN | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 516 | 589 | 518 | 600 | Calibri | BCNMPH | 11 | False | False | native | 1.00 | #000000 |\n| \u00a0 | 14 | 601 | 15 | 606 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 608 | 15 | 613 | Calibri | BCNMPH | 6 | False | False | native | 1.00 | #49442a |\n| \u00a0 | 14 | 615 | 16 | 625 | Calibri | BCNMPH | 10 | False | False | native | 1.00 | #49442a |\n|   | 305 | 640 | 308 | 648 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \u010c | 305 | 649 | 311 | 657 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |\n| lenov\u00e9 konsorcia | 311 | 649 | 376 | 657 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n|   | 305 | 658 | 308 | 666 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| Australian Counccil for Educatioonal Research (ACE... | 312 | 668 | 552 | 676 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 668 | 309 | 676 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 669 | 311 | 677 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| cApStAn Linguistic Quality Conntrol (Belgie)  | 312 | 678 | 480 | 686 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 678 | 309 | 686 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 679 | 311 | 687 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| Deutsches Instituut f\u00fcr Internatioonale P\u00e4dagoggis... | 312 | 687 | 553 | 695 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 687 | 309 | 695 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 688 | 311 | 696 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| (DIPF, N | 323 | 697 | 354 | 705 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \u011b | 354 | 697 | 359 | 705 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |\n| meckko)  | 359 | 697 | 388 | 705 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| Educational Testing Service (ETTS, USA)  | 312 | 706 | 465 | 714 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 706 | 309 | 714 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 707 | 311 | 715 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| Insstitutt for L\u00e6rerutdanning og Skoleutviklingg (... | 312 | 716 | 540 | 724 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 716 | 309 | 724 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 717 | 311 | 725 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| Leiibniz - Institutee for Science annd Mathematicc... | 312 | 726 | 533 | 734 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 726 | 309 | 734 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 727 | 311 | 735 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| (IPN, N | 323 | 735 | 349 | 743 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \u011b | 349 | 735 | 354 | 743 | Arial | BCOMPC | 8 | True | False | native | 1.00 | #000000 |\n| meckoo)  | 354 | 735 | 384 | 743 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| Nattional Institutefor Educationnal Policy Reseear... | 312 | 745 | 572 | 753 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 745 | 309 | 753 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 746 | 311 | 754 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| Thee Tao Initiativee: CRP - Henri TTudor and Univv... | 312 | 755 | 573 | 763 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 755 | 309 | 763 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 755 | 311 | 763 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| EMACS (Lucemmbursko)  | 323 | 764 | 414 | 772 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| Unit\u00e9 d'analyse ddes syst\u00e8mes eet des pratiques d'... | 312 | 773 | 556 | 781 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 774 | 309 | 782 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 774 | 311 | 782 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n| (aSPe, Belgie) | 323 | 783 | 377 | 791 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| Weestat (USA)  | 312 | 792 | 365 | 800 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n| \uf0b7 | 305 | 792 | 309 | 800 | SymbolMT | BCONAE | 8 | False | False | native | 1.00 | #000000 |\n|   | 309 | 793 | 311 | 801 | Arial | EQNPUL | 8 | False | False | native | 1.00 | #000000 |\n|   | 269 | 802 | 272 | 810 | Arial | BCOMPD | 8 | True | False | native | 1.00 | #000000 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 84 | 46 | 495 | 103 | title |\n| 304 | 647 | 377 | 658 | title |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 6 | 105 | 54 | 105 | 48 | 0 | #000000 | #000000 | 0 |\n| 54 | 105 | 108 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 108 | 105 | 161 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 161 | 105 | 215 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 215 | 105 | 269 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 269 | 105 | 323 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 376 | 105 | 430 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 430 | 105 | 484 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 484 | 105 | 538 | 105 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 105 | 573 | 105 | 36 | 0 | #000000 | #000000 | 0 |\n| 327 | 187 | 328 | 188 | 0 | 0 | #000000 | #000000 | 0 |\n| 327 | 187 | 376 | 188 | 49 | 0 | #000000 | #000000 | 0 |\n| 376 | 187 | 430 | 188 | 54 | 0 | #000000 | #000000 | 0 |\n| 430 | 187 | 484 | 188 | 54 | 0 | #000000 | #000000 | 0 |\n| 484 | 187 | 538 | 188 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 187 | 539 | 188 | 1 | 0 | #000000 | #000000 | 0 |\n| 327 | 188 | 328 | 210 | 0 | 22 | #000000 | #000000 | 0 |\n| 538 | 188 | 539 | 210 | 0 | 22 | #000000 | #000000 | 0 |\n| 327 | 210 | 376 | 210 | 49 | 0 | #000000 | #000000 | 0 |\n| 376 | 210 | 430 | 210 | 54 | 0 | #000000 | #000000 | 0 |\n| 430 | 210 | 484 | 210 | 54 | 0 | #000000 | #000000 | 0 |\n| 484 | 210 | 538 | 210 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 210 | 539 | 210 | 1 | 0 | #000000 | #000000 | 0 |\n| 327 | 210 | 328 | 246 | 0 | 35 | #000000 | #000000 | 0 |\n| 397 | 210 | 398 | 246 | 0 | 35 | #000000 | #000000 | 0 |\n| 468 | 210 | 468 | 246 | 0 | 35 | #000000 | #000000 | 0 |\n| 538 | 210 | 539 | 246 | 0 | 35 | #000000 | #000000 | 0 |\n| 333 | 231 | 376 | 231 | 44 | 0 | #000000 | #000000 | 0 |\n| 376 | 231 | 392 | 231 | 15 | 0 | #000000 | #000000 | 0 |\n| 403 | 231 | 430 | 231 | 27 | 0 | #000000 | #000000 | 0 |\n| 430 | 231 | 463 | 231 | 33 | 0 | #000000 | #000000 | 0 |\n| 327 | 245 | 376 | 246 | 49 | 0 | #000000 | #000000 | 0 |\n| 376 | 245 | 397 | 246 | 21 | 0 | #000000 | #000000 | 0 |\n| 398 | 245 | 430 | 246 | 33 | 0 | #000000 | #000000 | 0 |\n| 430 | 245 | 468 | 246 | 38 | 0 | #000000 | #000000 | 0 |\n| 468 | 245 | 484 | 246 | 15 | 0 | #000000 | #000000 | 0 |\n| 484 | 245 | 538 | 246 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 245 | 538 | 246 | 1 | 0 | #000000 | #000000 | 0 |\n| 538 | 245 | 539 | 246 | 0 | 0 | #000000 | #000000 | 0 |\n| 591 | 638 | 594 | 639 | 3 | 0 | #000000 | #000000 | 0 |\n| 594 | 638 | 594 | 820 | 0 | 182 | #000000 | #000000 | 0 |\n| 7 | 638 | 7 | 639 | 0 | 0 | #000000 | #000000 | 0 |\n| 7 | 638 | 54 | 639 | 47 | 0 | #000000 | #000000 | 0 |\n| 54 | 638 | 108 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 108 | 638 | 161 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 161 | 638 | 215 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 215 | 638 | 269 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 269 | 638 | 323 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 376 | 638 | 430 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 430 | 638 | 484 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 484 | 638 | 538 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 638 | 591 | 639 | 54 | 0 | #000000 | #000000 | 0 |\n| 591 | 639 | 594 | 820 | 2 | 181 | #000000 | #000000 | 0 |\n| 7 | 639 | 7 | 820 | 0 | 181 | #000000 | #000000 | 0 |\n| 263 | 639 | 264 | 820 | 0 | 181 | #000000 | #000000 | 0 |\n| 264 | 639 | 269 | 820 | 5 | 181 | #000000 | #000000 | 0 |\n| 269 | 639 | 323 | 820 | 54 | 181 | #000000 | #000000 | 0 |\n| 269 | 639 | 323 | 648 | 53 | 9 | #000000 | #000000 | 0 |\n| 376 | 639 | 430 | 676 | 54 | 37 | #000000 | #000000 | 0 |\n| 430 | 639 | 484 | 676 | 54 | 37 | #000000 | #000000 | 0 |\n| 484 | 639 | 538 | 676 | 54 | 37 | #000000 | #000000 | 0 |\n| 538 | 639 | 591 | 820 | 54 | 181 | #000000 | #000000 | 0 |\n| 538 | 639 | 589 | 676 | 51 | 37 | #000000 | #000000 | 0 |\n| 269 | 648 | 323 | 657 | 53 | 9 | #000000 | #000000 | 0 |\n| 305 | 656 | 323 | 657 | 17 | 1 | #000000 | #000000 | 0 |\n| 269 | 657 | 323 | 666 | 53 | 9 | #000000 | #000000 | 0 |\n| 269 | 666 | 323 | 676 | 53 | 10 | #000000 | #000000 | 0 |\n| 269 | 676 | 323 | 686 | 53 | 10 | #000000 | #000000 | 0 |\n| 376 | 676 | 430 | 686 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 676 | 484 | 686 | 54 | 10 | #000000 | #000000 | 0 |\n| 484 | 676 | 538 | 696 | 54 | 20 | #000000 | #000000 | 0 |\n| 538 | 676 | 589 | 696 | 51 | 20 | #000000 | #000000 | 0 |\n| 269 | 686 | 323 | 696 | 53 | 10 | #000000 | #000000 | 0 |\n| 376 | 686 | 430 | 696 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 686 | 484 | 696 | 54 | 10 | #000000 | #000000 | 0 |\n| 376 | 696 | 430 | 705 | 54 | 9 | #000000 | #000000 | 0 |\n| 269 | 696 | 323 | 714 | 53 | 19 | #000000 | #000000 | 0 |\n| 430 | 696 | 484 | 714 | 54 | 19 | #000000 | #000000 | 0 |\n| 484 | 696 | 538 | 724 | 54 | 29 | #000000 | #000000 | 0 |\n| 538 | 696 | 589 | 724 | 51 | 29 | #000000 | #000000 | 0 |\n| 376 | 705 | 430 | 714 | 54 | 10 | #000000 | #000000 | 0 |\n| 269 | 714 | 323 | 724 | 53 | 10 | #000000 | #000000 | 0 |\n| 376 | 714 | 430 | 724 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 714 | 484 | 724 | 54 | 10 | #000000 | #000000 | 0 |\n| 269 | 724 | 323 | 734 | 53 | 10 | #000000 | #000000 | 0 |\n| 376 | 724 | 430 | 734 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 724 | 484 | 734 | 54 | 10 | #000000 | #000000 | 0 |\n| 484 | 724 | 538 | 734 | 54 | 10 | #000000 | #000000 | 0 |\n| 538 | 724 | 589 | 753 | 51 | 29 | #000000 | #000000 | 0 |\n| 269 | 734 | 323 | 753 | 53 | 19 | #000000 | #000000 | 0 |\n| 376 | 734 | 430 | 743 | 54 | 9 | #000000 | #000000 | 0 |\n| 430 | 734 | 484 | 753 | 54 | 19 | #000000 | #000000 | 0 |\n| 484 | 734 | 538 | 753 | 54 | 19 | #000000 | #000000 | 0 |\n| 376 | 743 | 430 | 753 | 54 | 10 | #000000 | #000000 | 0 |\n| 269 | 753 | 323 | 763 | 53 | 10 | #000000 | #000000 | 0 |\n| 376 | 753 | 430 | 763 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 753 | 484 | 763 | 54 | 10 | #000000 | #000000 | 0 |\n| 484 | 753 | 538 | 763 | 54 | 10 | #000000 | #000000 | 0 |\n| 538 | 753 | 589 | 763 | 51 | 10 | #000000 | #000000 | 0 |\n| 269 | 763 | 323 | 782 | 53 | 19 | #000000 | #000000 | 0 |\n| 376 | 763 | 430 | 772 | 54 | 9 | #000000 | #000000 | 0 |\n| 430 | 763 | 484 | 782 | 54 | 19 | #000000 | #000000 | 0 |\n| 484 | 763 | 538 | 782 | 54 | 19 | #000000 | #000000 | 0 |\n| 538 | 763 | 589 | 782 | 51 | 19 | #000000 | #000000 | 0 |\n| 376 | 772 | 430 | 782 | 54 | 10 | #000000 | #000000 | 0 |\n| 269 | 782 | 323 | 801 | 53 | 19 | #000000 | #000000 | 0 |\n| 376 | 782 | 430 | 810 | 54 | 28 | #000000 | #000000 | 0 |\n| 430 | 782 | 484 | 810 | 54 | 28 | #000000 | #000000 | 0 |\n| 484 | 782 | 538 | 810 | 54 | 28 | #000000 | #000000 | 0 |\n| 538 | 782 | 589 | 810 | 51 | 28 | #000000 | #000000 | 0 |\n| 269 | 801 | 323 | 810 | 53 | 9 | #000000 | #000000 | 0 |\n| 376 | 810 | 430 | 820 | 54 | 10 | #000000 | #000000 | 0 |\n| 430 | 810 | 484 | 820 | 54 | 10 | #000000 | #000000 | 0 |\n| 484 | 810 | 538 | 820 | 54 | 10 | #000000 | #000000 | 0 |\n| 591 | 820 | 594 | 828 | 2 | 8 | #000000 | #000000 | 0 |\n| 594 | 820 | 594 | 820 | 0 | 0 | #000000 | #000000 | 0 |\n| 7 | 820 | 54 | 821 | 47 | 0 | #000000 | #000000 | 0 |\n| 54 | 820 | 108 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 108 | 820 | 161 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 161 | 820 | 215 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 215 | 820 | 269 | 821 | 54 | 0 | #000000 | #000000 | 0 |\n| 269 | 820 | 323 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 376 | 820 | 430 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 430 | 820 | 484 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 484 | 820 | 538 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 538 | 820 | 591 | 829 | 54 | 8 | #000000 | #000000 | 0 |\n| 594 | 820 | 594 | 829 | 0 | 9 | #000000 | #000000 | 0 |\n| 7 | 821 | 7 | 829 | 0 | 9 | #000000 | #000000 | 0 |\n| 7 | 821 | 54 | 829 | 46 | 8 | #000000 | #000000 | 0 |\n| 13 | 821 | 54 | 827 | 41 | 7 | #000000 | #000000 | 0 |\n| 215 | 821 | 263 | 829 | 48 | 8 | #000000 | #000000 | 0 |\n| 215 | 821 | 258 | 827 | 43 | 7 | #000000 | #000000 | 0 |\n| 263 | 821 | 264 | 829 | 0 | 9 | #000000 | #000000 | 0 |\n| 264 | 821 | 269 | 829 | 5 | 8 | #000000 | #000000 | 0 |\n| 591 | 829 | 594 | 829 | 2 | 0 | #000000 | #000000 | 0 |\n| 594 | 829 | 594 | 829 | 0 | 0 | #000000 | #000000 | 0 |\n| 7 | 829 | 54 | 829 | 47 | 0 | #000000 | #000000 | 0 |\n| 54 | 829 | 108 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 108 | 829 | 161 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 161 | 829 | 215 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 215 | 829 | 263 | 829 | 48 | 0 | #000000 | #000000 | 0 |\n| 264 | 829 | 269 | 829 | 5 | 0 | #000000 | #000000 | 0 |\n| 269 | 829 | 323 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 376 | 829 | 430 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 430 | 829 | 484 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 484 | 829 | 538 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n| 538 | 829 | 591 | 829 | 54 | 0 | #000000 | #000000 | 0 |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 326 | 186 | 540 | 247 | table |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 222 | 282 | 340 | 315 | plain text |\n| 62 | 587 | 518 | 601 | plain text |\n| 304 | 666 | 570 | 802 | plain text |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 36 | 491 | 546 | 575 | abandon |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 289.5,
+            "top": 18.151379999999904
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 289.5,
+            "top": 18.151379999999904
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 84.15110809223765,
+            "top": 45.69696044921875
+          },
+          {
+            "type": "unknown",
+            "text": "O",
+            "x0": 171.66,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": "OECCD Prrogrammme for ",
+            "x0": 171.66,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": "E",
+            "x0": 190.4360931,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 206.04,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": "C",
+            "x0": 206.28,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": "D",
+            "x0": 223.44,
+            "top": 48.03138000000001
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 242.2160931,
+            "top": 48.03138000000001
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/oberryX_The survery question table_ such as the one on pag/analysis/oberryX/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 56,
+  "pages_analyzed": 1
+}

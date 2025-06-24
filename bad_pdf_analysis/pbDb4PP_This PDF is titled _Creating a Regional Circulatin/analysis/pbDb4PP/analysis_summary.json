@@ -1,0 +1,194 @@
+{
+  "pdf_name": "pbDb4PP.pdf",
+  "pdf_path": "bad_pdf_analysis/pbDb4PP_This PDF is titled _Creating a Regional Circulatin/pbDb4PP.pdf",
+  "analysis_timestamp": "2025-06-22T14:36:27.459514",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 720,
+        "height": 540
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 11 elements\n- **rect**: 2 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Meiryo-Bold: 6\n    - Meiryo: 5\n  - **sizes**:\n    - 18.0pt: 4\n    - 26.0pt: 4\n    - 29.5pt: 2\n    - 22.0pt: 1\n  - styles: 6 bold",
+      "extract_text": {
+        "length": 156,
+        "preview": "\u8131\u70ad\u7d20\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u306b\u3088\u308b\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u69cb\u7bc9\u4e8b\u696d\u306e\u3046\u3061\\n\u300c\u5730\u57df\u518d\u30a8\u30cd\u7b49\u306e\u6d3b\u7528\u306b\u3088\u308b\u6301\u7d9a\u53ef\u80fd\u306a\u81ea\u7acb\u30fb\u5206\u6563\u578b\u5730\u57df\u30a8\u30cd\u30eb\u30ae\u30fc\\n\u30b7\u30b9\u30c6\u30e0\u3084\u8131\u70ad\u7d20\u578b\u5730\u57df\u4ea4\u901a\u30e2\u30c7\u30eb\u306e\u69cb\u7bc9\u652f\u63f4\u4e8b\u696d\u300d\\n\u516c\u52df\u8aac\u660e\u4f1a\\n\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u306e\u5275\u9020\\n\uff0d\u65e5\u672c\u767a\u306e\u8131\u70ad\u7d20\u5316\u30fbSDG\uff53\u69cb\u60f3\uff0d\\n\u4ee4\u548c\u5143\u5e747\u6708\\n\u74b0\u5883\u7701 \u5730\u7403\u74b0\u5883\u5c40\\n\u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u8ab2 \u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u4e8b\u696d\u5ba4",
+        "full_text": "\u8131\u70ad\u7d20\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u306b\u3088\u308b\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u69cb\u7bc9\u4e8b\u696d\u306e\u3046\u3061\n\u300c\u5730\u57df\u518d\u30a8\u30cd\u7b49\u306e\u6d3b\u7528\u306b\u3088\u308b\u6301\u7d9a\u53ef\u80fd\u306a\u81ea\u7acb\u30fb\u5206\u6563\u578b\u5730\u57df\u30a8\u30cd\u30eb\u30ae\u30fc\n\u30b7\u30b9\u30c6\u30e0\u3084\u8131\u70ad\u7d20\u578b\u5730\u57df\u4ea4\u901a\u30e2\u30c7\u30eb\u306e\u69cb\u7bc9\u652f\u63f4\u4e8b\u696d\u300d\n\u516c\u52df\u8aac\u660e\u4f1a\n\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u306e\u5275\u9020\n\uff0d\u65e5\u672c\u767a\u306e\u8131\u70ad\u7d20\u5316\u30fbSDG\uff53\u69cb\u60f3\uff0d\n\u4ee4\u548c\u5143\u5e747\u6708\n\u74b0\u5883\u7701 \u5730\u7403\u74b0\u5883\u5c40\n\u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u8ab2 \u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u4e8b\u696d\u5ba4"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 12,
+        "columns": 2,
+        "data": [
+          [
+            "",
+            "\u8131\u70ad\u7d20\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u306b\u3088\u308b\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u69cb\u7bc9\u4e8b\u696d\u306e\u3046\u3061"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            "\u300c\u5730\u57df\u518d\u30a8\u30cd\u7b49\u306e\u6d3b\u7528\u306b\u3088\u308b\u6301\u7d9a\u53ef\u80fd\u306a\u81ea\u7acb\u30fb\u5206\u6563\u578b\u5730\u57df\u30a8\u30cd\u30eb\u30ae\u30fc"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            "\u30b7\u30b9\u30c6\u30e0\u3084\u8131\u70ad\u7d20\u578b\u5730\u57df\u4ea4\u901a\u30e2\u30c7\u30eb\u306e\u69cb\u7bc9\u652f\u63f4\u4e8b\u696d\u300d"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            "\u516c\u52df\u8aac\u660e\u4f1a"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            "\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u306e\u5275\u9020"
+          ],
+          [
+            "\uff0d",
+            "\u65e5\u672c\u767a\u306e\u8131\u70ad\u7d20\u5316\u30fbSDG\uff53\u69cb\u60f3\uff0d"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "",
+            "\u4ee4\u548c\u5143\u5e747\u6708"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 3,
+        "regions": [
+          {
+            "type": "title",
+            "bbox": [
+              120.65120697021484,
+              190.92323303222656,
+              599.0171508789062,
+              260.3424072265625
+            ],
+            "confidence": 0.8539012670516968
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              34.31989288330078,
+              6.360236167907715,
+              708.560302734375,
+              102.4082260131836
+            ],
+            "confidence": 0.7430959939956665
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              33.52043914794922,
+              42.664268493652344,
+              180.8279571533203,
+              96.62962341308594
+            ],
+            "confidence": 0.6039615869522095
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 3,
+        "yolo_count": 3,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (3 elements)\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 6 | 709 | 102 | plain text |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 43 | 181 | 97 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 121 | 191 | 599 | 260 | title |"
+      },
+      "elements_sample": {
+        "total_count": 162,
+        "full_inspect": "## Collection Inspection (16 elements)\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 0 | 0 | 720 | 540 | 720 | 540 | #000000 | #000000 | 0 |\n| 28 | 178 | 693 | 280 | 665 | 102 | #000000 | #000000 | 0 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 6 | 709 | 102 | plain text |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| \u8131\u70ad\u7d20\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u306b\u3088\u308b\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u69cb\u7bc9\u4e8b\u696d\u306e\u3046\u3061 | 227 | 9 | 713 | 27 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u300c\u5730\u57df\u518d\u30a8\u30cd\u7b49\u306e\u6d3b\u7528\u306b\u3088\u308b\u6301\u7d9a\u53ef\u80fd\u306a\u81ea\u7acb\u30fb\u5206\u6563\u578b\u5730\u57df\u30a8\u30cd\u30eb\u30ae\u30fc | 155 | 35 | 713 | 53 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u30b7\u30b9\u30c6\u30e0\u3084\u8131\u70ad\u7d20\u578b\u5730\u57df\u4ea4\u901a\u30e2\u30c7\u30eb\u306e\u69cb\u7bc9\u652f\u63f4\u4e8b\u696d\u300d | 281 | 57 | 713 | 75 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u516c\u52df\u8aac\u660e\u4f1a | 623 | 83 | 713 | 101 | Meiryo | ABCDEE | 18 | False | False | native | 1.00 | #000000 |\n| \u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u306e\u5275\u9020 | 213 | 194 | 508 | 223 | Meiryo-Bold | ABCDEE | 30 | True | False | native | 1.00 | #000000 |\n| \uff0d\u65e5\u672c\u767a\u306e\u8131\u70ad\u7d20\u5316\u30fbSDG\uff53\u69cb\u60f3\uff0d | 121 | 226 | 600 | 255 | Meiryo-Bold | ABCDEE | 30 | True | False | native | 1.00 | #000000 |\n| \u4ee4\u548c\u5143\u5e747\u6708 | 298 | 324 | 423 | 346 | Meiryo | ABCDEE | 22 | False | False | native | 1.00 | #000000 |\n| \u74b0\u5883\u7701 | 244 | 356 | 322 | 382 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |\n| \u5730\u7403\u74b0\u5883\u5c40 | 348 | 356 | 477 | 382 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |\n| \u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u8ab2 | 115 | 394 | 321 | 419 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |\n| \u5730\u7403\u6e29\u6696\u5316\u5bfe\u7b56\u4e8b\u696d\u5ba4 | 348 | 394 | 606 | 419 | Meiryo-Bold | ABCDEE | 26 | True | False | native | 1.00 | #000000 |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 34 | 43 | 181 | 97 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 121 | 191 | 599 | 260 | title |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 0.0,
+            "top": -6.103500004428497e-05
+          },
+          {
+            "type": "region",
+            "text": "",
+            "x0": 34.31989288330078,
+            "top": 6.360236167907715
+          },
+          {
+            "type": "unknown",
+            "text": "\u8131",
+            "x0": 227.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u8131\u70ad\u7d20\u30a4\u30ce\u30d9\u30fc\u30b7\u30e7\u30f3\u306b\u3088\u308b\u5730\u57df\u5faa\u74b0\u5171\u751f\u570f\u69cb\u7bc9\u4e8b\u696d\u306e\u3046\u3061",
+            "x0": 227.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u70ad",
+            "x0": 245.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u7d20",
+            "x0": 263.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u30a4",
+            "x0": 281.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u30ce",
+            "x0": 299.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u30d9",
+            "x0": 317.28,
+            "top": 9.136000000000081
+          },
+          {
+            "type": "unknown",
+            "text": "\u30fc",
+            "x0": 335.28,
+            "top": 9.136000000000081
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/pbDb4PP_This PDF is titled _Creating a Regional Circulatin/analysis/pbDb4PP/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 33,
+  "pages_analyzed": 1
+}

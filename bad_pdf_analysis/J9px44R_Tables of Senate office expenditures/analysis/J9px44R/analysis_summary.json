@@ -1,0 +1,114 @@
+{
+  "pdf_name": "J9px44R.pdf",
+  "pdf_path": "bad_pdf_analysis/J9px44R_Tables of Senate office expenditures/J9px44R.pdf",
+  "analysis_timestamp": "2025-06-22T14:29:50.272106",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 423,
+        "height": 657
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **line**: 44 elements\n- **text**: 29 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - NewCenturySchlbk-Roman: 26\n    - SpecV01: 2\n    - NewCenturySchlbk-Italic: 1\n  - **sizes**:\n    - 8.0pt: 12\n    - 6.0pt: 7\n    - 7.0pt: 4\n    - 12.0pt: 3\n    - 18.0pt: 2\n    - 1.0pt: 1\n  - styles: 1 italic",
+      "extract_text": {
+        "length": 260,
+        "preview": "1\\n118 2t dh S C eo ssn ig or ne ss \" SENATE ! DO 1C 1U 8\u2013M 1E 3N T\\nR E P O R T\\nOFTHE\\nSECRETARY OF THE\\nSENATE\\nFROM\\nApril 1, 2024 to September 30, 2024\\nPart I\\nNOVEMBER13, 2024\u2014Ordered to lie on the table\\nU.S. GOVERNMENT PUBLISHING OFFICE\\n56\u2013944 WASHINGTON : 2024",
+        "full_text": "1\n118 2t dh S C eo ssn ig or ne ss \" SENATE ! DO 1C 1U 8\u2013M 1E 3N T\nR E P O R T\nOFTHE\nSECRETARY OF THE\nSENATE\nFROM\nApril 1, 2024 to September 30, 2024\nPart I\nNOVEMBER13, 2024\u2014Ordered to lie on the table\nU.S. GOVERNMENT PUBLISHING OFFICE\n56\u2013944 WASHINGTON : 2024"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 2,
+        "columns": 1,
+        "data": [
+          [
+            "118th Congress DOCUMENT\n\" SENATE !\n2d Session 118\u201313"
+          ],
+          [
+            "R E P O R T\nOFTHE\nSECRETARY OF THE\nSENATE\nFROM\nApril 1, 2024 to September 30, 2024\nPart I\nNOVEMBER 13, 2024\u2014Ordered to lie on the table\nU.S. GOVERNMENT PUBLISHING OFFICE\n56\u2013944 WASHINGTON : 2024"
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": false
+      },
+      "regions": {
+        "found": false
+      },
+      "elements_sample": {
+        "total_count": 318,
+        "full_inspect": "## Collection Inspection (73 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 1  | 336 | -59 | 337 | -58 | NewCenturySchlbk-Roman | CIGAKN | 1 | False | False | native | 1.00 | #000000 |\n| 118th Congress  | 60 | 44 | 120 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| D | 313 | 44 | 319 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n|   | 354 | 44 | 356 | 52 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| OCUMENT | 319 | 46 | 354 | 52 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| \"  | 128 | 50 | 133 | 57 | SpecV01 | CIGAKQ | 7 | False | False | native | 1.00 | #000000 |\n| SENATE  | 194 | 50 | 231 | 58 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| ! | 293 | 50 | 296 | 57 | SpecV01 | CIGAKQ | 7 | False | False | native | 1.00 | #000000 |\n| 2d Session  | 69 | 54 | 110 | 62 | NewCenturySchlbk-Italic | CIGAKP | 8 | False | True | native | 1.00 | #000000 |\n| 118\u201313  | 320 | 54 | 349 | 62 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| R E P O R T  | 171 | 134 | 255 | 146 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |\n| OFTHE | 197 | 178 | 226 | 185 | NewCenturySchlbk-Roman | CIGAKN | 7 | False | False | native | 1.00 | #000000 |\n| SECRETARY OF THE  | 114 | 215 | 314 | 233 | NewCenturySchlbk-Roman | CIGAKN | 18 | False | False | native | 1.00 | #000000 |\n| SENATE  | 173 | 245 | 255 | 263 | NewCenturySchlbk-Roman | CIGAKN | 18 | False | False | native | 1.00 | #000000 |\n| FROM | 200 | 295 | 223 | 302 | NewCenturySchlbk-Roman | CIGAKN | 7 | False | False | native | 1.00 | #000000 |\n| April 1, 2024 to September 30, 2024  | 104 | 332 | 322 | 344 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |\n| Part I  | 194 | 374 | 233 | 386 | NewCenturySchlbk-Roman | CIGAKN | 12 | False | False | native | 1.00 | #000000 |\n| N | 116 | 522 | 122 | 530 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| 13, 2024\u2014Ordered to lie on the table  | 160 | 522 | 309 | 530 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| OVEMBER | 122 | 524 | 156 | 530 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| . | 145 | 552 | 147 | 560 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| .  | 151 | 552 | 156 | 560 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| US | 140 | 554 | 151 | 560 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| GOVERNMENT PUBLISHING OFFICE | 157 | 554 | 282 | 560 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| :  | 227 | 564 | 231 | 572 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n|   | 246 | 564 | 248 | 572 | NewCenturySchlbk-Roman | CIGAKN | 8 | False | False | native | 1.00 | #000000 |\n| 2024 | 232 | 566 | 246 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| WASHINGTON  | 176 | 566 | 225 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n| 56\u2013944  | 64 | 566 | 86 | 572 | NewCenturySchlbk-Roman | CIGAKN | 6 | False | False | native | 1.00 | #000000 |\n\n### Line Elements\n\n| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |\n|------|------|------|------|------|------|------|\n| 53 | 37 | 371 | 37 | 1 | True | False |\n| 53 | 37 | 53 | 590 | 1 | False | True |\n| 371 | 37 | 371 | 590 | 1 | False | True |\n| 53 | 72 | 371 | 72 | 1 | True | False |\n| 212 | 449 | 213 | 449 | 0 | True | False |\n| 212 | 449 | 213 | 449 | 0 | True | False |\n| 204 | 450 | 205 | 450 | 0 | False | False |\n| 211 | 450 | 214 | 450 | 0 | True | False |\n| 220 | 450 | 220 | 450 | 0 | False | False |\n| 204 | 450 | 205 | 450 | 0 | False | False |\n| 211 | 450 | 214 | 450 | 0 | True | False |\n| 220 | 450 | 220 | 450 | 0 | False | False |\n| 204 | 451 | 220 | 451 | 0 | True | False |\n| 204 | 451 | 220 | 451 | 0 | True | False |\n| 204 | 451 | 220 | 451 | 0 | True | False |\n| 204 | 451 | 220 | 451 | 0 | True | False |\n| 204 | 452 | 220 | 452 | 0 | True | False |\n| 204 | 452 | 220 | 452 | 0 | True | False |\n| 204 | 453 | 220 | 453 | 0 | True | False |\n| 204 | 453 | 220 | 453 | 0 | True | False |\n| 204 | 453 | 220 | 453 | 0 | True | False |\n| 204 | 453 | 220 | 453 | 0 | True | False |\n| 204 | 454 | 220 | 454 | 0 | True | False |\n| 204 | 454 | 220 | 454 | 0 | True | False |\n| 205 | 455 | 205 | 457 | 0 | False | True |\n| 206 | 455 | 206 | 458 | 0 | False | True |\n| 206 | 455 | 206 | 459 | 0 | False | True |\n| 218 | 455 | 218 | 460 | 0 | False | True |\n| 219 | 455 | 219 | 459 | 0 | False | True |\n| 219 | 455 | 219 | 458 | 0 | False | True |\n| 207 | 455 | 207 | 462 | 0 | False | True |\n| 208 | 455 | 208 | 462 | 0 | False | True |\n| 208 | 455 | 208 | 463 | 0 | False | True |\n| 210 | 455 | 210 | 464 | 0 | False | True |\n| 210 | 455 | 210 | 465 | 0 | False | True |\n| 211 | 455 | 211 | 465 | 0 | False | True |\n| 213 | 455 | 213 | 466 | 0 | False | True |\n| 213 | 455 | 213 | 465 | 0 | False | True |\n| 214 | 455 | 214 | 465 | 0 | False | True |\n| 215 | 455 | 215 | 463 | 0 | False | True |\n| 216 | 455 | 216 | 463 | 0 | False | True |\n| 217 | 455 | 217 | 462 | 0 | False | True |\n| 197 | 542 | 227 | 542 | 0 | True | False |\n| 53 | 590 | 371 | 590 | 1 | True | False |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 336.22,
+            "top": -58.99400000000003
+          },
+          {
+            "type": "unknown",
+            "text": "1 ",
+            "x0": 336.22,
+            "top": -58.99400000000003
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 336.776,
+            "top": -58.99400000000003
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 52.500007700000005,
+            "top": 37.005969200000095
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 52.500007700000005,
+            "top": 37.005969200000095
+          },
+          {
+            "type": "unknown",
+            "text": "",
+            "x0": 370.5000077,
+            "top": 37.005969200000095
+          },
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 59.53999999999999,
+            "top": 44.00599999999997
+          },
+          {
+            "type": "unknown",
+            "text": "118th Congress ",
+            "x0": 59.53999999999999,
+            "top": 44.00599999999997
+          },
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 63.98799999999999,
+            "top": 44.00599999999997
+          },
+          {
+            "type": "unknown",
+            "text": "8",
+            "x0": 68.43599999999999,
+            "top": 44.00599999999997
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/J9px44R_Tables of Senate office expenditures/analysis/J9px44R/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 2979,
+  "pages_analyzed": 1
+}

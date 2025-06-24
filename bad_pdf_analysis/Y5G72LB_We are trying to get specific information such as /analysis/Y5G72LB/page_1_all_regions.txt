@@ -1,0 +1,32 @@
+All Layout Regions (12 found)
+==================================================
+YOLO: 12, TATR: 0, Other: 0
+
+## Collection Inspection (12 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 14 | 102 | 93 | 127 | abandon |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 427 | 165 | 535 | 201 | plain text |
+| 73 | 356 | 514 | 372 | plain text |
+| 74 | 384 | 123 | 401 | plain text |
+| 73 | 413 | 536 | 463 | plain text |
+| 73 | 474 | 223 | 491 | plain text |
+| 73 | 501 | 238 | 518 | plain text |
+| 74 | 529 | 156 | 545 | plain text |
+| 74 | 557 | 148 | 573 | plain text |
+| 74 | 585 | 155 | 601 | plain text |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 280 | 211 | 459 | 351 | figure |
+| 79 | 676 | 167 | 763 | figure |

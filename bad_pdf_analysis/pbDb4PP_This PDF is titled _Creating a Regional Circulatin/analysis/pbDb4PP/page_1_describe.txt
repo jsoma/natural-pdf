@@ -1,0 +1,19 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 11 elements
+- **rect**: 2 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Meiryo-Bold: 6
+    - Meiryo: 5
+  - **sizes**:
+    - 18.0pt: 4
+    - 26.0pt: 4
+    - 29.5pt: 2
+    - 22.0pt: 1
+  - styles: 6 bold

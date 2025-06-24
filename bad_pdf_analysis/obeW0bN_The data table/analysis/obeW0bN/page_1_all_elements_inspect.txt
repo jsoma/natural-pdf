@@ -1,0 +1,477 @@
+## Collection Inspection (461 elements)
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 114 | 174 | 121 | 682 | 8 | 508 | #000000 | #000000 | 0 |
+| 121 | 206 | 121 | 674 | 0 | 468 | #000000 | #000000 | 0 |
+| 121 | 206 | 461 | 207 | 340 | 0 | #000000 | #000000 | 0 |
+| 161 | 207 | 161 | 234 | 0 | 28 | #000000 | #000000 | 0 |
+| 191 | 207 | 191 | 234 | 0 | 28 | #000000 | #000000 | 0 |
+| 221 | 207 | 222 | 234 | 0 | 28 | #000000 | #000000 | 0 |
+| 251 | 207 | 252 | 234 | 0 | 28 | #000000 | #000000 | 0 |
+| 282 | 207 | 282 | 234 | 0 | 28 | #000000 | #000000 | 0 |
+| 312 | 207 | 312 | 621 | 0 | 414 | #000000 | #000000 | 0 |
+| 461 | 207 | 461 | 674 | 0 | 467 | #000000 | #000000 | 0 |
+| 121 | 234 | 461 | 234 | 340 | 0 | #000000 | #000000 | 0 |
+| 121 | 620 | 461 | 621 | 340 | 0 | #000000 | #000000 | 0 |
+| 121 | 673 | 461 | 674 | 340 | 0 | #000000 | #000000 | 0 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 120 | 205 | 462 | 677 | table |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 2014 | 133 | 216 | 149 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2013 | 168 | 216 | 184 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2012 | 199 | 216 | 214 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2011 | 229 | 216 | 244 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2010 | 259 | 216 | 274 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2009 | 289 | 216 | 305 | 223 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| ימלוג | 407 | 246 | 422 | 253 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| ימוקמ | 424 | 246 | 441 | 253 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| רצות | 443 | 246 | 457 | 253 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|   | 422 | 246 | 424 | 253 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 441 | 246 | 443 | 253 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 457 | 246 | 459 | 253 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| לכה | 421 | 256 | 432 | 263 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 434 | 256 | 442 | 263 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|   | 432 | 256 | 434 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 256 | 459 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.6 | 136 | 257 | 146 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.2 | 171 | 257 | 181 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.0 | 202 | 257 | 211 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 4.2 | 232 | 257 | 241 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 5.8 | 262 | 257 | 272 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.9 | 292 | 257 | 302 | 263 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| שפנל | 400 | 266 | 415 | 273 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| לכה | 421 | 266 | 432 | 273 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 434 | 266 | 442 | 273 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|  -  | 415 | 266 | 422 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 432 | 266 | 434 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 266 | 459 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.7 | 136 | 266 | 146 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.3 | 171 | 266 | 181 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.1 | 202 | 266 | 211 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.3 | 232 | 266 | 241 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.8 | 262 | 266 | 272 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.1 | 292 | 266 | 302 | 273 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| יקסעה | 400 | 276 | 418 | 283 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| רוטקסה | 420 | 276 | 442 | 283 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|            | 381 | 276 | 400 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 418 | 276 | 420 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 276 | 459 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.5 | 136 | 276 | 146 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.4 | 171 | 276 | 181 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.9 | 202 | 276 | 211 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 4.5 | 232 | 276 | 241 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 6.8 | 262 | 276 | 272 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.5 | 292 | 276 | 302 | 283 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םימולהי | 383 | 286 | 404 | 293 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| אלל | 406 | 286 | 417 | 293 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| היישעת | 421 | 286 | 442 | 293 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ( | 380 | 286 | 383 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 404 | 286 | 406 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| )  | 417 | 286 | 421 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 286 | 459 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.3 | 136 | 286 | 146 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.2 | 171 | 286 | 181 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.9 | 202 | 286 | 211 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.0 | 232 | 286 | 241 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 12.0 | 260 | 286 | 273 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -4.3 | 291 | 286 | 303 | 293 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| יוניב | 431 | 295 | 442 | 303 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 295 | 459 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -1.7 | 135 | 296 | 147 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.3 | 171 | 296 | 181 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 6.8 | 202 | 296 | 211 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 11.6 | 230 | 296 | 243 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 11.2 | 260 | 296 | 273 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.4 | 292 | 296 | 302 | 303 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| תורוקמב | 404 | 315 | 429 | 322 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| םישומיש | 431 | 315 | 456 | 322 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|   | 429 | 315 | 431 | 322 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|    | 456 | 315 | 459 | 322 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 2.2 | 136 | 316 | 146 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.4 | 171 | 316 | 181 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.9 | 202 | 316 | 211 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 5.8 | 232 | 316 | 241 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 7.9 | 262 | 316 | 272 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.5 | 291 | 316 | 303 | 322 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| הכירצ | 438 | 329 | 456 | 336 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|      | 431 | 329 | 438 | 337 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|    | 456 | 329 | 459 | 337 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| תירוביצ | 378 | 339 | 398 | 346 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 400 | 339 | 420 | 346 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 422 | 339 | 444 | 346 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        : | 363 | 339 | 378 | 346 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 398 | 339 | 400 | 346 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 420 | 339 | 422 | 346 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 339 | 459 | 346 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| לכה | 423 | 349 | 434 | 356 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 436 | 349 | 444 | 356 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|             | 402 | 349 | 423 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 434 | 349 | 436 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 349 | 459 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.8 | 135 | 349 | 145 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.5 | 171 | 349 | 181 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.6 | 202 | 349 | 211 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.7 | 232 | 349 | 241 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.8 | 262 | 349 | 272 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.9 | 292 | 349 | 302 | 356 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| תיחרזא | 410 | 359 | 431 | 366 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|         | 396 | 359 | 410 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                 | 431 | 359 | 459 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.5 | 135 | 359 | 145 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.1 | 171 | 359 | 181 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.8 | 202 | 359 | 211 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.6 | 232 | 359 | 241 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.9 | 262 | 359 | 272 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 4.8 | 292 | 359 | 302 | 366 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| תינוחטיב | 406 | 369 | 431 | 376 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|           | 389 | 369 | 406 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                 | 431 | 369 | 459 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 7.8 | 135 | 369 | 145 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 4.7 | 171 | 369 | 181 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.0 | 202 | 369 | 211 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.1 | 232 | 369 | 241 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.8 | 262 | 369 | 272 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -1.7 | 291 | 369 | 303 | 376 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| ןוחטיבלתימוקמהאצוה | 367 | 378 | 431 | 386 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|         | 354 | 379 | 368 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 388 | 379 | 390 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 411 | 379 | 413 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                 | 431 | 379 | 459 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 8.6 | 135 | 379 | 145 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.3 | 171 | 379 | 181 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 202 | 379 | 211 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.9 | 232 | 379 | 241 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.4 | 262 | 379 | 272 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.8 | 292 | 379 | 302 | 386 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| ינוחטיב | 397 | 388 | 417 | 396 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| אובי | 419 | 388 | 431 | 396 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|           | 380 | 388 | 397 | 396 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 417 | 388 | 419 | 396 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                 | 431 | 388 | 459 | 396 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.4 | 135 | 389 | 145 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 6.8 | 171 | 389 | 181 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 11.5 | 200 | 389 | 213 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 6.4 | 232 | 389 | 241 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 13.3 | 260 | 389 | 273 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -20.6 | 289 | 389 | 305 | 395 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| שפנל | 362 | 404 | 377 | 411 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיטרפ | 378 | 404 | 397 | 411 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 398 | 404 | 418 | 411 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 420 | 404 | 442 | 411 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        : | 346 | 404 | 362 | 411 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 377 | 404 | 379 | 411 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 396 | 404 | 398 | 411 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 418 | 404 | 420 | 411 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|           | 442 | 404 | 459 | 411 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| לכה | 418 | 414 | 429 | 421 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 431 | 414 | 438 | 421 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|             | 396 | 414 | 418 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 429 | 414 | 431 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|             | 438 | 414 | 459 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.8 | 136 | 414 | 146 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 171 | 414 | 181 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.2 | 202 | 414 | 211 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.0 | 232 | 414 | 241 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.7 | 262 | 414 | 272 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.4 | 292 | 414 | 302 | 421 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| אמייק | 364 | 423 | 379 | 431 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ינב | 382 | 423 | 390 | 431 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םירצומ | 392 | 423 | 411 | 431 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| טעמל | 413 | 423 | 429 | 431 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|                  | 333 | 423 | 364 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| - | 379 | 423 | 382 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 390 | 423 | 392 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 411 | 423 | 413 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                  | 429 | 423 | 459 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 136 | 424 | 146 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 171 | 424 | 181 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.5 | 202 | 424 | 211 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.8 | 232 | 424 | 241 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.0 | 262 | 424 | 272 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.2 | 292 | 424 | 302 | 431 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| אמייק | 381 | 433 | 397 | 440 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ינב | 400 | 433 | 408 | 440 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םירצומ | 410 | 433 | 429 | 440 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|                    | 347 | 433 | 381 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| - | 397 | 433 | 400 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 408 | 433 | 410 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                  | 429 | 433 | 459 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 7.0 | 136 | 434 | 146 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.9 | 171 | 434 | 181 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.0 | 200 | 434 | 212 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.8 | 232 | 434 | 241 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 9.3 | 262 | 434 | 272 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -6.3 | 291 | 434 | 303 | 440 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| שפנל | 333 | 443 | 347 | 450 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תילאודיבידניא | 360 | 443 | 398 | 450 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 400 | 443 | 420 | 450 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 422 | 443 | 444 | 450 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|  (1)  | 348 | 443 | 360 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 398 | 443 | 400 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 420 | 443 | 422 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 443 | 459 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.6 | 136 | 443 | 146 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 171 | 443 | 181 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.3 | 202 | 443 | 211 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.2 | 232 | 443 | 241 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.5 | 262 | 443 | 272 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.8 | 292 | 443 | 302 | 450 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| שפנל | 352 | 453 | 367 | 460 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיביטקלוק | 369 | 453 | 398 | 460 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 400 | 453 | 420 | 460 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 422 | 453 | 444 | 460 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        | 341 | 453 | 352 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 367 | 453 | 369 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 398 | 453 | 400 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 420 | 453 | 422 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 453 | 459 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.4 | 136 | 453 | 146 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.0 | 171 | 453 | 181 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.5 | 202 | 453 | 211 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -0.1 | 231 | 453 | 242 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.5 | 262 | 453 | 272 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -0.4 | 291 | 453 | 303 | 460 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| שפנל | 348 | 463 | 362 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיפוס | 364 | 463 | 380 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 382 | 463 | 402 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 404 | 463 | 426 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| לכ | 428 | 463 | 434 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 436 | 463 | 444 | 470 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| (2) | 339 | 463 | 348 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 362 | 463 | 364 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 380 | 463 | 382 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 402 | 463 | 404 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 426 | 463 | 428 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 434 | 463 | 436 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 463 | 459 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.8 | 136 | 463 | 146 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.5 | 171 | 463 | 181 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.4 | 202 | 463 | 211 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.0 | 232 | 463 | 241 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.2 | 262 | 463 | 272 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.6 | 292 | 463 | 302 | 470 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םיעובק | 385 | 478 | 405 | 485 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| םיסכנב | 407 | 478 | 428 | 485 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| העקשהה | 430 | 478 | 456 | 485 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|    | 381 | 478 | 385 | 485 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 405 | 478 | 407 | 485 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 428 | 478 | 430 | 485 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|    | 456 | 478 | 459 | 485 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| לכה | 418 | 488 | 429 | 495 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 431 | 488 | 438 | 495 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        | 406 | 488 | 418 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 429 | 488 | 431 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|             | 438 | 488 | 459 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.7 | 135 | 488 | 147 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.1 | 171 | 488 | 181 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.2 | 202 | 488 | 211 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 14.5 | 230 | 488 | 243 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 10.2 | 260 | 488 | 273 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.6 | 291 | 488 | 303 | 495 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| לכה | 379 | 498 | 390 | 505 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 392 | 498 | 400 | 505 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םירוגמ | 410 | 498 | 428 | 505 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| יתב | 430 | 498 | 440 | 505 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        | 368 | 498 | 380 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 390 | 498 | 392 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|     : | 400 | 498 | 410 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 428 | 498 | 430 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|            | 440 | 498 | 459 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -1.2 | 135 | 498 | 147 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.2 | 171 | 498 | 181 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 8.6 | 202 | 498 | 211 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 12.1 | 230 | 498 | 243 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 13.0 | 260 | 498 | 273 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 8.0 | 292 | 498 | 302 | 505 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םירוגמל | 340 | 508 | 362 | 515 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיטרפ | 364 | 508 | 382 | 515 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| היינב | 384 | 508 | 398 | 515 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|           | 323 | 508 | 340 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 362 | 508 | 364 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 382 | 508 | 384 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 508 | 459 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.4 | 135 | 508 | 147 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.0 | 171 | 508 | 181 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 8.5 | 202 | 508 | 211 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 11.3 | 230 | 508 | 243 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 13.7 | 260 | 508 | 273 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 8.6 | 292 | 508 | 302 | 515 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םירוגמל | 338 | 517 | 359 | 525 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תירוביצ | 361 | 517 | 382 | 525 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| היינב | 384 | 517 | 398 | 525 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|                | 311 | 517 | 338 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 360 | 517 | 362 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 382 | 517 | 384 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 517 | 459 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 14.8 | 134 | 518 | 148 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 19.1 | 169 | 518 | 183 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 9.4 | 202 | 518 | 211 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 25.6 | 230 | 518 | 243 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.5 | 262 | 518 | 272 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.0 | 292 | 518 | 302 | 525 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| לכה | 378 | 527 | 389 | 534 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 391 | 527 | 399 | 534 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| קשמה | 407 | 527 | 424 | 534 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| יפנע | 426 | 527 | 438 | 534 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|        | 367 | 527 | 378 | 535 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 389 | 527 | 391 | 535 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   :  | 399 | 527 | 407 | 535 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 424 | 527 | 426 | 535 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|             | 438 | 527 | 459 | 535 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -3.4 | 135 | 528 | 147 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.1 | 171 | 528 | 181 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.9 | 202 | 528 | 211 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 15.6 | 230 | 528 | 243 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 9.1 | 262 | 528 | 272 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -6.3 | 291 | 528 | 303 | 534 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םירוגמל | 341 | 537 | 363 | 544 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| אלש | 365 | 537 | 377 | 544 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םיניינב | 379 | 537 | 398 | 544 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|   | 339 | 537 | 341 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 363 | 537 | 365 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 378 | 537 | 380 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 537 | 459 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -8.1 | 135 | 538 | 147 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 12.1 | 169 | 538 | 183 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -1.7 | 200 | 538 | 212 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 7.7 | 232 | 538 | 241 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 5.7 | 262 | 538 | 272 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.0 | 292 | 538 | 302 | 544 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| תורחא | 342 | 547 | 361 | 554 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| היינב | 363 | 547 | 377 | 554 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תודובע | 379 | 547 | 398 | 554 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|   | 361 | 547 | 363 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 377 | 547 | 379 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 547 | 459 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -8.7 | 135 | 547 | 147 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 4.0 | 171 | 547 | 181 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 13.6 | 200 | 547 | 213 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 13.9 | 230 | 547 | 243 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 9.5 | 262 | 547 | 272 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -5.1 | 291 | 547 | 303 | 554 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| דויצו | 366 | 557 | 378 | 564 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תונוכמ | 380 | 557 | 398 | 564 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|             | 345 | 557 | 366 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 378 | 557 | 380 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 557 | 459 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 3.2 | 136 | 557 | 146 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -12.1 | 168 | 557 | 184 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -3.1 | 200 | 557 | 212 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 41.8 | 230 | 557 | 243 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 5.3 | 262 | 557 | 272 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -20.0 | 289 | 557 | 305 | 564 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םייתשבי | 341 | 567 | 363 | 574 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הרובחת | 365 | 567 | 388 | 574 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ילכ | 390 | 567 | 398 | 574 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|            | 321 | 567 | 341 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 363 | 567 | 365 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 388 | 567 | 390 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|                                  | 398 | 567 | 459 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.4 | 135 | 567 | 147 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 16.3 | 169 | 567 | 183 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -20.2 | 198 | 567 | 214 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -2.0 | 231 | 567 | 242 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 27.6 | 260 | 567 | 273 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -6.8 | 291 | 567 | 303 | 574 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םיתורישו | 394 | 583 | 419 | 591 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| תורוחס | 421 | 583 | 442 | 591 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| אוצי | 444 | 583 | 456 | 591 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|        | 382 | 583 | 394 | 591 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 419 | 583 | 421 | 591 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 442 | 583 | 444 | 591 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|    | 456 | 583 | 459 | 591 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| 0.6 | 136 | 584 | 146 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 1.5 | 171 | 584 | 181 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.9 | 202 | 584 | 211 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 6.5 | 232 | 584 | 241 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 15.1 | 260 | 584 | 273 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -11.9 | 289 | 584 | 305 | 591 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| םיתורישו | 393 | 593 | 419 | 600 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| תורוחס | 420 | 593 | 442 | 600 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+| אובי | 444 | 593 | 456 | 600 | Arial | XGQFDG | 7 | True | False | native | 1.00 | #000000 |
+|       | 384 | 593 | 393 | 601 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 419 | 593 | 421 | 601 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|   | 442 | 593 | 444 | 601 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+|    | 456 | 593 | 459 | 601 | Helvetica |  | 7 | True | False | native | 1.00 | #000000 |
+| לכה | 423 | 603 | 434 | 610 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 436 | 603 | 444 | 610 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|       | 414 | 603 | 423 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 434 | 603 | 436 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 603 | 459 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.9 | 136 | 604 | 146 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -0.1 | 170 | 604 | 182 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.5 | 202 | 604 | 211 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 10.7 | 230 | 604 | 243 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 15.1 | 260 | 604 | 273 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -13.8 | 289 | 604 | 305 | 610 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| ינוחטיב | 398 | 613 | 418 | 620 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| אובי | 420 | 613 | 431 | 620 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| אלל | 433 | 613 | 444 | 620 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|   | 396 | 613 | 398 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 418 | 613 | 420 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 431 | 613 | 433 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|          | 444 | 613 | 459 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 0.9 | 136 | 613 | 146 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -0.3 | 170 | 613 | 182 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 2.2 | 202 | 613 | 211 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 10.8 | 230 | 613 | 243 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| 15.1 | 260 | 613 | 273 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| -13.6 | 289 | 613 | 305 | 620 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| הלשממה | 244 | 623 | 268 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| י | 270 | 623 | 272 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ע | 274 | 623 | 277 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הנמומש | 279 | 623 | 300 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םיישיא | 302 | 623 | 319 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| םיתוריש | 321 | 623 | 341 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| לע | 343 | 623 | 350 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 352 | 623 | 372 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| דועו | 374 | 623 | 384 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיטרפ | 386 | 623 | 403 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 405 | 623 | 423 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 425 | 623 | 446 | 629 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+|  . | 240 | 623 | 244 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 268 | 623 | 270 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| " | 271 | 623 | 274 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 277 | 623 | 279 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 300 | 623 | 302 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 319 | 623 | 321 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 341 | 623 | 343 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 350 | 623 | 352 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 372 | 623 | 374 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 384 | 623 | 386 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 403 | 623 | 405 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 423 | 623 | 425 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|  (1)   | 446 | 623 | 460 | 629 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| תירוביצו | 347 | 632 | 367 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| תיטרפ | 369 | 632 | 386 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| הכירצל | 388 | 632 | 406 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| האצוהה | 408 | 632 | 428 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| לכ | 430 | 632 | 437 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| ךס | 438 | 632 | 446 | 638 | Arial | MFZMRR | 7 | False | False | native | 1.00 | #000000 |
+| . | 345 | 632 | 347 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 367 | 632 | 369 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 386 | 632 | 388 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 406 | 632 | 408 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 428 | 632 | 430 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|   | 437 | 632 | 438 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+|  (2)   | 446 | 632 | 460 | 638 | Helvetica |  | 7 | False | False | native | 1.00 | #000000 |
+| קשמה | 371 | 668 | 385 | 673 | Arial | MFZMRR | 6 | False | False | native | 1.00 | #000000 |
+| תוחתפתהל | 386 | 668 | 411 | 673 | Arial | MFZMRR | 6 | False | False | native | 1.00 | #000000 |
+| םיירקיע | 412 | 668 | 429 | 673 | Arial | MFZMRR | 6 | False | False | native | 1.00 | #000000 |
+| םירוטקידניא | 430 | 668 | 457 | 673 | Arial | MFZMRR | 6 | False | False | native | 1.00 | #000000 |
+| 31.12.14 , | 347 | 668 | 371 | 673 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |
+|   | 385 | 668 | 386 | 673 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |
+|   | 411 | 668 | 412 | 673 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |
+|   | 429 | 668 | 430 | 673 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |
+|    | 457 | 668 | 460 | 673 | Helvetica |  | 6 | False | False | native | 1.00 | #000000 |

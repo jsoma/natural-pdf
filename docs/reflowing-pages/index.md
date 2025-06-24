@@ -79,3 +79,36 @@ regions = (
 )
 regions.show()
 ```
+
+## Merging tables that span pages
+
+Flows can also stitch **multi-page** content together. One pattern is a table that repeats
+its header on every page – you want one continuous DataFrame.
+
+```python
+from natural_pdf import PDF
+from natural_pdf.flows import Flow
+import pandas as pd
+
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/long_table_across_pages.pdf")
+
+# 1️⃣ Build one region per page that contains only the body of the table
+def body_region(p):
+    header = p.find('text:bold').first()               # first bold header row
+    return header.below(until='rect[height<=1]')       # until thin footer rule
+
+segments = pdf.pages.apply(body_region)
+
+# 2️⃣ Stack them vertically so they behave like *one* long page
+flow = Flow(segments, arrangement="vertical")
+
+# 3️⃣ Extract once – header row from the first segment, everything else is data
+raw = flow.extract_table()
+header, *rows = raw
+df = pd.DataFrame(rows, columns=header)
+print(df.shape)
+```
+
+The key trick is that **exclusions are inherited**: if you called
+`pdf.add_exclusion(...)` to wipe headers/footers they do not appear in any
+segment, so the Flow sees only clean table rows.  No extra coordinates needed.

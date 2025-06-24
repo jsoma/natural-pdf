@@ -1,0 +1,767 @@
+## Collection Inspection (726 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 51 | 76 | 757 | 539 | table |
+| 61 | 103 | 682 | 520 | table |
+| 61 | 103 | 683 | 520 | table |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| Inc: OPA Number | 50 | 82 | 87 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Inc: Occurred date | 92 | 82 | 131 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Off: Last name | 141 | 82 | 172 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Off: First name | 182 | 82 | 214 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Alleg: Allegation | 251 | 82 | 287 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Alleg: Finding | 339 | 82 | 368 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Alleg: Oversight finding | 388 | 82 | 438 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Act: Action taken | 475 | 82 | 512 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Act: Days or hours suspended | 549 | 82 | 613 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| Inc: Narrative | 654 | 82 | 683 | 87 | Calibri | QSTLJM | 5 | True | False | native | 1.00 | #000000 |
+| closed purged on 7/17/15 OPA was directed to | 617 | 86 | 716 | 91 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| stop the Internal Investigation on February 11th,  | 617 | 92 | 721 | 97 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 2010 and the subject's employment was  | 617 | 99 | 703 | 104 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| subsequently terminated as a probationary  | 617 | 106 | 709 | 111 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| employee. A finding has not been made  | 617 | 112 | 702 | 118 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| regarding the investigation and IAC 10-01 is now  | 617 | 119 | 721 | 124 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0closed. | 612 | 126 | 632 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-001 | 48 | 126 | 70 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/2/2010Yedlin | 113 | 126 | 148 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Ira | 181 | 126 | 186 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Know & Obey Directives, Policies & Procedures | 217 | 126 | 316 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Purged | 323 | 126 | 337 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Termination | 442 | 126 | 468 | 131 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| closed purged on 7/17/15 OPA was directed to | 617 | 130 | 716 | 135 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| stop the Internal Investigation on February 11th,  | 617 | 137 | 721 | 142 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 2010 and the subject's employment was  | 617 | 143 | 703 | 149 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| subsequently terminated as a probationary  | 617 | 150 | 709 | 155 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| employee. A finding has not been made  | 617 | 157 | 702 | 162 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| regarding the investigation and IAC 10-01 is now  | 617 | 164 | 721 | 169 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0closed. | 612 | 170 | 632 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-001 | 48 | 170 | 70 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/2/2010Yedlin | 113 | 170 | 148 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Ira | 181 | 170 | 186 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sexual harassment | 217 | 170 | 257 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Purged | 323 | 170 | 337 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Termination | 442 | 170 | 468 | 175 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| closed purged on 7/17/15 OPA was directed to | 617 | 174 | 716 | 179 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| stop the Internal Investigation on February 11th,  | 617 | 181 | 721 | 186 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 2010 and the subject's employment was  | 617 | 188 | 703 | 193 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| subsequently terminated as a probationary  | 617 | 194 | 709 | 200 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| employee. A finding has not been made  | 617 | 201 | 702 | 206 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| regarding the investigation and IAC 10-01 is now  | 617 | 208 | 721 | 213 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0closed. | 612 | 215 | 632 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-001 | 48 | 215 | 70 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/2/2010Yedlin | 113 | 215 | 148 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Ira | 181 | 215 | 186 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Fail to treat public w/courtesy and respect | 217 | 215 | 307 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Purged | 323 | 215 | 337 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Termination | 442 | 215 | 468 | 220 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 221 | 719 | 226 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 1/29/10 | 612 | 228 | 641 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-001 | 48 | 228 | 71 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/1/2010Smith | 113 | 228 | 147 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Jeffrey | 181 | 228 | 195 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Maintaining an Acceptable Availability For Work | 217 | 228 | 319 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 228 | 343 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Suspension (3 Days) | 442 | 228 | 484 | 233 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Commit Negligent Acts or Endangering  | 217 | 234 | 300 | 239 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Unfounded purged on 8/31/17 Received and  | 617 | 234 | 713 | 239 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Self/Others | 217 | 241 | 241 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0filed by OPA on 2/22/10 | 612 | 241 | 668 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-003 | 48 | 241 | 71 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/29/2010Shrout | 110 | 241 | 149 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Tonilyn | 181 | 241 | 196 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Purged | 323 | 241 | 337 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| None | 442 | 241 | 453 | 246 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Unfounded purged on 8/31/17 Received and  | 617 | 247 | 713 | 252 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0filed by OPA on 2/22/10 | 612 | 254 | 668 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-003 | 48 | 254 | 71 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/29/2010Shrout | 110 | 254 | 149 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Tonilyn | 181 | 254 | 196 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Conflicts of Interest | 217 | 254 | 259 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Purged | 323 | 254 | 337 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| None | 442 | 254 | 453 | 259 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Filed in OPA on 06-10-10 Allegation that SCSO  | 617 | 260 | 715 | 265 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0Cadet furnished liquor to minors. | 612 | 266 | 687 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IA10-003 | 48 | 266 | 67 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 3/3/2010McCain | 113 | 266 | 151 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Theron | 181 | 266 | 196 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Affirmatively Promoting a Positive Public Image | 217 | 266 | 317 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 266 | 343 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Suspension 1 Day & 2 year letter | 442 | 266 | 510 | 272 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Filed in OPA on 06-10-10 Allegation that SCSO  | 617 | 273 | 715 | 278 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0Cadet furnished liquor to minors. | 612 | 279 | 687 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IA10-003 | 48 | 279 | 67 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 3/3/2010McCain | 113 | 279 | 151 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Theron | 181 | 279 | 196 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Observance of Criminal and Civil Laws | 217 | 279 | 297 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 279 | 343 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Suspension 1 Day & 2 year letter | 442 | 279 | 510 | 285 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Filed in OPA on 06-10-10 Allegation that SCSO  | 617 | 286 | 715 | 291 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0Cadet furnished liquor to minors. | 612 | 292 | 687 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IA10-003 | 48 | 292 | 67 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 3/3/2010McCain | 113 | 292 | 151 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Theron | 181 | 292 | 196 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Furnishing Liquor to Minors | 217 | 292 | 276 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 292 | 343 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Suspension 1 Day & 2 year letter | 442 | 292 | 510 | 298 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 299 | 719 | 304 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 10/21/10. | 612 | 305 | 645 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-004 | 48 | 305 | 70 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 4/26/2010Evans | 110 | 305 | 147 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Colby | 181 | 305 | 193 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Affirmatively Promoting a Positive Public Image | 217 | 305 | 317 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 305 | 343 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Letter of Reprimand-2 years | 442 | 305 | 501 | 311 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 312 | 719 | 317 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 10/21/10. | 612 | 318 | 645 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-004 | 48 | 318 | 70 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 4/26/2010Evans | 110 | 318 | 147 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Colby | 181 | 318 | 193 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Observance of Criminal and Civil Laws | 217 | 318 | 297 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 318 | 343 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Letter of Reprimand-2 years | 442 | 318 | 501 | 323 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 325 | 719 | 330 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 10/21/10. | 612 | 331 | 645 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-004 | 48 | 331 | 70 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 4/26/2010Evans | 110 | 331 | 147 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Colby | 181 | 331 | 193 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Driving While Intoxicated | 217 | 331 | 270 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 331 | 343 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Letter of Reprimand-2 years | 442 | 331 | 501 | 336 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 338 | 719 | 343 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 5/6/10 | 612 | 344 | 639 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-004 | 48 | 344 | 71 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/26/2010Hilt | 110 | 344 | 142 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Craig | 181 | 344 | 192 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Affirmatively Promoting a Positive Public Image | 217 | 344 | 317 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 344 | 343 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PIR | 442 | 344 | 449 | 349 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 350 | 719 | 356 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 5/6/10 | 612 | 357 | 639 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-004 | 48 | 357 | 71 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/26/2010Hilt | 110 | 357 | 142 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Craig | 181 | 357 | 192 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Observance of Criminal and Civil Laws | 217 | 357 | 297 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Non-Sustained (B) | 323 | 357 | 361 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PIR | 442 | 357 | 449 | 362 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Commit/Condone Illegal or Forbidden  | 217 | 363 | 298 | 369 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered Received and filed by OPA  | 617 | 363 | 719 | 369 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Harassment | 217 | 370 | 243 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0on 5/6/10 | 612 | 370 | 639 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PCC10-004 | 48 | 370 | 71 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 1/26/2010Hilt | 110 | 370 | 142 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Craig | 181 | 370 | 192 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 370 | 343 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| PIR | 442 | 370 | 449 | 375 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered C/D Hoff and C/D Richard  | 617 | 381 | 718 | 386 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| non-sustained (a) on all policy violations.  | 617 | 388 | 705 | 393 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Received and filed by OPA on 08/16/2010. 11-23- | 617 | 394 | 721 | 400 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 10 - C/D Ray's discipline reduced to a verbal  | 617 | 401 | 711 | 406 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| reprimand from a 1-year letter of reprimand in  | 617 | 408 | 717 | 413 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0agreement with Guild. | 612 | 415 | 664 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-005 | 48 | 415 | 70 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 5/16/2010Hoff | 110 | 415 | 144 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Jacob | 181 | 415 | 193 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Know & Obey Directives, Policies & Procedures | 217 | 415 | 316 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 415 | 343 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| None | 442 | 415 | 453 | 420 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered C/D Hoff and C/D Richard  | 617 | 425 | 718 | 431 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| non-sustained (a) on all policy violations.  | 617 | 432 | 705 | 437 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Received and filed by OPA on 08/16/2010. 11-23- | 617 | 439 | 721 | 444 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 10 - C/D Ray's discipline reduced to a verbal  | 617 | 446 | 711 | 451 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| reprimand from a 1-year letter of reprimand in  | 617 | 452 | 717 | 457 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0agreement with Guild. | 612 | 459 | 664 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-005 | 48 | 459 | 70 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 5/16/2010Hoff | 110 | 459 | 144 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Jacob | 181 | 459 | 193 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Observance of Criminal and Civil Laws | 217 | 459 | 297 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Non-Sustained (A) | 323 | 459 | 361 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| None | 442 | 459 | 453 | 464 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| No Summary Entered C/D Hoff and C/D Richard  | 617 | 470 | 718 | 475 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| non-sustained (a) on all policy violations.  | 617 | 476 | 705 | 482 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Received and filed by OPA on 08/16/2010. 11-23- | 617 | 483 | 721 | 488 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 10 - C/D Ray's discipline reduced to a verbal  | 617 | 490 | 711 | 495 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| reprimand from a 1-year letter of reprimand in  | 617 | 497 | 717 | 502 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 0agreement with Guild. | 612 | 503 | 664 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| IAC10-005 | 48 | 503 | 70 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| 5/16/2010Hoff | 110 | 503 | 144 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Jacob | 181 | 503 | 193 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Release Procedures | 217 | 503 | 258 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| Sustained | 323 | 503 | 343 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| None | 442 | 503 | 453 | 509 | Calibri | ZQHIFU | 5 | False | False | native | 1.00 | #000000 |
+| SSH  K046682-111320  Install_2  OPA  1 | 561 | 565 | 708 | 573 | Helvetica |  | 8 | False | False | native | 1.00 | #000000 |
+
+### Table Spanning Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 176 | 102 | 216 | 172 | table spanning cell |
+| 101 | 102 | 175 | 172 | table spanning cell |
+| 61 | 103 | 102 | 172 | table spanning cell |
+| 61 | 423 | 101 | 466 | table spanning cell |
+| 61 | 468 | 101 | 509 | table spanning cell |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 61 | 102 | 682 | 142 | table row |
+| 61 | 140 | 682 | 175 | table row |
+| 61 | 176 | 682 | 217 | table row |
+| 61 | 177 | 681 | 185 | table row |
+| 61 | 219 | 682 | 233 | table row |
+| 61 | 234 | 682 | 247 | table row |
+| 61 | 247 | 682 | 260 | table row |
+| 61 | 260 | 682 | 273 | table row |
+| 61 | 272 | 682 | 285 | table row |
+| 61 | 284 | 682 | 298 | table row |
+| 61 | 297 | 682 | 310 | table row |
+| 61 | 309 | 682 | 323 | table row |
+| 61 | 322 | 682 | 336 | table row |
+| 61 | 334 | 682 | 348 | table row |
+| 61 | 337 | 682 | 350 | table row |
+| 61 | 342 | 682 | 356 | table row |
+| 61 | 347 | 682 | 360 | table row |
+| 61 | 350 | 682 | 362 | table row |
+| 61 | 356 | 682 | 369 | table row |
+| 61 | 361 | 682 | 373 | table row |
+| 61 | 367 | 682 | 379 | table row |
+| 61 | 385 | 682 | 426 | table row |
+| 61 | 394 | 682 | 432 | table row |
+| 61 | 405 | 682 | 419 | table row |
+| 61 | 433 | 682 | 443 | table row |
+| 62 | 450 | 682 | 458 | table row |
+| 61 | 452 | 682 | 467 | table row |
+| 61 | 464 | 681 | 509 | table row |
+| 61 | 466 | 682 | 477 | table row |
+| 61 | 466 | 682 | 475 | table row |
+| 61 | 477 | 682 | 487 | table row |
+| 61 | 488 | 682 | 497 | table row |
+| 61 | 496 | 682 | 504 | table row |
+| 61 | 504 | 682 | 513 | table row |
+| 61 | 512 | 682 | 520 | table row |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 217 | 102 | 331 | 520 | table column |
+| 410 | 102 | 575 | 520 | table column |
+| 175 | 102 | 217 | 520 | table column |
+| 575 | 103 | 682 | 520 | table column |
+| 102 | 103 | 175 | 520 | table column |
+| 331 | 103 | 412 | 520 | table column |
+| 61 | 103 | 102 | 520 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 217 | 102 | 331 | 142 | table-cell |
+| 217 | 102 | 331 | 142 | table-cell |
+| 410 | 102 | 575 | 142 | table-cell |
+| 410 | 102 | 575 | 142 | table-cell |
+| 175 | 102 | 217 | 142 | table-cell |
+| 175 | 102 | 217 | 142 | table-cell |
+| 575 | 103 | 682 | 142 | table-cell |
+| 575 | 103 | 682 | 142 | table-cell |
+| 102 | 103 | 175 | 142 | table-cell |
+| 102 | 103 | 175 | 142 | table-cell |
+| 331 | 103 | 412 | 142 | table-cell |
+| 331 | 103 | 412 | 142 | table-cell |
+| 61 | 103 | 102 | 142 | table-cell |
+| 61 | 103 | 102 | 142 | table-cell |
+| 61 | 140 | 102 | 175 | table-cell |
+| 61 | 140 | 102 | 175 | table-cell |
+| 102 | 140 | 175 | 175 | table-cell |
+| 102 | 140 | 175 | 175 | table-cell |
+| 175 | 140 | 217 | 175 | table-cell |
+| 175 | 140 | 217 | 175 | table-cell |
+| 217 | 140 | 331 | 175 | table-cell |
+| 217 | 140 | 331 | 175 | table-cell |
+| 331 | 140 | 412 | 175 | table-cell |
+| 331 | 140 | 412 | 175 | table-cell |
+| 410 | 140 | 575 | 175 | table-cell |
+| 410 | 140 | 575 | 175 | table-cell |
+| 575 | 140 | 682 | 175 | table-cell |
+| 575 | 140 | 682 | 175 | table-cell |
+| 61 | 176 | 102 | 217 | table-cell |
+| 61 | 176 | 102 | 217 | table-cell |
+| 102 | 176 | 175 | 217 | table-cell |
+| 102 | 176 | 175 | 217 | table-cell |
+| 175 | 176 | 217 | 217 | table-cell |
+| 175 | 176 | 217 | 217 | table-cell |
+| 217 | 176 | 331 | 217 | table-cell |
+| 217 | 176 | 331 | 217 | table-cell |
+| 331 | 176 | 412 | 217 | table-cell |
+| 331 | 176 | 412 | 217 | table-cell |
+| 410 | 176 | 575 | 217 | table-cell |
+| 410 | 176 | 575 | 217 | table-cell |
+| 575 | 176 | 682 | 217 | table-cell |
+| 575 | 176 | 682 | 217 | table-cell |
+| 61 | 177 | 102 | 185 | table-cell |
+| 61 | 177 | 102 | 185 | table-cell |
+| 102 | 177 | 175 | 185 | table-cell |
+| 102 | 177 | 175 | 185 | table-cell |
+| 175 | 177 | 217 | 185 | table-cell |
+| 175 | 177 | 217 | 185 | table-cell |
+| 217 | 177 | 331 | 185 | table-cell |
+| 217 | 177 | 331 | 185 | table-cell |
+| 331 | 177 | 412 | 185 | table-cell |
+| 331 | 177 | 412 | 185 | table-cell |
+| 410 | 177 | 575 | 185 | table-cell |
+| 410 | 177 | 575 | 185 | table-cell |
+| 575 | 177 | 681 | 185 | table-cell |
+| 575 | 177 | 681 | 185 | table-cell |
+| 61 | 219 | 102 | 233 | table-cell |
+| 61 | 219 | 102 | 233 | table-cell |
+| 102 | 219 | 175 | 233 | table-cell |
+| 102 | 219 | 175 | 233 | table-cell |
+| 175 | 219 | 217 | 233 | table-cell |
+| 175 | 219 | 217 | 233 | table-cell |
+| 217 | 219 | 331 | 233 | table-cell |
+| 217 | 219 | 331 | 233 | table-cell |
+| 331 | 219 | 412 | 233 | table-cell |
+| 331 | 219 | 412 | 233 | table-cell |
+| 410 | 219 | 575 | 233 | table-cell |
+| 410 | 219 | 575 | 233 | table-cell |
+| 575 | 219 | 682 | 233 | table-cell |
+| 575 | 219 | 682 | 233 | table-cell |
+| 61 | 234 | 102 | 247 | table-cell |
+| 61 | 234 | 102 | 247 | table-cell |
+| 102 | 234 | 175 | 247 | table-cell |
+| 102 | 234 | 175 | 247 | table-cell |
+| 175 | 234 | 217 | 247 | table-cell |
+| 175 | 234 | 217 | 247 | table-cell |
+| 217 | 234 | 331 | 247 | table-cell |
+| 217 | 234 | 331 | 247 | table-cell |
+| 331 | 234 | 412 | 247 | table-cell |
+| 331 | 234 | 412 | 247 | table-cell |
+| 410 | 234 | 575 | 247 | table-cell |
+| 410 | 234 | 575 | 247 | table-cell |
+| 575 | 234 | 682 | 247 | table-cell |
+| 575 | 234 | 682 | 247 | table-cell |
+| 61 | 247 | 102 | 260 | table-cell |
+| 61 | 247 | 102 | 260 | table-cell |
+| 102 | 247 | 175 | 260 | table-cell |
+| 102 | 247 | 175 | 260 | table-cell |
+| 175 | 247 | 217 | 260 | table-cell |
+| 175 | 247 | 217 | 260 | table-cell |
+| 217 | 247 | 331 | 260 | table-cell |
+| 217 | 247 | 331 | 260 | table-cell |
+| 331 | 247 | 412 | 260 | table-cell |
+| 331 | 247 | 412 | 260 | table-cell |
+| 410 | 247 | 575 | 260 | table-cell |
+| 410 | 247 | 575 | 260 | table-cell |
+| 575 | 247 | 682 | 260 | table-cell |
+| 575 | 247 | 682 | 260 | table-cell |
+| 61 | 260 | 102 | 273 | table-cell |
+| 61 | 260 | 102 | 273 | table-cell |
+| 102 | 260 | 175 | 273 | table-cell |
+| 102 | 260 | 175 | 273 | table-cell |
+| 175 | 260 | 217 | 273 | table-cell |
+| 175 | 260 | 217 | 273 | table-cell |
+| 217 | 260 | 331 | 273 | table-cell |
+| 217 | 260 | 331 | 273 | table-cell |
+| 331 | 260 | 412 | 273 | table-cell |
+| 331 | 260 | 412 | 273 | table-cell |
+| 410 | 260 | 575 | 273 | table-cell |
+| 410 | 260 | 575 | 273 | table-cell |
+| 575 | 260 | 682 | 273 | table-cell |
+| 575 | 260 | 682 | 273 | table-cell |
+| 61 | 272 | 102 | 285 | table-cell |
+| 61 | 272 | 102 | 285 | table-cell |
+| 102 | 272 | 175 | 285 | table-cell |
+| 102 | 272 | 175 | 285 | table-cell |
+| 175 | 272 | 217 | 285 | table-cell |
+| 175 | 272 | 217 | 285 | table-cell |
+| 217 | 272 | 331 | 285 | table-cell |
+| 217 | 272 | 331 | 285 | table-cell |
+| 331 | 272 | 412 | 285 | table-cell |
+| 331 | 272 | 412 | 285 | table-cell |
+| 410 | 272 | 575 | 285 | table-cell |
+| 410 | 272 | 575 | 285 | table-cell |
+| 575 | 272 | 682 | 285 | table-cell |
+| 575 | 272 | 682 | 285 | table-cell |
+| 61 | 284 | 102 | 298 | table-cell |
+| 61 | 284 | 102 | 298 | table-cell |
+| 102 | 284 | 175 | 298 | table-cell |
+| 102 | 284 | 175 | 298 | table-cell |
+| 175 | 284 | 217 | 298 | table-cell |
+| 175 | 284 | 217 | 298 | table-cell |
+| 217 | 284 | 331 | 298 | table-cell |
+| 217 | 284 | 331 | 298 | table-cell |
+| 331 | 284 | 412 | 298 | table-cell |
+| 331 | 284 | 412 | 298 | table-cell |
+| 410 | 284 | 575 | 298 | table-cell |
+| 410 | 284 | 575 | 298 | table-cell |
+| 575 | 284 | 682 | 298 | table-cell |
+| 575 | 284 | 682 | 298 | table-cell |
+| 61 | 297 | 102 | 310 | table-cell |
+| 61 | 297 | 102 | 310 | table-cell |
+| 102 | 297 | 175 | 310 | table-cell |
+| 102 | 297 | 175 | 310 | table-cell |
+| 175 | 297 | 217 | 310 | table-cell |
+| 175 | 297 | 217 | 310 | table-cell |
+| 217 | 297 | 331 | 310 | table-cell |
+| 217 | 297 | 331 | 310 | table-cell |
+| 331 | 297 | 412 | 310 | table-cell |
+| 331 | 297 | 412 | 310 | table-cell |
+| 410 | 297 | 575 | 310 | table-cell |
+| 410 | 297 | 575 | 310 | table-cell |
+| 575 | 297 | 682 | 310 | table-cell |
+| 575 | 297 | 682 | 310 | table-cell |
+| 61 | 309 | 102 | 323 | table-cell |
+| 61 | 309 | 102 | 323 | table-cell |
+| 102 | 309 | 175 | 323 | table-cell |
+| 102 | 309 | 175 | 323 | table-cell |
+| 175 | 309 | 217 | 323 | table-cell |
+| 175 | 309 | 217 | 323 | table-cell |
+| 217 | 309 | 331 | 323 | table-cell |
+| 217 | 309 | 331 | 323 | table-cell |
+| 331 | 309 | 412 | 323 | table-cell |
+| 331 | 309 | 412 | 323 | table-cell |
+| 410 | 309 | 575 | 323 | table-cell |
+| 410 | 309 | 575 | 323 | table-cell |
+| 575 | 309 | 682 | 323 | table-cell |
+| 575 | 309 | 682 | 323 | table-cell |
+| 61 | 322 | 102 | 336 | table-cell |
+| 61 | 322 | 102 | 336 | table-cell |
+| 102 | 322 | 175 | 336 | table-cell |
+| 102 | 322 | 175 | 336 | table-cell |
+| 175 | 322 | 217 | 336 | table-cell |
+| 175 | 322 | 217 | 336 | table-cell |
+| 217 | 322 | 331 | 336 | table-cell |
+| 217 | 322 | 331 | 336 | table-cell |
+| 331 | 322 | 412 | 336 | table-cell |
+| 331 | 322 | 412 | 336 | table-cell |
+| 410 | 322 | 575 | 336 | table-cell |
+| 410 | 322 | 575 | 336 | table-cell |
+| 575 | 322 | 682 | 336 | table-cell |
+| 575 | 322 | 682 | 336 | table-cell |
+| 61 | 334 | 102 | 348 | table-cell |
+| 61 | 334 | 102 | 348 | table-cell |
+| 102 | 334 | 175 | 348 | table-cell |
+| 102 | 334 | 175 | 348 | table-cell |
+| 175 | 334 | 217 | 348 | table-cell |
+| 175 | 334 | 217 | 348 | table-cell |
+| 217 | 334 | 331 | 348 | table-cell |
+| 217 | 334 | 331 | 348 | table-cell |
+| 331 | 334 | 412 | 348 | table-cell |
+| 331 | 334 | 412 | 348 | table-cell |
+| 410 | 334 | 575 | 348 | table-cell |
+| 410 | 334 | 575 | 348 | table-cell |
+| 575 | 334 | 682 | 348 | table-cell |
+| 575 | 334 | 682 | 348 | table-cell |
+| 61 | 337 | 102 | 350 | table-cell |
+| 61 | 337 | 102 | 350 | table-cell |
+| 102 | 337 | 175 | 350 | table-cell |
+| 102 | 337 | 175 | 350 | table-cell |
+| 175 | 337 | 217 | 350 | table-cell |
+| 175 | 337 | 217 | 350 | table-cell |
+| 217 | 337 | 331 | 350 | table-cell |
+| 217 | 337 | 331 | 350 | table-cell |
+| 331 | 337 | 412 | 350 | table-cell |
+| 331 | 337 | 412 | 350 | table-cell |
+| 410 | 337 | 575 | 350 | table-cell |
+| 410 | 337 | 575 | 350 | table-cell |
+| 575 | 337 | 682 | 350 | table-cell |
+| 575 | 337 | 682 | 350 | table-cell |
+| 61 | 342 | 102 | 356 | table-cell |
+| 61 | 342 | 102 | 356 | table-cell |
+| 102 | 342 | 175 | 356 | table-cell |
+| 102 | 342 | 175 | 356 | table-cell |
+| 175 | 342 | 217 | 356 | table-cell |
+| 175 | 342 | 217 | 356 | table-cell |
+| 217 | 342 | 331 | 356 | table-cell |
+| 217 | 342 | 331 | 356 | table-cell |
+| 331 | 342 | 412 | 356 | table-cell |
+| 331 | 342 | 412 | 356 | table-cell |
+| 410 | 342 | 575 | 356 | table-cell |
+| 410 | 342 | 575 | 356 | table-cell |
+| 575 | 342 | 682 | 356 | table-cell |
+| 575 | 342 | 682 | 356 | table-cell |
+| 61 | 347 | 102 | 360 | table-cell |
+| 61 | 347 | 102 | 360 | table-cell |
+| 102 | 347 | 175 | 360 | table-cell |
+| 102 | 347 | 175 | 360 | table-cell |
+| 175 | 347 | 217 | 360 | table-cell |
+| 175 | 347 | 217 | 360 | table-cell |
+| 217 | 347 | 331 | 360 | table-cell |
+| 217 | 347 | 331 | 360 | table-cell |
+| 331 | 347 | 412 | 360 | table-cell |
+| 331 | 347 | 412 | 360 | table-cell |
+| 410 | 347 | 575 | 360 | table-cell |
+| 410 | 347 | 575 | 360 | table-cell |
+| 575 | 347 | 682 | 360 | table-cell |
+| 575 | 347 | 682 | 360 | table-cell |
+| 61 | 350 | 102 | 362 | table-cell |
+| 61 | 350 | 102 | 362 | table-cell |
+| 102 | 350 | 175 | 362 | table-cell |
+| 102 | 350 | 175 | 362 | table-cell |
+| 175 | 350 | 217 | 362 | table-cell |
+| 175 | 350 | 217 | 362 | table-cell |
+| 217 | 350 | 331 | 362 | table-cell |
+| 217 | 350 | 331 | 362 | table-cell |
+| 331 | 350 | 412 | 362 | table-cell |
+| 331 | 350 | 412 | 362 | table-cell |
+| 410 | 350 | 575 | 362 | table-cell |
+| 410 | 350 | 575 | 362 | table-cell |
+| 575 | 350 | 682 | 362 | table-cell |
+| 575 | 350 | 682 | 362 | table-cell |
+| 61 | 356 | 102 | 369 | table-cell |
+| 61 | 356 | 102 | 369 | table-cell |
+| 102 | 356 | 175 | 369 | table-cell |
+| 102 | 356 | 175 | 369 | table-cell |
+| 175 | 356 | 217 | 369 | table-cell |
+| 175 | 356 | 217 | 369 | table-cell |
+| 217 | 356 | 331 | 369 | table-cell |
+| 217 | 356 | 331 | 369 | table-cell |
+| 331 | 356 | 412 | 369 | table-cell |
+| 331 | 356 | 412 | 369 | table-cell |
+| 410 | 356 | 575 | 369 | table-cell |
+| 410 | 356 | 575 | 369 | table-cell |
+| 575 | 356 | 682 | 369 | table-cell |
+| 575 | 356 | 682 | 369 | table-cell |
+| 61 | 361 | 102 | 373 | table-cell |
+| 61 | 361 | 102 | 373 | table-cell |
+| 102 | 361 | 175 | 373 | table-cell |
+| 102 | 361 | 175 | 373 | table-cell |
+| 175 | 361 | 217 | 373 | table-cell |
+| 175 | 361 | 217 | 373 | table-cell |
+| 217 | 361 | 331 | 373 | table-cell |
+| 217 | 361 | 331 | 373 | table-cell |
+| 331 | 361 | 412 | 373 | table-cell |
+| 331 | 361 | 412 | 373 | table-cell |
+| 410 | 361 | 575 | 373 | table-cell |
+| 410 | 361 | 575 | 373 | table-cell |
+| 575 | 361 | 682 | 373 | table-cell |
+| 575 | 361 | 682 | 373 | table-cell |
+| 61 | 367 | 102 | 379 | table-cell |
+| 61 | 367 | 102 | 379 | table-cell |
+| 102 | 367 | 175 | 379 | table-cell |
+| 102 | 367 | 175 | 379 | table-cell |
+| 175 | 367 | 217 | 379 | table-cell |
+| 175 | 367 | 217 | 379 | table-cell |
+| 217 | 367 | 331 | 379 | table-cell |
+| 217 | 367 | 331 | 379 | table-cell |
+| 331 | 367 | 412 | 379 | table-cell |
+| 331 | 367 | 412 | 379 | table-cell |
+| 410 | 367 | 575 | 379 | table-cell |
+| 410 | 367 | 575 | 379 | table-cell |
+| 575 | 367 | 682 | 379 | table-cell |
+| 575 | 367 | 682 | 379 | table-cell |
+| 61 | 385 | 102 | 426 | table-cell |
+| 61 | 385 | 102 | 426 | table-cell |
+| 102 | 385 | 175 | 426 | table-cell |
+| 102 | 385 | 175 | 426 | table-cell |
+| 175 | 385 | 217 | 426 | table-cell |
+| 175 | 385 | 217 | 426 | table-cell |
+| 217 | 385 | 331 | 426 | table-cell |
+| 217 | 385 | 331 | 426 | table-cell |
+| 331 | 385 | 412 | 426 | table-cell |
+| 331 | 385 | 412 | 426 | table-cell |
+| 410 | 385 | 575 | 426 | table-cell |
+| 410 | 385 | 575 | 426 | table-cell |
+| 575 | 385 | 682 | 426 | table-cell |
+| 575 | 385 | 682 | 426 | table-cell |
+| 61 | 394 | 102 | 432 | table-cell |
+| 61 | 394 | 102 | 432 | table-cell |
+| 102 | 394 | 175 | 432 | table-cell |
+| 102 | 394 | 175 | 432 | table-cell |
+| 175 | 394 | 217 | 432 | table-cell |
+| 175 | 394 | 217 | 432 | table-cell |
+| 217 | 394 | 331 | 432 | table-cell |
+| 217 | 394 | 331 | 432 | table-cell |
+| 331 | 394 | 412 | 432 | table-cell |
+| 331 | 394 | 412 | 432 | table-cell |
+| 410 | 394 | 575 | 432 | table-cell |
+| 410 | 394 | 575 | 432 | table-cell |
+| 575 | 394 | 682 | 432 | table-cell |
+| 575 | 394 | 682 | 432 | table-cell |
+| 61 | 405 | 102 | 419 | table-cell |
+| 61 | 405 | 102 | 419 | table-cell |
+| 102 | 405 | 175 | 419 | table-cell |
+| 102 | 405 | 175 | 419 | table-cell |
+| 175 | 405 | 217 | 419 | table-cell |
+| 175 | 405 | 217 | 419 | table-cell |
+| 217 | 405 | 331 | 419 | table-cell |
+| 217 | 405 | 331 | 419 | table-cell |
+| 331 | 405 | 412 | 419 | table-cell |
+| 331 | 405 | 412 | 419 | table-cell |
+| 410 | 405 | 575 | 419 | table-cell |
+| 410 | 405 | 575 | 419 | table-cell |
+| 575 | 405 | 682 | 419 | table-cell |
+| 575 | 405 | 682 | 419 | table-cell |
+| 61 | 433 | 102 | 443 | table-cell |
+| 61 | 433 | 102 | 443 | table-cell |
+| 102 | 433 | 175 | 443 | table-cell |
+| 102 | 433 | 175 | 443 | table-cell |
+| 175 | 433 | 217 | 443 | table-cell |
+| 175 | 433 | 217 | 443 | table-cell |
+| 217 | 433 | 331 | 443 | table-cell |
+| 217 | 433 | 331 | 443 | table-cell |
+| 331 | 433 | 412 | 443 | table-cell |
+| 331 | 433 | 412 | 443 | table-cell |
+| 410 | 433 | 575 | 443 | table-cell |
+| 410 | 433 | 575 | 443 | table-cell |
+| 575 | 433 | 682 | 443 | table-cell |
+| 575 | 433 | 682 | 443 | table-cell |
+| 62 | 450 | 102 | 458 | table-cell |
+| 62 | 450 | 102 | 458 | table-cell |
+| 102 | 450 | 175 | 458 | table-cell |
+| 102 | 450 | 175 | 458 | table-cell |
+| 175 | 450 | 217 | 458 | table-cell |
+| 175 | 450 | 217 | 458 | table-cell |
+| 217 | 450 | 331 | 458 | table-cell |
+| 217 | 450 | 331 | 458 | table-cell |
+| 331 | 450 | 412 | 458 | table-cell |
+| 331 | 450 | 412 | 458 | table-cell |
+| 410 | 450 | 575 | 458 | table-cell |
+| 410 | 450 | 575 | 458 | table-cell |
+| 575 | 450 | 682 | 458 | table-cell |
+| 575 | 450 | 682 | 458 | table-cell |
+| 61 | 452 | 102 | 467 | table-cell |
+| 61 | 452 | 102 | 467 | table-cell |
+| 102 | 452 | 175 | 467 | table-cell |
+| 102 | 452 | 175 | 467 | table-cell |
+| 175 | 452 | 217 | 467 | table-cell |
+| 175 | 452 | 217 | 467 | table-cell |
+| 217 | 452 | 331 | 467 | table-cell |
+| 217 | 452 | 331 | 467 | table-cell |
+| 331 | 452 | 412 | 467 | table-cell |
+| 331 | 452 | 412 | 467 | table-cell |
+| 410 | 452 | 575 | 467 | table-cell |
+| 410 | 452 | 575 | 467 | table-cell |
+| 575 | 452 | 682 | 467 | table-cell |
+| 575 | 452 | 682 | 467 | table-cell |
+| 61 | 464 | 102 | 509 | table-cell |
+| 61 | 464 | 102 | 509 | table-cell |
+| 102 | 464 | 175 | 509 | table-cell |
+| 102 | 464 | 175 | 509 | table-cell |
+| 175 | 464 | 217 | 509 | table-cell |
+| 175 | 464 | 217 | 509 | table-cell |
+| 217 | 464 | 331 | 509 | table-cell |
+| 217 | 464 | 331 | 509 | table-cell |
+| 331 | 464 | 412 | 509 | table-cell |
+| 331 | 464 | 412 | 509 | table-cell |
+| 410 | 464 | 575 | 509 | table-cell |
+| 410 | 464 | 575 | 509 | table-cell |
+| 575 | 464 | 681 | 509 | table-cell |
+| 575 | 464 | 681 | 509 | table-cell |
+| 61 | 466 | 102 | 477 | table-cell |
+| 61 | 466 | 102 | 477 | table-cell |
+| 102 | 466 | 175 | 477 | table-cell |
+| 102 | 466 | 175 | 477 | table-cell |
+| 175 | 466 | 217 | 477 | table-cell |
+| 175 | 466 | 217 | 477 | table-cell |
+| 217 | 466 | 331 | 477 | table-cell |
+| 217 | 466 | 331 | 477 | table-cell |
+| 331 | 466 | 412 | 477 | table-cell |
+| 331 | 466 | 412 | 477 | table-cell |
+| 410 | 466 | 575 | 477 | table-cell |
+| 410 | 466 | 575 | 477 | table-cell |
+| 575 | 466 | 682 | 477 | table-cell |
+| 575 | 466 | 682 | 477 | table-cell |
+| 61 | 466 | 102 | 475 | table-cell |
+| 61 | 466 | 102 | 475 | table-cell |
+| 102 | 466 | 175 | 475 | table-cell |
+| 102 | 466 | 175 | 475 | table-cell |
+| 175 | 466 | 217 | 475 | table-cell |
+| 175 | 466 | 217 | 475 | table-cell |
+| 217 | 466 | 331 | 475 | table-cell |
+| 217 | 466 | 331 | 475 | table-cell |
+| 331 | 466 | 412 | 475 | table-cell |
+| 331 | 466 | 412 | 475 | table-cell |
+| 410 | 466 | 575 | 475 | table-cell |
+| 410 | 466 | 575 | 475 | table-cell |
+| 575 | 466 | 682 | 475 | table-cell |
+| 575 | 466 | 682 | 475 | table-cell |
+| 61 | 477 | 102 | 487 | table-cell |
+| 61 | 477 | 102 | 487 | table-cell |
+| 102 | 477 | 175 | 487 | table-cell |
+| 102 | 477 | 175 | 487 | table-cell |
+| 175 | 477 | 217 | 487 | table-cell |
+| 175 | 477 | 217 | 487 | table-cell |
+| 217 | 477 | 331 | 487 | table-cell |
+| 217 | 477 | 331 | 487 | table-cell |
+| 331 | 477 | 412 | 487 | table-cell |
+| 331 | 477 | 412 | 487 | table-cell |
+| 410 | 477 | 575 | 487 | table-cell |
+| 410 | 477 | 575 | 487 | table-cell |
+| 575 | 477 | 682 | 487 | table-cell |
+| 575 | 477 | 682 | 487 | table-cell |
+| 61 | 488 | 102 | 497 | table-cell |
+| 61 | 488 | 102 | 497 | table-cell |
+| 102 | 488 | 175 | 497 | table-cell |
+| 102 | 488 | 175 | 497 | table-cell |
+| 175 | 488 | 217 | 497 | table-cell |
+| 175 | 488 | 217 | 497 | table-cell |
+| 217 | 488 | 331 | 497 | table-cell |
+| 217 | 488 | 331 | 497 | table-cell |
+| 331 | 488 | 412 | 497 | table-cell |
+| 331 | 488 | 412 | 497 | table-cell |
+| 410 | 488 | 575 | 497 | table-cell |
+| 410 | 488 | 575 | 497 | table-cell |
+| 575 | 488 | 682 | 497 | table-cell |
+| 575 | 488 | 682 | 497 | table-cell |
+| 61 | 496 | 102 | 504 | table-cell |
+| 61 | 496 | 102 | 504 | table-cell |
+| 102 | 496 | 175 | 504 | table-cell |
+| 102 | 496 | 175 | 504 | table-cell |
+| 175 | 496 | 217 | 504 | table-cell |
+| 175 | 496 | 217 | 504 | table-cell |
+| 217 | 496 | 331 | 504 | table-cell |
+| 217 | 496 | 331 | 504 | table-cell |
+| 331 | 496 | 412 | 504 | table-cell |
+| 331 | 496 | 412 | 504 | table-cell |
+| 410 | 496 | 575 | 504 | table-cell |
+| 410 | 496 | 575 | 504 | table-cell |
+| 575 | 496 | 682 | 504 | table-cell |
+| 575 | 496 | 682 | 504 | table-cell |
+| 61 | 504 | 102 | 513 | table-cell |
+| 61 | 504 | 102 | 513 | table-cell |
+| 102 | 504 | 175 | 513 | table-cell |
+| 102 | 504 | 175 | 513 | table-cell |
+| 175 | 504 | 217 | 513 | table-cell |
+| 175 | 504 | 217 | 513 | table-cell |
+| 217 | 504 | 331 | 513 | table-cell |
+| 217 | 504 | 331 | 513 | table-cell |
+| 331 | 504 | 412 | 513 | table-cell |
+| 331 | 504 | 412 | 513 | table-cell |
+| 410 | 504 | 575 | 513 | table-cell |
+| 410 | 504 | 575 | 513 | table-cell |
+| 575 | 504 | 682 | 513 | table-cell |
+| 575 | 504 | 682 | 513 | table-cell |
+| 61 | 512 | 102 | 520 | table-cell |
+| 61 | 512 | 102 | 520 | table-cell |
+| 102 | 512 | 175 | 520 | table-cell |
+| 102 | 512 | 175 | 520 | table-cell |
+| 175 | 512 | 217 | 520 | table-cell |
+| 175 | 512 | 217 | 520 | table-cell |
+| 217 | 512 | 331 | 520 | table-cell |
+| 217 | 512 | 331 | 520 | table-cell |
+| 331 | 512 | 412 | 520 | table-cell |
+| 331 | 512 | 412 | 520 | table-cell |
+| 410 | 512 | 575 | 520 | table-cell |
+| 410 | 512 | 575 | 520 | table-cell |
+| 575 | 512 | 682 | 520 | table-cell |
+| 575 | 512 | 682 | 520 | table-cell |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 61 | 103 | 682 | 174 | table column header |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 572 | 575 | 721 | 585 | abandon |

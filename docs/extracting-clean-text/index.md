@@ -219,4 +219,22 @@ document_title = title.text if title else "Unknown"
 # Then exclude the header for clean body text
 page.add_exclusion(page.create_region(0, 0, page.width, 100))
 body_text = page.extract_text()
-``` 
+```
+
+## Handling Right-to-left (Arabic, Hebrew) Text
+Natural-PDF now automatically detects bidirectional (RTL) lines and applies the Unicode **BiDi** algorithm when you call `page.extract_text()`.  
+This means the returned string is in *logical* reading order with brackets/parentheses correctly mirrored and Western digits left untouched.
+
+```python
+# Arabic example – no special flags required
+page = pdf.pages[0]
+body = page.extract_text()  # parentheses and numbers appear correctly
+
+# String queries work naturally
+row = page.find("text:contains('الجريدة الرسمية')")
+
+# Disable the BiDi pass if you need raw PDF order
+raw = page.extract_text(bidi=False)
+```
+
+> Tip: This RTL handling is line-aware, so mixed LTR/RTL documents (e.g. Arabic with English dates) still extract correctly without affecting Latin text on other pages. 

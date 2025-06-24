@@ -1,0 +1,34 @@
+CityofNiagaraFalls,NY
+FOIL#: DATE:
+FOILREQUESTFORM
+(AgencyUseOnly)
+ver09.10.2024
+DepartmenttoReceiveRequest: AddressofDepartment:
+Iherebyapply thefollowingrecords(pleasenumbereachindividualrequest):
+Name:
+Address: Signature
+ElectronicDelivery*?
+Phone:
+Yes No
+E-Mail:
+Representing:
+(SelforNameofCompany/Organization
+*NOCHARGEFOREMAILEDRECORDS-8.5"X11"PAPERCOPIESARE25CENTSPERPAGE
+FOR AGENCY USE ONLY
+ResultsofFOILRequest:
+Reason(s)forRedaction/Denial:
+1.
+2.
+3.
+4.
+AdditionalExplanation(ifnecessary)
+Date:
+StaffSignature (Title)
+NOTICE:YOUHAVEARIGHTTOAPPEALWITHIN30DAYSOFADENIALOFYOURREQUEST
+COMPLETETHEFORMBELOWANDMAILITTO:ACTINGCORPORATIONCOUNSELAT745MAINST.,
+NIAGARAFALLS,NY14301.[Phone#(716)286-4427].ONSEPARATEPAGES,INCLUDETHEFOILFILE#,
+DATEOFYOURFOILREQUEST,ANDADESCRIPTIONOFTHERECORDSTHATYOUCLAIMWEREDENIED.
+ALSOINCLUDETHEREASONSANDEXPLANATIONSFORYOURAPPEAL
+Appellant'sName: Date:
+ReturnAddress:
+Signature

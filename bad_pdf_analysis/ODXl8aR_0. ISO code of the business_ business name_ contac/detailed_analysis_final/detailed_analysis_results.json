@@ -1,0 +1,119 @@
+{
+  "document": "ODXl8aR_0. ISO code of the business_ business name_ contac",
+  "total_pages": 111,
+  "analyzed_pages": [
+    1,
+    55
+  ],
+  "analysis_date": "2025-06-22T17:14:13.386583",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1109,
+      "text_preview": "POLICY NUMBER: DEMO0001-00000-01 HU DS 05 01 18\nPREVIOUS POLICY NUMBER:\nCOMMON POLICY DECLARATIONS\nNamed Insured: Demo - Restaurant\nNamed Insured's Mailing Address: 9 West Mechanic Street\nNew Hope PA ...",
+      "character_count": 1060,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.01,
+      "standard_table": "58 rows × 7 columns",
+      "line_detection": {
+        "horizontal_lines": 17,
+        "vertical_lines": 2,
+        "total_lines": 19
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 16
+      },
+      "yolo_analysis": {
+        "regions": 38,
+        "processing_time": 1.0242149829864502
+      },
+      "yolo_types": {
+        "abandon": 3,
+        "title": 1,
+        "table": 1,
+        "table_row": 16,
+        "table_column": 1,
+        "table_cell": 16
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 0.9592990875244141
+      },
+      "selector_large_text": 13,
+      "selector_small_text": 1,
+      "selector_bold_text": 16,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/ODXl8aR_0. ISO code of the business_ business name_ contac/detailed_analysis_final/page_1.png"
+    },
+    "55": {
+      "page_number": 55,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 3575,
+      "text_preview": "(b) At or from any premises, site or (ii) \"Bodily injury\" or \"property\nlocation which is or was at any time damage\" sustained within a\nused by or for any insured or others building and caused by the\nf...",
+      "character_count": 3555,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.02,
+      "standard_table": "80 rows × 8 columns",
+      "line_detection": {
+        "horizontal_lines": 1,
+        "vertical_lines": 0,
+        "total_lines": 1
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 11,
+        "processing_time": 0.823699951171875
+      },
+      "yolo_types": {
+        "plain text": 7,
+        "title": 1,
+        "abandon": 3
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.44815897941589355
+      },
+      "selector_large_text": 12,
+      "selector_small_text": 1,
+      "selector_bold_text": 25,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/ODXl8aR_0. ISO code of the business_ business name_ contac/detailed_analysis_final/page_55.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

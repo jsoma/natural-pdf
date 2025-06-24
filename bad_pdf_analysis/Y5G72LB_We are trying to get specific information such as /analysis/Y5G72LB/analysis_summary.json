@@ -1,0 +1,290 @@
+{
+  "pdf_name": "Y5G72LB.pdf",
+  "pdf_path": "bad_pdf_analysis/Y5G72LB_We are trying to get specific information such as /Y5G72LB.pdf",
+  "analysis_timestamp": "2025-06-22T14:36:14.612036",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 583,
+        "height": 851
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 136 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Arial: 134\n    - Times: 2\n  - **sizes**:\n    - 14.0pt: 107\n    - 10.0pt: 22\n    - 13.0pt: 3\n    - 9.0pt: 2\n    - 11.0pt: 1\n    - 12.0pt: 1\n  - styles: 2 bold, 2 italic\n  - **colors**:\n    - other: 132\n    - black: 4",
+      "extract_text": {
+        "length": 804,
+        "preview": "011-23235058\\nCENTRAL OFFICE 011-23235099\\nAjoyShavan,15Com.IndrajitGuptaMarg,NewDelhi-110002 \\..i...,\\\\nE-mail:cpiofindia@gmaiJ.com,nationalcouncil@communistparty.in,Web:www.communistparty.in\\nD.RAJA\\nGeneralSecretary\\nNewDelhi,\\nDecember23,2024\\nTo,\\nTheChief Election Commissioner,\\nElectionCommissionofIndi",
+        "full_text": "011-23235058\nCENTRAL OFFICE 011-23235099\nAjoyShavan,15Com.IndrajitGuptaMarg,NewDelhi-110002 \\..i...,\\\nE-mail:cpiofindia@gmaiJ.com,nationalcouncil@communistparty.in,Web:www.communistparty.in\nD.RAJA\nGeneralSecretary\nNewDelhi,\nDecember23,2024\nTo,\nTheChief Election Commissioner,\nElectionCommissionofIndia,\nNirvachanSadan,\nAshokaRoad,\nNewDelhi-110001.\nSub:SubmissionofStatementofElectionExpenditureofHaryana,2024-Regarding.\nDearSir,\nWe are submitting herewith Election Expenditure incurred by the Communist Party of\nIndia(both hard andsoft copies), for the elections heldfor the legislative assemblyof\nHaryanaintheprescribedformat.WedidnotcontesttheelectioninJammuandKashmir.\nPleaseacknowledgereceipt.\nAlongwithPendrive(SoftCopy)\nTotalPages:21\nThankingyou,\nYoursfaithfully,\nD~\nGeneralSecretary,CPI\n----_ .. _"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 31,
+        "columns": 2,
+        "data": [
+          [
+            "Ne",
+            "w Delhi,"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "December",
+            "23,2024"
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "To,",
+            ""
+          ],
+          [
+            "The Chief Election Commissioner,",
+            ""
+          ],
+          [
+            "Election Commission of India,",
+            ""
+          ],
+          [
+            "Nirvachan Sadan,",
+            ""
+          ],
+          [
+            "Ashoka Road,",
+            ""
+          ],
+          [
+            "New Delhi-110001.",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Sub: Submission of Statement of Election Expenditure of Haryana, 2024 - Regar",
+            "ding."
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Dear Sir,",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "We are submitting herewith Election Expenditure incurred by the Communist",
+            "Party of"
+          ],
+          [
+            "India (both hard and soft copies), for the elections held for the legislative ass",
+            "embly of"
+          ],
+          [
+            "Haryana in the prescribed format. We did not contest the election in Jammu and",
+            "Kashmir."
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Pleaseacknowledge receipt.",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Alongwith Pendrive (Soft Copy)",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Total Pages: 21",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Thanking you,",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "Yoursfaithfully,",
+            ""
+          ],
+          [
+            "",
+            ""
+          ],
+          [
+            "D~",
+            ""
+          ],
+          [
+            "General Secretary, CPI",
+            ""
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 12,
+        "regions": [
+          {
+            "type": "plain text",
+            "bbox": [
+              73.0001220703125,
+              413.2061767578125,
+              536.095947265625,
+              462.7549743652344
+            ],
+            "confidence": 0.963049590587616
+          },
+          {
+            "type": "figure",
+            "bbox": [
+              279.602783203125,
+              210.7860565185547,
+              458.5076904296875,
+              350.6982116699219
+            ],
+            "confidence": 0.9460544586181641
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              73.02310180664062,
+              355.8885192871094,
+              513.7540893554688,
+              372.4156799316406
+            ],
+            "confidence": 0.8220256567001343
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              426.6256103515625,
+              165.44757080078125,
+              535.2737426757812,
+              201.14234924316406
+            ],
+            "confidence": 0.8091523051261902
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              74.11640930175781,
+              529.2134399414062,
+              156.1069793701172,
+              545.3603515625
+            ],
+            "confidence": 0.7930088639259338
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 12,
+        "yolo_count": 12,
+        "tatr_count": 0,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (12 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 14 | 102 | 93 | 127 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 427 | 165 | 535 | 201 | plain text |\n| 73 | 356 | 514 | 372 | plain text |\n| 74 | 384 | 123 | 401 | plain text |\n| 73 | 413 | 536 | 463 | plain text |\n| 73 | 474 | 223 | 491 | plain text |\n| 73 | 501 | 238 | 518 | plain text |\n| 74 | ..."
+      },
+      "elements_sample": {
+        "total_count": 898,
+        "full_inspect": "## Collection Inspection (148 elements)\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| 011-23235058 | 514 | 43 | 578 | 53 | Arial |  | 10 | False | False | native | 1.00 | #000000 |\n| CENTRAL | 223 | 52 | 284 | 65 | Arial |  | 13 | True | False | native | 1.00 | #000000 |\n| OFFICE | 293 | 52 | 341 | 65 | Arial |  | 13 | True | False | native | 1.00 | #000000 |\n| 011 | 514 | 55 | 531 | 65 | Arial |  | 10 | False | False | native | 1.00 | #000000 |\n| - | 531 | 55 | 534 | 65 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| 23235099 | 534 | 55 | 578 | 65 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| \\..i...,\\ | 535 | 70 | 551 | 81 | Arial |  | 11 | False | False | native | 1.00 | #5d5d5d |\n| Ajoy | 144 | 71 | 163 | 81 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| Shavan,15Com | 167 | 71 | 240 | 81 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| . | 240 | 71 | 243 | 81 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| Indrajit | 244 | 71 | 274 | 81 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| GuptaMarg | 278 | 71 | 331 | 81 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| , | 331 | 71 | 334 | 81 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| NewDelhi-110002 | 336 | 71 | 423 | 81 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| E | 64 | 82 | 70 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| - | 70 | 82 | 74 | 92 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| mail: | 74 | 82 | 95 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| cpiofindia@gmaiJ.com | 99 | 82 | 200 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| , | 200 | 82 | 203 | 92 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| nationalcouncil@communistparty.in, | 203 | 82 | 363 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| Web | 368 | 82 | 388 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| : | 388 | 82 | 391 | 92 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| www.communistparty | 396 | 82 | 490 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| .i | 490 | 82 | 495 | 92 | Arial |  | 10 | False | False | native | 1.00 | #232323 |\n| n | 495 | 82 | 501 | 92 | Arial |  | 10 | False | False | native | 1.00 | #0a0a0a |\n| D.RAJA | 27 | 103 | 77 | 116 | Times |  | 13 | False | False | native | 1.00 | #0a0a0a |\n| General | 16 | 116 | 48 | 125 | Arial |  | 9 | False | True | native | 1.00 | #0a0a0a |\n| Secretary | 51 | 116 | 90 | 125 | Arial |  | 9 | False | True | native | 1.00 | #0a0a0a |\n| New | 476 | 167 | 499 | 181 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Delhi, | 503 | 167 | 533 | 181 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| December | 430 | 186 | 484 | 200 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| 23,2024 | 489 | 186 | 534 | 200 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| To, | 74 | 235 | 91 | 249 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| The | 74 | 251 | 94 | 265 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Chief | 98 | 251 | 125 | 265 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Election | 131 | 251 | 172 | 265 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Commissioner, | 179 | 251 | 257 | 265 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Election | 75 | 267 | 116 | 281 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Commission | 119 | 267 | 182 | 281 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 186 | 267 | 195 | 281 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| India | 199 | 267 | 224 | 281 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 224 | 267 | 227 | 281 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| Nirvachan | 75 | 283 | 127 | 297 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Sadan, | 130 | 283 | 166 | 297 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Ashoka | 74 | 300 | 112 | 314 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Road | 116 | 300 | 144 | 314 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 144 | 300 | 147 | 314 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| New | 75 | 316 | 98 | 330 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Delhi-110001 | 101 | 316 | 169 | 330 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| . | 169 | 316 | 172 | 330 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| Sub: | 75 | 357 | 99 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Subm | 103 | 357 | 133 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| i | 133 | 357 | 136 | 371 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| ssion | 136 | 357 | 163 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 166 | 357 | 176 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Statement | 180 | 357 | 232 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 235 | 357 | 245 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Election | 249 | 357 | 290 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Expenditure | 293 | 357 | 355 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 358 | 357 | 367 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Haryana | 371 | 357 | 414 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 414 | 357 | 417 | 371 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| 2024 | 421 | 357 | 447 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| - | 450 | 357 | 454 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Regarding. | 458 | 357 | 514 | 371 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Dear | 75 | 386 | 101 | 400 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Sir, | 104 | 386 | 121 | 400 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| We | 75 | 415 | 92 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| are | 97 | 415 | 114 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| submitting | 120 | 415 | 172 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| herewith | 178 | 415 | 222 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Election | 228 | 415 | 269 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Expenditure | 275 | 415 | 336 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| incurred | 342 | 415 | 383 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| by | 389 | 415 | 401 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| the | 406 | 415 | 422 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Communist | 428 | 415 | 486 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Party | 492 | 415 | 519 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 524 | 415 | 534 | 429 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| India | 75 | 432 | 100 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| (both | 105 | 432 | 131 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| hard | 136 | 432 | 159 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| and | 164 | 432 | 184 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| soft | 188 | 432 | 207 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| copies) | 212 | 432 | 249 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 249 | 432 | 253 | 446 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| for | 258 | 432 | 271 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| the | 276 | 432 | 292 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| elections | 298 | 432 | 343 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| held | 348 | 432 | 370 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| for | 375 | 432 | 388 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| the | 393 | 432 | 409 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| legislative | 415 | 432 | 465 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| assembly | 471 | 432 | 520 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| of | 524 | 432 | 534 | 446 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Haryana | 75 | 448 | 119 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| in | 122 | 448 | 131 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| the | 134 | 448 | 150 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| prescribed | 153 | 448 | 207 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| format. | 210 | 448 | 246 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| We | 250 | 448 | 267 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| did | 270 | 448 | 286 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| not | 290 | 448 | 306 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| contest | 309 | 448 | 346 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| the | 349 | 448 | 365 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| election | 368 | 448 | 408 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| in | 412 | 448 | 421 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Jammu | 424 | 448 | 461 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| and | 465 | 448 | 485 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Kashmir | 488 | 448 | 530 | 462 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| . | 530 | 448 | 533 | 462 | Arial |  | 14 | False | False | native | 1.00 | #4b4b4b |\n| Pleaseacknowledge | 75 | 476 | 180 | 490 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| rece | 184 | 476 | 207 | 490 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| i | 207 | 476 | 209 | 490 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| pt. | 209 | 476 | 222 | 490 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Alongwith | 75 | 503 | 124 | 517 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Pendrive | 128 | 503 | 174 | 517 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| (Soft | 177 | 503 | 202 | 517 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Copy) | 205 | 503 | 236 | 517 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Total | 75 | 531 | 100 | 545 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Pages: | 104 | 531 | 140 | 545 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| 21 | 143 | 531 | 156 | 545 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Thanking | 75 | 559 | 122 | 573 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| you | 125 | 559 | 144 | 573 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 144 | 559 | 147 | 573 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| Yoursfaithfully | 75 | 586 | 150 | 600 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 150 | 586 | 153 | 600 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| D | 75 | 640 | 85 | 654 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| ~ | 85 | 640 | 94 | 654 | Arial |  | 14 | False | False | native | 1.00 | #0b104f |\n| General | 75 | 656 | 116 | 670 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| Secretary | 119 | 656 | 168 | 670 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| , | 168 | 656 | 172 | 670 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| CPI | 175 | 656 | 195 | 670 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| .. | 148 | 841 | 154 | 855 | Arial |  | 14 | False | False | native | 1.00 | #232323 |\n| _ | 168 | 841 | 180 | 855 | Arial |  | 14 | False | False | native | 1.00 | #0a0a0a |\n| ----_ | 64 | 842 | 108 | 854 | Times |  | 12 | False | False | native | 1.00 | #0a0a0a |\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 14 | 102 | 93 | 127 | abandon |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 427 | 165 | 535 | 201 | plain text |\n| 73 | 356 | 514 | 372 | plain text |\n| 74 | 384 | 123 | 401 | plain text |\n| 73 | 413 | 536 | 463 | plain text |\n| 73 | 474 | 223 | 491 | plain text |\n| 73 | 501 | 238 | 518 | plain text |\n| 74 | 529 | 156 | 545 | plain text |\n| 74 | 557 | 148 | 573 | plain text |\n| 74 | 585 | 155 | 601 | plain text |\n\n### Figure Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 280 | 211 | 459 | 351 | figure |\n| 79 | 676 | 167 | 763 | figure |",
+        "sample": [
+          {
+            "type": "unknown",
+            "text": "0",
+            "x0": 513.8399999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "011-23235058",
+            "x0": 513.8399999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 519.3999999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "1",
+            "x0": 524.9599999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "-",
+            "x0": 530.5199999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 533.8499999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "3",
+            "x0": 539.41,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "2",
+            "x0": 544.9699999999999,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "3",
+            "x0": 550.53,
+            "top": 43.10000000000002
+          },
+          {
+            "type": "unknown",
+            "text": "5",
+            "x0": 556.0899999999999,
+            "top": 43.10000000000002
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/Y5G72LB_We are trying to get specific information such as /analysis/Y5G72LB/page_1.png",
+      "analyze_layout_tatr": {
+        "found": false
+      },
+      "table_structure": {
+        "found": false
+      }
+    }
+  ],
+  "total_pages": 22,
+  "pages_analyzed": 1
+}

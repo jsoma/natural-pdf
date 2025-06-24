@@ -103,6 +103,38 @@ if first_heading and next_heading:
     page.show()
 ```
 
+### Jump to the enclosing area with `parent()`
+
+Need to know which *table*, *figure* or *coloured panel* an element sits inside?
+
+The new `parent()` helper finds the **smallest element or detected region that
+spatially encloses the current one**.
+
+```python
+# After running a layout model
+page.analyze_layout('tatr')
+
+qty_word  = page.find(text="Qty")
+cell      = qty_word.parent('region[type=table-cell]')   # deepest cell
+row       = cell.parent('region[type=table-row]')        # its row
+table     = row.parent('table')                          # the whole table
+
+# Or get the coloured rectangle behind a heading
+heading_box = heading.parent('rect', mode='overlap')
+```
+
+Parameters
+```
+parent(selector=None, *, mode="contains")
+
+mode = "contains"  # candidate fully covers the element (default)
+     | "center"    # candidate contains element's centroid
+     | "overlap"   # any intersection > 0pt²
+```
+
+If no enclosing object matches the selector (or exists at all) it returns
+`None`, so chaining is safe.
+
 ## Using Regions
 
 Once you have a region, here's what you can do with it.

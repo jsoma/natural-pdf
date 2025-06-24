@@ -1,0 +1,14 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 207 elements
+- **rect**: 13 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Arial: 207
+  - **sizes**:
+    - 8.5pt: 207

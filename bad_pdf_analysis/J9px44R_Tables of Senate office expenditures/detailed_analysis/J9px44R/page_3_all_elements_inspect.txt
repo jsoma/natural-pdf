@@ -1,0 +1,88 @@
+## Collection Inspection (32 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 85 | 386 | 251 | table |
+| 39 | 104 | 385 | 244 | table |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 103 | 385 | 170 | table row |
+| 39 | 175 | 385 | 206 | table row |
+| 39 | 205 | 385 | 244 | table row |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 103 | 385 | 170 | table column header |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 104 | 300 | 245 | table column |
+| 298 | 104 | 385 | 244 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 104 | 300 | 170 | table-cell |
+| 39 | 104 | 300 | 170 | table-cell |
+| 298 | 104 | 385 | 170 | table-cell |
+| 298 | 104 | 385 | 170 | table-cell |
+| 39 | 175 | 300 | 206 | table-cell |
+| 39 | 175 | 300 | 206 | table-cell |
+| 298 | 175 | 385 | 206 | table-cell |
+| 298 | 175 | 385 | 206 | table-cell |
+| 39 | 205 | 300 | 244 | table-cell |
+| 39 | 205 | 300 | 244 | table-cell |
+| 298 | 205 | 385 | 244 | table-cell |
+| 298 | 205 | 385 | 244 | table-cell |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 38 | 106 | 106 | 123 | abandon |
+| 319 | 107 | 387 | 138 | abandon |
+| 204 | 589 | 219 | 597 | abandon |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 171 | 385 | 198 | table projected row header |
+| 39 | 177 | 385 | 208 | table projected row header |
+| 39 | 210 | 385 | 245 | table projected row header |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 38 | 183 | 111 | 194 | plain text |
+| 39 | 213 | 171 | 245 | plain text |
+| 38 | 285 | 387 | 377 | plain text |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 38 | 265 | 69 | 276 | title |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 198 | 389 | 354 | 453 | figure |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| (iii) | 205 | 590 | 218 | 598 | Century |  | 8 | False | False | native | 1.00 | #000000 |

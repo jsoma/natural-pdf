@@ -1,0 +1,32 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **line**: 61 elements
+- **text**: 60 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Arial: 47
+    - GTAmerica-Medium: 13
+  - **sizes**:
+    - 10.0pt: 46
+    - 36.0pt: 2
+    - 18.0pt: 1
+    - 19.5pt: 1
+    - 22.5pt: 1
+    - 7.0pt: 1
+    - 20.5pt: 1
+    - 23.0pt: 1
+    - 38.0pt: 1
+    - 18.5pt: 1
+    - 22.0pt: 1
+    - 36.5pt: 1
+    - 23.5pt: 1
+    - 25.0pt: 1
+  - styles: 16 bold
+  - **colors**:
+    - black: 47
+    - other: 13

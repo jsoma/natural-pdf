@@ -1,0 +1,160 @@
+{
+  "document": "lbODqev_Large wide tables in Serbian _from page 63 and on_",
+  "total_pages": 252,
+  "analyzed_pages": [
+    63,
+    64,
+    65
+  ],
+  "analysis_date": "2025-06-22T16:43:12.441562",
+  "pages": {
+    "63": {
+      "page_number": 63,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 2190,
+      "text_preview": "Раздео Глава Програм Функција П а Пр ко т риг ор в ја н ем ко асс ттк /а клЕ аск ио фно им кас цка и ја ОПИС Укупна средства\n1 2 3 4 5 6 7 8\n1 НАРОДНА СКУПШТИНА 4.297.325.000\nИзвори финансирања за раз...",
+      "table": "98 rows × 10 columns",
+      "table_sample": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "Програмска",
+          "Економска",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Раздео",
+          "Глава",
+          "Програм",
+          "Функција",
+          "активност/\nПројекат",
+          "класификација",
+          "",
+          "",
+          "ОПИС Укупна",
+          "средства"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "yolo_regions": 2,
+      "tatr_regions": 3,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODqev_Large wide tables in Serbian _from page 63 and on_/enhanced_analysis_10/page_63.png"
+    },
+    "64": {
+      "page_number": 64,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 2171,
+      "text_preview": "Раздео Глава Програм Функција П а Пр ко т риг ор в ја н ем ко асс ттк /а клЕ аск ио фно им кас цка и ја ОПИС Укупна средства\n1 2 3 4 5 6 7 8\n426 Материјал 57.066.000\n462 Дотације међународним организа...",
+      "table": "97 rows × 8 columns",
+      "table_sample": [
+        [
+          "",
+          "",
+          "",
+          "Програмска",
+          "Економска",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Раздео Глава",
+          "Програм",
+          "Функција",
+          "активност/\nПројекат",
+          "класификација",
+          "",
+          "ОПИС Укупн",
+          "а средства"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "yolo_regions": 4,
+      "tatr_regions": 3,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODqev_Large wide tables in Serbian _from page 63 and on_/enhanced_analysis_10/page_64.png"
+    },
+    "65": {
+      "page_number": 65,
+      "dimensions": "595.32 × 841.92 points",
+      "text_length": 2507,
+      "text_preview": "Раздео Глава Програм Функција П а Пр ко т риг ор в ја н ем ко асс ттк /а клЕ аск ио фно им кас цка и ја ОПИС Укупна средства\n1 2 3 4 5 6 7 8\n08 Добровољни трансфери од физичких и правних лица 12.500.0...",
+      "table": "100 rows × 12 columns",
+      "table_sample": [
+        [
+          "",
+          "",
+          "",
+          "Програмска",
+          "Економска",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Глава",
+          "Програм",
+          "Функција",
+          "активност/\nПројекат",
+          "класификација",
+          "",
+          "",
+          "ОПИС",
+          "",
+          "",
+          "Укупн",
+          "а средства"
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "yolo_regions": 2,
+      "tatr_regions": 3,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/lbODqev_Large wide tables in Serbian _from page 63 and on_/enhanced_analysis_10/page_65.png"
+    }
+  },
+  "insights": [
+    "Document contains 6868 total characters across 3 analyzed pages",
+    "3 out of 3 pages contain detectable tables"
+  ]
+}

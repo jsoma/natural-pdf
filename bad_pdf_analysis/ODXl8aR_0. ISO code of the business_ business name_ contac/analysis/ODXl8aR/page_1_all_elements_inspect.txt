@@ -1,0 +1,201 @@
+## Collection Inspection (155 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 336 | 40 | 540 | 65 | abandon |
+| 76 | 43 | 250 | 74 | abandon |
+| 76 | 719 | 532 | 756 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| POLICY NUMBER:  | 72 | 102 | 160 | 112 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| HU DS 05 01 18 | 419 | 102 | 491 | 112 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| DEMO0001-00000-01  | 160 | 102 | 261 | 112 | Arial | SGBOLR | 10 | False | False | native | 1.00 | #000000 |
+| PREVIOUS POLICY NUMBER: | 72 | 126 | 212 | 136 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| COMMON POLICY DECLARATIONS | 155 | 167 | 457 | 185 | Arial | EAAAAC | 18 | True | False | native | 1.00 | #000000 |
+| Named Insured: | 72 | 199 | 144 | 209 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Demo - Restaurant | 238 | 199 | 322 | 209 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Named Insured's Mailing Address: | 72 | 223 | 224 | 233 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| 9 West Mechanic Street | 238 | 223 | 344 | 233 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| New Hope PA 18938 | 238 | 235 | 330 | 245 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| S | 110 | 240 | 192 | 260 | GTAmerica-Medium |  | 19 | False | False | native | 1.00 | #ff0000 |
+| Producer Name and Address: | 72 | 260 | 204 | 270 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| a | 141 | 268 | 220 | 291 | GTAmerica-Medium |  | 23 | False | False | native | 1.00 | #ff0000 |
+| Producer Code: CASURA0001 | 72 | 284 | 209 | 294 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Policy Period: From: 05/28/2019To: 05/28/2020 | 72 | 296 | 283 | 306 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| AT 12:01 A.M. STANDARD TIME AT YOUR MAILING | 288 | 296 | 525 | 306 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| ADDRESS | 288 | 308 | 337 | 318 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| m | 169 | 312 | 264 | 319 | GTAmerica-Medium |  | 7 | False | False | native | 1.00 | #ff0000 |
+| Business Description: | 72 | 320 | 169 | 330 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| p | 213 | 342 | 294 | 363 | GTAmerica-Medium |  | 21 | False | False | native | 1.00 | #ff0000 |
+| IN RETURN FOR THE PAYMENT OF THE PREMIUM, AND SUBJ... | 102 | 347 | 527 | 357 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| l | 243 | 357 | 309 | 393 | GTAmerica-Medium |  | 36 | False | False | native | 1.00 | #ff0000 |
+| THIS POLICY, WE AGREE WITH YOU TO PROVIDE THE INSU... | 102 | 359 | 527 | 369 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| POLICY. | 102 | 371 | 141 | 381 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| e | 258 | 385 | 337 | 408 | GTAmerica-Medium |  | 23 | False | False | native | 1.00 | #ff0000 |
+| THIS POLICY CONSISTS OF THE FOLLOWIN | 79 | 398 | 291 | 408 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| G COVERAGE PARTS FOR WHICH A PREMIUM IS | 291 | 398 | 528 | 408 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+|   | 286 | 398 | 350 | 436 | GTAmerica-Medium |  | 38 | False | False | native | 1.00 | #ff0000 |
+| INDICATED. THIS PREMIUM MAY BE SUBJECT TO ADJUSTME... | 148 | 410 | 459 | 420 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| PREMIUM | 468 | 422 | 515 | 432 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| P | 299 | 430 | 382 | 449 | GTAmerica-Medium |  | 19 | False | False | native | 1.00 | #ff0000 |
+| BUSINESSOWNERS COVERAGE PART | 72 | 436 | 256 | 446 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| 5,883.00 | 452 | 436 | 491 | 446 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $  | 444 | 436 | 452 | 446 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| o | 331 | 459 | 411 | 481 | GTAmerica-Medium |  | 22 | False | False | native | 1.00 | #ff0000 |
+| COMMERCIAL INLAND MARINE COVERAGE PART | 72 | 465 | 309 | 475 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $ | 444 | 465 | 449 | 475 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| l | 360 | 474 | 426 | 510 | GTAmerica-Medium |  | 36 | False | False | native | 1.00 | #ff0000 |
+| i | 375 | 488 | 440 | 525 | GTAmerica-Medium |  | 37 | False | False | native | 1.00 | #ff0000 |
+| OTHER | 72 | 493 | 107 | 503 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $ | 444 | 494 | 449 | 504 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| c | 389 | 516 | 467 | 539 | GTAmerica-Medium |  | 23 | False | False | native | 1.00 | #ff0000 |
+| $ | 444 | 523 | 449 | 533 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| y | 416 | 542 | 493 | 566 | GTAmerica-Medium |  | 25 | False | False | native | 1.00 | #ff0000 |
+| TRIA PREMIUM | 72 | 551 | 145 | 561 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| 59.00 | 452 | 551 | 477 | 561 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $  | 444 | 551 | 452 | 561 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| TAXES AND SURCHARGES, if any | 72 | 580 | 231 | 590 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| 0.00 | 452 | 580 | 471 | 590 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $  | 444 | 580 | 452 | 590 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| TOTAL | 72 | 609 | 104 | 619 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| 5,942.00 | 452 | 609 | 491 | 619 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $  | 444 | 609 | 452 | 619 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| MINIMUM PREMIUM PAYABLE AT INCEPTION | 72 | 637 | 285 | 647 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| $ | 444 | 638 | 449 | 648 | Arial | EAAAAC | 10 | True | False | native | 1.00 | #000000 |
+| HU DS 05 01 18 | 78 | 722 | 151 | 732 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Includes copyrighted material of Insurance Service... | 168 | 722 | 448 | 732 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Page 1 of 2 | 476 | 722 | 527 | 732 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| with its permission. © 2018 Blackboard U.S. Holdin... | 172 | 734 | 444 | 744 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+| Rights Reserved. May not be copied without permiss... | 183 | 746 | 433 | 756 | Arial | EAAAAD | 10 | False | False | native | 1.00 | #000000 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 153 | 161 | 459 | 182 | title |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 72 | 196 | 72 | 209 | 0 | False | True |
+| 540 | 196 | 540 | 209 | 0 | False | True |
+| 72 | 196 | 238 | 196 | 0 | True | False |
+| 238 | 196 | 540 | 196 | 0 | True | False |
+| 72 | 209 | 72 | 221 | 0 | False | True |
+| 540 | 209 | 540 | 221 | 0 | False | True |
+| 540 | 221 | 540 | 246 | 0 | False | True |
+| 72 | 221 | 72 | 246 | 0 | False | True |
+| 72 | 246 | 72 | 258 | 0 | False | True |
+| 540 | 246 | 540 | 258 | 0 | False | True |
+| 72 | 258 | 72 | 270 | 0 | False | True |
+| 540 | 258 | 540 | 270 | 0 | False | True |
+| 72 | 270 | 72 | 282 | 0 | False | True |
+| 540 | 270 | 540 | 282 | 0 | False | True |
+| 72 | 282 | 72 | 294 | 0 | False | True |
+| 540 | 282 | 540 | 294 | 0 | False | True |
+| 72 | 294 | 72 | 318 | 0 | False | True |
+| 540 | 294 | 540 | 318 | 0 | False | True |
+| 72 | 318 | 72 | 331 | 0 | False | True |
+| 540 | 318 | 540 | 331 | 0 | False | True |
+| 72 | 330 | 540 | 330 | 0 | True | False |
+| 72 | 395 | 72 | 420 | 0 | False | True |
+| 540 | 395 | 540 | 420 | 0 | False | True |
+| 72 | 395 | 79 | 395 | 0 | True | False |
+| 79 | 395 | 528 | 395 | 0 | True | False |
+| 528 | 395 | 540 | 395 | 0 | True | False |
+| 72 | 420 | 72 | 434 | 0 | False | True |
+| 540 | 420 | 540 | 434 | 0 | False | True |
+| 540 | 434 | 540 | 448 | 0 | False | True |
+| 72 | 434 | 72 | 448 | 0 | False | True |
+| 72 | 448 | 72 | 463 | 0 | False | True |
+| 540 | 448 | 540 | 463 | 0 | False | True |
+| 540 | 463 | 540 | 477 | 0 | False | True |
+| 72 | 463 | 72 | 477 | 0 | False | True |
+| 72 | 477 | 72 | 492 | 0 | False | True |
+| 540 | 477 | 540 | 492 | 0 | False | True |
+| 72 | 492 | 72 | 506 | 0 | False | True |
+| 540 | 492 | 540 | 506 | 0 | False | True |
+| 540 | 506 | 540 | 520 | 0 | False | True |
+| 72 | 506 | 72 | 520 | 0 | False | True |
+| 72 | 520 | 72 | 535 | 0 | False | True |
+| 540 | 520 | 540 | 535 | 0 | False | True |
+| 72 | 535 | 72 | 549 | 0 | False | True |
+| 540 | 535 | 540 | 549 | 0 | False | True |
+| 72 | 549 | 72 | 564 | 0 | False | True |
+| 540 | 549 | 540 | 564 | 0 | False | True |
+| 72 | 564 | 72 | 578 | 0 | False | True |
+| 540 | 564 | 540 | 578 | 0 | False | True |
+| 72 | 578 | 72 | 592 | 0 | False | True |
+| 540 | 578 | 540 | 592 | 0 | False | True |
+| 72 | 592 | 72 | 607 | 0 | False | True |
+| 540 | 592 | 540 | 607 | 0 | False | True |
+| 72 | 607 | 72 | 621 | 0 | False | True |
+| 540 | 607 | 540 | 621 | 0 | False | True |
+| 72 | 621 | 72 | 636 | 0 | False | True |
+| 540 | 621 | 540 | 636 | 0 | False | True |
+| 72 | 636 | 72 | 651 | 0 | False | True |
+| 540 | 636 | 540 | 651 | 0 | False | True |
+| 71 | 650 | 358 | 650 | 0 | True | False |
+| 358 | 650 | 444 | 650 | 0 | True | False |
+| 444 | 650 | 540 | 650 | 0 | True | False |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 525 | 213 | table row |
+| 73 | 214 | 525 | 250 | table row |
+| 73 | 250 | 525 | 275 | table row |
+| 73 | 278 | 525 | 311 | table row |
+| 73 | 311 | 525 | 327 | table row |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 525 | 327 | table |
+| 73 | 197 | 527 | 330 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 231 | 327 | table column |
+| 276 | 197 | 525 | 327 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 197 | 231 | 213 | table-cell |
+| 73 | 197 | 231 | 213 | table-cell |
+| 276 | 197 | 525 | 213 | table-cell |
+| 276 | 197 | 525 | 213 | table-cell |
+| 73 | 214 | 231 | 250 | table-cell |
+| 73 | 214 | 231 | 250 | table-cell |
+| 276 | 214 | 525 | 250 | table-cell |
+| 276 | 214 | 525 | 250 | table-cell |
+| 73 | 250 | 231 | 275 | table-cell |
+| 73 | 250 | 231 | 275 | table-cell |
+| 276 | 250 | 525 | 275 | table-cell |
+| 276 | 250 | 525 | 275 | table-cell |
+| 73 | 278 | 231 | 311 | table-cell |
+| 73 | 278 | 231 | 311 | table-cell |
+| 276 | 278 | 525 | 311 | table-cell |
+| 276 | 278 | 525 | 311 | table-cell |
+| 73 | 311 | 231 | 327 | table-cell |
+| 73 | 311 | 231 | 327 | table-cell |
+| 276 | 311 | 525 | 327 | table-cell |
+| 276 | 311 | 525 | 327 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 73 | 250 | 525 | 275 | table projected row header |

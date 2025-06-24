@@ -1,0 +1,504 @@
+All Layout Regions (459 found)
+==================================================
+YOLO: 3, TATR: 456, Other: 0
+
+## Collection Inspection (459 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 205 | 35 | 218 | 44 | abandon |
+| 340 | 585 | 392 | 593 | abandon |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 158 | 63 | 243 | 72 | title |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 31 | 103 | 389 | 596 | table |
+| 32 | 108 | 389 | 592 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 32 | 106 | 285 | 592 | table column |
+| 336 | 107 | 388 | 593 | table column |
+| 288 | 108 | 338 | 592 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 31 | 109 | 389 | 117 | table row |
+| 32 | 119 | 389 | 127 | table row |
+| 31 | 127 | 389 | 135 | table row |
+| 31 | 134 | 389 | 141 | table row |
+| 31 | 141 | 389 | 148 | table row |
+| 31 | 147 | 389 | 155 | table row |
+| 31 | 155 | 389 | 162 | table row |
+| 31 | 163 | 389 | 170 | table row |
+| 31 | 170 | 389 | 178 | table row |
+| 31 | 178 | 389 | 185 | table row |
+| 31 | 186 | 389 | 193 | table row |
+| 31 | 193 | 389 | 200 | table row |
+| 31 | 201 | 389 | 209 | table row |
+| 31 | 209 | 389 | 217 | table row |
+| 31 | 216 | 389 | 224 | table row |
+| 31 | 227 | 389 | 235 | table row |
+| 31 | 236 | 389 | 244 | table row |
+| 31 | 242 | 389 | 250 | table row |
+| 31 | 242 | 389 | 251 | table row |
+| 31 | 249 | 389 | 258 | table row |
+| 31 | 250 | 389 | 259 | table row |
+| 31 | 258 | 389 | 267 | table row |
+| 32 | 263 | 388 | 270 | table row |
+| 32 | 273 | 389 | 281 | table row |
+| 31 | 273 | 389 | 283 | table row |
+| 31 | 278 | 389 | 288 | table row |
+| 31 | 283 | 389 | 295 | table row |
+| 31 | 290 | 389 | 302 | table row |
+| 31 | 302 | 389 | 311 | table row |
+| 31 | 309 | 389 | 318 | table row |
+| 31 | 314 | 389 | 322 | table row |
+| 31 | 315 | 389 | 324 | table row |
+| 31 | 318 | 389 | 326 | table row |
+| 31 | 326 | 389 | 334 | table row |
+| 31 | 332 | 389 | 340 | table row |
+| 31 | 338 | 389 | 346 | table row |
+| 31 | 342 | 389 | 350 | table row |
+| 31 | 348 | 389 | 357 | table row |
+| 31 | 355 | 389 | 364 | table row |
+| 31 | 361 | 389 | 370 | table row |
+| 31 | 369 | 389 | 377 | table row |
+| 31 | 374 | 389 | 382 | table row |
+| 31 | 382 | 389 | 390 | table row |
+| 31 | 388 | 389 | 396 | table row |
+| 31 | 395 | 389 | 404 | table row |
+| 31 | 401 | 389 | 409 | table row |
+| 31 | 401 | 389 | 410 | table row |
+| 31 | 408 | 389 | 416 | table row |
+| 31 | 418 | 389 | 427 | table row |
+| 31 | 424 | 389 | 432 | table row |
+| 31 | 432 | 389 | 441 | table row |
+| 31 | 433 | 389 | 442 | table row |
+| 31 | 443 | 389 | 457 | table row |
+| 31 | 453 | 389 | 472 | table row |
+| 31 | 469 | 389 | 484 | table row |
+| 31 | 482 | 389 | 494 | table row |
+| 31 | 493 | 389 | 503 | table row |
+| 31 | 503 | 389 | 515 | table row |
+| 31 | 518 | 389 | 533 | table row |
+| 31 | 533 | 389 | 555 | table row |
+| 32 | 550 | 389 | 563 | table row |
+| 31 | 555 | 389 | 592 | table row |
+| 32 | 583 | 389 | 594 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 32 | 109 | 285 | 117 | table-cell |
+| 32 | 109 | 285 | 117 | table-cell |
+| 288 | 109 | 338 | 117 | table-cell |
+| 288 | 109 | 338 | 117 | table-cell |
+| 336 | 109 | 388 | 117 | table-cell |
+| 336 | 109 | 388 | 117 | table-cell |
+| 32 | 119 | 285 | 127 | table-cell |
+| 32 | 119 | 285 | 127 | table-cell |
+| 288 | 119 | 338 | 127 | table-cell |
+| 288 | 119 | 338 | 127 | table-cell |
+| 336 | 119 | 388 | 127 | table-cell |
+| 336 | 119 | 388 | 127 | table-cell |
+| 32 | 127 | 285 | 135 | table-cell |
+| 32 | 127 | 285 | 135 | table-cell |
+| 288 | 127 | 338 | 135 | table-cell |
+| 288 | 127 | 338 | 135 | table-cell |
+| 336 | 127 | 388 | 135 | table-cell |
+| 336 | 127 | 388 | 135 | table-cell |
+| 32 | 134 | 285 | 141 | table-cell |
+| 32 | 134 | 285 | 141 | table-cell |
+| 288 | 134 | 338 | 141 | table-cell |
+| 288 | 134 | 338 | 141 | table-cell |
+| 336 | 134 | 388 | 141 | table-cell |
+| 336 | 134 | 388 | 141 | table-cell |
+| 32 | 141 | 285 | 148 | table-cell |
+| 32 | 141 | 285 | 148 | table-cell |
+| 288 | 141 | 338 | 148 | table-cell |
+| 288 | 141 | 338 | 148 | table-cell |
+| 336 | 141 | 388 | 148 | table-cell |
+| 336 | 141 | 388 | 148 | table-cell |
+| 32 | 147 | 285 | 155 | table-cell |
+| 32 | 147 | 285 | 155 | table-cell |
+| 288 | 147 | 338 | 155 | table-cell |
+| 288 | 147 | 338 | 155 | table-cell |
+| 336 | 147 | 388 | 155 | table-cell |
+| 336 | 147 | 388 | 155 | table-cell |
+| 32 | 155 | 285 | 162 | table-cell |
+| 32 | 155 | 285 | 162 | table-cell |
+| 288 | 155 | 338 | 162 | table-cell |
+| 288 | 155 | 338 | 162 | table-cell |
+| 336 | 155 | 388 | 162 | table-cell |
+| 336 | 155 | 388 | 162 | table-cell |
+| 32 | 163 | 285 | 170 | table-cell |
+| 32 | 163 | 285 | 170 | table-cell |
+| 288 | 163 | 338 | 170 | table-cell |
+| 288 | 163 | 338 | 170 | table-cell |
+| 336 | 163 | 388 | 170 | table-cell |
+| 336 | 163 | 388 | 170 | table-cell |
+| 32 | 170 | 285 | 178 | table-cell |
+| 32 | 170 | 285 | 178 | table-cell |
+| 288 | 170 | 338 | 178 | table-cell |
+| 288 | 170 | 338 | 178 | table-cell |
+| 336 | 170 | 388 | 178 | table-cell |
+| 336 | 170 | 388 | 178 | table-cell |
+| 32 | 178 | 285 | 185 | table-cell |
+| 32 | 178 | 285 | 185 | table-cell |
+| 288 | 178 | 338 | 185 | table-cell |
+| 288 | 178 | 338 | 185 | table-cell |
+| 336 | 178 | 388 | 185 | table-cell |
+| 336 | 178 | 388 | 185 | table-cell |
+| 32 | 186 | 285 | 193 | table-cell |
+| 32 | 186 | 285 | 193 | table-cell |
+| 288 | 186 | 338 | 193 | table-cell |
+| 288 | 186 | 338 | 193 | table-cell |
+| 336 | 186 | 388 | 193 | table-cell |
+| 336 | 186 | 388 | 193 | table-cell |
+| 32 | 193 | 285 | 200 | table-cell |
+| 32 | 193 | 285 | 200 | table-cell |
+| 288 | 193 | 338 | 200 | table-cell |
+| 288 | 193 | 338 | 200 | table-cell |
+| 336 | 193 | 388 | 200 | table-cell |
+| 336 | 193 | 388 | 200 | table-cell |
+| 32 | 201 | 285 | 209 | table-cell |
+| 32 | 201 | 285 | 209 | table-cell |
+| 288 | 201 | 338 | 209 | table-cell |
+| 288 | 201 | 338 | 209 | table-cell |
+| 336 | 201 | 388 | 209 | table-cell |
+| 336 | 201 | 388 | 209 | table-cell |
+| 32 | 209 | 285 | 217 | table-cell |
+| 32 | 209 | 285 | 217 | table-cell |
+| 288 | 209 | 338 | 217 | table-cell |
+| 288 | 209 | 338 | 217 | table-cell |
+| 336 | 209 | 388 | 217 | table-cell |
+| 336 | 209 | 388 | 217 | table-cell |
+| 32 | 216 | 285 | 224 | table-cell |
+| 32 | 216 | 285 | 224 | table-cell |
+| 288 | 216 | 338 | 224 | table-cell |
+| 288 | 216 | 338 | 224 | table-cell |
+| 336 | 216 | 388 | 224 | table-cell |
+| 336 | 216 | 388 | 224 | table-cell |
+| 32 | 227 | 285 | 235 | table-cell |
+| 32 | 227 | 285 | 235 | table-cell |
+| 288 | 227 | 338 | 235 | table-cell |
+| 288 | 227 | 338 | 235 | table-cell |
+| 336 | 227 | 388 | 235 | table-cell |
+| 336 | 227 | 388 | 235 | table-cell |
+| 32 | 236 | 285 | 244 | table-cell |
+| 32 | 236 | 285 | 244 | table-cell |
+| 288 | 236 | 338 | 244 | table-cell |
+| 288 | 236 | 338 | 244 | table-cell |
+| 336 | 236 | 388 | 244 | table-cell |
+| 336 | 236 | 388 | 244 | table-cell |
+| 32 | 242 | 285 | 250 | table-cell |
+| 32 | 242 | 285 | 250 | table-cell |
+| 288 | 242 | 338 | 250 | table-cell |
+| 288 | 242 | 338 | 250 | table-cell |
+| 336 | 242 | 388 | 250 | table-cell |
+| 336 | 242 | 388 | 250 | table-cell |
+| 32 | 242 | 285 | 251 | table-cell |
+| 32 | 242 | 285 | 251 | table-cell |
+| 288 | 242 | 338 | 251 | table-cell |
+| 288 | 242 | 338 | 251 | table-cell |
+| 336 | 242 | 388 | 251 | table-cell |
+| 336 | 242 | 388 | 251 | table-cell |
+| 32 | 249 | 285 | 258 | table-cell |
+| 32 | 249 | 285 | 258 | table-cell |
+| 288 | 249 | 338 | 258 | table-cell |
+| 288 | 249 | 338 | 258 | table-cell |
+| 336 | 249 | 388 | 258 | table-cell |
+| 336 | 249 | 388 | 258 | table-cell |
+| 32 | 250 | 285 | 259 | table-cell |
+| 32 | 250 | 285 | 259 | table-cell |
+| 288 | 250 | 338 | 259 | table-cell |
+| 288 | 250 | 338 | 259 | table-cell |
+| 336 | 250 | 388 | 259 | table-cell |
+| 336 | 250 | 388 | 259 | table-cell |
+| 32 | 258 | 285 | 267 | table-cell |
+| 32 | 258 | 285 | 267 | table-cell |
+| 288 | 258 | 338 | 267 | table-cell |
+| 288 | 258 | 338 | 267 | table-cell |
+| 336 | 258 | 388 | 267 | table-cell |
+| 336 | 258 | 388 | 267 | table-cell |
+| 32 | 263 | 285 | 270 | table-cell |
+| 32 | 263 | 285 | 270 | table-cell |
+| 288 | 263 | 338 | 270 | table-cell |
+| 288 | 263 | 338 | 270 | table-cell |
+| 336 | 263 | 388 | 270 | table-cell |
+| 336 | 263 | 388 | 270 | table-cell |
+| 32 | 273 | 285 | 281 | table-cell |
+| 32 | 273 | 285 | 281 | table-cell |
+| 288 | 273 | 338 | 281 | table-cell |
+| 288 | 273 | 338 | 281 | table-cell |
+| 336 | 273 | 388 | 281 | table-cell |
+| 336 | 273 | 388 | 281 | table-cell |
+| 32 | 273 | 285 | 283 | table-cell |
+| 32 | 273 | 285 | 283 | table-cell |
+| 288 | 273 | 338 | 283 | table-cell |
+| 288 | 273 | 338 | 283 | table-cell |
+| 336 | 273 | 388 | 283 | table-cell |
+| 336 | 273 | 388 | 283 | table-cell |
+| 32 | 278 | 285 | 288 | table-cell |
+| 32 | 278 | 285 | 288 | table-cell |
+| 288 | 278 | 338 | 288 | table-cell |
+| 288 | 278 | 338 | 288 | table-cell |
+| 336 | 278 | 388 | 288 | table-cell |
+| 336 | 278 | 388 | 288 | table-cell |
+| 32 | 283 | 285 | 295 | table-cell |
+| 32 | 283 | 285 | 295 | table-cell |
+| 288 | 283 | 338 | 295 | table-cell |
+| 288 | 283 | 338 | 295 | table-cell |
+| 336 | 283 | 388 | 295 | table-cell |
+| 336 | 283 | 388 | 295 | table-cell |
+| 32 | 290 | 285 | 302 | table-cell |
+| 32 | 290 | 285 | 302 | table-cell |
+| 288 | 290 | 338 | 302 | table-cell |
+| 288 | 290 | 338 | 302 | table-cell |
+| 336 | 290 | 388 | 302 | table-cell |
+| 336 | 290 | 388 | 302 | table-cell |
+| 32 | 302 | 285 | 311 | table-cell |
+| 32 | 302 | 285 | 311 | table-cell |
+| 288 | 302 | 338 | 311 | table-cell |
+| 288 | 302 | 338 | 311 | table-cell |
+| 336 | 302 | 388 | 311 | table-cell |
+| 336 | 302 | 388 | 311 | table-cell |
+| 32 | 309 | 285 | 318 | table-cell |
+| 32 | 309 | 285 | 318 | table-cell |
+| 288 | 309 | 338 | 318 | table-cell |
+| 288 | 309 | 338 | 318 | table-cell |
+| 336 | 309 | 388 | 318 | table-cell |
+| 336 | 309 | 388 | 318 | table-cell |
+| 32 | 314 | 285 | 322 | table-cell |
+| 32 | 314 | 285 | 322 | table-cell |
+| 288 | 314 | 338 | 322 | table-cell |
+| 288 | 314 | 338 | 322 | table-cell |
+| 336 | 314 | 388 | 322 | table-cell |
+| 336 | 314 | 388 | 322 | table-cell |
+| 32 | 315 | 285 | 324 | table-cell |
+| 32 | 315 | 285 | 324 | table-cell |
+| 288 | 315 | 338 | 324 | table-cell |
+| 288 | 315 | 338 | 324 | table-cell |
+| 336 | 315 | 388 | 324 | table-cell |
+| 336 | 315 | 388 | 324 | table-cell |
+| 32 | 318 | 285 | 326 | table-cell |
+| 32 | 318 | 285 | 326 | table-cell |
+| 288 | 318 | 338 | 326 | table-cell |
+| 288 | 318 | 338 | 326 | table-cell |
+| 336 | 318 | 388 | 326 | table-cell |
+| 336 | 318 | 388 | 326 | table-cell |
+| 32 | 326 | 285 | 334 | table-cell |
+| 32 | 326 | 285 | 334 | table-cell |
+| 288 | 326 | 338 | 334 | table-cell |
+| 288 | 326 | 338 | 334 | table-cell |
+| 336 | 326 | 388 | 334 | table-cell |
+| 336 | 326 | 388 | 334 | table-cell |
+| 32 | 332 | 285 | 340 | table-cell |
+| 32 | 332 | 285 | 340 | table-cell |
+| 288 | 332 | 338 | 340 | table-cell |
+| 288 | 332 | 338 | 340 | table-cell |
+| 336 | 332 | 388 | 340 | table-cell |
+| 336 | 332 | 388 | 340 | table-cell |
+| 32 | 338 | 285 | 346 | table-cell |
+| 32 | 338 | 285 | 346 | table-cell |
+| 288 | 338 | 338 | 346 | table-cell |
+| 288 | 338 | 338 | 346 | table-cell |
+| 336 | 338 | 388 | 346 | table-cell |
+| 336 | 338 | 388 | 346 | table-cell |
+| 32 | 342 | 285 | 350 | table-cell |
+| 32 | 342 | 285 | 350 | table-cell |
+| 288 | 342 | 338 | 350 | table-cell |
+| 288 | 342 | 338 | 350 | table-cell |
+| 336 | 342 | 388 | 350 | table-cell |
+| 336 | 342 | 388 | 350 | table-cell |
+| 32 | 348 | 285 | 357 | table-cell |
+| 32 | 348 | 285 | 357 | table-cell |
+| 288 | 348 | 338 | 357 | table-cell |
+| 288 | 348 | 338 | 357 | table-cell |
+| 336 | 348 | 388 | 357 | table-cell |
+| 336 | 348 | 388 | 357 | table-cell |
+| 32 | 355 | 285 | 364 | table-cell |
+| 32 | 355 | 285 | 364 | table-cell |
+| 288 | 355 | 338 | 364 | table-cell |
+| 288 | 355 | 338 | 364 | table-cell |
+| 336 | 355 | 388 | 364 | table-cell |
+| 336 | 355 | 388 | 364 | table-cell |
+| 32 | 361 | 285 | 370 | table-cell |
+| 32 | 361 | 285 | 370 | table-cell |
+| 288 | 361 | 338 | 370 | table-cell |
+| 288 | 361 | 338 | 370 | table-cell |
+| 336 | 361 | 388 | 370 | table-cell |
+| 336 | 361 | 388 | 370 | table-cell |
+| 32 | 369 | 285 | 377 | table-cell |
+| 32 | 369 | 285 | 377 | table-cell |
+| 288 | 369 | 338 | 377 | table-cell |
+| 288 | 369 | 338 | 377 | table-cell |
+| 336 | 369 | 388 | 377 | table-cell |
+| 336 | 369 | 388 | 377 | table-cell |
+| 32 | 374 | 285 | 382 | table-cell |
+| 32 | 374 | 285 | 382 | table-cell |
+| 288 | 374 | 338 | 382 | table-cell |
+| 288 | 374 | 338 | 382 | table-cell |
+| 336 | 374 | 388 | 382 | table-cell |
+| 336 | 374 | 388 | 382 | table-cell |
+| 32 | 382 | 285 | 390 | table-cell |
+| 32 | 382 | 285 | 390 | table-cell |
+| 288 | 382 | 338 | 390 | table-cell |
+| 288 | 382 | 338 | 390 | table-cell |
+| 336 | 382 | 388 | 390 | table-cell |
+| 336 | 382 | 388 | 390 | table-cell |
+| 32 | 388 | 285 | 396 | table-cell |
+| 32 | 388 | 285 | 396 | table-cell |
+| 288 | 388 | 338 | 396 | table-cell |
+| 288 | 388 | 338 | 396 | table-cell |
+| 336 | 388 | 388 | 396 | table-cell |
+| 336 | 388 | 388 | 396 | table-cell |
+| 32 | 395 | 285 | 404 | table-cell |
+| 32 | 395 | 285 | 404 | table-cell |
+| 288 | 395 | 338 | 404 | table-cell |
+| 288 | 395 | 338 | 404 | table-cell |
+| 336 | 395 | 388 | 404 | table-cell |
+| 336 | 395 | 388 | 404 | table-cell |
+| 32 | 401 | 285 | 409 | table-cell |
+| 32 | 401 | 285 | 409 | table-cell |
+| 288 | 401 | 338 | 409 | table-cell |
+| 288 | 401 | 338 | 409 | table-cell |
+| 336 | 401 | 388 | 409 | table-cell |
+| 336 | 401 | 388 | 409 | table-cell |
+| 32 | 401 | 285 | 410 | table-cell |
+| 32 | 401 | 285 | 410 | table-cell |
+| 288 | 401 | 338 | 410 | table-cell |
+| 288 | 401 | 338 | 410 | table-cell |
+| 336 | 401 | 388 | 410 | table-cell |
+| 336 | 401 | 388 | 410 | table-cell |
+| 32 | 408 | 285 | 416 | table-cell |
+| 32 | 408 | 285 | 416 | table-cell |
+| 288 | 408 | 338 | 416 | table-cell |
+| 288 | 408 | 338 | 416 | table-cell |
+| 336 | 408 | 388 | 416 | table-cell |
+| 336 | 408 | 388 | 416 | table-cell |
+| 32 | 418 | 285 | 427 | table-cell |
+| 32 | 418 | 285 | 427 | table-cell |
+| 288 | 418 | 338 | 427 | table-cell |
+| 288 | 418 | 338 | 427 | table-cell |
+| 336 | 418 | 388 | 427 | table-cell |
+| 336 | 418 | 388 | 427 | table-cell |
+| 32 | 424 | 285 | 432 | table-cell |
+| 32 | 424 | 285 | 432 | table-cell |
+| 288 | 424 | 338 | 432 | table-cell |
+| 288 | 424 | 338 | 432 | table-cell |
+| 336 | 424 | 388 | 432 | table-cell |
+| 336 | 424 | 388 | 432 | table-cell |
+| 32 | 432 | 285 | 441 | table-cell |
+| 32 | 432 | 285 | 441 | table-cell |
+| 288 | 432 | 338 | 441 | table-cell |
+| 288 | 432 | 338 | 441 | table-cell |
+| 336 | 432 | 388 | 441 | table-cell |
+| 336 | 432 | 388 | 441 | table-cell |
+| 32 | 433 | 285 | 442 | table-cell |
+| 32 | 433 | 285 | 442 | table-cell |
+| 288 | 433 | 338 | 442 | table-cell |
+| 288 | 433 | 338 | 442 | table-cell |
+| 336 | 433 | 388 | 442 | table-cell |
+| 336 | 433 | 388 | 442 | table-cell |
+| 32 | 443 | 285 | 457 | table-cell |
+| 32 | 443 | 285 | 457 | table-cell |
+| 288 | 443 | 338 | 457 | table-cell |
+| 288 | 443 | 338 | 457 | table-cell |
+| 336 | 443 | 388 | 457 | table-cell |
+| 336 | 443 | 388 | 457 | table-cell |
+| 32 | 453 | 285 | 472 | table-cell |
+| 32 | 453 | 285 | 472 | table-cell |
+| 288 | 453 | 338 | 472 | table-cell |
+| 288 | 453 | 338 | 472 | table-cell |
+| 336 | 453 | 388 | 472 | table-cell |
+| 336 | 453 | 388 | 472 | table-cell |
+| 32 | 469 | 285 | 484 | table-cell |
+| 32 | 469 | 285 | 484 | table-cell |
+| 288 | 469 | 338 | 484 | table-cell |
+| 288 | 469 | 338 | 484 | table-cell |
+| 336 | 469 | 388 | 484 | table-cell |
+| 336 | 469 | 388 | 484 | table-cell |
+| 32 | 482 | 285 | 494 | table-cell |
+| 32 | 482 | 285 | 494 | table-cell |
+| 288 | 482 | 338 | 494 | table-cell |
+| 288 | 482 | 338 | 494 | table-cell |
+| 336 | 482 | 388 | 494 | table-cell |
+| 336 | 482 | 388 | 494 | table-cell |
+| 32 | 493 | 285 | 503 | table-cell |
+| 32 | 493 | 285 | 503 | table-cell |
+| 288 | 493 | 338 | 503 | table-cell |
+| 288 | 493 | 338 | 503 | table-cell |
+| 336 | 493 | 388 | 503 | table-cell |
+| 336 | 493 | 388 | 503 | table-cell |
+| 32 | 503 | 285 | 515 | table-cell |
+| 32 | 503 | 285 | 515 | table-cell |
+| 288 | 503 | 338 | 515 | table-cell |
+| 288 | 503 | 338 | 515 | table-cell |
+| 336 | 503 | 388 | 515 | table-cell |
+| 336 | 503 | 388 | 515 | table-cell |
+| 32 | 518 | 285 | 533 | table-cell |
+| 32 | 518 | 285 | 533 | table-cell |
+| 288 | 518 | 338 | 533 | table-cell |
+| 288 | 518 | 338 | 533 | table-cell |
+| 336 | 518 | 388 | 533 | table-cell |
+| 336 | 518 | 388 | 533 | table-cell |
+| 32 | 533 | 285 | 555 | table-cell |
+| 32 | 533 | 285 | 555 | table-cell |
+| 288 | 533 | 338 | 555 | table-cell |
+| 288 | 533 | 338 | 555 | table-cell |
+| 336 | 533 | 388 | 555 | table-cell |
+| 336 | 533 | 388 | 555 | table-cell |
+| 32 | 550 | 285 | 563 | table-cell |
+| 32 | 550 | 285 | 563 | table-cell |
+| 288 | 550 | 338 | 563 | table-cell |
+| 288 | 550 | 338 | 563 | table-cell |
+| 336 | 550 | 388 | 563 | table-cell |
+| 336 | 550 | 388 | 563 | table-cell |
+| 32 | 555 | 285 | 592 | table-cell |
+| 32 | 555 | 285 | 592 | table-cell |
+| 288 | 555 | 338 | 592 | table-cell |
+| 288 | 555 | 338 | 592 | table-cell |
+| 336 | 555 | 388 | 592 | table-cell |
+| 336 | 555 | 388 | 592 | table-cell |
+| 32 | 583 | 285 | 592 | table-cell |
+| 32 | 583 | 285 | 592 | table-cell |
+| 288 | 583 | 338 | 592 | table-cell |
+| 288 | 583 | 338 | 592 | table-cell |
+| 336 | 583 | 388 | 593 | table-cell |
+| 336 | 583 | 388 | 593 | table-cell |
+
+### Table Projected Row Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 31 | 296 | 389 | 306 | table projected row header |
+| 31 | 448 | 389 | 463 | table projected row header |
+| 31 | 474 | 389 | 488 | table projected row header |
+| 31 | 484 | 389 | 494 | table projected row header |
+
+### Table Spanning Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 260 | 298 | 388 | 310 | table spanning cell |
+| 269 | 400 | 389 | 413 | table spanning cell |
+| 279 | 405 | 388 | 416 | table spanning cell |
+| 231 | 440 | 388 | 459 | table spanning cell |
+| 278 | 446 | 387 | 467 | table spanning cell |
+| 31 | 494 | 388 | 504 | table spanning cell |

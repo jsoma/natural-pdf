@@ -414,6 +414,114 @@ class DirectionalMixin:
 
         return new_region
 
+    # ------------------------------------------------------------------
+    # Spatial parent lookup
+    # ------------------------------------------------------------------
+
+    def parent(
+        self,
+        selector: Optional[str] = None,
+        *,
+        mode: str = "contains",  # "contains" | "center" | "overlap"
+    ) -> Optional["Element"]:
+        """Return the *smallest* element/region that encloses this one.
+
+        The search is purely geometric – no pre-existing hierarchy is assumed.
+
+        Parameters
+        ----------
+        selector : str, optional
+            CSS-style selector used to filter candidate containers first.
+        mode : str, default "contains"
+            How to decide if a candidate encloses this element.
+
+            • ``"contains"`` – candidate bbox fully contains *self* bbox.
+            • ``"center"``   – candidate contains the centroid of *self*.
+            • ``"overlap"``  – any bbox intersection > 0 pt².
+
+        Returns
+        -------
+        Element | Region | None
+            The smallest-area container that matches, or *None* if none found.
+        """
+
+        from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+
+        # --- Gather candidates ------------------------------------------------
+        page = getattr(self, "page", None)
+        if page is None:
+            return None
+
+        # All basic elements
+        try:
+            candidates: List["Element"] = list(page.get_elements(apply_exclusions=False))
+        except Exception:
+            candidates = []
+
+        # Add detected regions if present
+        if hasattr(page, "_element_mgr") and hasattr(page._element_mgr, "regions"):
+            candidates.extend(list(page._element_mgr.regions))
+
+        # Remove self from pool
+        candidates = [c for c in candidates if c is not self]
+
+        # Apply selector filtering early if provided
+        if selector:
+            sel_obj = parse_selector(selector)
+            filt = selector_to_filter_func(sel_obj)
+            candidates = [c for c in candidates if filt(c)]
+
+        if not candidates:
+            return None
+
+        # Helper to extract bbox (x0, top, x1, bottom)
+        def _bbox(obj):
+            return extract_bbox(obj)
+
+        # Self metrics
+        self_bbox = _bbox(self)
+        if self_bbox is None:
+            return None
+        s_x0, s_y0, s_x1, s_y1 = self_bbox
+        s_cx = (s_x0 + s_x1) / 2
+        s_cy = (s_y0 + s_y1) / 2
+
+        matches: List["Element"] = []
+
+        for cand in candidates:
+            c_bbox = _bbox(cand)
+            if c_bbox is None:
+                continue
+            c_x0, c_y0, c_x1, c_y1 = c_bbox
+
+            if mode == "contains":
+                if c_x0 <= s_x0 and c_y0 <= s_y0 and c_x1 >= s_x1 and c_y1 >= s_y1:
+                    matches.append(cand)
+            elif mode == "center":
+                if c_x0 <= s_cx <= c_x1 and c_y0 <= s_cy <= c_y1:
+                    matches.append(cand)
+            elif mode == "overlap":
+                # Compute overlap rectangle
+                ox0 = max(c_x0, s_x0)
+                oy0 = max(c_y0, s_y0)
+                ox1 = min(c_x1, s_x1)
+                oy1 = min(c_y1, s_y1)
+                if ox1 > ox0 and oy1 > oy0:
+                    matches.append(cand)
+
+        if not matches:
+            return None
+
+        # Pick the smallest-area match
+        def _area(obj):
+            bb = _bbox(obj)
+            if bb is None:
+                return float("inf")
+            return (bb[2] - bb[0]) * (bb[3] - bb[1])
+
+        matches.sort(key=_area)
+        return matches[0]
+
 
 class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
     """
@@ -805,25 +913,17 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
 
     def highlight(
         self,
-        label: Optional[str] = None,
-        color: Optional[Union[Tuple, str]] = None,  # Allow string color
-        use_color_cycling: bool = False,
+        label: str = "",
+        color: Optional[Tuple[float, float, float]] = None,
+        use_color_cycling: bool = True,
         include_attrs: Optional[List[str]] = None,
         existing: str = "append",
     ) -> "Element":
-        """
-        Highlight this element on the page.
+        """Highlight the element with the specified colour.
 
-        Args:
-            label: Optional label for the highlight
-            color: Color tuple/string for the highlight, or None to use automatic color
-            use_color_cycling: Force color cycling even with no label (default: False)
-            include_attrs: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
-            existing: How to handle existing highlights - 'append' (default) or 'replace'
-
-        Returns:
-            Self for method chaining
+        Highlight the element on the page.
         """
+
         # Access the correct highlighter service
         highlighter = self.page._highlighter
 
@@ -850,7 +950,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
 
     def show(
         self,
-        scale: float = 2.0,
+        resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
         color: Optional[Union[Tuple, str]] = "red",  # Default color for single element
@@ -862,7 +962,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         Show the page with only this element highlighted temporarily.
 
         Args:
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             labels: Whether to include a legend for the highlight
             legend_position: Position of the legend
             color: Color to highlight this element (default: red)
@@ -874,6 +974,13 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         Returns:
             PIL Image of the page with only this element highlighted, or None if error.
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
         if not hasattr(self, "page") or not self.page:
             logger.warning(f"Cannot show element, missing 'page' attribute: {self}")
             return None
@@ -909,7 +1016,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             return service.render_preview(
                 page_index=self.page.index,
                 temporary_highlights=[temp_highlight_data],
-                scale=scale,
+                resolution=resolution,
                 width=width,  # Pass the width parameter
                 labels=labels,
                 legend_position=legend_position,
@@ -920,22 +1027,29 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             return None
 
     def save(
-        self, filename: str, scale: float = 2.0, labels: bool = True, legend_position: str = "right"
+        self, filename: str, resolution: Optional[float] = None, labels: bool = True, legend_position: str = "right"
     ) -> None:
         """
         Save the page with this element highlighted to an image file.
 
         Args:
             filename: Path to save the image to
-            scale: Scale factor for rendering
+            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             labels: Whether to include a legend for labels
             legend_position: Position of the legend
 
         Returns:
             Self for method chaining
         """
+        # Apply global options as defaults
+        import natural_pdf
+        if resolution is None:
+            if natural_pdf.options.image.resolution is not None:
+                resolution = natural_pdf.options.image.resolution
+            else:
+                resolution = 144  # Default resolution when none specified
         # Save the highlighted image
-        self.page.save_image(filename, scale=scale, labels=labels, legend_position=legend_position)
+        self.page.save_image(filename, resolution=resolution, labels=labels, legend_position=legend_position)
         return self
 
     # Note: save_image method removed in favor of save()

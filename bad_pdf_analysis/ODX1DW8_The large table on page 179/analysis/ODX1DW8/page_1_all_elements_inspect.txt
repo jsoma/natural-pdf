@@ -1,0 +1,93 @@
+## Collection Inspection (62 elements)
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+|   | 255 | 153 | 259 | 168 | Simplified Arabic | BHMMNF | 14 | False | False | native | 1.00 | #000000 |
+|  ةيسنوتلا ةيروهمجلا | 240 | 184 | 335 | 198 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #ff0000 |
+|   | 503 | 214 | 507 | 228 | Helvetica |  | 14 | False | False | native | 1.00 | #000000 |
+|   | 284 | 251 | 288 | 265 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |
+|   | 284 | 289 | 288 | 303 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |
+|   | 284 | 326 | 288 | 340 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |
+|   | 284 | 363 | 288 | 377 | Simplified Arabic,Bold | BFWVUL | 14 | True | False | native | 1.00 | #000080 |
+| 2020-2016 | 167 | 405 | 282 | 429 | Helvetica |  | 24 | True | False | native | 1.00 | #ff0000 |
+|   | 154 | 405 | 161 | 429 | Arial | AUQYJG | 24 | True | False | native | 1.00 | #ff0000 |
+|  ةيمنتلا ططخم | 282 | 410 | 414 | 438 | Simplified Arabic,Bold | BFWVUL | 28 | True | False | native | 1.00 | #ff0000 |
+| يلمجلا ىوتحملا :لولأا دلجملا | 175 | 466 | 407 | 492 | Simplified Arabic,Bold | BFWVUL | 24 | True | False | native | 1.00 | #ff0000 |
+|   | 162 | 468 | 170 | 492 | Simplified Arabic,Bold | BFWVUL | 24 | True | False | native | 1.00 | #ff0000 |
+|   | 280 | 521 | 287 | 543 | Simplified Arabic,Bold | BFWVUL | 22 | True | False | native | 1.00 | #ff0000 |
+|   | 279 | 568 | 290 | 586 | Simplified Arabic,Bold | AKJKLX | 18 | True | False | native | 1.00 | #ff0000 |
+|   | 285 | 785 | 288 | 797 | Simplified Arabic,Bold | AKJKLX | 12 | True | False | native | 1.00 | #ff0000 |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 133 | 666 | 405 | 790 | table |
+| 139 | 671 | 397 | 784 | table |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 138 | 668 | 399 | 680 | table column header |
+| 138 | 669 | 400 | 691 | table column header |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 139 | 669 | 397 | 679 | table row |
+| 139 | 677 | 397 | 688 | table row |
+| 139 | 685 | 398 | 698 | table row |
+| 139 | 693 | 398 | 706 | table row |
+| 139 | 703 | 398 | 715 | table row |
+| 138 | 710 | 398 | 723 | table row |
+| 139 | 723 | 397 | 736 | table row |
+| 139 | 732 | 397 | 744 | table row |
+| 139 | 741 | 397 | 753 | table row |
+| 138 | 746 | 398 | 757 | table row |
+| 139 | 753 | 397 | 765 | table row |
+| 139 | 761 | 397 | 774 | table row |
+| 138 | 766 | 398 | 777 | table row |
+| 138 | 774 | 398 | 785 | table row |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 358 | 670 | 400 | 785 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 358 | 670 | 397 | 679 | table-cell |
+| 358 | 670 | 397 | 679 | table-cell |
+| 358 | 677 | 397 | 688 | table-cell |
+| 358 | 677 | 397 | 688 | table-cell |
+| 358 | 685 | 398 | 698 | table-cell |
+| 358 | 685 | 398 | 698 | table-cell |
+| 358 | 693 | 398 | 706 | table-cell |
+| 358 | 693 | 398 | 706 | table-cell |
+| 358 | 703 | 398 | 715 | table-cell |
+| 358 | 703 | 398 | 715 | table-cell |
+| 358 | 710 | 398 | 723 | table-cell |
+| 358 | 710 | 398 | 723 | table-cell |
+| 358 | 723 | 397 | 736 | table-cell |
+| 358 | 723 | 397 | 736 | table-cell |
+| 358 | 732 | 397 | 744 | table-cell |
+| 358 | 732 | 397 | 744 | table-cell |
+| 358 | 741 | 397 | 753 | table-cell |
+| 358 | 741 | 397 | 753 | table-cell |
+| 358 | 746 | 398 | 757 | table-cell |
+| 358 | 746 | 398 | 757 | table-cell |
+| 358 | 753 | 397 | 765 | table-cell |
+| 358 | 753 | 397 | 765 | table-cell |
+| 358 | 761 | 397 | 774 | table-cell |
+| 358 | 761 | 397 | 774 | table-cell |
+| 358 | 766 | 398 | 777 | table-cell |
+| 358 | 766 | 398 | 777 | table-cell |
+| 358 | 774 | 398 | 785 | table-cell |
+| 358 | 774 | 398 | 785 | table-cell |

@@ -1,0 +1,18 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 16 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Tahoma: 16
+  - **sizes**:
+    - 24.0pt: 11
+    - 14.0pt: 5
+  - styles: 2 bold
+  - **colors**:
+    - black: 14
+    - other: 2

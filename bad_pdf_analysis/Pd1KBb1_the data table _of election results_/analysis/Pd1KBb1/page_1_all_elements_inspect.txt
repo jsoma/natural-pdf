@@ -1,0 +1,500 @@
+## Collection Inspection (454 elements)
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 4 | 50 | 776 | 521 | table |
+| 10 | 107 | 772 | 506 | table |
+| 11 | 120 | 769 | 503 | table |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 7 | 54 | 8 | 518 | 1 | 464 | #000000 | #000000 | 0 |
+| 8 | 54 | 778 | 55 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 54 | 777 | 86 | 770 | 31 | #000000 | #c0504d | 0 |
+| 777 | 55 | 778 | 518 | 1 | 464 | #000000 | #000000 | 0 |
+| 8 | 85 | 778 | 86 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 86 | 777 | 116 | 770 | 30 | #000000 | #ebf0de | 0 |
+| 8 | 115 | 778 | 116 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 115 | 777 | 189 | 770 | 73 | #000000 | #ffc000 | 0 |
+| 71 | 116 | 72 | 518 | 1 | 403 | #000000 | #000000 | 0 |
+| 551 | 116 | 551 | 518 | 1 | 403 | #000000 | #000000 | 0 |
+| 746 | 116 | 747 | 518 | 1 | 403 | #000000 | #000000 | 0 |
+| 72 | 149 | 551 | 150 | 479 | 1 | #000000 | #000000 | 0 |
+| 131 | 150 | 132 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 192 | 150 | 193 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 252 | 150 | 253 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 299 | 150 | 300 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 352 | 150 | 353 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 408 | 150 | 409 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 455 | 150 | 456 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 503 | 150 | 504 | 518 | 1 | 368 | #000000 | #000000 | 0 |
+| 8 | 188 | 778 | 189 | 770 | 1 | #000000 | #000000 | 0 |
+| 8 | 229 | 778 | 230 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 230 | 777 | 271 | 770 | 41 | #000000 | #e4fc8d | 0 |
+| 8 | 271 | 778 | 271 | 770 | 1 | #000000 | #000000 | 0 |
+| 8 | 312 | 778 | 313 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 312 | 777 | 353 | 770 | 41 | #000000 | #e4fc8d | 0 |
+| 8 | 353 | 778 | 354 | 770 | 1 | #000000 | #000000 | 0 |
+| 8 | 394 | 778 | 395 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 395 | 777 | 436 | 770 | 41 | #000000 | #e4fc8d | 0 |
+| 8 | 435 | 778 | 436 | 770 | 1 | #000000 | #000000 | 0 |
+| 8 | 476 | 778 | 477 | 770 | 1 | #000000 | #000000 | 0 |
+| 7 | 477 | 777 | 518 | 770 | 41 | #000000 | #e4fc8d | 0 |
+| 8 | 518 | 778 | 518 | 770 | 1 | #000000 | #000000 | 0 |
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 7 | 54 | 7 | 518 | 0 | False | True |
+| 8 | 54 | 778 | 54 | 0 | True | False |
+| 777 | 55 | 777 | 518 | 0 | False | True |
+| 8 | 85 | 778 | 85 | 0 | True | False |
+| 8 | 115 | 778 | 115 | 0 | True | False |
+| 71 | 116 | 71 | 518 | 0 | False | True |
+| 551 | 116 | 551 | 518 | 0 | False | True |
+| 746 | 116 | 746 | 518 | 0 | False | True |
+| 72 | 149 | 551 | 149 | 0 | True | False |
+| 131 | 150 | 131 | 518 | 0 | False | True |
+| 192 | 150 | 192 | 518 | 0 | False | True |
+| 252 | 150 | 252 | 518 | 0 | False | True |
+| 299 | 150 | 299 | 518 | 0 | False | True |
+| 352 | 150 | 352 | 518 | 0 | False | True |
+| 408 | 150 | 408 | 518 | 0 | False | True |
+| 455 | 150 | 455 | 518 | 0 | False | True |
+| 503 | 150 | 503 | 518 | 0 | False | True |
+| 8 | 188 | 778 | 188 | 0 | True | False |
+| 8 | 229 | 778 | 229 | 0 | True | False |
+| 8 | 271 | 778 | 271 | 0 | True | False |
+| 8 | 312 | 778 | 312 | 0 | True | False |
+| 8 | 353 | 778 | 353 | 0 | True | False |
+| 8 | 394 | 778 | 394 | 0 | True | False |
+| 8 | 435 | 778 | 435 | 0 | True | False |
+| 8 | 476 | 778 | 476 | 0 | True | False |
+| 8 | 518 | 778 | 518 | 0 | True | False |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| ل | 398 | 58 | 401 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |
+|  2014 ةيعيشرت | 322 | 58 | 398 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |
+| ا تبااختنالا  | 401 | 58 | 464 | 80 | Arabic Typesetting | ABCDEE | 22 | False | False | native | 1.00 | #000000 |
+| نيندم ةرئاد جئاتن فشك ةقرو | 306 | 89 | 480 | 110 | Sakkal Majalla,Bold | ABCDEE | 20 | True | False | native | 1.00 | #000000 |
+|  تاوصلأا عومجم | 9 | 121 | 70 | 133 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |
+| ةيدمتعلما بسح اهب حرصلما  تاوصلأا عيزوت | 222 | 124 | 401 | 139 | Sakkal Majalla,Bold | ABCDEE | 14 | True | False | native | 1.00 | #000000 |
+| ا | 756 | 137 | 770 | 140 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |
+|  اهب حرصلما  | 20 | 138 | 61 | 150 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |
+| ل | 756 | 140 | 770 | 144 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |
+| ت | 756 | 144 | 770 | 147 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |
+| ةحشرتلما تامئاقلا | 611 | 144 | 686 | 158 | Sakkal Majalla,Bold | ABCDEE | 14 | True | False | native | 1.00 | #000000 |
+| ر | 756 | 147 | 770 | 152 | Sakkal Majalla,Bold | ABCDEE | 5 | True | False | native | 1.00 | #000000 |
+| ت | 756 | 150 | 770 | 153 | Sakkal Majalla,Bold | ABCDEE | 3 | True | False | native | 1.00 | #000000 |
+| ي | 756 | 153 | 770 | 157 | Sakkal Majalla,Bold | ABCDEE | 4 | True | False | native | 1.00 | #000000 |
+|  ةرئادلاب | 25 | 154 | 55 | 166 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |
+|  نيندم | 89 | 154 | 115 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+|  نيندم | 150 | 154 | 175 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+|  ةموح ةبرج | 358 | 154 | 404 | 167 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| ب | 756 | 157 | 770 | 167 | Sakkal Majalla,Bold | ABCDEE | 9 | True | False | native | 1.00 | #000000 |
+| نوديم ةبرج | 303 | 162 | 350 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| فولخم يديس | 195 | 163 | 250 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| سيجرج | 260 | 163 | 292 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| ميجأ ةبرج | 412 | 163 | 452 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| شادخ ينب | 460 | 163 | 499 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| نادرق نب | 510 | 163 | 545 | 176 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| ةيباختنلاا | 22 | 170 | 57 | 182 | Sakkal Majalla,Bold | ABCDEE | 12 | True | False | native | 1.00 | #000000 |
+| قوسلا | 368 | 170 | 394 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| ةيلامشلا | 84 | 171 | 119 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| ةيبونجلا | 145 | 171 | 178 | 184 | Sakkal Majalla,Bold | ABCDEE | 13 | True | False | native | 1.00 | #000000 |
+| بعشلا ةطلس قيقحت لجأ نم ةمئاق | 566 | 201 | 732 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 426 | 30 | 201 | 49 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 63 | 95 | 201 | 108 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 43 | 156 | 201 | 168 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 56 | 216 | 201 | 229 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 58 | 270 | 201 | 282 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 49 | 320 | 201 | 333 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 55 | 374 | 201 | 387 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 33 | 425 | 201 | 438 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 32 | 473 | 201 | 486 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 37 | 521 | 201 | 534 | 217 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 1 | 759 | 211 | 766 | 227 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| يطارقميدلا فلاحتلا بزح ةمئاق | 575 | 242 | 723 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 3 001 | 25 | 242 | 54 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 419 | 92 | 242 | 111 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 806 | 152 | 242 | 172 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 197 | 213 | 242 | 232 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 289 | 266 | 242 | 286 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 217 | 317 | 242 | 336 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 616 | 371 | 242 | 390 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 59 | 425 | 242 | 438 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 118 | 470 | 242 | 489 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 280 | 518 | 242 | 537 | 258 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 2 | 759 | 253 | 766 | 269 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| ةيمنتلاو ةلادعلا بزح ةمئاق | 585 | 283 | 712 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 387 | 30 | 283 | 49 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 50 | 95 | 283 | 108 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 60 | 156 | 283 | 168 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 42 | 216 | 283 | 229 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 64 | 270 | 283 | 282 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 28 | 320 | 283 | 333 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 41 | 374 | 283 | 387 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 20 | 425 | 283 | 438 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 42 | 473 | 283 | 486 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 40 | 521 | 283 | 534 | 299 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 3 | 759 | 294 | 766 | 310 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| يروهمجلا بزحلا ةمئاق | 596 | 324 | 702 | 340 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 1 193 | 25 | 325 | 54 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 135 | 92 | 325 | 111 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 87 | 156 | 325 | 168 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 43 | 216 | 325 | 229 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 170 | 266 | 325 | 286 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 167 | 317 | 325 | 336 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 327 | 371 | 325 | 390 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 39 | 425 | 325 | 438 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 181 | 470 | 325 | 489 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 44 | 521 | 325 | 534 | 341 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 4 | 759 | 335 | 766 | 351 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| دغلا بزح ةمئاق | 612 | 365 | 686 | 381 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 430 | 30 | 366 | 49 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 117 | 92 | 366 | 111 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 62 | 156 | 366 | 168 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 31 | 216 | 366 | 229 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 43 | 270 | 366 | 282 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 28 | 320 | 366 | 333 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 42 | 374 | 366 | 387 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 23 | 425 | 366 | 438 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 38 | 473 | 366 | 486 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 46 | 521 | 366 | 534 | 382 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 5 | 759 | 376 | 766 | 392 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| سنوت قافآ بزح ةمئاق | 597 | 406 | 701 | 422 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 3 066 | 25 | 407 | 54 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 93 | 95 | 407 | 108 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 127 | 152 | 407 | 172 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 123 | 213 | 407 | 232 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 1 422 | 262 | 407 | 290 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 322 | 317 | 407 | 336 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 640 | 371 | 407 | 390 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 68 | 425 | 407 | 438 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 36 | 473 | 407 | 486 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 235 | 518 | 407 | 537 | 423 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 6 | 759 | 417 | 766 | 433 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| ءافولاو حاتفنلاا بزح ةمئاق | 587 | 448 | 711 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 203 | 30 | 448 | 49 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 14 | 95 | 448 | 108 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 15 | 156 | 448 | 168 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 22 | 216 | 448 | 229 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 33 | 270 | 448 | 282 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 23 | 320 | 448 | 333 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 30 | 374 | 448 | 387 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 6 | 429 | 448 | 435 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 7 | 476 | 448 | 483 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 53 | 521 | 448 | 534 | 464 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 7 | 759 | 458 | 766 | 474 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| ي سنوتلا يطارقميدلا بابشلا داحتا ةمئاق | 557 | 489 | 741 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 192 | 30 | 489 | 49 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 14 | 95 | 489 | 108 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 13 | 156 | 489 | 168 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 14 | 216 | 489 | 229 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 20 | 270 | 489 | 282 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 18 | 320 | 489 | 333 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 21 | 374 | 489 | 387 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 7 | 429 | 489 | 435 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 7 | 476 | 489 | 483 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 78 | 521 | 489 | 534 | 505 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+| 8 | 759 | 500 | 766 | 516 | Sakkal Majalla | ABCDEE | 16 | False | False | native | 1.00 | #000000 |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 11 | 119 | 769 | 151 | table row |
+| 11 | 151 | 769 | 187 | table row |
+| 11 | 188 | 769 | 228 | table row |
+| 11 | 227 | 769 | 268 | table row |
+| 10 | 268 | 769 | 309 | table row |
+| 11 | 310 | 769 | 352 | table row |
+| 11 | 352 | 769 | 394 | table row |
+| 11 | 394 | 769 | 434 | table row |
+| 11 | 434 | 769 | 476 | table row |
+| 11 | 476 | 769 | 503 | table row |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 11 | 120 | 769 | 187 | table column header |
+
+### Table Spanning Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 11 | 120 | 73 | 187 | table spanning cell |
+| 558 | 120 | 740 | 187 | table spanning cell |
+| 747 | 120 | 769 | 187 | table spanning cell |
+| 71 | 120 | 558 | 149 | table spanning cell |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 748 | 120 | 769 | 503 | table column |
+| 455 | 120 | 505 | 503 | table column |
+| 11 | 120 | 73 | 503 | table column |
+| 503 | 120 | 555 | 503 | table column |
+| 252 | 120 | 298 | 503 | table column |
+| 74 | 120 | 130 | 503 | table column |
+| 186 | 120 | 252 | 503 | table column |
+| 407 | 120 | 456 | 503 | table column |
+| 130 | 120 | 186 | 503 | table column |
+| 298 | 121 | 353 | 503 | table column |
+| 354 | 121 | 406 | 503 | table column |
+| 555 | 121 | 749 | 503 | table column |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 748 | 120 | 769 | 151 | table-cell |
+| 748 | 120 | 769 | 151 | table-cell |
+| 455 | 120 | 505 | 151 | table-cell |
+| 455 | 120 | 505 | 151 | table-cell |
+| 11 | 120 | 73 | 151 | table-cell |
+| 11 | 120 | 73 | 151 | table-cell |
+| 503 | 120 | 555 | 151 | table-cell |
+| 503 | 120 | 555 | 151 | table-cell |
+| 252 | 120 | 298 | 151 | table-cell |
+| 252 | 120 | 298 | 151 | table-cell |
+| 74 | 120 | 130 | 151 | table-cell |
+| 74 | 120 | 130 | 151 | table-cell |
+| 186 | 120 | 252 | 151 | table-cell |
+| 186 | 120 | 252 | 151 | table-cell |
+| 407 | 120 | 456 | 151 | table-cell |
+| 407 | 120 | 456 | 151 | table-cell |
+| 130 | 120 | 186 | 151 | table-cell |
+| 130 | 120 | 186 | 151 | table-cell |
+| 298 | 121 | 353 | 151 | table-cell |
+| 298 | 121 | 353 | 151 | table-cell |
+| 354 | 121 | 406 | 151 | table-cell |
+| 354 | 121 | 406 | 151 | table-cell |
+| 555 | 121 | 749 | 151 | table-cell |
+| 555 | 121 | 749 | 151 | table-cell |
+| 11 | 151 | 73 | 187 | table-cell |
+| 11 | 151 | 73 | 187 | table-cell |
+| 74 | 151 | 130 | 187 | table-cell |
+| 74 | 151 | 130 | 187 | table-cell |
+| 130 | 151 | 186 | 187 | table-cell |
+| 130 | 151 | 186 | 187 | table-cell |
+| 186 | 151 | 252 | 187 | table-cell |
+| 186 | 151 | 252 | 187 | table-cell |
+| 252 | 151 | 298 | 187 | table-cell |
+| 252 | 151 | 298 | 187 | table-cell |
+| 298 | 151 | 353 | 187 | table-cell |
+| 298 | 151 | 353 | 187 | table-cell |
+| 354 | 151 | 406 | 187 | table-cell |
+| 354 | 151 | 406 | 187 | table-cell |
+| 407 | 151 | 456 | 187 | table-cell |
+| 407 | 151 | 456 | 187 | table-cell |
+| 455 | 151 | 505 | 187 | table-cell |
+| 455 | 151 | 505 | 187 | table-cell |
+| 503 | 151 | 555 | 187 | table-cell |
+| 503 | 151 | 555 | 187 | table-cell |
+| 555 | 151 | 749 | 187 | table-cell |
+| 555 | 151 | 749 | 187 | table-cell |
+| 748 | 151 | 769 | 187 | table-cell |
+| 748 | 151 | 769 | 187 | table-cell |
+| 11 | 188 | 73 | 228 | table-cell |
+| 11 | 188 | 73 | 228 | table-cell |
+| 74 | 188 | 130 | 228 | table-cell |
+| 74 | 188 | 130 | 228 | table-cell |
+| 130 | 188 | 186 | 228 | table-cell |
+| 130 | 188 | 186 | 228 | table-cell |
+| 186 | 188 | 252 | 228 | table-cell |
+| 186 | 188 | 252 | 228 | table-cell |
+| 252 | 188 | 298 | 228 | table-cell |
+| 252 | 188 | 298 | 228 | table-cell |
+| 298 | 188 | 353 | 228 | table-cell |
+| 298 | 188 | 353 | 228 | table-cell |
+| 354 | 188 | 406 | 228 | table-cell |
+| 354 | 188 | 406 | 228 | table-cell |
+| 407 | 188 | 456 | 228 | table-cell |
+| 407 | 188 | 456 | 228 | table-cell |
+| 455 | 188 | 505 | 228 | table-cell |
+| 455 | 188 | 505 | 228 | table-cell |
+| 503 | 188 | 555 | 228 | table-cell |
+| 503 | 188 | 555 | 228 | table-cell |
+| 555 | 188 | 749 | 228 | table-cell |
+| 555 | 188 | 749 | 228 | table-cell |
+| 748 | 188 | 769 | 228 | table-cell |
+| 748 | 188 | 769 | 228 | table-cell |
+| 11 | 227 | 73 | 268 | table-cell |
+| 11 | 227 | 73 | 268 | table-cell |
+| 74 | 227 | 130 | 268 | table-cell |
+| 74 | 227 | 130 | 268 | table-cell |
+| 130 | 227 | 186 | 268 | table-cell |
+| 130 | 227 | 186 | 268 | table-cell |
+| 186 | 227 | 252 | 268 | table-cell |
+| 186 | 227 | 252 | 268 | table-cell |
+| 252 | 227 | 298 | 268 | table-cell |
+| 252 | 227 | 298 | 268 | table-cell |
+| 298 | 227 | 353 | 268 | table-cell |
+| 298 | 227 | 353 | 268 | table-cell |
+| 354 | 227 | 406 | 268 | table-cell |
+| 354 | 227 | 406 | 268 | table-cell |
+| 407 | 227 | 456 | 268 | table-cell |
+| 407 | 227 | 456 | 268 | table-cell |
+| 455 | 227 | 505 | 268 | table-cell |
+| 455 | 227 | 505 | 268 | table-cell |
+| 503 | 227 | 555 | 268 | table-cell |
+| 503 | 227 | 555 | 268 | table-cell |
+| 555 | 227 | 749 | 268 | table-cell |
+| 555 | 227 | 749 | 268 | table-cell |
+| 748 | 227 | 769 | 268 | table-cell |
+| 748 | 227 | 769 | 268 | table-cell |
+| 11 | 268 | 73 | 309 | table-cell |
+| 11 | 268 | 73 | 309 | table-cell |
+| 74 | 268 | 130 | 309 | table-cell |
+| 74 | 268 | 130 | 309 | table-cell |
+| 130 | 268 | 186 | 309 | table-cell |
+| 130 | 268 | 186 | 309 | table-cell |
+| 186 | 268 | 252 | 309 | table-cell |
+| 186 | 268 | 252 | 309 | table-cell |
+| 252 | 268 | 298 | 309 | table-cell |
+| 252 | 268 | 298 | 309 | table-cell |
+| 298 | 268 | 353 | 309 | table-cell |
+| 298 | 268 | 353 | 309 | table-cell |
+| 354 | 268 | 406 | 309 | table-cell |
+| 354 | 268 | 406 | 309 | table-cell |
+| 407 | 268 | 456 | 309 | table-cell |
+| 407 | 268 | 456 | 309 | table-cell |
+| 455 | 268 | 505 | 309 | table-cell |
+| 455 | 268 | 505 | 309 | table-cell |
+| 503 | 268 | 555 | 309 | table-cell |
+| 503 | 268 | 555 | 309 | table-cell |
+| 555 | 268 | 749 | 309 | table-cell |
+| 555 | 268 | 749 | 309 | table-cell |
+| 748 | 268 | 769 | 309 | table-cell |
+| 748 | 268 | 769 | 309 | table-cell |
+| 11 | 310 | 73 | 352 | table-cell |
+| 11 | 310 | 73 | 352 | table-cell |
+| 74 | 310 | 130 | 352 | table-cell |
+| 74 | 310 | 130 | 352 | table-cell |
+| 130 | 310 | 186 | 352 | table-cell |
+| 130 | 310 | 186 | 352 | table-cell |
+| 186 | 310 | 252 | 352 | table-cell |
+| 186 | 310 | 252 | 352 | table-cell |
+| 252 | 310 | 298 | 352 | table-cell |
+| 252 | 310 | 298 | 352 | table-cell |
+| 298 | 310 | 353 | 352 | table-cell |
+| 298 | 310 | 353 | 352 | table-cell |
+| 354 | 310 | 406 | 352 | table-cell |
+| 354 | 310 | 406 | 352 | table-cell |
+| 407 | 310 | 456 | 352 | table-cell |
+| 407 | 310 | 456 | 352 | table-cell |
+| 455 | 310 | 505 | 352 | table-cell |
+| 455 | 310 | 505 | 352 | table-cell |
+| 503 | 310 | 555 | 352 | table-cell |
+| 503 | 310 | 555 | 352 | table-cell |
+| 555 | 310 | 749 | 352 | table-cell |
+| 555 | 310 | 749 | 352 | table-cell |
+| 748 | 310 | 769 | 352 | table-cell |
+| 748 | 310 | 769 | 352 | table-cell |
+| 11 | 352 | 73 | 394 | table-cell |
+| 11 | 352 | 73 | 394 | table-cell |
+| 74 | 352 | 130 | 394 | table-cell |
+| 74 | 352 | 130 | 394 | table-cell |
+| 130 | 352 | 186 | 394 | table-cell |
+| 130 | 352 | 186 | 394 | table-cell |
+| 186 | 352 | 252 | 394 | table-cell |
+| 186 | 352 | 252 | 394 | table-cell |
+| 252 | 352 | 298 | 394 | table-cell |
+| 252 | 352 | 298 | 394 | table-cell |
+| 298 | 352 | 353 | 394 | table-cell |
+| 298 | 352 | 353 | 394 | table-cell |
+| 354 | 352 | 406 | 394 | table-cell |
+| 354 | 352 | 406 | 394 | table-cell |
+| 407 | 352 | 456 | 394 | table-cell |
+| 407 | 352 | 456 | 394 | table-cell |
+| 455 | 352 | 505 | 394 | table-cell |
+| 455 | 352 | 505 | 394 | table-cell |
+| 503 | 352 | 555 | 394 | table-cell |
+| 503 | 352 | 555 | 394 | table-cell |
+| 555 | 352 | 749 | 394 | table-cell |
+| 555 | 352 | 749 | 394 | table-cell |
+| 748 | 352 | 769 | 394 | table-cell |
+| 748 | 352 | 769 | 394 | table-cell |
+| 11 | 394 | 73 | 434 | table-cell |
+| 11 | 394 | 73 | 434 | table-cell |
+| 74 | 394 | 130 | 434 | table-cell |
+| 74 | 394 | 130 | 434 | table-cell |
+| 130 | 394 | 186 | 434 | table-cell |
+| 130 | 394 | 186 | 434 | table-cell |
+| 186 | 394 | 252 | 434 | table-cell |
+| 186 | 394 | 252 | 434 | table-cell |
+| 252 | 394 | 298 | 434 | table-cell |
+| 252 | 394 | 298 | 434 | table-cell |
+| 298 | 394 | 353 | 434 | table-cell |
+| 298 | 394 | 353 | 434 | table-cell |
+| 354 | 394 | 406 | 434 | table-cell |
+| 354 | 394 | 406 | 434 | table-cell |
+| 407 | 394 | 456 | 434 | table-cell |
+| 407 | 394 | 456 | 434 | table-cell |
+| 455 | 394 | 505 | 434 | table-cell |
+| 455 | 394 | 505 | 434 | table-cell |
+| 503 | 394 | 555 | 434 | table-cell |
+| 503 | 394 | 555 | 434 | table-cell |
+| 555 | 394 | 749 | 434 | table-cell |
+| 555 | 394 | 749 | 434 | table-cell |
+| 748 | 394 | 769 | 434 | table-cell |
+| 748 | 394 | 769 | 434 | table-cell |
+| 11 | 434 | 73 | 476 | table-cell |
+| 11 | 434 | 73 | 476 | table-cell |
+| 74 | 434 | 130 | 476 | table-cell |
+| 74 | 434 | 130 | 476 | table-cell |
+| 130 | 434 | 186 | 476 | table-cell |
+| 130 | 434 | 186 | 476 | table-cell |
+| 186 | 434 | 252 | 476 | table-cell |
+| 186 | 434 | 252 | 476 | table-cell |
+| 252 | 434 | 298 | 476 | table-cell |
+| 252 | 434 | 298 | 476 | table-cell |
+| 298 | 434 | 353 | 476 | table-cell |
+| 298 | 434 | 353 | 476 | table-cell |
+| 354 | 434 | 406 | 476 | table-cell |
+| 354 | 434 | 406 | 476 | table-cell |
+| 407 | 434 | 456 | 476 | table-cell |
+| 407 | 434 | 456 | 476 | table-cell |
+| 455 | 434 | 505 | 476 | table-cell |
+| 455 | 434 | 505 | 476 | table-cell |
+| 503 | 434 | 555 | 476 | table-cell |
+| 503 | 434 | 555 | 476 | table-cell |
+| 555 | 434 | 749 | 476 | table-cell |
+| 555 | 434 | 749 | 476 | table-cell |
+| 748 | 434 | 769 | 476 | table-cell |
+| 748 | 434 | 769 | 476 | table-cell |
+| 11 | 476 | 73 | 503 | table-cell |
+| 11 | 476 | 73 | 503 | table-cell |
+| 74 | 476 | 130 | 503 | table-cell |
+| 74 | 476 | 130 | 503 | table-cell |
+| 130 | 476 | 186 | 503 | table-cell |
+| 130 | 476 | 186 | 503 | table-cell |
+| 186 | 476 | 252 | 503 | table-cell |
+| 186 | 476 | 252 | 503 | table-cell |
+| 252 | 476 | 298 | 503 | table-cell |
+| 252 | 476 | 298 | 503 | table-cell |
+| 298 | 476 | 353 | 503 | table-cell |
+| 298 | 476 | 353 | 503 | table-cell |
+| 354 | 476 | 406 | 503 | table-cell |
+| 354 | 476 | 406 | 503 | table-cell |
+| 407 | 476 | 456 | 503 | table-cell |
+| 407 | 476 | 456 | 503 | table-cell |
+| 455 | 476 | 505 | 503 | table-cell |
+| 455 | 476 | 505 | 503 | table-cell |
+| 503 | 476 | 555 | 503 | table-cell |
+| 503 | 476 | 555 | 503 | table-cell |
+| 555 | 476 | 749 | 503 | table-cell |
+| 555 | 476 | 749 | 503 | table-cell |
+| 748 | 476 | 769 | 503 | table-cell |
+| 748 | 476 | 769 | 503 | table-cell |

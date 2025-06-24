@@ -277,7 +277,9 @@ def _get_columns_for_type(element_type: str, show_page_column: bool) -> List[str
     elif element_type == 'line':
         columns = base_columns + ['width', 'is_horizontal', 'is_vertical']  # LineElement properties
     elif element_type == 'region':
-        columns = base_columns + ['width', 'height', 'type']
+        columns = base_columns + ['width', 'height', 'type', 'color']
+    elif element_type == 'blob':
+        columns = base_columns + ['width', 'height', 'color']
     else:
         columns = base_columns + ['type']
     
@@ -330,14 +332,16 @@ def _extract_element_value(element: "Element", column: str) -> Any:
             return value if isinstance(value, bool) else False
         
         elif column in ['stroke', 'fill', 'color']:
-            # For rectangles and text, these return color tuples
             value = getattr(element, column, None)
+            # If already a string (e.g. '#ff00aa' or 'red') return as is
+            if isinstance(value, str):
+                return value
+            # If tuple/list convert to hex
             if value and isinstance(value, (tuple, list)) and len(value) >= 3:
-                # Convert to hex color for display
                 try:
                     r, g, b = [int(v * 255) if v <= 1 else int(v) for v in value[:3]]
                     return f"#{r:02x}{g:02x}{b:02x}"
-                except:
+                except Exception:
                     return str(value)
             return ""
         

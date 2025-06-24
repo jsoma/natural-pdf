@@ -1,0 +1,126 @@
+{
+  "document": "zxyRByM_Tables_ Have never managed to get other python lib",
+  "total_pages": 12,
+  "analyzed_pages": [
+    1,
+    6
+  ],
+  "analysis_date": "2025-06-22T17:16:45.409610",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1358,
+      "text_preview": "Filing ID #10053231\nF\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 D\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 R\u0000\u0000\u0000\u0000\u0000\nClerk of the House of Representatives • Legislative Resource Center • 135 Cannon Building • Washington, DC 20515\nF\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\nName: Hon. Nancy Pelo...",
+      "character_count": 1286,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.0,
+      "standard_table": "2 rows × 6 columns",
+      "line_detection": {
+        "horizontal_lines": 11,
+        "vertical_lines": 1,
+        "total_lines": 12
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 17,
+        "processing_time": 1.0391337871551514
+      },
+      "yolo_types": {
+        "abandon": 1,
+        "title": 2,
+        "table_row": 10,
+        "plain text": 2,
+        "table_caption": 1,
+        "table": 1
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 0.7758729457855225
+      },
+      "selector_large_text": 1,
+      "selector_small_text": 0,
+      "selector_bold_text": 17,
+      "selector_colored_rects": 60,
+      "selector_thin_lines": 14,
+      "potential_text_formatting": 1,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/zxyRByM_Tables_ Have never managed to get other python lib/detailed_analysis_final/page_1.png"
+    },
+    "6": {
+      "page_number": 6,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1655,
+      "text_preview": "Asset Owner Value of Asset Income Type(s) Income Tx. >\n$1,000?\nD\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000: 100 call options with a strike price of $100 and an expiration date of 1/20/23.\nRussell Ranch LLC [OL] SP $5,000,001 - Partn...",
+      "character_count": 1573,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.05,
+      "standard_table": "4 rows × 6 columns",
+      "line_detection": {
+        "horizontal_lines": 4,
+        "vertical_lines": 1,
+        "total_lines": 5
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 4,
+        "processing_time": 0.769446849822998
+      },
+      "yolo_types": {
+        "table": 1,
+        "table_row": 3
+      },
+      "tatr_analysis": {
+        "table_regions": 3,
+        "processing_time": 0.5302770137786865
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 0,
+      "selector_bold_text": 7,
+      "selector_colored_rects": 98,
+      "selector_thin_lines": 12,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/zxyRByM_Tables_ Have never managed to get other python lib/detailed_analysis_final/page_6.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "text_formatting",
+      "page": 1,
+      "severity": "medium",
+      "details": "1 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

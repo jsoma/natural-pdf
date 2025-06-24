@@ -1,0 +1,35 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 74 elements
+- **line**: 18 elements
+- **rect**: 1 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - E-BZ: 35
+    - FZSSK--GBK1-0: 28
+    - FZHTK--GBK1-0: 2
+    - E-FZ: 2
+    - E-F7: 2
+    - FZLTXIHJW--GB1-0: 1
+    - FZY1K--GBK1-0: 1
+    - FZLTKHK--GBK1-0: 1
+    - FZLTHJW--GB1-0: 1
+    - FZBIAOYSK--GBK1-0: 1
+  - **sizes**:
+    - 10.5pt: 55
+    - 9.0pt: 11
+    - 18.5pt: 2
+    - 8.5pt: 1
+    - 20.5pt: 1
+    - 9.5pt: 1
+    - 16.0pt: 1
+    - 12.5pt: 1
+    - 11.0pt: 1
+  - **colors**:
+    - black: 67
+    - other: 7

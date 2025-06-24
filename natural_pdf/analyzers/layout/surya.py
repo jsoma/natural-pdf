@@ -189,7 +189,7 @@ class SuryaLayoutDetector(LayoutDetector):
             "surya_table_rec_dpi", 192
         )
         high_res_page_image = self._page_ref.to_image(
-            resolution=high_res_dpi, include_highlights=False, scale=1.0
+            resolution=high_res_dpi, include_highlights=False
         )
 
         # Render high-res page ONCE

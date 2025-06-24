@@ -1,0 +1,45 @@
+{
+  "document": "b5eVqGg_Math formulas in Russian _e.g. on page 181__",
+  "total_pages": 222,
+  "analyzed_pages": [
+    181
+  ],
+  "analysis_date": "2025-06-22T16:43:10.081094",
+  "pages": {
+    "181": {
+      "page_number": 181,
+      "dimensions": "595.276 × 841.89001 points",
+      "text_length": 1593,
+      "text_preview": "Постановление Правительства РФ от 29.12.2011 N 1178\n(ред. от 19.01.2022) Документ предоставленКонсультантПлюс\nДата сохранения: 07.02.2022\n\"О ценообразовании в области регулируемых цен (...\nгде:\nte - п...",
+      "table": "43 rows × 4 columns",
+      "table_sample": [
+        [
+          "Постановление Правительства",
+          "РФ от 29.12.2",
+          "011 N 1178",
+          ""
+        ],
+        [
+          "(ред. от 19.01.2022)",
+          "",
+          "Документ",
+          "предоставленКонсультантПлюс"
+        ],
+        [
+          "",
+          "",
+          "",
+          "Дата сохранения: 07.02.2022"
+        ]
+      ],
+      "yolo_regions": 18,
+      "tatr_regions": 2,
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/b5eVqGg_Math formulas in Russian _e.g. on page 181__/enhanced_analysis_10/page_181.png"
+    }
+  },
+  "insights": [
+    "Document contains 1593 total characters across 1 analyzed pages",
+    "1 out of 1 pages contain detectable tables",
+    "Complex layout detected - average 18.0 regions per page"
+  ]
+}

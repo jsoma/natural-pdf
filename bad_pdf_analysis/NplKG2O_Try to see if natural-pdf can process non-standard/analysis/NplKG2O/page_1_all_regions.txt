@@ -1,0 +1,88 @@
+All Layout Regions (53 found)
+==================================================
+YOLO: 1, TATR: 52, Other: 0
+
+## Collection Inspection (53 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 138 | 626 | 445 | 680 | abandon |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 142 | 642 | 461 | 839 | table |
+| 149 | 655 | 454 | 833 | table |
+
+### Table Column Header Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 149 | 654 | 453 | 675 | table column header |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 397 | 654 | 454 | 832 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 149 | 654 | 453 | 674 | table row |
+| 149 | 673 | 453 | 690 | table row |
+| 149 | 684 | 454 | 701 | table row |
+| 149 | 697 | 453 | 714 | table row |
+| 149 | 710 | 454 | 727 | table row |
+| 149 | 711 | 453 | 727 | table row |
+| 149 | 722 | 453 | 738 | table row |
+| 148 | 728 | 454 | 744 | table row |
+| 148 | 752 | 453 | 768 | table row |
+| 148 | 764 | 453 | 780 | table row |
+| 148 | 777 | 453 | 793 | table row |
+| 149 | 781 | 453 | 795 | table row |
+| 149 | 791 | 453 | 807 | table row |
+| 149 | 802 | 453 | 819 | table row |
+| 148 | 807 | 455 | 822 | table row |
+| 148 | 818 | 454 | 833 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 397 | 654 | 453 | 674 | table-cell |
+| 397 | 654 | 453 | 674 | table-cell |
+| 397 | 673 | 453 | 690 | table-cell |
+| 397 | 673 | 453 | 690 | table-cell |
+| 397 | 684 | 454 | 701 | table-cell |
+| 397 | 684 | 454 | 701 | table-cell |
+| 397 | 697 | 453 | 714 | table-cell |
+| 397 | 697 | 453 | 714 | table-cell |
+| 397 | 710 | 454 | 727 | table-cell |
+| 397 | 710 | 454 | 727 | table-cell |
+| 397 | 711 | 453 | 727 | table-cell |
+| 397 | 711 | 453 | 727 | table-cell |
+| 397 | 722 | 453 | 738 | table-cell |
+| 397 | 722 | 453 | 738 | table-cell |
+| 397 | 728 | 454 | 744 | table-cell |
+| 397 | 728 | 454 | 744 | table-cell |
+| 397 | 752 | 453 | 768 | table-cell |
+| 397 | 752 | 453 | 768 | table-cell |
+| 397 | 764 | 453 | 780 | table-cell |
+| 397 | 764 | 453 | 780 | table-cell |
+| 397 | 777 | 453 | 793 | table-cell |
+| 397 | 777 | 453 | 793 | table-cell |
+| 397 | 781 | 453 | 795 | table-cell |
+| 397 | 781 | 453 | 795 | table-cell |
+| 397 | 791 | 453 | 807 | table-cell |
+| 397 | 791 | 453 | 807 | table-cell |
+| 397 | 802 | 453 | 819 | table-cell |
+| 397 | 802 | 453 | 819 | table-cell |
+| 397 | 807 | 454 | 822 | table-cell |
+| 397 | 807 | 454 | 822 | table-cell |
+| 397 | 818 | 454 | 832 | table-cell |
+| 397 | 818 | 454 | 832 | table-cell |

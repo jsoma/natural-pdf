@@ -1,0 +1,178 @@
+## Collection Inspection (127 elements)
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 39 | 28 | 280 | 100 | abandon |
+| 417 | 42 | 565 | 86 | abandon |
+| 252 | 769 | 347 | 781 | abandon |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+|    | 563 | 29 | 568 | 40 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |
+| BUDITE NA PRAV | 418 | 44 | 504 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #313d4f |
+| N | 504 | 44 | 511 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #000000 |
+| OJ STRANI | 512 | 44 | 563 | 56 | Calibri | BCDFEE | 12 | True | True | native | 1.00 | #313d4f |
+|   | 563 | 44 | 565 | 56 | Calibri | BCDGEE | 12 | True | False | native | 1.00 | #313d4f |
+|   | 471 | 59 | 474 | 71 | Calibri | BCDGEE | 12 | True | False | native | 1.00 | #313d4f |
+| online@paragraf.rs | 474 | 59 | 563 | 70 | Calibri | BCDGEE | 11 | True | False | native | 1.00 | #0462c1 |
+|   | 563 | 59 | 565 | 70 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #313d4f |
+| www.paragraf.rs  | 488 | 74 | 565 | 85 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #0462c1 |
+|   | 540 | 88 | 542 | 100 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #313d4f |
+| Preuzeto iz elektronske pravne baze  | 151 | 105 | 371 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #000000 |
+| Paragraf Lex | 372 | 105 | 447 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #1f4e79 |
+|   | 447 | 105 | 450 | 117 | OpenSans-Bold | BCDHEE | 12 | True | False | native | 1.00 | #000000 |
+|   | 135 | 160 | 139 | 174 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |
+|   | 242 | 248 | 246 | 262 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |
+|   | 345 | 249 | 349 | 263 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |
+|   | 134 | 250 | 138 | 264 | OpenSans-Bold | BCDHEE | 14 | True | False | native | 1.00 | #000000 |
+|     | 454 | 252 | 461 | 263 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |
+|   | 565 | 252 | 567 | 263 | Calibri | BCDEEE | 11 | False | False | native | 1.00 | #000000 |
+| Ukoliko ovaj propis niste preuzeli sa Paragrafovog... | 45 | 274 | 314 | 284 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #767070 |
+| niste sigurni da li je u pitanju važeća verzija pr... | 314 | 274 | 554 | 284 | OpenSans | BCDJEE | 10 | False | False | native | 1.00 | #767070 |
+|   | 554 | 274 | 557 | 284 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #767070 |
+| .  | 381 | 288 | 387 | 298 | Arial |  | 11 | False | False | native | 1.00 | #cc0000 |
+| poslednju verziju možete naći  | 214 | 288 | 355 | 298 | OpenSans | BCDJEE | 10 | False | False | native | 1.00 | #767070 |
+| OVDE | 355 | 288 | 381 | 298 | OpenSans | BCDIEE | 10 | False | False | native | 1.00 | #0462c1 |
+| ZAKON  | 268 | 324 | 335 | 342 | Arial |  | 18 | True | False | native | 1.00 | #ffe8be |
+|   | 497 | 356 | 502 | 374 | Arial |  | 18 | True | False | native | 1.00 | #000000 |
+| O NAKNADAMA ZA KORIŠĆENJE JAVNIH DOBARA | 102 | 357 | 496 | 373 | Arial |  | 16 | True | False | native | 1.00 | #000000 |
+| ("Sl. glasnik RS", br. 95/2018, 49/2019, 86/2019 -... | 44 | 384 | 558 | 395 | Arial |  | 11 | False | True | native | 1.00 | #ffe8be |
+| dop. usklađenih din. izn.)   | 241 | 396 | 363 | 407 | Arial |  | 11 | False | True | native | 1.00 | #ffe8be |
+|    | 36 | 412 | 42 | 423 | Arial |  | 12 | False | False | native | 1.00 | #000000 |
+| I UVODNE ODREDBE   | 231 | 425 | 375 | 439 | Arial |  | 14 | False | False | native | 1.00 | #000000 |
+| Predmet uređivanja   | 250 | 452 | 354 | 463 | Arial |  | 11 | True | True | native | 1.00 | #000000 |
+| Član 1   | 283 | 476 | 321 | 487 | Arial |  | 11 | True | False | native | 1.00 | #000000 |
+| Ovim zakonom uređuju se naknade za korišćenje javn... | 36 | 494 | 558 | 504 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| plaćanja, pripadnost prihoda od naknade, kao i dru... | 36 | 505 | 543 | 515 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| javnih dobara.   | 36 | 516 | 101 | 526 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| Definicije   | 276 | 539 | 328 | 550 | Arial |  | 11 | True | True | native | 1.00 | #000000 |
+| Član 2   | 283 | 563 | 321 | 574 | Arial |  | 11 | True | False | native | 1.00 | #000000 |
+| Pojedini izrazi upotrebljeni u ovom zakonu imaju s... | 36 | 581 | 323 | 591 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 1) naknada je javni prihod koji se naplaćuje za ko... | 36 | 600 | 389 | 609 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 2) javno dobro je prirodno bogatstvo, odnosno dobr... | 36 | 618 | 543 | 628 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| dobro);   | 36 | 629 | 71 | 639 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 3) korišćenje javnog dobra, u smislu ovog zakona, ... | 36 | 648 | 554 | 657 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| ugovora ili vršenje neposrednog uticaja na raspolo... | 36 | 658 | 514 | 668 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| nečinjenjem;   | 36 | 669 | 95 | 679 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 4) obveznik plaćanja naknade za korišćenje javnog ... | 36 | 688 | 561 | 697 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| naknade) koje koristi javno dobro;   | 36 | 699 | 183 | 708 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 5) osnovica za utvrđivanje naknade za korišćenje j... | 36 | 717 | 557 | 727 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| koje se koristi ili prihod koji se ostvaruje;   | 36 | 728 | 210 | 738 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| 6) visina naknade je novčani iznos za korišćenje j... | 36 | 746 | 446 | 756 | Arial |  | 9 | False | False | native | 1.00 | #000000 |
+| Uvođenje naknada   | 253 | 770 | 352 | 780 | Arial |  | 11 | True | True | native | 1.00 | #000000 |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 474 | 69 | 563 | 70 | 88 | 1 | #000000 | #0462c1 | 0 |
+| 488 | 83 | 563 | 84 | 75 | 1 | #000000 | #0462c1 | 0 |
+| 372 | 115 | 447 | 115 | 76 | 1 | #000000 | #1f4e79 | 0 |
+| 355 | 297 | 381 | 297 | 27 | 0 | #000000 | #0462c1 | 0 |
+| 36 | 306 | 37 | 309 | 1 | 3 | #000000 | #000000 | 0 |
+| 36 | 306 | 37 | 307 | 1 | 1 | #000000 | #000000 | 0 |
+| 37 | 306 | 562 | 307 | 525 | 1 | #000000 | #000000 | 0 |
+| 562 | 306 | 563 | 309 | 1 | 3 | #000000 | #000000 | 0 |
+| 562 | 306 | 563 | 307 | 1 | 1 | #000000 | #000000 | 0 |
+| 37 | 307 | 562 | 309 | 525 | 2 | #000000 | #a31e1c | 0 |
+| 36 | 309 | 37 | 409 | 1 | 100 | #000000 | #000000 | 0 |
+| 36 | 309 | 39 | 407 | 2 | 98 | #000000 | #a31e1c | 0 |
+| 39 | 309 | 560 | 407 | 521 | 98 | #000000 | #a31e1c | 0 |
+| 39 | 309 | 560 | 351 | 521 | 42 | #000000 | #a31e1c | 0 |
+| 560 | 309 | 562 | 407 | 2 | 98 | #000000 | #a31e1c | 0 |
+| 562 | 309 | 563 | 409 | 1 | 100 | #000000 | #000000 | 0 |
+| 39 | 351 | 560 | 383 | 521 | 32 | #000000 | #a31e1c | 0 |
+| 39 | 383 | 560 | 395 | 521 | 12 | #000000 | #a31e1c | 0 |
+| 39 | 383 | 560 | 395 | 521 | 12 | #000000 | #000000 | 0 |
+| 39 | 395 | 560 | 407 | 521 | 12 | #000000 | #a31e1c | 0 |
+| 39 | 395 | 560 | 407 | 521 | 12 | #000000 | #000000 | 0 |
+| 37 | 407 | 562 | 409 | 525 | 2 | #000000 | #a31e1c | 0 |
+| 36 | 409 | 37 | 410 | 1 | 1 | #000000 | #000000 | 0 |
+| 36 | 409 | 37 | 410 | 1 | 1 | #000000 | #000000 | 0 |
+| 37 | 409 | 562 | 410 | 525 | 1 | #000000 | #000000 | 0 |
+| 562 | 409 | 563 | 410 | 1 | 1 | #000000 | #000000 | 0 |
+| 562 | 409 | 563 | 410 | 1 | 1 | #000000 | #000000 | 0 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 150 | 103 | 449 | 118 | title |
+| 230 | 423 | 369 | 439 | title |
+| 282 | 474 | 316 | 487 | title |
+| 275 | 538 | 324 | 551 | title |
+| 282 | 561 | 317 | 574 | title |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 31 | 125 | 565 | 262 | figure |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 41 | 271 | 556 | 300 | plain text |
+| 249 | 451 | 350 | 464 | plain text |
+| 34 | 493 | 558 | 527 | plain text |
+| 36 | 580 | 319 | 592 | plain text |
+| 35 | 598 | 386 | 610 | plain text |
+| 35 | 617 | 543 | 641 | plain text |
+| 35 | 646 | 553 | 680 | plain text |
+| 35 | 685 | 559 | 709 | plain text |
+| 35 | 716 | 557 | 740 | plain text |
+| 34 | 745 | 441 | 758 | plain text |
+
+### Table Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 35 | 593 | 556 | 743 | table |
+| 35 | 597 | 555 | 737 | table |
+
+### Table Column Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 597 | 556 | 737 | table column |
+| 35 | 597 | 51 | 737 | table column |
+
+### Table Row Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 34 | 597 | 555 | 612 | table row |
+| 35 | 612 | 555 | 642 | table row |
+| 35 | 642 | 555 | 682 | table row |
+| 35 | 681 | 555 | 711 | table row |
+| 35 | 711 | 555 | 737 | table row |
+
+### Table-Cell Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 597 | 555 | 612 | table-cell |
+| 70 | 597 | 555 | 612 | table-cell |
+| 35 | 597 | 51 | 612 | table-cell |
+| 35 | 597 | 51 | 612 | table-cell |
+| 35 | 612 | 51 | 642 | table-cell |
+| 35 | 612 | 51 | 642 | table-cell |
+| 70 | 612 | 555 | 642 | table-cell |
+| 70 | 612 | 555 | 642 | table-cell |
+| 35 | 642 | 51 | 682 | table-cell |
+| 35 | 642 | 51 | 682 | table-cell |
+| 70 | 642 | 555 | 682 | table-cell |
+| 70 | 642 | 555 | 682 | table-cell |
+| 35 | 681 | 51 | 711 | table-cell |
+| 35 | 681 | 51 | 711 | table-cell |
+| 70 | 681 | 555 | 711 | table-cell |
+| 70 | 681 | 555 | 711 | table-cell |
+| 35 | 711 | 51 | 737 | table-cell |
+| 35 | 711 | 51 | 737 | table-cell |
+| 70 | 711 | 555 | 737 | table-cell |
+| 70 | 711 | 555 | 737 | table-cell |

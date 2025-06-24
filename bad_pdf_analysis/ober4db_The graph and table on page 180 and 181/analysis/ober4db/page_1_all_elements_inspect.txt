@@ -1,0 +1,130 @@
+## Collection Inspection (99 elements)
+
+### Line Elements
+
+| x0 | top | x1 | bottom | width | is_horizontal | is_vertical |
+|------|------|------|------|------|------|------|
+| 18 | 10 | 18 | 18 | 0 | False | True |
+| 27 | 10 | 27 | 18 | 0 | False | True |
+| 495 | 10 | 495 | 18 | 0 | False | True |
+| 503 | 10 | 503 | 18 | 0 | False | True |
+| 10 | 18 | 18 | 18 | 0 | True | False |
+| 503 | 18 | 512 | 18 | 0 | True | False |
+| 10 | 27 | 18 | 27 | 0 | True | False |
+| 503 | 27 | 512 | 27 | 0 | True | False |
+| 401 | 91 | 415 | 91 | 0 | True | False |
+| 88 | 222 | 434 | 222 | 0 | True | False |
+| 10 | 702 | 18 | 702 | 0 | True | False |
+| 503 | 702 | 512 | 702 | 0 | True | False |
+| 10 | 710 | 18 | 710 | 0 | True | False |
+| 503 | 710 | 512 | 710 | 0 | True | False |
+| 18 | 710 | 18 | 718 | 0 | False | True |
+| 27 | 710 | 27 | 718 | 0 | False | True |
+| 495 | 710 | 495 | 718 | 0 | False | True |
+| 503 | 710 | 503 | 718 | 0 | False | True |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| 北京中文天地文化艺术有限公司排版 | 166 | 10 | 316 | 20 | FZHTK--GBK1-0 | FBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 双色版 | 383 | 10 | 411 | 20 | FZHTK--GBK1-0 | FBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 110 | 18 | 112 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 119 | 18 | 122 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 129 | 18 | 131 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 138 | 18 | 140 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| Ｃ | 147 | 18 | 153 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #00ffff |
+| Ｋ | 156 | 18 | 163 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| ６５２６３２９６　 | 318 | 18 | 358 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 365 | 18 | 367 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 　 | 374 | 18 | 376 | 27 | E-BZ | EBCDEE | 9 | False | False | native | 1.00 | #000000 |
+| 总报告·技术报告 | 326 | 88 | 397 | 96 | FZLTXIHJW--GB1-0 | GBCDEE | 9 | False | False | native | 1.00 | #00ffff |
+| 总　报　告 | 201 | 197 | 320 | 217 | FZY1K--GBK1-0 | HBCDEE | 21 | False | False | native | 1.00 | #00b2b2 |
+| 　 | 256 | 228 | 258 | 238 | E-FZ | IBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 􀆰 | 412 | 307 | 417 | 325 | E-F7 | JBCDEE | 19 | False | False | native | 1.00 | #00ffff |
+| １ | 422 | 307 | 433 | 325 | E-F7 | JBCDEE | 19 | False | False | native | 1.00 | #00ffff |
+| 技术报告 | 358 | 334 | 433 | 350 | FZLTKHK--GBK1-0 | KBCDEE | 16 | False | False | native | 1.00 | #00ffff |
+| 一　调查背景介绍 | 207 | 405 | 314 | 418 | FZLTHJW--GB1-0 | LBCDEE | 13 | False | False | native | 1.00 | #000000 |
+| （一）调查背景 | 109 | 441 | 187 | 452 | FZBIAOYSK--GBK1-0 | MBCDEE | 11 | False | False | native | 1.00 | #00ffff |
+| 随着中国经济进入 | 109 | 472 | 190 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 新常态 | 201 | 472 | 232 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 就业的宏观环境发生了巨大的变化 | 248 | 472 | 403 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 大学 | 413 | 472 | 434 | 483 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 　 | 88 | 480 | 90 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 　 | 98 | 480 | 101 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| “ | 196 | 480 | 201 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ”， | 232 | 480 | 243 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 403 | 480 | 408 | 490 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 生就业再次成为社会关注的重大问题 | 88 | 491 | 251 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 教育部关于做好 | 267 | 491 | 338 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 届全国普通高等 | 362 | 491 | 434 | 502 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 。 | 251 | 499 | 256 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 《 | 261 | 499 | 266 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ２０１６ | 340 | 499 | 359 | 509 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 学校毕业生就业创业工作的通知 | 88 | 510 | 231 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 中指出 | 242 | 510 | 272 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 要进一步加强毕业生就业数据信 | 289 | 510 | 434 | 521 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 》 | 231 | 518 | 236 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ： | 272 | 518 | 277 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| “ | 282 | 518 | 288 | 528 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 息监督管理工作 | 88 | 529 | 159 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 完善毕业生实名查询就业状况功能 | 169 | 529 | 328 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 确保就业数据信息真 | 338 | 529 | 434 | 540 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 159 | 537 | 164 | 547 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 328 | 537 | 333 | 547 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 实 | 88 | 548 | 98 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 准确 | 108 | 548 | 129 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 通知中明确提出 | 145 | 548 | 216 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 进一步完善高校毕业生就业质量年度报告发 | 233 | 548 | 434 | 559 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 、 | 98 | 556 | 103 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 。” | 129 | 556 | 139 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ： | 216 | 556 | 221 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| “ | 227 | 556 | 232 | 566 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 布制度 | 88 | 567 | 119 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 各地各高校要在每年年底前编制和发布就业质量年度报告 | 129 | 567 | 392 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 将创新 | 402 | 567 | 434 | 578 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 118 | 575 | 124 | 585 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 392 | 575 | 397 | 585 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 创业相关情况以及有就业意愿尚未就业毕业生 | 88 | 586 | 297 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 升学 | 307 | 586 | 328 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 暂不就业等内容纳入 | 338 | 586 | 434 | 596 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 、 | 296 | 594 | 302 | 604 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 、 | 328 | 594 | 333 | 604 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 就业质量报告 | 88 | 605 | 149 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 更加科学 | 159 | 605 | 200 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 客观地反映高校毕业生就业创业状况和特点 | 210 | 605 | 404 | 615 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ， | 149 | 613 | 154 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 、 | 200 | 613 | 205 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 。” | 404 | 613 | 414 | 623 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 就业信息跟踪调查和公开发布制度是促进就业的有效方法 | 109 | 624 | 372 | 634 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 就业质量 | 391 | 624 | 433 | 634 | FZSSK--GBK1-0 | NBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| 。 | 373 | 632 | 378 | 642 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| “ | 384 | 632 | 390 | 642 | E-BZ | EBCDEE | 10 | False | False | native | 1.00 | #000000 |
+| ００１ | 418 | 652 | 434 | 662 | E-FZ | IBCDEE | 10 | False | False | native | 1.00 | #000000 |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 88 | 58 | 434 | 100 | 346 | 43 | #000000 | #ffffff | 0 |
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 192 | 178 | 329 | 205 | title |
+| 200 | 405 | 322 | 422 | title |
+| 95 | 447 | 180 | 462 | title |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 66 | 477 | 455 | 637 | plain text |
+| 88 | 641 | 454 | 657 | plain text |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 434 | 674 | 454 | 685 | abandon |

@@ -1,0 +1,36 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 204 elements
+- **rect**: 32 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 104
+    - Visual Geez Unicode: 79
+    - Verdana: 8
+    - VG2000 Main: 6
+    - GeezNewB: 2
+    - VG Geez Numbers: 2
+    - Nyala: 1
+    - Calibri: 1
+    - Vrinda: 1
+  - **sizes**:
+    - 10.0pt: 155
+    - 8.0pt: 10
+    - 7.0pt: 10
+    - 1.0pt: 7
+    - 3.0pt: 6
+    - 11.0pt: 4
+    - 22.0pt: 3
+    - 9.0pt: 2
+    - 5.0pt: 2
+    - 36.0pt: 1
+    - 9.5pt: 1
+    - 13.0pt: 1
+    - 6.0pt: 1
+    - 12.0pt: 1
+  - styles: 16 bold

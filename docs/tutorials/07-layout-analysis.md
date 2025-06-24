@@ -95,6 +95,6 @@ Layout analysis provides structured `Region` objects. You can filter these regio
 ## Wish List (Future Enhancements)
 
 * **Confidence palette** – Allow `show(color_by="confidence")` to auto-map scores to a red–green gradient.
-* **`ElementCollection.to_json()`** – one-liner export of detected regions (and optionally `to_dataframe()`).
+* **`ElementCollection.to_json()`** – one-liner export of detected regions (and optionally `to_df()`).
 * **Model cache override** – honor an env variable like `NATPDF_MODEL_DIR` so enterprises can redirect weight downloads.
 * **Remote inference support** – make the `client=` hook forward images to a custom REST or gRPC service.

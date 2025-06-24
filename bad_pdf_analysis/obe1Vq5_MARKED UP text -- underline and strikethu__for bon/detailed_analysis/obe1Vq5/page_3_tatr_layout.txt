@@ -1,0 +1,9 @@
+TATR Layout Analysis
+==================================================
+Found 33 regions:
+
+1. table at [78.79, 200.52, 537.66, 629.91] (conf: 0.80)
+2. table projected row header at [80.25, 463.73, 536.8199999999999, 485.41] (conf: 0.67)
+3. table row at [80.3, 282.19, 536.89, 304.42] (conf: 0.85)
+4. table projected row header at [80.39, 507.6, 536.94, 530.48] (conf: 0.64)
+5. table projected row header at [80.4, 236.86, 537.06, 259.07] (conf: 0.58)

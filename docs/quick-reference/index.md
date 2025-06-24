@@ -263,7 +263,7 @@ page.save_image("output.png", width=700)
 
 # Save table as CSV
 import pandas as pd
-df = pd.DataFrame(table_data)
+df = table_data.to_df(header="first")
 df.to_csv("table.csv")
 
 # Export searchable PDF

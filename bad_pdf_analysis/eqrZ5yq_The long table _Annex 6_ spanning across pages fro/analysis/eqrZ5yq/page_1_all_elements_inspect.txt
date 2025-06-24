@@ -1,0 +1,66 @@
+## Collection Inspection (35 elements)
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 86 | 84 | 533 | 108 | title |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+|  llllllld ylydy yy ylylyl ylyyylylyylyy yydyylyy  | 83 | 86 | 535 | 106 | Times | NAFOKT | 20 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 124 | 181 | 145 | Times | NAFOKT | 20 | True | False | native | 1.00 | #1f4e79 |
+|   l lyllyyylyl yy lllll  | 176 | 196 | 381 | 214 | Times | NAFOKT | 18 | True | False | native | 1.00 | #1f4e79 |
+|   l ylylylyy  | 176 | 223 | 266 | 238 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| yy yydyylyys  | 270 | 223 | 351 | 238 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| yyyylyyl lyd yyllllly  | 355 | 223 | 523 | 238 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   l llllylylyl yy yydyylyy  | 176 | 247 | 370 | 262 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|  yllyyly uyys  | 176 | 271 | 276 | 287 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| ull ylydy  | 280 | 271 | 364 | 287 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 295 | 180 | 311 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 320 | 180 | 336 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 344 | 180 | 360 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 369 | 180 | 385 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 393 | 180 | 409 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 418 | 180 | 434 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 442 | 180 | 458 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 467 | 180 | 482 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 491 | 180 | 506 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 515 | 180 | 531 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 539 | 180 | 555 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 564 | 180 | 580 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 588 | 180 | 604 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 613 | 180 | 629 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|  ylylylylyl lllllylylyl lyd slyllyy  syyyylllly  | 176 | 634 | 539 | 653 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| nlllllyy  | 181 | 664 | 239 | 680 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| yllyylylllly-ls  | 242 | 664 | 351 | 680 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+| 9 lyyll ll  | 355 | 664 | 434 | 680 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+|   | 176 | 666 | 180 | 684 | Times | LPDBYC | 18 | False | False | native | 1.00 | #1f4e79 |
+| 9yyl 9999  | 271 | 698 | 345 | 714 | Times | NAFOKT | 16 | True | False | native | 1.00 | #1f4e79 |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| -3 | 168 | 615 | 172 | 618 | 4 | #000000 | #5b9ad5 | 0 |
+| -46 | 582 | 616 | 583 | 662 | 1 | #000000 | #5b9ad5 | 0 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 174 | 194 | 521 | 289 | plain text |
+
+### Figure Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 72 | 198 | 169 | 290 | figure |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 71 | 615 | 165 | 702 | abandon |

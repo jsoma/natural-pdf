@@ -1,0 +1,133 @@
+{
+  "document": "Pd9WVDb_We want a spreadsheet showing all the columns sepa",
+  "total_pages": 24909,
+  "analyzed_pages": [
+    1,
+    12454
+  ],
+  "analysis_date": "2025-06-22T17:14:03.153458",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "792 × 612 points",
+      "tests_performed": {},
+      "text_length": 4775,
+      "text_preview": "Date submitted Date completed User ID PO Vendor Categories Item # Item Description Quantity Price Shipping Tax Item Totals Total\nCorsair Vengeance LPX 32GB (2X16GB) DDR4\n3200 (PC4-25600) C16 1.35V Des...",
+      "character_count": 4616,
+      "dense_text_detected": true,
+      "character_overlap_ratio": 0.33,
+      "standard_table": "25 rows × 3 columns",
+      "line_detection": {
+        "horizontal_lines": 25,
+        "vertical_lines": 5,
+        "total_lines": 30
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 96
+      },
+      "yolo_analysis": {
+        "regions": 126,
+        "processing_time": 1.2979559898376465
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 24,
+        "table_column": 4,
+        "table_cell": 96
+      },
+      "tatr_analysis": {
+        "table_regions": 2,
+        "processing_time": 0.5699541568756104
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 311,
+      "selector_bold_text": 14,
+      "selector_colored_rects": 40,
+      "selector_thin_lines": 2,
+      "potential_text_formatting": 1,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>554.4]...'. Full selector: '*[width>554.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/Pd9WVDb_We want a spreadsheet showing all the columns sepa/detailed_analysis_final/page_1.png"
+    },
+    "12454": {
+      "page_number": 12454,
+      "dimensions": "792 × 612 points",
+      "tests_performed": {},
+      "text_length": 3789,
+      "text_preview": "Curricula, Associated Good Apple Magic Keyboard for 12.9-inch iPadÂ Pro\n2/22/2023 2/24/2023 21:21 9419003Amazon Inc. and Assistive Tech B0863F794B(Previous Version) - US English 1 $329.95 $0.00 $35.48...",
+      "character_count": 3700,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.22,
+      "standard_table": "14 rows × 3 columns",
+      "line_detection": {
+        "horizontal_lines": 14,
+        "vertical_lines": 4,
+        "total_lines": 18
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 39
+      },
+      "yolo_analysis": {
+        "regions": 57,
+        "processing_time": 0.989173173904419
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 13,
+        "table_column": 3,
+        "table_cell": 39
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.5384106636047363
+      },
+      "selector_large_text": 0,
+      "selector_small_text": 209,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 21,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>554.4]...'. Full selector: '*[width>554.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/Pd9WVDb_We want a spreadsheet showing all the columns sepa/detailed_analysis_final/page_12454.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "dense_text",
+      "page": 1,
+      "severity": "medium",
+      "details": "Character overlap ratio: 0.33"
+    },
+    {
+      "type": "text_formatting",
+      "page": 1,
+      "severity": "medium",
+      "details": "1 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Use pdfplumber parameters for dense text handling",
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

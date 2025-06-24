@@ -1,0 +1,84 @@
+{
+  "document": "Pd1KBb1_the data table _of election results_",
+  "total_pages": 4,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T17:13:47.200940",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "842.04 × 594.96 points",
+      "tests_performed": {},
+      "text_length": 765,
+      "text_preview": "2014 ةيعيشرتلا تبااختنالا\nنيندم ةرئاد جئاتن فشك ةقرو\nتاوصلأا عومجم ةيدمتعلما بسح اهب حرصلما تاوصلأا عيزوت\nاه ب\nةر\nح ئر ادص لالم با\nنيندم نيندم\nفولخم يديس سيجرج نوديم ةبرج\nةموح ةبرج\nميجأ ةبرج شادخ ينب ...",
+      "character_count": 642,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.19,
+      "standard_table": "12 rows × 12 columns",
+      "line_detection": {
+        "horizontal_lines": 13,
+        "vertical_lines": 13,
+        "total_lines": 26
+      },
+      "table_from_lines": {
+        "table_regions": 1,
+        "cell_regions": 144
+      },
+      "yolo_analysis": {
+        "regions": 170,
+        "processing_time": 1.4335699081420898
+      },
+      "yolo_types": {
+        "table": 2,
+        "table_row": 12,
+        "table_column": 12,
+        "table_cell": 144
+      },
+      "tatr_analysis": {
+        "table_regions": 4,
+        "processing_time": 0.8697280883789062
+      },
+      "selector_large_text": 114,
+      "selector_small_text": 6,
+      "selector_bold_text": 26,
+      "selector_colored_rects": 33,
+      "selector_thin_lines": 13,
+      "potential_text_formatting": 1,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>589.4279999999999]...'. Full selector: '*[width>589.4279999999999]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/Pd1KBb1_the data table _of election results_/detailed_analysis_final/page_1.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [
+    {
+      "type": "text_formatting",
+      "page": 1,
+      "severity": "medium",
+      "details": "1 potential underlines detected"
+    }
+  ],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

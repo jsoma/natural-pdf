@@ -1,0 +1,24 @@
+## Page 1 Summary
+
+**Elements**:
+
+- **text**: 117 elements
+- **rect**: 5 elements
+
+**Text Analysis**:
+
+- **typography**:
+  - **fonts**:
+    - Times: 111
+    - LiberationSans: 2
+    - SymbolMT: 2
+    - Arial: 2
+  - **sizes**:
+    - 12.0pt: 104
+    - 10.0pt: 11
+    - 8.0pt: 1
+    - 6.5pt: 1
+  - styles: 10 bold, 8 italic
+  - **colors**:
+    - black: 115
+    - other: 2

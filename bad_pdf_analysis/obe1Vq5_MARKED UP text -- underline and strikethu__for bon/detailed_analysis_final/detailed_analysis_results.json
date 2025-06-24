@@ -1,0 +1,75 @@
+{
+  "document": "obe1Vq5_MARKED UP text -- underline and strikethu__for bon",
+  "total_pages": 8,
+  "analyzed_pages": [
+    1
+  ],
+  "analysis_date": "2025-06-22T17:16:33.597148",
+  "pages": {
+    "1": {
+      "page_number": 1,
+      "dimensions": "612 × 792 points",
+      "tests_performed": {},
+      "text_length": 1781,
+      "text_preview": "25 LC 57 0207S/AP\nHouse Bill 89 (AS PASSED HOUSE AND SENATE)\nBy: Representatives Cooper of the 45th, Wade of the 9th, Gambill of the 15th, and Hong of the\n103rd\nA BILL TO BE ENTITLED\nAN ACT\n1 To amend...",
+      "character_count": 1740,
+      "dense_text_detected": false,
+      "character_overlap_ratio": 0.01,
+      "standard_table": "45 rows × 7 columns",
+      "line_detection": {
+        "horizontal_lines": 36,
+        "vertical_lines": 0,
+        "total_lines": 36
+      },
+      "table_from_lines": {
+        "table_regions": 0,
+        "cell_regions": 0
+      },
+      "yolo_analysis": {
+        "regions": 41,
+        "processing_time": 1.4040679931640625
+      },
+      "yolo_types": {
+        "abandon": 3,
+        "plain text": 3,
+        "table_row": 35
+      },
+      "tatr_analysis": {
+        "table_regions": 2,
+        "processing_time": 0.734889030456543
+      },
+      "selector_large_text": 47,
+      "selector_small_text": 4,
+      "selector_bold_text": 0,
+      "selector_colored_rects": 0,
+      "selector_thin_lines": 0,
+      "selector_wide_elements_error": "Invalid or unexpected syntax near '*[width>428.4]...'. Full selector: '*[width>428.4]'",
+      "image_saved": "/Users/soma/Development/natural-pdf/bad_pdf_analysis/obe1Vq5_MARKED UP text -- underline and strikethu__for bon/detailed_analysis_final/page_1.png"
+    }
+  },
+  "capabilities_tested": {
+    "line_detection": true,
+    "table_from_lines": true,
+    "yolo_analysis": true,
+    "tatr_analysis": true,
+    "advanced_selectors": true
+  },
+  "challenges_identified": [],
+  "natural_pdf_gaps": [],
+  "comprehensive_insights": {
+    "document_complexity": "high",
+    "processing_recommendations": [
+      "Leverage existing line detection for table structure"
+    ],
+    "natural_pdf_effectiveness": {
+      "working_capabilities": [
+        "line_detection",
+        "table_from_lines",
+        "yolo_analysis",
+        "tatr_analysis",
+        "advanced_selectors"
+      ]
+    },
+    "priority_issues": []
+  }
+}

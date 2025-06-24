@@ -1,0 +1,159 @@
+## Collection Inspection (133 elements)
+
+### Title Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 58 | 11 | 555 | 37 | title |
+| 214 | 72 | 419 | 100 | title |
+| 225 | 286 | 387 | 301 | title |
+
+### Word Elements
+
+| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |
+|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| Case:17-03283-LTS   Doc#:18235   Filed:09/24/21   ... | 59 | 13 | 553 | 25 | LiberationSans | AMEOBT | 12 | False | False | native | 1.00 | #0000ff |
+| Document     Page 1 of 3 | 240 | 25 | 372 | 37 | LiberationSans | AMEOBT | 12 | False | False | native | 1.00 | #0000ff |
+| UNITED STATES DISTRICT COURT  | 215 | 74 | 421 | 86 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+| DISTRICT OF PUERTO RICO  | 234 | 88 | 402 | 100 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+|   | 365 | 101 | 368 | 113 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 101 | 355 | 113 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| --------------------------------------------------... | 77 | 106 | 330 | 118 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 115 | 368 | 127 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 115 | 355 | 127 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| In re:  | 77 | 126 | 106 | 138 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| PROMESA  | 365 | 129 | 424 | 141 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 129 | 355 | 141 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 77 | 140 | 80 | 152 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Title III  | 365 | 143 | 405 | 155 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 143 | 355 | 155 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| THE FINANCIAL OVERSIGHT AND   | 77 | 153 | 274 | 165 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 157 | 368 | 169 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 157 | 355 | 169 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| MANAGEMENT BOARD FOR PUERTO RICO,  | 77 | 167 | 323 | 179 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 170 | 368 | 182 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 170 | 355 | 182 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 77 | 181 | 80 | 193 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 352 | 184 | 355 | 196 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| No. 17 BK 3283-LTS  | 365 | 184 | 472 | 196 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|             as representative of  | 77 | 195 | 210 | 207 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 198 | 368 | 210 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 77 | 209 | 80 | 221 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| (Jointly Administered)  | 365 | 212 | 477 | 224 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| THE COMMONWEALTH OF PUERTO RICO,  | 77 | 222 | 315 | 234 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| et al. | 315 | 222 | 339 | 234 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |
+|   | 339 | 222 | 342 | 234 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 482 | 226 | 485 | 238 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 77 | 236 | 80 | 248 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 239 | 368 | 251 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| 1 | 256 | 249 | 260 | 257 | Times | APVLSQ | 8 | False | False | native | 1.00 | #000000 |
+|   | 77 | 250 | 80 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 113 | 250 | 116 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|                       Debtors. | 149 | 250 | 256 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 260 | 250 | 263 | 262 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 253 | 368 | 265 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 365 | 267 | 368 | 279 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| --------------------------------------------------... | 77 | 268 | 330 | 280 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| CERTIFICATE OF SERVICE  | 226 | 288 | 389 | 300 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+|   | 72 | 302 | 75 | 314 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| I, Jessica Berman, depose and say that I am employ... | 108 | 316 | 510 | 328 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Prime  | 510 | 316 | 543 | 328 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |
+| Clerk | 72 | 329 | 99 | 341 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |
+| ”), the solicitation, notice, and claims agent for... | 99 | 329 | 543 | 341 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| under  | 72 | 343 | 102 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Title  | 107 | 343 | 132 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| III  | 137 | 343 | 152 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| of  | 156 | 343 | 169 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| the  | 174 | 343 | 191 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Puerto  | 196 | 343 | 230 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Rico  | 234 | 343 | 260 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Oversight,  | 264 | 343 | 317 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Management,  | 322 | 343 | 390 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| and  | 394 | 343 | 415 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Economic  | 419 | 343 | 470 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Stability  | 475 | 343 | 518 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Act  | 523 | 343 | 543 | 355 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| (PROMESA).  | 72 | 357 | 142 | 369 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 72 | 371 | 75 | 383 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| On August 3, 2021, at my direction and under my su... | 108 | 385 | 543 | 397 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| caused the following documents to be served by the... | 72 | 398 | 543 | 410 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| attached hereto as  | 72 | 412 | 161 | 424 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Exhibit A | 161 | 412 | 211 | 424 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+| :   | 211 | 412 | 220 | 424 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 72 | 426 | 75 | 438 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 96 | 441 | 99 | 453 | Arial | AAAAAJ | 12 | False | False | native | 1.00 | #000000 |
+| Notice of (I) Approval of Disclosure Statement, (I... | 108 | 441 | 543 | 453 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|  | 90 | 441 | 96 | 453 | SymbolMT | ASJHEV | 12 | False | False | native | 1.00 | #000000 |
+| Hearing on Confirmation of the Plan of Adjustment ... | 108 | 454 | 543 | 466 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Confirmation of the Plan of Adjustment, (IV) Proce... | 108 | 468 | 543 | 480 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Plan of Adjustment and Making Certain Elections Th... | 108 | 482 | 543 | 494 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| hereto as  | 108 | 496 | 154 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Exhibit B,  | 154 | 496 | 209 | 508 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+| (the | 209 | 496 | 228 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|  “ | 228 | 496 | 237 | 508 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |
+| Confirmation Hearing Notice | 237 | 496 | 384 | 508 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |
+| ” | 384 | 496 | 391 | 508 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |
+| )  | 391 | 496 | 398 | 508 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 72 | 510 | 75 | 522 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 96 | 524 | 99 | 536 | Arial | AAAAAJ | 12 | False | False | native | 1.00 | #000000 |
+| Notice  | 108 | 524 | 143 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| of  | 148 | 524 | 161 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Entry  | 166 | 524 | 196 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| of  | 200 | 524 | 213 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Order  | 218 | 524 | 249 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Establishing  | 254 | 524 | 317 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Preliminary  | 322 | 524 | 381 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Confirmation  | 386 | 524 | 454 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Submission  | 459 | 524 | 518 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| and  | 523 | 524 | 543 | 536 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|  | 90 | 524 | 96 | 536 | SymbolMT | ASJHEV | 12 | False | False | native | 1.00 | #000000 |
+| Discovery Procedures, and Directing Notice to Cred... | 108 | 538 | 543 | 550 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| attached hereto as  | 108 | 552 | 197 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Exhibit C | 197 | 552 | 247 | 564 | Times | AABEEE | 12 | True | False | native | 1.00 | #000000 |
+| , (the “ | 247 | 552 | 280 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| Final Confirmation Discovery Notice | 280 | 552 | 464 | 564 | Times | ACXAVR | 12 | True | True | native | 1.00 | #000000 |
+| ” | 464 | 552 | 471 | 564 | Times | AIOVWK | 12 | False | True | native | 1.00 | #000000 |
+| )  | 471 | 552 | 478 | 564 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 108 | 566 | 111 | 578 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 252 | 566 | 255 | 578 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+|   | 216 | 582 | 219 | 594 | Times | APVLSQ | 12 | False | False | native | 1.00 | #000000 |
+| 1 | 72 | 594 | 75 | 601 | Times | APVLSQ | 6 | False | False | native | 1.00 | #000000 |
+|  The Debtors in these Title III Cases, along with ... | 75 | 595 | 543 | 605 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| digits of each Debtor’s federal tax identification... | 72 | 606 | 543 | 617 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| (Bankruptcy Case No. 17 BK 3283-LTS) (Last Four Di... | 72 | 618 | 543 | 628 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| Financing Corporation (“COFINA”) (Bankruptcy Case ... | 72 | 629 | 542 | 639 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| 8474); (iii) Puerto Rico Highways and Transportati... | 72 | 641 | 542 | 651 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| (Last Four Digits of Federal Tax ID: 3808); (iv) E... | 72 | 653 | 543 | 663 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| Commonwealth of Puerto Rico (“ERS”) (Bankruptcy Ca... | 72 | 664 | 542 | 674 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| ID: 9686); and (v) Puerto Rico Electric Power Auth... | 72 | 675 | 542 | 686 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| Four Digits of Federal Tax ID: 3747); and (vi) Pue... | 72 | 687 | 543 | 697 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| No. 19-BK-5523-LTS) (Last Four Digits of Federal T... | 72 | 698 | 542 | 708 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+| Case numbers due to software limitations).    | 72 | 710 | 251 | 720 | Times | APVLSQ | 10 | False | False | native | 1.00 | #000000 |
+
+### Plain Text Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 112 | 194 | 208 | 207 | plain text |
+| 77 | 221 | 340 | 235 | plain text |
+| 214 | 248 | 260 | 261 | plain text |
+| 71 | 314 | 542 | 370 | plain text |
+| 71 | 383 | 541 | 426 | plain text |
+| 90 | 439 | 542 | 509 | plain text |
+| 90 | 523 | 541 | 565 | plain text |
+
+### Rect Elements
+
+| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |
+|------|------|------|------|------|------|------|------|------|
+| 226 | 299 | 386 | 300 | 159 | 1 | #000000 | #000000 | 0 |
+| 161 | 423 | 211 | 424 | 50 | 1 | #000000 | #000000 | 0 |
+| 154 | 507 | 203 | 508 | 49 | 1 | #000000 | #000000 | 0 |
+| 197 | 563 | 247 | 564 | 50 | 1 | #000000 | #000000 | 0 |
+| 72 | 588 | 216 | 588 | 144 | 1 | #000000 | #000000 | 0 |
+
+### Abandon Elements
+
+| x0 | top | x1 | bottom | type |
+|------|------|------|------|------|
+| 70 | 593 | 542 | 721 | abandon |

@@ -1,0 +1,233 @@
+{
+  "pdf_name": "zxyRByM.pdf",
+  "pdf_path": "bad_pdf_analysis/zxyRByM_Tables_ Have never managed to get other python lib/zxyRByM.pdf",
+  "analysis_timestamp": "2025-06-22T14:30:15.544700",
+  "pages": [
+    {
+      "page_number": 1,
+      "dimensions": {
+        "width": 612,
+        "height": 792
+      },
+      "describe": "## Page 1 Summary\n\n**Elements**:\n\n- **text**: 78 elements\n- **rect**: 60 elements\n\n**Text Analysis**:\n\n- **typography**:\n  - **fonts**:\n    - Georgia: 78\n  - **sizes**:\n    - 9.0pt: 49\n    - 9.5pt: 19\n    - 8.5pt: 6\n    - 12.0pt: 3\n    - 21.0pt: 1\n  - styles: 17 bold\n  - **colors**:\n    - black: 66\n    - other: 12",
+      "extract_text": {
+        "length": 1358,
+        "preview": "Filing ID #10053231\\nF\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 D\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 R\u0000\u0000\u0000\u0000\u0000\\nClerk of the House of Representatives \u2022 Legislative Resource Center \u2022 135 Cannon Building \u2022 Washington, DC 20515\\nF\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\\nName: Hon. Nancy Pelosi\\nStatus: Member\\nState/District: CA11\\nF\u0000\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\\nFiling Type: Annual Report\\nFiling Year: 20",
+        "full_text": "Filing ID #10053231\nF\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 D\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 R\u0000\u0000\u0000\u0000\u0000\nClerk of the House of Representatives \u2022 Legislative Resource Center \u2022 135 Cannon Building \u2022 Washington, DC 20515\nF\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\nName: Hon. Nancy Pelosi\nStatus: Member\nState/District: CA11\nF\u0000\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\nFiling Type: Annual Report\nFiling Year: 2022\nFiling Date: 05/15/2023\nS\u0000\u0000\u0000\u0000\u0000\u0000\u0000 A: A\u0000\u0000\u0000\u0000\u0000 \u0000\u0000\u0000 \"U\u0000\u0000\u0000\u0000\u0000\u0000\u0000\" I\u0000\u0000\u0000\u0000\u0000\nAsset Owner Value of Asset Income Type(s) Income Tx. >\n$1,000?\n11 Zinfandel Lane - Home & Vineyard [RP] JT $5,000,001 - Grape Sales $100,001 -\n$25,000,000 $1,000,000\nL\u0000\u0000\u0000\u0000\u0000\u0000\u0000: St. Helena/Napa, CA, US\n25 Point Lobos - Commercial Property [RP] SP $5,000,001 - Rent $100,001 -\n$25,000,000 $1,000,000\nL\u0000\u0000\u0000\u0000\u0000\u0000\u0000: San Francisco/San Francisco, CA, US\n45 Belden Place - Four Story Commercial Building SP $5,000,001 - Rent $100,001 -\n[RP] $25,000,000 $1,000,000\nL\u0000\u0000\u0000\u0000\u0000\u0000\u0000: San Francisco/San Francisco, CA, US\nAllianceBernstein Holding L.P. Units (AB) [OL] SP $1,000,001 - Partnership $100,001 -\n$5,000,000 Income, Capital $1,000,000\nLoss\nL\u0000\u0000\u0000\u0000\u0000\u0000\u0000: New York, NY, US\nD\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000: Limited partnership in a global asset management firm providing investment management and research services worldwide to\ninstitutional, high-net-worth and retail investors.\nAlphabet Inc. - Class A (GOOGL) [ST] SP $5,000,001 - Capital Gains $100,001 -\n$25,000,000 $1,000,000\nAlphabet Inc. - Class A (GOOGL) [OP] SP None None"
+      },
+      "extract_table": {
+        "found": true,
+        "rows": 2,
+        "columns": 6,
+        "data": [
+          [
+            "25 Point Lobos - Commercial Property [RP]",
+            "SP",
+            "$5,000,001 -\n$25,000,000",
+            "Rent",
+            "$100,001 -\n$1,000,000",
+            ""
+          ],
+          [
+            "L\u0000\u0000\u0000\u0000\u0000\u0000\u0000: San Francisco/San Francisco, CA, US",
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ]
+      },
+      "analyze_layout": {
+        "found": true,
+        "count": 7,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              22.2398681640625,
+              358.45306396484375,
+              577.52783203125,
+              714.8765258789062
+            ],
+            "confidence": 0.9376063346862793
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              20.671791076660156,
+              274.4982604980469,
+              192.9322052001953,
+              319.1825256347656
+            ],
+            "confidence": 0.8960734605789185
+          },
+          {
+            "type": "plain text",
+            "bbox": [
+              20.297470092773438,
+              188.4292755126953,
+              209.23231506347656,
+              233.77813720703125
+            ],
+            "confidence": 0.8709006309509277
+          },
+          {
+            "type": "title",
+            "bbox": [
+              20.821584701538086,
+              255.37750244140625,
+              160.41909790039062,
+              268.9503479003906
+            ],
+            "confidence": 0.8165464401245117
+          },
+          {
+            "type": "abandon",
+            "bbox": [
+              485.0502014160156,
+              71.88887786865234,
+              569.0642700195312,
+              82.6860122680664
+            ],
+            "confidence": 0.706379234790802
+          }
+        ]
+      },
+      "regions": {
+        "found": true,
+        "total_count": 176,
+        "yolo_count": 7,
+        "tatr_count": 169,
+        "other_count": 0,
+        "inspect_preview": "## Collection Inspection (176 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 485 | 72 | 569 | 83 | abandon |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 116 | 89 | 485 | 112 | title |\n| 21 | 255 | 160 | 269 | title |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 20 | 188 | 209 | 234 | plain text |\n| 21 | 274 | 193 | 319 | plain text |\n\n..."
+      },
+      "elements_sample": {
+        "total_count": 1600,
+        "full_inspect": "## Collection Inspection (314 elements)\n\n### Abandon Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 485 | 72 | 569 | 83 | abandon |\n\n### Word Elements\n\n| text | x0 | top | x1 | bottom | font_family | font_variant | size | bold | italic | source | confidence | color |\n|------|------|------|------|------|------|------|------|------|------|------|------|------|\n| Filing ID #10053231 | 486 | 73 | 568 | 82 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| F\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 D\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 R\u0000\u0000\u0000\u0000\u0000 | 117 | 90 | 489 | 111 | Georgia |  | 21 | True | False | native | 1.00 | #000000 |\n| Clerk of the House of Representatives \u2022 Legislativ... | 70 | 138 | 528 | 147 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| F\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 | 22 | 171 | 152 | 183 | Georgia |  | 12 | True | False | native | 1.00 | #000000 |\n| Name: | 22 | 190 | 55 | 200 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| Hon. Nancy Pelosi | 127 | 190 | 207 | 200 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| Status: | 22 | 206 | 57 | 216 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| Member | 127 | 206 | 164 | 216 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| State/District: | 22 | 222 | 93 | 232 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| CA11 | 127 | 222 | 149 | 232 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| F\u0000\u0000\u0000\u0000\u0000 I\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000 | 22 | 256 | 158 | 268 | Georgia |  | 12 | True | False | native | 1.00 | #000000 |\n| Filing Type: | 22 | 276 | 81 | 286 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| Annual Report | 127 | 276 | 191 | 286 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| Filing Year: | 22 | 292 | 81 | 301 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| 2022 | 127 | 292 | 150 | 301 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| Filing Date: | 22 | 307 | 80 | 317 | Georgia |  | 10 | True | False | native | 1.00 | #000000 |\n| 05/15/2023 | 127 | 307 | 179 | 317 | Georgia |  | 10 | False | False | native | 1.00 | #000000 |\n| S\u0000\u0000\u0000\u0000\u0000\u0000\u0000 A: A\u0000\u0000\u0000\u0000\u0000 \u0000\u0000\u0000 \"U\u0000\u0000\u0000\u0000\u0000\u0000\u0000\" I\u0000\u0000\u0000\u0000\u0000 | 22 | 342 | 326 | 354 | Georgia |  | 12 | True | False | native | 1.00 | #000000 |\n| Asset | 25 | 367 | 51 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| Owner | 241 | 367 | 274 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| Value of Asset | 280 | 367 | 349 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| Income Type(s) | 363 | 367 | 439 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| Income | 445 | 367 | 482 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| Tx. > | 534 | 367 | 558 | 376 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| $1,000? | 534 | 378 | 573 | 388 | Georgia |  | 9 | True | False | native | 1.00 | #000000 |\n| 11 Zinfandel Lane - Home & Vineyard | 25 | 400 | 174 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n|  [RP] | 174 | 400 | 195 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| JT | 241 | 400 | 251 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $5,000,001 - | 280 | 400 | 332 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Grape Sales | 363 | 400 | 410 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $100,001 - | 445 | 400 | 488 | 409 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $25,000,000 | 280 | 411 | 333 | 420 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,000 | 445 | 411 | 493 | 420 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| L\u0000\u0000\u0000\u0000\u0000\u0000\u0000: St. Helena/Napa, CA, US | 25 | 428 | 161 | 437 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| 25 Point Lobos - Commercial Property | 25 | 454 | 178 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n|  [RP] | 178 | 454 | 198 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| SP | 241 | 454 | 252 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $5,000,001 - | 280 | 454 | 332 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Rent | 363 | 454 | 382 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $100,001 - | 445 | 454 | 488 | 463 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $25,000,000 | 280 | 465 | 333 | 474 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,000 | 445 | 465 | 493 | 474 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| L\u0000\u0000\u0000\u0000\u0000\u0000\u0000: San Francisco/San Francisco, CA, US | 25 | 482 | 207 | 491 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| 45 Belden Place - Four Story Commercial Building | 25 | 508 | 225 | 517 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| SP | 241 | 508 | 252 | 517 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $5,000,001 - | 280 | 508 | 332 | 517 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Rent | 363 | 508 | 382 | 517 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $100,001 - | 445 | 508 | 488 | 517 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| [RP] | 25 | 519 | 44 | 528 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| $25,000,000 | 280 | 519 | 333 | 528 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,000 | 445 | 519 | 493 | 528 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| L\u0000\u0000\u0000\u0000\u0000\u0000\u0000: San Francisco/San Francisco, CA, US | 25 | 536 | 207 | 545 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| AllianceBernstein Holding L.P. Units (AB) | 25 | 562 | 193 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n|  [OL] | 193 | 562 | 214 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| SP | 241 | 562 | 252 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,001 - | 280 | 562 | 331 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Partnership | 363 | 562 | 410 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $100,001 - | 445 | 562 | 488 | 571 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $5,000,000 | 280 | 573 | 328 | 582 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Income, Capital | 363 | 573 | 426 | 582 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,000 | 445 | 573 | 493 | 582 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Loss | 363 | 583 | 381 | 592 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| L\u0000\u0000\u0000\u0000\u0000\u0000\u0000: New York, NY, US | 25 | 601 | 135 | 609 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| D\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000: Limited partnership in a global asset... | 25 | 614 | 554 | 622 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| institutional, high-net-worth and retail investors... | 25 | 626 | 211 | 635 | Georgia |  | 9 | False | False | native | 1.00 | #404040 |\n| Alphabet Inc. - Class A (GOOGL) | 25 | 652 | 156 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n|  [ST] | 156 | 652 | 176 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| SP | 241 | 652 | 252 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $5,000,001 - | 280 | 652 | 332 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Capital Gains | 363 | 652 | 416 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $100,001 - | 445 | 652 | 488 | 661 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $25,000,000 | 280 | 663 | 333 | 672 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| $1,000,000 | 445 | 663 | 493 | 672 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| Alphabet Inc. - Class A (GOOGL) | 25 | 693 | 156 | 702 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n|  [OP] | 156 | 693 | 177 | 702 | Georgia |  | 9 | False | False | native | 1.00 | #808080 |\n| SP | 241 | 693 | 252 | 702 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| None | 280 | 693 | 302 | 702 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n| None | 363 | 693 | 384 | 702 | Georgia |  | 9 | False | False | native | 1.00 | #000000 |\n\n### Title Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 116 | 89 | 485 | 112 | title |\n| 21 | 255 | 160 | 269 | title |\n\n### Rect Elements\n\n| x0 | top | x1 | bottom | width | height | stroke | fill | stroke_width |\n|------|------|------|------|------|------|------|------|------|\n| 22 | 133 | 576 | 133 | 554 | 1 | #808080 | #808080 | 0 |\n| 22 | 150 | 576 | 151 | 554 | 1 | #808080 | #808080 | 0 |\n| 22 | 360 | 238 | 392 | 217 | 32 | #ededed | #ededed | 0 |\n| 22 | 360 | 238 | 361 | 217 | 1 | #cccccc | #cccccc | 0 |\n| 22 | 360 | 22 | 392 | 1 | 32 | #cccccc | #cccccc | 0 |\n| 238 | 360 | 277 | 392 | 39 | 32 | #ededed | #ededed | 0 |\n| 238 | 360 | 277 | 361 | 39 | 1 | #cccccc | #cccccc | 0 |\n| 277 | 360 | 360 | 392 | 82 | 32 | #ededed | #ededed | 0 |\n| 277 | 360 | 360 | 361 | 82 | 1 | #cccccc | #cccccc | 0 |\n| 360 | 360 | 442 | 392 | 82 | 32 | #ededed | #ededed | 0 |\n| 360 | 360 | 442 | 361 | 82 | 1 | #cccccc | #cccccc | 0 |\n| 442 | 360 | 531 | 392 | 88 | 32 | #ededed | #ededed | 0 |\n| 442 | 360 | 531 | 361 | 88 | 1 | #cccccc | #cccccc | 0 |\n| 531 | 360 | 576 | 392 | 45 | 32 | #ededed | #ededed | 0 |\n| 531 | 360 | 576 | 361 | 45 | 1 | #cccccc | #cccccc | 0 |\n| 22 | 392 | 22 | 426 | 1 | 34 | #cccccc | #cccccc | 0 |\n| 22 | 392 | 238 | 393 | 217 | 1 | #cccccc | #cccccc | 0 |\n| 238 | 392 | 277 | 393 | 39 | 1 | #cccccc | #cccccc | 0 |\n| 277 | 392 | 360 | 393 | 82 | 1 | #cccccc | #cccccc | 0 |\n| 360 | 392 | 442 | 393 | 82 | 1 | #cccccc | #cccccc | 0 |\n| 442 | 392 | 531 | 393 | 88 | 1 | #cccccc | #cccccc | 0 |\n| 531 | 392 | 576 | 393 | 45 | 1 | #cccccc | #cccccc | 0 |\n| 22 | 426 | 22 | 447 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 576 | 426 | 577 | 447 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 22 | 447 | 238 | 480 | 217 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 447 | 22 | 480 | 1 | 33 | #cccccc | #cccccc | 0 |\n| 238 | 447 | 277 | 480 | 39 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 277 | 447 | 360 | 480 | 82 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 360 | 447 | 442 | 480 | 82 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 442 | 447 | 531 | 480 | 88 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 531 | 447 | 576 | 480 | 45 | 33 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 480 | 576 | 501 | 554 | 21 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 480 | 22 | 501 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 576 | 480 | 577 | 501 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 22 | 501 | 22 | 534 | 1 | 33 | #cccccc | #cccccc | 0 |\n| 22 | 534 | 22 | 555 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 576 | 534 | 577 | 555 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 22 | 555 | 238 | 598 | 217 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 555 | 22 | 598 | 1 | 43 | #cccccc | #cccccc | 0 |\n| 238 | 555 | 277 | 598 | 39 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 277 | 555 | 360 | 598 | 82 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 360 | 555 | 442 | 598 | 82 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 442 | 555 | 531 | 598 | 88 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 531 | 555 | 576 | 598 | 45 | 43 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 598 | 576 | 645 | 554 | 46 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 598 | 22 | 645 | 1 | 46 | #cccccc | #cccccc | 0 |\n| 576 | 598 | 577 | 645 | 1 | 46 | #cccccc | #cccccc | 0 |\n| 22 | 645 | 22 | 678 | 1 | 33 | #cccccc | #cccccc | 0 |\n| 22 | 678 | 22 | 686 | 1 | 8 | #cccccc | #cccccc | 0 |\n| 576 | 678 | 577 | 686 | 1 | 8 | #cccccc | #cccccc | 0 |\n| 22 | 686 | 238 | 712 | 217 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 686 | 22 | 712 | 1 | 26 | #cccccc | #cccccc | 0 |\n| 238 | 686 | 277 | 712 | 39 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 277 | 686 | 360 | 712 | 82 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 360 | 686 | 442 | 712 | 82 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 442 | 686 | 531 | 712 | 88 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 531 | 686 | 576 | 712 | 45 | 26 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 712 | 576 | 733 | 554 | 21 | #f5f5f5 | #f5f5f5 | 0 |\n| 22 | 712 | 22 | 733 | 1 | 21 | #cccccc | #cccccc | 0 |\n| 576 | 712 | 577 | 733 | 1 | 21 | #cccccc | #cccccc | 0 |\n\n### Plain Text Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 20 | 188 | 209 | 234 | plain text |\n| 21 | 274 | 193 | 319 | plain text |\n\n### Table Caption Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 21 | 340 | 327 | 354 | table_caption |\n\n### Table Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 25 | 355 | 572 | 705 | table |\n| 22 | 358 | 578 | 715 | table |\n| 25 | 364 | 571 | 703 | table |\n\n### Table Column Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 25 | 364 | 571 | 392 | table column header |\n\n### Table Row Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 25 | 364 | 571 | 391 | table row |\n| 25 | 389 | 570 | 444 | table row |\n| 25 | 391 | 571 | 418 | table row |\n| 25 | 418 | 571 | 444 | table row |\n| 25 | 444 | 571 | 473 | table row |\n| 25 | 469 | 571 | 500 | table row |\n| 25 | 499 | 571 | 529 | table row |\n| 25 | 523 | 571 | 550 | table row |\n| 25 | 554 | 571 | 602 | table row |\n| 25 | 599 | 571 | 641 | table row |\n| 25 | 640 | 571 | 681 | table row |\n| 25 | 681 | 571 | 702 | table row |\n\n### Table Column Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 442 | 364 | 514 | 702 | table column |\n| 355 | 364 | 440 | 703 | table column |\n| 513 | 364 | 571 | 703 | table column |\n| 25 | 364 | 231 | 703 | table column |\n| 276 | 364 | 354 | 703 | table column |\n| 232 | 364 | 277 | 702 | table column |\n\n### Table-Cell Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 442 | 364 | 514 | 391 | table-cell |\n| 442 | 364 | 514 | 391 | table-cell |\n| 355 | 364 | 440 | 391 | table-cell |\n| 355 | 364 | 440 | 391 | table-cell |\n| 513 | 364 | 571 | 391 | table-cell |\n| 513 | 364 | 571 | 391 | table-cell |\n| 25 | 364 | 231 | 391 | table-cell |\n| 25 | 364 | 231 | 391 | table-cell |\n| 276 | 364 | 354 | 391 | table-cell |\n| 276 | 364 | 354 | 391 | table-cell |\n| 232 | 364 | 277 | 391 | table-cell |\n| 232 | 364 | 277 | 391 | table-cell |\n| 25 | 389 | 231 | 444 | table-cell |\n| 25 | 389 | 231 | 444 | table-cell |\n| 232 | 389 | 277 | 444 | table-cell |\n| 232 | 389 | 277 | 444 | table-cell |\n| 276 | 389 | 354 | 444 | table-cell |\n| 276 | 389 | 354 | 444 | table-cell |\n| 355 | 389 | 440 | 444 | table-cell |\n| 355 | 389 | 440 | 444 | table-cell |\n| 442 | 389 | 514 | 444 | table-cell |\n| 442 | 389 | 514 | 444 | table-cell |\n| 513 | 389 | 570 | 444 | table-cell |\n| 513 | 389 | 570 | 444 | table-cell |\n| 25 | 391 | 231 | 418 | table-cell |\n| 25 | 391 | 231 | 418 | table-cell |\n| 232 | 391 | 277 | 418 | table-cell |\n| 232 | 391 | 277 | 418 | table-cell |\n| 276 | 391 | 354 | 418 | table-cell |\n| 276 | 391 | 354 | 418 | table-cell |\n| 355 | 391 | 440 | 418 | table-cell |\n| 355 | 391 | 440 | 418 | table-cell |\n| 442 | 391 | 514 | 418 | table-cell |\n| 442 | 391 | 514 | 418 | table-cell |\n| 513 | 391 | 571 | 418 | table-cell |\n| 513 | 391 | 571 | 418 | table-cell |\n| 25 | 418 | 231 | 444 | table-cell |\n| 25 | 418 | 231 | 444 | table-cell |\n| 232 | 418 | 277 | 444 | table-cell |\n| 232 | 418 | 277 | 444 | table-cell |\n| 276 | 418 | 354 | 444 | table-cell |\n| 276 | 418 | 354 | 444 | table-cell |\n| 355 | 418 | 440 | 444 | table-cell |\n| 355 | 418 | 440 | 444 | table-cell |\n| 442 | 418 | 514 | 444 | table-cell |\n| 442 | 418 | 514 | 444 | table-cell |\n| 513 | 418 | 571 | 444 | table-cell |\n| 513 | 418 | 571 | 444 | table-cell |\n| 25 | 444 | 231 | 473 | table-cell |\n| 25 | 444 | 231 | 473 | table-cell |\n| 232 | 444 | 277 | 473 | table-cell |\n| 232 | 444 | 277 | 473 | table-cell |\n| 276 | 444 | 354 | 473 | table-cell |\n| 276 | 444 | 354 | 473 | table-cell |\n| 355 | 444 | 440 | 473 | table-cell |\n| 355 | 444 | 440 | 473 | table-cell |\n| 442 | 444 | 514 | 473 | table-cell |\n| 442 | 444 | 514 | 473 | table-cell |\n| 513 | 444 | 571 | 473 | table-cell |\n| 513 | 444 | 571 | 473 | table-cell |\n| 25 | 469 | 231 | 500 | table-cell |\n| 25 | 469 | 231 | 500 | table-cell |\n| 232 | 469 | 277 | 500 | table-cell |\n| 232 | 469 | 277 | 500 | table-cell |\n| 276 | 469 | 354 | 500 | table-cell |\n| 276 | 469 | 354 | 500 | table-cell |\n| 355 | 469 | 440 | 500 | table-cell |\n| 355 | 469 | 440 | 500 | table-cell |\n| 442 | 469 | 514 | 500 | table-cell |\n| 442 | 469 | 514 | 500 | table-cell |\n| 513 | 469 | 571 | 500 | table-cell |\n| 513 | 469 | 571 | 500 | table-cell |\n| 25 | 499 | 231 | 529 | table-cell |\n| 25 | 499 | 231 | 529 | table-cell |\n| 232 | 499 | 277 | 529 | table-cell |\n| 232 | 499 | 277 | 529 | table-cell |\n| 276 | 499 | 354 | 529 | table-cell |\n| 276 | 499 | 354 | 529 | table-cell |\n| 355 | 499 | 440 | 529 | table-cell |\n| 355 | 499 | 440 | 529 | table-cell |\n| 442 | 499 | 514 | 529 | table-cell |\n| 442 | 499 | 514 | 529 | table-cell |\n| 513 | 499 | 571 | 529 | table-cell |\n| 513 | 499 | 571 | 529 | table-cell |\n| 25 | 523 | 231 | 550 | table-cell |\n| 25 | 523 | 231 | 550 | table-cell |\n| 232 | 523 | 277 | 550 | table-cell |\n| 232 | 523 | 277 | 550 | table-cell |\n| 276 | 523 | 354 | 550 | table-cell |\n| 276 | 523 | 354 | 550 | table-cell |\n| 355 | 523 | 440 | 550 | table-cell |\n| 355 | 523 | 440 | 550 | table-cell |\n| 442 | 523 | 514 | 550 | table-cell |\n| 442 | 523 | 514 | 550 | table-cell |\n| 513 | 523 | 571 | 550 | table-cell |\n| 513 | 523 | 571 | 550 | table-cell |\n| 25 | 554 | 231 | 602 | table-cell |\n| 25 | 554 | 231 | 602 | table-cell |\n| 232 | 554 | 277 | 602 | table-cell |\n| 232 | 554 | 277 | 602 | table-cell |\n| 276 | 554 | 354 | 602 | table-cell |\n| 276 | 554 | 354 | 602 | table-cell |\n| 355 | 554 | 440 | 602 | table-cell |\n| 355 | 554 | 440 | 602 | table-cell |\n| 442 | 554 | 514 | 602 | table-cell |\n| 442 | 554 | 514 | 602 | table-cell |\n| 513 | 554 | 571 | 602 | table-cell |\n| 513 | 554 | 571 | 602 | table-cell |\n| 25 | 599 | 231 | 641 | table-cell |\n| 25 | 599 | 231 | 641 | table-cell |\n| 232 | 599 | 277 | 641 | table-cell |\n| 232 | 599 | 277 | 641 | table-cell |\n| 276 | 599 | 354 | 641 | table-cell |\n| 276 | 599 | 354 | 641 | table-cell |\n| 355 | 599 | 440 | 641 | table-cell |\n| 355 | 599 | 440 | 641 | table-cell |\n| 442 | 599 | 514 | 641 | table-cell |\n| 442 | 599 | 514 | 641 | table-cell |\n| 513 | 599 | 571 | 641 | table-cell |\n| 513 | 599 | 571 | 641 | table-cell |\n| 25 | 640 | 231 | 681 | table-cell |\n| 25 | 640 | 231 | 681 | table-cell |\n| 232 | 640 | 277 | 681 | table-cell |\n| 232 | 640 | 277 | 681 | table-cell |\n| 276 | 640 | 354 | 681 | table-cell |\n| 276 | 640 | 354 | 681 | table-cell |\n| 355 | 640 | 440 | 681 | table-cell |\n| 355 | 640 | 440 | 681 | table-cell |\n| 442 | 640 | 514 | 681 | table-cell |\n| 442 | 640 | 514 | 681 | table-cell |\n| 513 | 640 | 571 | 681 | table-cell |\n| 513 | 640 | 571 | 681 | table-cell |\n| 25 | 681 | 231 | 702 | table-cell |\n| 25 | 681 | 231 | 702 | table-cell |\n| 232 | 681 | 277 | 702 | table-cell |\n| 232 | 681 | 277 | 702 | table-cell |\n| 276 | 681 | 354 | 702 | table-cell |\n| 276 | 681 | 354 | 702 | table-cell |\n| 355 | 681 | 440 | 702 | table-cell |\n| 355 | 681 | 440 | 702 | table-cell |\n| 442 | 681 | 514 | 702 | table-cell |\n| 442 | 681 | 514 | 702 | table-cell |\n| 513 | 681 | 571 | 702 | table-cell |\n| 513 | 681 | 571 | 702 | table-cell |\n\n### Table Projected Row Header Elements\n\n| x0 | top | x1 | bottom | type |\n|------|------|------|------|------|\n| 25 | 419 | 571 | 443 | table projected row header |\n| 25 | 471 | 571 | 498 | table projected row header |\n| 25 | 529 | 571 | 553 | table projected row header |\n| 25 | 600 | 571 | 639 | table projected row header |",
+        "sample": [
+          {
+            "type": "region",
+            "text": "",
+            "x0": 485.0502014160156,
+            "top": 71.88887786865234
+          },
+          {
+            "type": "unknown",
+            "text": "F",
+            "x0": 486.48045222998024,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "Filing ID #10053231",
+            "x0": 486.48045222998024,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "i",
+            "x0": 491.87254190530984,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "l",
+            "x0": 494.5092605454465,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "i",
+            "x0": 497.0844556381468,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "n",
+            "x0": 499.72117427828346,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "g",
+            "x0": 505.0385567567259,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": " ",
+            "x0": 509.62205262574685,
+            "top": 73.22314146903568
+          },
+          {
+            "type": "unknown",
+            "text": "I",
+            "x0": 511.79295099529276,
+            "top": 73.22314146903568
+          }
+        ]
+      },
+      "image_path": "bad_pdf_analysis/zxyRByM_Tables_ Have never managed to get other python lib/analysis/zxyRByM/page_1.png",
+      "analyze_layout_tatr": {
+        "found": true,
+        "count": 25,
+        "regions": [
+          {
+            "type": "table",
+            "bbox": [
+              25.35,
+              354.75,
+              571.91,
+              705.46
+            ],
+            "confidence": 0.9981018900871277
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              232.21,
+              364.45,
+              276.62,
+              702.44
+            ],
+            "confidence": 0.9997383952140808
+          },
+          {
+            "type": "table row",
+            "bbox": [
+              25.04,
+              443.62,
+              570.97,
+              473.02
+            ],
+            "confidence": 0.9166432023048401
+          },
+          {
+            "type": "table column",
+            "bbox": [
+              441.52,
+              364.22,
+              514.22,
+              702.39
+            ],
+            "confidence": 0.9999305009841919
+          },
+          {
+            "type": "table projected row header",
+            "bbox": [
+              25.11,
+              528.74,
+              570.99,
+              552.56
+            ],
+            "confidence": 0.9298037886619568
+          }
+        ]
+      },
+      "table_structure": "ERROR: 'Page' object has no attribute 'find_table_structure'"
+    }
+  ],
+  "total_pages": 12,
+  "pages_analyzed": 1
+}

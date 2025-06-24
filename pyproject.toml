@@ -32,6 +32,7 @@ dependencies = [
     "jenkspy",
     "scipy",
     "ipywidgets>=7.0.0",
+    "python-bidi",
 ]
 
 [project.optional-dependencies]
