@@ -168,6 +168,8 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         reading_order: bool = True,
         font_attrs: Optional[List[str]] = None,
         keep_spaces: bool = True,
+        text_tolerance: Optional[dict] = None,
+        auto_text_tolerance: bool = True,
     ):
         """
         Initialize the enhanced PDF object.
@@ -177,6 +179,8 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             reading_order: Whether to use natural reading order
             font_attrs: Font attributes for grouping characters into words
             keep_spaces: Whether to include spaces in word elements
+            text_tolerance: PDFplumber-style tolerance settings
+            auto_text_tolerance: Whether to automatically scale text tolerance
         """
         self._original_path_or_stream = path_or_url_or_stream
         self._temp_file = None
@@ -273,6 +277,24 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             getattr(self, "_temp_file", None),
             getattr(self, "_is_stream", False),
         )
+
+        # --- Text tolerance settings ------------------------------------
+        # Users can pass pdfplumber-style keys (x_tolerance, x_tolerance_ratio,
+        # y_tolerance, etc.) via *text_tolerance*.  We also keep a flag that
+        # enables automatic tolerance scaling when explicit values are not
+        # supplied.
+        self._config["auto_text_tolerance"] = bool(auto_text_tolerance)
+        if text_tolerance:
+            # Only copy recognised primitives (numbers / None); ignore junk.
+            allowed = {
+                "x_tolerance",
+                "x_tolerance_ratio",
+                "y_tolerance",
+                "keep_blank_chars",  # passthrough convenience
+            }
+            for k, v in text_tolerance.items():
+                if k in allowed:
+                    self._config[k] = v
 
     def _initialize_managers(self):
         """Set up manager factories for lazy instantiation."""

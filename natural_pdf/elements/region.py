@@ -1319,6 +1319,28 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_settings.setdefault("vertical_strategy", "lines")
             table_settings.setdefault("horizontal_strategy", "lines")
 
+        # -------------------------------------------------------------
+        # Auto-inject tolerances when text-based strategies are requested.
+        # This must happen AFTER alias handling (so strategies are final)
+        # and BEFORE we delegate to _extract_table_* helpers.
+        # -------------------------------------------------------------
+        if "text" in (table_settings.get("vertical_strategy"), table_settings.get("horizontal_strategy")):
+            page_cfg = getattr(self.page, "_config", {})
+            # Ensure text_* tolerances passed to pdfplumber
+            if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+                if page_cfg.get("x_tolerance") is not None:
+                    table_settings["text_x_tolerance"] = page_cfg["x_tolerance"]
+            if "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+                if page_cfg.get("y_tolerance") is not None:
+                    table_settings["text_y_tolerance"] = page_cfg["y_tolerance"]
+
+            # Snap / join tolerances (~ line spacing)
+            if "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
+                snap = max(1, round((page_cfg.get("y_tolerance", 1)) * 0.9))
+                table_settings["snap_tolerance"] = snap
+            if "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
+                table_settings["join_tolerance"] = table_settings["snap_tolerance"]
+
         logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
 
         # Use the selected method
@@ -1438,6 +1460,30 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             List of tables, where each table is a list of rows, and each row is a list of cell values
         """
+        # Inject global PDF-level text tolerances if not explicitly present
+        pdf_cfg = getattr(self.page, "_config", getattr(self.page._parent, "_config", {}))
+        _uses_text = "text" in (
+            table_settings.get("vertical_strategy"),
+            table_settings.get("horizontal_strategy"),
+        )
+        if _uses_text and "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+            x_tol = pdf_cfg.get("x_tolerance")
+            if x_tol is not None:
+                table_settings.setdefault("text_x_tolerance", x_tol)
+        if _uses_text and "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+            y_tol = pdf_cfg.get("y_tolerance")
+            if y_tol is not None:
+                table_settings.setdefault("text_y_tolerance", y_tol)
+
+        if _uses_text and "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
+            snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
+            table_settings.setdefault("snap_tolerance", snap)
+        if _uses_text and "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
+            join = table_settings.get("snap_tolerance", 1)
+            table_settings.setdefault("join_tolerance", join)
+            table_settings.setdefault("join_x_tolerance", join)
+            table_settings.setdefault("join_y_tolerance", join)
+
         # Create a crop of the page for this region
         cropped = self.page._page.crop(self.bbox)
 
@@ -1458,6 +1504,21 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             Table data as a list of rows, where each row is a list of cell values
         """
+        # Inject global PDF-level text tolerances if not explicitly present
+        pdf_cfg = getattr(self.page, "_config", getattr(self.page._parent, "_config", {}))
+        _uses_text = "text" in (
+            table_settings.get("vertical_strategy"),
+            table_settings.get("horizontal_strategy"),
+        )
+        if _uses_text and "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+            x_tol = pdf_cfg.get("x_tolerance")
+            if x_tol is not None:
+                table_settings.setdefault("text_x_tolerance", x_tol)
+        if _uses_text and "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+            y_tol = pdf_cfg.get("y_tolerance")
+            if y_tol is not None:
+                table_settings.setdefault("text_y_tolerance", y_tol)
+
         # Create a crop of the page for this region
         cropped = self.page._page.crop(self.bbox)
 

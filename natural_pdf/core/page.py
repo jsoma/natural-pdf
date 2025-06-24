@@ -128,6 +128,13 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             "named": {},  # Named regions (name -> region)
         }
 
+        # -------------------------------------------------------------
+        # Page-scoped configuration begins as a shallow copy of the parent
+        # PDF-level configuration so that auto-computed tolerances or other
+        # page-specific values do not overwrite siblings.
+        # -------------------------------------------------------------
+        self._config = dict(getattr(self._parent, "_config", {}))
+
         # Initialize ElementManager, passing font_attrs
         self._element_mgr = ElementManager(self, font_attrs=font_attrs)
         # self._highlighter = HighlightingService(self) # REMOVED - Use property accessor
@@ -1153,10 +1160,20 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         # 5. Generate Text Layout using Utility
         # Pass page bbox as layout context
         page_bbox = (0, 0, self.width, self.height)
+        # Merge PDF-level default tolerances if caller did not override
+        merged_kwargs = dict(kwargs)
+        tol_keys = ["x_tolerance", "x_tolerance_ratio", "y_tolerance"]
+        for k in tol_keys:
+            if k not in merged_kwargs:
+                if k in self._config:
+                    merged_kwargs[k] = self._config[k]
+                elif k in getattr(self._parent, "_config", {}):
+                    merged_kwargs[k] = self._parent._config[k]
+
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=page_bbox,
-            user_kwargs=kwargs,  # Pass original user kwargs
+            user_kwargs=merged_kwargs,
         )
 
         # --- Optional: apply Unicode BiDi algorithm for mixed RTL/LTR correctness ---
@@ -1356,6 +1373,37 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
         # Use the selected method
         if effective_method == "pdfplumber":
+            # ---------------------------------------------------------
+            # Inject auto-computed or user-specified text tolerances so
+            # pdfplumber uses the same numbers we used for word grouping
+            # whenever the table algorithm relies on word positions.
+            # ---------------------------------------------------------
+            if "text" in (
+                table_settings.get("vertical_strategy"),
+                table_settings.get("horizontal_strategy"),
+            ):
+                print("SETTING IT UP")
+                pdf_cfg = getattr(self, "_config", getattr(self._parent, "_config", {}))
+                if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+                    x_tol = pdf_cfg.get("x_tolerance")
+                    if x_tol is not None:
+                        table_settings.setdefault("text_x_tolerance", x_tol)
+                if "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+                    y_tol = pdf_cfg.get("y_tolerance")
+                    if y_tol is not None:
+                        table_settings.setdefault("text_y_tolerance", y_tol)
+
+                # pdfplumber's text strategy benefits from a tight snap tolerance.
+                if "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
+                    # Derive from y_tol if available, else default 1
+                    snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
+                    table_settings.setdefault("snap_tolerance", snap)
+                if "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
+                    join = table_settings.get("snap_tolerance", 1)
+                    table_settings.setdefault("join_tolerance", join)
+                    table_settings.setdefault("join_x_tolerance", join)
+                    table_settings.setdefault("join_y_tolerance", join)
+
             return self._page.extract_tables(table_settings)
         else:
             raise ValueError(

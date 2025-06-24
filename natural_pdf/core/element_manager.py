@@ -230,11 +230,49 @@ class ElementManager:
             char_to_index[key] = idx
 
         # 2. Instantiate the custom word extractor
-        # Get config settings from the parent PDF or use defaults
+        # Prefer page-level config over PDF-level for tolerance lookup
+        page_config = getattr(self._page, "_config", {})
         pdf_config = getattr(self._page._parent, "_config", {})
-        xt = pdf_config.get("x_tolerance", 3)
-        yt = pdf_config.get("y_tolerance", 3)
+
+        # Start with any explicitly supplied tolerances (may be None)
+        xt = page_config.get("x_tolerance", pdf_config.get("x_tolerance"))
+        yt = page_config.get("y_tolerance", pdf_config.get("y_tolerance"))
         use_flow = pdf_config.get("use_text_flow", False)
+
+        # ------------------------------------------------------------------
+        # Auto-adaptive tolerance: scale based on median character size when
+        # requested and explicit values are absent.
+        # ------------------------------------------------------------------
+        if pdf_config.get("auto_text_tolerance", True):
+            import statistics
+
+            sizes = [c.get("size", 0) for c in prepared_char_dicts if c.get("size")]
+            if sizes:
+                median_size = statistics.median(sizes)
+                if xt is None:
+                    xt = 0.25 * median_size  # ~kerning width
+                    # Record back to page config for downstream users
+                    page_config["x_tolerance"] = xt
+                if yt is None:
+                    yt = 0.6 * median_size   # ~line spacing fraction
+                    page_config["y_tolerance"] = yt
+
+            # Warn users when the page's font size is extremely small –
+            # this is often the root cause of merged-row/column issues.
+            if median_size and median_size < 6:  # 6 pt is unusually small
+                logger.warning(
+                    f"Page {self._page.number}: Median font size is only {median_size:.1f} pt; "
+                    f"auto-set x_tolerance={xt:.2f}, y_tolerance={yt:.2f}. "
+                    "If the output looks wrong you can override these values via "
+                    "PDF(..., text_tolerance={'x_tolerance': X, 'y_tolerance': Y}, "
+                    "auto_text_tolerance=False)."
+                )
+
+        # Fallback to pdfplumber defaults if still None
+        if xt is None:
+            xt = 3
+        if yt is None:
+            yt = 3
 
         # List of attributes to preserve on word objects
         attributes_to_preserve = list(
