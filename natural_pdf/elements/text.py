@@ -381,6 +381,20 @@ class TextElement(Element):
         """True if element is underlined."""
         return bool(self._obj.get("underline") or self.metadata.get("decoration", {}).get("underline"))
 
+    # -----------------------------
+    #  Highlight decoration
+    # -----------------------------
+
+    @property
+    def highlight(self) -> bool:
+        """True if element is highlighted (background marker)."""
+        return bool(self._obj.get("highlight") or self.metadata.get("decoration", {}).get("highlight"))
+
+    @property
+    def highlight_color(self):
+        """Return RGB(A) tuple of highlight colour if stored."""
+        return self._obj.get("highlight_color") or self.metadata.get("decoration", {}).get("highlight_color")
+
     def __repr__(self) -> str:
         """String representation of the text element."""
         if self.text:
@@ -396,6 +410,8 @@ class TextElement(Element):
             font_style.append("strike")
         if self.underline:
             font_style.append("underline")
+        if self.highlight:
+            font_style.append("highlight")
         style_str = f", style={font_style}" if font_style else ""
 
         # Use font_family for display but include raw fontname and variant
@@ -407,7 +423,11 @@ class TextElement(Element):
             base_font = self.fontname.split("+", 1)[1]
             font_display = f"{font_display} ({base_font})"
 
-        return f"<TextElement text='{preview}' font='{font_display}'{variant_str} size={self.size}{style_str} bbox={self.bbox}>"
+        color_info = ""
+        if self.highlight and self.highlight_color is not None:
+            color_info = f", highlight_color={self.highlight_color}"
+
+        return f"<TextElement text='{preview}' font='{font_display}'{variant_str} size={self.size}{style_str}{color_info} bbox={self.bbox}>"
 
     def font_info(self) -> dict:
         """

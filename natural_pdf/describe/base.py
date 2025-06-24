@@ -269,8 +269,19 @@ def _get_columns_for_type(element_type: str, show_page_column: bool) -> List[str
     base_columns = ['x0', 'top', 'x1', 'bottom']
     
     if element_type == 'word':
-        columns = ['text'] + base_columns + ['font_family', 'font_variant', 'size', 'bold', 'italic', 'strike', 'underline', 'source', 'confidence']
-        # Add color for text elements
+        columns = ['text'] + base_columns + [
+            'font_family',
+            'font_variant',
+            'size',
+            'bold',
+            'italic',
+            'strike',
+            'underline',
+            'highlight',
+            'source',
+            'confidence',
+        ]
+        # Add foreground text colour too
         columns.append('color')
     elif element_type == 'rect':
         columns = base_columns + ['width', 'height', 'stroke', 'fill', 'stroke_width']
@@ -330,6 +341,22 @@ def _extract_element_value(element: "Element", column: str) -> Any:
         elif column in ['bold', 'italic', 'strike', 'underline']:
             value = getattr(element, column, False)
             return value if isinstance(value, bool) else False
+        
+        elif column == 'highlight':
+            # If element is highlighted, return its colour; otherwise blank
+            if getattr(element, 'highlight', False):
+                col_val = getattr(element, 'highlight_color', None)
+                if col_val is None:
+                    return 'True'  # fallback if colour missing
+                # Convert tuple to hex
+                if isinstance(col_val, (tuple, list)) and len(col_val) >= 3:
+                    try:
+                        r, g, b = [int(v * 255) if v <= 1 else int(v) for v in col_val[:3]]
+                        return f"#{r:02x}{g:02x}{b:02x}"
+                    except Exception:
+                        return str(col_val)
+                return str(col_val)
+            return ''
         
         elif column in ['stroke', 'fill', 'color']:
             value = getattr(element, column, None)
@@ -410,7 +437,7 @@ def describe_element(element: "Element") -> "ElementSummary":
     
     # Add common text properties - use dict structure for proper list formatting
     text_props = {}
-    for prop in ['font_family', 'size', 'bold', 'italic', 'strike', 'underline', 'source', 'confidence']:
+    for prop in ['font_family', 'size', 'bold', 'italic', 'strike', 'underline', 'highlight', 'source', 'confidence']:
         if hasattr(element, prop):
             value = getattr(element, prop)
             if value is not None:

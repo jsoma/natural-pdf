@@ -39,6 +39,14 @@ UNDERLINE_DEFAULTS = {
     "below_pad": 0.7,    # pt ; pad below baseline
 }
 
+HIGHLIGHT_DEFAULTS = {
+    "height_min_ratio": 0.6,  # rect height relative to char height lower bound
+    "height_max_ratio": 2.0,  # upper bound
+    "coverage_ratio": 0.6,    # horizontal overlap with glyph
+    "color_saturation_min": 0.4,  # HSV S >
+    "color_value_min": 0.4,        # HSV V >
+}
+
 class NaturalWordExtractor(WordExtractor):
     """
     Custom WordExtractor that splits words based on specified character attributes
@@ -174,6 +182,15 @@ class ElementManager:
                 exc_info=True,
             )
 
+        # Detect highlights
+        try:
+            self._mark_highlight_chars(prepared_char_dicts)
+        except Exception as h_err:
+            logger.warning(
+                f"Page {self._page.number}: Highlight detection failed – {h_err}",
+                exc_info=True,
+            )
+
         # Create a mapping from character dict to index for efficient lookup
         char_to_index = {}
         for idx, char_dict in enumerate(prepared_char_dicts):
@@ -194,7 +211,16 @@ class ElementManager:
         # Define which attributes to preserve on the merged word object
         # Should include split attributes + any others needed for filtering (like color)
         attributes_to_preserve = list(
-            set(self._word_split_attributes + ["non_stroking_color", "strike", "underline"])
+            set(
+                self._word_split_attributes
+                + [
+                    "non_stroking_color",
+                    "strike",
+                    "underline",
+                    "highlight",
+                    "highlight_color",
+                ]
+            )
         )
 
         # -------------------------------------------------------------
@@ -251,7 +277,7 @@ class ElementManager:
                 char_dir = "ltr"
 
             extractor = NaturalWordExtractor(
-                word_split_attributes=self._word_split_attributes + ["strike", "underline"],
+                word_split_attributes=self._word_split_attributes + ["strike", "underline", "highlight"],
                 extra_attrs=attributes_to_preserve,
                 x_tolerance=xt,
                 y_tolerance=yt,
@@ -349,6 +375,41 @@ class ElementManager:
                 else:
                     w._obj["underline"] = False
 
+                # highlight propagation
+                hl_chars = 0
+                if getattr(w, "_char_indices", None):
+                    for idx in w._char_indices:
+                        if 0 <= idx < len(prepared_char_dicts):
+                            if prepared_char_dicts[idx].get("highlight"):
+                                hl_chars += 1
+                elif getattr(w, "_char_dicts", None):
+                    hl_chars = sum(1 for ch in w._char_dicts if ch.get("highlight"))
+
+                if total_chars:
+                    w._obj["highlight"] = (hl_chars / total_chars) >= 0.6
+                else:
+                    w._obj["highlight"] = False
+
+                # Determine dominant highlight color among chars
+                if w._obj.get("highlight"):
+                    color_counts = {}
+                    source_iter = (
+                        (prepared_char_dicts[idx] for idx in w._char_indices)
+                        if getattr(w, "_char_indices", None)
+                        else w._char_dicts if getattr(w, "_char_dicts", None) else []
+                    )
+                    for chd in source_iter:
+                        if chd.get("highlight") and chd.get("highlight_color") is not None:
+                            col = chd["highlight_color"]
+                            color_counts[col] = color_counts.get(col, 0) + 1
+
+                    if color_counts:
+                        dominant_color = max(color_counts.items(), key=lambda t: t[1])[0]
+                        try:
+                            w._obj["highlight_color"] = tuple(dominant_color) if isinstance(dominant_color, (list, tuple)) else dominant_color
+                        except Exception:
+                            w._obj["highlight_color"] = dominant_color
+
         generated_words = word_elements
         logger.debug(
             f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
@@ -439,6 +500,11 @@ class ElementManager:
             augmented_dict.setdefault("upright", True)
             augmented_dict.setdefault("fontname", "Unknown")
             augmented_dict.setdefault("size", 0)
+            augmented_dict.setdefault("highlight_color", None)
+            # Ensure decoration keys exist for safe grouping
+            augmented_dict.setdefault("strike", False)
+            augmented_dict.setdefault("underline", False)
+            augmented_dict.setdefault("highlight", False)
 
             prepared_dicts.append(augmented_dict)
             # Use a unique identifier if available (e.g., tuple of key properties)
@@ -586,12 +652,21 @@ class ElementManager:
                     "italic": False,
                     "upright": True,
                     "doctop": pdf_top + self._page._page.initial_doctop,
+                    "strike": False,
+                    "underline": False,
+                    "highlight": False,
+                    "highlight_color": None,
                 }
 
                 # Create the representative char dict for this OCR word
                 ocr_char_dict = word_element_data.copy()
                 ocr_char_dict["object_type"] = "char"
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
+                # Ensure decoration keys
+                ocr_char_dict.setdefault("strike", False)
+                ocr_char_dict.setdefault("underline", False)
+                ocr_char_dict.setdefault("highlight", False)
+                ocr_char_dict.setdefault("highlight_color", None)
 
                 # Add the char dict list to the word data before creating TextElement
                 word_element_data["_char_dicts"] = [ocr_char_dict]  # Store itself as its only char
@@ -1018,3 +1093,73 @@ class ElementManager:
                     if overlap > 0 and (overlap / width) >= coverage_ratio:
                         ch["underline"] = True
                         break
+
+    # ------------------------------------------------------------------
+    #  Highlight detection
+    # ------------------------------------------------------------------
+
+    def _mark_highlight_chars(self, char_dicts: List[Dict[str, Any]]) -> None:
+        """Detect PDF marker-style highlights and set ``highlight`` on char dicts."""
+
+        cfg = getattr(self._page._parent, "_config", {}).get("highlight_detection", {})
+
+        height_min_ratio = cfg.get("height_min_ratio", HIGHLIGHT_DEFAULTS["height_min_ratio"])
+        height_max_ratio = cfg.get("height_max_ratio", HIGHLIGHT_DEFAULTS["height_max_ratio"])
+        coverage_ratio = cfg.get("coverage_ratio", HIGHLIGHT_DEFAULTS["coverage_ratio"])
+
+        raw_rects = list(getattr(self._page._page, "rects", []))
+        pg_height = self._page.height
+
+        # Build list of candidate highlight rectangles (convert to top-based coords)
+        highlight_rects = []
+        for rc in raw_rects:
+            if rc.get("stroke", False):
+                continue  # border stroke, not fill-only
+            if not rc.get("fill", False):
+                continue
+
+            fill_col = rc.get("non_stroking_color")
+            # We keep colour as metadata but no longer filter on it
+            if fill_col is None:
+                continue
+
+            y0_rect = min(rc.get("y0", 0), rc.get("y1", 0))
+            y1_rect = max(rc.get("y0", 0), rc.get("y1", 0))
+            rheight = y1_rect - y0_rect
+            highlight_rects.append((rc.get("x0", 0), y0_rect, rc.get("x1", 0), y1_rect, rheight, fill_col))
+
+        if not highlight_rects:
+            for ch in char_dicts:
+                ch.setdefault("highlight", False)
+            return
+
+        for ch in char_dicts:
+            ch.setdefault("highlight", False)
+            try:
+                x0_raw, y0_raw, x1_raw, y1_raw = ch["x0"], ch["y0"], ch["x1"], ch["y1"]
+            except KeyError:
+                continue
+
+            width = x1_raw - x0_raw
+            height = y1_raw - y0_raw
+            if width <= 0 or height <= 0:
+                continue
+
+            for rx0, ry0, rx1, ry1, rheight, rcolor in highlight_rects:
+                # height ratio check relative to char
+                ratio = rheight / height if height else 0
+                if ratio < height_min_ratio or ratio > height_max_ratio:
+                    continue
+
+                # vertical containment in raw coords
+                if not (y0_raw + 1 >= ry0 and y1_raw - 1 <= ry1):
+                    continue
+
+                overlap = min(x1_raw, rx1) - max(x0_raw, rx0)
+                if overlap > 0 and (overlap / width) >= coverage_ratio:
+                    ch["highlight"] = True
+                    try:
+                        ch["highlight_color"] = tuple(rcolor) if isinstance(rcolor, (list, tuple)) else rcolor
+                    except Exception:
+                        ch["highlight_color"] = rcolor
+                    break

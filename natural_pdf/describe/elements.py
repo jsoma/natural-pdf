@@ -279,7 +279,7 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
     """Analyze typography patterns in text elements."""
     fonts = Counter()
     sizes = Counter()
-    styles = {'bold': 0, 'italic': 0}
+    styles = {'bold': 0, 'italic': 0, 'strikeout': 0, 'underline': 0, 'highlight': 0}
     colors = Counter()
     
     for element in elements:
@@ -302,6 +302,12 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
             styles['bold'] += 1
         if getattr(element, 'italic', False):
             styles['italic'] += 1
+        if getattr(element, 'strikeout', False):
+            styles['strikeout'] += 1
+        if getattr(element, 'underline', False):
+            styles['underline'] += 1
+        if getattr(element, 'highlight', False):
+            styles['highlight'] += 1
         
         # Color - use TextElement's color property
         color = getattr(element, 'color', None)
@@ -328,13 +334,12 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
     
     # Styles
     style_list = []
-    if styles['bold']:
-        style_list.append(f"{styles['bold']} bold")
-    if styles['italic']:
-        style_list.append(f"{styles['italic']} italic")
+    for style, count in styles.items():
+        if count > 0:
+            style_list.append(f"{count} {style}")
     if style_list:
         result['styles'] = ", ".join(style_list)
-    
+        
     # Colors
     if colors and len(colors) > 1:  # Only show if there are multiple colors
         result['colors'] = dict(colors.most_common())
