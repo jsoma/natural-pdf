@@ -1087,6 +1087,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#auto-ignore-headers-footers-with-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-ignore headers &amp; footers with exclusions
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1712,6 +1721,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#auto-ignore-headers-footers-with-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-ignore headers &amp; footers with exclusions
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1797,6 +1815,23 @@
 <span class="c1"># Extract from the defined area</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
 </code></pre></div>
+<aside style="background: #fff8dc; padding: 10px; border-left: 4px solid #f90;">
+  <strong>Pro-tip:</strong> Instead of measuring 120&nbsp;px below the header, try an
+  <code>until=...</code> anchor—your script survives if the table grows or the scan
+  resolution changes.
+
+  <div class="highlight"><pre><span></span><code><span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Violations&quot;</span><span class="p">:</span><span class="n">bold</span><span class="p">)</span>
+<span class="n">body</span>   <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">below</span><span class="p">(</span>
+    <span class="n">until</span><span class="o">=</span><span class="s2">&quot;text:contains(&#39;Total violations&#39;)&quot;</span><span class="p">,</span>
+    <span class="n">include_endpoint</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">body</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
+</code></pre></div>
+
+  In most cases that one extra <code>until=</code> makes the difference between a
+  brittle coordinate hack and a reusable extractor.
+</aside>
+
 <h2 id="define-table-boundaries-using-header-labels-pdfplumber">Define Table Boundaries Using Header Labels (pdfplumber)</h2>
 <p>Sometimes the easiest trick is to let the <strong>column headers</strong> tell you exactly where the table starts and ends.<br />
 Here's a quick, self-contained approach that works great on the violations table inside <code>01-practice.pdf</code>:</p>
@@ -1875,8 +1910,8 @@ Here's a quick, self-contained approach that works great on the violations table
 
 <span class="c1"># Save each table separately</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_data</span><span class="p">):</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tbl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_data</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">tbl</span><span class="o">.</span><span class="n">to_df</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
     <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;table_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="deal-with-rotated-tables">Deal with Rotated Tables</h2>
@@ -1950,6 +1985,31 @@ Here's a quick, self-contained approach that works great on the violations table
 - Use layout detection to separate them first
 - Define manual regions for each table
 - Process tables in reading order </p>
+<h2 id="auto-ignore-headers-footers-with-exclusions">Auto-ignore headers &amp; footers with exclusions</h2>
+<p>Before you even think about column alignment, make sure <strong>repeated page furniture</strong>
+(running headers, footers, page numbers) is out of the way.  Two lines of code
+often fix "shifted" columns:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
+
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
+
+<span class="c1"># Drop top 50 pt (header) and bottom 40 pt (footer) on *every* page</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">50</span><span class="p">))</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">height</span><span class="o">-</span><span class="mi">40</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">height</span><span class="p">))</span>
+
+<span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span><span class="o">.</span><span class="n">df</span>
+</code></pre></div>
+<h1 id="rows-list-of-lists-wrap-in-tableresult-for-convenience">rows list-of-lists; wrap in TableResult for convenience</h1>
+<p>rows = (
+    pdf.pages
+       .apply(lambda p: p.analyze_layout('tatr') or p)
+       .apply(lambda p: p.find('table').extract_table())
+       .apply(lambda t: t[1:])     # skip header repetition
+       .flatten()
+)</p>
+<p>from natural_pdf.tables import TableResult
+df = TableResult(rows).to_df(header="first")
+print(df.head())</p>
 
 
 

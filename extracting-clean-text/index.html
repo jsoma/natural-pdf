@@ -1088,6 +1088,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#handling-right-to-left-arabic-hebrew-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handling Right-to-left (Arabic, Hebrew) Text
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1760,6 +1769,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#handling-right-to-left-arabic-hebrew-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handling Right-to-left (Arabic, Hebrew) Text
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1961,6 +1979,22 @@
 <span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
 <span class="n">body_text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 </code></pre></div>
+<h2 id="handling-right-to-left-arabic-hebrew-text">Handling Right-to-left (Arabic, Hebrew) Text</h2>
+<p>Natural-PDF now automatically detects bidirectional (RTL) lines and applies the Unicode <strong>BiDi</strong> algorithm when you call <code>page.extract_text()</code>.<br />
+This means the returned string is in <em>logical</em> reading order with brackets/parentheses correctly mirrored and Western digits left untouched.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Arabic example – no special flags required</span>
+<span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">body</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>  <span class="c1"># parentheses and numbers appear correctly</span>
+
+<span class="c1"># String queries work naturally</span>
+<span class="n">row</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;text:contains(&#39;الجريدة الرسمية&#39;)&quot;</span><span class="p">)</span>
+
+<span class="c1"># Disable the BiDi pass if you need raw PDF order</span>
+<span class="n">raw</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(</span><span class="n">bidi</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<blockquote>
+<p>Tip: This RTL handling is line-aware, so mixed LTR/RTL documents (e.g. Arabic with English dates) still extract correctly without affecting Latin text on other pages. </p>
+</blockquote>
 
 
 

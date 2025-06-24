@@ -2347,6 +2347,8 @@
 <h3 id="text-formatting">Text Formatting</h3>
 <div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>                      <span class="c1"># Bold text</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:italic&#39;</span><span class="p">)</span>                    <span class="c1"># Italic text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:strike&#39;</span><span class="p">)</span>                    <span class="c1"># Struck-through text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:underline&#39;</span><span class="p">)</span>                 <span class="c1"># Underlined text</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;=12]&#39;</span><span class="p">)</span>                 <span class="c1"># Large text</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[fontname*=Arial]&#39;</span><span class="p">)</span>          <span class="c1"># Specific font</span>
 </code></pre></div>
@@ -2538,7 +2540,7 @@
 
 <span class="c1"># Save table as CSV</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">table_data</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">table_data</span><span class="o">.</span><span class="n">to_df</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;table.csv&quot;</span><span class="p">)</span>
 
 <span class="c1"># Export searchable PDF</span>
