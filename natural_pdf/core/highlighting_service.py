@@ -556,19 +556,62 @@ class HighlightingService:
         self._highlights_by_page[page_index].append(highlight)
         logger.debug(f"Added highlight to page {page_index}: {highlight}")
 
+        # --- Invalidate page-level image cache --------------------------------
+        # The Page.to_image method maintains an internal cache keyed by rendering
+        # parameters.  Because the cache key currently does **not** incorporate
+        # any information about the highlights themselves, it can return stale
+        # images after highlights are added or removed.  To ensure the next
+        # render reflects the new highlights, we clear the cache for the
+        # affected page here.
+        try:
+            page_obj = self._pdf[page_index]
+            if hasattr(page_obj, "_to_image_cache"):
+                page_obj._to_image_cache.clear()
+                logger.debug(
+                    f"Cleared cached to_image renders for page {page_index} after adding a highlight."
+                )
+        except Exception as cache_err:  # pragma: no cover – never fail highlight creation
+            logger.warning(
+                f"Failed to invalidate to_image cache for page {page_index}: {cache_err}",
+                exc_info=True,
+            )
+
     def clear_all(self):
         """Clears all highlights from all pages and resets the color manager."""
         self._highlights_by_page = {}
         self._color_manager.reset()
         logger.info("Cleared all highlights and reset ColorManager.")
 
+        # Clear cached images for *all* pages because their visual state may
+        # depend on highlight visibility.
+        for idx, page in enumerate(self._pdf.pages):
+            try:
+                if hasattr(page, "_to_image_cache"):
+                    page._to_image_cache.clear()
+            except Exception:
+                # Non-critical – keep going for remaining pages
+                continue
+
     def clear_page(self, page_index: int):
         """Clears all highlights from a specific page."""
         if page_index in self._highlights_by_page:
             del self._highlights_by_page[page_index]
             logger.debug(f"Cleared highlights for page {page_index}.")
-            # Note: We typically don't reset the color manager when clearing a single page
-            # to maintain color consistency if highlights are added back.
+        
+        # Also clear any cached rendered images for this page so the next render
+        # reflects the removal of highlights.
+        try:
+            page_obj = self._pdf[page_index]
+            if hasattr(page_obj, "_to_image_cache"):
+                page_obj._to_image_cache.clear()
+                logger.debug(
+                    f"Cleared cached to_image renders for page {page_index} after removing highlights."
+                )
+        except Exception as cache_err:  # pragma: no cover
+            logger.warning(
+                f"Failed to invalidate to_image cache for page {page_index}: {cache_err}",
+                exc_info=True,
+            )
 
     def get_highlights_for_page(self, page_index: int) -> List[Highlight]:
         """Returns a list of Highlight objects for a specific page."""
