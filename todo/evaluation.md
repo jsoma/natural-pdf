@@ -5,12 +5,12 @@ This markdown collects open tasks and per-PDF follow-ups discovered during the a
 ## Global engineering tasks
 
 - [ ] Text-formatting detection (underline / strike-through association)
-- [ ] Visual colour-blob detection for OCR documents
+- [X] Visual colour-blob detection for OCR documents (use `page.detect_blobs()`)
 - [ ] Dense-text / char-overlap handling (<6 pt fonts)
 - [ ] **OCR-only mode** – allow `page.apply_ocr(engine=..., ignore_native=True)` to discard corrupted native text layers
 - [ ] Graceful error handling for exclusions & spatial navigation when elements missing
 - [ ] Streaming / chunked processing for 10 k+-page PDFs
-- [ ] Selector parser enhancement: support `*` universal selector (e.g. `*[width>100]`)
+- [X] Selector parser enhancement: support `*` universal selector (e.g. `*[width>100]`)
 
 ## Per-PDF follow-up queue
 
@@ -41,7 +41,7 @@ _Add rows as evaluation proceeds. Use short notes; detailed summaries live in ea
 
 # Selector / Navigation enhancements
 
-- [ ] Up-tree selection: allow `.parent('<selector>')` to move from a text element to its containing table (proof-of-concept: `table = page.find(text="header").parent('table')`).
+- [X] Up-tree selection: allow `.parent('<selector>')` to move from a text element to its containing table (proof-of-concept: `table = page.find(text="header").parent('table')`).
 - [REJECTED IDEA] Convenience helper `find_table(text_contains=..., model='tatr|yolo')` that wraps the parent trick.
 - [ ] Investigate `.associate_marks()` API for linking rect/line marks (underline/strike) to nearby text; prototype algorithm in evaluation scripts.
 
@@ -57,7 +57,7 @@ _Add rows as evaluation proceeds. Use short notes; detailed summaries live in ea
 # Helper utilities
 
 - [REJECTED IDEA] `extract_tables(pages=..., merge_headers=True, as_df=True)` high-level wrapper (renamed from previous `extract_all_tables`). Should internally use anchor/filter strategy, not "every page is a table" assumption.
-- [ ] Provide `page.to_dataframe(headers="first")` sugar for simple table extraction lists.
+- [X] Provide `page.to_dataframe(headers="first")` sugar for simple table extraction lists. Implemented as page.extract_table().to_df()
 - [REJECTED IDEA] `extract_tables(kind='tatr')` flag. Prefer the explicit `region.extract_table(extractor='tatr')` with a clear anchor instead of magic defaults.
 - [REJECTED IDEA] `.find_table()` shorthand (duplicate of earlier rejection).
 - [REJECTED IDEA] `script=` parameter for selector filters – use Python lambdas or `.filter()` chaining instead.
@@ -113,9 +113,6 @@ _Add rows as evaluation proceeds. Use short notes; detailed summaries live in ea
   - [ ] Verify `.to_df(header='first')` sets correct dtypes.  
   - [ ] Wide table dtype inference; de-duplicate repeated headers across pages.  
   - [ ] LLM task: output JSON schema of resulting DataFrame.
-
-- **Visual output regression**  
-  - [ ] Always call `page.draw(layout=True).to_image()` on one page; assert image ≤ 2 MB and no crash on exotic glyphs.
 
 - **CLI / API smoke tests**  
   - [ ] Invoke every public call with default kwargs on a small page; flag default-value regressions.

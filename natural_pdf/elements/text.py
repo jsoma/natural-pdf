@@ -360,6 +360,18 @@ class TextElement(Element):
 
         return False
 
+    @property
+    def strike(self) -> bool:  # alias: struck
+        """True if this element (word/char) is marked as strikethrough."""
+        # Two possible storage places: raw object dict (comes from extractor
+        # via extra_attrs) or metadata (if later pipeline stages mutate).
+        return bool(self._obj.get("strike") or self.metadata.get("decoration", {}).get("strike"))
+
+    # Back-compat alias
+    @property
+    def struck(self) -> bool:  # noqa: D401
+        return self.strike
+
     def __repr__(self) -> str:
         """String representation of the text element."""
         if self.text:
@@ -371,6 +383,8 @@ class TextElement(Element):
             font_style.append("bold")
         if self.italic:
             font_style.append("italic")
+        if self.strike:
+            font_style.append("strike")
         style_str = f", style={font_style}" if font_style else ""
 
         # Use font_family for display but include raw fontname and variant

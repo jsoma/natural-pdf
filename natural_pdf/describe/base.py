@@ -269,7 +269,7 @@ def _get_columns_for_type(element_type: str, show_page_column: bool) -> List[str
     base_columns = ['x0', 'top', 'x1', 'bottom']
     
     if element_type == 'word':
-        columns = ['text'] + base_columns + ['font_family', 'font_variant', 'size', 'bold', 'italic', 'source', 'confidence']
+        columns = ['text'] + base_columns + ['font_family', 'font_variant', 'size', 'bold', 'italic', 'strike', 'source', 'confidence']
         # Add color for text elements
         columns.append('color')
     elif element_type == 'rect':
@@ -327,7 +327,7 @@ def _extract_element_value(element: "Element", column: str) -> Any:
                 return fontname.split("+", 1)[0]
             return ''
         
-        elif column in ['bold', 'italic']:
+        elif column in ['bold', 'italic', 'strike']:
             value = getattr(element, column, False)
             return value if isinstance(value, bool) else False
         
@@ -410,7 +410,7 @@ def describe_element(element: "Element") -> "ElementSummary":
     
     # Add common text properties - use dict structure for proper list formatting
     text_props = {}
-    for prop in ['font_family', 'size', 'bold', 'italic', 'source', 'confidence']:
+    for prop in ['font_family', 'size', 'bold', 'italic', 'strike', 'source', 'confidence']:
         if hasattr(element, prop):
             value = getattr(element, prop)
             if value is not None:
@@ -418,7 +418,7 @@ def describe_element(element: "Element") -> "ElementSummary":
                     text_props[prop] = round(value, 3)
                 elif prop == 'size' and isinstance(value, (int, float)):
                     text_props[prop] = round(value, 1)
-                elif prop in ['bold', 'italic']:
+                elif prop in ['bold', 'italic', 'strike']:
                     text_props[prop] = value
                 else:
                     text_props[prop] = value

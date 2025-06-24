@@ -126,6 +126,22 @@ class ElementManager:
             f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
         )
 
+        # -------------------------------------------------------------
+        # Detect strikethrough (horizontal strike-out lines) on raw
+        # characters BEFORE we run any word-grouping.  This way the
+        # NaturalWordExtractor can use the presence/absence of a
+        # "strike" attribute to decide whether two neighbouring chars
+        # belong to the same word.
+        # -------------------------------------------------------------
+
+        try:
+            self._mark_strikethrough_chars(prepared_char_dicts)
+        except Exception as strike_err:  # pragma: no cover – strike detection must never crash loading
+            logger.warning(
+                f"Page {self._page.number}: Strikethrough detection failed – {strike_err}",
+                exc_info=True,
+            )
+
         # Create a mapping from character dict to index for efficient lookup
         char_to_index = {}
         for idx, char_dict in enumerate(prepared_char_dicts):
@@ -145,7 +161,9 @@ class ElementManager:
 
         # Define which attributes to preserve on the merged word object
         # Should include split attributes + any others needed for filtering (like color)
-        attributes_to_preserve = list(set(self._word_split_attributes + ["non_stroking_color"]))
+        attributes_to_preserve = list(
+            set(self._word_split_attributes + ["non_stroking_color", "strike"])
+        )
 
         # -------------------------------------------------------------
         # NEW: Detect direction (LTR vs RTL) per visual line and feed
@@ -201,7 +219,7 @@ class ElementManager:
                 char_dir = "ltr"
 
             extractor = NaturalWordExtractor(
-                word_split_attributes=self._word_split_attributes,
+                word_split_attributes=self._word_split_attributes + ["strike"],
                 extra_attrs=attributes_to_preserve,
                 x_tolerance=xt,
                 y_tolerance=yt,
@@ -258,6 +276,31 @@ class ElementManager:
                     except Exception:
                         # Fallback: keep original text if python-bidi fails
                         pass
+
+        # ------------------------------------------------------------------
+        #  Propagate per-char strikethrough info up to word level.
+        # ------------------------------------------------------------------
+
+        if prepared_char_dicts:
+            for w in word_elements:
+                strike_chars = 0
+                total_chars = 0
+                if getattr(w, "_char_indices", None):
+                    for idx in w._char_indices:
+                        if 0 <= idx < len(prepared_char_dicts):
+                            total_chars += 1
+                            if prepared_char_dicts[idx].get("strike"):
+                                strike_chars += 1
+                elif getattr(w, "_char_dicts", None):
+                    for ch in w._char_dicts:
+                        total_chars += 1
+                        if ch.get("strike"):
+                            strike_chars += 1
+
+                if total_chars:
+                    w._obj["strike"] = (strike_chars / total_chars) >= 0.6
+                else:
+                    w._obj["strike"] = False
 
         generated_words = word_elements
         logger.debug(
@@ -749,3 +792,92 @@ class ElementManager:
                 return True
 
         return False
+
+    # ------------------------------------------------------------------
+    #  Strikethrough detection (horizontal strike-out lines)
+    # ------------------------------------------------------------------
+
+    def _mark_strikethrough_chars(self, char_dicts: List[Dict[str, Any]], *,
+                                  thickness_tol: float = 1.5,
+                                  horiz_tol: float = 1.0,
+                                  coverage_ratio: float = 0.7,
+                                  band_top: float = 0.35,
+                                  band_bottom: float = 0.65) -> None:
+        """Annotate character dictionaries with a boolean ``strike`` flag.
+
+        Args
+        ----
+        char_dicts : list
+            The list that _prepare_char_dicts() returned – *modified in place*.
+        thickness_tol : float
+            Maximum height (in PDF pts) for a path to be considered a strike.
+        horiz_tol : float
+            Vertical tolerance when deciding if a pdfplumber ``line`` object
+            is horizontal (|y0-y1| ≤ horiz_tol).
+        coverage_ratio : float
+            Minimum proportion of the glyph's width that must be overlapped
+            by a candidate line.
+        band_top, band_bottom : float
+            Fractions of the glyph's height that define the central band in
+            which a line must fall to count as a strikethrough.  Defaults to
+            35–65 %.
+        """
+
+        # -------------------------------------------------------------
+        # Collect candidate horizontal primitives (lines + skinny rects)
+        # -------------------------------------------------------------
+        raw_lines = list(getattr(self._page._page, "lines", []))
+        raw_rects = list(getattr(self._page._page, "rects", []))
+
+        candidates: List[Tuple[float, float, float, float]] = []  # (x0, y0, x1, y1)
+
+        # pdfplumber line objects – treat those whose angle ≈ 0°
+        for ln in raw_lines:
+            y0 = min(ln.get("y0", 0), ln.get("y1", 0))
+            y1 = max(ln.get("y0", 0), ln.get("y1", 0))
+            if abs(y1 - y0) <= horiz_tol:  # horizontal
+                candidates.append((ln.get("x0", 0), y0, ln.get("x1", 0), y1))
+
+        # Thin rectangles that act as drawn lines
+        pg_height = self._page.height
+        for rc in raw_rects:
+            rb0 = rc.get("y0", 0)
+            rb1 = rc.get("y1", 0)
+            y0_raw = min(rb0, rb1)
+            y1_raw = max(rb0, rb1)
+            if (y1_raw - y0_raw) <= thickness_tol:
+                # Convert from PDF (origin bottom-left) to top-based coords used by chars
+                y0 = pg_height - y1_raw  # upper edge distance from top
+                y1 = pg_height - y0_raw  # lower edge distance from top
+                candidates.append((rc.get("x0", 0), y0, rc.get("x1", 0), y1))
+
+        if not candidates:
+            return  # nothing to mark
+
+        # -------------------------------------------------------------
+        # Walk through characters and flag those crossed by a candidate
+        # -------------------------------------------------------------
+        for ch in char_dicts:
+            ch.setdefault("strike", False)  # default value
+            try:
+                x0, top, x1, bottom = ch["x0"], ch["top"], ch["x1"], ch["bottom"]
+            except KeyError:
+                continue  # skip malformed char dict
+
+            width = x1 - x0
+            height = bottom - top
+            if width <= 0 or height <= 0:
+                continue
+
+            mid_y0 = top + band_top * height
+            mid_y1 = top + band_bottom * height
+
+            # Check each candidate line for overlap
+            for lx0, ly0, lx1, ly1 in candidates:
+                if (ly0 >= (mid_y0 - 1.0)) and (ly1 <= (mid_y1 + 1.0)):  # lies inside central band
+                    overlap = min(x1, lx1) - max(x0, lx0)
+                    if overlap > 0 and (overlap / width) >= coverage_ratio:
+                        ch["strike"] = True
+                        break  # no need to check further lines
+
+        # Done – char_dicts mutated in place

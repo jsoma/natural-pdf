@@ -746,6 +746,11 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
         elif name == "vertical":
             filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
 
+        # --- New: :strike / :strikethrough / :strikeout pseudo-classes --- #
+        elif name in ("strike", "strikethrough", "strikeout"):
+            filter_lambda = lambda el: hasattr(el, "strike") and bool(getattr(el, "strike"))
+            filter_name = f"pseudo-class :{name}"
+
         # Check predefined lambda functions (e.g., :first-child, :empty)
         elif name in PSEUDO_CLASS_FUNCTIONS:
             filter_lambda = PSEUDO_CLASS_FUNCTIONS[name]
