@@ -2004,21 +2004,45 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         Apply OCR to this region and return the created text elements.
 
-        Args:
-            replace: If True (default), removes existing OCR elements in the region
-                    before adding new ones. If False, adds new OCR elements without
-                    removing existing ones.
-            **ocr_params: Keyword arguments passed to the OCR Manager.
-                          Common parameters like `engine`, `languages`, `min_confidence`,
-                          `device`, and `resolution` (for image rendering) should be
-                          provided here. **The `languages` list must contain codes
-                          understood by the specific engine selected.** No mapping
-                          is performed. Engine-specific settings can be passed in
-                          an `options` object (e.g., `options=EasyOCROptions(...)`).
+        This method supports two modes:
+        1. **Built-in OCR Engines** (default) – identical to previous behaviour. Pass typical
+           parameters like ``engine='easyocr'`` or ``languages=['en']`` and the method will
+           route the request through :class:`OCRManager`.
+        2. **Custom OCR Function** – pass a *callable* under the keyword ``function`` (or
+           ``ocr_function``). The callable will receive *this* Region instance and should
+           return the extracted text (``str``) or ``None``.  Internally the call is
+           delegated to :pymeth:`apply_custom_ocr` so the same logic (replacement, element
+           creation, etc.) is re-used.
 
-        Returns:
-            Self for method chaining.
+        Examples
+        ---------
+        >>> def llm_ocr(region):
+        ...     image = region.to_image(resolution=300, crop=True)
+        ...     return my_llm_client.ocr(image)
+        >>> region.apply_ocr(function=llm_ocr)
+
+        Args:
+            replace: Whether to remove existing OCR elements first (default ``True``).
+            **ocr_params: Parameters for the built-in OCR manager *or* the special
+                          ``function``/``ocr_function`` keyword to trigger custom mode.
+
+        Returns
+        -------
+            Self – for chaining.
         """
+        # --- Custom OCR function path --------------------------------------------------
+        custom_func = ocr_params.pop("function", None) or ocr_params.pop("ocr_function", None)
+        if callable(custom_func):
+            # Delegate to the specialised helper while preserving key kwargs
+            return self.apply_custom_ocr(
+                ocr_function=custom_func,
+                source_label=ocr_params.pop("source_label", "custom-ocr"),
+                replace=replace,
+                confidence=ocr_params.pop("confidence", None),
+                add_to_page=ocr_params.pop("add_to_page", True),
+            )
+
+        # --- Original built-in OCR engine path (unchanged except docstring) ------------
         # Ensure OCRManager is available
         if not hasattr(self.page._parent, "_ocr_manager") or self.page._parent._ocr_manager is None:
             logger.error("OCRManager not available on parent PDF. Cannot apply OCR to region.")
@@ -2182,6 +2206,133 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                     exc_info=True,
                 )
         logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
+        return self
+
+    def apply_custom_ocr(
+        self,
+        ocr_function: Callable[["Region"], Optional[str]],
+        source_label: str = "custom-ocr",
+        replace: bool = True,
+        confidence: Optional[float] = None,
+        add_to_page: bool = True,
+    ) -> "Region":
+        """
+        Apply a custom OCR function to this region and create text elements from the results.
+
+        This is useful when you want to use a custom OCR method (e.g., an LLM API, 
+        specialized OCR service, or any custom logic) instead of the built-in OCR engines.
+
+        Args:
+            ocr_function: A callable that takes a Region and returns the OCR'd text (or None).
+                          The function receives this region as its argument and should return
+                          the extracted text as a string, or None if no text was found.
+            source_label: Label to identify the source of these text elements (default: "custom-ocr").
+                          This will be set as the 'source' attribute on created elements.
+            replace: If True (default), removes existing OCR elements in this region before
+                     adding new ones. If False, adds new OCR elements alongside existing ones.
+            confidence: Optional confidence score for the OCR result (0.0-1.0).
+                        If None, defaults to 1.0 if text is returned, 0.0 if None is returned.
+            add_to_page: If True (default), adds the created text element to the page.
+                         If False, creates the element but doesn't add it to the page.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            # Using with an LLM
+            def ocr_with_llm(region):
+                image = region.to_image(resolution=300, crop=True)
+                # Call your LLM API here
+                return llm_client.ocr(image)
+            
+            region.apply_custom_ocr(ocr_with_llm)
+            
+            # Using with a custom OCR service
+            def ocr_with_service(region):
+                img_bytes = region.to_image(crop=True).tobytes()
+                response = ocr_service.process(img_bytes)
+                return response.text
+            
+            region.apply_custom_ocr(ocr_with_service, source_label="my-ocr-service")
+        """
+        # If replace is True, remove existing OCR elements in this region
+        if replace:
+            logger.info(
+                f"Region {self.bbox}: Removing existing OCR elements before applying custom OCR."
+            )
+            
+            removed_count = 0
+            
+            # Helper to remove a single element safely
+            def _safe_remove(elem):
+                nonlocal removed_count
+                success = False
+                if hasattr(elem, "page") and hasattr(elem.page, "_element_mgr"):
+                    etype = getattr(elem, "object_type", "word")
+                    if etype == "word":
+                        etype_key = "words"
+                    elif etype == "char":
+                        etype_key = "chars"
+                    else:
+                        etype_key = etype + "s" if not etype.endswith("s") else etype
+                    try:
+                        success = elem.page._element_mgr.remove_element(elem, etype_key)
+                    except Exception:
+                        success = False
+                if success:
+                    removed_count += 1
+            
+            # Remove OCR elements overlapping this region
+            for word in list(self.page._element_mgr.words):
+                if getattr(word, "source", "").startswith("ocr") and self.intersects(word):
+                    _safe_remove(word)
+            
+            # Also check custom-ocr sources
+            for word in list(self.page._element_mgr.words):
+                if getattr(word, "source", "") == source_label and self.intersects(word):
+                    _safe_remove(word)
+            
+            if removed_count > 0:
+                logger.info(
+                    f"Region {self.bbox}: Removed {removed_count} existing OCR elements."
+                )
+        
+        # Call the custom OCR function
+        try:
+            logger.debug(f"Region {self.bbox}: Calling custom OCR function...")
+            ocr_text = ocr_function(self)
+            
+            if ocr_text is not None and not isinstance(ocr_text, str):
+                logger.warning(
+                    f"Custom OCR function returned non-string type ({type(ocr_text)}). "
+                    f"Converting to string."
+                )
+                ocr_text = str(ocr_text)
+                
+        except Exception as e:
+            logger.error(
+                f"Error calling custom OCR function for region {self.bbox}: {e}",
+                exc_info=True
+            )
+            return self
+        
+        # Create text element if we got text
+        if ocr_text is not None:
+            # Use the to_text_element method to create the element
+            text_element = self.to_text_element(
+                text_content=ocr_text,
+                source_label=source_label,
+                confidence=confidence,
+                add_to_page=add_to_page
+            )
+            
+            logger.info(
+                f"Region {self.bbox}: Created text element with {len(ocr_text)} chars"
+                f"{' and added to page' if add_to_page else ''}"
+            )
+        else:
+            logger.debug(f"Region {self.bbox}: Custom OCR function returned None (no text found)")
+        
         return self
 
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion="both"):
@@ -2978,6 +3129,33 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         if not hasattr(self, "page") or self.page is None:
             raise ValueError("Region must have a valid 'page' attribute to create a TextElement.")
 
+        # Create character dictionaries for the text
+        char_dicts = []
+        if actual_text:
+            # Create a single character dict that spans the entire region
+            # This is a simplified approach - OCR engines typically create one per character
+            char_dict = {
+                "text": actual_text,
+                "x0": self.x0,
+                "top": self.top,
+                "x1": self.x1,
+                "bottom": self.bottom,
+                "width": self.width,
+                "height": self.height,
+                "object_type": "char",
+                "page_number": self.page.page_number,
+                "fontname": default_font_name,
+                "size": default_font_size,
+                "upright": True,
+                "direction": 1,
+                "adv": self.width,
+                "source": source_label,
+                "confidence": final_confidence,
+                "stroking_color": (0, 0, 0),
+                "non_stroking_color": (0, 0, 0),
+            }
+            char_dicts.append(char_dict)
+
         elem_data = {
             "text": actual_text,
             "x0": self.x0,
@@ -2997,7 +3175,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             "adv": self.width,
             "source": source_label,
             "confidence": final_confidence,
-            "_char_dicts": [],
+            "_char_dicts": char_dicts,
         }
         text_element = TextElement(elem_data, self.page)
 
@@ -3013,6 +3191,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 logger.debug(
                     f"TextElement created from region {self.bbox} and added to page {self.page.page_number} as {add_as_type}."
                 )
+                # Also add character dictionaries to the chars collection
+                if char_dicts and object_type == "word":
+                    for char_dict in char_dicts:
+                        self.page._element_mgr.add_element(char_dict, element_type="chars")
             else:
                 page_num_str = (
                     str(self.page.page_number) if hasattr(self.page, "page_number") else "N/A"

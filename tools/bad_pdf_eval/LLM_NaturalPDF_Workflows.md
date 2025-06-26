@@ -41,12 +41,7 @@ flags = labels.apply(lambda b: b.category)
 
 ## 4. Scanned ledger with line-based table detection
 ```python
-page = PDF('scanned.pdf').pages[2]
-page.apply_ocr('surya', resolution=200)
-area = page.find('text:contains("Ledger")').below()
-area.detect_lines(source_label='auto', peak_threshold_h=0.5, peak_threshold_v=0.25)
-area.detect_table_structure_from_lines(source_label='auto')
-rows = area.extract_table()
+# Use guides
 ```
 
 ## 5. Colour-blob anchoring to pull legend
@@ -129,6 +124,83 @@ for i, sec in enumerate(sections, 1):
     sec.save_image(f'section_{i}.png')
     with open(f'section_{i}.txt', 'w') as f:
         f.write(sec.extract_text())
+```
+
+## 13. Extract complex table data using manual Guides API
+```python
+from natural_pdf import PDF
+from natural_pdf.analyzers import Guides
+pdf = PDF('form.pdf')
+page = pdf.pages[0]
+
+# Create guides object for the page
+guides = Guides(page)
+
+# Method 1: Content-based guides (smart)
+guides.vertical.from_content(
+    markers=['Name:', 'Address:', 'Phone Number:'],
+    align='after',  # Place guides after field labels
+    expansion=10    # Extend guides to capture field areas
+)
+
+# Find horizontal boundaries from all text - you can use selectors or ElementCollection
+guides.horizontal.from_content(
+    markers='text:contains(":")',  # Single selector for field labels
+    align='center'  # Center guides on text lines
+)
+
+# Alternative: Use ElementCollection directly
+field_labels = page.find_all('text:contains(":")')
+guides.horizontal.from_content(
+    markers=field_labels,  # Pass ElementCollection directly
+    align='center'
+)
+
+# Method 2: Pixel-based line detection (no vector lines needed!)
+guides_auto = Guides.from_lines(
+    page,
+    detection_method='pixels',  # Detect from image
+    threshold='auto',           # Auto-find best threshold
+    max_lines_h=10,            # Limit lines found
+    max_lines_v=4,
+    resolution=192,            # DPI for detection
+    min_gap_h=15               # Minimum gap between lines
+)
+
+# Show what we found
+guides_auto.show()
+
+# Fine-tune by snapping to whitespace
+guides_auto.vertical.snap_to_whitespace(min_gap=20)
+guides_auto.horizontal.snap_to_whitespace()
+
+# Method 3: Combine both approaches
+guides = Guides(page)
+# Start with pixel detection for major lines
+guides.horizontal.from_lines(detection_method='pixels', max_lines=5)
+# Add content-based vertical guides
+guides.vertical.from_content(markers=['Name:', 'Date:', 'Amount:'], align='after')
+# Manual adjustment if needed
+guides.vertical.add(450)  # Add one more guide
+
+# Build the grid and extract
+guides.build_grid(source='form_fields')
+cells = page.find_all('table_cell[source=form_fields]')
+
+# Extract field data
+form_data = {}
+for cell in cells:
+    text = cell.extract_text().strip()
+    if ':' in text:
+        # This is a label cell
+        label = text.replace(':', '')
+        # Find the cell to its right (same row, next column)
+        value_cell = page.find(f'table_cell[row_index={cell.metadata["row_index"]}][col_index={cell.metadata["col_index"]+1}]')
+        if value_cell:
+            form_data[label] = value_cell.extract_text().strip()
+
+print(form_data)
+# {'Name': 'John Smith', 'Address': '123 Main St', 'Phone Number': '555-1234'}
 ```
 
 ---

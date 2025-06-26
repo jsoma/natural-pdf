@@ -1901,7 +1901,68 @@ class ElementCollection(
             )
         )
 
+    # ------------------------------------------------------------------
+    # NEW METHOD: apply_ocr for collections (supports custom function)
+    # ------------------------------------------------------------------
+    def apply_ocr(
+        self,
+        *,
+        function: Optional[Callable[["Region"], Optional[str]]] = None,
+        show_progress: bool = True,
+        **kwargs,
+    ) -> "ElementCollection":
+        """Apply OCR to every element in the collection.
 
+        This is a convenience wrapper that simply iterates over the collection
+        and calls ``el.apply_ocr(...)`` on each item.
+
+        Two modes are supported depending on the arguments provided:
+
+        1. **Built-in OCR engines** – pass parameters like ``engine='easyocr'``
+           or ``languages=['en']`` and each element delegates to the global
+           OCRManager.
+        2. **Custom function** – pass a *callable* via the ``function`` keyword
+           (alias ``ocr_function`` also recognised).  The callable will receive
+           the element/region and must return the recognised text (or ``None``).
+           Internally this is forwarded through the element's own
+           :py:meth:`apply_ocr` implementation, so the behaviour mirrors the
+           single-element API.
+
+        Parameters
+        ----------
+        function : callable, optional
+            Custom OCR function to use instead of the built-in engines.
+        show_progress : bool, default True
+            Display a tqdm progress bar while processing.
+        **kwargs
+            Additional parameters forwarded to each element's ``apply_ocr``.
+
+        Returns
+        -------
+        ElementCollection
+            *Self* for fluent chaining.
+        """
+        # Alias for backward-compatibility
+        if function is None and "ocr_function" in kwargs:
+            function = kwargs.pop("ocr_function")
+
+        def _process(el):
+            if hasattr(el, "apply_ocr"):
+                if function is not None:
+                    return el.apply_ocr(function=function, **kwargs)
+                else:
+                    return el.apply_ocr(**kwargs)
+            else:
+                logger.warning(
+                    f"Element of type {type(el).__name__} does not support apply_ocr. Skipping."
+                )
+                return el
+
+        # Use collection's apply helper for optional progress bar
+        self.apply(_process, show_progress=show_progress)
+        return self
+
+    # ------------------------------------------------------------------
 
 
 class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):

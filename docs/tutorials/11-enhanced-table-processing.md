@@ -102,13 +102,16 @@ Expected output: printed rows that roughly match the visual columns; best effort
 If `method="pdfplumber"` cannot find the grid, detect lines explicitly and build the table structure yourself.
 
 ```python
+from natural_pdf.analyzers import Guides
+
 page.detect_lines(resolution=200, source_label="detected", horizontal=True, vertical=True)
 
 # (Optional) visual check
 page.find_all("line[source=detected]").show(group_by="orientation")
 
-# Convert lines → regions
-page.detect_table_structure_from_lines(source_label="detected", cell_padding=0.5)
+# Convert lines → regions using Guides
+guides = Guides.from_lines(page, source_label="detected")
+guides.build_grid(source="detected", cell_padding=0.5)
 
 table = page.find("region[type='table']")
 ```

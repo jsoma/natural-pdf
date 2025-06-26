@@ -183,13 +183,56 @@ page.apply_ocr('surya', resolution=200)
 
 area = page.find('text:contains("Violations")').below()
 # preview peaks to pick thresholds
-area.detect_lines_preview(peak_threshold_h=0.4, peak_threshold_v=0.25)
 area.detect_lines(source_label='manual', peak_threshold_h=0.4, peak_threshold_v=0.25)
 area.detect_table_structure_from_lines(source_label='manual')
 table = area.extract_table()
 ```
 
-## 13. Vision classification
+## 13. Manual table structure with Guides API
+```python
+from natural_pdf.analyzers import Guides
+
+# Create guides for precise table control
+guides = Guides(page)
+
+# Smart content-based guides with flexible markers
+guides.vertical.from_content(markers=['Name', 'Age'], align='between')
+guides.horizontal.from_content(markers='text[size>=10]', align='center')
+
+# Single selector or ElementCollection also work
+guides.vertical.from_content(markers='text:contains("Total")')
+headers = page.find_all('text:bold')
+guides.horizontal.from_content(markers=headers, align='center')
+
+# Manual placement - accepts lists or single values
+guides.vertical.add([150, 300, 450])  # multiple positions
+guides.horizontal.add(200)  # single position
+
+# From existing vector lines
+page.detect_lines(source_label='lines')
+guides.vertical.from_lines(source='lines', outer=False)
+
+# Direct pixel-based line detection (no pre-detection needed!)
+guides.vertical.from_lines(detection_method='pixels', max_lines=5)
+guides.horizontal.from_lines(
+    detection_method='pixels',
+    threshold='auto',  # or 0.0-1.0
+    resolution=192,
+    min_gap_h=10
+)
+
+# Preview and fine-tune
+guides.show()
+guides.vertical.snap_to_whitespace()
+guides.horizontal.snap_to_content(markers=['Row 1', 'Row 2'])
+
+# Build grid and extract
+guides.build_grid(source='manual')
+table = page.find('table[source=manual]')
+df = table.extract_table().df
+```
+
+## 14. Vision classification
 ```python
 # page-level
 pdf.classify(['diagram', 'text', 'invoice'], using='vision')
@@ -199,7 +242,7 @@ rect = page.find('rect')[0]
 rect.classify(['checked', 'unchecked'], using='vision').category
 ```
 
-## 14. Deskew crooked scans
+## 15. Deskew crooked scans
 ```python
 # page-level preview (returns PIL.Image)
 fixed_img = page.deskew()              # auto-detects skew angle
@@ -209,7 +252,7 @@ clean = pdf.deskew()                   # optional angle=..., resolution=300
 clean.save_pdf('deskewed.pdf', original=True)
 ```
 
-## 15. Split repeating sections
+## 16. Split repeating sections
 ```python
 sections = page.get_sections(
     start_elements='text:bold',
@@ -219,7 +262,7 @@ for sec in sections:
     print(sec.extract_text()[:100])
 ```
 
-## 16. Extractive QA helpers
+## 17. Extractive QA helpers
 ```python
 answer = page.ask("What date was the inspection?")
 answer.show()                         # visual context

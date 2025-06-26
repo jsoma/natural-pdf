@@ -247,6 +247,7 @@ class ElementManager:
             import statistics
 
             sizes = [c.get("size", 0) for c in prepared_char_dicts if c.get("size")]
+            median_size = None
             if sizes:
                 median_size = statistics.median(sizes)
                 if xt is None:
