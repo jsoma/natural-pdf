@@ -108,12 +108,13 @@ class _LazyPageList(Sequence):
     also supported and will materialise pages on demand.
     """
 
-    def __init__(self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None):
+    def __init__(self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None, load_text=True):
         self._parent_pdf = parent_pdf
         self._plumber_pdf = plumber_pdf
         self._font_attrs = font_attrs
         # One slot per pdfplumber page – initially all None
         self._cache: List[Optional["Page"]] = [None] * len(self._plumber_pdf.pages)
+        self._load_text = load_text
 
     # Internal helper -----------------------------------------------------
     def _create_page(self, index: int) -> "Page":
@@ -123,7 +124,7 @@ class _LazyPageList(Sequence):
             from natural_pdf.core.page import Page
 
             plumber_page = self._plumber_pdf.pages[index]
-            cached = Page(plumber_page, parent=self._parent_pdf, index=index, font_attrs=self._font_attrs)
+            cached = Page(plumber_page, parent=self._parent_pdf, index=index, font_attrs=self._font_attrs, load_text=self._load_text)
             self._cache[index] = cached
         return cached
 
@@ -170,6 +171,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         keep_spaces: bool = True,
         text_tolerance: Optional[dict] = None,
         auto_text_tolerance: bool = True,
+        text_layer: bool = True,
     ):
         """
         Initialize the enhanced PDF object.
@@ -181,11 +183,14 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             keep_spaces: Whether to include spaces in word elements
             text_tolerance: PDFplumber-style tolerance settings
             auto_text_tolerance: Whether to automatically scale text tolerance
+            text_layer: Whether to keep the existing text layer from the PDF (default: True).
+                       If False, removes all existing text elements during initialization.
         """
         self._original_path_or_stream = path_or_url_or_stream
         self._temp_file = None
         self._resolved_path = None
         self._is_stream = False
+        self._text_layer = text_layer
         stream_to_open = None
 
         if hasattr(path_or_url_or_stream, "read"):  # Check if it's file-like
@@ -257,7 +262,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         self._manager_registry = {}
 
         # Lazily instantiate pages only when accessed
-        self._pages = _LazyPageList(self, self._pdf, font_attrs=font_attrs)
+        self._pages = _LazyPageList(self, self._pdf, font_attrs=font_attrs, load_text=self._text_layer)
 
         self._element_cache = {}
         self._exclusions = []
@@ -267,6 +272,13 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         self._initialize_managers()
         self._initialize_highlighter()
+        
+        # Remove text layer if requested
+        if not self._text_layer:
+            logger.info("Removing text layer as requested (text_layer=False)")
+            # Text layer is not loaded when text_layer=False, so no need to remove
+            pass
+        
         # Analysis results accessed via self.analyses property (see below)
 
         # --- Automatic cleanup when object is garbage-collected ---
@@ -1463,6 +1475,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
                 reading_order=self._reading_order,
                 font_attrs=self._font_attrs,
                 keep_spaces=self._config.get("keep_spaces", True),
+                text_layer=self._text_layer,
             )
             return new_pdf
         except Exception as e:

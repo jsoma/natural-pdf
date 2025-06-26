@@ -101,7 +101,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
     with improved selection, navigation, extraction, and question-answering capabilities.
     """
 
-    def __init__(self, page: "pdfplumber.page.Page", parent: "PDF", index: int, font_attrs=None):
+    def __init__(self, page: "pdfplumber.page.Page", parent: "PDF", index: int, font_attrs=None, load_text: bool = True):
         """
         Initialize a page wrapper.
 
@@ -110,10 +110,12 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             parent: Parent PDF object
             index: Index of this page in the PDF (0-based)
             font_attrs: Font attributes to consider when grouping characters into words.
+            load_text: Whether to load text elements from the PDF (default: True).
         """
         self._page = page
         self._parent = parent
         self._index = index
+        self._load_text = load_text
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
         self._skew_angle: Optional[float] = None  # Stores detected skew angle
@@ -136,7 +138,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         self._config = dict(getattr(self._parent, "_config", {}))
 
         # Initialize ElementManager, passing font_attrs
-        self._element_mgr = ElementManager(self, font_attrs=font_attrs)
+        self._element_mgr = ElementManager(self, font_attrs=font_attrs, load_text=self._load_text)
         # self._highlighter = HighlightingService(self) # REMOVED - Use property accessor
         # --- NEW --- Central registry for analysis results
         self.analyses: Dict[str, Any] = {}
@@ -2997,6 +2999,29 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             properties, and other details for each element
         """
         return self.find_all('*').inspect(limit=limit)
+
+    def remove_text_layer(self) -> "Page":
+        """
+        Remove all text elements from this page.
+        
+        This removes all text elements (words and characters) from the page,
+        effectively clearing the text layer.
+        
+        Returns:
+            Self for method chaining
+        """
+        logger.info(f"Page {self.number}: Removing all text elements...")
+        
+        # Remove all words and chars from the element manager
+        removed_words = len(self._element_mgr.words)
+        removed_chars = len(self._element_mgr.chars)
+        
+        # Clear the lists
+        self._element_mgr._elements["words"] = []
+        self._element_mgr._elements["chars"] = []
+        
+        logger.info(f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters")
+        return self
 
     @property
     def lines(self) -> List[Any]:

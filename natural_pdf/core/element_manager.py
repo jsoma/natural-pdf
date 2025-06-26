@@ -146,7 +146,7 @@ class ElementManager:
     contained in the Page class, providing better separation of concerns.
     """
 
-    def __init__(self, page, font_attrs=None):
+    def __init__(self, page, font_attrs=None, load_text: bool = True):
         """
         Initialize the ElementManager.
 
@@ -156,9 +156,11 @@ class ElementManager:
                        Default: ['fontname', 'size', 'bold', 'italic']
                        None: Only consider spatial relationships
                        List: Custom attributes to consider
+            load_text: Whether to load text elements from the PDF (default: True).
         """
         self._page = page
         self._elements = None  # Lazy-loaded
+        self._load_text = load_text
         # Default to splitting by fontname, size, bold, italic if not specified
         # Renamed internal variable for clarity
         self._word_split_attributes = (
@@ -175,11 +177,15 @@ class ElementManager:
 
         logger.debug(f"Page {self._page.number}: Loading elements...")
 
-        # 1. Prepare character dictionaries (native + OCR) with necessary attributes
-        prepared_char_dicts = self._prepare_char_dicts()
-        logger.debug(
-            f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
-        )
+        # 1. Prepare character dictionaries only if loading text
+        if self._load_text:
+            prepared_char_dicts = self._prepare_char_dicts()
+            logger.debug(
+                f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
+            )
+        else:
+            prepared_char_dicts = []
+            logger.debug(f"Page {self._page.number}: Skipping text loading (load_text=False)")
 
         # -------------------------------------------------------------
         # Detect strikethrough (horizontal strike-out lines) on raw
@@ -189,61 +195,75 @@ class ElementManager:
         # belong to the same word.
         # -------------------------------------------------------------
 
-        try:
-            self._mark_strikethrough_chars(prepared_char_dicts)
-        except Exception as strike_err:  # pragma: no cover – strike detection must never crash loading
-            logger.warning(
-                f"Page {self._page.number}: Strikethrough detection failed – {strike_err}",
-                exc_info=True,
-            )
+        if self._load_text and prepared_char_dicts:
+            try:
+                self._mark_strikethrough_chars(prepared_char_dicts)
+            except Exception as strike_err:  # pragma: no cover – strike detection must never crash loading
+                logger.warning(
+                    f"Page {self._page.number}: Strikethrough detection failed – {strike_err}",
+                    exc_info=True,
+                )
 
         # -------------------------------------------------------------
         # Detect underlines on raw characters (must come after strike so
         # both attributes are present before word grouping).
         # -------------------------------------------------------------
 
-        try:
-            self._mark_underline_chars(prepared_char_dicts)
-        except Exception as u_err:  # pragma: no cover
-            logger.warning(
-                f"Page {self._page.number}: Underline detection failed – {u_err}",
-                exc_info=True,
-            )
+        if self._load_text and prepared_char_dicts:
+            try:
+                self._mark_underline_chars(prepared_char_dicts)
+            except Exception as u_err:  # pragma: no cover
+                logger.warning(
+                    f"Page {self._page.number}: Underline detection failed – {u_err}",
+                    exc_info=True,
+                )
 
         # Detect highlights
-        try:
-            self._mark_highlight_chars(prepared_char_dicts)
-        except Exception as h_err:
-            logger.warning(
-                f"Page {self._page.number}: Highlight detection failed – {h_err}",
-                exc_info=True,
-            )
+        if self._load_text and prepared_char_dicts:
+            try:
+                self._mark_highlight_chars(prepared_char_dicts)
+            except Exception as h_err:
+                logger.warning(
+                    f"Page {self._page.number}: Highlight detection failed – {h_err}",
+                    exc_info=True,
+                )
 
         # Create a mapping from character dict to index for efficient lookup
-        char_to_index = {}
-        for idx, char_dict in enumerate(prepared_char_dicts):
-            key = (
-                char_dict.get("x0", 0),
-                char_dict.get("top", 0),
-                char_dict.get("text", ""),
-            )
-            char_to_index[key] = idx
+        if self._load_text:
+            char_to_index = {}
+            for idx, char_dict in enumerate(prepared_char_dicts):
+                key = (
+                    char_dict.get("x0", 0),
+                    char_dict.get("top", 0),
+                    char_dict.get("text", ""),
+                )
+                char_to_index[key] = idx
+        else:
+            char_to_index = {}
 
         # 2. Instantiate the custom word extractor
         # Prefer page-level config over PDF-level for tolerance lookup
+        word_elements: List[TextElement] = []
+        
+        # Get config objects (needed for auto_text_tolerance check)
         page_config = getattr(self._page, "_config", {})
         pdf_config = getattr(self._page._parent, "_config", {})
-
-        # Start with any explicitly supplied tolerances (may be None)
-        xt = page_config.get("x_tolerance", pdf_config.get("x_tolerance"))
-        yt = page_config.get("y_tolerance", pdf_config.get("y_tolerance"))
+        
+        # Initialize tolerance variables
+        xt = None
+        yt = None
         use_flow = pdf_config.get("use_text_flow", False)
+        
+        if self._load_text and prepared_char_dicts:
+            # Start with any explicitly supplied tolerances (may be None)
+            xt = page_config.get("x_tolerance", pdf_config.get("x_tolerance"))
+            yt = page_config.get("y_tolerance", pdf_config.get("y_tolerance"))
 
         # ------------------------------------------------------------------
         # Auto-adaptive tolerance: scale based on median character size when
         # requested and explicit values are absent.
         # ------------------------------------------------------------------
-        if pdf_config.get("auto_text_tolerance", True):
+        if self._load_text and pdf_config.get("auto_text_tolerance", True):
             import statistics
 
             sizes = [c.get("size", 0) for c in prepared_char_dicts if c.get("size")]
@@ -323,7 +343,6 @@ class ElementManager:
                 current_line_key = line_key
             lines[-1].append(char_dict)
 
-        word_elements: List[TextElement] = []
         # Process each line separately with direction detection
         for line_chars in lines:
             if not line_chars:
@@ -480,7 +499,8 @@ class ElementManager:
                         except Exception:
                             w._obj["highlight_color"] = dominant_color
 
-        generated_words = word_elements
+        # generated_words defaults to empty list if text loading is disabled
+        generated_words = word_elements if self._load_text else []
         logger.debug(
             f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
         )

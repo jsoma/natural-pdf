@@ -2282,15 +2282,28 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 if success:
                     removed_count += 1
             
-            # Remove OCR elements overlapping this region
+            # Remove ALL OCR elements overlapping this region
+            # Remove elements with source=="ocr" (built-in OCR) or matching the source_label (previous custom OCR)
             for word in list(self.page._element_mgr.words):
-                if getattr(word, "source", "").startswith("ocr") and self.intersects(word):
+                word_source = getattr(word, "source", "")
+                # Match built-in OCR behavior: remove elements with source "ocr" exactly
+                # Also remove elements with the same source_label to avoid duplicates
+                if (word_source == "ocr" or word_source == source_label) and self.intersects(word):
                     _safe_remove(word)
             
-            # Also check custom-ocr sources
-            for word in list(self.page._element_mgr.words):
-                if getattr(word, "source", "") == source_label and self.intersects(word):
-                    _safe_remove(word)
+            # Also remove char dicts if needed (matching built-in OCR)
+            for char in list(self.page._element_mgr.chars):
+                # char can be dict or TextElement; normalize
+                char_src = char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                if char_src == "ocr" or char_src == source_label:
+                    # Rough bbox for dicts
+                    if isinstance(char, dict):
+                        cx0, ctop, cx1, cbottom = char.get("x0", 0), char.get("top", 0), char.get("x1", 0), char.get("bottom", 0)
+                    else:
+                        cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
+                    # Quick overlap check
+                    if not (cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom):
+                        _safe_remove(char)
             
             if removed_count > 0:
                 logger.info(
