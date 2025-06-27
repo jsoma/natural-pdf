@@ -561,7 +561,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         return self
 
     def add_exclusion(
-        self, exclusion_func: Callable[["Page"], Optional["Region"]], label: str = None
+        self, exclusion_func, label: str = None
     ) -> "PDF":
         """Add an exclusion function to the PDF.
 
@@ -607,6 +607,21 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
+        # ------------------------------------------------------------------
+        # NEW: Support selector strings and ElementCollection objects directly.
+        # We simply forward the same object to each page's add_exclusion which
+        # now knows how to interpret these inputs.
+        # ------------------------------------------------------------------
+        from natural_pdf.elements.collections import ElementCollection  # local import
+
+        if isinstance(exclusion_func, str) or isinstance(exclusion_func, ElementCollection):
+            # Store for bookkeeping
+            self._exclusions.append((exclusion_func, label))
+            for page in self._pages:
+                page.add_exclusion(exclusion_func, label=label)
+            return self
+
+        # Fallback to original callable / Region behaviour ------------------
         exclusion_data = (exclusion_func, label)
         self._exclusions.append(exclusion_data)
 

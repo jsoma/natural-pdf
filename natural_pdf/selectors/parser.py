@@ -24,6 +24,7 @@ This enables powerful document navigation like:
 - page.find('text[size>12]:bold:contains("Summary")')
 - page.find_all('rect[color~="red"]:above(text:contains("Total"))')
 - page.find('text:regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")')
+- page.find('text:regex("[\u2500-\u257F]")')  # Box drawing characters
 """
 
 import ast
@@ -747,6 +748,29 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
                         return search_term in element_text
 
             filter_lambda = contains_check
+
+        # --- Handle :regex pseudo-class (same as :contains with regex=True) ---
+        elif name == "regex" and args is not None:
+            ignore_case = not kwargs.get("case", True)  # Default case sensitive
+            filter_name = f"pseudo-class :regex({args!r}, ignore_case={ignore_case})"
+
+            def regex_check(element, args=args, ignore_case=ignore_case):
+                if not hasattr(element, "text") or not element.text:
+                    return False  # Element must have non-empty text
+
+                element_text = element.text
+                search_term = str(args)  # Ensure args is string
+
+                try:
+                    pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
+                    return bool(pattern.search(element_text))
+                except re.error as e:
+                    logger.warning(
+                        f"Invalid regex '{search_term}' in :regex selector: {e}. Returning False."
+                    )
+                    return False
+
+            filter_lambda = regex_check
 
         # --- Handle :startswith and :starts-with (alias) --- #
         elif name in ("starts-with", "startswith") and args is not None:

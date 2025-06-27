@@ -253,6 +253,7 @@ class FlowRegion:
         stack_direction: str = "vertical",
         stack_gap: int = 5,
         stack_background_color: Tuple[int, int, int] = (255, 255, 255),
+        crop: bool = False,
         **kwargs,
     ) -> Optional["PIL_Image"]:
         """
@@ -269,6 +270,7 @@ class FlowRegion:
             stack_direction: Direction to stack multiple pages ('vertical' or 'horizontal').
             stack_gap: Gap in pixels between stacked pages.
             stack_background_color: RGB background color for the stacked image.
+            crop: If True, crop each rendered page to the bounding box of constituent regions on that page.
             **kwargs: Additional arguments passed to the underlying rendering methods.
 
         Returns:
@@ -358,6 +360,16 @@ class FlowRegion:
             if not temp_highlights_for_page:
                 continue
 
+            # Calculate crop bbox if cropping is enabled
+            crop_bbox = None 
+            if crop and constituent_regions_on_this_page:
+                # Calculate the bounding box that encompasses all constituent regions on this page
+                min_x0 = min(region.bbox[0] for region in constituent_regions_on_this_page)
+                min_y0 = min(region.bbox[1] for region in constituent_regions_on_this_page)
+                max_x1 = max(region.bbox[2] for region in constituent_regions_on_this_page)
+                max_y1 = max(region.bbox[3] for region in constituent_regions_on_this_page)
+                crop_bbox = (min_x0, min_y0, max_x1, max_y1)
+
             page_image = highlighter_service.render_preview(
                 page_index=(
                     page_obj.index
@@ -369,6 +381,7 @@ class FlowRegion:
                 width=width,
                 labels=labels,  # Pass through labels
                 legend_position=legend_position,
+                crop_bbox=crop_bbox,
                 **kwargs,
             )
             if page_image:

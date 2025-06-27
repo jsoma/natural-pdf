@@ -312,6 +312,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         self,
         exclusion_func_or_region: Union[Callable[["Page"], "Region"], "Region", Any],
         label: Optional[str] = None,
+        method: str = "region",
     ) -> "Page":
         """
         Add an exclusion to the page. Text from these regions will be excluded from extraction.
@@ -321,54 +322,146 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             exclusion_func_or_region: Either a callable function returning a Region,
                                       a Region object, or another object with a valid .bbox attribute.
             label: Optional label for this exclusion (e.g., 'header', 'footer').
+            method: Exclusion method - 'region' (exclude all elements in bounding box) or 
+                    'element' (exclude only the specific elements). Default: 'region'.
 
         Returns:
             Self for method chaining
 
         Raises:
             TypeError: If a non-callable, non-Region object without a valid bbox is provided.
+            ValueError: If method is not 'region' or 'element'.
         """
+        # Validate method parameter
+        if method not in ("region", "element"):
+            raise ValueError(f"Invalid exclusion method '{method}'. Must be 'region' or 'element'.")
+
+        # ------------------------------------------------------------------
+        # NEW: Handle selector strings and ElementCollection instances
+        # ------------------------------------------------------------------
+        # If a user supplies a selector string (e.g. "text:bold") we resolve it
+        # immediately *on this page* to the matching elements and turn each into
+        # a Region object which is added to the internal exclusions list.
+        #
+        # Likewise, if an ElementCollection is passed we iterate over its
+        # elements and create Regions for each one.
+        # ------------------------------------------------------------------
+        from natural_pdf.elements.collections import ElementCollection  # local import to avoid cycle
+
+        # Selector string ---------------------------------------------------
+        if isinstance(exclusion_func_or_region, str):
+            selector_str = exclusion_func_or_region
+            matching_elements = self.find_all(selector_str, apply_exclusions=False)
+
+            if not matching_elements:
+                logger.warning(
+                    f"Page {self.index}: Selector '{selector_str}' returned no elements – no exclusions added."
+                )
+            else:
+                if method == "element":
+                    # Store the actual elements for element-based exclusion
+                    for el in matching_elements:
+                        self._exclusions.append((el, label, method))
+                        logger.debug(
+                            f"Page {self.index}: Added element exclusion from selector '{selector_str}' -> {el}"
+                        )
+                else:  # method == "region"
+                    for el in matching_elements:
+                        try:
+                            bbox_coords = (float(el.x0), float(el.top), float(el.x1), float(el.bottom))
+                            region = Region(self, bbox_coords, label=label)
+                            # Store directly as a Region tuple so we don't recurse endlessly
+                            self._exclusions.append((region, label, method))
+                            logger.debug(
+                                f"Page {self.index}: Added exclusion region from selector '{selector_str}' -> {bbox_coords}"
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                f"Page {self.index}: Failed to create exclusion region from element {el}: {e}"
+                            )
+            return self  # Completed processing for selector input
+
+        # ElementCollection -----------------------------------------------
+        if isinstance(exclusion_func_or_region, ElementCollection):
+            if method == "element":
+                # Store the actual elements for element-based exclusion
+                for el in exclusion_func_or_region:
+                    self._exclusions.append((el, label, method))
+                    logger.debug(
+                        f"Page {self.index}: Added element exclusion from ElementCollection -> {el}"
+                    )
+            else:  # method == "region"
+                # Convert each element to a Region and add
+                for el in exclusion_func_or_region:
+                    try:
+                        if not (hasattr(el, "bbox") and len(el.bbox) == 4):
+                            logger.warning(
+                                f"Page {self.index}: Skipping element without bbox in ElementCollection exclusion: {el}"
+                            )
+                            continue
+                        bbox_coords = tuple(float(v) for v in el.bbox)
+                        region = Region(self, bbox_coords, label=label)
+                        self._exclusions.append((region, label, method))
+                        logger.debug(
+                            f"Page {self.index}: Added exclusion region from ElementCollection element {bbox_coords}"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Page {self.index}: Failed to convert ElementCollection element to Region: {e}"
+                        )
+            return self  # Completed processing for ElementCollection input
+
+        # ------------------------------------------------------------------
+        # Existing logic (callable, Region, bbox-bearing objects)
+        # ------------------------------------------------------------------
         exclusion_data = None  # Initialize exclusion data
 
         if callable(exclusion_func_or_region):
-            # Store callable functions along with their label
-            exclusion_data = (exclusion_func_or_region, label)
+            # Store callable functions along with their label and method
+            exclusion_data = (exclusion_func_or_region, label, method)
             logger.debug(
-                f"Page {self.index}: Added callable exclusion '{label}': {exclusion_func_or_region}"
+                f"Page {self.index}: Added callable exclusion '{label}' with method '{method}': {exclusion_func_or_region}"
             )
         elif isinstance(exclusion_func_or_region, Region):
             # Store Region objects directly, assigning the label
             exclusion_func_or_region.label = label  # Assign label
-            exclusion_data = (exclusion_func_or_region, label)  # Store as tuple for consistency
+            exclusion_data = (exclusion_func_or_region, label, method)  # Store as tuple for consistency
             logger.debug(
-                f"Page {self.index}: Added Region exclusion '{label}': {exclusion_func_or_region}"
+                f"Page {self.index}: Added Region exclusion '{label}' with method '{method}': {exclusion_func_or_region}"
             )
         elif (
             hasattr(exclusion_func_or_region, "bbox")
             and isinstance(getattr(exclusion_func_or_region, "bbox", None), (tuple, list))
             and len(exclusion_func_or_region.bbox) == 4
         ):
-            # Convert objects with a valid bbox to a Region before storing
-            try:
-                bbox_coords = tuple(float(v) for v in exclusion_func_or_region.bbox)
-                # Pass the label to the Region constructor
-                region_to_add = Region(self, bbox_coords, label=label)
-                exclusion_data = (region_to_add, label)  # Store as tuple
+            if method == "element":
+                # For element method, store the element directly
+                exclusion_data = (exclusion_func_or_region, label, method)
                 logger.debug(
-                    f"Page {self.index}: Added exclusion '{label}' converted to Region from {type(exclusion_func_or_region)}: {region_to_add}"
+                    f"Page {self.index}: Added element exclusion '{label}': {exclusion_func_or_region}"
                 )
-            except (ValueError, TypeError, Exception) as e:
-                # Raise an error if conversion fails
-                raise TypeError(
-                    f"Failed to convert exclusion object {exclusion_func_or_region} with bbox {getattr(exclusion_func_or_region, 'bbox', 'N/A')} to Region: {e}"
-                ) from e
+            else:  # method == "region"
+                # Convert objects with a valid bbox to a Region before storing
+                try:
+                    bbox_coords = tuple(float(v) for v in exclusion_func_or_region.bbox)
+                    # Pass the label to the Region constructor
+                    region_to_add = Region(self, bbox_coords, label=label)
+                    exclusion_data = (region_to_add, label, method)  # Store as tuple
+                    logger.debug(
+                        f"Page {self.index}: Added exclusion '{label}' with method '{method}' converted to Region from {type(exclusion_func_or_region)}: {region_to_add}"
+                    )
+                except (ValueError, TypeError, Exception) as e:
+                    # Raise an error if conversion fails
+                    raise TypeError(
+                        f"Failed to convert exclusion object {exclusion_func_or_region} with bbox {getattr(exclusion_func_or_region, 'bbox', 'N/A')} to Region: {e}"
+                    ) from e
         else:
             # Reject invalid types
             raise TypeError(
                 f"Invalid exclusion type: {type(exclusion_func_or_region)}. Must be callable, Region, or have a valid .bbox attribute."
             )
 
-        # Append the stored data (tuple of object/callable and label)
+        # Append the stored data (tuple of object/callable, label, and method)
         if exclusion_data:
             self._exclusions.append(exclusion_data)
 
@@ -430,7 +523,8 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
     def _get_exclusion_regions(self, include_callable=True, debug=False) -> List["Region"]:
         """
         Get all exclusion regions for this page.
-        Assumes self._exclusions contains tuples of (callable/Region, label).
+        Now handles both region-based and element-based exclusions.
+        Assumes self._exclusions contains tuples of (callable/Region/Element, label, method).
 
         Args:
             include_callable: Whether to evaluate callable exclusion functions
@@ -445,8 +539,15 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             print(f"\nPage {self.index}: Evaluating {len(self._exclusions)} exclusions")
 
         for i, exclusion_data in enumerate(self._exclusions):
-            # Unpack the exclusion object/callable and its label
-            exclusion_item, label = exclusion_data
+            # Handle both old format (2-tuple) and new format (3-tuple) for backward compatibility
+            if len(exclusion_data) == 2:
+                # Old format: (exclusion_item, label)
+                exclusion_item, label = exclusion_data
+                method = "region"  # Default to region for old format
+            else:
+                # New format: (exclusion_item, label, method)
+                exclusion_item, label, method = exclusion_data
+            
             exclusion_label = label if label else f"exclusion {i}"
 
             # Process callable exclusion functions
@@ -495,7 +596,8 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                 regions.append(exclusion_item)  # Label is already on the Region object
                 if debug:
                     print(f"  - Added direct region '{label}': {exclusion_item}")
-            # No else needed, add_exclusion should prevent invalid types
+            # Element-based exclusions are not converted to regions here
+            # They will be handled separately in _filter_elements_by_exclusions
 
         if debug:
             print(f"Page {self.index}: Found {len(regions)} valid exclusion regions to apply")
@@ -506,14 +608,16 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         self, elements: List["Element"], debug_exclusions: bool = False
     ) -> List["Element"]:
         """
-        Filters a list of elements, removing those within the page's exclusion regions.
+        Filters a list of elements, removing those based on exclusion rules.
+        Handles both region-based exclusions (exclude all in area) and 
+        element-based exclusions (exclude only specific elements).
 
         Args:
             elements: The list of elements to filter.
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
 
         Returns:
-            A new list containing only the elements not falling within any exclusion region.
+            A new list containing only the elements not excluded.
         """
         if not self._exclusions:
             if debug_exclusions:
@@ -527,34 +631,68 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             include_callable=True, debug=debug_exclusions
         )
 
-        if not exclusion_regions:
-            if debug_exclusions:
-                print(
-                    f"Page {self.index}: No valid exclusion regions found, returning all {len(elements)} elements."
-                )
-            return elements
+        # Collect element-based exclusions
+        excluded_elements = set()  # Use set for O(1) lookup
+        
+        for exclusion_data in self._exclusions:
+            # Handle both old format (2-tuple) and new format (3-tuple)
+            if len(exclusion_data) == 2:
+                exclusion_item, label = exclusion_data
+                method = "region"
+            else:
+                exclusion_item, label, method = exclusion_data
+            
+            # Skip callables (already handled in _get_exclusion_regions)
+            if callable(exclusion_item):
+                continue
+                
+            # Skip regions (already in exclusion_regions)
+            if isinstance(exclusion_item, Region):
+                continue
+                
+            # Handle element-based exclusions
+            if method == "element" and hasattr(exclusion_item, "bbox"):
+                excluded_elements.add(id(exclusion_item))
+                if debug_exclusions:
+                    print(f"  - Added element exclusion: {exclusion_item}")
 
         if debug_exclusions:
             print(
-                f"Page {self.index}: Applying {len(exclusion_regions)} exclusion regions to {len(elements)} elements."
+                f"Page {self.index}: Applying {len(exclusion_regions)} region exclusions "
+                f"and {len(excluded_elements)} element exclusions to {len(elements)} elements."
             )
 
         filtered_elements = []
-        excluded_count = 0
+        region_excluded_count = 0
+        element_excluded_count = 0
+        
         for element in elements:
             exclude = False
-            for region in exclusion_regions:
-                # Use the region's method to check if the element is inside
-                if region._is_element_in_region(element):
-                    exclude = True
-                    excluded_count += 1
-                    break  # No need to check other regions for this element
+            
+            # Check element-based exclusions first (faster)
+            if id(element) in excluded_elements:
+                exclude = True
+                element_excluded_count += 1
+                if debug_exclusions:
+                    print(f"    Element {element} excluded by element-based rule")
+            else:
+                # Check region-based exclusions
+                for region in exclusion_regions:
+                    # Use the region's method to check if the element is inside
+                    if region._is_element_in_region(element):
+                        exclude = True
+                        region_excluded_count += 1
+                        if debug_exclusions:
+                            print(f"    Element {element} excluded by region {region}")
+                        break  # No need to check other regions for this element
+            
             if not exclude:
                 filtered_elements.append(element)
 
         if debug_exclusions:
             print(
-                f"Page {self.index}: Excluded {excluded_count} elements, keeping {len(filtered_elements)}."
+                f"Page {self.index}: Excluded {region_excluded_count} by regions, "
+                f"{element_excluded_count} by elements, keeping {len(filtered_elements)}."
             )
 
         return filtered_elements
@@ -1219,22 +1357,30 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             logger.debug(f"Page {self.number}: No word elements found.")
             return ""
 
-        # 2. Get Exclusions
-        apply_exclusions_flag = kwargs.get("use_exclusions", True)
+        # 2. Apply element-based exclusions if enabled
+        if use_exclusions and self._exclusions:
+            # Filter word elements through _filter_elements_by_exclusions 
+            # This handles both element-based and region-based exclusions
+            word_elements = self._filter_elements_by_exclusions(word_elements, debug_exclusions=debug)
+            if debug:
+                logger.debug(f"Page {self.number}: {len(word_elements)} words remaining after exclusion filtering.")
+
+        # 3. Get region-based exclusions for spatial filtering
+        apply_exclusions_flag = kwargs.get("use_exclusions", use_exclusions)
         exclusion_regions = []
         if apply_exclusions_flag and self._exclusions:
             exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug)
             if debug:
-                logger.debug(f"Page {self.number}: Applying {len(exclusion_regions)} exclusions.")
+                logger.debug(f"Page {self.number}: Found {len(exclusion_regions)} region exclusions for spatial filtering.")
         elif debug:
             logger.debug(f"Page {self.number}: Not applying exclusions.")
 
-        # 3. Collect All Character Dictionaries from Word Elements
+        # 4. Collect All Character Dictionaries from remaining Word Elements
         all_char_dicts = []
         for word in word_elements:
             all_char_dicts.extend(getattr(word, "_char_dicts", []))
 
-        # 4. Spatially Filter Characters
+        # 5. Spatially Filter Characters (only by regions, elements already filtered above)
         filtered_chars = filter_chars_spatially(
             char_dicts=all_char_dicts,
             exclusion_regions=exclusion_regions,
