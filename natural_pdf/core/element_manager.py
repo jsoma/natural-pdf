@@ -1,8 +1,16 @@
-"""
-Element Manager for natural-pdf.
+"""Element Manager for natural-pdf.
 
-This class handles the loading, creation, and management of PDF elements like
-characters, words, rectangles, and lines extracted from a page.
+This module handles the loading, creation, and management of PDF elements like
+characters, words, rectangles, lines, and images extracted from a page. The
+ElementManager class serves as the central coordinator for element lifecycle
+management and provides enhanced word extraction capabilities.
+
+The module includes:
+- Element creation and caching for performance
+- Custom word extraction that respects font boundaries
+- OCR coordinate transformation and integration
+- Text decoration detection (underline, strikethrough, highlights)
+- Performance optimizations for bulk text processing
 """
 
 import logging
@@ -51,12 +59,28 @@ HIGHLIGHT_DEFAULTS = {
 
 @contextmanager
 def disable_text_sync():
-    """
-    Temporarily disable text synchronization for performance.
+    """Temporarily disable text synchronization for performance.
     
-    This is used when bulk-updating text content where character-level
-    synchronization is not needed, such as during bidi processing.
-    Fixes exponential recursion issue with Arabic/RTL text processing.
+    This context manager is used when bulk-updating text content where character-level
+    synchronization is not needed, such as during bidi processing or large-scale
+    text transformations. It prevents exponential recursion issues with Arabic/RTL
+    text processing by bypassing the normal text property setter.
+
+    Yields:
+        None: The context where text synchronization is disabled.
+
+    Example:
+        ```python
+        with disable_text_sync():
+            for element in text_elements:
+                element.text = process_arabic_text(element.text)
+        # Text sync automatically restored after the block
+        ```
+
+    Note:
+        This optimization is critical for performance when processing documents
+        with complex text layouts or right-to-left scripts that would otherwise
+        trigger expensive character synchronization operations.
     """
     # Save original setter
     original_setter = TextElement.text.fset
@@ -76,8 +100,33 @@ def disable_text_sync():
         TextElement.text = property(TextElement.text.fget, original_setter)
 
 class NaturalWordExtractor(WordExtractor):
-    """
-    Custom WordExtractor that splits words based on specified character attributes
+    """Custom WordExtractor that splits words based on specified character attributes.
+
+    This class extends pdfplumber's WordExtractor to provide more intelligent word
+    segmentation that respects font boundaries and other character attributes.
+    It prevents words from spanning across different fonts, sizes, or styles,
+    which is essential for maintaining semantic meaning in document analysis.
+
+    The extractor considers multiple character attributes when determining word
+    boundaries, ensuring that visually distinct text elements (like bold headers
+    mixed with regular text) are properly separated into distinct words.
+
+    Attributes:
+        font_attrs: List of character attributes to consider for word boundaries.
+            Common attributes include 'fontname', 'size', 'flags', etc.
+
+    Example:
+        ```python
+        # Create extractor that splits on font and size changes
+        extractor = NaturalWordExtractor(['fontname', 'size'])
+        
+        # Extract words with font-aware boundaries
+        words = extractor.extract_words(page_chars)
+        
+        # Each word will have consistent font properties
+        for word in words:
+            print(f"'{word['text']}' in {word['fontname']} size {word['size']}")
+        ```
     in addition to pdfplumber's default spatial logic.
     """
 

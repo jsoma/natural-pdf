@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent  # repo root
 EVAL_DIR = ROOT / "eval_results"
 CHEATSHEET_PATH = ROOT / "tools" / "bad_pdf_eval" / "LLM_NaturalPDF_CheatSheet.md"
 WORKFLOWS_PATH = ROOT / "tools" / "bad_pdf_eval" / "LLM_NaturalPDF_Workflows.md"
+DECISION_TREE_PATH = ROOT / "tools" / "bad_pdf_eval" / "extraction_decision_tree.md"
 
 
 def read_md(path: Path) -> str:
@@ -93,6 +94,7 @@ def build_prompt(page: Dict[str, Any]) -> List[Dict[str, str]]:
 def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
     cheatsheet = read_md(CHEATSHEET_PATH)
     workflows = read_md(WORKFLOWS_PATH)
+    decision_tree = read_md(DECISION_TREE_PATH)
 
     pdf_overview = [
         f"PDF: {Path(summary['pdf']).name}",
@@ -134,15 +136,23 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         Extraction strategy:
           1. Start with the text layer: `page.extract_text()`, `page.extract_table()`, or region selectors.
-          2. Use **anchor-based region selection**: locate a stable header/label/line/rect and select the area
+          2. For tables, strongly prefer the Guides API over TATR:
+             • Use `Guides.from_content()` with actual column headers as markers
+             • Apply `.snap_to_whitespace()` to auto-align to natural gaps
+             • Only fall back to TATR for genuinely complex multi-table pages
+          3. Use **anchor-based region selection**: locate a stable header/label/line/rect and select the area
              between anchors via `.find()`, `.below()`, `.above()`, `.until()`, `.expand()`, etc.
-             Example: `page.find('text:contains(Violations)').below(until='text:bold')`.
-          3. Strongly prefer until= to find a specific ending point as opposed to a pixel-based approach,
+             Example: `page.find('text:contains("Violations")').below(until='text:bold')`.
+          4. Strongly prefer until= to find a specific ending point as opposed to a pixel-based approach,
              as this allows your code to work on potentially other similar pages of the document.
-          3. Fall back to TATR or other vision models only if the text layer is unusable.
-             • Blanket advice like "run analyze_layout('tatr') on every page" is discouraged—
-               only invoke a layout model when anchor-based text extraction genuinely fails
-               or evidence shows complex unruled tables that require cell-grid inference.
+          5. Direct region extraction often works: `region.extract_table()` without any layout model.
+
+        Recent improvements to leverage:
+          • Tiny text (<7pt) is now extracted reliably - no need to flag as difficult
+          • RTL languages (Arabic, Hebrew) work automatically with proper BiDi
+          • Use `.extract_table()` (singular) which returns TableResult with .df property
+          • Guides API can detect lines from pixels directly - no vector lines needed
+          • Can discard corrupted text layers with `PDF(..., text_layer=False)` or `page.remove_text_layer()`
 
         Handle tables, key-value forms, and free-form paragraphs with the same anchor-driven approach. Key-value
         forms might be easily extracted with .ask(...) or .extract(), feel free to mention as an option
@@ -158,30 +168,31 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
         a fluent API, and for loops are discouraged.
 
         Return ONE JSON object with exactly these keys:
-          • thought_process – concise reasoning and feature/enhancement requests (≤4 short paragraphs)
+          • thought_process – concise reasoning about your approach, noting if Guides would work better than TATR
           • code_suggestion – executable Python snippet using natural_pdf
-          • difficult_elements – bullet list of page features that are *hard* for any extraction engine **and that you can _prove_ from the supplied evidence** (tiny fonts in `describe`, scanned_image flag, missing text layer, no ruling lines inferred from `layout_*` arrays, etc.).  If no difficult element is evident, return an empty list.  Do *not* speculate.
-          • test_case – short description of how this PDF/page could be turned into an automated regression test (e.g. "assert tbl.df.shape == (12, 5)")
+          • difficult_elements – bullet list of page features that are *hard* for any extraction engine **and that you can _prove_ from the supplied evidence** (exclude tiny fonts unless <5pt, exclude RTL languages). If no difficult element is evident, return an empty list. Do *not* speculate.
+          • test_case – short description of how this PDF/page could be turned into an automated regression test
 
         Code-style expectations:
           • Use **real sample text** from the page as anchors — never placeholders such as
-            "AnchorText", "Texts", or "Also".  If no stable anchor is visible, state that
-            fact in the *thought_process* and leave a TODO rather than shipping a placeholder.
+            "AnchorText", "Texts", or "Also".  Look in the inspect/describe data for actual text.
           • When a page is flagged as *scanned_image* (or no text layer exists) your code
             MUST call `page.apply_ocr()` *before* any `.find()` or `.extract_text()` calls.
+          • If text appears as "(cid:xxx)" in the evidence, use `page.remove_text_layer()` or
+            `PDF(..., text_layer=False)` before OCR to avoid corrupted text interference.
+          • For table extraction, show Guides-based approach first, TATR only as fallback
           • Prefer `header_el.parent('table')` (up-tree navigation) over a global
-            `page.find('table')[i]` positional index — this is more robust when multiple tables
-            are present.
-          • For tables, assume Natural-PDF returns a `TableResult`; use `tbl.df` or
-            `tbl.to_df(header='first')` instead of manually building a DataFrame unless you
-            need custom header/skiprows logic.
-          • Explicitly name the extractor (`analyze_layout('tatr')`, `analyze_layout('detectron')`)
-            instead of vague comments like "YOLO fallback".
+            `page.find('table')[i]` positional index — this is more robust to layout changes.
+          • Use `.below()` or `.above()` to select regions. Add `until=` only when you need to
+            stop before reaching the page edge (e.g., before another section). Going to page edge
+            is fine without `until`.
+          • Keep page-level suggestions consistent with document-level patterns (same extraction approach)
         """
     )
 
     messages = [
         {"role": "system", "content": sys_msg},
+        {"role": "system", "content": "DECISION TREE:\n" + decision_tree},
         {"role": "system", "content": "CHEATSHEET:\n" + cheatsheet},
         {"role": "system", "content": "WORKFLOWS:\n" + workflows},
     ]
@@ -205,10 +216,10 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
 class DocOutput(BaseModel):
     """LLM enrichment for a whole PDF (single object)."""
 
-    thought_process: str = Field(..., description="Overall reasoning about the PDF and extraction plan")
-    code_suggestion: str = Field(..., description="Python snippet using natural_pdf to achieve the user goal for this PDF")
-    difficult_elements: List[str] = Field(..., description="Bullet list of page features that are *hard* for any extraction engine")
-    test_case: str = Field(..., description="Short description of how this PDF/page could be turned into an automated regression test")
+    thought_process: str = Field(..., description="Overall reasoning about the PDF and extraction plan, noting whether Guides API would be better than TATR for tables")
+    code_suggestion: str = Field(..., description="Python snippet using natural_pdf, preferring Guides API over TATR for table extraction")
+    difficult_elements: List[str] = Field(..., description="Bullet list of page features that are genuinely hard (not tiny fonts >5pt or RTL languages)")
+    test_case: str = Field(..., description="Specific assertion that could verify the extraction worked correctly")
 
 
 def enrich_summary(summary_path: Path, api_key: str, model: str = "o3"):

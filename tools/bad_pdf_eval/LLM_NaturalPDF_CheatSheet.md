@@ -120,25 +120,43 @@ Tables become selectable via `'table'` (or `'region[type=table]'`).
 
 ## 8. Tables → pandas
 ```python
+# Method 1: Guides API (PREFERRED for most cases)
+from natural_pdf.analyzers import Guides
+
+# Smart table extraction without layout models
+guides = Guides.from_content(page, axis='vertical', markers=['Column1', 'Column2'])
+guides.vertical.snap_to_whitespace()  # Auto-adjust to natural gaps
+guides.horizontal.from_content(markers='text[size>=10]')
+guides.build_grid()
+df = page.find('table').extract_table().df
+
+# Method 2: Direct extraction from regions (simple tables)
+region = page.find('text:contains("Header")').below(until='text:bold')
+df = region.extract_table().df  # Works without any layout model!
+
+# Method 3: TATR (only for complex multi-table pages)
 page.analyze_layout('tatr')
 first_tbl = page.find('table')
-
-# Quick & tidy
-df = first_tbl.extract_table().df             # header inferred from first row
-
-# Custom rules
-df = first_tbl.extract_table().to_df(header=None)  # no header row
+df = first_tbl.extract_table().df  # Note: extract_table, not extract_tables
 ```
 
-### Region-only table extraction (no layout model)
-```python
-region = (
-    page
-    .find('text:contains("Violations"):bold')
-    .below(until='text[size<12]', include_endpoint=False)
-)
+### Why Guides over TATR?
+- **Faster**: No ML model inference needed
+- **More control**: Snap to whitespace, content, or manual positions
+- **Robust**: Works even when TATR fails on unusual layouts
+- **Flexible**: Combine multiple detection methods
 
-df = region.extract_table().to_df(header="first")
+### Custom header options:
+```python
+# No header row
+df = table.extract_table().to_df(header=None)
+
+# Skip first N rows
+df = table.extract_table().to_df(skiprows=2)
+
+# Multi-row headers
+result = table.extract_table()
+df = result.to_df(header=[0, 1])  # Combine first two rows as header
 ```
 
 ## 9. OCR when native text is absent
@@ -152,12 +170,26 @@ page.apply_ocr('paddleocr')
 # deep-learning Doctr (slow, needs GPU)
 page.apply_ocr('doctr')
 
+# -- Discard corrupted text layer --
+# Option 1: Ignore text layer when opening PDF
+pdf = PDF("corrupted.pdf", text_layer=False)
+
+# Option 2: Remove text layer from existing page
+page.remove_text_layer()
+page.apply_ocr('surya')  # Fresh OCR without interference
+
 # -- Batch helper --
 # Run OCR on **all pages in a single call** (faster & keeps progress bar tidy):
 
 pdf.apply_ocr('surya')        # same parameters as page-level
 text = pdf.pages[0].extract_text()
 ```
+
+> **When to discard text layer:**
+> - Native text shows as "(cid:xxx)" gibberish
+> - Text extraction returns garbled/incorrect characters
+> - OCR quality would be better than native layer
+> - Scanned PDF with poor automatic text recognition
 
 > Engines: **easyocr** (default), **surya** (recommended), **paddleocr**, **doctr**.
   Choose by performance vs language support – no extra code changes needed.
@@ -192,45 +224,30 @@ table = area.extract_table()
 ```python
 from natural_pdf.analyzers import Guides
 
-# Create guides for precise table control
+# PREFERRED APPROACH for tables - no TATR needed!
 guides = Guides(page)
 
 # Smart content-based guides with flexible markers
 guides.vertical.from_content(markers=['Name', 'Age'], align='between')
 guides.horizontal.from_content(markers='text[size>=10]', align='center')
 
-# Single selector or ElementCollection also work
-guides.vertical.from_content(markers='text:contains("Total")')
-headers = page.find_all('text:bold')
-guides.horizontal.from_content(markers=headers, align='center')
+# Snap to natural boundaries (NEW - very powerful!)
+guides.vertical.snap_to_whitespace(min_gap=10)
+guides.horizontal.snap_to_whitespace()
 
-# Manual placement - accepts lists or single values
-guides.vertical.add([150, 300, 450])  # multiple positions
-guides.horizontal.add(200)  # single position
+# From detected lines (pixels or vectors)
+guides.vertical.from_lines(detection_method='pixels', threshold='auto')
 
-# From existing vector lines
-page.detect_lines(source_label='lines')
-guides.vertical.from_lines(source='lines', outer=False)
-
-# Direct pixel-based line detection (no pre-detection needed!)
-guides.vertical.from_lines(detection_method='pixels', max_lines=5)
-guides.horizontal.from_lines(
-    detection_method='pixels',
-    threshold='auto',  # or 0.0-1.0
-    resolution=192,
-    min_gap_h=10
-)
-
-# Preview and fine-tune
-guides.show()
-guides.vertical.snap_to_whitespace()
-guides.horizontal.snap_to_content(markers=['Row 1', 'Row 2'])
-
-# Build grid and extract
-guides.build_grid(source='manual')
-table = page.find('table[source=manual]')
-df = table.extract_table().df
+# Build and extract
+guides.build_grid()
+table = page.find('table')
+df = table.extract_table().df  # Note: .extract_table() not .extract_tables()
 ```
+
+### Recent Improvements
+- **Tiny text support**: Fonts <7pt now extracted reliably
+- **RTL languages**: Arabic, Hebrew handled automatically with proper BiDi
+- **Better .extract_table()**: Single method that returns TableResult with .df property
 
 ## 14. Vision classification
 ```python

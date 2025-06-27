@@ -56,8 +56,67 @@ logger = logging.getLogger(__name__)
 
 
 class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
-    """
-    Represents a rectangular region on a page.
+    """Represents a rectangular region on a page.
+
+    Regions are fundamental building blocks in natural-pdf that define rectangular
+    areas of a page for analysis, extraction, and navigation. They can be created
+    manually or automatically through spatial navigation methods like .below(), .above(),
+    .left(), and .right() from elements or other regions.
+
+    Regions integrate multiple analysis capabilities through mixins and provide:
+    - Element filtering and collection within the region boundary
+    - OCR processing for the region area
+    - Table detection and extraction
+    - AI-powered classification and structured data extraction
+    - Visual rendering and debugging capabilities
+    - Text extraction with spatial awareness
+
+    The Region class supports both rectangular and polygonal boundaries, making it
+    suitable for complex document layouts and irregular shapes detected by layout
+    analysis algorithms.
+
+    Attributes:
+        page: Reference to the parent Page object.
+        bbox: Bounding box tuple (x0, top, x1, bottom) in PDF coordinates.
+        x0: Left x-coordinate.
+        top: Top y-coordinate (minimum y).
+        x1: Right x-coordinate.
+        bottom: Bottom y-coordinate (maximum y).
+        width: Region width (x1 - x0).
+        height: Region height (bottom - top).
+        polygon: List of coordinate points for non-rectangular regions.
+        label: Optional descriptive label for the region.
+        metadata: Dictionary for storing analysis results and custom data.
+
+    Example:
+        Creating regions:
+        ```python
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        
+        # Manual region creation
+        header_region = page.region(0, 0, page.width, 100)
+        
+        # Spatial navigation from elements
+        summary_text = page.find('text:contains("Summary")')
+        content_region = summary_text.below(until='text[size>12]:bold')
+        
+        # Extract content from region
+        tables = content_region.extract_table()
+        text = content_region.get_text()
+        ```
+
+        Advanced usage:
+        ```python
+        # OCR processing
+        region.apply_ocr(engine='easyocr', resolution=300)
+        
+        # AI-powered extraction
+        data = region.extract_structured_data(MySchema)
+        
+        # Visual debugging
+        region.show(highlights=['tables', 'text'])
+        ```
     """
 
     def __init__(
@@ -68,14 +127,42 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         parent=None,
         label: Optional[str] = None,
     ):
-        """
-        Initialize a region.
+        """Initialize a region.
+
+        Creates a Region object that represents a rectangular or polygonal area on a page.
+        Regions are used for spatial navigation, content extraction, and analysis operations.
 
         Args:
-            page: Parent page
-            bbox: Bounding box as (x0, top, x1, bottom)
-            polygon: Optional list of coordinate points [(x1,y1), (x2,y2), ...] for non-rectangular regions
-            parent: Optional parent region (for hierarchical document structure)
+            page: Parent Page object that contains this region and provides access
+                to document elements and analysis capabilities.
+            bbox: Bounding box coordinates as (x0, top, x1, bottom) tuple in PDF
+                coordinate system (points, with origin at bottom-left).
+            polygon: Optional list of coordinate points [(x1,y1), (x2,y2), ...] for
+                non-rectangular regions. If provided, the region will use polygon-based
+                intersection calculations instead of simple rectangle overlap.
+            parent: Optional parent region for hierarchical document structure.
+                Useful for maintaining tree-like relationships between regions.
+            label: Optional descriptive label for the region, useful for debugging
+                and identification in complex workflows.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            page = pdf.pages[0]
+            
+            # Rectangular region
+            header = Region(page, (0, 0, page.width, 100), label="header")
+            
+            # Polygonal region (from layout detection)
+            table_polygon = [(50, 100), (300, 100), (300, 400), (50, 400)]
+            table_region = Region(page, (50, 100, 300, 400), 
+                                polygon=table_polygon, label="table")
+            ```
+
+        Note:
+            Regions are typically created through page methods like page.region() or
+            spatial navigation methods like element.below(). Direct instantiation is
+            used mainly for advanced workflows or layout analysis integration.
         """
         self._page = page
         self._bbox = bbox
@@ -856,18 +943,24 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             pre_shrink: Amount to shrink region before trimming, then expand back after (default: 0.5)
                        This helps avoid detecting box borders/slivers as content.
 
-        Returns:
-            New Region with visual whitespace trimmed from all edges
+        Returns
+        ------
+        
+        New Region with visual whitespace trimmed from all edges
 
-        Example:
-            # Basic trimming with 1 pixel padding and 0.5px pre-shrink
-            trimmed = region.trim()
+        Examples
+        --------
 
-            # More aggressive trimming with no padding and no pre-shrink
-            tight = region.trim(padding=0, threshold=0.9, pre_shrink=0)
+        ```python
+        # Basic trimming with 1 pixel padding and 0.5px pre-shrink
+        trimmed = region.trim()
 
-            # Conservative trimming with more padding
-            loose = region.trim(padding=3, threshold=0.98)
+        # More aggressive trimming with no padding and no pre-shrink
+        tight = region.trim(padding=0, threshold=0.9, pre_shrink=0)
+
+        # Conservative trimming with more padding
+        loose = region.trim(padding=3, threshold=0.98)
+        ```
         """
         # Apply global options as defaults
         import natural_pdf
@@ -2016,10 +2109,12 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         Examples
         ---------
-        >>> def llm_ocr(region):
-        ...     image = region.to_image(resolution=300, crop=True)
-        ...     return my_llm_client.ocr(image)
-        >>> region.apply_ocr(function=llm_ocr)
+        ```python
+        def llm_ocr(region):
+            image = region.to_image(resolution=300, crop=True)
+            return my_llm_client.ocr(image)
+        region.apply_ocr(function=llm_ocr)
+        ```
 
         Args:
             replace: Whether to remove existing OCR elements first (default ``True``).

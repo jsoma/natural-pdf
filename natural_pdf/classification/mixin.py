@@ -16,9 +16,51 @@ logger = logging.getLogger(__name__)
 
 
 class ClassificationMixin:
-    """
-    Mixin class providing classification capabilities to Page and Region objects.
-    Relies on a ClassificationManager being accessible, typically via the parent PDF.
+    """Mixin class providing classification capabilities to Page and Region objects.
+
+    This mixin adds AI-powered classification functionality to pages, regions, and
+    elements, enabling document categorization and content analysis using both
+    text-based and vision-based models. It integrates with the ClassificationManager
+    to provide a consistent interface across different model types.
+
+    The mixin supports both single-label and multi-label classification, confidence
+    thresholding, and various analysis storage strategies for complex workflows.
+    Results are stored in the host object's 'analyses' dictionary for retrieval
+    and further processing.
+
+    Classification modes:
+    - Text-based: Uses extracted text content for classification
+    - Vision-based: Uses rendered images for visual classification
+    - Automatic: Manager selects best mode based on content availability
+
+    Host class requirements:
+    - Must implement _get_classification_manager() -> ClassificationManager
+    - Must implement _get_classification_content() -> str | Image
+    - Must have 'analyses' attribute as Dict[str, Any]
+
+    Example:
+        ```python
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        
+        # Document type classification
+        page.classify(['invoice', 'contract', 'report'], 
+                     model='text', analysis_key='doc_type')
+        
+        # Multi-label content analysis
+        region = page.find('text:contains("Summary")').below()
+        region.classify(['technical', 'financial', 'legal'], 
+                       multi_label=True, min_confidence=0.8)
+        
+        # Access results
+        doc_type = page.analyses['doc_type']
+        content_labels = region.analyses['classification']
+        ```
+
+    Note:
+        Classification requires appropriate models to be available through the
+        ClassificationManager. Results include confidence scores and detailed
+        metadata for analysis workflows.
     """
 
     # --- Abstract methods/properties required by the host class --- #

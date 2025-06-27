@@ -1,5 +1,29 @@
-"""
-CSS-like selector parser for natural-pdf.
+"""CSS-like selector parser for natural-pdf.
+
+This module implements a sophisticated selector parsing system that enables
+jQuery-style element selection in PDF documents. It supports complex CSS-like
+selectors with extensions for PDF-specific attributes and spatial relationships.
+
+The parser handles:
+- Basic element selectors (text, rect, line, image)
+- Attribute selectors with comparisons ([size>12], [color="red"])
+- Pseudo-selectors for text content (:contains(), :regex())
+- Spatial relationship selectors (:above(), :below(), :near())
+- Color matching with Delta E distance calculations
+- Logical operators (AND, OR) and grouping
+- Complex nested expressions with proper precedence
+
+Key features:
+- Safe value parsing without eval() for security
+- Color parsing from multiple formats (hex, RGB, names, CSS functions)
+- Font and style attribute matching
+- Coordinate and dimension-based selections
+- Performance-optimized filtering functions
+
+This enables powerful document navigation like:
+- page.find('text[size>12]:bold:contains("Summary")')
+- page.find_all('rect[color~="red"]:above(text:contains("Total"))')
+- page.find('text:regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")')
 """
 
 import ast
@@ -16,14 +40,35 @@ logger = logging.getLogger(__name__)
 
 
 def safe_parse_value(value_str: str) -> Any:
-    """
-    Safely parse a value string without using eval().
+    """Safely parse a value string without using eval().
+
+    Parses various value formats commonly found in PDF attributes while maintaining
+    security by avoiding eval(). Supports numbers, tuples, lists, booleans, and
+    quoted strings with proper type conversion.
 
     Args:
-        value_str: String representation of a value (number, tuple, string, etc.)
+        value_str: String representation of a value. Can be a number ("12"),
+            tuple ("(1.0, 0.5, 0.2)"), list ("[1, 2, 3]"), quoted string
+            ('"Arial"'), boolean ("True"), or plain string ("Arial").
 
     Returns:
-        Parsed value
+        Parsed value with appropriate Python type. Numbers become int/float,
+        tuples/lists maintain structure, quoted strings are unquoted, and
+        unrecognized values are returned as strings.
+
+    Example:
+        ```python
+        safe_parse_value("12")          # -> 12
+        safe_parse_value("12.5")        # -> 12.5
+        safe_parse_value("(1,0,0)")     # -> (1, 0, 0)
+        safe_parse_value('"Arial"')     # -> "Arial"
+        safe_parse_value("True")        # -> True
+        safe_parse_value("plain_text")  # -> "plain_text"
+        ```
+
+    Note:
+        This function deliberately avoids eval() for security reasons and uses
+        ast.literal_eval() for safe parsing of Python literals.
     """
     # Strip quotes first if it's a quoted string
     value_str = value_str.strip()

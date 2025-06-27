@@ -16,9 +16,54 @@ DEFAULT_STRUCTURED_KEY = "structured"  # Define default key
 
 
 class ExtractionMixin(ABC):
-    """
-    Mixin class providing structured data extraction capabilities to elements.
-    Assumes the inheriting class has `extract_text(**kwargs)` and `to_image(**kwargs)` methods.
+    """Mixin class providing structured data extraction capabilities to elements.
+
+    This mixin adds AI-powered structured data extraction functionality to pages,
+    regions, and elements, enabling extraction of specific data fields using
+    Pydantic schemas and large language models. It supports both text-based and
+    vision-based extraction modes.
+
+    The mixin integrates with the StructuredDataManager to handle LLM interactions
+    and provides schema validation using Pydantic models. Extracted data is
+    automatically validated against the provided schema and stored with
+    confidence metrics and metadata.
+
+    Extraction modes:
+    - Text-based: Uses extracted text content for LLM processing
+    - Vision-based: Uses rendered images for multimodal LLM analysis
+    - Automatic: Selects best mode based on content and model capabilities
+
+    Host class requirements:
+    - Must implement extract_text(**kwargs) -> str
+    - Must implement to_image(**kwargs) -> PIL.Image
+    - Must have access to StructuredDataManager (usually via parent PDF)
+
+    Example:
+        ```python
+        from pydantic import BaseModel
+        
+        class InvoiceData(BaseModel):
+            invoice_number: str
+            total_amount: float
+            due_date: str
+            vendor_name: str
+        
+        pdf = npdf.PDF("invoice.pdf")
+        page = pdf.pages[0]
+        
+        # Extract structured data
+        invoice = page.extract_structured_data(InvoiceData)
+        print(f"Invoice {invoice.data.invoice_number}: ${invoice.data.total_amount}")
+        
+        # Region-specific extraction
+        header_region = page.find('text:contains("Invoice")').above()
+        header_data = header_region.extract_structured_data(InvoiceData)
+        ```
+
+    Note:
+        Structured extraction requires a compatible LLM to be configured in the
+        StructuredDataManager. Results include confidence scores and validation
+        metadata for quality assessment.
     """
 
     def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:

@@ -18,12 +18,59 @@ logger = logging.getLogger(__name__)
 
 
 class LayoutDetector(ABC):
-    """
-    Abstract Base Class for layout detection engines.
+    """Abstract base class for layout detection engines.
 
-    Subclasses should implement is_available, _load_model_from_options, detect,
-    and override _get_cache_key if model loading depends on options beyond device.
-    They should also populate the 'supported_classes' set.
+    This class defines the standard interface that all layout detection engines
+    must implement in natural-pdf. Layout detectors analyze document images to
+    identify structural elements like tables, figures, headers, paragraphs, etc.
+
+    The base class provides common functionality including model caching, result
+    standardization, and configuration management, while concrete implementations
+    handle engine-specific detection logic for different models (YOLO, TATR, Surya, etc.).
+
+    Subclasses must implement:
+    - detect(): Core layout detection for a single image
+    - is_available(): Check if engine dependencies are installed
+    - _load_model_from_options(): Load and configure the detection model
+    - _get_cache_key(): Generate cache keys for model instances
+
+    Subclasses should also populate the 'supported_classes' set with the document
+    element types they can detect (e.g., 'table', 'figure', 'text', 'title').
+
+    Attributes:
+        logger: Logger instance for the specific detector.
+        supported_classes: Set of document element types this detector can identify.
+        _model_cache: Dictionary cache for loaded model instances.
+
+    Example:
+        Implementing a custom layout detector:
+        ```python
+        class MyLayoutDetector(LayoutDetector):
+            def __init__(self):
+                super().__init__()
+                self.supported_classes = {'table', 'figure', 'text'}
+            
+            @classmethod
+            def is_available(cls) -> bool:
+                try:
+                    import my_layout_library
+                    return True
+                except ImportError:
+                    return False
+            
+            def detect(self, image, options):
+                # Implement layout detection
+                return detection_results
+        ```
+
+        Using a layout detector:
+        ```python
+        if YOLODetector.is_available():
+            detector = YOLODetector()
+            results = detector.detect(page_image, options)
+            for result in results:
+                print(f"Found {result['class']} at {result['bbox']}")
+        ```
     """
 
     def __init__(self):

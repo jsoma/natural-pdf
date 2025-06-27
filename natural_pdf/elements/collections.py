@@ -81,16 +81,90 @@ class ElementCollection(
     InspectMixin,
     MutableSequence,
 ):
-    """
-    Collection of PDF elements with batch operations.
+    """Collection of PDF elements with batch operations.
+
+    ElementCollection provides a powerful interface for working with groups of
+    PDF elements (text, rectangles, lines, etc.) with batch processing capabilities.
+    It implements the MutableSequence protocol for list-like behavior while adding
+    specialized functionality for document analysis workflows.
+
+    The collection integrates multiple capabilities through mixins:
+    - Batch processing with .apply() method
+    - Export functionality for various formats
+    - AI-powered classification of element groups
+    - Spatial navigation for creating related regions
+    - Description and inspection capabilities
+    - Element filtering and selection
+
+    Collections support functional programming patterns and method chaining,
+    making it easy to build complex document processing pipelines.
+
+    Attributes:
+        elements: List of Element objects in the collection.
+        first: First element in the collection (None if empty).
+        last: Last element in the collection (None if empty).
+
+    Example:
+        Basic usage:
+        ```python
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        
+        # Get collections of elements
+        all_text = page.chars
+        headers = page.find_all('text[size>12]:bold')
+        
+        # Collection operations
+        print(f"Found {len(headers)} headers")
+        header_text = headers.get_text()
+        
+        # Batch processing
+        results = headers.apply(lambda el: el.fontname)
+        ```
+
+        Advanced workflows:
+        ```python
+        # Functional programming style
+        important_text = (page.chars
+                         .filter('text:contains("IMPORTANT")')
+                         .apply(lambda el: el.text.upper())
+                         .classify("urgency_level"))
+        
+        # Spatial navigation from collections
+        content_region = headers.below(until='rect[height>2]')
+        
+        # Export functionality
+        headers.save_pdf("headers_only.pdf")
+        ```
+
+    Note:
+        Collections are typically created by page methods (page.chars, page.find_all())
+        or by filtering existing collections. Direct instantiation is less common.
     """
 
     def __init__(self, elements: List[T]):
-        """
-        Initialize a collection of elements.
+        """Initialize a collection of elements.
+
+        Creates an ElementCollection that wraps a list of PDF elements and provides
+        enhanced functionality for batch operations, filtering, and analysis.
 
         Args:
-            elements: List of Element objects
+            elements: List of Element objects (TextElement, RectangleElement, etc.)
+                to include in the collection. Can be empty for an empty collection.
+
+        Example:
+            ```python
+            # Collections are usually created by page methods
+            chars = page.chars  # ElementCollection[TextElement]
+            rects = page.rects  # ElementCollection[RectangleElement]
+            
+            # Direct creation (advanced usage)
+            selected_elements = ElementCollection([element1, element2, element3])
+            ```
+
+        Note:
+            ElementCollection implements MutableSequence, so it behaves like a list
+            with additional natural-pdf functionality for document processing.
         """
         self._elements = elements or []
 

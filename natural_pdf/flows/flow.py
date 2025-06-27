@@ -14,10 +14,69 @@ logger = logging.getLogger(__name__)
 
 
 class Flow:
-    """
-    Defines a logical flow or sequence of physical Page or Region objects,
-    specifying their arrangement and alignment to enable operations that
-    span across these segments as if they were a continuous area.
+    """Defines a logical flow or sequence of physical Page or Region objects.
+
+    A Flow represents a continuous logical document structure that spans across
+    multiple pages or regions, enabling operations on content that flows across
+    boundaries. This is essential for handling multi-page tables, articles that
+    span columns, or any content that requires reading order across segments.
+
+    Flows specify arrangement (vertical/horizontal) and alignment rules to create
+    a unified coordinate system for element extraction and text processing. They
+    enable natural-pdf to treat fragmented content as a single continuous area
+    for analysis and extraction operations.
+
+    The Flow system is particularly useful for:
+    - Multi-page tables that break across page boundaries
+    - Multi-column articles with complex reading order
+    - Forms that span multiple pages
+    - Any content requiring logical continuation across segments
+
+    Attributes:
+        segments: List of Page or Region objects in flow order.
+        arrangement: Primary flow direction ('vertical' or 'horizontal').
+        alignment: Cross-axis alignment for segments of different sizes.
+        segment_gap: Virtual gap between segments in PDF points.
+
+    Example:
+        Multi-page table flow:
+        ```python
+        pdf = npdf.PDF("multi_page_table.pdf")
+        
+        # Create flow for table spanning pages 2-4
+        table_flow = Flow(
+            segments=[pdf.pages[1], pdf.pages[2], pdf.pages[3]],
+            arrangement='vertical',
+            alignment='left',
+            segment_gap=10.0
+        )
+        
+        # Extract table as if it were continuous
+        table_data = table_flow.extract_table()
+        text_content = table_flow.get_text()
+        ```
+
+        Multi-column article flow:
+        ```python
+        page = pdf.pages[0]
+        left_column = page.region(0, 0, 300, page.height)
+        right_column = page.region(320, 0, page.width, page.height)
+        
+        # Create horizontal flow for columns
+        article_flow = Flow(
+            segments=[left_column, right_column],
+            arrangement='horizontal',
+            alignment='top'
+        )
+        
+        # Read in proper order
+        article_text = article_flow.get_text()
+        ```
+
+    Note:
+        Flows create virtual coordinate systems that map element positions across
+        segments, enabling spatial navigation and element selection to work
+        seamlessly across boundaries.
     """
 
     def __init__(

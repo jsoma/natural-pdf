@@ -103,9 +103,36 @@ from collections.abc import Sequence
 class _LazyPageList(Sequence):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
 
+    This class implements the Sequence protocol to provide list-like access to PDF pages
+    while minimizing memory usage. Pages are only created when accessed, and once created,
+    they are cached for subsequent access. This design allows efficient handling of large
+    PDF documents without loading all pages into memory immediately.
+
     The sequence holds `None` placeholders until an index is accessed, at which point
-    a real `Page` object is created, cached, and returned.  Slices and iteration are
-    also supported and will materialise pages on demand.
+    a real `Page` object is created, cached, and returned. Slices and iteration are
+    also supported and will materialize pages on demand.
+
+    Attributes:
+        _parent_pdf: Reference to the parent PDF object.
+        _plumber_pdf: Underlying pdfplumber PDF object.
+        _font_attrs: Font attributes to use when creating pages.
+        _cache: List of cached Page objects (None until accessed).
+        _load_text: Whether to load text layer when creating pages.
+
+    Example:
+        ```python
+        # Access is transparent - pages created on demand
+        pdf = npdf.PDF("document.pdf")
+        first_page = pdf.pages[0]  # Creates Page object here
+        last_page = pdf.pages[-1]  # Creates another Page object
+        
+        # Slicing works too
+        first_three = pdf.pages[0:3]  # Creates 3 Page objects
+        
+        # Iteration creates all pages
+        for page in pdf.pages:  # Each page created as needed
+            print(f"Page {page.index}")
+        ```
     """
 
     def __init__(self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None, load_text=True):
@@ -156,11 +183,39 @@ class _LazyPageList(Sequence):
 # --- End Lazy Page List Helper --- #
 
 class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
-    """
-    Enhanced PDF wrapper built on top of pdfplumber.
+    """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,
-    with improved selection, navigation, and extraction capabilities.
+    with improved selection, navigation, and extraction capabilities. It integrates
+    OCR, layout analysis, and AI-powered data extraction features while maintaining
+    compatibility with the underlying pdfplumber API.
+
+    The PDF class supports loading from files, URLs, or streams, and provides
+    spatial navigation, element selection with CSS-like selectors, and advanced
+    document processing workflows including multi-page content flows.
+
+    Attributes:
+        pages: Lazy-loaded list of Page objects for document pages.
+        path: Resolved path to the PDF file or source identifier.
+        source_path: Original path, URL, or stream identifier provided during initialization.
+        highlighter: Service for rendering highlighted visualizations of document content.
+
+    Example:
+        Basic usage:
+        ```python
+        import natural_pdf as npdf
+        
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        text_elements = page.find_all('text:contains("Summary")')
+        ```
+
+        Advanced usage with OCR:
+        ```python
+        pdf = npdf.PDF("scanned_document.pdf")
+        pdf.apply_ocr(engine="easyocr", resolution=144)
+        tables = pdf.pages[0].find_all('table')
+        ```
     """
 
     def __init__(
@@ -173,18 +228,48 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         auto_text_tolerance: bool = True,
         text_layer: bool = True,
     ):
-        """
-        Initialize the enhanced PDF object.
+        """Initialize the enhanced PDF object.
 
         Args:
-            path_or_url_or_stream: Path to the PDF file, a URL, or a file-like object (stream).
-            reading_order: Whether to use natural reading order
-            font_attrs: Font attributes for grouping characters into words
-            keep_spaces: Whether to include spaces in word elements
-            text_tolerance: PDFplumber-style tolerance settings
-            auto_text_tolerance: Whether to automatically scale text tolerance
-            text_layer: Whether to keep the existing text layer from the PDF (default: True).
-                       If False, removes all existing text elements during initialization.
+            path_or_url_or_stream: Path to the PDF file (str/Path), a URL (str), 
+                or a file-like object (stream). URLs must start with 'http://' or 'https://'.
+            reading_order: If True, use natural reading order for text extraction.
+                Defaults to True.
+            font_attrs: List of font attributes for grouping characters into words.
+                Common attributes include ['fontname', 'size']. Defaults to None.
+            keep_spaces: If True, include spaces in word elements during text extraction.
+                Defaults to True.
+            text_tolerance: PDFplumber-style tolerance settings for text grouping.
+                Dictionary with keys like 'x_tolerance', 'y_tolerance'. Defaults to None.
+            auto_text_tolerance: If True, automatically scale text tolerance based on
+                font size and document characteristics. Defaults to True.
+            text_layer: If True, preserve existing text layer from the PDF. If False,
+                removes all existing text elements during initialization, useful for
+                OCR-only workflows. Defaults to True.
+
+        Raises:
+            TypeError: If path_or_url_or_stream is not a valid type.
+            IOError: If the PDF file cannot be opened or read.
+            ValueError: If URL download fails.
+
+        Example:
+            ```python
+            # From file path
+            pdf = npdf.PDF("document.pdf")
+            
+            # From URL
+            pdf = npdf.PDF("https://example.com/document.pdf")
+            
+            # From stream
+            with open("document.pdf", "rb") as f:
+                pdf = npdf.PDF(f)
+            
+            # With custom settings
+            pdf = npdf.PDF("document.pdf", 
+                          reading_order=False,
+                          text_layer=False,  # For OCR-only processing
+                          font_attrs=['fontname', 'size', 'flags'])
+            ```
         """
         self._original_path_or_stream = path_or_url_or_stream
         self._temp_file = None
@@ -315,7 +400,30 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         self._managers = {}  # Will hold instantiated managers
 
     def get_manager(self, key: str) -> Any:
-        """Retrieve a manager instance by its key, instantiating it lazily if needed."""
+        """Retrieve a manager instance by its key, instantiating it lazily if needed.
+
+        Managers are specialized components that handle specific functionality like
+        classification, structured data extraction, or OCR processing. They are
+        instantiated on-demand to minimize memory usage and startup time.
+
+        Args:
+            key: The manager key to retrieve. Common keys include 'classification'
+                and 'structured_data'.
+
+        Returns:
+            The manager instance for the specified key.
+
+        Raises:
+            KeyError: If no manager is registered for the given key.
+            RuntimeError: If the manager failed to initialize.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            classification_mgr = pdf.get_manager('classification')
+            structured_data_mgr = pdf.get_manager('structured_data')
+            ```
+        """
         # Check if already instantiated
         if key in self._managers:
             manager_instance = self._managers[key]
@@ -351,12 +459,56 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
     @property
     def metadata(self) -> Dict[str, Any]:
-        """Access metadata as a dictionary."""
+        """Access PDF metadata as a dictionary.
+
+        Returns document metadata such as title, author, creation date, and other
+        properties embedded in the PDF file. The exact keys available depend on
+        what metadata was included when the PDF was created.
+
+        Returns:
+            Dictionary containing PDF metadata. Common keys include 'Title',
+            'Author', 'Subject', 'Creator', 'Producer', 'CreationDate', and
+            'ModDate'. May be empty if no metadata is available.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            print(pdf.metadata.get('Title', 'No title'))
+            print(f"Created: {pdf.metadata.get('CreationDate')}")
+            ```
+        """
         return self._pdf.metadata
 
     @property
     def pages(self) -> "PageCollection":
-        """Access pages as a PageCollection object."""
+        """Access pages as a PageCollection object.
+
+        Provides access to individual pages of the PDF document through a
+        collection interface that supports indexing, slicing, and iteration.
+        Pages are lazy-loaded to minimize memory usage.
+
+        Returns:
+            PageCollection object that provides list-like access to PDF pages.
+
+        Raises:
+            AttributeError: If PDF pages are not yet initialized.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            
+            # Access individual pages
+            first_page = pdf.pages[0]
+            last_page = pdf.pages[-1]
+            
+            # Slice pages
+            first_three = pdf.pages[0:3]
+            
+            # Iterate over pages
+            for page in pdf.pages:
+                print(f"Page {page.index} has {len(page.chars)} characters")
+            ```
+        """
         from natural_pdf.elements.collections import PageCollection
 
         if not hasattr(self, "_pages"):
@@ -364,11 +516,26 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         return PageCollection(self._pages)
 
     def clear_exclusions(self) -> "PDF":
-        """
-        Clear all exclusion functions from the PDF.
+        """Clear all exclusion functions from the PDF.
+
+        Removes all previously added exclusion functions that were used to filter
+        out unwanted content (like headers, footers, or administrative text) from
+        text extraction and analysis operations.
 
         Returns:
-            Self for method chaining
+            Self for method chaining.
+
+        Raises:
+            AttributeError: If PDF pages are not yet initialized.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            pdf.add_exclusion(lambda page: page.find('text:contains("CONFIDENTIAL")').above())
+            
+            # Later, remove all exclusions
+            pdf.clear_exclusions()
+            ```
         """
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
@@ -381,16 +548,46 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
     def add_exclusion(
         self, exclusion_func: Callable[["Page"], Optional["Region"]], label: str = None
     ) -> "PDF":
-        """
-        Add an exclusion function to the PDF. Text from these regions will be excluded from extraction.
+        """Add an exclusion function to the PDF.
+
+        Exclusion functions define regions of each page that should be ignored during
+        text extraction and analysis operations. This is useful for filtering out headers,
+        footers, watermarks, or other administrative content that shouldn't be included
+        in the main document processing.
 
         Args:
-            exclusion_func: A function that takes a Page and returns a Region to exclude, or None
-            exclusion_func: A function that takes a Page and returns a Region to exclude, or None
-            label: Optional label for this exclusion
+            exclusion_func: A function that takes a Page object and returns a Region
+                to exclude from processing, or None if no exclusion should be applied
+                to that page. The function is called once per page.
+            label: Optional descriptive label for this exclusion rule, useful for
+                debugging and identification.
 
         Returns:
-            Self for method chaining
+            Self for method chaining.
+
+        Raises:
+            AttributeError: If PDF pages are not yet initialized.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            
+            # Exclude headers (top 50 points of each page)
+            pdf.add_exclusion(
+                lambda page: page.region(0, 0, page.width, 50),
+                label="header_exclusion"
+            )
+            
+            # Exclude any text containing "CONFIDENTIAL"
+            pdf.add_exclusion(
+                lambda page: page.find('text:contains("CONFIDENTIAL")').above(include_source=True)
+                if page.find('text:contains("CONFIDENTIAL")') else None,
+                label="confidential_exclusion"
+            )
+            
+            # Chain multiple exclusions
+            pdf.add_exclusion(header_func).add_exclusion(footer_func)
+            ```
         """
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
@@ -416,23 +613,74 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         options: Optional[Any] = None,
         pages: Optional[Union[Iterable[int], range, slice]] = None,
     ) -> "PDF":
-        """
-        Applies OCR to specified pages of the PDF using batch processing.
+        """Apply OCR to specified pages of the PDF using batch processing.
+
+        Performs optical character recognition on the specified pages, converting
+        image-based text into searchable and extractable text elements. This method
+        supports multiple OCR engines and provides batch processing for efficiency.
 
         Args:
-            engine: Name of the OCR engine
-            languages: List of language codes
-            min_confidence: Minimum confidence threshold
-            device: Device to run OCR on
-            resolution: DPI resolution for page images
-            apply_exclusions: Whether to mask excluded areas
-            detect_only: If True, only detect text boxes
-            replace: Whether to replace existing OCR elements
-            options: Engine-specific options
-            pages: Page indices to process or None for all pages
+            engine: Name of the OCR engine to use. Supported engines include
+                'easyocr' (default), 'surya', 'paddle', and 'doctr'. If None,
+                uses the global default from natural_pdf.options.ocr.engine.
+            languages: List of language codes for OCR recognition (e.g., ['en', 'es']).
+                If None, uses the global default from natural_pdf.options.ocr.languages.
+            min_confidence: Minimum confidence threshold (0.0-1.0) for accepting
+                OCR results. Text with lower confidence will be filtered out.
+                If None, uses the global default.
+            device: Device to run OCR on ('cpu', 'cuda', 'mps'). Engine-specific
+                availability varies. If None, uses engine defaults.
+            resolution: DPI resolution for rendering pages to images before OCR.
+                Higher values improve accuracy but increase processing time and memory.
+                Typical values: 150 (fast), 300 (balanced), 600 (high quality).
+            apply_exclusions: If True, mask excluded regions before OCR to prevent
+                processing of headers, footers, or other unwanted content.
+            detect_only: If True, only detect text bounding boxes without performing
+                character recognition. Useful for layout analysis workflows.
+            replace: If True, replace any existing OCR elements on the pages.
+                If False, append new OCR results to existing elements.
+            options: Engine-specific options object (e.g., EasyOCROptions, SuryaOptions).
+                Allows fine-tuning of engine behavior beyond common parameters.
+            pages: Page indices to process. Can be:
+                - None: Process all pages
+                - slice: Process a range of pages (e.g., slice(0, 10))
+                - Iterable[int]: Process specific page indices (e.g., [0, 2, 5])
 
         Returns:
-            Self for method chaining
+            Self for method chaining.
+
+        Raises:
+            ValueError: If invalid page index is provided.
+            TypeError: If pages parameter has invalid type.
+            RuntimeError: If OCR engine is not available or fails.
+
+        Example:
+            ```python
+            pdf = npdf.PDF("scanned_document.pdf")
+            
+            # Basic OCR on all pages
+            pdf.apply_ocr()
+            
+            # High-quality OCR with specific settings
+            pdf.apply_ocr(
+                engine='easyocr',
+                languages=['en', 'es'],
+                resolution=300,
+                min_confidence=0.8
+            )
+            
+            # OCR specific pages only
+            pdf.apply_ocr(pages=[0, 1, 2])  # First 3 pages
+            pdf.apply_ocr(pages=slice(5, 10))  # Pages 5-9
+            
+            # Detection-only workflow for layout analysis
+            pdf.apply_ocr(detect_only=True, resolution=150)
+            ```
+
+        Note:
+            OCR processing can be time and memory intensive, especially at high
+            resolutions. Consider using exclusions to mask unwanted regions and
+            processing pages in batches for large documents.
         """
         if not self._ocr_manager:
             logger.error("OCRManager not available. Cannot apply OCR.")

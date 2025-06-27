@@ -12,7 +12,38 @@ logger = logging.getLogger(__name__)
 
 
 class TextRegion:
-    """Standard representation of an OCR text region."""
+    """Standard representation of an OCR text region.
+
+    TextRegion provides a standardized format for representing text detected by
+    OCR engines, regardless of the underlying engine implementation. This ensures
+    consistent interfaces across different OCR backends (EasyOCR, Surya, PaddleOCR, etc.).
+
+    The class handles coordinate normalization and provides utilities for converting
+    between different coordinate formats (bounding boxes vs. polygons).
+
+    Attributes:
+        bbox: Bounding box coordinates as (x0, y0, x1, y1) tuple.
+        text: The recognized text content.
+        confidence: Confidence score from 0.0 (low) to 1.0 (high).
+        source: Source identifier, typically "ocr" or engine name.
+
+    Example:
+        ```python
+        # Create from bounding box
+        region = TextRegion(
+            bbox=(100, 200, 300, 250),
+            text="Hello World",
+            confidence=0.95
+        )
+        
+        # Create from polygon coordinates
+        polygon = [[100, 200], [300, 200], [300, 250], [100, 250]]
+        region = TextRegion.from_polygon(polygon, "Hello World", 0.95)
+        
+        # Convert to dictionary for processing
+        data = region.to_dict()
+        ```
+    """
 
     def __init__(
         self,
@@ -54,7 +85,57 @@ class TextRegion:
 
 
 class OCREngine(ABC):
-    """Abstract Base Class for OCR engines."""
+    """Abstract base class for OCR engines.
+
+    This class defines the standard interface that all OCR engines must implement
+    in natural-pdf. It provides a consistent API for text recognition regardless
+    of the underlying OCR technology (EasyOCR, Surya, PaddleOCR, DocTR, etc.).
+
+    The base class handles common functionality like model caching, parameter
+    validation, and result standardization, while concrete implementations
+    provide engine-specific processing logic.
+
+    Subclasses must implement:
+    - process_single_image(): Core OCR processing for a single image
+    - is_available(): Check if the engine dependencies are installed
+    - get_supported_languages(): Return list of supported language codes
+
+    Class Attributes:
+        DEFAULT_MIN_CONFIDENCE: Default confidence threshold (0.2).
+        DEFAULT_LANGUAGES: Default language list (["en"]).
+        DEFAULT_DEVICE: Default processing device ("cpu").
+
+    Attributes:
+        logger: Logger instance for the specific engine.
+        _model: Cached model instance for the engine.
+        _initialized: Whether the engine has been initialized.
+        _reader_cache: Cache for initialized models/readers.
+
+    Example:
+        Implementing a custom OCR engine:
+        ```python
+        class MyOCREngine(OCREngine):
+            @classmethod
+            def is_available(cls) -> bool:
+                try:
+                    import my_ocr_library
+                    return True
+                except ImportError:
+                    return False
+            
+            def process_single_image(self, image, languages, min_confidence, 
+                                   device, detect_only, options):
+                # Implement OCR processing
+                return text_regions
+        ```
+
+        Using an OCR engine:
+        ```python
+        if EasyOCREngine.is_available():
+            engine = EasyOCREngine()
+            results = engine.process_image(image, languages=['en', 'es'])
+        ```
+    """
 
     # Default values as class constants
     DEFAULT_MIN_CONFIDENCE = 0.2

@@ -94,23 +94,100 @@ logger = logging.getLogger(__name__)
 
 
 class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
-    """
-    Enhanced Page wrapper built on top of pdfplumber.Page.
+    """Enhanced Page wrapper built on top of pdfplumber.Page.
 
     This class provides a fluent interface for working with PDF pages,
     with improved selection, navigation, extraction, and question-answering capabilities.
+    It integrates multiple analysis capabilities through mixins and provides spatial
+    navigation with CSS-like selectors.
+
+    The Page class serves as the primary interface for document analysis, offering:
+    - Element selection and spatial navigation
+    - OCR and layout analysis integration
+    - Table detection and extraction
+    - AI-powered classification and data extraction
+    - Visual debugging with highlighting and cropping
+    - Text style analysis and structure detection
+
+    Attributes:
+        index: Zero-based index of this page in the PDF.
+        number: One-based page number (index + 1).
+        width: Page width in points.
+        height: Page height in points.
+        bbox: Bounding box tuple (x0, top, x1, bottom) of the page.
+        chars: Collection of character elements on the page.
+        words: Collection of word elements on the page.
+        lines: Collection of line elements on the page.
+        rects: Collection of rectangle elements on the page.
+        images: Collection of image elements on the page.
+        metadata: Dictionary for storing analysis results and custom data.
+
+    Example:
+        Basic usage:
+        ```python
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        
+        # Find elements with CSS-like selectors
+        headers = page.find_all('text[size>12]:bold')
+        summaries = page.find('text:contains("Summary")')
+        
+        # Spatial navigation
+        content_below = summaries.below(until='text[size>12]:bold')
+        
+        # Table extraction
+        tables = page.extract_table()
+        ```
+
+        Advanced usage:
+        ```python
+        # Apply OCR if needed
+        page.apply_ocr(engine='easyocr', resolution=300)
+        
+        # Layout analysis
+        page.analyze_layout(engine='yolo')
+        
+        # AI-powered extraction
+        data = page.extract_structured_data(MySchema)
+        
+        # Visual debugging
+        page.find('text:contains("Important")').show()
+        ```
     """
 
     def __init__(self, page: "pdfplumber.page.Page", parent: "PDF", index: int, font_attrs=None, load_text: bool = True):
-        """
-        Initialize a page wrapper.
+        """Initialize a page wrapper.
+
+        Creates an enhanced Page object that wraps a pdfplumber page with additional
+        functionality for spatial navigation, analysis, and AI-powered extraction.
 
         Args:
-            page: pdfplumber page object
-            parent: Parent PDF object
-            index: Index of this page in the PDF (0-based)
-            font_attrs: Font attributes to consider when grouping characters into words.
-            load_text: Whether to load text elements from the PDF (default: True).
+            page: The underlying pdfplumber page object that provides raw PDF data.
+            parent: Parent PDF object that contains this page and provides access
+                to managers and global settings.
+            index: Zero-based index of this page in the PDF document.
+            font_attrs: List of font attributes to consider when grouping characters
+                into words. Common attributes include ['fontname', 'size', 'flags'].
+                If None, uses default character-to-word grouping rules.
+            load_text: If True, load and process text elements from the PDF's text layer.
+                If False, skip text layer processing (useful for OCR-only workflows).
+
+        Note:
+            This constructor is typically called automatically when accessing pages
+            through the PDF.pages collection. Direct instantiation is rarely needed.
+
+        Example:
+            ```python
+            # Pages are usually accessed through the PDF object
+            pdf = npdf.PDF("document.pdf")
+            page = pdf.pages[0]  # Page object created automatically
+            
+            # Direct construction (advanced usage)
+            import pdfplumber
+            with pdfplumber.open("document.pdf") as plumber_pdf:
+                plumber_page = plumber_pdf.pages[0]
+                page = Page(plumber_page, pdf, 0, load_text=True)
+            ```
         """
         self._page = page
         self._parent = parent

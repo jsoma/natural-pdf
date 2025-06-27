@@ -19,14 +19,35 @@ if TYPE_CHECKING:
 
 
 def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
-    """
-    Extract bounding box coordinates from any object that has bbox properties.
+    """Extract bounding box coordinates from any object that has bbox properties.
+
+    This utility function provides a standardized way to extract bounding box
+    coordinates from various object types that may store bbox information in
+    different formats (properties, attributes, or dictionary keys).
 
     Args:
-        obj: Object that might have bbox coordinates (Element, Region, etc.)
+        obj: Object that might have bbox coordinates. Can be an Element, Region,
+            dictionary, or any object with bbox-related attributes.
 
     Returns:
-        Tuple of (x0, top, x1, bottom) or None if object doesn't have bbox properties
+        Tuple of (x0, top, x1, bottom) coordinates as floats, or None if the
+        object doesn't have valid bbox properties. Coordinates are in PDF
+        coordinate system (points, with origin at bottom-left).
+
+    Example:
+        ```python
+        # Works with various object types
+        element_bbox = extract_bbox(text_element)  # From Element
+        region_bbox = extract_bbox(region)         # From Region
+        dict_bbox = extract_bbox({                 # From dictionary
+            'x0': 100, 'top': 200, 'x1': 300, 'bottom': 250
+        })
+        
+        if element_bbox:
+            x0, top, x1, bottom = element_bbox
+            width = x1 - x0
+            height = bottom - top
+        ```
     """
     # Try bbox property first (most common)
     if hasattr(obj, "bbox") and obj.bbox is not None:
@@ -53,8 +74,26 @@ def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
 
 
 class DirectionalMixin:
-    """
-    Mixin class providing directional methods for both Element and Region classes.
+    """Mixin class providing directional methods for both Element and Region classes.
+
+    This mixin provides spatial navigation capabilities that allow elements and regions
+    to create new regions in specific directions (left, right, above, below) relative
+    to themselves. This forms the foundation of natural-pdf's spatial navigation system.
+
+    The directional methods use the PDF coordinate system where:
+    - x increases from left to right
+    - y increases from bottom to top (PDF standard)
+    - Origin (0, 0) is at the bottom-left of the page
+
+    Methods provided:
+    - left(): Create region to the left
+    - right(): Create region to the right  
+    - above(): Create region above
+    - below(): Create region below
+
+    Note:
+        This mixin requires the implementing class to have 'page', 'x0', 'top',
+        'x1', and 'bottom' attributes for coordinate calculations.
     """
 
     def _direction(
@@ -524,20 +563,88 @@ class DirectionalMixin:
 
 
 class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
-    """
-    Base class for all PDF elements.
+    """Base class for all PDF elements.
 
     This class provides common properties and methods for all PDF elements,
-    such as text, rectangles, lines, etc.
+    including text elements, rectangles, lines, images, and other geometric shapes.
+    It serves as the foundation for natural-pdf's element system and provides
+    spatial navigation, classification, and description capabilities through mixins.
+
+    The Element class wraps underlying pdfplumber objects and extends them with:
+    - Spatial navigation methods (left, right, above, below)
+    - Bounding box and coordinate properties
+    - Classification and description capabilities
+    - Polygon support for complex shapes
+    - Metadata storage for analysis results
+
+    All coordinates use the PDF coordinate system where:
+    - Origin (0, 0) is at the bottom-left of the page
+    - x increases from left to right
+    - y increases from bottom to top
+
+    Attributes:
+        type: Element type (e.g., 'char', 'line', 'rect', 'image').
+        bbox: Bounding box tuple (x0, top, x1, bottom).
+        x0: Left x-coordinate.
+        top: Top y-coordinate (minimum y).
+        x1: Right x-coordinate.
+        bottom: Bottom y-coordinate (maximum y).
+        width: Element width (x1 - x0).
+        height: Element height (bottom - top).
+        page: Reference to the parent Page object.
+        metadata: Dictionary for storing analysis results and custom data.
+
+    Example:
+        ```python
+        pdf = npdf.PDF("document.pdf")
+        page = pdf.pages[0]
+        
+        # Get text elements
+        text_elements = page.chars
+        for element in text_elements:
+            print(f"Text '{element.get_text()}' at {element.bbox}")
+            
+        # Spatial navigation
+        first_char = page.chars[0]
+        region_to_right = first_char.right(size=100)
+        
+        # Classification
+        element.classify("document_type", model="clip")
+        ```
+
+    Note:
+        Element objects are typically created automatically when accessing page
+        collections (page.chars, page.words, page.rects, etc.). Direct instantiation
+        is rarely needed in normal usage.
     """
 
     def __init__(self, obj: Dict[str, Any], page: "Page"):
-        """
-        Initialize base element.
+        """Initialize base element.
+
+        Creates an Element object that wraps a pdfplumber data object with enhanced
+        functionality for spatial navigation, analysis, and classification.
 
         Args:
-            obj: The underlying pdfplumber object
-            page: The parent Page object
+            obj: The underlying pdfplumber object dictionary containing element
+                properties like coordinates, text, fonts, etc. This typically comes
+                from pdfplumber's chars, words, rects, lines, or images collections.
+            page: The parent Page object that contains this element and provides
+                access to document-level functionality and other elements.
+
+        Note:
+            This constructor is typically called automatically when accessing element
+            collections through page properties. Direct instantiation is rarely needed.
+
+        Example:
+            ```python
+            # Elements are usually accessed through page collections
+            page = pdf.pages[0]
+            chars = page.chars  # Elements created automatically
+            
+            # Direct construction (advanced usage)
+            pdfplumber_char = page._page.chars[0]  # Raw pdfplumber data
+            element = Element(pdfplumber_char, page)
+            ```
         """
         self._obj = obj
         self._page = page
