@@ -35,11 +35,11 @@ class TextRegion:
             text="Hello World",
             confidence=0.95
         )
-        
+
         # Create from polygon coordinates
         polygon = [[100, 200], [300, 200], [300, 250], [100, 250]]
         region = TextRegion.from_polygon(polygon, "Hello World", 0.95)
-        
+
         # Convert to dictionary for processing
         data = region.to_dict()
         ```
@@ -122,8 +122,8 @@ class OCREngine(ABC):
                     return True
                 except ImportError:
                     return False
-            
-            def process_single_image(self, image, languages, min_confidence, 
+
+            def process_single_image(self, image, languages, min_confidence,
                                    device, detect_only, options):
                 # Implement OCR processing
                 return text_regions

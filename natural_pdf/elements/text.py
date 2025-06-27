@@ -32,11 +32,11 @@ class TextElement(Element):
             obj["object_type"] = "text"
 
         super().__init__(obj, page)
-        
+
         # Memory optimization: Store character indices instead of full dictionaries
         # This reduces memory usage by ~50% by avoiding character data duplication
         self._char_indices = obj.pop("_char_indices", [])
-        
+
         # Backward compatibility: Keep _char_dicts for existing code
         # But prefer _char_indices when available to save memory
         self._char_dicts = obj.pop("_char_dicts", [])
@@ -44,20 +44,20 @@ class TextElement(Element):
     @property
     def chars(self):
         """Get constituent character elements efficiently.
-        
+
         Uses character indices when available to avoid memory duplication,
         falls back to _char_dicts for backward compatibility.
         """
         if self._char_indices:
             # Memory-efficient approach: access characters by index
-            if hasattr(self.page, '_element_mgr'):
-                char_elements = self.page._element_mgr.get_elements('chars')
+            if hasattr(self.page, "_element_mgr"):
+                char_elements = self.page._element_mgr.get_elements("chars")
                 return [char_elements[i] for i in self._char_indices if i < len(char_elements)]
-        
+
         # Backward compatibility: convert _char_dicts to TextElement objects
         if self._char_dicts:
             return [TextElement(char_dict, self.page) for char_dict in self._char_dicts]
-        
+
         return []
 
     @property
@@ -75,12 +75,12 @@ class TextElement(Element):
         try:
             # If using memory-efficient character indices, update the referenced chars
             if hasattr(self, "_char_indices") and self._char_indices:
-                if hasattr(self.page, '_element_mgr'):
-                    char_elements = self.page._element_mgr.get_elements('chars')
+                if hasattr(self.page, "_element_mgr"):
+                    char_elements = self.page._element_mgr.get_elements("chars")
                     for idx, char_idx in enumerate(self._char_indices):
                         if char_idx < len(char_elements) and idx < len(value):
                             char_elements[char_idx].text = value[idx]
-            
+
             # Legacy _char_dicts synchronization for backward compatibility
             elif hasattr(self, "_char_dicts") and isinstance(self._char_dicts, list):
                 if not self._char_dicts:
@@ -121,6 +121,7 @@ class TextElement(Element):
         except Exception as sync_err:  # pragma: no cover
             # Keep failures silent but logged; better to have outdated chars than crash.
             import logging
+
             logger = logging.getLogger(__name__)
             logger.debug(f"TextElement: Failed to sync char data after text update: {sync_err}")
 
@@ -379,7 +380,9 @@ class TextElement(Element):
     @property
     def underline(self) -> bool:
         """True if element is underlined."""
-        return bool(self._obj.get("underline") or self.metadata.get("decoration", {}).get("underline"))
+        return bool(
+            self._obj.get("underline") or self.metadata.get("decoration", {}).get("underline")
+        )
 
     # -----------------------------
     #  Highlight decoration
@@ -397,7 +400,9 @@ class TextElement(Element):
     @property
     def highlight_color(self):
         """Return RGB(A) tuple of highlight colour if stored."""
-        return self._obj.get("highlight_color") or self.metadata.get("decoration", {}).get("highlight_color")
+        return self._obj.get("highlight_color") or self.metadata.get("decoration", {}).get(
+            "highlight_color"
+        )
 
     def __repr__(self) -> str:
         """String representation of the text element."""
@@ -489,6 +494,7 @@ class TextElement(Element):
 
         try:
             from bidi.algorithm import get_display  # type: ignore
+
             from natural_pdf.utils.bidi_mirror import mirror_brackets
 
             # Convert from logical order to visual order

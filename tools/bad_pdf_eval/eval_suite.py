@@ -1,14 +1,14 @@
 import argparse
 import re
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
 from rich.console import Console
 
-from .utils import find_local_pdf, slugify
 from .analyser import BadPDFAnalyzer, extract_page_hints
 from .reporter import save_json
+from .utils import find_local_pdf, slugify
 
 console = Console()
 
@@ -43,9 +43,15 @@ def main():
         default="eval_results",
         help="Directory to write results into (will be git-ignored)",
     )
-    parser.add_argument("--max-row", type=int, default=None, help="debug: process only first n CSV rows")
-    parser.add_argument("--limit", type=int, default=None, help="process at most N PDFs with local files")
-    parser.add_argument("--overwrite", action="store_true", help="re-run analysis even if summary.json exists")
+    parser.add_argument(
+        "--max-row", type=int, default=None, help="debug: process only first n CSV rows"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="process at most N PDFs with local files"
+    )
+    parser.add_argument(
+        "--overwrite", action="store_true", help="re-run analysis even if summary.json exists"
+    )
     args = parser.parse_args()
 
     csv_path = Path(args.csv)
@@ -70,7 +76,9 @@ def main():
 
             # Ignore files that are not .pdf (e.g. ZIPs mistakenly included)
             if pdf_path.suffix.lower() != ".pdf":
-                console.print(f"[yellow]Not a PDF ({pdf_path.suffix}) for {submission_id}; skipping.")
+                console.print(
+                    f"[yellow]Not a PDF ({pdf_path.suffix}) for {submission_id}; skipping."
+                )
                 continue
 
             sub_output = output_root / submission_id
@@ -88,12 +96,16 @@ def main():
                 console.print(f"[yellow]Could not copy PDF into results folder: {copy_err}")
 
             if summary_path.exists() and not args.overwrite:
-                console.print(f"[yellow]Summary exists for {submission_id}; skipping (use --overwrite to refresh)")
+                console.print(
+                    f"[yellow]Summary exists for {submission_id}; skipping (use --overwrite to refresh)"
+                )
                 continue
 
             pages = build_pages_list(row)
             try:
-                analyser = BadPDFAnalyzer(pdf_path=pdf_path, output_dir=sub_output, submission_meta=row, pages=pages)
+                analyser = BadPDFAnalyzer(
+                    pdf_path=pdf_path, output_dir=sub_output, submission_meta=row, pages=pages
+                )
                 summary = analyser.run()
                 master_records.append(summary)
             except Exception as e:
@@ -113,4 +125,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

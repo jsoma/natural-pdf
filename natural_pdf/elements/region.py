@@ -21,15 +21,15 @@ from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
-
-# Import new utils
-from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
 # ------------------------------------------------------------------
 # Table utilities
 # ------------------------------------------------------------------
 from natural_pdf.tables import TableResult
+from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
+
+# Import new utils
+from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
 # --- End Classification Imports --- #
 
@@ -55,7 +55,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
+class Region(
+    DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin
+):
     """Represents a rectangular region on a page.
 
     Regions are fundamental building blocks in natural-pdf that define rectangular
@@ -93,14 +95,14 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         ```python
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
-        
+
         # Manual region creation
         header_region = page.region(0, 0, page.width, 100)
-        
+
         # Spatial navigation from elements
         summary_text = page.find('text:contains("Summary")')
         content_region = summary_text.below(until='text[size>12]:bold')
-        
+
         # Extract content from region
         tables = content_region.extract_table()
         text = content_region.get_text()
@@ -110,10 +112,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         ```python
         # OCR processing
         region.apply_ocr(engine='easyocr', resolution=300)
-        
+
         # AI-powered extraction
         data = region.extract_structured_data(MySchema)
-        
+
         # Visual debugging
         region.show(highlights=['tables', 'text'])
         ```
@@ -149,13 +151,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             ```python
             pdf = npdf.PDF("document.pdf")
             page = pdf.pages[0]
-            
+
             # Rectangular region
             header = Region(page, (0, 0, page.width, 100), label="header")
-            
+
             # Polygonal region (from layout detection)
             table_polygon = [(50, 100), (300, 100), (300, 400), (50, 400)]
-            table_region = Region(page, (50, 100, 300, 400), 
+            table_region = Region(page, (50, 100, 300, 400),
                                 polygon=table_polygon, label="table")
             ```
 
@@ -167,11 +169,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         self._page = page
         self._bbox = bbox
         self._polygon = polygon
-        self._multi_page_elements = None
-        self._spans_pages = False
-        self._page_range = None
-        self.start_element = None
-        self.end_element = None
 
         self.metadata: Dict[str, Any] = {}
         # Analysis results live under self.metadata['analysis'] via property
@@ -531,10 +528,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             True if the element is in the region, False otherwise
         """
-        # If we have multi-page elements cached, check if the element is in the list
-        if self._spans_pages and self._multi_page_elements is not None:
-            return element in self._multi_page_elements
-
         # Check if element is on the same page
         if not hasattr(element, "page") or element.page != self._page:
             return False
@@ -701,12 +694,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         # Handle the case where user wants the cropped region to have a specific width
         page_kwargs = kwargs.copy()
         effective_resolution = resolution  # Start with the provided resolution
@@ -809,12 +803,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         if not self._page:
             raise ValueError("Region must be associated with a page to show.")
 
@@ -851,7 +846,11 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         )
 
     def save(
-        self, filename: str, resolution: Optional[float] = None, labels: bool = True, legend_position: str = "right"
+        self,
+        filename: str,
+        resolution: Optional[float] = None,
+        labels: bool = True,
+        legend_position: str = "right",
     ) -> "Region":
         """
         Save the page with this region highlighted to an image file.
@@ -867,17 +866,20 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         # Highlight this region if not already highlighted
         self.highlight()
 
         # Save the highlighted image
-        self._page.save_image(filename, resolution=resolution, labels=labels, legend_position=legend_position)
+        self._page.save_image(
+            filename, resolution=resolution, labels=labels, legend_position=legend_position
+        )
         return self
 
     def save_image(
@@ -903,12 +905,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         # Get the region image
         image = self.to_image(
             resolution=resolution,
@@ -945,7 +948,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
 
         Returns
         ------
-        
+
         New Region with visual whitespace trimmed from all edges
 
         Examples
@@ -964,12 +967,13 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         # Pre-shrink the region to avoid box slivers
         work_region = (
             self.expand(left=-pre_shrink, right=-pre_shrink, top=-pre_shrink, bottom=-pre_shrink)
@@ -978,9 +982,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         )
 
         # Get the region image
-        image = work_region.to_image(
-            resolution=resolution, crop=True, include_highlights=False
-        )
+        image = work_region.to_image(resolution=resolution, crop=True, include_highlights=False)
 
         if image is None:
             logger.warning(
@@ -1206,12 +1208,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         Returns:
             List of elements in the region
         """
-        # If we have multi-page elements, return those
-        if self._spans_pages and self._multi_page_elements is not None:
-            # TODO: Apply selector to multi-page elements if needed
-            return self._multi_page_elements
-
-        # Otherwise, get elements from the page
         if selector:
             # Find elements on the page matching the selector
             page_elements = self.page.find_all(
@@ -1350,7 +1346,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 try:
                     cell_regions_in_table = [
                         c
-                        for c in self.page.find_all("region[type=table_cell]", apply_exclusions=False)
+                        for c in self.page.find_all(
+                            "region[type=table_cell]", apply_exclusions=False
+                        )
                         if self.intersects(c)
                     ]
                 except Exception as _cells_err:
@@ -1417,7 +1415,10 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         # This must happen AFTER alias handling (so strategies are final)
         # and BEFORE we delegate to _extract_table_* helpers.
         # -------------------------------------------------------------
-        if "text" in (table_settings.get("vertical_strategy"), table_settings.get("horizontal_strategy")):
+        if "text" in (
+            table_settings.get("vertical_strategy"),
+            table_settings.get("horizontal_strategy"),
+        ):
             page_cfg = getattr(self.page, "_config", {})
             # Ensure text_* tolerances passed to pdfplumber
             if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
@@ -1559,19 +1560,35 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_settings.get("vertical_strategy"),
             table_settings.get("horizontal_strategy"),
         )
-        if _uses_text and "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "text_x_tolerance" not in table_settings
+            and "x_tolerance" not in table_settings
+        ):
             x_tol = pdf_cfg.get("x_tolerance")
             if x_tol is not None:
                 table_settings.setdefault("text_x_tolerance", x_tol)
-        if _uses_text and "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "text_y_tolerance" not in table_settings
+            and "y_tolerance" not in table_settings
+        ):
             y_tol = pdf_cfg.get("y_tolerance")
             if y_tol is not None:
                 table_settings.setdefault("text_y_tolerance", y_tol)
 
-        if _uses_text and "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "snap_tolerance" not in table_settings
+            and "snap_x_tolerance" not in table_settings
+        ):
             snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
             table_settings.setdefault("snap_tolerance", snap)
-        if _uses_text and "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "join_tolerance" not in table_settings
+            and "join_x_tolerance" not in table_settings
+        ):
             join = table_settings.get("snap_tolerance", 1)
             table_settings.setdefault("join_tolerance", join)
             table_settings.setdefault("join_x_tolerance", join)
@@ -1603,11 +1620,19 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_settings.get("vertical_strategy"),
             table_settings.get("horizontal_strategy"),
         )
-        if _uses_text and "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "text_x_tolerance" not in table_settings
+            and "x_tolerance" not in table_settings
+        ):
             x_tol = pdf_cfg.get("x_tolerance")
             if x_tol is not None:
                 table_settings.setdefault("text_x_tolerance", x_tol)
-        if _uses_text and "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
+        if (
+            _uses_text
+            and "text_y_tolerance" not in table_settings
+            and "y_tolerance" not in table_settings
+        ):
             y_tol = pdf_cfg.get("y_tolerance")
             if y_tol is not None:
                 table_settings.setdefault("text_y_tolerance", y_tol)
@@ -2035,23 +2060,6 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         else:
             raise ValueError("Internal error: No selector or text provided.")
 
-        # If we span multiple pages, filter our elements
-        # TODO: Revisit multi-page region logic
-        if self._spans_pages and self._multi_page_elements is not None:
-            logger.warning("find_all on multi-page regions is not fully implemented.")
-            # Temporary: Apply filter directly to cached elements
-            try:
-                selector_obj = parse_selector(effective_selector)
-                # Pass regex/case flags down
-                kwargs["regex"] = regex
-                kwargs["case"] = case
-                filter_func = selector_to_filter_func(selector_obj, **kwargs)
-                matching = [el for el in self._multi_page_elements if filter_func(el)]
-                return ElementCollection(matching)
-            except Exception as e:
-                logger.error(f"Error applying selector to multi-page region elements: {e}")
-                return ElementCollection([])
-
         # Normal case: Region is on a single page
         try:
             # Parse the final selector string
@@ -2183,15 +2191,24 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             # Remove OCR CHAR dicts overlapping region
             for char in list(self.page._element_mgr.chars):
                 # char can be dict or TextElement; normalise
-                char_src = char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                char_src = (
+                    char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                )
                 if char_src == "ocr":
                     # Rough bbox for dicts
                     if isinstance(char, dict):
-                        cx0, ctop, cx1, cbottom = char.get("x0", 0), char.get("top", 0), char.get("x1", 0), char.get("bottom", 0)
+                        cx0, ctop, cx1, cbottom = (
+                            char.get("x0", 0),
+                            char.get("top", 0),
+                            char.get("x1", 0),
+                            char.get("bottom", 0),
+                        )
                     else:
                         cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
                     # Quick overlap check
-                    if not (cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom):
+                    if not (
+                        cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom
+                    ):
                         _safe_remove(char)
 
             logger.info(
@@ -2314,7 +2331,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
         """
         Apply a custom OCR function to this region and create text elements from the results.
 
-        This is useful when you want to use a custom OCR method (e.g., an LLM API, 
+        This is useful when you want to use a custom OCR method (e.g., an LLM API,
         specialized OCR service, or any custom logic) instead of the built-in OCR engines.
 
         Args:
@@ -2339,15 +2356,15 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 image = region.to_image(resolution=300, crop=True)
                 # Call your LLM API here
                 return llm_client.ocr(image)
-            
+
             region.apply_custom_ocr(ocr_with_llm)
-            
+
             # Using with a custom OCR service
             def ocr_with_service(region):
                 img_bytes = region.to_image(crop=True).tobytes()
                 response = ocr_service.process(img_bytes)
                 return response.text
-            
+
             region.apply_custom_ocr(ocr_with_service, source_label="my-ocr-service")
         """
         # If replace is True, remove existing OCR elements in this region
@@ -2355,9 +2372,9 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             logger.info(
                 f"Region {self.bbox}: Removing existing OCR elements before applying custom OCR."
             )
-            
+
             removed_count = 0
-            
+
             # Helper to remove a single element safely
             def _safe_remove(elem):
                 nonlocal removed_count
@@ -2376,7 +2393,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                         success = False
                 if success:
                     removed_count += 1
-            
+
             # Remove ALL OCR elements overlapping this region
             # Remove elements with source=="ocr" (built-in OCR) or matching the source_label (previous custom OCR)
             for word in list(self.page._element_mgr.words):
@@ -2385,45 +2402,51 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 # Also remove elements with the same source_label to avoid duplicates
                 if (word_source == "ocr" or word_source == source_label) and self.intersects(word):
                     _safe_remove(word)
-            
+
             # Also remove char dicts if needed (matching built-in OCR)
             for char in list(self.page._element_mgr.chars):
                 # char can be dict or TextElement; normalize
-                char_src = char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                char_src = (
+                    char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+                )
                 if char_src == "ocr" or char_src == source_label:
                     # Rough bbox for dicts
                     if isinstance(char, dict):
-                        cx0, ctop, cx1, cbottom = char.get("x0", 0), char.get("top", 0), char.get("x1", 0), char.get("bottom", 0)
+                        cx0, ctop, cx1, cbottom = (
+                            char.get("x0", 0),
+                            char.get("top", 0),
+                            char.get("x1", 0),
+                            char.get("bottom", 0),
+                        )
                     else:
                         cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
                     # Quick overlap check
-                    if not (cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom):
+                    if not (
+                        cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom
+                    ):
                         _safe_remove(char)
-            
+
             if removed_count > 0:
-                logger.info(
-                    f"Region {self.bbox}: Removed {removed_count} existing OCR elements."
-                )
-        
+                logger.info(f"Region {self.bbox}: Removed {removed_count} existing OCR elements.")
+
         # Call the custom OCR function
         try:
             logger.debug(f"Region {self.bbox}: Calling custom OCR function...")
             ocr_text = ocr_function(self)
-            
+
             if ocr_text is not None and not isinstance(ocr_text, str):
                 logger.warning(
                     f"Custom OCR function returned non-string type ({type(ocr_text)}). "
                     f"Converting to string."
                 )
                 ocr_text = str(ocr_text)
-                
+
         except Exception as e:
             logger.error(
-                f"Error calling custom OCR function for region {self.bbox}: {e}",
-                exc_info=True
+                f"Error calling custom OCR function for region {self.bbox}: {e}", exc_info=True
             )
             return self
-        
+
         # Create text element if we got text
         if ocr_text is not None:
             # Use the to_text_element method to create the element
@@ -2431,16 +2454,16 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
                 text_content=ocr_text,
                 source_label=source_label,
                 confidence=confidence,
-                add_to_page=add_to_page
+                add_to_page=add_to_page,
             )
-            
+
             logger.info(
                 f"Region {self.bbox}: Created text element with {len(ocr_text)} chars"
                 f"{' and added to page' if add_to_page else ''}"
             )
         else:
             logger.debug(f"Region {self.bbox}: Custom OCR function returned None (no text found)")
-        
+
         return self
 
     def get_section_between(self, start_element=None, end_element=None, boundary_inclusion="both"):
@@ -3388,9 +3411,7 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             return []
 
         # Build arrays of centers
-        centers = np.array([
-            [(c.x0 + c.x1) / 2.0, (c.top + c.bottom) / 2.0] for c in cell_regions
-        ])
+        centers = np.array([[(c.x0 + c.x1) / 2.0, (c.top + c.bottom) / 2.0] for c in cell_regions])
         xs = centers[:, 0]
         ys = centers[:, 1]
 
@@ -3422,5 +3443,3 @@ class Region(DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetect
             table_grid[row_idx][col_idx] = text_val if text_val else None
 
         return table_grid
-
-

@@ -35,12 +35,15 @@ EVAL_DIR = ROOT / "eval_results"
 
 # ---------------------------------------------------------------------------
 
+
 def iter_summary_paths(submission: str | None) -> Iterable[Path]:
     """Yield all summary.json paths (optionally filtered by submission ID)."""
     if submission:
         p = EVAL_DIR / submission / "summary.json"
         if not p.exists():
-            raise FileNotFoundError(f"No summary.json found for submission '{submission}' – expected {p}")
+            raise FileNotFoundError(
+                f"No summary.json found for submission '{submission}' – expected {p}"
+            )
         yield p
     else:
         yield from EVAL_DIR.glob("*/summary.json")
@@ -100,9 +103,12 @@ def compile_report(paths: Iterable[Path]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compile multi-retry attempts into markdown.")
-    parser.add_argument("--output", type=Path,
-                        default=EVAL_DIR / "attempts_progress.md",
-                        help="Destination .md file (default: eval_results/attempts_progress.md).")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=EVAL_DIR / "attempts_progress.md",
+        help="Destination .md file (default: eval_results/attempts_progress.md).",
+    )
     parser.add_argument("--submission", help="Only compile a single submission ID.")
     args = parser.parse_args()
 
@@ -112,8 +118,10 @@ def main() -> None:
 
     md = compile_report(summary_paths)
     args.output.write_text(md, encoding="utf-8")
-    print(f"[ok] Wrote markdown report to {args.output.relative_to(ROOT)} (covers {len(summary_paths)} PDFs)")
+    print(
+        f"[ok] Wrote markdown report to {args.output.relative_to(ROOT)} (covers {len(summary_paths)} PDFs)"
+    )
 
 
 if __name__ == "__main__":
-    main() 
+    main()

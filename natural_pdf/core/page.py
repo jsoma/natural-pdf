@@ -77,7 +77,6 @@ from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerW
 # --- End Classification Imports --- #
 
 
-
 # --- End Shape Detection Mixin --- #
 
 
@@ -127,14 +126,14 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         ```python
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
-        
+
         # Find elements with CSS-like selectors
         headers = page.find_all('text[size>12]:bold')
         summaries = page.find('text:contains("Summary")')
-        
+
         # Spatial navigation
         content_below = summaries.below(until='text[size>12]:bold')
-        
+
         # Table extraction
         tables = page.extract_table()
         ```
@@ -143,19 +142,26 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         ```python
         # Apply OCR if needed
         page.apply_ocr(engine='easyocr', resolution=300)
-        
+
         # Layout analysis
         page.analyze_layout(engine='yolo')
-        
+
         # AI-powered extraction
         data = page.extract_structured_data(MySchema)
-        
+
         # Visual debugging
         page.find('text:contains("Important")').show()
         ```
     """
 
-    def __init__(self, page: "pdfplumber.page.Page", parent: "PDF", index: int, font_attrs=None, load_text: bool = True):
+    def __init__(
+        self,
+        page: "pdfplumber.page.Page",
+        parent: "PDF",
+        index: int,
+        font_attrs=None,
+        load_text: bool = True,
+    ):
         """Initialize a page wrapper.
 
         Creates an enhanced Page object that wraps a pdfplumber page with additional
@@ -181,7 +187,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             # Pages are usually accessed through the PDF object
             pdf = npdf.PDF("document.pdf")
             page = pdf.pages[0]  # Page object created automatically
-            
+
             # Direct construction (advanced usage)
             import pdfplumber
             with pdfplumber.open("document.pdf") as plumber_pdf:
@@ -1267,6 +1273,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             if _contains_rtl(result):
                 try:
                     from bidi.algorithm import get_display  # type: ignore
+
                     from natural_pdf.utils.bidi_mirror import mirror_brackets
 
                     result = "\n".join(
@@ -1276,8 +1283,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                                 base_dir=(
                                     "R"
                                     if any(
-                                        unicodedata.bidirectional(ch)
-                                        in ("R", "AL", "AN")
+                                        unicodedata.bidirectional(ch) in ("R", "AL", "AN")
                                         for ch in line
                                     )
                                     else "L"
@@ -1473,11 +1479,17 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                         table_settings.setdefault("text_y_tolerance", y_tol)
 
                 # pdfplumber's text strategy benefits from a tight snap tolerance.
-                if "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
+                if (
+                    "snap_tolerance" not in table_settings
+                    and "snap_x_tolerance" not in table_settings
+                ):
                     # Derive from y_tol if available, else default 1
                     snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
                     table_settings.setdefault("snap_tolerance", snap)
-                if "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
+                if (
+                    "join_tolerance" not in table_settings
+                    and "join_x_tolerance" not in table_settings
+                ):
                     join = table_settings.get("snap_tolerance", 1)
                     table_settings.setdefault("join_tolerance", join)
                     table_settings.setdefault("join_x_tolerance", join)
@@ -3075,29 +3087,31 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             InspectionSummary with element tables showing coordinates,
             properties, and other details for each element
         """
-        return self.find_all('*').inspect(limit=limit)
+        return self.find_all("*").inspect(limit=limit)
 
     def remove_text_layer(self) -> "Page":
         """
         Remove all text elements from this page.
-        
+
         This removes all text elements (words and characters) from the page,
         effectively clearing the text layer.
-        
+
         Returns:
             Self for method chaining
         """
         logger.info(f"Page {self.number}: Removing all text elements...")
-        
+
         # Remove all words and chars from the element manager
         removed_words = len(self._element_mgr.words)
         removed_chars = len(self._element_mgr.chars)
-        
+
         # Clear the lists
         self._element_mgr._elements["words"] = []
         self._element_mgr._elements["chars"] = []
-        
-        logger.info(f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters")
+
+        logger.info(
+            f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters"
+        )
         return self
 
     @property

@@ -37,12 +37,12 @@ def test_tiny_font_text_extract(dial_config):
     upper = extracted.upper()
 
     # Basic sanity: correct row appears.
-    assert "PFEIFER" in upper, (
-        f"Expected 'PFEIFER' not found with dial {dial_config}. Extracted snippet: {extracted[:200]}"
-    )
+    assert (
+        "PFEIFER" in upper
+    ), f"Expected 'PFEIFER' not found with dial {dial_config}. Extracted snippet: {extracted[:200]}"
 
     # Column gap check: we should see a space between the date formats in the first data row.
     first_row_snippet = extracted.split("\n")[1][:120]
-    assert "12/2/2016 " in extracted, (
-        f"Column spacing missing with dial {dial_config}. Snippet: {first_row_snippet}"
-    ) 
+    assert (
+        "12/2/2016 " in extracted
+    ), f"Column spacing missing with dial {dial_config}. Snippet: {first_row_snippet}"

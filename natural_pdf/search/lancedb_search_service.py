@@ -7,15 +7,13 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 import lancedb
 import pyarrow as pa
+
+from .search_options import BaseSearchOptions
+from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+
 # Lazy import for SentenceTransformer to avoid heavy loading at module level
 # from sentence_transformers import SentenceTransformer
 
-from .search_options import BaseSearchOptions
-from .search_service_protocol import (
-    Indexable,
-    IndexConfigurationError,
-    SearchServiceProtocol,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +24,7 @@ DEFAULT_LANCEDB_PERSIST_PATH = "./lancedb_data"
 def _get_sentence_transformer(model_name: str):
     """Lazy import and instantiation of SentenceTransformer."""
     from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(model_name)
 
 

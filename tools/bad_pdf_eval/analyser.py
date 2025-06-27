@@ -3,15 +3,16 @@ from __future__ import annotations
 import re
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
+from PIL import Image
+from rich.console import Console
+from rich.table import Table
 
 import natural_pdf as npdf
-from PIL import Image
-from rich.table import Table
-from rich.console import Console
 
+from .reporter import log_section, save_json
 from .utils import slugify
-from .reporter import save_json, log_section
 
 console = Console()
 
@@ -201,7 +202,10 @@ class BadPDFAnalyzer:
                 page_result["goal_tag"] = "unknown"
 
             # Difficulties determination
-            if page_result.get("text_len", 0) < 100 and page_result.get("ocr_text_elements", 0) > 20:
+            if (
+                page_result.get("text_len", 0) < 100
+                and page_result.get("ocr_text_elements", 0) > 20
+            ):
                 difficulties.append("scanned_image")
 
             page_result["difficulties"] = difficulties
@@ -235,40 +239,48 @@ class BadPDFAnalyzer:
                 import_lines.append("import pandas as pd")
 
             code_lines: List[str] = import_lines + [
-                f"pdf = PDF(\"{self.pdf_path}\")",
+                f'pdf = PDF("{self.pdf_path}")',
                 f"page = pdf.pages[{page_idx_1based - 1}]  # page {page_idx_1based}",
             ]
 
             thought_lines: List[str] = []
             # build reasoning
-            thought_lines.append(f"Goal tag: {page_result['goal_tag']}. Detected difficulties: {', '.join(difficulties) or 'none'}.")
+            thought_lines.append(
+                f"Goal tag: {page_result['goal_tag']}. Detected difficulties: {', '.join(difficulties) or 'none'}."
+            )
 
             if page_result["goal_tag"] == "table_extraction":
-                thought_lines.append("Plan: rely on layout models to locate tables, then extract with Natural-PDF helper.")
+                thought_lines.append(
+                    "Plan: rely on layout models to locate tables, then extract with Natural-PDF helper."
+                )
                 if page_result.get("layout_tatr_count", 0) > 0:
                     code_lines.append("page.analyze_layout('tatr')  # adds 'table' regions")
                 else:
                     code_lines.append("page.analyze_layout()  # YOLO fallback")
 
                 if page_result.get("layout_tatr_count", 0) > 1:
-                    thought_lines.append("Multiple tables detected, choose second as goal mentions 'second table'.")
+                    thought_lines.append(
+                        "Multiple tables detected, choose second as goal mentions 'second table'."
+                    )
                     code_lines.append("tables = page.find_all('table')")
                     code_lines.append("tbl = tables[1]")
                 else:
                     code_lines.append("tbl = page.find('table')  # first table")
 
-                code_lines.extend([
-                    "data = tbl.extract_table()",
-                    "columns, rows = data[0], data[1:]",
-                    "df = pd.DataFrame(rows, columns=columns)",
-                ])
+                code_lines.extend(
+                    [
+                        "data = tbl.extract_table()",
+                        "columns, rows = data[0], data[1:]",
+                        "df = pd.DataFrame(rows, columns=columns)",
+                    ]
+                )
             elif page_result["goal_tag"] == "text_extraction":
                 anchor = _first_anchor_from_goal(goal_str)
                 if "scanned_image" in difficulties:
                     thought_lines.append("No native text detected; need OCR before querying.")
                     code_lines.append("page.apply_ocr(engine='paddle')")
                 thought_lines.append(f"Anchor on text '{anchor}' then read below region.")
-                code_lines.append(f"section = page.find(\"text:contains({anchor})\").below(0, 50)")
+                code_lines.append(f'section = page.find("text:contains({anchor})").below(0, 50)')
                 code_lines.append("text = section.extract_text()")
             else:
                 thought_lines.append("Goal unclear; placeholder snippet provided.")
@@ -282,8 +294,13 @@ class BadPDFAnalyzer:
             # Provide quick heuristic comment
             if page_result.get("text_len", 0) == 0 and page_result.get("ocr_text_elements", 0) > 20:
                 page_result["auto_comment"] = "Likely scanned/needs OCR; no native text."
-            elif page_result.get("text_len", 0) > 1000 and page_result.get("layout_yolo_count", 0) == 0:
-                page_result["auto_comment"] = "Native dense text; YOLO found no regions – may be fine, fonts just small."
+            elif (
+                page_result.get("text_len", 0) > 1000
+                and page_result.get("layout_yolo_count", 0) == 0
+            ):
+                page_result["auto_comment"] = (
+                    "Native dense text; YOLO found no regions – may be fine, fonts just small."
+                )
             else:
                 page_result.setdefault("auto_comment", "")
 
@@ -299,4 +316,4 @@ PAGE_REGEX = re.compile(r"page\s*(\d{1,4})", re.IGNORECASE)
 
 
 def extract_page_hints(text: str) -> List[int]:
-    return [int(m.group(1)) for m in PAGE_REGEX.finditer(text)] 
+    return [int(m.group(1)) for m in PAGE_REGEX.finditer(text)]

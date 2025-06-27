@@ -98,7 +98,9 @@ class HighlightRenderer:
             scaled_bbox = None
 
             if highlight.is_polygon:
-                scaled_polygon = [(p[0] * self.scale_factor, p[1] * self.scale_factor) for p in highlight.polygon]
+                scaled_polygon = [
+                    (p[0] * self.scale_factor, p[1] * self.scale_factor) for p in highlight.polygon
+                ]
                 # Draw polygon fill and border
                 draw.polygon(
                     scaled_polygon, fill=highlight.color, outline=highlight.border_color, width=2
@@ -597,7 +599,7 @@ class HighlightingService:
         if page_index in self._highlights_by_page:
             del self._highlights_by_page[page_index]
             logger.debug(f"Cleared highlights for page {page_index}.")
-        
+
         # Also clear any cached rendered images for this page so the next render
         # reflects the removal of highlights.
         try:
@@ -683,7 +685,6 @@ class HighlightingService:
             )
 
         try:
-            # base_image = render_plain_page(page_obj, actual_scale_x * 72 if actual_scale_x else scale * 72) # Old call
             img_object = page_obj._page.to_image(**to_image_args)
             base_image_pil = (
                 img_object.annotated
@@ -929,9 +930,7 @@ class HighlightingService:
                 right_px = max(left_px + 1, min(right_px, rendered_image.width))
                 bottom_px = max(top_px + 1, min(bottom_px, rendered_image.height))
 
-                rendered_image = rendered_image.crop(
-                    (left_px, top_px, right_px, bottom_px)
-                )
+                rendered_image = rendered_image.crop((left_px, top_px, right_px, bottom_px))
 
             legend = None
             if labels:

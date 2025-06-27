@@ -102,37 +102,6 @@ class LineElement(Element):
         elif self.is_vertical:
             return "vertical"
 
-    def text_above(self, distance: float = 5, **kwargs) -> Any:
-        """
-        Get text elements above this line.
-
-        Args:
-            distance: Maximum distance above the line in points
-            **kwargs: Additional filter parameters
-
-        Returns:
-            ElementCollection of text elements above this line
-        """
-        from natural_pdf.elements.collections import ElementCollection
-
-        # TODO: Implement proper filtering of elements above this line
-        return ElementCollection([])  # Placeholder
-
-    def text_below(self, distance: float = 5, **kwargs) -> Any:
-        """
-        Get text elements below this line.
-
-        Args:
-            distance: Maximum distance below the line in points
-            **kwargs: Additional filter parameters
-
-        Returns:
-            ElementCollection of text elements below this line
-        """
-        from natural_pdf.elements.collections import ElementCollection
-
-        # TODO: Implement proper filtering of elements below this line
-        return ElementCollection([])  # Placeholder
 
     def extract_text(self, keep_blank_chars=True, apply_exclusions=True, **kwargs) -> str:
         """

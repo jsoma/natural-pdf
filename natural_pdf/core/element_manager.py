@@ -21,10 +21,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pdfplumber.utils.text import WordExtractor
 
+from natural_pdf.elements.image import ImageElement
 from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.rect import RectangleElement
 from natural_pdf.elements.text import TextElement
-from natural_pdf.elements.image import ImageElement
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 
 STRIKE_DEFAULTS = {
-    "thickness_tol": 1.5,   # pt ; max height of line/rect to be considered strike
-    "horiz_tol": 1.0,       # pt ; vertical tolerance for horizontality
+    "thickness_tol": 1.5,  # pt ; max height of line/rect to be considered strike
+    "horiz_tol": 1.0,  # pt ; vertical tolerance for horizontality
     "coverage_ratio": 0.7,  # proportion of glyph width to be overlapped
     "band_top_frac": 0.35,  # fraction of glyph height above top baseline band
     "band_bottom_frac": 0.65,  # fraction below top (same used internally)
@@ -44,23 +44,23 @@ UNDERLINE_DEFAULTS = {
     "thickness_tol": 1.5,
     "horiz_tol": 1.0,
     "coverage_ratio": 0.8,
-    "band_frac": 0.25,   # height fraction above baseline
-    "below_pad": 0.7,    # pt ; pad below baseline
+    "band_frac": 0.25,  # height fraction above baseline
+    "below_pad": 0.7,  # pt ; pad below baseline
 }
 
 HIGHLIGHT_DEFAULTS = {
     "height_min_ratio": 0.6,  # rect height relative to char height lower bound
     "height_max_ratio": 2.0,  # upper bound
-    "coverage_ratio": 0.6,    # horizontal overlap with glyph
+    "coverage_ratio": 0.6,  # horizontal overlap with glyph
     "color_saturation_min": 0.4,  # HSV S >
-    "color_value_min": 0.4,        # HSV V >
+    "color_value_min": 0.4,  # HSV V >
 }
 
 
 @contextmanager
 def disable_text_sync():
     """Temporarily disable text synchronization for performance.
-    
+
     This context manager is used when bulk-updating text content where character-level
     synchronization is not needed, such as during bidi processing or large-scale
     text transformations. It prevents exponential recursion issues with Arabic/RTL
@@ -84,20 +84,21 @@ def disable_text_sync():
     """
     # Save original setter
     original_setter = TextElement.text.fset
-    
+
     # Create a fast setter that skips sync
     def fast_setter(self, value):
         self._obj["text"] = value
         # Skip character synchronization for performance
-    
+
     # Apply fast setter
     TextElement.text = property(TextElement.text.fget, fast_setter)
-    
+
     try:
         yield
     finally:
         # Restore original setter
         TextElement.text = property(TextElement.text.fget, original_setter)
+
 
 class NaturalWordExtractor(WordExtractor):
     """Custom WordExtractor that splits words based on specified character attributes.
@@ -119,10 +120,10 @@ class NaturalWordExtractor(WordExtractor):
         ```python
         # Create extractor that splits on font and size changes
         extractor = NaturalWordExtractor(['fontname', 'size'])
-        
+
         # Extract words with font-aware boundaries
         words = extractor.extract_words(page_chars)
-        
+
         # Each word will have consistent font properties
         for word in words:
             print(f"'{word['text']}' in {word['fontname']} size {word['size']}")
@@ -247,7 +248,9 @@ class ElementManager:
         if self._load_text and prepared_char_dicts:
             try:
                 self._mark_strikethrough_chars(prepared_char_dicts)
-            except Exception as strike_err:  # pragma: no cover – strike detection must never crash loading
+            except (
+                Exception
+            ) as strike_err:  # pragma: no cover – strike detection must never crash loading
                 logger.warning(
                     f"Page {self._page.number}: Strikethrough detection failed – {strike_err}",
                     exc_info=True,
@@ -293,16 +296,16 @@ class ElementManager:
         # 2. Instantiate the custom word extractor
         # Prefer page-level config over PDF-level for tolerance lookup
         word_elements: List[TextElement] = []
-        
+
         # Get config objects (needed for auto_text_tolerance check)
         page_config = getattr(self._page, "_config", {})
         pdf_config = getattr(self._page._parent, "_config", {})
-        
+
         # Initialize tolerance variables
         xt = None
         yt = None
         use_flow = pdf_config.get("use_text_flow", False)
-        
+
         if self._load_text and prepared_char_dicts:
             # Start with any explicitly supplied tolerances (may be None)
             xt = page_config.get("x_tolerance", pdf_config.get("x_tolerance"))
@@ -324,7 +327,7 @@ class ElementManager:
                     # Record back to page config for downstream users
                     page_config["x_tolerance"] = xt
                 if yt is None:
-                    yt = 0.6 * median_size   # ~line spacing fraction
+                    yt = 0.6 * median_size  # ~line spacing fraction
                     page_config["y_tolerance"] = yt
 
             # Warn users when the page's font size is extremely small –
@@ -413,7 +416,8 @@ class ElementManager:
                 char_dir = "ltr"
 
             extractor = NaturalWordExtractor(
-                word_split_attributes=self._word_split_attributes + ["strike", "underline", "highlight"],
+                word_split_attributes=self._word_split_attributes
+                + ["strike", "underline", "highlight"],
                 extra_attrs=attributes_to_preserve,
                 x_tolerance=xt,
                 y_tolerance=yt,
@@ -462,12 +466,13 @@ class ElementManager:
                     # Convert from visual order (from PDF) to logical order using bidi
                     try:
                         from bidi.algorithm import get_display  # type: ignore
+
                         from natural_pdf.utils.bidi_mirror import mirror_brackets
 
                         with disable_text_sync():
                             # word_element.text is currently in visual order (from PDF)
                             # Convert to logical order using bidi with auto direction detection
-                            logical_text = get_display(word_element.text, base_dir='L')
+                            logical_text = get_display(word_element.text, base_dir="L")
                             # Apply bracket mirroring for logical order
                             word_element.text = mirror_brackets(logical_text)
                     except Exception:
@@ -544,7 +549,11 @@ class ElementManager:
                     if color_counts:
                         dominant_color = max(color_counts.items(), key=lambda t: t[1])[0]
                         try:
-                            w._obj["highlight_color"] = tuple(dominant_color) if isinstance(dominant_color, (list, tuple)) else dominant_color
+                            w._obj["highlight_color"] = (
+                                tuple(dominant_color)
+                                if isinstance(dominant_color, (list, tuple))
+                                else dominant_color
+                            )
                         except Exception:
                             w._obj["highlight_color"] = dominant_color
 
@@ -1047,12 +1056,16 @@ class ElementManager:
     #  Strikethrough detection (horizontal strike-out lines)
     # ------------------------------------------------------------------
 
-    def _mark_strikethrough_chars(self, char_dicts: List[Dict[str, Any]], *,
-                                  thickness_tol: float = 1.5,
-                                  horiz_tol: float = 1.0,
-                                  coverage_ratio: float = 0.7,
-                                  band_top: float = 0.35,
-                                  band_bottom: float = 0.65) -> None:
+    def _mark_strikethrough_chars(
+        self,
+        char_dicts: List[Dict[str, Any]],
+        *,
+        thickness_tol: float = 1.5,
+        horiz_tol: float = 1.0,
+        coverage_ratio: float = 0.7,
+        band_top: float = 0.35,
+        band_bottom: float = 0.65,
+    ) -> None:
         """Annotate character dictionaries with a boolean ``strike`` flag.
 
         Args
@@ -1151,11 +1164,31 @@ class ElementManager:
         # Allow user overrides via PDF._config["underline_detection"]
         pdf_cfg = getattr(self._page._parent, "_config", {}).get("underline_detection", {})
 
-        thickness_tol = thickness_tol if thickness_tol is not None else pdf_cfg.get("thickness_tol", UNDERLINE_DEFAULTS["thickness_tol"])
-        horiz_tol     = horiz_tol     if horiz_tol     is not None else pdf_cfg.get("horiz_tol", UNDERLINE_DEFAULTS["horiz_tol"])
-        coverage_ratio= coverage_ratio if coverage_ratio is not None else pdf_cfg.get("coverage_ratio", UNDERLINE_DEFAULTS["coverage_ratio"])
-        band_frac     = band_frac     if band_frac     is not None else pdf_cfg.get("band_frac", UNDERLINE_DEFAULTS["band_frac"])
-        below_pad     = below_pad     if below_pad     is not None else pdf_cfg.get("below_pad", UNDERLINE_DEFAULTS["below_pad"])
+        thickness_tol = (
+            thickness_tol
+            if thickness_tol is not None
+            else pdf_cfg.get("thickness_tol", UNDERLINE_DEFAULTS["thickness_tol"])
+        )
+        horiz_tol = (
+            horiz_tol
+            if horiz_tol is not None
+            else pdf_cfg.get("horiz_tol", UNDERLINE_DEFAULTS["horiz_tol"])
+        )
+        coverage_ratio = (
+            coverage_ratio
+            if coverage_ratio is not None
+            else pdf_cfg.get("coverage_ratio", UNDERLINE_DEFAULTS["coverage_ratio"])
+        )
+        band_frac = (
+            band_frac
+            if band_frac is not None
+            else pdf_cfg.get("band_frac", UNDERLINE_DEFAULTS["band_frac"])
+        )
+        below_pad = (
+            below_pad
+            if below_pad is not None
+            else pdf_cfg.get("below_pad", UNDERLINE_DEFAULTS["below_pad"])
+        )
 
         raw_lines = list(getattr(self._page._page, "lines", []))
         raw_rects = list(getattr(self._page._page, "rects", []))
@@ -1197,7 +1230,7 @@ class ElementManager:
         table_y = {k for k, v in y_groups.items() if v >= 3}
 
         # filter out candidates on those y values
-        filtered_candidates = [c for c in candidates if int((c[1]+c[3])/2) not in table_y]
+        filtered_candidates = [c for c in candidates if int((c[1] + c[3]) / 2) not in table_y]
 
         # annotate chars
         for ch in char_dicts:
@@ -1254,7 +1287,9 @@ class ElementManager:
             y0_rect = min(rc.get("y0", 0), rc.get("y1", 0))
             y1_rect = max(rc.get("y0", 0), rc.get("y1", 0))
             rheight = y1_rect - y0_rect
-            highlight_rects.append((rc.get("x0", 0), y0_rect, rc.get("x1", 0), y1_rect, rheight, fill_col))
+            highlight_rects.append(
+                (rc.get("x0", 0), y0_rect, rc.get("x1", 0), y1_rect, rheight, fill_col)
+            )
 
         if not highlight_rects:
             for ch in char_dicts:
@@ -1287,7 +1322,9 @@ class ElementManager:
                 if overlap > 0 and (overlap / width) >= coverage_ratio:
                     ch["highlight"] = True
                     try:
-                        ch["highlight_color"] = tuple(rcolor) if isinstance(rcolor, (list, tuple)) else rcolor
+                        ch["highlight_color"] = (
+                            tuple(rcolor) if isinstance(rcolor, (list, tuple)) else rcolor
+                        )
                     except Exception:
                         ch["highlight_color"] = rcolor
                     break

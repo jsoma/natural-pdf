@@ -80,7 +80,6 @@ def test_page_viewer_widget_creation_when_installed(standard_pdf_page):
     assert isinstance(viewer_instance, InteractiveViewerWidget)
 
 
-
 # --- OCR and Layout Tests ---
 
 
@@ -161,4 +160,3 @@ def test_engine_fails_gracefully_when_not_installed(
                 _ = needs_ocr_pdf_page.apply_ocr(engine=engine)
             elif engine in ["yolo", "surya", "docling", "gemini"]:
                 _ = standard_pdf_page.analyze_layout(engine=engine)
-

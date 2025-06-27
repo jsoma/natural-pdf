@@ -1,7 +1,6 @@
 # natural_pdf/widgets/viewer.py
 
 import logging
-import os
 
 from natural_pdf.utils.visualization import render_plain_page
 

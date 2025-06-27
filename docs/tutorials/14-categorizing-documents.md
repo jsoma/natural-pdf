@@ -85,29 +85,3 @@ pdfs = natural_pdf.PDFCollection(pdf_paths)
 # Run your classification
 pdfs.classify_all(['school', 'business'], using='text')
 ```
-
-What's the first PDF?
-
-```python
-print(f"{pdfs[0].category} - confidence of {pdfs[0].category_confidence:0.3}")
-
-# Look at the first page
-pdfs[0].pages[0].to_image(width=500)
-```
-
-How about the second?
-
-```python
-print(f"{pdfs[1].category} - confidence of {pdfs[1].category_confidence:0.3}")
-
-# Look at the first page
-pdfs[1].pages[0].to_image(width=500)
-```
-
-## TODO
-
-* Document advanced parameters for classification helpers (`min_confidence`, `multi_label`, `analysis_key`) so users can fine-tune behaviour or store multiple result sets.
-* Add an example that passes an explicit Hugging Face model ID (e.g. `model="openai/clip-vit-base-patch16"`) for reproducibility.
-* Note that **vision** classification only works for single-page PDFs or per-page classification, not whole multi-page PDFs.
-* Remind readers to install the AI stack if they skipped the earlier magic: `pip install "natural-pdf[ai]"`.
-* Suggest using `pdf.pages.to_image(show_category=True)` to visually QC an entire document after classification.

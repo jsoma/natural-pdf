@@ -8,6 +8,7 @@ Environment
 -----------
 OPENAI_API_KEY must be set or passed via --api-key.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,11 +17,11 @@ import json
 import os
 import textwrap
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from openai import OpenAI
-from pydantic import BaseModel, Field
 from PIL import Image
+from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent.parent.parent  # repo root
 EVAL_DIR = ROOT / "eval_results"
@@ -44,6 +45,7 @@ def img_to_b64_jpeg(path: Path, max_px: int = 1024) -> str:
 
 from io import BytesIO
 
+
 def build_prompt(page: Dict[str, Any]) -> List[Dict[str, str]]:
     """Return OpenAI chat prompt messages list."""
     cheatsheet = read_md(CHEATSHEET_PATH)
@@ -53,7 +55,10 @@ def build_prompt(page: Dict[str, Any]) -> List[Dict[str, str]]:
     if page.get("image") and Path(page["image"]).exists():
         try:
             b64 = img_to_b64_jpeg(Path(page["image"]))
-            image_section = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"}}
+            image_section = {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"},
+            }
         except Exception:
             pass
 
@@ -108,7 +113,10 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
         if page.get("image") and Path(page["image"]).exists():
             try:
                 b64 = img_to_b64_jpeg(Path(page["image"]))
-                image_section = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"}}
+                image_section = {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"},
+                }
             except Exception:
                 pass
         context_json = {
@@ -119,12 +127,14 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
             "blob_sample": page.get("blobs_sample", []),
             "ocr_sample": page.get("ocr_sample", []),
         }
-        per_page_sections.append({
-            "page_number": page["page_number"],
-            "goal_tag": page.get("goal_tag") or "generic_extraction",
-            "image": image_section,
-            "context": context_json,
-        })
+        per_page_sections.append(
+            {
+                "page_number": page["page_number"],
+                "goal_tag": page.get("goal_tag") or "generic_extraction",
+                "image": image_section,
+                "context": context_json,
+            }
+        )
 
     sys_msg = textwrap.dedent(
         """
@@ -216,10 +226,21 @@ def build_pdf_prompt(summary: Dict[str, Any]) -> List[Dict[str, Any]]:
 class DocOutput(BaseModel):
     """LLM enrichment for a whole PDF (single object)."""
 
-    thought_process: str = Field(..., description="Overall reasoning about the PDF and extraction plan, noting whether Guides API would be better than TATR for tables")
-    code_suggestion: str = Field(..., description="Python snippet using natural_pdf, preferring Guides API over TATR for table extraction")
-    difficult_elements: List[str] = Field(..., description="Bullet list of page features that are genuinely hard (not tiny fonts >5pt or RTL languages)")
-    test_case: str = Field(..., description="Specific assertion that could verify the extraction worked correctly")
+    thought_process: str = Field(
+        ...,
+        description="Overall reasoning about the PDF and extraction plan, noting whether Guides API would be better than TATR for tables",
+    )
+    code_suggestion: str = Field(
+        ...,
+        description="Python snippet using natural_pdf, preferring Guides API over TATR for table extraction",
+    )
+    difficult_elements: List[str] = Field(
+        ...,
+        description="Bullet list of page features that are genuinely hard (not tiny fonts >5pt or RTL languages)",
+    )
+    test_case: str = Field(
+        ..., description="Specific assertion that could verify the extraction worked correctly"
+    )
 
 
 def enrich_summary(summary_path: Path, api_key: str, model: str = "o3"):
@@ -236,9 +257,7 @@ def enrich_summary(summary_path: Path, api_key: str, model: str = "o3"):
     msgs = build_pdf_prompt(summary)
 
     completion = client.beta.chat.completions.parse(
-        model=model,
-        messages=msgs,
-        response_format=DocOutput
+        model=model, messages=msgs, response_format=DocOutput
     )
 
     # Expect exactly one function call in the first choice
@@ -260,10 +279,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--submission", help="Submission ID to enrich (folder name)")
     ap.add_argument("--model", default="o3")
-    ap.add_argument("--api-key", default=os.getenv("OPENAI_API_KEY"), help="OpenAI key if not in env")
+    ap.add_argument(
+        "--api-key", default=os.getenv("OPENAI_API_KEY"), help="OpenAI key if not in env"
+    )
     ap.add_argument("--force", action="store_true", help="overwrite existing enrichment")
     args = ap.parse_args()
-    
+
     if not args.api_key:
         raise SystemExit("OPENAI_API_KEY not provided")
 
@@ -281,4 +302,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

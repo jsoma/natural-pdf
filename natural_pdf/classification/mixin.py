@@ -1,8 +1,8 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
-import warnings
 
 from .results import ClassificationResult
 
@@ -42,16 +42,16 @@ class ClassificationMixin:
         ```python
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
-        
+
         # Document type classification
-        page.classify(['invoice', 'contract', 'report'], 
+        page.classify(['invoice', 'contract', 'report'],
                      model='text', analysis_key='doc_type')
-        
+
         # Multi-label content analysis
         region = page.find('text:contains("Summary")').below()
-        region.classify(['technical', 'financial', 'legal'], 
+        region.classify(['technical', 'financial', 'legal'],
                        multi_label=True, min_confidence=0.8)
-        
+
         # Access results
         doc_type = page.analyses['doc_type']
         content_labels = region.analyses['classification']
@@ -128,7 +128,9 @@ class ClassificationMixin:
                 # Try text first
                 try:
                     tentative_text = self._get_classification_content("text", **kwargs)
-                    if tentative_text and not (isinstance(tentative_text, str) and tentative_text.isspace()):
+                    if tentative_text and not (
+                        isinstance(tentative_text, str) and tentative_text.isspace()
+                    ):
                         engine = "text"
                         content = tentative_text
                     else:

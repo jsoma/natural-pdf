@@ -1,8 +1,9 @@
 """Sequence wrapper for table data with convenient DataFrame helpers."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, List, Iterator, Optional, Union
+from typing import Any, Iterator, List, Optional, Union
 
 
 class TableResult(Sequence):
@@ -12,9 +13,7 @@ class TableResult(Sequence):
     list of cell values) but offers an easy hand-off to *pandas*.
     """
 
-    _IMMUTABLE_MESSAGE = (
-        "TableResult is read-only; convert to list(result) if you need to mutate"
-    )
+    _IMMUTABLE_MESSAGE = "TableResult is read-only; convert to list(result) if you need to mutate"
 
     def __init__(self, rows: Optional[List[List[Any]]] = None) -> None:
         # Normalise to list of list so that Sequence operations work as expected
@@ -81,7 +80,9 @@ class TableResult(Sequence):
 
         df = pd.DataFrame(body, columns=hdr)
         if index_col is not None and not df.empty:
-            df.set_index(df.columns[index_col] if isinstance(index_col, int) else index_col, inplace=True)
+            df.set_index(
+                df.columns[index_col] if isinstance(index_col, int) else index_col, inplace=True
+            )
 
         if kwargs:
             df = pd.DataFrame(df, **kwargs)
@@ -98,4 +99,4 @@ class TableResult(Sequence):
     # Nice repr in notebooks
     def __repr__(self) -> str:  # noqa: D401 (simple)
         preview = "…" if len(self._rows) > 5 else ""
-        return f"TableResult(rows={len(self._rows)}{preview})" 
+        return f"TableResult(rows={len(self._rows)}{preview})"

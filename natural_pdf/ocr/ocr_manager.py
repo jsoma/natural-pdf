@@ -11,6 +11,7 @@ from PIL import Image
 from .engine import OCREngine
 from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
+
 # Lazy import for PaddleOCREngine to avoid heavy paddle dependencies at module level
 # from .engine_paddle import PaddleOCREngine
 from .engine_surya import SuryaOCREngine
@@ -33,12 +34,16 @@ class OCRManager:
     def _get_paddle_engine_class():
         """Lazy import for PaddleOCREngine to avoid heavy paddle dependencies at module level."""
         from .engine_paddle import PaddleOCREngine
+
         return PaddleOCREngine
 
     # Registry mapping engine names to classes and default options
     ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "easyocr": {"class": EasyOCREngine, "options_class": EasyOCROptions},
-        "paddle": {"class": lambda: OCRManager._get_paddle_engine_class(), "options_class": PaddleOCROptions},
+        "paddle": {
+            "class": lambda: OCRManager._get_paddle_engine_class(),
+            "options_class": PaddleOCROptions,
+        },
         "surya": {"class": SuryaOCREngine, "options_class": SuryaOCROptions},
         "doctr": {"class": DoctrOCREngine, "options_class": DoctrOCROptions},
         # Add other engines here
@@ -85,7 +90,10 @@ class OCRManager:
             )
             engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
             # Handle lazy loading - if it's a lambda function, call it to get the actual class
-            if callable(engine_class_or_factory) and getattr(engine_class_or_factory, '__name__', '') == '<lambda>':
+            if (
+                callable(engine_class_or_factory)
+                and getattr(engine_class_or_factory, "__name__", "") == "<lambda>"
+            ):
                 engine_class = engine_class_or_factory()
             else:
                 engine_class = engine_class_or_factory
@@ -283,7 +291,10 @@ class OCRManager:
                 # Temporarily instantiate to check availability without caching
                 engine_class_or_factory = registry_entry["class"]
                 # Handle lazy loading - if it's a lambda function, call it to get the actual class
-                if callable(engine_class_or_factory) and getattr(engine_class_or_factory, '__name__', '') == '<lambda>':
+                if (
+                    callable(engine_class_or_factory)
+                    and getattr(engine_class_or_factory, "__name__", "") == "<lambda>"
+                ):
                     engine_class = engine_class_or_factory()
                 else:
                     engine_class = engine_class_or_factory
@@ -299,49 +310,49 @@ class OCRManager:
     def cleanup_engine(self, engine_name: Optional[str] = None) -> int:
         """
         Cleanup OCR engine instances to free memory.
-        
+
         Args:
             engine_name: Specific engine to cleanup, or None to cleanup all engines
-            
+
         Returns:
             Number of engines cleaned up
         """
         cleaned_count = 0
-        
+
         if engine_name:
             # Cleanup specific engine
             engine_name = engine_name.lower()
             if engine_name in self._engine_instances:
                 engine = self._engine_instances.pop(engine_name)
-                if hasattr(engine, 'cleanup'):
+                if hasattr(engine, "cleanup"):
                     try:
                         engine.cleanup()
                     except Exception as e:
                         logger.debug(f"Engine {engine_name} cleanup method failed: {e}")
-                
+
                 # Clear associated locks
                 self._engine_locks.pop(engine_name, None)
                 self._engine_inference_locks.pop(engine_name, None)
-                
+
                 logger.info(f"Cleaned up OCR engine: {engine_name}")
                 cleaned_count = 1
         else:
             # Cleanup all engines
             for name, engine in list(self._engine_instances.items()):
-                if hasattr(engine, 'cleanup'):
+                if hasattr(engine, "cleanup"):
                     try:
                         engine.cleanup()
                     except Exception as e:
                         logger.debug(f"Engine {name} cleanup method failed: {e}")
-                        
+
             # Clear all caches
             engine_count = len(self._engine_instances)
             self._engine_instances.clear()
             self._engine_locks.clear()
             self._engine_inference_locks.clear()
-            
+
             if engine_count > 0:
                 logger.info(f"Cleaned up {engine_count} OCR engines")
             cleaned_count = engine_count
-            
+
         return cleaned_count

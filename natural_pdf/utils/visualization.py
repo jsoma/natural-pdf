@@ -237,11 +237,11 @@ def merge_images_with_legend(
 def render_plain_page(page, resolution):
     """
     Render a page to PIL Image using the specified resolution.
-    
+
     Args:
         page: Page object to render
         resolution: DPI resolution for rendering
-        
+
     Returns:
         PIL Image of the rendered page
     """
@@ -252,7 +252,7 @@ def render_plain_page(page, resolution):
     # Convert resolution (DPI) to scale factor for pypdfium2
     # PDF standard is 72 DPI, so scale = resolution / 72
     scale_factor = resolution / 72.0
-    
+
     bitmap = pdf_page.render(
         scale=scale_factor,
     )

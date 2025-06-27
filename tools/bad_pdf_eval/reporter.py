@@ -14,4 +14,4 @@ def save_json(data: Dict[str, Any], path: Path):
 
 
 def log_section(title: str):
-    console.rule(f"[bold cyan]{title}") 
+    console.rule(f"[bold cyan]{title}")

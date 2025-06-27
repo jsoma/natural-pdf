@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 
 # Conditionally import heavy dependencies; skip tests if unavailable in the environment.
@@ -16,6 +17,7 @@ TUTORIALS_DIR = Path(__file__).resolve().parent.parent / "docs" / "tutorials"
 MD_TUTORIALS = sorted(TUTORIALS_DIR.glob("*.md"))
 
 pytestmark = pytest.mark.tutorial
+
 
 @pytest.mark.parametrize("md_path", MD_TUTORIALS, ids=[p.stem for p in MD_TUTORIALS])
 def test_tutorial_markdown_executes(md_path: Path):
@@ -47,4 +49,4 @@ def test_tutorial_markdown_executes(md_path: Path):
         pytest.fail(f"Execution failed for {md_path.name}: {exc}")
 
     # Persist the executed notebook so rendered outputs are available for docs
-    ipynb_path.write_text(nbformat.writes(notebook), encoding="utf-8") 
+    ipynb_path.write_text(nbformat.writes(notebook), encoding="utf-8")

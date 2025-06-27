@@ -8,53 +8,53 @@ from typing import Any, Dict, List, Union
 class ElementSummary:
     """
     Container for element summary data with markdown rendering.
-    
+
     Automatically renders as markdown in Jupyter notebooks and provides
     access to underlying data as dictionaries.
     """
-    
+
     def __init__(self, data: Dict[str, Any], title: str = "Summary"):
         """
         Initialize summary with data and optional title.
-        
+
         Args:
             data: Dictionary containing summary sections
             title: Title for the summary display
         """
         self.data = data
         self.title = title
-    
+
     def __str__(self) -> str:
         """String representation as markdown."""
         return self._to_markdown()
-    
+
     def __repr__(self) -> str:
         """Repr as markdown for better display."""
         return self._to_markdown()
-    
+
     def _repr_markdown_(self) -> str:
         """Jupyter notebook markdown rendering."""
         return self._to_markdown()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Return underlying data as dictionary."""
         return self.data.copy()
-    
+
     def _to_markdown(self) -> str:
         """Convert data to markdown format."""
         lines = [f"## {self.title}", ""]
-        
+
         for section_name, section_data in self.data.items():
             lines.extend(self._format_section(section_name, section_data))
             lines.append("")  # Empty line between sections
-        
+
         return "\n".join(lines).rstrip()
-    
+
     def _format_section(self, name: str, data: Any) -> List[str]:
         """Format a single section as markdown."""
         # Use bold text instead of headers for more compact display
-        section_title = name.replace('_', ' ').title()
-        
+        section_title = name.replace("_", " ").title()
+
         if isinstance(data, dict):
             lines = [f"**{section_title}**:", ""]
             lines.extend(self._format_dict(data, indent=""))
@@ -62,26 +62,26 @@ class ElementSummary:
             lines = [f"**{section_title}**: {', '.join(str(item) for item in data)}"]
         else:
             lines = [f"**{section_title}**: {data}"]
-        
+
         return lines
-    
+
     def _format_dict(self, data: Dict[str, Any], indent: str = "") -> List[str]:
         """Format dictionary as markdown list."""
         lines = []
-        
+
         for key, value in data.items():
-            key_display = key.replace('_', ' ')
-            
+            key_display = key.replace("_", " ")
+
             if isinstance(value, dict):
                 # Nested dict - always format as list items
                 lines.append(f"{indent}- **{key_display}**:")
                 for subkey, subvalue in value.items():
-                    subkey_display = subkey.replace('_', ' ')
+                    subkey_display = subkey.replace("_", " ")
                     if isinstance(subvalue, dict):
                         # Another level of nesting
                         lines.append(f"{indent}  - **{subkey_display}**:")
                         for subsubkey, subsubvalue in subvalue.items():
-                            subsubkey_display = subsubkey.replace('_', ' ')
+                            subsubkey_display = subsubkey.replace("_", " ")
                             lines.append(f"{indent}    - {subsubkey_display}: {subsubvalue}")
                     else:
                         lines.append(f"{indent}  - {subkey_display}: {subvalue}")
@@ -93,9 +93,9 @@ class ElementSummary:
                     lines.append(f"{indent}- **{key_display}**: {len(value)} items")
             else:
                 lines.append(f"{indent}- **{key_display}**: {value}")
-        
+
         return lines
-    
+
     def _format_list(self, data: List[Any]) -> List[str]:
         """Format list as markdown."""
         lines = []
@@ -106,27 +106,18 @@ class ElementSummary:
             else:
                 lines.append(f"- {item}")
         return lines
-    
 
-    
     def _format_horizontal_table(self, title: str, data: Dict[str, Any]) -> List[str]:
         """Format dict as horizontal table."""
         headers = list(data.keys())
         values = list(data.values())
-        
+
         # Create table
         header_row = "| " + " | ".join(headers) + " |"
         separator = "|" + "|".join("------" for _ in headers) + "|"
         value_row = "| " + " | ".join(str(v) for v in values) + " |"
-        
-        return [
-            f"- **{title}**:",
-            "",
-            header_row,
-            separator, 
-            value_row,
-            ""
-        ]
+
+        return [f"- **{title}**:", "", header_row, separator, value_row, ""]
 
     # Added for better VS Code and other frontends support
     def _repr_html_(self) -> str:  # type: ignore
@@ -147,11 +138,7 @@ class ElementSummary:
             return _markdown.markdown(md_source, extensions=["tables"])
         except Exception:  # noqa: BLE001, broad-except
             # Fallback: present the Markdown as-is inside a <pre> block.
-            escaped = (
-                md_source.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-            )
+            escaped = md_source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             return f"<pre>{escaped}</pre>"
 
 
@@ -159,40 +146,42 @@ class InspectionSummary(ElementSummary):
     """
     Summary for element inspection with tabular data.
     """
-    
+
     def _format_section(self, name: str, data: Any) -> List[str]:
         """Format inspection section with element tables."""
-        section_title = name.replace('_', ' ').title()
-        
-        if isinstance(data, dict) and 'elements' in data:
+        section_title = name.replace("_", " ").title()
+
+        if isinstance(data, dict) and "elements" in data:
             # This is an element table section - use ### header for inspect
-            elements = data['elements']
+            elements = data["elements"]
             lines = [f"### {section_title}"]
             if elements:
-                lines.extend(self._format_element_table(elements, data.get('columns', [])))
+                lines.extend(self._format_element_table(elements, data.get("columns", [])))
                 # Add note if truncated
-                if 'note' in data:
+                if "note" in data:
                     lines.append(f"_{data['note']}_")
             else:
                 lines.append("No elements found.")
         else:
             # Regular section formatting
             lines = [f"**{section_title}**: {data}"]
-        
+
         return lines
-    
-    def _format_element_table(self, elements: List[Dict[str, Any]], columns: List[str]) -> List[str]:
+
+    def _format_element_table(
+        self, elements: List[Dict[str, Any]], columns: List[str]
+    ) -> List[str]:
         """Format elements as markdown table."""
         if not elements or not columns:
             return ["No elements to display."]
-        
+
         lines = [""]  # Empty line before table
-        
+
         # Table header
         header_row = "| " + " | ".join(columns) + " |"
         separator = "|" + "|".join("------" for _ in columns) + "|"
         lines.extend([header_row, separator])
-        
+
         # Table rows
         for element in elements:
             row_values = []
@@ -205,8 +194,8 @@ class InspectionSummary(ElementSummary):
                 elif isinstance(value, str) and len(value) > 50:
                     value = value[:50] + "..."
                 row_values.append(str(value))
-            
+
             row = "| " + " | ".join(row_values) + " |"
             lines.append(row)
-        
-        return lines 
+
+        return lines

@@ -1,5 +1,6 @@
 import logging
 import time
+import threading  # Add threading for locks
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -9,6 +10,7 @@ from PIL import Image
 # Use try-except for robustness if dependencies are missing
 _CLASSIFICATION_AVAILABLE = None
 
+
 def _check_classification_dependencies():
     """Lazy check for classification dependencies."""
     global _CLASSIFICATION_AVAILABLE
@@ -16,15 +18,19 @@ def _check_classification_dependencies():
         try:
             import torch
             import transformers
+
             _CLASSIFICATION_AVAILABLE = True
         except ImportError:
             _CLASSIFICATION_AVAILABLE = False
     return _CLASSIFICATION_AVAILABLE
 
+
 def _get_torch():
     """Lazy import for torch."""
     import torch
+
     return torch
+
 
 def _get_transformers_components():
     """Lazy import for transformers components."""
@@ -34,12 +40,14 @@ def _get_transformers_components():
         AutoTokenizer,
         pipeline,
     )
+
     return {
-        'AutoModelForSequenceClassification': AutoModelForSequenceClassification,
-        'AutoModelForZeroShotImageClassification': AutoModelForZeroShotImageClassification,
-        'AutoTokenizer': AutoTokenizer,
-        'pipeline': pipeline,
+        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+        "AutoModelForZeroShotImageClassification": AutoModelForZeroShotImageClassification,
+        "AutoTokenizer": AutoTokenizer,
+        "pipeline": pipeline,
     }
+
 
 from tqdm.auto import tqdm
 
@@ -52,10 +60,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Global cache for models/pipelines
+# Global cache for models/pipelines with thread safety
 _PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
 _TOKENIZER_CACHE: Dict[str, Any] = {}
 _MODEL_CACHE: Dict[str, Any] = {}
+_CACHE_LOCK = threading.RLock()  # Reentrant lock for thread safety
+
 
 # Export the availability check function for external use
 def is_classification_available() -> bool:
@@ -107,34 +117,35 @@ class ClassificationManager:
     def _get_pipeline(self, model_id: str, using: str) -> "Pipeline":
         """Get or create a classification pipeline."""
         cache_key = f"{model_id}_{using}_{self.device}"
-        if cache_key not in _PIPELINE_CACHE:
-            logger.info(
-                f"Loading {using} classification pipeline for model '{model_id}' on device '{self.device}'..."
-            )
-            start_time = time.time()
-            try:
-                # Lazy import transformers components
-                transformers_components = _get_transformers_components()
-                pipeline = transformers_components['pipeline']
-                
-                task = (
-                    "zero-shot-classification"
-                    if using == "text"
-                    else "zero-shot-image-classification"
-                )
-                _PIPELINE_CACHE[cache_key] = pipeline(task, model=model_id, device=self.device)
-                end_time = time.time()
+        with _CACHE_LOCK:
+            if cache_key not in _PIPELINE_CACHE:
                 logger.info(
-                    f"Pipeline for '{model_id}' loaded in {end_time - start_time:.2f} seconds."
+                    f"Loading {using} classification pipeline for model '{model_id}' on device '{self.device}'..."
                 )
-            except Exception as e:
-                logger.error(
-                    f"Failed to load pipeline for model '{model_id}' (using: {using}): {e}",
-                    exc_info=True,
-                )
-                raise ClassificationError(
-                    f"Failed to load pipeline for model '{model_id}'. Ensure the model ID is correct and supports the {task} task."
-                ) from e
+                start_time = time.time()
+                try:
+                    # Lazy import transformers components
+                    transformers_components = _get_transformers_components()
+                    pipeline = transformers_components["pipeline"]
+
+                    task = (
+                        "zero-shot-classification"
+                        if using == "text"
+                        else "zero-shot-image-classification"
+                    )
+                    _PIPELINE_CACHE[cache_key] = pipeline(task, model=model_id, device=self.device)
+                    end_time = time.time()
+                    logger.info(
+                        f"Pipeline for '{model_id}' loaded in {end_time - start_time:.2f} seconds."
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to load pipeline for model '{model_id}' (using: {using}): {e}",
+                        exc_info=True,
+                    )
+                    raise ClassificationError(
+                        f"Failed to load pipeline for model '{model_id}'. Ensure the model ID is correct and supports the {task} task."
+                    ) from e
         return _PIPELINE_CACHE[cache_key]
 
     def infer_using(self, model_id: str, using: Optional[str] = None) -> str:
@@ -452,66 +463,70 @@ class ClassificationManager:
     def cleanup_models(self, model_id: Optional[str] = None) -> int:
         """
         Cleanup classification models to free memory.
-        
+
         Args:
             model_id: Specific model to cleanup, or None to cleanup all models
-            
+
         Returns:
             Number of models cleaned up
         """
         global _PIPELINE_CACHE, _TOKENIZER_CACHE, _MODEL_CACHE
-        
+
         cleaned_count = 0
-        
+
         if model_id:
             # Cleanup specific model - search cache keys that contain the model_id
-            keys_to_remove = [key for key in _PIPELINE_CACHE.keys() if model_id in key]
-            for key in keys_to_remove:
-                pipeline = _PIPELINE_CACHE.pop(key, None)
-                if pipeline and hasattr(pipeline, 'model'):
-                    # Try to cleanup GPU memory if using torch
-                    try:
-                        torch = _get_torch()
-                        if hasattr(pipeline.model, 'to'):
-                            pipeline.model.to('cpu')  # Move to CPU
-                        if torch.cuda.is_available():
-                            torch.cuda.empty_cache()  # Clear GPU cache
-                    except Exception as e:
-                        logger.debug(f"GPU cleanup failed for model {model_id}: {e}")
-                
-                cleaned_count += 1
-                logger.info(f"Cleaned up classification pipeline: {key}")
-            
+            with _CACHE_LOCK:
+                keys_to_remove = [key for key in _PIPELINE_CACHE.keys() if model_id in key]
+                for key in keys_to_remove:
+                    pipeline = _PIPELINE_CACHE.pop(key, None)
+                    if pipeline and hasattr(pipeline, "model"):
+                        # Try to cleanup GPU memory if using torch
+                        try:
+                            torch = _get_torch()
+                            if hasattr(pipeline.model, "to"):
+                                pipeline.model.to("cpu")  # Move to CPU
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()  # Clear GPU cache
+                        except Exception as e:
+                            logger.debug(f"GPU cleanup failed for model {model_id}: {e}")
+
+                        cleaned_count += 1
+                        logger.info(f"Cleaned up classification pipeline: {key}")
+
             # Also cleanup tokenizer and model caches for this model
-            tokenizer_keys = [key for key in _TOKENIZER_CACHE.keys() if model_id in key]
-            for key in tokenizer_keys:
-                _TOKENIZER_CACHE.pop(key, None)
-            
-            model_keys = [key for key in _MODEL_CACHE.keys() if model_id in key]
-            for key in model_keys:
-                _MODEL_CACHE.pop(key, None)
-                
+            with _CACHE_LOCK:
+                tokenizer_keys = [key for key in _TOKENIZER_CACHE.keys() if model_id in key]
+                for key in tokenizer_keys:
+                    _TOKENIZER_CACHE.pop(key, None)
+
+                model_keys = [key for key in _MODEL_CACHE.keys() if model_id in key]
+                for key in model_keys:
+                    _MODEL_CACHE.pop(key, None)
+
         else:
             # Cleanup all models
-            for key, pipeline in list(_PIPELINE_CACHE.items()):
-                if hasattr(pipeline, 'model'):
-                    try:
-                        torch = _get_torch()
-                        if hasattr(pipeline.model, 'to'):
-                            pipeline.model.to('cpu')  # Move to CPU
-                        if torch.cuda.is_available():
-                            torch.cuda.empty_cache()  # Clear GPU cache
-                    except Exception as e:
-                        logger.debug(f"GPU cleanup failed for pipeline {key}: {e}")
-            
+            with _CACHE_LOCK:
+                for key, pipeline in list(_PIPELINE_CACHE.items()):
+                    if hasattr(pipeline, "model"):
+                        try:
+                            torch = _get_torch()
+                            if hasattr(pipeline.model, "to"):
+                                pipeline.model.to("cpu")  # Move to CPU
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()  # Clear GPU cache
+                        except Exception as e:
+                            logger.debug(f"GPU cleanup failed for pipeline {key}: {e}")
+
             # Clear all caches
-            pipeline_count = len(_PIPELINE_CACHE)
-            _PIPELINE_CACHE.clear()
-            _TOKENIZER_CACHE.clear()
-            _MODEL_CACHE.clear()
-            
+            with _CACHE_LOCK:
+                pipeline_count = len(_PIPELINE_CACHE)
+                _PIPELINE_CACHE.clear()
+                _TOKENIZER_CACHE.clear()
+                _MODEL_CACHE.clear()
+
             if pipeline_count > 0:
                 logger.info(f"Cleaned up {pipeline_count} classification models")
             cleaned_count = pipeline_count
-            
+
         return cleaned_count

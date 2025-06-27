@@ -1,8 +1,9 @@
 import re
+import ssl
+import urllib.request
 from pathlib import Path
 from typing import Optional
-import urllib.request
-import ssl
+
 from rich.console import Console
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent  # project root
@@ -103,7 +104,9 @@ def find_local_pdf(submission_id: str, pdf_url: Optional[str] = None) -> Optiona
                     req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
                     # Disable SSL verification edge-cases the storage host sometimes triggers
                     ctx = ssl.create_default_context()
-                    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp, open(dest_path, "wb") as f:
+                    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp, open(
+                        dest_path, "wb"
+                    ) as f:
                         f.write(resp.read())
                 except Exception as e:
                     # Fallback: try requests if available (venv usually has it)
@@ -124,4 +127,4 @@ def find_local_pdf(submission_id: str, pdf_url: Optional[str] = None) -> Optiona
             return None
 
     # None found
-    return None 
+    return None

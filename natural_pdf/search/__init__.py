@@ -18,9 +18,9 @@ SEARCH_DEPENDENCIES_AVAILABLE = False
 
 try:
     import numpy as np
+
     # Lazy import for sentence_transformers to avoid heavy loading at module level
     # import sentence_transformers
-
     # Basic search dependencies are available
     SEARCH_DEPENDENCIES_AVAILABLE = True
 
@@ -51,6 +51,7 @@ def _check_sentence_transformers():
     """Lazy check for sentence_transformers availability."""
     try:
         import sentence_transformers
+
         return True
     except ImportError:
         return False
@@ -63,7 +64,7 @@ def check_search_availability():
             "Search functionality requires 'lancedb' and pyarrow. "
             "Install with: pip install natural-pdf[search] (or pip install lancedb pyarrow)"
         )
-    
+
     # Lazy check for sentence_transformers when actually needed
     if not _check_sentence_transformers():
         raise ImportError(

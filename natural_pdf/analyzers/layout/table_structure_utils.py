@@ -1,5 +1,7 @@
 from typing import List, Tuple
+
 import numpy as np
+
 
 def group_cells_into_rows_and_columns(
     cell_boxes: List[Tuple[float, float, float, float]],
@@ -75,4 +77,4 @@ def group_cells_into_rows_and_columns(
         y1 = float(np.max(boxes[group, 3]))
         col_boxes.append((x0, y0, x1, y1))
 
-    return row_boxes, col_boxes 
+    return row_boxes, col_boxes

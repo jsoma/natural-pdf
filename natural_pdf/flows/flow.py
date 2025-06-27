@@ -42,7 +42,7 @@ class Flow:
         Multi-page table flow:
         ```python
         pdf = npdf.PDF("multi_page_table.pdf")
-        
+
         # Create flow for table spanning pages 2-4
         table_flow = Flow(
             segments=[pdf.pages[1], pdf.pages[2], pdf.pages[3]],
@@ -50,7 +50,7 @@ class Flow:
             alignment='left',
             segment_gap=10.0
         )
-        
+
         # Extract table as if it were continuous
         table_data = table_flow.extract_table()
         text_content = table_flow.get_text()
@@ -61,14 +61,14 @@ class Flow:
         page = pdf.pages[0]
         left_column = page.region(0, 0, 300, page.height)
         right_column = page.region(320, 0, page.width, page.height)
-        
+
         # Create horizontal flow for columns
         article_flow = Flow(
             segments=[left_column, right_column],
             arrangement='horizontal',
             alignment='top'
         )
-        
+
         # Read in proper order
         article_text = article_flow.get_text()
         ```

@@ -178,8 +178,9 @@ def _complex_reading_order(elements: List[Dict[str, Any]]) -> List[Dict[str, Any
     Returns:
         List of elements in reading order
     """
-    # TODO: Implement complex layout analysis
-    # For now, fall back to column-aware reading order
+    # TODO: Implement complex layout analysis for sophisticated document structures
+    # Would include: multi-column detection, figure/caption relationships, sidebars
+    # For now, fall back to column-aware reading order which handles most cases
     return _column_reading_order(elements)
 
 

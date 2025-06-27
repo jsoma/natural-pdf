@@ -2,9 +2,9 @@
 Module for exporting original PDF pages without modification.
 """
 
+import io
 import logging
 import os
-import io
 import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
@@ -103,11 +103,17 @@ def create_original_pdf(
             source_handle = pikepdf.Pdf.open(first_page_pdf_path)
         else:
             # Fallback: attempt to open from in-memory bytes stored on PDF object
-            if first_page_pdf_obj is not None and hasattr(first_page_pdf_obj, "_original_bytes") and first_page_pdf_obj._original_bytes:
+            if (
+                first_page_pdf_obj is not None
+                and hasattr(first_page_pdf_obj, "_original_bytes")
+                and first_page_pdf_obj._original_bytes
+            ):
                 source_handle = pikepdf.Pdf.open(io.BytesIO(first_page_pdf_obj._original_bytes))
             else:
                 # Attempt to download bytes directly if path looks like URL
-                if isinstance(first_page_pdf_path, str) and first_page_pdf_path.startswith(("http://", "https://")):
+                if isinstance(first_page_pdf_path, str) and first_page_pdf_path.startswith(
+                    ("http://", "https://")
+                ):
                     try:
                         with urllib.request.urlopen(first_page_pdf_path) as resp:
                             data = resp.read()
@@ -117,7 +123,9 @@ def create_original_pdf(
                             f"Source PDF bytes not available and download failed for {first_page_pdf_path}: {dl_err}"
                         )
                 else:
-                    raise FileNotFoundError(f"Source PDF bytes not available for {first_page_pdf_path}")
+                    raise FileNotFoundError(
+                        f"Source PDF bytes not available for {first_page_pdf_path}"
+                    )
 
         with source_handle as source_pikepdf_doc:
             target_pikepdf_doc = pikepdf.Pdf.new()

@@ -5,10 +5,6 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from PIL import Image
 
-# --- Import lightweight components only ---
-# Heavy detector implementations (paddle, yolo, etc.) are **not** imported at module load.
-# Instead, we provide tiny helper functions that import them lazily **only when needed**.
-
 from .base import LayoutDetector  # Lightweight base class
 from .layout_options import (
     BaseLayoutOptions,
@@ -20,6 +16,11 @@ from .layout_options import (
     TATRLayoutOptions,
     YOLOLayoutOptions,
 )
+
+# --- Import lightweight components only ---
+# Heavy detector implementations (paddle, yolo, etc.) are **not** imported at module load.
+# Instead, we provide tiny helper functions that import them lazily **only when needed**.
+
 
 # ------------------ Lazy import helpers ------------------ #
 
@@ -59,6 +60,7 @@ def _lazy_import_gemini_detector():
     from .gemini import GeminiLayoutDetector
 
     return GeminiLayoutDetector
+
 
 # --------------------------------------------------------- #
 
@@ -205,7 +207,9 @@ class LayoutManager:
         for name, registry_entry in self.ENGINE_REGISTRY.items():
             try:
                 engine_class_or_factory = registry_entry["class"]
-                if callable(engine_class_or_factory) and not isinstance(engine_class_or_factory, type):
+                if callable(engine_class_or_factory) and not isinstance(
+                    engine_class_or_factory, type
+                ):
                     # Lazy factory – call it to obtain real class
                     engine_class = engine_class_or_factory()
                 else:
@@ -224,43 +228,43 @@ class LayoutManager:
     def cleanup_detector(self, detector_name: Optional[str] = None) -> int:
         """
         Cleanup layout detector instances to free memory.
-        
+
         Args:
             detector_name: Specific detector to cleanup, or None to cleanup all detectors
-            
+
         Returns:
             Number of detectors cleaned up
         """
         cleaned_count = 0
-        
+
         if detector_name:
             # Cleanup specific detector
             detector_name = detector_name.lower()
             if detector_name in self._detector_instances:
                 detector = self._detector_instances.pop(detector_name)
-                if hasattr(detector, 'cleanup'):
+                if hasattr(detector, "cleanup"):
                     try:
                         detector.cleanup()
                     except Exception as e:
                         logger.debug(f"Detector {detector_name} cleanup method failed: {e}")
-                
+
                 logger.info(f"Cleaned up layout detector: {detector_name}")
                 cleaned_count = 1
         else:
             # Cleanup all detectors
             for name, detector in list(self._detector_instances.items()):
-                if hasattr(detector, 'cleanup'):
+                if hasattr(detector, "cleanup"):
                     try:
                         detector.cleanup()
                     except Exception as e:
                         logger.debug(f"Detector {name} cleanup method failed: {e}")
-                        
+
             # Clear all caches
             detector_count = len(self._detector_instances)
             self._detector_instances.clear()
-            
+
             if detector_count > 0:
                 logger.info(f"Cleaned up {detector_count} layout detectors")
             cleaned_count = detector_count
-            
+
         return cleaned_count

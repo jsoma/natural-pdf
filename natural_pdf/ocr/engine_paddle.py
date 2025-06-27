@@ -11,6 +11,7 @@ from .ocr_options import BaseOCROptions, PaddleOCROptions
 
 logger = logging.getLogger(__name__)
 
+
 class PaddleOCREngine(OCREngine):
     """PaddleOCR engine implementation."""
 
@@ -147,8 +148,8 @@ class PaddleOCREngine(OCREngine):
 
         # --- RESTORE: Language/version support check logic ---
         user_specified_model = (
-            getattr(paddle_options, "text_recognition_model_name", None) is not None or
-            getattr(paddle_options, "text_detection_model_name", None) is not None
+            getattr(paddle_options, "text_recognition_model_name", None) is not None
+            or getattr(paddle_options, "text_detection_model_name", None) is not None
         )
         if user_specified_model and user_ocr_version:
             if primary_lang not in self.SUPPORT_MATRIX.get(user_ocr_version, set()):
@@ -169,7 +170,7 @@ class PaddleOCREngine(OCREngine):
                     user_ocr_version,
                 )
                 final_ocr_version = None  # Reset to find a compatible version
-        
+
         # If no version was specified or the specified one was incompatible, find the best fit.
         if not final_ocr_version:
             found_compatible = False
@@ -269,7 +270,6 @@ class PaddleOCREngine(OCREngine):
                 if value is not None:
                     ocr_config[arg] = value
 
-
         try:
             # The new API uses PaddleOCR as a pipeline object.
             self._model = paddleocr.PaddleOCR(**ocr_config)
@@ -350,7 +350,7 @@ class PaddleOCREngine(OCREngine):
                     # This code converts any numpy array to a list before passing to _standardize_bbox,
                     # which handles both rectangle and polygon formats robustly.
                     box = rec_boxes[i]
-                    if hasattr(box, 'tolist'):
+                    if hasattr(box, "tolist"):
                         box = box.tolist()
                     bbox = self._standardize_bbox(box)
                     if detect_only:

@@ -30,9 +30,9 @@ from tqdm.auto import tqdm
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
-from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 from natural_pdf.core.pdf import PDF
+from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
@@ -109,15 +109,15 @@ class ElementCollection(
         ```python
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
-        
+
         # Get collections of elements
         all_text = page.chars
         headers = page.find_all('text[size>12]:bold')
-        
+
         # Collection operations
         print(f"Found {len(headers)} headers")
         header_text = headers.get_text()
-        
+
         # Batch processing
         results = headers.apply(lambda el: el.fontname)
         ```
@@ -129,10 +129,10 @@ class ElementCollection(
                          .filter('text:contains("IMPORTANT")')
                          .apply(lambda el: el.text.upper())
                          .classify("urgency_level"))
-        
+
         # Spatial navigation from collections
         content_region = headers.below(until='rect[height>2]')
-        
+
         # Export functionality
         headers.save_pdf("headers_only.pdf")
         ```
@@ -157,7 +157,7 @@ class ElementCollection(
             # Collections are usually created by page methods
             chars = page.chars  # ElementCollection[TextElement]
             rects = page.rects  # ElementCollection[RectangleElement]
-            
+
             # Direct creation (advanced usage)
             selected_elements = ElementCollection([element1, element2, element3])
             ```
@@ -1500,7 +1500,6 @@ class ElementCollection(
         analysis_key: str = "classification",
         multi_label: bool = False,
         batch_size: int = 8,
-        max_workers: Optional[int] = None,
         progress_bar: bool = True,
         **kwargs,
     ):
@@ -1514,8 +1513,6 @@ class ElementCollection(
             analysis_key: Key for storing results in element.analyses.
             multi_label: Allow multiple labels per item.
             batch_size: Size of batches passed to the inference pipeline.
-            max_workers: (Not currently used for classification batching which is
-                         handled by the underlying pipeline).
             progress_bar: Display a progress bar.
             **kwargs: Additional arguments for the ClassificationManager.
         """
@@ -1892,12 +1889,13 @@ class ElementCollection(
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
-        
+
         return self.apply(
             lambda element: element.trim(
                 padding=padding, threshold=threshold, resolution=resolution
@@ -1970,9 +1968,7 @@ class ElementCollection(
 
         # Fallback to original behaviour: apply same clipping parameters to all elements
         return self.apply(
-            lambda element: element.clip(
-                obj=obj, left=left, top=top, right=right, bottom=bottom
-            )
+            lambda element: element.clip(obj=obj, left=left, top=top, right=right, bottom=bottom)
         )
 
     # ------------------------------------------------------------------
@@ -2513,8 +2509,8 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
             page in this PageCollection."""
             # Local imports to avoid top-level cycles
             from natural_pdf.elements.region import Region
-            from natural_pdf.flows.flow import Flow
             from natural_pdf.flows.element import FlowElement
+            from natural_pdf.flows.flow import Flow
             from natural_pdf.flows.region import FlowRegion
 
             start_pg = start_el.page
@@ -2536,10 +2532,12 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
             flow = Flow(segments=parts, arrangement="vertical")
             src_fe = FlowElement(physical_object=start_el, flow=flow)
-            return FlowRegion(flow=flow,
-                               constituent_regions=parts,
-                               source_flow_element=src_fe,
-                               boundary_element_found=end_el)
+            return FlowRegion(
+                flow=flow,
+                constituent_regions=parts,
+                source_flow_element=src_fe,
+                boundary_element_found=end_el,
+            )
 
         # ------------------------------------------------------------------
 

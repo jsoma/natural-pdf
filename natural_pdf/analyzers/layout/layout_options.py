@@ -58,6 +58,7 @@ class PaddleLayoutOptions(BaseLayoutOptions):
     Options specific to PaddlePaddle PP-StructureV3 layout detection.
     See: https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/pipeline_usage/PP-StructureV3.html
     """
+
     # Model paths and names
     layout_detection_model_name: Optional[str] = None
     layout_detection_model_dir: Optional[str] = None

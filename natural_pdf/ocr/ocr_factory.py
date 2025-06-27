@@ -32,7 +32,8 @@ class OCRFactory:
                 return SuryaOCREngine(**kwargs)
             except ImportError:
                 raise ImportError(
-                    "Surya engine requires additional dependencies. " "Install with: npdf install surya"
+                    "Surya engine requires additional dependencies. "
+                    "Install with: npdf install surya"
                 )
         elif engine_type == "easyocr":
             try:

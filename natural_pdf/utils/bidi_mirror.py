@@ -6,6 +6,7 @@ replaces each bracket/parenthesis character with its Unicode-defined pair.
 For everyday PDFs the six ASCII pairs are enough, but the mapping can be
 extended easily from Unicode's BidiBrackets.txt.
 """
+
 from typing import Dict
 
 # Minimal mapping – ( ) [ ] { }
@@ -33,4 +34,4 @@ def mirror_brackets(text: str) -> str:  # pragma: no cover
     append = out_chars.append
     for ch in text:
         append(_ASCII_MIRROR.get(ord(ch), ch))
-    return "".join(out_chars) 
+    return "".join(out_chars)

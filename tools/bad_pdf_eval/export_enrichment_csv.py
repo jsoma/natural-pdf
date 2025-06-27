@@ -11,7 +11,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 ROOT = Path(__file__).resolve().parent.parent.parent  # repo root
 EVAL_DIR = ROOT / "eval_results"
@@ -29,17 +29,21 @@ def collect_records() -> List[Dict[str, str]]:
         if not tp and not cs:
             # Skip summaries without enrichment at doc level
             continue
-        records.append({
-            "id": data.get("submission_id", summary_path.parent.name),
-            "thought_process": tp.replace("\n", " ").strip(),
-            "code_suggestion": cs.replace("\n", " ").strip(),
-        })
+        records.append(
+            {
+                "id": data.get("submission_id", summary_path.parent.name),
+                "thought_process": tp.replace("\n", " ").strip(),
+                "code_suggestion": cs.replace("\n", " ").strip(),
+            }
+        )
     return records
 
 
 def main():
     ap = argparse.ArgumentParser(description="Export enriched summaries to CSV.")
-    ap.add_argument("--out", default=str(EVAL_DIR / "enrichment_export.csv"), help="Output CSV path")
+    ap.add_argument(
+        "--out", default=str(EVAL_DIR / "enrichment_export.csv"), help="Output CSV path"
+    )
     args = ap.parse_args()
 
     records = collect_records()
@@ -59,4 +63,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -1,12 +1,7 @@
 # ocr_options.py
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-# Configure logging
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# logger = logging.getLogger(__name__)
-# Assume logger is configured elsewhere or remove if not needed globally
 
 
 # --- Base Options ---
@@ -58,8 +53,6 @@ class EasyOCROptions(BaseOCROptions):
     add_margin: float = 0.1
     output_format: str = "standard"
 
-    # def __post_init__(self):
-    #     logger.debug(f"Initialized EasyOCROptions: {self}")
 
 
 # --- PaddleOCR Specific Options ---
@@ -95,8 +88,8 @@ class PaddleOCROptions(BaseOCROptions):
 
     # Detection parameters (can be overridden at predict time)
     # https://github.com/PaddlePaddle/PaddleOCR/issues/15424
-    text_det_limit_side_len: Optional[int] = 736 # WAITING FOR FIX
-    text_det_limit_type: Optional[str] = 'max' # WAITING FOR FIX
+    text_det_limit_side_len: Optional[int] = 736  # WAITING FOR FIX
+    text_det_limit_type: Optional[str] = "max"  # WAITING FOR FIX
     text_det_thresh: Optional[float] = None
     text_det_box_thresh: Optional[float] = None
     text_det_unclip_ratio: Optional[float] = None
@@ -113,7 +106,7 @@ class PaddleOCROptions(BaseOCROptions):
     enable_hpi: Optional[bool] = None
     use_tensorrt: Optional[bool] = None
     precision: Optional[str] = None
-    enable_mkldnn: Optional[bool] = False # https://github.com/PaddlePaddle/PaddleOCR/issues/15294
+    enable_mkldnn: Optional[bool] = False  # https://github.com/PaddlePaddle/PaddleOCR/issues/15294
     # mkldnn_cache_capacity: Optional[int] = None
     cpu_threads: Optional[int] = None
     paddlex_config: Optional[str] = None

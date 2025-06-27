@@ -26,6 +26,7 @@ DIALS = [
     },
 ]
 
+
 @pytest.mark.parametrize("table_settings", DIALS)
 def test_tiny_font_table_extraction(table_settings):
     pdf_path = _get_test_pdf_path()
@@ -48,4 +49,4 @@ def test_tiny_font_table_extraction(table_settings):
 
     # Basic content sanity – look for the surname that appears in the first row
     flat_text = " ".join(" ".join(row) for row in table).upper()
-    assert "PFEIFER" in flat_text, "Surname 'PFEIFER' missing in extracted table" 
+    assert "PFEIFER" in flat_text, "Surname 'PFEIFER' missing in extracted table"

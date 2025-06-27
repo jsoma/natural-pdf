@@ -49,7 +49,7 @@ class LayoutDetector(ABC):
             def __init__(self):
                 super().__init__()
                 self.supported_classes = {'table', 'figure', 'text'}
-            
+
             @classmethod
             def is_available(cls) -> bool:
                 try:
@@ -57,7 +57,7 @@ class LayoutDetector(ABC):
                     return True
                 except ImportError:
                     return False
-            
+
             def detect(self, image, options):
                 # Implement layout detection
                 return detection_results

@@ -1,9 +1,9 @@
 # natural_pdf/classification/results.py
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 

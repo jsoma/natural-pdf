@@ -5,6 +5,7 @@ from natural_pdf.elements.base import Element
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
 
+
 class ImageElement(Element):
     """Represents a raster XObject (embedded image) on a PDF page."""
 
@@ -40,4 +41,4 @@ class ImageElement(Element):
         return ""
 
     def __repr__(self):
-        return f"<ImageElement bbox={self.bbox} srcsize={self.srcsize}>" 
+        return f"<ImageElement bbox={self.bbox} srcsize={self.srcsize}>"

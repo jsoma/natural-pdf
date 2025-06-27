@@ -55,6 +55,7 @@ else:
 
 from .table_structure_utils import group_cells_into_rows_and_columns
 
+
 class PaddleLayoutDetector(LayoutDetector):
     """Document layout and table structure detector using PaddlePaddle's PP-StructureV3."""
 
@@ -187,8 +188,9 @@ class PaddleLayoutDetector(LayoutDetector):
                     init_args[field_name] = value
         # Add filtered extra_args (not starting with '_' and in valid set)
         filtered_extra_args = {
-            k: v for k, v in options.extra_args.items()
-            if not k.startswith('_') and k in valid_init_args
+            k: v
+            for k, v in options.extra_args.items()
+            if not k.startswith("_") and k in valid_init_args
         }
         init_args.update(filtered_extra_args)
 
@@ -266,7 +268,7 @@ class PaddleLayoutDetector(LayoutDetector):
             if options.exclude_classes
             else set()
         )
-        
+
         # Debug counters
         table_count = 0
         cell_count = 0
@@ -296,7 +298,9 @@ class PaddleLayoutDetector(LayoutDetector):
             table_structures = table_res_list or []
             table_idx = 0  # fallback index if no region_id
             if table_res_list:
-                self.logger.debug(f"Found {len(table_res_list)} table structure(s) in table_res_list.")
+                self.logger.debug(
+                    f"Found {len(table_res_list)} table structure(s) in table_res_list."
+                )
 
             if not layout_res or "boxes" not in layout_res:
                 self.logger.debug("No layout detection boxes found in result.")
@@ -322,9 +326,7 @@ class PaddleLayoutDetector(LayoutDetector):
 
                         bbox = region.get("coordinate")
                         if not bbox or len(bbox) != 4:
-                            self.logger.warning(
-                                f"Skipping region with invalid bbox: {region}"
-                            )
+                            self.logger.warning(f"Skipping region with invalid bbox: {region}")
                             continue
                         x_min, y_min, x_max, y_max = map(float, bbox)
 
@@ -351,10 +353,14 @@ class PaddleLayoutDetector(LayoutDetector):
 
                             if table_struct:
                                 matched_table_structures += 1
-                                self.logger.debug(f"Matched table structure for table_region_id {region_id} or index {table_idx-1}.")
+                                self.logger.debug(
+                                    f"Matched table structure for table_region_id {region_id} or index {table_idx-1}."
+                                )
                                 # Attach structure info as metadata
                                 detection_data["metadata"] = {
-                                    k: v for k, v in table_struct.items() if k not in ("cell_box_list", "table_ocr_pred", "pred_html")
+                                    k: v
+                                    for k, v in table_struct.items()
+                                    if k not in ("cell_box_list", "table_ocr_pred", "pred_html")
                                 }
                                 detection_data["html"] = table_struct.get("pred_html")
                                 # Add cell regions
@@ -364,84 +370,116 @@ class PaddleLayoutDetector(LayoutDetector):
                                         continue
                                     sx0, sy0, sx1, sy1 = map(float, cell_bbox)
                                     cell_boxes.append((sx0, sy0, sx1, sy1))
-                                    detections.append({
-                                        "bbox": (sx0, sy0, sx1, sy1),
-                                        "class": "table_cell",
-                                        "confidence": confidence_score,
-                                        "normalized_class": self._normalize_class_name("table_cell"),
-                                        "source": "layout",
-                                        "model": "paddle_v3",
-                                        "parent_bbox": (x_min, y_min, x_max, y_max),
-                                    })
+                                    detections.append(
+                                        {
+                                            "bbox": (sx0, sy0, sx1, sy1),
+                                            "class": "table_cell",
+                                            "confidence": confidence_score,
+                                            "normalized_class": self._normalize_class_name(
+                                                "table_cell"
+                                            ),
+                                            "source": "layout",
+                                            "model": "paddle_v3",
+                                            "parent_bbox": (x_min, y_min, x_max, y_max),
+                                        }
+                                    )
                                     cell_count += 1
-                                    self.logger.debug(f"Created table_cell region for bbox {(sx0, sy0, sx1, sy1)}.")
+                                    self.logger.debug(
+                                        f"Created table_cell region for bbox {(sx0, sy0, sx1, sy1)}."
+                                    )
                                 # Add row/col regions if not present in Paddle output
-                                if not table_struct.get("row_box_list") and not table_struct.get("col_box_list"):
-                                    row_boxes, col_boxes = group_cells_into_rows_and_columns(cell_boxes)
+                                if not table_struct.get("row_box_list") and not table_struct.get(
+                                    "col_box_list"
+                                ):
+                                    row_boxes, col_boxes = group_cells_into_rows_and_columns(
+                                        cell_boxes
+                                    )
                                     for row_bbox in row_boxes:
                                         rx0, ry0, rx1, ry1 = row_bbox
-                                        detections.append({
-                                            "bbox": (rx0, ry0, rx1, ry1),
-                                            "class": "table_row",
-                                            "confidence": confidence_score,
-                                            "normalized_class": self._normalize_class_name("table_row"),
-                                            "source": "layout",
-                                            "model": "paddle_v3",
-                                            "parent_bbox": (x_min, y_min, x_max, y_max),
-                                        })
+                                        detections.append(
+                                            {
+                                                "bbox": (rx0, ry0, rx1, ry1),
+                                                "class": "table_row",
+                                                "confidence": confidence_score,
+                                                "normalized_class": self._normalize_class_name(
+                                                    "table_row"
+                                                ),
+                                                "source": "layout",
+                                                "model": "paddle_v3",
+                                                "parent_bbox": (x_min, y_min, x_max, y_max),
+                                            }
+                                        )
                                         row_count += 1
-                                        self.logger.debug(f"[UTIL] Created table_row region for bbox {(rx0, ry0, rx1, ry1)}.")
+                                        self.logger.debug(
+                                            f"[UTIL] Created table_row region for bbox {(rx0, ry0, rx1, ry1)}."
+                                        )
                                     for col_bbox in col_boxes:
                                         cx0, cy0, cx1, cy1 = col_bbox
-                                        detections.append({
-                                            "bbox": (cx0, cy0, cx1, cy1),
-                                            "class": "table_column",
-                                            "confidence": confidence_score,
-                                            "normalized_class": self._normalize_class_name("table_column"),
-                                            "source": "layout",
-                                            "model": "paddle_v3",
-                                            "parent_bbox": (x_min, y_min, x_max, y_max),
-                                        })
+                                        detections.append(
+                                            {
+                                                "bbox": (cx0, cy0, cx1, cy1),
+                                                "class": "table_column",
+                                                "confidence": confidence_score,
+                                                "normalized_class": self._normalize_class_name(
+                                                    "table_column"
+                                                ),
+                                                "source": "layout",
+                                                "model": "paddle_v3",
+                                                "parent_bbox": (x_min, y_min, x_max, y_max),
+                                            }
+                                        )
                                         col_count += 1
-                                        self.logger.debug(f"[UTIL] Created table_column region for bbox {(cx0, cy0, cx1, cy1)}.")
+                                        self.logger.debug(
+                                            f"[UTIL] Created table_column region for bbox {(cx0, cy0, cx1, cy1)}."
+                                        )
                                 else:
                                     # Add row regions from Paddle output if present
                                     for row_bbox in table_struct.get("row_box_list", []):
                                         if row_bbox is None or len(row_bbox) != 4:
                                             continue
                                         rx0, ry0, rx1, ry1 = map(float, row_bbox)
-                                        detections.append({
-                                            "bbox": (rx0, ry0, rx1, ry1),
-                                            "class": "table_row",
-                                            "confidence": confidence_score,
-                                            "normalized_class": self._normalize_class_name("table_row"),
-                                            "source": "layout",
-                                            "model": "paddle_v3",
-                                            "parent_bbox": (x_min, y_min, x_max, y_max),
-                                        })
+                                        detections.append(
+                                            {
+                                                "bbox": (rx0, ry0, rx1, ry1),
+                                                "class": "table_row",
+                                                "confidence": confidence_score,
+                                                "normalized_class": self._normalize_class_name(
+                                                    "table_row"
+                                                ),
+                                                "source": "layout",
+                                                "model": "paddle_v3",
+                                                "parent_bbox": (x_min, y_min, x_max, y_max),
+                                            }
+                                        )
                                         row_count += 1
-                                        self.logger.debug(f"Created table_row region for bbox {(rx0, ry0, rx1, ry1)}.")
+                                        self.logger.debug(
+                                            f"Created table_row region for bbox {(rx0, ry0, rx1, ry1)}."
+                                        )
                                     # Add column regions from Paddle output if present
                                     for col_bbox in table_struct.get("col_box_list", []):
                                         if col_bbox is None or len(col_bbox) != 4:
                                             continue
                                         cx0, cy0, cx1, cy1 = map(float, col_bbox)
-                                        detections.append({
-                                            "bbox": (cx0, cy0, cx1, cy1),
-                                            "class": "table_column",
-                                            "confidence": confidence_score,
-                                            "normalized_class": self._normalize_class_name("table_column"),
-                                            "source": "layout",
-                                            "model": "paddle_v3",
-                                            "parent_bbox": (x_min, y_min, x_max, y_max),
-                                        })
+                                        detections.append(
+                                            {
+                                                "bbox": (cx0, cy0, cx1, cy1),
+                                                "class": "table_column",
+                                                "confidence": confidence_score,
+                                                "normalized_class": self._normalize_class_name(
+                                                    "table_column"
+                                                ),
+                                                "source": "layout",
+                                                "model": "paddle_v3",
+                                                "parent_bbox": (x_min, y_min, x_max, y_max),
+                                            }
+                                        )
                                         col_count += 1
-                                        self.logger.debug(f"Created table_column region for bbox {(cx0, cy0, cx1, cy1)}.")
+                                        self.logger.debug(
+                                            f"Created table_column region for bbox {(cx0, cy0, cx1, cy1)}."
+                                        )
                         detections.append(detection_data)
                     except (TypeError, KeyError, IndexError, ValueError) as e:
-                        self.logger.warning(
-                            f"Error processing Paddle region: {region}. Error: {e}"
-                        )
+                        self.logger.warning(f"Error processing Paddle region: {region}. Error: {e}")
                         continue
 
         self.logger.info(

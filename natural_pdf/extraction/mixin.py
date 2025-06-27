@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Optional, Type, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from pydantic import BaseModel, Field, create_model
 
@@ -41,20 +41,20 @@ class ExtractionMixin(ABC):
     Example:
         ```python
         from pydantic import BaseModel
-        
+
         class InvoiceData(BaseModel):
             invoice_number: str
             total_amount: float
             due_date: str
             vendor_name: str
-        
+
         pdf = npdf.PDF("invoice.pdf")
         page = pdf.pages[0]
-        
+
         # Extract structured data
         invoice = page.extract_structured_data(InvoiceData)
         print(f"Invoice {invoice.data.invoice_number}: ${invoice.data.total_amount}")
-        
+
         # Region-specific extraction
         header_region = page.find('text:contains("Invoice")').above()
         header_data = header_region.extract_structured_data(InvoiceData)
@@ -431,10 +431,13 @@ class ExtractionMixin(ABC):
         question_map = question_map or {}
 
         try:
-            from natural_pdf.qa.document_qa import get_qa_engine
-            from natural_pdf.extraction.result import StructuredDataResult
-            from pydantic import Field as _Field, create_model
             import re
+
+            from pydantic import Field as _Field
+            from pydantic import create_model
+
+            from natural_pdf.extraction.result import StructuredDataResult
+            from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError as exc:
             raise RuntimeError(
                 "Document-QA dependencies missing. Install with `pip install natural-pdf[ai]`."
@@ -469,7 +472,9 @@ class ExtractionMixin(ABC):
                 question = question_map[display_name]
             else:
                 description = None
-                if hasattr(field_obj, "field_info") and hasattr(field_obj.field_info, "description"):
+                if hasattr(field_obj, "field_info") and hasattr(
+                    field_obj.field_info, "description"
+                ):
                     description = field_obj.field_info.description
                 elif hasattr(field_obj, "description"):
                     description = field_obj.description
@@ -574,7 +579,11 @@ class ExtractionMixin(ABC):
             pdf_instance = self
         elif hasattr(self, "pdf") and hasattr(self.pdf, "get_manager"):
             pdf_instance = self.pdf
-        elif hasattr(self, "page") and hasattr(self.page, "pdf") and hasattr(self.page.pdf, "get_manager"):
+        elif (
+            hasattr(self, "page")
+            and hasattr(self.page, "pdf")
+            and hasattr(self.page.pdf, "get_manager")
+        ):
             pdf_instance = self.page.pdf
         else:
             raise RuntimeError("Cannot access PDF manager to perform LLM extraction.")
@@ -587,7 +596,9 @@ class ExtractionMixin(ABC):
         layout_for_text = kwargs.pop("layout", True)
         content = self._get_extraction_content(using=using, layout=layout_for_text, **kwargs)
 
-        if content is None or (using == "text" and isinstance(content, str) and not content.strip()):
+        if content is None or (
+            using == "text" and isinstance(content, str) and not content.strip()
+        ):
             result = StructuredDataResult(
                 data=None,
                 success=False,

@@ -548,37 +548,31 @@ class PDFCollection(
         labels: List[str],
         using: Optional[str] = None,  # Default handled by PDF.classify -> manager
         model: Optional[str] = None,  # Optional model ID
-        max_workers: Optional[int] = None,
         analysis_key: str = "classification",  # Key for storing result in PDF.analyses
         **kwargs,
     ) -> "PDFCollection":
         """
-        Classify each PDF document in the collection, potentially in parallel.
+        Classify each PDF document in the collection using batch processing.
 
-        This method delegates classification to each PDF object's `classify` method.
-        By default, uses the full extracted text of the PDF.
-        If `using='vision'`, it classifies the first page's image, but ONLY if
-        the PDF has a single page (raises ValueError otherwise).
+        This method gathers content from all PDFs and processes them in a single
+        batch to avoid multiprocessing resource accumulation that can occur with
+        sequential individual classifications.
 
         Args:
             labels: A list of string category names.
             using: Processing mode ('text', 'vision'). If None, manager infers (defaulting to text).
             model: Optional specific model identifier (e.g., HF ID). If None, manager uses default for 'using' mode.
-            max_workers: Maximum number of threads to process PDFs concurrently.
-                         If None or 1, processing is sequential.
             analysis_key: Key under which to store the ClassificationResult in each PDF's `analyses` dict.
-            **kwargs: Additional arguments passed down to `pdf.classify` (e.g., device,
-                      min_confidence, multi_label, text extraction options).
+            **kwargs: Additional arguments passed down to the ClassificationManager.
 
         Returns:
             Self for method chaining.
 
         Raises:
             ValueError: If labels list is empty, or if using='vision' on a multi-page PDF.
-            ClassificationError: If classification fails for any PDF (will stop processing).
+            ClassificationError: If classification fails.
             ImportError: If classification dependencies are missing.
         """
-        PDF = self._get_pdf_class()
         if not labels:
             raise ValueError("Labels list cannot be empty.")
 
@@ -588,102 +582,103 @@ class PDFCollection(
 
         mode_desc = f"using='{using}'" if using else f"model='{model}'" if model else "default text"
         logger.info(
-            f"Starting classification for {len(self._pdfs)} PDFs in collection ({mode_desc})..."
+            f"Starting batch classification for {len(self._pdfs)} PDFs in collection ({mode_desc})..."
         )
 
-        progress_bar = tqdm(
-            total=len(self._pdfs), desc=f"Classifying PDFs ({mode_desc})", unit="pdf"
-        )
-
-        # Worker function
-        def _process_pdf_classification(pdf: PDF):
-            thread_id = threading.current_thread().name
-            pdf_path = pdf.path
-            logger.debug(f"[{thread_id}] Starting classification process for PDF: {pdf_path}")
-            start_time = time.monotonic()
-            try:
-                # Call classify directly on the PDF object
-                pdf.classify(
-                    labels=labels,
-                    using=using,
-                    model=model,
-                    analysis_key=analysis_key,
-                    **kwargs,  # Pass other relevant args like min_confidence, multi_label
-                )
-                end_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] Finished classification for PDF: {pdf_path} (Duration: {end_time - start_time:.2f}s)"
-                )
-                progress_bar.update(1)  # Update progress bar upon success
-                return pdf_path, None  # Return path and no error
-            except ValueError as ve:
-                # Catch specific error for vision on multi-page PDF
-                end_time = time.monotonic()
-                logger.error(
-                    f"[{thread_id}] Skipped classification for {pdf_path} after {end_time - start_time:.2f}s: {ve}",
-                    exc_info=False,
-                )
-                progress_bar.update(1)  # Still update progress bar
-                return pdf_path, ve  # Return the specific ValueError
-            except Exception as e:
-                end_time = time.monotonic()
-                logger.error(
-                    f"[{thread_id}] Failed classification process for PDF {pdf_path} after {end_time - start_time:.2f}s: {e}",
-                    exc_info=True,  # Log full traceback for unexpected errors
-                )
-                # Close progress bar immediately on critical error to avoid hanging
-                if not progress_bar.disable:
-                    progress_bar.close()
-                # Re-raise the exception to stop the entire collection processing
-                raise ClassificationError(f"Classification failed for {pdf_path}: {e}") from e
-
-        # Use ThreadPoolExecutor for parallel processing if max_workers > 1
-        processed_count = 0
-        skipped_count = 0
+        # Get classification manager from first PDF
         try:
-            if max_workers is not None and max_workers > 1:
-                logger.info(f"Classifying PDFs in parallel with {max_workers} workers.")
-                futures = []
-                with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=max_workers, thread_name_prefix="ClassifyWorker"
-                ) as executor:
-                    for pdf in self._pdfs:
-                        futures.append(executor.submit(_process_pdf_classification, pdf))
+            first_pdf = self._pdfs[0]
+            if not hasattr(first_pdf, 'get_manager'):
+                raise RuntimeError("PDFs do not support classification manager")
+            manager = first_pdf.get_manager('classification')
+            if not manager or not manager.is_available():
+                raise RuntimeError("ClassificationManager is not available")
+        except Exception as e:
+            from natural_pdf.classification.manager import ClassificationError
+            raise ClassificationError(f"Cannot access ClassificationManager: {e}") from e
 
-                    # Wait for all futures to complete
-                    # Progress updated within worker
-                    for future in concurrent.futures.as_completed(futures):
-                        processed_count += 1
-                        pdf_path, error = (
-                            future.result()
-                        )  # Raise ClassificationError if worker failed critically
-                        if isinstance(error, ValueError):
-                            # Logged in worker, just count as skipped
-                            skipped_count += 1
+        # Determine processing mode early
+        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
+        
+        # Gather content from all PDFs
+        pdf_contents = []
+        valid_pdfs = []
+        
+        logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
+        
+        for pdf in self._pdfs:
+            try:
+                # Get the content for classification - use the same logic as individual PDF classify
+                if inferred_using == "text":
+                    # Extract text content from PDF
+                    content = pdf.extract_text()
+                    if not content or content.isspace():
+                        logger.warning(f"Skipping PDF {pdf.path}: No text content found")
+                        continue
+                elif inferred_using == "vision":
+                    # For vision, we need single-page PDFs only
+                    if len(pdf.pages) != 1:
+                        logger.warning(f"Skipping PDF {pdf.path}: Vision classification requires single-page PDFs")
+                        continue
+                    # Get first page image
+                    content = pdf.pages[0].to_image()
+                else:
+                    raise ValueError(f"Unsupported using mode: {inferred_using}")
+                
+                pdf_contents.append(content)
+                valid_pdfs.append(pdf)
+                
+            except Exception as e:
+                logger.warning(f"Skipping PDF {pdf.path}: Error getting content - {e}")
+                continue
 
-            else:  # Sequential processing
-                logger.info("Classifying PDFs sequentially.")
-                for pdf in self._pdfs:
-                    processed_count += 1
-                    pdf_path, error = _process_pdf_classification(
-                        pdf
-                    )  # Raise ClassificationError if worker failed critically
-                    if isinstance(error, ValueError):
-                        skipped_count += 1
+        if not pdf_contents:
+            logger.warning("No valid content could be gathered from PDFs for classification.")
+            return self
 
-            final_message = (
-                f"Finished classification across the collection. Processed: {processed_count}"
+        logger.info(f"Gathered content from {len(valid_pdfs)} PDFs. Running batch classification...")
+
+        # Run batch classification
+        try:
+            batch_results = manager.classify_batch(
+                item_contents=pdf_contents,
+                labels=labels,
+                model_id=model,
+                using=inferred_using,
+                progress_bar=True,  # Let the manager handle progress display
+                **kwargs,
             )
-            if skipped_count > 0:
-                final_message += f", Skipped (e.g., vision on multi-page): {skipped_count}"
-            logger.info(final_message + ".")
+        except Exception as e:
+            logger.error(f"Batch classification failed: {e}")
+            from natural_pdf.classification.manager import ClassificationError
+            raise ClassificationError(f"Batch classification failed: {e}") from e
 
-        finally:
-            # Ensure progress bar is closed properly
-            if not progress_bar.disable and progress_bar.n < progress_bar.total:
-                progress_bar.n = progress_bar.total  # Ensure it reaches 100%
-            if not progress_bar.disable:
-                progress_bar.close()
+        # Assign results back to PDFs
+        if len(batch_results) != len(valid_pdfs):
+            logger.error(
+                f"Batch classification result count ({len(batch_results)}) mismatch "
+                f"with PDFs processed ({len(valid_pdfs)}). Cannot assign results."
+            )
+            from natural_pdf.classification.manager import ClassificationError
+            raise ClassificationError("Batch result count mismatch with input PDFs")
+
+        logger.info(f"Assigning {len(batch_results)} results to PDFs under key '{analysis_key}'.")
+        
+        processed_count = 0
+        for pdf, result_obj in zip(valid_pdfs, batch_results):
+            try:
+                if not hasattr(pdf, "analyses") or pdf.analyses is None:
+                    pdf.analyses = {}
+                pdf.analyses[analysis_key] = result_obj
+                processed_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to store classification result for {pdf.path}: {e}")
+
+        skipped_count = len(self._pdfs) - processed_count
+        final_message = f"Finished batch classification. Processed: {processed_count}"
+        if skipped_count > 0:
+            final_message += f", Skipped: {skipped_count}"
+        logger.info(final_message + ".")
 
         return self
 

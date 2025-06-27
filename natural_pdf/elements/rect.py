@@ -88,20 +88,6 @@ class RectangleElement(Element):
         """Get the stroke width of the rectangle."""
         return self._obj.get("linewidth", 0)
 
-    def text_inside(self, **kwargs) -> Any:
-        """
-        Get text elements inside this rectangle.
-
-        Args:
-            **kwargs: Additional filter parameters
-
-        Returns:
-            ElementCollection of text elements inside this rectangle
-        """
-        from natural_pdf.elements.collections import ElementCollection
-
-        # TODO: Implement proper filtering of elements inside this rectangle
-        return ElementCollection([])  # Placeholder
 
     def extract_text(self, **kwargs) -> str:
         """

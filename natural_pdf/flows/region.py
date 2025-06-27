@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, Callable
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pdfplumber.utils.geometry import objects_to_bbox  # For calculating combined bbox
 
@@ -133,7 +133,7 @@ class FlowRegion:
         # This is a simplification; true layout-aware joining would be more complex.
         joiner = (
             "\n" if self.flow.arrangement == "vertical" else " "
-        )  # TODO: Make this smarter, consider segment_gap
+        )  # TODO: Consider flow.segment_gap for proportional spacing between segments
         extracted = joiner.join(t for t in texts if t)
 
         if apply_exclusions:  # Only cache if standard exclusion behavior
@@ -258,7 +258,7 @@ class FlowRegion:
         """
         Generates and returns a PIL Image of relevant pages with constituent regions highlighted.
         If multiple pages are involved, they are stacked into a single image.
-        
+
         Args:
             resolution: Resolution in DPI for page rendering. If None, uses global setting or defaults to 144 DPI.
             labels: Whether to include a legend for highlights.
@@ -270,7 +270,7 @@ class FlowRegion:
             stack_gap: Gap in pixels between stacked pages.
             stack_background_color: RGB background color for the stacked image.
             **kwargs: Additional arguments passed to the underlying rendering methods.
-        
+
         Returns:
             PIL Image of the rendered pages with highlighted regions, or None if rendering fails.
         """

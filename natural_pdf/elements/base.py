@@ -6,16 +6,17 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overl
 
 from PIL import Image
 
+from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.describe.mixin import DescribeMixin
+
 # Import selector parsing functions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.describe.mixin import DescribeMixin
-from natural_pdf.classification.mixin import ClassificationMixin
 
 if TYPE_CHECKING:
+    from natural_pdf.classification.manager import ClassificationManager  # noqa: F401
     from natural_pdf.core.page import Page
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.region import Region
-    from natural_pdf.classification.manager import ClassificationManager  # noqa: F401
 
 
 def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
@@ -42,7 +43,7 @@ def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
         dict_bbox = extract_bbox({                 # From dictionary
             'x0': 100, 'top': 200, 'x1': 300, 'bottom': 250
         })
-        
+
         if element_bbox:
             x0, top, x1, bottom = element_bbox
             width = x1 - x0
@@ -87,7 +88,7 @@ class DirectionalMixin:
 
     Methods provided:
     - left(): Create region to the left
-    - right(): Create region to the right  
+    - right(): Create region to the right
     - above(): Create region above
     - below(): Create region below
 
@@ -598,16 +599,16 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         ```python
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
-        
+
         # Get text elements
         text_elements = page.chars
         for element in text_elements:
             print(f"Text '{element.get_text()}' at {element.bbox}")
-            
+
         # Spatial navigation
         first_char = page.chars[0]
         region_to_right = first_char.right(size=100)
-        
+
         # Classification
         element.classify("document_type", model="clip")
         ```
@@ -640,7 +641,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             # Elements are usually accessed through page collections
             page = pdf.pages[0]
             chars = page.chars  # Elements created automatically
-            
+
             # Direct construction (advanced usage)
             pdfplumber_char = page._page.chars[0]  # Raw pdfplumber data
             element = Element(pdfplumber_char, page)
@@ -1083,6 +1084,7 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
@@ -1134,7 +1136,11 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
             return None
 
     def save(
-        self, filename: str, resolution: Optional[float] = None, labels: bool = True, legend_position: str = "right"
+        self,
+        filename: str,
+        resolution: Optional[float] = None,
+        labels: bool = True,
+        legend_position: str = "right",
     ) -> None:
         """
         Save the page with this element highlighted to an image file.
@@ -1150,13 +1156,16 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
         """
         # Apply global options as defaults
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution when none specified
         # Save the highlighted image
-        self.page.save_image(filename, resolution=resolution, labels=labels, legend_position=legend_position)
+        self.page.save_image(
+            filename, resolution=resolution, labels=labels, legend_position=legend_position
+        )
         return self
 
     # Note: save_image method removed in favor of save()

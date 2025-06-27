@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Test real-world Arabic text use cases with natural-pdf."""
 
-import unittest
 import time
+import unittest
+
 from natural_pdf import PDF
+
 
 class TestArabicPDF(unittest.TestCase):
 
@@ -32,19 +34,19 @@ class TestArabicPDF(unittest.TestCase):
             ("العدد", "issue"),
         ]
         for term, _ in search_terms:
-            print('term', term, 'translation', _)
+            print("term", term, "translation", _)
             with self.subTest(term=term):
                 matches = self.page.find_all(f"text:contains({term})")
                 self.assertGreater(len(matches), 0, f"No matches found for term: {term}")
 
     def test_spatial_navigation(self):
-        headers = self.page.find_all('text[size>12]')
+        headers = self.page.find_all("text[size>12]")
         self.assertGreater(len(headers), 0, "No large text headers found")
-        below = headers[0].below().find_all('text')
+        below = headers[0].below().find_all("text")
         self.assertGreater(len(below), 0, "No text found below header")
 
     def test_mixed_content_stats(self):
-        words = self.page.find_all('word')
+        words = self.page.find_all("word")
         stats = {
             "arabic_only": 0,
             "english_only": 0,
@@ -53,8 +55,8 @@ class TestArabicPDF(unittest.TestCase):
         }
 
         for word in words:
-            has_ar = any('\u0600' <= c <= '\u06FF' for c in word.text)
-            has_en = any('a' <= c.lower() <= 'z' for c in word.text)
+            has_ar = any("\u0600" <= c <= "\u06FF" for c in word.text)
+            has_en = any("a" <= c.lower() <= "z" for c in word.text)
             has_num = any(c.isdigit() for c in word.text)
 
             if has_ar and (has_en or has_num):
@@ -70,7 +72,7 @@ class TestArabicPDF(unittest.TestCase):
         self.assertGreater(stats["mixed"], 0, "No mixed Arabic/English words found")
 
     def test_line_grouping_by_y_position(self):
-        words = self.page.find_all('word')[:50]
+        words = self.page.find_all("word")[:50]
         lines = {}
         for word in words:
             y = round(word.top)
@@ -83,8 +85,8 @@ class TestArabicPDF(unittest.TestCase):
         self.assertEqual(text1, text2, "Text extraction is not consistent")
 
     def test_bidi_token_order(self):
-        found_2022 = self.page.find_all('text:contains(2022)')
-        found_2202 = self.page.find_all('text:contains(2202)')
+        found_2022 = self.page.find_all("text:contains(2022)")
+        found_2202 = self.page.find_all("text:contains(2202)")
         self.assertGreater(len(found_2022), 0, "Expected to find '2022', but found none")
         self.assertEqual(len(found_2202), 0, "Found reversed '2202', possible BiDi error")
         for w in found_2022:

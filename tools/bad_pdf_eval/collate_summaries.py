@@ -36,11 +36,13 @@ def collect() -> List[dict]:
             tp = (p.get("thought_process") or "").strip()
             if not cs and not tp:
                 continue
-            page_snippets.append({
-                "page": p.get("page_number"),
-                "code": cs,
-                "thought": tp,
-            })
+            page_snippets.append(
+                {
+                    "page": p.get("page_number"),
+                    "code": cs,
+                    "thought": tp,
+                }
+            )
             # --- lightweight feature tagging --------------------------------
             gt = (p.get("goal_tag") or "").lower()
             if "table" in gt:
@@ -64,18 +66,20 @@ def collect() -> List[dict]:
         if language and language.lower() not in {"english", "en", "en-us"}:
             features.add("non_english")
 
-        rows.append({
-            "id": submission_id,
-            "language": language,
-            "issues": issues,
-            "description": description,
-            "doc_thought": doc_tp,
-            "doc_code": doc_cs,
-            "doc_difficult": doc_diff,
-            "doc_test": doc_test,
-            "snippets": page_snippets,
-            "features": sorted(features),
-        })
+        rows.append(
+            {
+                "id": submission_id,
+                "language": language,
+                "issues": issues,
+                "description": description,
+                "doc_thought": doc_tp,
+                "doc_code": doc_cs,
+                "doc_difficult": doc_diff,
+                "doc_test": doc_test,
+                "snippets": page_snippets,
+                "features": sorted(features),
+            }
+        )
     return rows
 
 
@@ -127,4 +131,4 @@ def export_markdown(rows: List[dict]):
 if __name__ == "__main__":
     rows = collect()
     export_markdown(rows)
-    print(f"Wrote {len(rows)} summaries to eval_results/collated_summary.md") 
+    print(f"Wrote {len(rows)} summaries to eval_results/collated_summary.md")

@@ -1,9 +1,11 @@
 import argparse
 import subprocess
 import sys
-from importlib.metadata import distribution, PackageNotFoundError, version as get_version
+from importlib.metadata import PackageNotFoundError, distribution
+from importlib.metadata import version as get_version
 from pathlib import Path
 from typing import Dict
+
 from packaging.requirements import Requirement
 
 # ---------------------------------------------------------------------------
@@ -71,7 +73,9 @@ def main():
     install_p = subparsers.add_parser(
         "install", help="Install optional dependency groups (e.g. paddle, surya)"
     )
-    install_p.add_argument("extras", nargs="+", help="One or more extras to install (e.g. paddle surya)")
+    install_p.add_argument(
+        "extras", nargs="+", help="One or more extras to install (e.g. paddle surya)"
+    )
     install_p.set_defaults(func=cmd_install)
 
     # list subcommand -------------------------------------------------------
@@ -113,4 +117,4 @@ def cmd_list(args):
 
 
 if __name__ == "__main__":
-    main() 
+    main()

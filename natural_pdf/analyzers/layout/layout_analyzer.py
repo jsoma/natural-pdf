@@ -83,7 +83,9 @@ class LayoutAnalyzer:
             f"  Rendering page {self._page.number} to image for initial layout detection..."
         )
         try:
-            layout_resolution = getattr(self._page._parent, "_config", {}).get("layout_image_resolution", 72)
+            layout_resolution = getattr(self._page._parent, "_config", {}).get(
+                "layout_image_resolution", 72
+            )
             std_res_page_image = self._page.to_image(
                 resolution=layout_resolution, include_highlights=False
             )

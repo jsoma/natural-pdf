@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import weakref
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -23,9 +24,7 @@ from typing import (
 )
 
 import pdfplumber
-from PIL import Image
 from tqdm.auto import tqdm
-import weakref
 
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.classification.manager import ClassificationError
@@ -73,10 +72,13 @@ except ImportError:
 
 logger = logging.getLogger("natural_pdf.core.pdf")
 
+
 def _get_classification_manager_class():
     """Lazy import for ClassificationManager."""
     from natural_pdf.classification.manager import ClassificationManager
+
     return ClassificationManager
+
 
 DEFAULT_MANAGERS = {
     "classification": _get_classification_manager_class,
@@ -99,6 +101,7 @@ except ImportError:
 
 # --- Lazy Page List Helper --- #
 from collections.abc import Sequence
+
 
 class _LazyPageList(Sequence):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
@@ -125,17 +128,19 @@ class _LazyPageList(Sequence):
         pdf = npdf.PDF("document.pdf")
         first_page = pdf.pages[0]  # Creates Page object here
         last_page = pdf.pages[-1]  # Creates another Page object
-        
+
         # Slicing works too
         first_three = pdf.pages[0:3]  # Creates 3 Page objects
-        
+
         # Iteration creates all pages
         for page in pdf.pages:  # Each page created as needed
             print(f"Page {page.index}")
         ```
     """
 
-    def __init__(self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None, load_text=True):
+    def __init__(
+        self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None, load_text=True
+    ):
         self._parent_pdf = parent_pdf
         self._plumber_pdf = plumber_pdf
         self._font_attrs = font_attrs
@@ -151,7 +156,13 @@ class _LazyPageList(Sequence):
             from natural_pdf.core.page import Page
 
             plumber_page = self._plumber_pdf.pages[index]
-            cached = Page(plumber_page, parent=self._parent_pdf, index=index, font_attrs=self._font_attrs, load_text=self._load_text)
+            cached = Page(
+                plumber_page,
+                parent=self._parent_pdf,
+                index=index,
+                font_attrs=self._font_attrs,
+                load_text=self._load_text,
+            )
             self._cache[index] = cached
         return cached
 
@@ -180,7 +191,9 @@ class _LazyPageList(Sequence):
     def __repr__(self) -> str:  # pragma: no cover
         return f"<_LazyPageList(len={len(self)})>"
 
+
 # --- End Lazy Page List Helper --- #
+
 
 class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
     """Enhanced PDF wrapper built on top of pdfplumber.
@@ -204,7 +217,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         Basic usage:
         ```python
         import natural_pdf as npdf
-        
+
         pdf = npdf.PDF("document.pdf")
         page = pdf.pages[0]
         text_elements = page.find_all('text:contains("Summary")')
@@ -231,7 +244,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         """Initialize the enhanced PDF object.
 
         Args:
-            path_or_url_or_stream: Path to the PDF file (str/Path), a URL (str), 
+            path_or_url_or_stream: Path to the PDF file (str/Path), a URL (str),
                 or a file-like object (stream). URLs must start with 'http://' or 'https://'.
             reading_order: If True, use natural reading order for text extraction.
                 Defaults to True.
@@ -256,16 +269,16 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             ```python
             # From file path
             pdf = npdf.PDF("document.pdf")
-            
+
             # From URL
             pdf = npdf.PDF("https://example.com/document.pdf")
-            
+
             # From stream
             with open("document.pdf", "rb") as f:
                 pdf = npdf.PDF(f)
-            
+
             # With custom settings
-            pdf = npdf.PDF("document.pdf", 
+            pdf = npdf.PDF("document.pdf",
                           reading_order=False,
                           text_layer=False,  # For OCR-only processing
                           font_attrs=['fontname', 'size', 'flags'])
@@ -347,7 +360,9 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         self._manager_registry = {}
 
         # Lazily instantiate pages only when accessed
-        self._pages = _LazyPageList(self, self._pdf, font_attrs=font_attrs, load_text=self._text_layer)
+        self._pages = _LazyPageList(
+            self, self._pdf, font_attrs=font_attrs, load_text=self._text_layer
+        )
 
         self._element_cache = {}
         self._exclusions = []
@@ -357,13 +372,13 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         self._initialize_managers()
         self._initialize_highlighter()
-        
+
         # Remove text layer if requested
         if not self._text_layer:
             logger.info("Removing text layer as requested (text_layer=False)")
             # Text layer is not loaded when text_layer=False, so no need to remove
             pass
-        
+
         # Analysis results accessed via self.analyses property (see below)
 
         # --- Automatic cleanup when object is garbage-collected ---
@@ -496,14 +511,14 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         Example:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Access individual pages
             first_page = pdf.pages[0]
             last_page = pdf.pages[-1]
-            
+
             # Slice pages
             first_three = pdf.pages[0:3]
-            
+
             # Iterate over pages
             for page in pdf.pages:
                 print(f"Page {page.index} has {len(page.chars)} characters")
@@ -532,7 +547,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             ```python
             pdf = npdf.PDF("document.pdf")
             pdf.add_exclusion(lambda page: page.find('text:contains("CONFIDENTIAL")').above())
-            
+
             # Later, remove all exclusions
             pdf.clear_exclusions()
             ```
@@ -571,20 +586,20 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         Example:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Exclude headers (top 50 points of each page)
             pdf.add_exclusion(
                 lambda page: page.region(0, 0, page.width, 50),
                 label="header_exclusion"
             )
-            
+
             # Exclude any text containing "CONFIDENTIAL"
             pdf.add_exclusion(
                 lambda page: page.find('text:contains("CONFIDENTIAL")').above(include_source=True)
                 if page.find('text:contains("CONFIDENTIAL")') else None,
                 label="confidential_exclusion"
             )
-            
+
             # Chain multiple exclusions
             pdf.add_exclusion(header_func).add_exclusion(footer_func)
             ```
@@ -657,10 +672,10 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         Example:
             ```python
             pdf = npdf.PDF("scanned_document.pdf")
-            
+
             # Basic OCR on all pages
             pdf.apply_ocr()
-            
+
             # High-quality OCR with specific settings
             pdf.apply_ocr(
                 engine='easyocr',
@@ -668,11 +683,11 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
                 resolution=300,
                 min_confidence=0.8
             )
-            
+
             # OCR specific pages only
             pdf.apply_ocr(pages=[0, 1, 2])  # First 3 pages
             pdf.apply_ocr(pages=slice(5, 10))  # Pages 5-9
-            
+
             # Detection-only workflow for layout analysis
             pdf.apply_ocr(detect_only=True, resolution=150)
             ```
@@ -1273,10 +1288,10 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Ask a question about the document content.
+        Ask a single question about the document content.
 
         Args:
-            question: Question to ask about the document
+            question: Question string to ask about the document
             mode: "extractive" to extract answer from document, "generative" to generate
             pages: Specific pages to query (default: all pages)
             min_confidence: Minimum confidence threshold for answers
@@ -1284,45 +1299,184 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             **kwargs: Additional parameters passed to the QA engine
 
         Returns:
-            A dictionary containing the answer, confidence, and other metadata
-            A dictionary containing the answer, confidence, and other metadata
+            Dict containing: answer, confidence, found, page_num, source_elements, etc.
+        """
+        # Delegate to ask_batch and return the first result
+        results = self.ask_batch([question], mode=mode, pages=pages, min_confidence=min_confidence, model=model, **kwargs)
+        return results[0] if results else {
+            "answer": None,
+            "confidence": 0.0,
+            "found": False,
+            "page_num": None,
+            "source_elements": [],
+        }
+
+    def ask_batch(
+        self,
+        questions: List[str],
+        mode: str = "extractive",
+        pages: Union[int, List[int], range] = None,
+        min_confidence: float = 0.1,
+        model: str = None,
+        **kwargs,
+    ) -> List[Dict[str, Any]]:
+        """
+        Ask multiple questions about the document content using batch processing.
+
+        This method processes multiple questions efficiently in a single batch,
+        avoiding the multiprocessing resource accumulation that can occur with
+        sequential individual question calls.
+
+        Args:
+            questions: List of question strings to ask about the document
+            mode: "extractive" to extract answer from document, "generative" to generate
+            pages: Specific pages to query (default: all pages)
+            min_confidence: Minimum confidence threshold for answers
+            model: Optional model name for question answering
+            **kwargs: Additional parameters passed to the QA engine
+
+        Returns:
+            List of Dicts, each containing: answer, confidence, found, page_num, source_elements, etc.
         """
         from natural_pdf.qa import get_qa_engine
 
+        if not questions:
+            return []
+
+        if not isinstance(questions, list) or not all(isinstance(q, str) for q in questions):
+            raise TypeError("'questions' must be a list of strings")
+
         qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
 
+        # Resolve target pages
         if pages is None:
-            target_pages = list(range(len(self.pages)))
+            target_pages = self.pages
         elif isinstance(pages, int):
-            target_pages = [pages]
+            if 0 <= pages < len(self.pages):
+                target_pages = [self.pages[pages]]
+            else:
+                raise IndexError(f"Page index {pages} out of range (0-{len(self.pages)-1})")
         elif isinstance(pages, (list, range)):
-            target_pages = pages
+            target_pages = []
+            for page_idx in pages:
+                if 0 <= page_idx < len(self.pages):
+                    target_pages.append(self.pages[page_idx])
+                else:
+                    logger.warning(f"Page index {page_idx} out of range, skipping")
         else:
             raise ValueError(f"Invalid pages parameter: {pages}")
 
-        results = []
-        for page_idx in target_pages:
-            if 0 <= page_idx < len(self.pages):
-                page = self.pages[page_idx]
-                page_result = qa_engine.ask_pdf_page(
-                    page=page, question=question, min_confidence=min_confidence, **kwargs
-                )
+        if not target_pages:
+            logger.warning("No valid pages found for QA processing.")
+            return [
+                {
+                    "answer": None,
+                    "confidence": 0.0,
+                    "found": False,
+                    "page_num": None,
+                    "source_elements": [],
+                }
+                for _ in questions
+            ]
 
-                if page_result and page_result.get("found", False):
-                    results.append(page_result)
+        logger.info(f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA...")
 
-        results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+        # Collect all page images and metadata for batch processing
+        page_images = []
+        page_word_boxes = []
+        page_metadata = []
 
-        if results:
-            return results[0]
-        else:
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": None,
-                "source_elements": [],
-            }
+        for page in target_pages:
+            # Get page image
+            try:
+                page_image = page.to_image(resolution=150, include_highlights=False)
+                if page_image is None:
+                    logger.warning(f"Failed to render image for page {page.number}, skipping")
+                    continue
+                    
+                # Get text elements for word boxes
+                elements = page.find_all("text")
+                if not elements:
+                    logger.warning(f"No text elements found on page {page.number}")
+                    word_boxes = []
+                else:
+                    word_boxes = qa_engine._get_word_boxes_from_elements(elements, offset_x=0, offset_y=0)
+                
+                page_images.append(page_image)
+                page_word_boxes.append(word_boxes)
+                page_metadata.append({
+                    "page_number": page.number,
+                    "page_object": page
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error processing page {page.number}: {e}")
+                continue
+
+        if not page_images:
+            logger.warning("No page images could be processed for QA.")
+            return [
+                {
+                    "answer": None,
+                    "confidence": 0.0,
+                    "found": False,
+                    "page_num": None,
+                    "source_elements": [],
+                }
+                for _ in questions
+            ]
+
+        # Process all questions against all pages in batch
+        all_results = []
+        
+        for question_text in questions:
+            question_results = []
+            
+            # Ask this question against each page (but in batch per page)
+            for i, (page_image, word_boxes, page_meta) in enumerate(zip(page_images, page_word_boxes, page_metadata)):
+                try:
+                    # Use the DocumentQA batch interface 
+                    page_result = qa_engine.ask(
+                        image=page_image,
+                        question=question_text,
+                        word_boxes=word_boxes,
+                        min_confidence=min_confidence,
+                        **kwargs
+                    )
+                    
+                    if page_result and page_result.found:
+                        # Add page metadata to result
+                        page_result_dict = {
+                            "answer": page_result.answer,
+                            "confidence": page_result.confidence,
+                            "found": page_result.found,
+                            "page_num": page_meta["page_number"],
+                            "source_elements": getattr(page_result, 'source_elements', []),
+                            "start": getattr(page_result, 'start', -1),
+                            "end": getattr(page_result, 'end', -1),
+                        }
+                        question_results.append(page_result_dict)
+                        
+                except Exception as e:
+                    logger.warning(f"Error processing question '{question_text}' on page {page_meta['page_number']}: {e}")
+                    continue
+            
+            # Sort results by confidence and take the best one for this question
+            question_results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+            
+            if question_results:
+                all_results.append(question_results[0])
+            else:
+                # No results found for this question
+                all_results.append({
+                    "answer": None,
+                    "confidence": 0.0,
+                    "found": False,
+                    "page_num": None,
+                    "source_elements": [],
+                })
+
+        return all_results
 
     def search_within_index(
         self,
@@ -1767,7 +1921,7 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         if not manager or not manager.is_available():
             from natural_pdf.classification.manager import is_classification_available
-            
+
             if not is_classification_available():
                 raise ImportError(
                     "Classification dependencies missing. "

@@ -1,13 +1,16 @@
 """Tests for the Guides functionality."""
-import pytest
+
 from unittest.mock import Mock
-from natural_pdf.analyzers.guides import Guides, GuidesList
+
+import pytest
+
 from natural_pdf import PDF
+from natural_pdf.analyzers.guides import Guides, GuidesList
 
 
 class TestGuidesInitialization:
     """Test different ways to initialize Guides objects."""
-    
+
     def test_empty_initialization(self):
         """Test creating empty guides."""
         guides = Guides()
@@ -15,30 +18,30 @@ class TestGuidesInitialization:
         assert len(guides.horizontal) == 0
         assert isinstance(guides.vertical, GuidesList)
         assert isinstance(guides.horizontal, GuidesList)
-    
+
     def test_with_coordinates(self):
         """Test creating guides with explicit coordinates."""
         guides = Guides([100, 200, 300], [50, 150])
         assert list(guides.vertical) == [100, 200, 300]
         assert list(guides.horizontal) == [50, 150]
-    
+
     def test_shorthand_with_page(self):
         """Test the Guides(page) shorthand syntax."""
         mock_page = Mock()
         mock_page.bbox = (0, 0, 612, 792)
-        
+
         guides = Guides(mock_page)
         assert guides.context is mock_page
         assert guides.bounds == (0, 0, 612, 792)
         assert len(guides.vertical) == 0
         assert len(guides.horizontal) == 0
-    
+
     def test_new_factory_method(self):
         """Test the Guides.new() factory method."""
         guides = Guides.new()
         assert len(guides.vertical) == 0
         assert len(guides.horizontal) == 0
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 700)
         guides_with_context = Guides.new(mock_page)
@@ -47,24 +50,24 @@ class TestGuidesInitialization:
 
 class TestGuidesFactoryMethods:
     """Test factory methods for creating guides."""
-    
+
     def test_divide_method(self):
         """Test the divide factory method."""
         mock_page = Mock()
         mock_page.bbox = (0, 0, 600, 800)
-        
+
         # Test dividing into columns
         guides = Guides.divide(mock_page, cols=3)
         expected_verticals = [0, 200, 400, 600]  # 4 guides for 3 columns
         assert list(guides.vertical) == expected_verticals
         assert len(guides.horizontal) == 0
-        
+
         # Test dividing into rows
         guides = Guides.divide(mock_page, rows=2)
         expected_horizontals = [0, 400, 800]  # 3 guides for 2 rows
         assert list(guides.horizontal) == expected_horizontals
         assert len(guides.vertical) == 0
-    
+
     def test_from_lines_default_behavior(self):
         """Test from_lines with default parameters."""
         mock_line1 = Mock()
@@ -73,27 +76,27 @@ class TestGuidesFactoryMethods:
         mock_line1.x0, mock_line1.x1 = 150, 152
         mock_line1.top, mock_line1.bottom = 50, 550
         mock_line1.height = 500
-        
+
         mock_line2 = Mock()
         mock_line2.is_horizontal = True
         mock_line2.is_vertical = False
         mock_line2.x0, mock_line2.x1 = 100, 500
         mock_line2.top, mock_line2.bottom = 200, 202
         mock_line2.width = 400
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.lines = [mock_line1, mock_line2]
-        
+
         # Test default behavior (outer=False)
         guides = Guides.from_lines(mock_page)
         assert 151.0 in guides.vertical  # Midpoint of vertical line
         assert 201.0 in guides.horizontal  # Midpoint of horizontal line
-        
+
         # Should NOT include outer boundaries by default
         assert 0.0 not in guides.vertical
         assert 500.0 not in guides.vertical
-    
+
     def test_from_lines_with_outer_true(self):
         """Test from_lines with outer=True."""
         mock_line = Mock()
@@ -102,30 +105,30 @@ class TestGuidesFactoryMethods:
         mock_line.x0, mock_line.x1 = 150, 152
         mock_line.top, mock_line.bottom = 50, 550
         mock_line.height = 500
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.lines = [mock_line]
-        
+
         guides = Guides.from_lines(mock_page, outer=True)
         assert 0.0 in guides.vertical  # Left boundary
         assert 151.0 in guides.vertical  # Line midpoint
         assert 500.0 in guides.vertical  # Right boundary
-    
+
     def test_from_content_default_behavior(self):
         """Test from_content with default parameters."""
         mock_element = Mock()
         mock_element.x0, mock_element.x1 = 100, 200
         mock_element.top, mock_element.bottom = 50, 70
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.find = Mock(return_value=mock_element)
-        
+
         # Test default behavior (outer=True, align='left')
-        guides = Guides.from_content(mock_page, markers=['Header'])
+        guides = Guides.from_content(mock_page, markers=["Header"])
         mock_page.find.assert_called_with('text:contains("Header")')
-        
+
         # Should include the element's left edge and outer boundaries
         assert 0.0 in guides.vertical  # Left boundary (outer=True)
         assert 100.0 in guides.vertical  # Element left edge
@@ -134,35 +137,35 @@ class TestGuidesFactoryMethods:
 
 class TestGuidesListMethods:
     """Test the beautiful GuidesList syntax."""
-    
+
     def test_guides_list_basic_operations(self):
         """Test that GuidesList acts like a list."""
         guides = Guides([100, 200], [50, 150])
-        
+
         # Test list-like behavior
         guides.vertical.append(300)
         assert 300 in guides.vertical
-        
+
         guides.horizontal.extend([250, 350])
         assert 250 in guides.horizontal
         assert 350 in guides.horizontal
-        
+
         # Test indexing
         assert guides.vertical[0] == 100
         assert len(guides.vertical) == 3
-    
+
     def test_vertical_from_content(self):
         """Test guides.vertical.from_content() syntax."""
         mock_element = Mock()
         mock_element.x0, mock_element.x1 = 150, 250
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.find = Mock(return_value=mock_element)
-        
+
         guides = Guides(mock_page)
-        result = guides.vertical.from_content(markers=['Header'], align='left')
-        
+        result = guides.vertical.from_content(markers=["Header"], align="left")
+
         # Should return parent Guides for chaining
         assert result is guides
         # Should have added the element's position
@@ -170,7 +173,7 @@ class TestGuidesListMethods:
         # Should have outer boundaries (default outer=True for content)
         assert 0.0 in guides.vertical
         assert 500.0 in guides.vertical
-    
+
     def test_horizontal_from_lines(self):
         """Test guides.horizontal.from_lines() syntax."""
         mock_line = Mock()
@@ -179,14 +182,14 @@ class TestGuidesListMethods:
         mock_line.x0, mock_line.x1 = 100, 500
         mock_line.top, mock_line.bottom = 200, 202
         mock_line.width = 400
-        
+
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.lines = [mock_line]
-        
+
         guides = Guides(mock_page)
         result = guides.horizontal.from_lines()
-        
+
         # Should return parent Guides for chaining
         assert result is guides
         # Should have added the line's position
@@ -194,39 +197,39 @@ class TestGuidesListMethods:
         # Should NOT have outer boundaries (default outer=False for lines)
         assert 0.0 not in guides.horizontal
         assert 600.0 not in guides.horizontal
-    
+
     def test_guides_list_manipulation_methods(self):
         """Test manipulation methods on GuidesList."""
         guides = Guides([100, 200, 300], [50, 150, 250])
-        
+
         # Test add method
         result = guides.vertical.add(400)
         assert result is guides  # Returns parent for chaining
         assert 400 in guides.vertical
-        
+
         # Test shift method
         original_second = guides.vertical[1]
         guides.vertical.shift(1, 25)
         assert guides.vertical[1] == original_second + 25
-        
+
         # Test remove_at method
         guides.horizontal.remove_at(0)
         assert 50 not in guides.horizontal
         assert len(guides.horizontal) == 2
-        
+
         # Test clear_all method
         guides.vertical.clear_all()
         assert len(guides.vertical) == 0
-    
+
     def test_intelligent_assignment(self):
         """Test that guides.vertical = other_guides works."""
         guides1 = Guides([100, 200], [50, 150])
         guides2 = Guides([300, 400], [250, 350])
-        
+
         # Test assigning from another Guides object
         guides1.horizontal = guides2
         assert list(guides1.horizontal) == [250, 350]
-        
+
         # Test assigning a list
         guides1.vertical = [500, 600]
         assert list(guides1.vertical) == [500, 600]
@@ -234,138 +237,138 @@ class TestGuidesListMethods:
 
 class TestGuidesWithRealPDF:
     """Test Guides with actual PDF data."""
-    
+
     def test_guides_with_practice_pdf(self, practice_pdf):
         """Test creating guides from the practice PDF."""
         page = practice_pdf.pages[0]
-        
+
         # Test that we can create guides from the page
         guides = Guides(page)
         assert guides.context is page
         # Page doesn't have bbox, but should have width/height
-        assert hasattr(page, 'width')
-        assert hasattr(page, 'height')
-        
+        assert hasattr(page, "width")
+        assert hasattr(page, "height")
+
         # Test from_lines method
         line_guides = Guides.from_lines(page)
         assert len(line_guides.vertical) > 0 or len(line_guides.horizontal) > 0
-        
+
         # Test the beautiful syntax
         guides.vertical.from_lines()
         guides.horizontal.from_lines()
-        
+
         # Should have some guides from the PDF's lines
         total_guides = len(guides.vertical) + len(guides.horizontal)
         assert total_guides > 0
-    
+
     def test_chaining_methods(self, practice_pdf):
         """Test method chaining with real PDF."""
         page = practice_pdf.pages[0]
-        
+
         # Test complex chaining - create separate objects to avoid addition issues
         guides = Guides.new(page)
-        guides.add_lines(axis='vertical')
-        guides.add_lines(axis='horizontal')
-        
+        guides.add_lines(axis="vertical")
+        guides.add_lines(axis="horizontal")
+
         # Should have guides from both axes
         assert len(guides.vertical) > 0 or len(guides.horizontal) > 0
-    
+
     def test_build_grid_default_behavior(self, practice_pdf):
         """Test that build_grid respects the new defaults."""
         page = practice_pdf.pages[0]
-        
+
         # Create guides with lines only (no outer boundaries)
         guides = Guides.from_lines(page)  # outer=False by default
-        
+
         if len(guides.vertical) > 1 and len(guides.horizontal) > 1:
             # Test that build_grid doesn't add outer boundaries by default
             counts = guides.build_grid(page)  # include_outer_boundaries=False by default
-            
+
             # Should create some structure
-            assert counts['table'] >= 0
-            assert counts['cells'] >= 0
-        
+            assert counts["table"] >= 0
+            assert counts["cells"] >= 0
+
         # Test with outer boundaries explicitly
         guides_with_outer = Guides.from_lines(page, outer=True)
         if len(guides_with_outer.vertical) > 1 and len(guides_with_outer.horizontal) > 1:
             counts_with_outer = guides_with_outer.build_grid(page)
-            
+
             # Should have more cells when including page boundaries
-            assert counts_with_outer['cells'] >= counts.get('cells', 0)
+            assert counts_with_outer["cells"] >= counts.get("cells", 0)
 
 
 class TestGuidesErrorHandling:
     """Test error handling and edge cases."""
-    
+
     def test_invalid_assignments(self):
         """Test that invalid assignments raise appropriate errors."""
         guides = Guides()
-        
+
         # Test string assignment (should fail)
         with pytest.raises(TypeError, match="cannot be a string"):
             guides.vertical = "invalid"
-        
+
         with pytest.raises(TypeError, match="cannot be a string"):
             guides.horizontal = "invalid"
-    
+
     def test_empty_context_methods(self):
         """Test methods when no context is available."""
         guides = Guides()
-        
+
         # Should raise ValueError when no context available
         with pytest.raises(ValueError, match="No object provided and no context"):
             guides.vertical.from_lines()
-        
+
         with pytest.raises(ValueError, match="No object provided and no context"):
-            guides.horizontal.from_content(markers=['test'])
-    
+            guides.horizontal.from_content(markers=["test"])
+
     def test_nonexistent_content(self):
         """Test behavior when content markers aren't found."""
         mock_page = Mock()
         mock_page.bbox = (0, 0, 500, 600)
         mock_page.find = Mock(return_value=None)  # No element found
-        
+
         guides = Guides(mock_page)
-        
+
         # Should not crash, but should warn
-        result = guides.vertical.snap_to_content(markers=['NonexistentText'])
+        result = guides.vertical.snap_to_content(markers=["NonexistentText"])
         assert result is guides  # Should still return parent for chaining
 
 
 class TestGuidesDefaults:
     """Test that all the defaults are set correctly."""
-    
+
     def test_from_lines_defaults(self):
         """Test that from_lines has correct defaults."""
         import inspect
-        
+
         # Test GuidesList.from_lines defaults
         sig = inspect.signature(GuidesList.from_lines)
         params = sig.parameters
-        assert params['threshold'].default == 'auto'
-        assert params['outer'].default is False
-        
+        assert params["threshold"].default == "auto"
+        assert params["outer"].default is False
+
         # Test main Guides.from_lines defaults
         sig2 = inspect.signature(Guides.from_lines)
         params2 = sig2.parameters
-        assert params2['threshold'].default == 'auto'
-        assert params2['outer'].default is False
-    
+        assert params2["threshold"].default == "auto"
+        assert params2["outer"].default is False
+
     def test_from_content_defaults(self):
         """Test that from_content has correct defaults."""
         import inspect
-        
+
         sig = inspect.signature(Guides.from_content)
         params = sig.parameters
-        assert params['outer'].default is True
-    
+        assert params["outer"].default is True
+
     def test_build_grid_defaults(self):
         """Test that build_grid has correct defaults."""
         import inspect
-        
+
         sig = inspect.signature(Guides.build_grid)
         params = sig.parameters
-        assert params['include_outer_boundaries'].default is False
+        assert params["include_outer_boundaries"].default is False
 
 
 def test_markers_parameter_flexibility():
@@ -373,23 +376,23 @@ def test_markers_parameter_flexibility():
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
     guides = Guides(page)
-    
+
     # Test 1: Single selector string
     guides.vertical.from_content(markers='text:contains("Total")')
     initial_count = len(guides.vertical)
     assert initial_count > 0, "Should find guides from single selector"
-    
+
     # Test 2: Single literal text string
     guides.vertical.clear_all()
     guides.vertical.from_content(markers="Total")
     assert len(guides.vertical) > 0, "Should find guides from literal text"
-    
+
     # Test 3: List of selectors
     guides.vertical.clear_all()
     guides.vertical.from_content(markers=['text:contains("Total")', 'text:contains("Date")'])
     list_count = len(guides.vertical)
     assert list_count > 0, "Should find guides from list of selectors"
-    
+
     # Test 4: ElementCollection
     elements = page.find_all('text:contains("Total")')
     if elements:
@@ -397,7 +400,7 @@ def test_markers_parameter_flexibility():
         guides.vertical.from_content(markers=elements)
         collection_count = len(guides.vertical)
         assert collection_count > 0, "Should find guides from ElementCollection"
-    
+
     # Test 5: None/empty (without outer boundaries)
     guides.vertical.clear_all()
     guides.vertical.from_content(markers=None, outer=False)
@@ -408,15 +411,15 @@ def test_class_method_markers_flexibility():
     """Test that the class method also accepts flexible markers."""
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
-    
+
     # Test single selector
-    guides1 = Guides.from_content(page, axis='vertical', markers='text:contains("Total")')
+    guides1 = Guides.from_content(page, axis="vertical", markers='text:contains("Total")')
     assert len(guides1.vertical) > 0, "Class method should handle single selector"
-    
+
     # Test ElementCollection
     elements = page.find_all('text:contains("Total")')
     if elements:
-        guides2 = Guides.from_content(page, axis='vertical', markers=elements)
+        guides2 = Guides.from_content(page, axis="vertical", markers=elements)
         assert len(guides2.vertical) > 0, "Class method should handle ElementCollection"
 
 
@@ -424,14 +427,14 @@ def test_snap_to_content_markers_flexibility():
     """Test that snap_to_content also accepts flexible markers."""
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
-    
+
     # Create some initial guides
     guides = Guides([100, 200, 300], context=page)
     original_positions = guides.vertical.data.copy()
-    
+
     # Test snapping with single selector
     guides.vertical.snap_to_content(markers='text:contains("Total")', tolerance=50)
-    
+
     # Should modify positions (though we can't predict exact values)
     # At minimum, the function should run without error
     assert len(guides.vertical) == len(original_positions), "Should preserve guide count"
@@ -441,19 +444,19 @@ def test_add_content_markers_flexibility():
     """Test that add_content method accepts flexible markers."""
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
-    
+
     # Create empty guides
     guides = Guides(context=page)
-    
+
     # Test adding with single selector
-    guides.add_content(axis='vertical', markers='text:contains("Total")')
+    guides.add_content(axis="vertical", markers='text:contains("Total")')
     assert len(guides.vertical) > 0, "add_content should handle single selector"
-    
+
     # Test adding with ElementCollection
     elements = page.find_all('text:contains("Date")')
     if elements:
         initial_count = len(guides.vertical)
-        guides.add_content(axis='vertical', markers=elements)
+        guides.add_content(axis="vertical", markers=elements)
         assert len(guides.vertical) >= initial_count, "add_content should handle ElementCollection"
 
 
@@ -462,26 +465,26 @@ def test_add_method_flexibility():
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
     guides = Guides(page)
-    
+
     # Test 1: Add single position
     guides.vertical.add(100)
     assert len(guides.vertical) == 1
     assert 100 in guides.vertical
-    
+
     # Test 2: Add list of positions
     guides.vertical.add([200, 300, 400])
     assert len(guides.vertical) == 4  # 100 + 3 new ones
     assert all(pos in guides.vertical for pos in [100, 200, 300, 400])
-    
+
     # Test 3: Verify sorting
     assert guides.vertical.data == [100, 200, 300, 400]
-    
+
     # Test 4: Test with horizontal guides
     guides.horizontal.add([50, 150])
     guides.horizontal.add(250)
     assert len(guides.horizontal) == 3
     assert guides.horizontal.data == [50, 150, 250]
-    
+
     # Test 5: Test with tuple (should work like list)
     guides.vertical.clear_all()
     guides.vertical.add((10, 20, 30))
@@ -492,53 +495,49 @@ def test_pixel_based_line_detection():
     """Test that pixel-based line detection works in Guides API."""
     pdf = PDF("pdfs/01-practice.pdf")
     page = pdf.pages[0]
-    
+
     # Test 1: Create guides from pixel-based line detection
     guides = Guides.from_lines(
-        page,
-        detection_method='pixels',
-        threshold='auto',
-        max_lines_h=5,
-        max_lines_v=5
+        page, detection_method="pixels", threshold="auto", max_lines_h=5, max_lines_v=5
     )
-    
+
     # Should have detected some lines (at least in one direction)
     assert len(guides.vertical) > 0 or len(guides.horizontal) > 0, "Should detect lines from pixels"
     print(f"Detected {len(guides.vertical)} vertical and {len(guides.horizontal)} horizontal lines")
-    
+
     # Test 2: Using fluent API with pixel detection for horizontal lines
     guides2 = Guides(page)
-    guides2.horizontal.from_lines(detection_method='pixels', max_lines=3)
+    guides2.horizontal.from_lines(detection_method="pixels", max_lines=3)
     assert len(guides2.horizontal) <= 3, "Should detect at most 3 horizontal lines"
-    
+
     # Test 3: Pixel detection with threshold
     guides_threshold = Guides.from_lines(
-        page, 
-        detection_method='pixels', 
+        page,
+        detection_method="pixels",
         threshold=0.1,  # Low threshold to find more lines
-        axis='horizontal'  # Focus on horizontal since that's what the PDF has
+        axis="horizontal",  # Focus on horizontal since that's what the PDF has
     )
-    
+
     assert len(guides_threshold.horizontal) > 0, "Should find horizontal lines with low threshold"
-    
+
     # Test 4: Pixel detection with custom parameters
     guides3 = Guides.from_lines(
         page,
-        detection_method='pixels',
+        detection_method="pixels",
         resolution=150,
         min_gap_h=10,
         min_gap_v=10,
-        binarization_method='adaptive',
-        axis='both'
+        binarization_method="adaptive",
+        axis="both",
     )
     # At least one direction should have lines
     assert len(guides3.vertical) > 0 or len(guides3.horizontal) > 0
-    
+
     # Test 5: Ensure pixel detection creates actual LineElements
     # Check that the lines were added to the page
-    pixel_lines = [l for l in page.lines if getattr(l, 'source', None) == 'guides_detection']
+    pixel_lines = [l for l in page.lines if getattr(l, "source", None) == "guides_detection"]
     assert len(pixel_lines) > 0, "Pixel detection should create LineElement objects"
 
 
 if __name__ == "__main__":
-    pytest.main([__file__]) 
+    pytest.main([__file__])

@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from natural_pdf.elements.collections import ElementCollection
+
 from .qa_result import QAResult
 
 logger = logging.getLogger("natural_pdf.qa.document_qa")
@@ -252,13 +253,17 @@ class DocumentQA:
             # Save per-question result in debug mode
             if debug:
                 # File names: debug_qa_result_0.json, …
-                result_path = os.path.join(debug_output_dir, f"debug_qa_result_{q[:30].replace(' ', '_')}.json")
+                result_path = os.path.join(
+                    debug_output_dir, f"debug_qa_result_{q[:30].replace(' ', '_')}.json"
+                )
                 try:
                     with open(result_path, "w") as f:
                         serializable = {
                             k: (
                                 str(v)
-                                if not isinstance(v, (str, int, float, bool, list, dict, type(None)))
+                                if not isinstance(
+                                    v, (str, int, float, bool, list, dict, type(None))
+                                )
                                 else v
                             )
                             for k, v in top_res.items()
@@ -317,9 +322,9 @@ class DocumentQA:
             warnings.warn(
                 f"No text elements found on page {page.index}. "
                 "Consider applying OCR first using page.apply_ocr() to extract text from images.",
-                UserWarning
+                UserWarning,
             )
-            
+
             # Return appropriate "not found" result(s)
             if isinstance(question, (list, tuple)):
                 return [
@@ -376,7 +381,11 @@ class DocumentQA:
                     start_idx = res.start
                     end_idx = res.end
 
-                    if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
+                    if (
+                        elements
+                        and 0 <= start_idx < len(word_boxes)
+                        and 0 <= end_idx < len(word_boxes)
+                    ):
                         matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
 
                         source_elements = []
@@ -426,9 +435,9 @@ class DocumentQA:
             warnings.warn(
                 f"No text elements found in region on page {region.page.index}. "
                 "Consider applying OCR first using region.apply_ocr() to extract text from images.",
-                UserWarning
+                UserWarning,
             )
-            
+
             # Return appropriate "not found" result(s)
             if isinstance(question, (list, tuple)):
                 return [
@@ -488,7 +497,11 @@ class DocumentQA:
                     start_idx = res.start
                     end_idx = res.end
 
-                    if elements and 0 <= start_idx < len(word_boxes) and 0 <= end_idx < len(word_boxes):
+                    if (
+                        elements
+                        and 0 <= start_idx < len(word_boxes)
+                        and 0 <= end_idx < len(word_boxes)
+                    ):
                         matched_texts = [wb[0] for wb in word_boxes[start_idx : end_idx + 1]]
 
                         source_elements = []

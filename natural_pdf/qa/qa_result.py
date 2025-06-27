@@ -24,13 +24,9 @@ class QAResult(dict):
         """
         source = self.get("source_elements")
         if source is None:
-            raise AttributeError(
-                "QAResult does not contain 'source_elements'; nothing to show()."
-            )
+            raise AttributeError("QAResult does not contain 'source_elements'; nothing to show().")
         if not hasattr(source, "show"):
-            raise AttributeError(
-                "'source_elements' object has no 'show' method; cannot visualise."
-            )
+            raise AttributeError("'source_elements' object has no 'show' method; cannot visualise.")
         return source.show(*args, **kwargs)
 
     # ------------------------------------------------------------------
@@ -52,4 +48,4 @@ class QAResult(dict):
 
     # Ensure ``copy`` keeps the subclass type
     def copy(self):
-        return QAResult(self) 
+        return QAResult(self)

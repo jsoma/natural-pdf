@@ -3,10 +3,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy.ndimage import binary_closing, binary_opening, gaussian_filter1d
+from scipy.ndimage import binary_closing, binary_opening, find_objects, gaussian_filter1d
+from scipy.ndimage import label as nd_label
 from scipy.signal import find_peaks
 from sklearn.cluster import MiniBatchKMeans
-from scipy.ndimage import label as nd_label, find_objects
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -1160,10 +1160,13 @@ class ShapeDetectionMixin:
                 masking so large painted areas are not cut by text boxes.
         """
         import numpy as np
-        from scipy.ndimage import label as nd_label, find_objects
+        from scipy.ndimage import find_objects
+        from scipy.ndimage import label as nd_label
 
         # Acquire raster image & scale info
-        cv_image, scale_factor, origin_offset_pdf, page_obj = self._get_image_for_detection(resolution)
+        cv_image, scale_factor, origin_offset_pdf, page_obj = self._get_image_for_detection(
+            resolution
+        )
         if cv_image is None or page_obj is None:
             return self  # nothing to do
         img_arr = cv_image.reshape(-1, 3).astype(np.float32) / 255.0  # normalised
@@ -1246,7 +1249,12 @@ class ShapeDetectionMixin:
 
         # ── optional purge ──
         if replace and hasattr(page_obj, "_element_mgr"):
-            old_blobs = [r for r in page_obj._element_mgr.regions if getattr(r, "region_type", None) == "blob" and getattr(r, "source", None) == source_label]
+            old_blobs = [
+                r
+                for r in page_obj._element_mgr.regions
+                if getattr(r, "region_type", None) == "blob"
+                and getattr(r, "source", None) == source_label
+            ]
             for r in old_blobs:
                 try:
                     page_obj._element_mgr.regions.remove(r)
@@ -1273,7 +1281,7 @@ class ShapeDetectionMixin:
                 x0, x1 = sl[1].start, sl[1].stop
                 # bbox area in pixels → in pts²
                 area_pixels = (y1 - y0) * (x1 - x0)
-                area_pts = area_pixels * (scale_factor ** 2)
+                area_pts = area_pixels * (scale_factor**2)
 
                 # Skip tiny regions
                 if area_pts < min_area_pts:
@@ -1331,6 +1339,7 @@ class ShapeDetectionMixin:
                 pdf_x0, pdf_top, pdf_x1, pdf_bottom = region_bbox_pdf
 
                 from natural_pdf.elements.region import Region
+
                 region = Region(page_obj, (pdf_x0, pdf_top, pdf_x1, pdf_bottom))
                 region.region_type = "blob"
                 region.normalized_type = "blob"
