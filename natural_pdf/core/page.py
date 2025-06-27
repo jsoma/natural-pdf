@@ -1780,8 +1780,14 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         # Apply global options as defaults, but allow explicit parameters to override
         import natural_pdf
 
+        # Determine if this is likely a computational use (OCR, analysis, etc.)
+        # If resolution is explicitly provided but width is not, assume computational use
+        # and don't apply global display width settings
+        is_computational_use = (resolution is not None and width is None and 
+                               kwargs.get('include_highlights', True) is False)
+
         # Use global options if parameters are not explicitly set
-        if width is None:
+        if width is None and not is_computational_use:
             width = natural_pdf.options.image.width
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
