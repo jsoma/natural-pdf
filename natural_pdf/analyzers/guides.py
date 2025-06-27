@@ -13,12 +13,13 @@ if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.collections import ElementCollection
     from natural_pdf.elements.region import Region
+    from natural_pdf.flows.region import FlowRegion
 
 logger = logging.getLogger(__name__)
 
 
 def _normalize_markers(
-    markers: Union[str, List[str], "ElementCollection", None], obj: Union["Page", "Region"]
+    markers: Union[str, List[str], "ElementCollection", None], obj: Union["Page", "Region", "FlowRegion"]
 ) -> List[str]:
     """
     Normalize markers parameter to a list of text strings for guide creation.
@@ -36,6 +37,21 @@ def _normalize_markers(
     """
     if markers is None:
         return []
+
+    # Handle FlowRegion by collecting markers from all constituent regions
+    if hasattr(obj, "constituent_regions"):
+        all_markers = []
+        for region in obj.constituent_regions:
+            region_markers = _normalize_markers(markers, region)
+            all_markers.extend(region_markers)
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_markers = []
+        for m in all_markers:
+            if m not in seen:
+                seen.add(m)
+                unique_markers.append(m)
+        return unique_markers
 
     if isinstance(markers, str):
         # Single selector or text string
@@ -115,7 +131,7 @@ class GuidesList(UserList):
     def from_content(
         self,
         markers: Union[str, List[str], "ElementCollection", None],
-        obj: Optional[Union["Page", "Region"]] = None,
+        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
         align: Literal["left", "right", "center", "between"] = "left",
         outer: bool = True,
         tolerance: float = 5,
@@ -131,7 +147,7 @@ class GuidesList(UserList):
                 - List[str]: list of selectors or literal text strings
                 - ElementCollection: collection of elements to extract text from
                 - None: no markers
-            obj: Page/Region to search (uses parent's context if None)
+            obj: Page/Region/FlowRegion to search (uses parent's context if None)
             align: How to align guides relative to found elements
             outer: Whether to add outer boundary guides
             tolerance: Tolerance for snapping to element edges
@@ -143,6 +159,88 @@ class GuidesList(UserList):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
+        # Check if parent is in flow mode
+        if self._parent.is_flow_region:
+            # Create guides across all constituent regions
+            all_guides = []
+            for region in self._parent.context.constituent_regions:
+                # Normalize markers for this region
+                marker_texts = _normalize_markers(markers, region)
+                
+                # Create guides for this region
+                region_guides = Guides.from_content(
+                    obj=region,
+                    axis=self._axis,
+                    markers=marker_texts,
+                    align=align,
+                    outer=outer,
+                    tolerance=tolerance,
+                )
+                
+                # Collect guides from this region
+                if self._axis == "vertical":
+                    all_guides.extend(region_guides.vertical)
+                else:
+                    all_guides.extend(region_guides.horizontal)
+            
+            # Update parent's flow guides structure
+            if append:
+                # Append to existing
+                existing = [coord for coord, _ in 
+                           (self._parent._unified_vertical if self._axis == "vertical" 
+                            else self._parent._unified_horizontal)]
+                all_guides = existing + all_guides
+            
+            # Remove duplicates and sort
+            unique_guides = sorted(list(set(all_guides)))
+            
+            # Clear and rebuild unified view
+            if self._axis == "vertical":
+                self._parent._unified_vertical = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            x0, _, x1, _ = region.bbox
+                            if x0 <= coord <= x1:
+                                self._parent._unified_vertical.append((coord, region))
+                                break
+                self._parent._vertical_cache = None
+                self.data = unique_guides
+            else:
+                self._parent._unified_horizontal = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            _, y0, _, y1 = region.bbox
+                            if y0 <= coord <= y1:
+                                self._parent._unified_horizontal.append((coord, region))
+                                break
+                self._parent._horizontal_cache = None
+                self.data = unique_guides
+            
+            # Update per-region guides
+            for region in self._parent.context.constituent_regions:
+                region_verticals = []
+                region_horizontals = []
+                
+                for coord, r in self._parent._unified_vertical:
+                    if r == region:
+                        region_verticals.append(coord)
+                        
+                for coord, r in self._parent._unified_horizontal:
+                    if r == region:
+                        region_horizontals.append(coord)
+                
+                self._parent._flow_guides[region] = (
+                    sorted(region_verticals),
+                    sorted(region_horizontals)
+                )
+            
+            return self._parent
+        
+        # Original single-region logic
         # Normalize markers to list of text strings
         marker_texts = _normalize_markers(markers, target_obj)
 
@@ -181,7 +279,7 @@ class GuidesList(UserList):
 
     def from_lines(
         self,
-        obj: Optional[Union["Page", "Region"]] = None,
+        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
         threshold: Union[float, str] = "auto",
         source_label: Optional[str] = None,
         max_lines: Optional[int] = None,
@@ -198,7 +296,7 @@ class GuidesList(UserList):
         Create guides from detected line elements.
 
         Args:
-            obj: Page/Region to search (uses parent's context if None)
+            obj: Page/Region/FlowRegion to search (uses parent's context if None)
             threshold: Line detection threshold ('auto' or float 0.0-1.0)
             source_label: Filter lines by source label (for vector method)
             max_lines: Maximum lines to use (alias: n)
@@ -236,6 +334,90 @@ class GuidesList(UserList):
             axis_key = "min_gap_h" if self._axis == "horizontal" else "min_gap_v"
             detect_kwargs.setdefault(axis_key, min_gap)
 
+        # Check if parent is in flow mode
+        if self._parent.is_flow_region:
+            # Create guides across all constituent regions
+            all_guides = []
+            
+            for region in self._parent.context.constituent_regions:
+                # Create guides for this specific region
+                region_guides = Guides.from_lines(
+                    obj=region,
+                    axis=self._axis,
+                    threshold=threshold,
+                    source_label=source_label,
+                    max_lines_h=max_lines_h,
+                    max_lines_v=max_lines_v,
+                    outer=outer,
+                    detection_method=detection_method,
+                    resolution=resolution,
+                    **detect_kwargs
+                )
+                
+                # Collect guides from this region
+                if self._axis == "vertical":
+                    all_guides.extend(region_guides.vertical)
+                else:
+                    all_guides.extend(region_guides.horizontal)
+            
+            # Update parent's flow guides structure
+            if append:
+                # Append to existing
+                existing = [coord for coord, _ in 
+                           (self._parent._unified_vertical if self._axis == "vertical" 
+                            else self._parent._unified_horizontal)]
+                all_guides = existing + all_guides
+            
+            # Remove duplicates and sort
+            unique_guides = sorted(list(set(all_guides)))
+            
+            # Clear and rebuild unified view
+            if self._axis == "vertical":
+                self._parent._unified_vertical = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            x0, _, x1, _ = region.bbox
+                            if x0 <= coord <= x1:
+                                self._parent._unified_vertical.append((coord, region))
+                                break
+                self._parent._vertical_cache = None
+                self.data = unique_guides
+            else:
+                self._parent._unified_horizontal = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            _, y0, _, y1 = region.bbox
+                            if y0 <= coord <= y1:
+                                self._parent._unified_horizontal.append((coord, region))
+                                break
+                self._parent._horizontal_cache = None
+                self.data = unique_guides
+            
+            # Update per-region guides
+            for region in self._parent.context.constituent_regions:
+                region_verticals = []
+                region_horizontals = []
+                
+                for coord, r in self._parent._unified_vertical:
+                    if r == region:
+                        region_verticals.append(coord)
+                        
+                for coord, r in self._parent._unified_horizontal:
+                    if r == region:
+                        region_horizontals.append(coord)
+                
+                self._parent._flow_guides[region] = (
+                    sorted(region_verticals),
+                    sorted(region_horizontals)
+                )
+            
+            return self._parent
+
+        # Original single-region logic
         # Create guides for this axis
         new_guides = Guides.from_lines(
             obj=target_obj,
@@ -274,14 +456,14 @@ class GuidesList(UserList):
         return self._parent
 
     def from_whitespace(
-        self, obj: Optional[Union["Page", "Region"]] = None, min_gap: float = 10,
+        self, obj: Optional[Union["Page", "Region", "FlowRegion"]] = None, min_gap: float = 10,
         *, append: bool = False
     ) -> "Guides":
         """
         Create guides from whitespace gaps.
 
         Args:
-            obj: Page/Region to analyze (uses parent's context if None)
+            obj: Page/Region/FlowRegion to analyze (uses parent's context if None)
             min_gap: Minimum gap size to consider
 
         Returns:
@@ -291,6 +473,83 @@ class GuidesList(UserList):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
+        # Check if parent is in flow mode
+        if self._parent.is_flow_region:
+            # Create guides across all constituent regions
+            all_guides = []
+            
+            for region in self._parent.context.constituent_regions:
+                # Create guides for this specific region
+                region_guides = Guides.from_whitespace(
+                    obj=region,
+                    axis=self._axis,
+                    min_gap=min_gap
+                )
+                
+                # Collect guides from this region
+                if self._axis == "vertical":
+                    all_guides.extend(region_guides.vertical)
+                else:
+                    all_guides.extend(region_guides.horizontal)
+            
+            # Update parent's flow guides structure
+            if append:
+                # Append to existing
+                existing = [coord for coord, _ in 
+                           (self._parent._unified_vertical if self._axis == "vertical" 
+                            else self._parent._unified_horizontal)]
+                all_guides = existing + all_guides
+            
+            # Remove duplicates and sort
+            unique_guides = sorted(list(set(all_guides)))
+            
+            # Clear and rebuild unified view
+            if self._axis == "vertical":
+                self._parent._unified_vertical = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            x0, _, x1, _ = region.bbox
+                            if x0 <= coord <= x1:
+                                self._parent._unified_vertical.append((coord, region))
+                                break
+                self._parent._vertical_cache = None
+                self.data = unique_guides
+            else:
+                self._parent._unified_horizontal = []
+                for coord in unique_guides:
+                    # Find which region(s) this guide belongs to
+                    for region in self._parent.context.constituent_regions:
+                        if hasattr(region, "bbox"):
+                            _, y0, _, y1 = region.bbox
+                            if y0 <= coord <= y1:
+                                self._parent._unified_horizontal.append((coord, region))
+                                break
+                self._parent._horizontal_cache = None
+                self.data = unique_guides
+            
+            # Update per-region guides
+            for region in self._parent.context.constituent_regions:
+                region_verticals = []
+                region_horizontals = []
+                
+                for coord, r in self._parent._unified_vertical:
+                    if r == region:
+                        region_verticals.append(coord)
+                        
+                for coord, r in self._parent._unified_horizontal:
+                    if r == region:
+                        region_horizontals.append(coord)
+                
+                self._parent._flow_guides[region] = (
+                    sorted(region_verticals),
+                    sorted(region_horizontals)
+                )
+            
+            return self._parent
+
+        # Original single-region logic
         # Create guides for this axis
         new_guides = Guides.from_whitespace(obj=target_obj, axis=self._axis, min_gap=min_gap)
 
@@ -618,9 +877,9 @@ class Guides:
 
     def __init__(
         self,
-        verticals: Optional[Union[List[float], "Page", "Region"]] = None,
+        verticals: Optional[Union[List[float], "Page", "Region", "FlowRegion"]] = None,
         horizontals: Optional[List[float]] = None,
-        context: Optional[Union["Page", "Region"]] = None,
+        context: Optional[Union["Page", "Region", "FlowRegion"]] = None,
         bounds: Optional[Tuple[float, float, float, float]] = None,
         relative: bool = False,
         snap_behavior: Literal["raise", "warn", "ignore"] = "warn",
@@ -629,21 +888,21 @@ class Guides:
         Initialize a Guides object.
 
         Args:
-            verticals: List of x-coordinates for vertical guides, or a Page/Region as context
+            verticals: List of x-coordinates for vertical guides, or a Page/Region/FlowRegion as context
             horizontals: List of y-coordinates for horizontal guides
-            context: Page or Region object these guides were created from
+            context: Page, Region, or FlowRegion object these guides were created from
             bounds: Bounding box (x0, top, x1, bottom) if context not provided
             relative: Whether coordinates are relative (0-1) or absolute
             snap_behavior: How to handle snapping conflicts ('raise', 'warn', or 'ignore')
         """
-        # Handle Guides(page) shorthand
+        # Handle Guides(page) or Guides(flow_region) shorthand
         if (
             verticals is not None
             and not isinstance(verticals, (list, tuple))
             and horizontals is None
             and context is None
         ):
-            # First argument is a page/region, not coordinates
+            # First argument is a page/region/flow_region, not coordinates
             context = verticals
             verticals = None
 
@@ -651,7 +910,20 @@ class Guides:
         self.bounds = bounds
         self.relative = relative
         self.snap_behavior = snap_behavior
-
+        
+        # Check if we're dealing with a FlowRegion
+        self.is_flow_region = hasattr(context, "constituent_regions")
+        
+        # If FlowRegion, we'll store guides per constituent region
+        if self.is_flow_region:
+            self._flow_guides: Dict["Region", Tuple[List[float], List[float]]] = {}
+            # For unified view across all regions
+            self._unified_vertical: List[Tuple[float, "Region"]] = []
+            self._unified_horizontal: List[Tuple[float, "Region"]] = []
+            # Cache for sorted unique coordinates
+            self._vertical_cache: Optional[List[float]] = None
+            self._horizontal_cache: Optional[List[float]] = None
+        
         # Initialize with GuidesList instances
         self._vertical = GuidesList(self, "vertical", sorted([float(x) for x in (verticals or [])]))
         self._horizontal = GuidesList(
@@ -683,11 +955,26 @@ class Guides:
     @property
     def vertical(self) -> GuidesList:
         """Get vertical guide coordinates."""
+        if self.is_flow_region and self._vertical_cache is not None:
+            # Return cached unified view
+            self._vertical.data = self._vertical_cache
+        elif self.is_flow_region and self._unified_vertical:
+            # Build unified view from flow guides
+            all_verticals = []
+            for coord, region in self._unified_vertical:
+                all_verticals.append(coord)
+            # Remove duplicates and sort
+            self._vertical_cache = sorted(list(set(all_verticals)))
+            self._vertical.data = self._vertical_cache
         return self._vertical
 
     @vertical.setter
     def vertical(self, value: Union[List[float], "Guides", None]):
         """Set vertical guides from a list of coordinates or another Guides object."""
+        if self.is_flow_region:
+            # Invalidate cache when setting new values
+            self._vertical_cache = None
+            
         if value is None:
             self._vertical.data = []
         elif isinstance(value, Guides):
@@ -710,11 +997,26 @@ class Guides:
     @property
     def horizontal(self) -> GuidesList:
         """Get horizontal guide coordinates."""
+        if self.is_flow_region and self._horizontal_cache is not None:
+            # Return cached unified view
+            self._horizontal.data = self._horizontal_cache
+        elif self.is_flow_region and self._unified_horizontal:
+            # Build unified view from flow guides
+            all_horizontals = []
+            for coord, region in self._unified_horizontal:
+                all_horizontals.append(coord)
+            # Remove duplicates and sort
+            self._horizontal_cache = sorted(list(set(all_horizontals)))
+            self._horizontal.data = self._horizontal_cache
         return self._horizontal
 
     @horizontal.setter
     def horizontal(self, value: Union[List[float], "Guides", None]):
         """Set horizontal guides from a list of coordinates or another Guides object."""
+        if self.is_flow_region:
+            # Invalidate cache when setting new values
+            self._horizontal_cache = None
+            
         if value is None:
             self._horizontal.data = []
         elif isinstance(value, Guides):
@@ -821,7 +1123,7 @@ class Guides:
     @classmethod
     def from_lines(
         cls,
-        obj: Union["Page", "Region"],
+        obj: Union["Page", "Region", "FlowRegion"],
         axis: Literal["vertical", "horizontal", "both"] = "both",
         threshold: Union[float, str] = "auto",
         source_label: Optional[str] = None,
@@ -836,7 +1138,7 @@ class Guides:
         Create guides from detected line elements.
 
         Args:
-            obj: Page or Region to detect lines from
+            obj: Page, Region, or FlowRegion to detect lines from
             axis: Which orientations to detect
             threshold: Detection threshold ('auto' or float 0.0-1.0) - used for pixel detection
             source_label: Filter for line source (vector method) or label for detected lines (pixel method)
@@ -856,6 +1158,45 @@ class Guides:
         Returns:
             New Guides object with detected line positions
         """
+        # Handle FlowRegion
+        if hasattr(obj, "constituent_regions"):
+            guides = cls(context=obj)
+            
+            # Process each constituent region
+            for region in obj.constituent_regions:
+                # Create guides for this specific region
+                region_guides = cls.from_lines(
+                    region,
+                    axis=axis,
+                    threshold=threshold,
+                    source_label=source_label,
+                    max_lines_h=max_lines_h,
+                    max_lines_v=max_lines_v,
+                    outer=outer,
+                    detection_method=detection_method,
+                    resolution=resolution,
+                    **detect_kwargs
+                )
+                
+                # Store in flow guides
+                guides._flow_guides[region] = (
+                    list(region_guides.vertical),
+                    list(region_guides.horizontal)
+                )
+                
+                # Add to unified view
+                for v in region_guides.vertical:
+                    guides._unified_vertical.append((v, region))
+                for h in region_guides.horizontal:
+                    guides._unified_horizontal.append((h, region))
+            
+            # Invalidate caches to force rebuild on next access
+            guides._vertical_cache = None
+            guides._horizontal_cache = None
+            
+            return guides
+        
+        # Original single-region logic follows...
         # Get bounds for potential outer guides
         if hasattr(obj, "bbox"):
             bounds = obj.bbox
@@ -1028,7 +1369,7 @@ class Guides:
     @classmethod
     def from_content(
         cls,
-        obj: Union["Page", "Region"],
+        obj: Union["Page", "Region", "FlowRegion"],
         axis: Literal["vertical", "horizontal"] = "vertical",
         markers: Union[str, List[str], "ElementCollection", None] = None,
         align: Literal["left", "right", "center", "between"] = "left",
@@ -1039,7 +1380,7 @@ class Guides:
         Create guides based on text content positions.
 
         Args:
-            obj: Page or Region to search for content
+            obj: Page, Region, or FlowRegion to search for content
             axis: Whether to create vertical or horizontal guides
             markers: Content to search for. Can be:
                 - str: single selector (e.g., 'text:contains("Name")') or literal text
@@ -1053,6 +1394,41 @@ class Guides:
         Returns:
             New Guides object aligned to text content
         """
+        # Handle FlowRegion
+        if hasattr(obj, "constituent_regions"):
+            guides = cls(context=obj)
+            
+            # Process each constituent region
+            for region in obj.constituent_regions:
+                # Create guides for this specific region
+                region_guides = cls.from_content(
+                    region,
+                    axis=axis,
+                    markers=markers,
+                    align=align,
+                    outer=outer,
+                    tolerance=tolerance
+                )
+                
+                # Store in flow guides
+                guides._flow_guides[region] = (
+                    list(region_guides.vertical),
+                    list(region_guides.horizontal)
+                )
+                
+                # Add to unified view
+                for v in region_guides.vertical:
+                    guides._unified_vertical.append((v, region))
+                for h in region_guides.horizontal:
+                    guides._unified_horizontal.append((h, region))
+            
+            # Invalidate caches
+            guides._vertical_cache = None
+            guides._horizontal_cache = None
+            
+            return guides
+        
+        # Original single-region logic follows...
         guides_coords = []
         bounds = None
 
@@ -1141,7 +1517,7 @@ class Guides:
     @classmethod
     def from_whitespace(
         cls,
-        obj: Union["Page", "Region"],
+        obj: Union["Page", "Region", "FlowRegion"],
         axis: Literal["vertical", "horizontal", "both"] = "both",
         min_gap: float = 10,
     ) -> "Guides":
@@ -1212,6 +1588,114 @@ class Guides:
             logger.warning("No context available for whitespace detection")
             return self
 
+        # Handle FlowRegion case - collect all text elements across regions
+        if self.is_flow_region:
+            all_text_elements = []
+            region_bounds = {}
+            
+            for region in self.context.constituent_regions:
+                # Get text elements from this region
+                if hasattr(region, "find_all"):
+                    try:
+                        text_elements = region.find_all("text", apply_exclusions=False)
+                        elements = text_elements.elements if hasattr(text_elements, "elements") else text_elements
+                        all_text_elements.extend(elements)
+                        
+                        # Store bounds for each region
+                        if hasattr(region, "bbox"):
+                            region_bounds[region] = region.bbox
+                        elif hasattr(region, "x0"):
+                            region_bounds[region] = (region.x0, region.top, region.x1, region.bottom)
+                    except Exception as e:
+                        logger.warning(f"Error getting text elements from region: {e}")
+            
+            if not all_text_elements:
+                logger.warning("No text elements found across flow regions for whitespace detection")
+                return self
+            
+            # Find whitespace gaps across all regions
+            if axis == "vertical":
+                gaps = self._find_vertical_whitespace_gaps(all_text_elements, min_gap, threshold)
+                # Get all vertical guides across regions
+                all_guides = []
+                guide_to_region_map = {}  # Map guide coordinate to region
+                for coord, region in self._unified_vertical:
+                    all_guides.append(coord)
+                    guide_to_region_map[coord] = region
+                    
+                if gaps and all_guides:
+                    # Keep a copy of original guides to maintain mapping
+                    original_guides = all_guides.copy()
+                    
+                    # Snap guides to gaps
+                    self._snap_guides_to_gaps(all_guides, gaps, axis)
+                    
+                    # Update the unified view with snapped positions
+                    self._unified_vertical = []
+                    for i, new_coord in enumerate(all_guides):
+                        # Find the original region for this guide using the original position
+                        original_coord = original_guides[i]
+                        region = guide_to_region_map[original_coord]
+                        self._unified_vertical.append((new_coord, region))
+                    
+                    # Update individual region guides
+                    for region in self._flow_guides:
+                        region_verticals = []
+                        for coord, r in self._unified_vertical:
+                            if r == region:
+                                region_verticals.append(coord)
+                        self._flow_guides[region] = (
+                            sorted(region_verticals),
+                            self._flow_guides[region][1]
+                        )
+                    
+                    # Invalidate cache
+                    self._vertical_cache = None
+                    
+            elif axis == "horizontal":
+                gaps = self._find_horizontal_whitespace_gaps(all_text_elements, min_gap, threshold)
+                # Get all horizontal guides across regions
+                all_guides = []
+                guide_to_region_map = {}  # Map guide coordinate to region
+                for coord, region in self._unified_horizontal:
+                    all_guides.append(coord)
+                    guide_to_region_map[coord] = region
+                    
+                if gaps and all_guides:
+                    # Keep a copy of original guides to maintain mapping
+                    original_guides = all_guides.copy()
+                    
+                    # Snap guides to gaps
+                    self._snap_guides_to_gaps(all_guides, gaps, axis)
+                    
+                    # Update the unified view with snapped positions
+                    self._unified_horizontal = []
+                    for i, new_coord in enumerate(all_guides):
+                        # Find the original region for this guide using the original position
+                        original_coord = original_guides[i]
+                        region = guide_to_region_map[original_coord]
+                        self._unified_horizontal.append((new_coord, region))
+                    
+                    # Update individual region guides
+                    for region in self._flow_guides:
+                        region_horizontals = []
+                        for coord, r in self._unified_horizontal:
+                            if r == region:
+                                region_horizontals.append(coord)
+                        self._flow_guides[region] = (
+                            self._flow_guides[region][0],
+                            sorted(region_horizontals)
+                        )
+                    
+                    # Invalidate cache
+                    self._horizontal_cache = None
+            
+            else:
+                raise ValueError("axis must be 'vertical' or 'horizontal'")
+            
+            return self
+        
+        # Original single-region logic
         # Get elements for trough detection
         text_elements = self._get_text_elements()
         if not text_elements:
@@ -1324,6 +1808,122 @@ class Guides:
         Returns:
             PIL Image with guides drawn on it.
         """
+        # Handle FlowRegion case
+        if self.is_flow_region and (on is None or on == self.context):
+            if not self._flow_guides:
+                raise ValueError("No guides to show for FlowRegion")
+            
+            # Get stacking parameters from kwargs or use defaults
+            stack_direction = kwargs.get('stack_direction', 'vertical')
+            stack_gap = kwargs.get('stack_gap', 5)
+            stack_background_color = kwargs.get('stack_background_color', (255, 255, 255))
+            
+            # First, render all constituent regions without guides to get base images
+            base_images = []
+            region_infos = []  # Store region info for guide coordinate mapping
+            
+            for region in self.context.constituent_regions:
+                try:
+                    # Render region without guides
+                    img = region.to_image(**kwargs)
+                    if img:
+                        base_images.append(img)
+                        
+                        # Calculate scaling factors for this region
+                        scale_x = img.width / region.width
+                        scale_y = img.height / region.height
+                        
+                        region_infos.append({
+                            'region': region,
+                            'img_width': img.width,
+                            'img_height': img.height,
+                            'scale_x': scale_x,
+                            'scale_y': scale_y,
+                            'pdf_x0': region.x0,
+                            'pdf_top': region.top,
+                            'pdf_x1': region.x1,
+                            'pdf_bottom': region.bottom
+                        })
+                except Exception as e:
+                    logger.warning(f"Failed to render region: {e}")
+            
+            if not base_images:
+                raise ValueError("Failed to render any images for FlowRegion")
+            
+            # Calculate final canvas size based on stacking direction
+            if stack_direction == "vertical":
+                final_width = max(img.width for img in base_images)
+                final_height = (
+                    sum(img.height for img in base_images)
+                    + (len(base_images) - 1) * stack_gap
+                )
+            else:  # horizontal
+                final_width = (
+                    sum(img.width for img in base_images)
+                    + (len(base_images) - 1) * stack_gap
+                )
+                final_height = max(img.height for img in base_images)
+            
+            # Create unified canvas
+            canvas = Image.new("RGB", (final_width, final_height), stack_background_color)
+            draw = ImageDraw.Draw(canvas)
+            
+            # Paste base images and track positions
+            region_positions = []  # (region_info, paste_x, paste_y)
+            
+            if stack_direction == "vertical":
+                current_y = 0
+                for i, (img, info) in enumerate(zip(base_images, region_infos)):
+                    paste_x = (final_width - img.width) // 2  # Center horizontally
+                    canvas.paste(img, (paste_x, current_y))
+                    region_positions.append((info, paste_x, current_y))
+                    current_y += img.height + stack_gap
+            else:  # horizontal
+                current_x = 0
+                for i, (img, info) in enumerate(zip(base_images, region_infos)):
+                    paste_y = (final_height - img.height) // 2  # Center vertically
+                    canvas.paste(img, (current_x, paste_y))
+                    region_positions.append((info, current_x, paste_y))
+                    current_x += img.width + stack_gap
+            
+            # Now draw guides on the unified canvas
+            # Draw vertical guides (blue) - these extend through the full canvas height
+            for v_coord in self.vertical:
+                # Find which region(s) this guide intersects
+                for info, paste_x, paste_y in region_positions:
+                    if info['pdf_x0'] <= v_coord <= info['pdf_x1']:
+                        # This guide is within this region's x-bounds
+                        # Convert PDF coordinate to pixel coordinate relative to the region
+                        adjusted_x = v_coord - info['pdf_x0']
+                        pixel_x = adjusted_x * info['scale_x'] + paste_x
+                        
+                        # Draw full-height line on canvas (not clipped to region)
+                        if 0 <= pixel_x <= final_width:
+                            x_pixel = int(pixel_x)
+                            draw.line([(x_pixel, 0), (x_pixel, final_height - 1)], 
+                                    fill=(0, 0, 255, 200), width=2)
+                        break  # Only draw once per guide
+            
+            # Draw horizontal guides (red) - these extend through the full canvas width
+            for h_coord in self.horizontal:
+                # Find which region(s) this guide intersects
+                for info, paste_x, paste_y in region_positions:
+                    if info['pdf_top'] <= h_coord <= info['pdf_bottom']:
+                        # This guide is within this region's y-bounds
+                        # Convert PDF coordinate to pixel coordinate relative to the region
+                        adjusted_y = h_coord - info['pdf_top']
+                        pixel_y = adjusted_y * info['scale_y'] + paste_y
+                        
+                        # Draw full-width line on canvas (not clipped to region)
+                        if 0 <= pixel_y <= final_height:
+                            y_pixel = int(pixel_y)
+                            draw.line([(0, y_pixel), (final_width - 1, y_pixel)], 
+                                    fill=(255, 0, 0, 200), width=2)
+                        break  # Only draw once per guide
+            
+            return canvas
+        
+        # Original single-region logic follows...
         # Determine what to display guides on
         target = on if on is not None else self.context
 
@@ -1963,6 +2563,49 @@ class Guides:
         Returns:
             Dictionary with counts: {'table': 1, 'rows': N, 'columns': M, 'cells': N*M}
         """
+        # Handle FlowRegion case
+        if self.is_flow_region:
+            if not self._flow_guides:
+                raise ValueError("No guides available for FlowRegion")
+            
+            total_counts = {"table": 0, "rows": 0, "columns": 0, "cells": 0}
+            
+            # Build grid on each constituent region
+            for region in self.context.constituent_regions:
+                if region in self._flow_guides:
+                    verticals, horizontals = self._flow_guides[region]
+                    
+                    # Create temporary Guides object for this region
+                    region_guides = Guides(
+                        verticals=verticals,
+                        horizontals=horizontals,
+                        context=region
+                    )
+                    
+                    # Build grid on this region
+                    try:
+                        counts = region_guides.build_grid(
+                            target=region,  # Use the region itself as target
+                            source=source,
+                            cell_padding=cell_padding,
+                            include_outer_boundaries=include_outer_boundaries
+                        )
+                        
+                        # Aggregate counts
+                        for key in total_counts:
+                            total_counts[key] += counts[key]
+                    except Exception as e:
+                        logger.warning(f"Failed to build grid on region: {e}")
+            
+            logger.info(
+                f"Created {total_counts['table']} tables, {total_counts['rows']} rows, "
+                f"{total_counts['columns']} columns, and {total_counts['cells']} cells "
+                f"from guides across {len(self._flow_guides)} regions"
+            )
+            
+            return total_counts
+        
+        # Original single-region logic follows...
         # Determine target object
         target_obj = target or self.context
         if not target_obj:
@@ -2157,6 +2800,22 @@ class Guides:
         if not self.context:
             return []
 
+        # Handle FlowRegion context
+        if self.is_flow_region:
+            all_text_elements = []
+            for region in self.context.constituent_regions:
+                if hasattr(region, "find_all"):
+                    try:
+                        text_elements = region.find_all("text", apply_exclusions=False)
+                        elements = (
+                            text_elements.elements if hasattr(text_elements, "elements") else text_elements
+                        )
+                        all_text_elements.extend(elements)
+                    except Exception as e:
+                        logger.warning(f"Error getting text elements from region: {e}")
+            return all_text_elements
+
+        # Original single-region logic
         # Get text elements from the context
         if hasattr(self.context, "find_all"):
             try:

@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
-from pdfplumber.utils.geometry import objects_to_bbox  # For calculating combined bbox
+from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
@@ -71,10 +71,13 @@ class FlowRegion:
         if not self.constituent_regions:
             return None
 
-        # Use objects_to_bbox from pdfplumber.utils.geometry to merge bboxes
-        # This helper expects a list of objects that have .x0, .top, .x1, .bottom attributes.
-        # Our PhysicalRegion objects satisfy this.
-        self._cached_bbox = objects_to_bbox(self.constituent_regions)
+        # Use merge_bboxes from pdfplumber.utils.geometry to merge bboxes
+        # Extract bbox tuples from regions first
+        region_bboxes = [region.bbox for region in self.constituent_regions if hasattr(region, "bbox")]
+        if not region_bboxes:
+            return None
+            
+        self._cached_bbox = merge_bboxes(region_bboxes)
         return self._cached_bbox
 
     @property
@@ -200,22 +203,72 @@ class FlowRegion:
         self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
     ) -> Optional["PhysicalElement"]:  # Stringized
         """
-        Finds the first physical element within this FlowRegion that matches the selector or text.
+        Find the first element in flow order that matches the selector or text.
+
+        This implementation iterates through the constituent regions *in the order
+        they appear in ``self.constituent_regions`` (i.e. document flow order),
+        delegating the search to each region's own ``find`` method.  It therefore
+        avoids constructing a huge intermediate ElementCollection and returns as
+        soon as a match is found, which is substantially faster and ensures that
+        selectors such as 'table' work exactly as they do on an individual
+        Region.
         """
-        # Uses self.elements() which respects exclusions if apply_exclusions=True by default
-        all_elems = self.elements(apply_exclusions=kwargs.get("apply_exclusions", True))
-        return all_elems.find(selector=selector, text=text, **kwargs)  # ElementCollection.find
+        if not self.constituent_regions:
+            return None
+
+        for region in self.constituent_regions:
+            try:
+                result = region.find(selector=selector, text=text, **kwargs)
+                if result is not None:
+                    return result
+            except Exception as e:
+                logger.warning(
+                    f"FlowRegion.find: error searching region {region}: {e}",
+                    exc_info=False,
+                )
+        return None  # No match found
 
     def find_all(
         self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
     ) -> "ElementCollection":  # Stringized
         """
-        Finds all physical elements within this FlowRegion that match the selector or text.
+        Find **all** elements across the constituent regions that match the given
+        selector or text.
+
+        Rather than first materialising *every* element in the FlowRegion (which
+        can be extremely slow for multi-page flows), this implementation simply
+        chains each region's native ``find_all`` call and concatenates their
+        results into a single ElementCollection while preserving flow order.
         """
-        all_elems = self.elements(apply_exclusions=kwargs.get("apply_exclusions", True))
-        return all_elems.find_all(
-            selector=selector, text=text, **kwargs
-        )  # ElementCollection.find_all
+        from natural_pdf.elements.collections import (
+            ElementCollection as RuntimeElementCollection,
+        )
+
+        matched_elements = []  # type: List["PhysicalElement"]
+
+        if not self.constituent_regions:
+            return RuntimeElementCollection([])
+
+        for region in self.constituent_regions:
+            try:
+                region_matches = region.find_all(
+                    selector=selector, text=text, **kwargs
+                )
+                if region_matches:
+                    # ``region_matches`` is an ElementCollection – extend with its
+                    # underlying list so we don't create nested collections.
+                    matched_elements.extend(
+                        region_matches.elements
+                        if hasattr(region_matches, "elements")
+                        else list(region_matches)
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"FlowRegion.find_all: error searching region {region}: {e}",
+                    exc_info=False,
+                )
+
+        return RuntimeElementCollection(matched_elements)
 
     def highlight(
         self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs
