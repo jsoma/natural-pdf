@@ -100,6 +100,12 @@ def safe_parse_color(value_str: str) -> tuple:
         ValueError: If the color cannot be parsed
     """
     value_str = value_str.strip()
+    
+    # Strip quotes first if it's a quoted string (same logic as safe_parse_value)
+    if (value_str.startswith('"') and value_str.endswith('"')) or (
+        value_str.startswith("'") and value_str.endswith("'")
+    ):
+        value_str = value_str[1:-1]
 
     # Try parsing as a Python literal (for RGB tuples)
     try:
@@ -504,6 +510,21 @@ def _is_approximate_match(value1, value2) -> bool:
     return value1 == value2
 
 
+def _is_exact_color_match(value1, value2) -> bool:
+    """
+    Check if two color values match exactly (with small tolerance for color variations).
+
+    For colors: Uses Delta E color difference with strict tolerance of 2.0
+    For non-colors: Falls back to exact equality
+    """
+    # First check if both values are colors
+    if _is_color_value(value1) and _is_color_value(value2):
+        return _color_distance(value1, value2) <= 2.0
+
+    # Default to exact match for non-colors
+    return value1 == value2
+
+
 PSEUDO_CLASS_FUNCTIONS = {
     "bold": lambda el: hasattr(el, "bold") and el.bold,
     "italic": lambda el: hasattr(el, "italic") and el.italic,
@@ -603,7 +624,19 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
 
             # Determine compare_func based on op (reuse existing logic)
             if op == "=":
-                compare_func = lambda el_val, sel_val: el_val == sel_val
+                # For color attributes, use exact color matching with small tolerance
+                if name in [
+                    "color",
+                    "non_stroking_color",
+                    "fill",
+                    "stroke",
+                    "strokeColor",
+                    "fillColor",
+                ]:
+                    op_desc = f"= {value!r} (exact color)"
+                    compare_func = lambda el_val, sel_val: _is_exact_color_match(el_val, sel_val)
+                else:
+                    compare_func = lambda el_val, sel_val: el_val == sel_val
             elif op == "!=":
                 compare_func = lambda el_val, sel_val: el_val != sel_val
             elif op == "~=":
