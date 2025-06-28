@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -2051,14 +2051,20 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
     Provides methods for batch operations on these pages.
     """
 
-    def __init__(self, pages: List[P]):
+    def __init__(self, pages: Union[List[P], Sequence[P]]):
         """
         Initialize a page collection.
 
         Args:
-            pages: List of Page objects
+            pages: List or sequence of Page objects (can be lazy)
         """
-        self.pages = pages
+        # Store the sequence as-is to preserve lazy behavior
+        # Only convert to list if we need list-specific operations
+        if hasattr(pages, '__iter__') and hasattr(pages, '__len__'):
+            self.pages = pages
+        else:
+            # Fallback for non-sequence types
+            self.pages = list(pages)
 
     def __len__(self) -> int:
         """Return the number of pages in the collection."""
@@ -2077,6 +2083,31 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
     def __repr__(self) -> str:
         """Return a string representation showing the page count."""
         return f"<PageCollection(count={len(self)})>"
+
+    def _get_items_for_apply(self) -> Iterator[P]:
+        """
+        Override ApplyMixin's _get_items_for_apply to preserve lazy behavior.
+        
+        Returns an iterator that yields pages on-demand rather than materializing
+        all pages at once, maintaining the lazy loading behavior.
+        """
+        return iter(self.pages)
+
+    def _get_page_indices(self) -> List[int]:
+        """
+        Get page indices without forcing materialization of pages.
+        
+        Returns:
+            List of page indices for the pages in this collection.
+        """
+        # Handle different types of page sequences efficiently
+        if hasattr(self.pages, '_indices'):
+            # If it's a _LazyPageList (or slice), get indices directly
+            return list(self.pages._indices)
+        else:
+            # Fallback: if pages are already materialized, get indices normally
+            # This will force materialization but only if pages aren't lazy
+            return [p.index for p in self.pages]
 
     def extract_text(
         self,
@@ -2172,7 +2203,7 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
 
         # Get the 0-based indices of the pages in this collection
-        page_indices = [p.index for p in self.pages]
+        page_indices = self._get_page_indices()
 
         logger.info(f"Applying OCR via parent PDF to page indices: {page_indices} in collection.")
 
@@ -2374,7 +2405,7 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 "Parent PDF reference not found or parent PDF lacks the required 'correct_ocr' method."
             )
 
-        page_indices = [p.index for p in self.pages]
+        page_indices = self._get_page_indices()
         logger.info(
             f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices} with max_workers={max_workers}."
         )
@@ -2800,7 +2831,7 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
             )
 
         # Get the 0-based indices of the pages in this collection
-        page_indices = [p.index for p in self.pages]
+        page_indices = self._get_page_indices()
         logger.info(
             f"PageCollection: Delegating deskew to parent PDF for page indices: {page_indices}"
         )

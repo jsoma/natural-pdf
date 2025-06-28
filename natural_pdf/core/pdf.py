@@ -103,6 +103,7 @@ except ImportError:
 from collections.abc import Sequence
 
 
+
 class _LazyPageList(Sequence):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
 
@@ -121,6 +122,7 @@ class _LazyPageList(Sequence):
         _font_attrs: Font attributes to use when creating pages.
         _cache: List of cached Page objects (None until accessed).
         _load_text: Whether to load text layer when creating pages.
+        _indices: Optional range of indices this list represents (for slices).
 
     Example:
         ```python
@@ -130,7 +132,7 @@ class _LazyPageList(Sequence):
         last_page = pdf.pages[-1]  # Creates another Page object
 
         # Slicing works too
-        first_three = pdf.pages[0:3]  # Creates 3 Page objects
+        first_three = pdf.pages[0:3]  # Returns another lazy list
 
         # Iteration creates all pages
         for page in pdf.pages:  # Each page created as needed
@@ -139,30 +141,71 @@ class _LazyPageList(Sequence):
     """
 
     def __init__(
-        self, parent_pdf: "PDF", plumber_pdf: "pdfplumber.PDF", font_attrs=None, load_text=True
+        self, 
+        parent_pdf: "PDF", 
+        plumber_pdf: "pdfplumber.PDF", 
+        font_attrs=None, 
+        load_text=True,
+        indices: Optional[List[int]] = None
     ):
         self._parent_pdf = parent_pdf
         self._plumber_pdf = plumber_pdf
         self._font_attrs = font_attrs
-        # One slot per pdfplumber page – initially all None
-        self._cache: List[Optional["Page"]] = [None] * len(self._plumber_pdf.pages)
         self._load_text = load_text
+        
+        # If indices is provided, this is a sliced view
+        if indices is not None:
+            self._indices = indices
+            self._cache = [None] * len(indices)
+        else:
+            # Full PDF - one slot per pdfplumber page
+            self._indices = list(range(len(plumber_pdf.pages)))
+            self._cache = [None] * len(plumber_pdf.pages)
 
     # Internal helper -----------------------------------------------------
     def _create_page(self, index: int) -> "Page":
+        """Create and cache a page at the given index within this list."""
         cached = self._cache[index]
         if cached is None:
             # Import here to avoid circular import problems
             from natural_pdf.core.page import Page
 
-            plumber_page = self._plumber_pdf.pages[index]
+            # Get the actual page index in the full PDF
+            actual_page_index = self._indices[index]
+            plumber_page = self._plumber_pdf.pages[actual_page_index]
             cached = Page(
                 plumber_page,
                 parent=self._parent_pdf,
-                index=index,
+                index=actual_page_index,
                 font_attrs=self._font_attrs,
                 load_text=self._load_text,
             )
+            
+            # Apply any stored exclusions to the newly created page
+            if hasattr(self._parent_pdf, '_exclusions'):
+                for exclusion_data in self._parent_pdf._exclusions:
+                    exclusion_func, label = exclusion_data
+                    try:
+                        cached.add_exclusion(exclusion_func, label=label)
+                    except Exception as e:
+                        logger.warning(f"Failed to apply exclusion to page {cached.number}: {e}")
+            
+            # Apply any stored regions to the newly created page
+            if hasattr(self._parent_pdf, '_regions'):
+                for region_data in self._parent_pdf._regions:
+                    region_func, name = region_data
+                    try:
+                        region_instance = region_func(cached)
+                        if region_instance and hasattr(region_instance, '__class__'):
+                            # Check if it's a Region-like object (avoid importing Region here)
+                            cached.add_region(region_instance, name=name, source="named")
+                        elif region_instance is not None:
+                            logger.warning(
+                                f"Region function did not return a valid Region for page {cached.number}"
+                            )
+                    except Exception as e:
+                        logger.warning(f"Failed to apply region to page {cached.number}: {e}")
+            
             self._cache[index] = cached
         return cached
 
@@ -172,9 +215,18 @@ class _LazyPageList(Sequence):
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            # Materialise pages for slice lazily as well
-            indices = range(*key.indices(len(self)))
-            return [self._create_page(i) for i in indices]
+            # Get the slice of our current indices  
+            slice_indices = range(*key.indices(len(self)))
+            # Extract the actual page indices for this slice
+            actual_indices = [self._indices[i] for i in slice_indices]
+            # Return a new lazy list for the slice
+            return _LazyPageList(
+                self._parent_pdf,
+                self._plumber_pdf,
+                font_attrs=self._font_attrs,
+                load_text=self._load_text,
+                indices=actual_indices
+            )
         elif isinstance(key, int):
             if key < 0:
                 key += len(self)
@@ -556,8 +608,14 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise AttributeError("PDF pages not yet initialized.")
 
         self._exclusions = []
-        for page in self._pages:
-            page.clear_exclusions()
+        
+        # Clear exclusions only from already-created (cached) pages to avoid forcing page creation
+        for i in range(len(self._pages)):
+            if self._pages._cache[i] is not None:  # Only clear from existing pages
+                try:
+                    self._pages._cache[i].clear_exclusions()
+                except Exception as e:
+                    logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
     def add_exclusion(
@@ -608,25 +666,35 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             raise AttributeError("PDF pages not yet initialized.")
 
         # ------------------------------------------------------------------
-        # NEW: Support selector strings and ElementCollection objects directly.
-        # We simply forward the same object to each page's add_exclusion which
-        # now knows how to interpret these inputs.
+        # Support selector strings and ElementCollection objects directly.
+        # Store exclusion and apply only to already-created pages.
         # ------------------------------------------------------------------
         from natural_pdf.elements.collections import ElementCollection  # local import
 
         if isinstance(exclusion_func, str) or isinstance(exclusion_func, ElementCollection):
-            # Store for bookkeeping
+            # Store for bookkeeping and lazy application
             self._exclusions.append((exclusion_func, label))
-            for page in self._pages:
-                page.add_exclusion(exclusion_func, label=label)
+            
+            # Apply only to already-created (cached) pages to avoid forcing page creation
+            for i in range(len(self._pages)):
+                if self._pages._cache[i] is not None:  # Only apply to existing pages
+                    try:
+                        self._pages._cache[i].add_exclusion(exclusion_func, label=label)
+                    except Exception as e:
+                        logger.warning(f"Failed to apply exclusion to existing page {i}: {e}")
             return self
 
         # Fallback to original callable / Region behaviour ------------------
         exclusion_data = (exclusion_func, label)
         self._exclusions.append(exclusion_data)
 
-        for page in self._pages:
-            page.add_exclusion(exclusion_func, label=label)
+        # Apply only to already-created (cached) pages to avoid forcing page creation
+        for i in range(len(self._pages)):
+            if self._pages._cache[i] is not None:  # Only apply to existing pages
+                try:
+                    self._pages._cache[i].add_exclusion(exclusion_func, label=label)
+                except Exception as e:
+                    logger.warning(f"Failed to apply exclusion to existing page {i}: {e}")
 
         return self
 
@@ -869,7 +937,6 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         Args:
             region_func: A function that takes a Page and returns a Region, or None
-            region_func: A function that takes a Page and returns a Region, or None
             name: Optional name for the region
 
         Returns:
@@ -881,17 +948,20 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
         region_data = (region_func, name)
         self._regions.append(region_data)
 
-        for page in self._pages:
-            try:
-                region_instance = region_func(page)
-                if region_instance and isinstance(region_instance, Region):
-                    page.add_region(region_instance, name=name, source="named")
-                elif region_instance is not None:
-                    logger.warning(
-                        f"Region function did not return a valid Region for page {page.number}"
-                    )
-            except Exception as e:
-                logger.error(f"Error adding region for page {page.number}: {e}")
+        # Apply only to already-created (cached) pages to avoid forcing page creation
+        for i in range(len(self._pages)):
+            if self._pages._cache[i] is not None:  # Only apply to existing pages
+                page = self._pages._cache[i]
+                try:
+                    region_instance = region_func(page)
+                    if region_instance and isinstance(region_instance, Region):
+                        page.add_region(region_instance, name=name, source="named")
+                    elif region_instance is not None:
+                        logger.warning(
+                            f"Region function did not return a valid Region for page {page.number}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error adding region for page {page.number}: {e}")
 
         return self
 
@@ -1712,10 +1782,11 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         if isinstance(key, slice):
             from natural_pdf.elements.collections import PageCollection
-
-            return PageCollection(self._pages[key])
-
-        if isinstance(key, int):
+            # Use the lazy page list's slicing which returns another _LazyPageList
+            lazy_slice = self._pages[key]  
+            # Wrap in PageCollection for compatibility
+            return PageCollection(lazy_slice)
+        elif isinstance(key, int):
             if 0 <= key < len(self._pages):
                 return self._pages[key]
             else:
