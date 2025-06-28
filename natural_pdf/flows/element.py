@@ -73,6 +73,31 @@ class FlowElement:
         """Returns the physical page of the underlying element."""
         return getattr(self.physical_object, "page", None)
 
+    def __getattr__(self, name: str) -> Any:
+        """
+        Delegate unknown attribute access to the physical_object.
+        
+        This ensures that attributes like 'type', 'region_type', 'source', 'model', etc.
+        from the physical element are accessible on the FlowElement wrapper.
+        
+        Args:
+            name: The attribute name being accessed
+            
+        Returns:
+            The attribute value from physical_object
+            
+        Raises:
+            AttributeError: If the attribute doesn't exist on physical_object either
+        """
+        try:
+            return getattr(self.physical_object, name)
+        except AttributeError:
+            # Provide a helpful error message that mentions both FlowElement and physical_object
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}' "
+                f"(also not found on underlying {type(self.physical_object).__name__})"
+            )
+
     def _flow_direction(
         self,
         direction: str,  # "above", "below", "left", "right"
