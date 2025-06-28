@@ -2431,13 +2431,19 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         Extract sections from a page collection based on start/end elements.
 
         Args:
-            start_elements: Elements or selector string that mark the start of sections
-            end_elements: Elements or selector string that mark the end of sections
+            start_elements: Elements or selector string that mark the start of sections (optional)
+            end_elements: Elements or selector string that mark the end of sections (optional)
             new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
             boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
 
         Returns:
             List of Region objects representing the extracted sections
+            
+        Note:
+            You can provide only start_elements, only end_elements, or both.
+            - With only start_elements: sections go from each start to the next start (or end of page)
+            - With only end_elements: sections go from beginning of document/page to each end
+            - With both: sections go from each start to the corresponding end
         """
         # Find start and end elements across all pages
         if isinstance(start_elements, str):
@@ -2446,8 +2452,8 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         if isinstance(end_elements, str):
             end_elements = self.find_all(end_elements).elements
 
-        # If no start elements, return empty list
-        if not start_elements:
+        # If no start elements and no end elements, return empty list
+        if not start_elements and not end_elements:
             return []
 
         # If there are page break boundaries, we'll need to add them
@@ -2482,6 +2488,26 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         # Sort by page index, then vertical position, then horizontal position
         all_elements.sort(key=lambda e: (e.page.index, e.top, e.x0))
 
+        # If we only have end_elements (no start_elements), create implicit start elements
+        if not start_elements and end_elements:
+            from natural_pdf.elements.region import Region
+            
+            start_elements = []
+            
+            # Add implicit start at the beginning of the first page
+            first_page = self.pages[0]
+            first_start = Region(first_page, (0, 0, first_page.width, 1))
+            first_start.is_implicit_start = True
+            start_elements.append(first_start)
+            
+            # For each end element (except the last), add an implicit start after it
+            sorted_end_elements = sorted(end_elements, key=lambda e: (e.page.index, e.top, e.x0))
+            for i, end_elem in enumerate(sorted_end_elements[:-1]):  # Exclude last end element
+                # Create implicit start element right after this end element
+                implicit_start = Region(end_elem.page, (0, end_elem.bottom, end_elem.page.width, end_elem.bottom + 1))
+                implicit_start.is_implicit_start = True
+                start_elements.append(implicit_start)
+
         # Mark section boundaries
         section_boundaries = []
 
@@ -2502,6 +2528,16 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 section_boundaries.append(
                     {
                         "index": -1,  # Special index for page boundaries
+                        "element": element,
+                        "type": "start",
+                        "page_idx": element.page.index,
+                    }
+                )
+            elif hasattr(element, "is_implicit_start") and element.is_implicit_start:
+                # This is an implicit start element
+                section_boundaries.append(
+                    {
+                        "index": -2,  # Special index for implicit starts
                         "element": element,
                         "type": "start",
                         "page_idx": element.page.index,
@@ -2533,12 +2569,20 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                     )
 
         # Sort boundaries by page index, then by actual document position
-        section_boundaries.sort(
-            key=lambda x: (
-                x["page_idx"],
-                x["index"] if x["index"] != -1 else (0 if x["type"] == "start" else float("inf")),
-            )
-        )
+        def _sort_key(boundary):
+            """Sort boundaries by (page_idx, vertical_top, priority)."""
+            page_idx = boundary["page_idx"]
+            element = boundary["element"]
+
+            # Vertical position on the page
+            y_pos = getattr(element, "top", 0.0)
+
+            # Ensure starts come before ends at the same coordinate
+            priority = 0 if boundary["type"] == "start" else 1
+
+            return (page_idx, y_pos, priority)
+        
+        section_boundaries.sort(key=_sort_key)
 
         # Generate sections
         sections = []
@@ -2558,8 +2602,13 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
             end_pg = end_el.page if end_el is not None else self.pages[-1]
 
             parts: list[Region] = []
-            # Slice of first page
-            parts.append(Region(start_pg, (0, start_el.top, start_pg.width, start_pg.height)))
+            
+            # Use the actual top of the start element (for implicit starts this is
+            # the bottom of the previous end element) instead of forcing to 0.
+            start_top = start_el.top
+
+            # Slice of first page beginning at *start_top*
+            parts.append(Region(start_pg, (0, start_top, start_pg.width, start_pg.height)))
 
             # Full middle pages
             for pg_idx in range(start_pg.index + 1, end_pg.index):
@@ -2597,9 +2646,19 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
                 # If both elements are on the same page, use the page's get_section_between
                 if start_element.page == end_element.page:
-                    section = start_element.page.get_section_between(
-                        start_element, end_element, boundary_inclusion
-                    )
+                    # For implicit start elements, create a region from the top of the page
+                    if hasattr(start_element, "is_implicit_start"):
+                        from natural_pdf.elements.region import Region
+                        section = Region(
+                            start_element.page, 
+                            (0, start_element.top, start_element.page.width, end_element.bottom)
+                        )
+                        section.start_element = start_element
+                        section.boundary_element_found = end_element
+                    else:
+                        section = start_element.page.get_section_between(
+                            start_element, end_element, boundary_inclusion
+                        )
                     sections.append(section)
                 else:
                     # Create FlowRegion spanning pages
@@ -2638,9 +2697,11 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                     from natural_pdf.elements.region import Region
 
                     start_page = start_element.page
-
+                    
+                    # Handle implicit start elements
+                    start_top = start_element.top
                     region = Region(
-                        start_page, (0, start_element.top, start_page.width, start_page.height)
+                        start_page, (0, start_top, start_page.width, start_page.height)
                     )
                     region.start_element = start_element
                     sections.append(region)
@@ -2667,8 +2728,10 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 # With start_elements only, create a section to the end of the current page
                 from natural_pdf.elements.region import Region
 
+                # Handle implicit start elements
+                start_top = start_element.top
                 region = Region(
-                    start_page, (0, start_element.top, start_page.width, start_page.height)
+                    start_page, (0, start_top, start_page.width, start_page.height)
                 )
                 region.start_element = start_element
                 sections.append(region)

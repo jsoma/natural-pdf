@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple
+from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple, Callable
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -325,6 +325,12 @@ class Flow:
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
+        stitch_rows: Optional[
+            Callable[
+                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
+                bool,
+            ]
+        ] = None,
     ) -> TableResult:
         """
         Extract table data from all segments in the flow, combining results sequentially.
@@ -343,6 +349,7 @@ class Flow:
                                   and returns its string content. For 'text' method only.
             show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
             content_filter: Optional content filter to apply during cell text extraction.
+            stitch_rows: Row continuation handling (see FlowRegion.extract_table for details).
 
         Returns:
             TableResult object containing the aggregated table data from all segments.
@@ -369,14 +376,31 @@ class Flow:
             logger.warning("Flow has no segments, returning empty table")
             return TableResult([])
 
+        # Resolve predicate
+        predicate: Optional[
+            Callable[
+                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
+                bool,
+            ]
+        ] = stitch_rows if callable(stitch_rows) else None
+
+        def _default_merge(prev_row: List[Optional[str]], cur_row: List[Optional[str]]) -> List[Optional[str]]:
+            from itertools import zip_longest
+            merged: List[Optional[str]] = []
+            for p, c in zip_longest(prev_row, cur_row, fillvalue=""):
+                if (p or "").strip() and (c or "").strip():
+                    merged.append(f"{p} {c}".strip())
+                else:
+                    merged.append((p or "") + (c or ""))
+            return merged
+
         aggregated_rows: List[List[Optional[str]]] = []
         processed_segments = 0
 
-        for i, segment in enumerate(self.segments):
+        for seg_idx, segment in enumerate(self.segments):
             try:
-                logger.debug(f"  Extracting table from segment {i+1}/{len(self.segments)}")
-                
-                # Extract table from this segment
+                logger.debug(f"  Extracting table from segment {seg_idx+1}/{len(self.segments)}")
+
                 segment_result = segment.extract_table(
                     method=method,
                     table_settings=table_settings.copy() if table_settings else None,
@@ -388,29 +412,38 @@ class Flow:
                     content_filter=content_filter,
                 )
 
-                # Handle the result (could be TableResult or list of lists)
-                if hasattr(segment_result, '_rows'):
-                    # It's a TableResult object
-                    segment_rows = segment_result._rows
-                elif isinstance(segment_result, list):
-                    # It's a list of lists
-                    segment_rows = segment_result
-                else:
-                    logger.warning(f"Segment {i+1} returned unexpected table result type: {type(segment_result)}")
+                if not segment_result:
                     continue
 
-                if segment_rows:
-                    aggregated_rows.extend(segment_rows)
-                    processed_segments += 1
-                    logger.debug(f"    Added {len(segment_rows)} rows from segment {i+1}")
+                if hasattr(segment_result, "_rows"):
+                    segment_rows = list(segment_result._rows)
                 else:
-                    logger.debug(f"    No table data found in segment {i+1}")
+                    segment_rows = list(segment_result)
+
+                if not segment_rows:
+                    logger.debug(f"    No table data found in segment {seg_idx+1}")
+                    continue
+
+                for row_idx, row in enumerate(segment_rows):
+                    if (
+                        predicate is not None
+                        and aggregated_rows
+                        and predicate(aggregated_rows[-1], row, row_idx, segment)
+                    ):
+                        aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
+                    else:
+                        aggregated_rows.append(row)
+
+                processed_segments += 1
+                logger.debug(f"    Added {len(segment_rows)} rows (post-merge) from segment {seg_idx+1}")
 
             except Exception as e:
-                logger.error(f"Error extracting table from segment {i+1}: {e}", exc_info=True)
+                logger.error(f"Error extracting table from segment {seg_idx+1}: {e}", exc_info=True)
                 continue
 
-        logger.info(f"Flow table extraction complete: {len(aggregated_rows)} total rows from {processed_segments}/{len(self.segments)} segments")
+        logger.info(
+            f"Flow table extraction complete: {len(aggregated_rows)} total rows from {processed_segments}/{len(self.segments)} segments"
+        )
         return TableResult(aggregated_rows)
 
     def analyze_layout(

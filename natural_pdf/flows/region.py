@@ -631,6 +631,12 @@ class FlowRegion:
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[["PhysicalRegion"], Optional[str]]] = None,
         show_progress: bool = False,
+        # Optional row-level merge predicate. If provided, it decides whether
+        # the current row (first row of a segment/page) should be merged with
+        # the previous one (to handle multi-page spill-overs).
+        stitch_rows: Optional[
+            Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
+        ] = None,
         **kwargs,
     ) -> TableResult:
         """Extracts a single logical table from the FlowRegion.
@@ -651,6 +657,15 @@ class FlowRegion:
             A TableResult object containing the aggregated table data.  Rows returned from
             consecutive constituent regions are appended in document order.  If
             no tables are detected in any region, an empty TableResult is returned.
+
+        stitch_rows parameter:
+            Controls whether the first rows of subsequent segments/regions should be merged
+            into the previous row (to handle spill-over across page breaks).
+
+            • None (default) – no merging (behaviour identical to previous versions).
+            • Callable – custom predicate taking
+                   (prev_row, cur_row, row_idx_in_segment, segment_object) → bool.
+               Return True to merge `cur_row` into `prev_row` (default column-wise merge is used).
         """
 
         if table_settings is None:
@@ -661,9 +676,26 @@ class FlowRegion:
         if not self.constituent_regions:
             return TableResult([])
 
+        # Resolve stitch_rows predicate -------------------------------------------------------
+        predicate: Optional[
+            Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
+        ] = stitch_rows if callable(stitch_rows) else None
+
+        def _default_merge(prev_row: List[Optional[str]], cur_row: List[Optional[str]]) -> List[Optional[str]]:
+            """Column-wise merge – concatenates non-empty strings with a space."""
+            from itertools import zip_longest
+
+            merged: List[Optional[str]] = []
+            for p, c in zip_longest(prev_row, cur_row, fillvalue=""):
+                if (p or "").strip() and (c or "").strip():
+                    merged.append(f"{p} {c}".strip())
+                else:
+                    merged.append((p or "") + (c or ""))
+            return merged
+
         aggregated_rows: List[List[Optional[str]]] = []
 
-        for region in self.constituent_regions:
+        for region_idx, region in enumerate(self.constituent_regions):
             try:
                 region_result = region.extract_table(
                     method=method,
@@ -676,9 +708,25 @@ class FlowRegion:
                     **kwargs,
                 )
 
-                # region_result is now a TableResult object, extract the rows
-                if region_result:
-                    aggregated_rows.extend(region_result)
+                # Convert result to list of rows
+                if not region_result:
+                    continue
+
+                if isinstance(region_result, TableResult):
+                    segment_rows = list(region_result)
+                else:
+                    segment_rows = list(region_result)
+
+                for row_idx, row in enumerate(segment_rows):
+                    if (
+                        predicate is not None
+                        and aggregated_rows
+                        and predicate(aggregated_rows[-1], row, row_idx, region)
+                    ):
+                        # Merge with previous row
+                        aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
+                    else:
+                        aggregated_rows.append(row)
             except Exception as e:
                 logger.error(
                     f"FlowRegion.extract_table: Error extracting table from constituent region {region}: {e}",

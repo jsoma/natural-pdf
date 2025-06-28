@@ -1610,8 +1610,47 @@ class Region(
             table_settings.setdefault("join_x_tolerance", join)
             table_settings.setdefault("join_y_tolerance", join)
 
-        # Create a crop of the page for this region
-        cropped = self.page._page.crop(self.bbox)
+        # -------------------------------------------------------------
+        # Apply char-level exclusion filtering, if any exclusions are
+        # defined on the parent Page.  We create a lightweight
+        # pdfplumber.Page copy whose .chars list omits characters that
+        # fall inside any exclusion Region.  Other object types are
+        # left untouched for now ("chars-only" strategy).
+        # -------------------------------------------------------------
+        base_plumber_page = self.page._page
+
+        if getattr(self.page, "_exclusions", None):
+            # Resolve exclusion Regions (callables already evaluated)
+            exclusion_regions = self.page._get_exclusion_regions(include_callable=True)
+
+            def _keep_char(obj):
+                """Return True if pdfplumber obj should be kept."""
+                if obj.get("object_type") != "char":
+                    # Keep non-char objects unchanged – lattice grids etc.
+                    return True
+
+                # Compute character centre point
+                cx = (obj["x0"] + obj["x1"]) / 2.0
+                cy = (obj["top"] + obj["bottom"]) / 2.0
+
+                # Reject if the centre lies inside ANY exclusion Region
+                for reg in exclusion_regions:
+                    if reg.x0 <= cx <= reg.x1 and reg.top <= cy <= reg.bottom:
+                        return False
+                return True
+
+            try:
+                filtered_page = base_plumber_page.filter(_keep_char)
+            except Exception as _filter_err:
+                # Fallback – if filtering fails, log and proceed unfiltered
+                logger.warning(
+                    f"Region {self.bbox}: Failed to filter pdfplumber chars for exclusions: {_filter_err}"
+                )
+                filtered_page = base_plumber_page
+        else:
+            filtered_page = base_plumber_page
+
+        cropped = filtered_page.crop(self.bbox)
 
         # Extract all tables from the cropped area
         tables = cropped.extract_tables(table_settings)
@@ -1672,8 +1711,38 @@ class Region(
             if y_tol is not None:
                 table_settings.setdefault("text_y_tolerance", y_tol)
 
-        # Create a crop of the page for this region
-        cropped = self.page._page.crop(self.bbox)
+        # -------------------------------------------------------------
+        # Apply char-level exclusion filtering (chars only) just like in
+        # _extract_tables_plumber so header/footer text does not appear
+        # in extracted tables.
+        # -------------------------------------------------------------
+        base_plumber_page = self.page._page
+
+        if getattr(self.page, "_exclusions", None):
+            exclusion_regions = self.page._get_exclusion_regions(include_callable=True)
+
+            def _keep_char(obj):
+                if obj.get("object_type") != "char":
+                    return True
+                cx = (obj["x0"] + obj["x1"]) / 2.0
+                cy = (obj["top"] + obj["bottom"]) / 2.0
+                for reg in exclusion_regions:
+                    if reg.x0 <= cx <= reg.x1 and reg.top <= cy <= reg.bottom:
+                        return False
+                return True
+
+            try:
+                filtered_page = base_plumber_page.filter(_keep_char)
+            except Exception as _filter_err:
+                logger.warning(
+                    f"Region {self.bbox}: Failed to filter pdfplumber chars for exclusions (single table): {_filter_err}"
+                )
+                filtered_page = base_plumber_page
+        else:
+            filtered_page = base_plumber_page
+
+        # Now crop the (possibly filtered) page to the region bbox
+        cropped = filtered_page.crop(self.bbox)
 
         # Extract the single largest table from the cropped area
         table = cropped.extract_table(table_settings)

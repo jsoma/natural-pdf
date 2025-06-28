@@ -322,6 +322,27 @@ tbl.df
 tbl.to_df(header=None)
 ```
 
+### Stitching rows across page breaks (multi-page tables)
+
+If your table spans **multiple pages** you might find that the first row on a
+continuation page actually belongs to the last row on the previous page (for
+example when the bottom border of the table is repeated but the first column
+on the new page is blank).  `extract_table()` has a simple fix for this:
+
+```py
+# Create a Flow from all pages that make up the table
+flow = pdf.pages[1:4].as_flow(arrangement="vertical")
+
+# Provide a rule (prev_row, cur_row, row_idx, segment) -> bool
+merge_if_first_cell_empty = lambda prev, cur, i, seg: i == 0 and not cur[0]
+
+data = flow.extract_table(stitch_rows=merge_if_first_cell_empty)
+```
+
+`stitch_rows` is **optional** – if you leave it out, extraction behaves exactly
+as before.  Pass a callable predicate to decide, row-by-row, whether a row should be spliced into the previous one.  The same
+parameter is available on `FlowRegion.extract_table()`.
+
 ## Next Steps
 
 Tables are just one part of document structure. Once you've got table extraction working:
