@@ -1616,8 +1616,26 @@ class Region(
         # Extract all tables from the cropped area
         tables = cropped.extract_tables(table_settings)
 
-        # Return the tables or an empty list if none found
-        return tables if tables else []
+        # Apply RTL text processing to all tables
+        if tables:
+            processed_tables = []
+            for table in tables:
+                processed_table = []
+                for row in table:
+                    processed_row = []
+                    for cell in row:
+                        if cell is not None:
+                            # Apply RTL text processing to each cell
+                            rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
+                            processed_row.append(rtl_processed_cell)
+                        else:
+                            processed_row.append(cell)
+                    processed_table.append(processed_row)
+                processed_tables.append(processed_table)
+            return processed_tables
+
+        # Return empty list if no tables found
+        return []
 
     def _extract_table_plumber(self, table_settings: dict, content_filter=None) -> List[List[str]]:
         """
@@ -1662,21 +1680,25 @@ class Region(
 
         # Return the table or an empty list if none found
         if table:
-            # Apply content filtering if provided
-            if content_filter is not None:
-                filtered_table = []
-                for row in table:
-                    filtered_row = []
-                    for cell in row:
-                        if cell is not None:
-                            # Apply content filter to cell text
-                            filtered_cell = self._apply_content_filter_to_text(cell, content_filter)
-                            filtered_row.append(filtered_cell)
+            # Apply RTL text processing and content filtering if provided
+            processed_table = []
+            for row in table:
+                processed_row = []
+                for cell in row:
+                    if cell is not None:
+                        # Apply RTL text processing first
+                        rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
+                        
+                        # Then apply content filter if provided
+                        if content_filter is not None:
+                            filtered_cell = self._apply_content_filter_to_text(rtl_processed_cell, content_filter)
+                            processed_row.append(filtered_cell)
                         else:
-                            filtered_row.append(cell)
-                    filtered_table.append(filtered_row)
-                return filtered_table
-            return table
+                            processed_row.append(rtl_processed_cell)
+                    else:
+                        processed_row.append(cell)
+                processed_table.append(processed_row)
+            return processed_table
         return []
 
     def _extract_table_tatr(self, use_ocr=False, ocr_config=None, content_filter=None) -> List[List[str]]:
@@ -3489,6 +3511,54 @@ class Region(
             table_grid[row_idx][col_idx] = text_val if text_val else None
 
         return table_grid
+
+    def _apply_rtl_processing_to_text(self, text: str) -> str:
+        """
+        Apply RTL (Right-to-Left) text processing to a string.
+        
+        This converts visual order text (as stored in PDFs) to logical order
+        for proper display of Arabic, Hebrew, and other RTL scripts.
+        
+        Args:
+            text: Input text string in visual order
+            
+        Returns:
+            Text string in logical order
+        """
+        if not text or not text.strip():
+            return text
+            
+        # Quick check for RTL characters - if none found, return as-is
+        import unicodedata
+        
+        def _contains_rtl(s):
+            return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
+        
+        if not _contains_rtl(text):
+            return text
+            
+        try:
+            from bidi.algorithm import get_display  # type: ignore
+            from natural_pdf.utils.bidi_mirror import mirror_brackets
+            
+            # Apply BiDi algorithm to convert from visual to logical order
+            # Process line by line to handle mixed content properly
+            processed_lines = []
+            for line in text.split("\n"):
+                if line.strip():
+                    # Determine base direction for this line
+                    base_dir = "R" if _contains_rtl(line) else "L"
+                    logical_line = get_display(line, base_dir=base_dir)
+                    # Apply bracket mirroring for correct logical order
+                    processed_lines.append(mirror_brackets(logical_line))
+                else:
+                    processed_lines.append(line)
+            
+            return "\n".join(processed_lines)
+            
+        except (ImportError, Exception):
+            # If bidi library is not available or fails, return original text
+            return text
 
     def _apply_content_filter_to_text(self, text: str, content_filter) -> str:
         """

@@ -1655,7 +1655,27 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                     table_settings.setdefault("join_x_tolerance", join)
                     table_settings.setdefault("join_y_tolerance", join)
 
-            return self._page.extract_tables(table_settings)
+            raw_tables = self._page.extract_tables(table_settings)
+            
+            # Apply RTL text processing to all extracted tables
+            if raw_tables:
+                processed_tables = []
+                for table in raw_tables:
+                    processed_table = []
+                    for row in table:
+                        processed_row = []
+                        for cell in row:
+                            if cell is not None:
+                                # Apply RTL text processing to each cell
+                                rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
+                                processed_row.append(rtl_processed_cell)
+                            else:
+                                processed_row.append(cell)
+                        processed_table.append(processed_row)
+                    processed_tables.append(processed_table)
+                return processed_tables
+            
+            return raw_tables
         else:
             raise ValueError(
                 f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
@@ -3279,6 +3299,54 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters"
         )
         return self
+
+    def _apply_rtl_processing_to_text(self, text: str) -> str:
+        """
+        Apply RTL (Right-to-Left) text processing to a string.
+        
+        This converts visual order text (as stored in PDFs) to logical order
+        for proper display of Arabic, Hebrew, and other RTL scripts.
+        
+        Args:
+            text: Input text string in visual order
+            
+        Returns:
+            Text string in logical order
+        """
+        if not text or not text.strip():
+            return text
+            
+        # Quick check for RTL characters - if none found, return as-is
+        import unicodedata
+        
+        def _contains_rtl(s):
+            return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
+        
+        if not _contains_rtl(text):
+            return text
+            
+        try:
+            from bidi.algorithm import get_display  # type: ignore
+            from natural_pdf.utils.bidi_mirror import mirror_brackets
+            
+            # Apply BiDi algorithm to convert from visual to logical order
+            # Process line by line to handle mixed content properly
+            processed_lines = []
+            for line in text.split("\n"):
+                if line.strip():
+                    # Determine base direction for this line
+                    base_dir = "R" if _contains_rtl(line) else "L"
+                    logical_line = get_display(line, base_dir=base_dir)
+                    # Apply bracket mirroring for correct logical order
+                    processed_lines.append(mirror_brackets(logical_line))
+                else:
+                    processed_lines.append(line)
+            
+            return "\n".join(processed_lines)
+            
+        except (ImportError, Exception):
+            # If bidi library is not available or fails, return original text
+            return text
 
     @property
     def lines(self) -> List[Any]:
