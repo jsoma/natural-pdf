@@ -1,6 +1,7 @@
 # natural_pdf/utils/text_extraction.py
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+import re
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pdfplumber.utils.geometry import (
     cluster_objects,
@@ -173,6 +174,75 @@ def filter_chars_spatially(
     return filtered_chars
 
 
+def _apply_content_filter(
+    char_dicts: List[Dict[str, Any]], 
+    content_filter: Union[str, Callable[[str], bool], List[str]]
+) -> List[Dict[str, Any]]:
+    """
+    Applies content filtering to character dictionaries based on their text content.
+    
+    Args:
+        char_dicts: List of character dictionaries to filter.
+        content_filter: Can be:
+            - A regex pattern string (characters matching the pattern are EXCLUDED)
+            - A callable that takes text and returns True to KEEP the character
+            - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
+    
+    Returns:
+        Filtered list of character dictionaries.
+    """
+    if not char_dicts or content_filter is None:
+        return char_dicts
+    
+    initial_count = len(char_dicts)
+    filtered_chars = []
+    
+    # Handle different filter types
+    if isinstance(content_filter, str):
+        # Single regex pattern - exclude matching characters
+        try:
+            pattern = re.compile(content_filter)
+            for char_dict in char_dicts:
+                text = char_dict.get("text", "")
+                if not pattern.search(text):
+                    filtered_chars.append(char_dict)
+        except re.error as e:
+            logger.warning(f"Invalid regex pattern '{content_filter}': {e}. Skipping content filtering.")
+            return char_dicts
+            
+    elif isinstance(content_filter, list):
+        # List of regex patterns - exclude characters matching ANY pattern
+        try:
+            patterns = [re.compile(p) for p in content_filter]
+            for char_dict in char_dicts:
+                text = char_dict.get("text", "")
+                if not any(pattern.search(text) for pattern in patterns):
+                    filtered_chars.append(char_dict)
+        except re.error as e:
+            logger.warning(f"Invalid regex pattern in list: {e}. Skipping content filtering.")
+            return char_dicts
+            
+    elif callable(content_filter):
+        # Callable filter - keep characters where function returns True
+        try:
+            for char_dict in char_dicts:
+                text = char_dict.get("text", "")
+                if content_filter(text):
+                    filtered_chars.append(char_dict)
+        except Exception as e:
+            logger.warning(f"Error in content filter function: {e}. Skipping content filtering.")
+            return char_dicts
+    else:
+        logger.warning(f"Unsupported content_filter type: {type(content_filter)}. Skipping content filtering.")
+        return char_dicts
+    
+    filtered_count = initial_count - len(filtered_chars)
+    if filtered_count > 0:
+        logger.debug(f"Content filter removed {filtered_count} characters.")
+    
+    return filtered_chars
+
+
 def generate_text_layout(
     char_dicts: List[Dict[str, Any]],
     layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
@@ -205,6 +275,11 @@ def generate_text_layout(
 
     # Make a working copy of user_kwargs so we can safely pop custom keys
     incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
+
+    # --- Apply content filtering if specified ---
+    content_filter = incoming_kwargs.pop("content_filter", None)
+    if content_filter is not None:
+        valid_char_dicts = _apply_content_filter(valid_char_dicts, content_filter)
 
     # --- Handle custom 'strip' option ------------------------------------
     # * strip=True  – post-process the final string to remove leading/trailing

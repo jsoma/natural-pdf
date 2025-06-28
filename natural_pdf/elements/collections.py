@@ -369,6 +369,7 @@ class ElementCollection(
         preserve_whitespace: bool = True,
         use_exclusions: bool = True,
         strip: Optional[bool] = None,
+        content_filter=None,
         **kwargs,
     ) -> str:
         """
@@ -379,6 +380,10 @@ class ElementCollection(
             preserve_whitespace: Deprecated. Use layout=False for simple joining.
             use_exclusions: Deprecated. Exclusions should be applied *before* creating
                           the collection or by filtering the collection itself.
+            content_filter: Optional content filter to exclude specific text patterns. Can be:
+                - A regex pattern string (characters matching the pattern are EXCLUDED)
+                - A callable that takes text and returns True to KEEP the character
+                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
             **kwargs: Additional layout parameters passed directly to pdfplumber's
                       `chars_to_textmap` function ONLY if `layout=True` is passed.
                       See Page.extract_text docstring for common parameters.
@@ -411,6 +416,11 @@ class ElementCollection(
             return " ".join(
                 getattr(el, "text", "") for el in text_elements
             )  # Fallback to simple join of word text
+
+        # Apply content filtering if provided
+        if content_filter is not None:
+            from natural_pdf.utils.text_extraction import _apply_content_filter
+            all_char_dicts = _apply_content_filter(all_char_dicts, content_filter)
 
         # Check if layout is requested
         use_layout = kwargs.get("layout", False)

@@ -84,9 +84,13 @@ class TestGuidesFactoryMethods:
         mock_line2.top, mock_line2.bottom = 200, 202
         mock_line2.width = 400
 
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.lines = [mock_line1, mock_line2]
+        # Create a simple class to avoid Mock's hasattr issues
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.lines = [mock_line1, mock_line2]
+        
+        mock_page = MockPage()
 
         # Test default behavior (outer=False)
         guides = Guides.from_lines(mock_page)
@@ -106,9 +110,13 @@ class TestGuidesFactoryMethods:
         mock_line.top, mock_line.bottom = 50, 550
         mock_line.height = 500
 
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.lines = [mock_line]
+        # Create a simple class to avoid Mock's hasattr issues
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.lines = [mock_line]
+        
+        mock_page = MockPage()
 
         guides = Guides.from_lines(mock_page, outer=True)
         assert 0.0 in guides.vertical  # Left boundary
@@ -121,9 +129,13 @@ class TestGuidesFactoryMethods:
         mock_element.x0, mock_element.x1 = 100, 200
         mock_element.top, mock_element.bottom = 50, 70
 
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.find = Mock(return_value=mock_element)
+        # Create a simple class to avoid Mock's hasattr issues  
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.find = Mock(return_value=mock_element)
+        
+        mock_page = MockPage()
 
         # Test default behavior (outer=True, align='left')
         guides = Guides.from_content(mock_page, markers=["Header"])
@@ -159,9 +171,13 @@ class TestGuidesListMethods:
         mock_element = Mock()
         mock_element.x0, mock_element.x1 = 150, 250
 
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.find = Mock(return_value=mock_element)
+        # Create a simple class to avoid Mock's hasattr issues
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.find = Mock(return_value=mock_element)
+        
+        mock_page = MockPage()
 
         guides = Guides(mock_page)
         result = guides.vertical.from_content(markers=["Header"], align="left")
@@ -183,9 +199,13 @@ class TestGuidesListMethods:
         mock_line.top, mock_line.bottom = 200, 202
         mock_line.width = 400
 
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.lines = [mock_line]
+        # Create a simple class to avoid Mock's hasattr issues
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.lines = [mock_line]
+        
+        mock_page = MockPage()
 
         guides = Guides(mock_page)
         result = guides.horizontal.from_lines()
@@ -280,21 +300,23 @@ class TestGuidesWithRealPDF:
         # Create guides with lines only (no outer boundaries)
         guides = Guides.from_lines(page)  # outer=False by default
 
+        result = None
         if len(guides.vertical) > 1 and len(guides.horizontal) > 1:
             # Test that build_grid doesn't add outer boundaries by default
-            counts = guides.build_grid(page)  # include_outer_boundaries=False by default
+            result = guides.build_grid(page)  # include_outer_boundaries=False by default
 
             # Should create some structure
-            assert counts["table"] >= 0
-            assert counts["cells"] >= 0
+            assert result["counts"]["table"] >= 0
+            assert result["counts"]["cells"] >= 0
 
         # Test with outer boundaries explicitly
         guides_with_outer = Guides.from_lines(page, outer=True)
         if len(guides_with_outer.vertical) > 1 and len(guides_with_outer.horizontal) > 1:
-            counts_with_outer = guides_with_outer.build_grid(page)
+            result_with_outer = guides_with_outer.build_grid(page)
 
             # Should have more cells when including page boundaries
-            assert counts_with_outer["cells"] >= counts.get("cells", 0)
+            baseline_cells = result["counts"]["cells"] if result else 0
+            assert result_with_outer["counts"]["cells"] >= baseline_cells
 
 
 class TestGuidesErrorHandling:
@@ -324,9 +346,13 @@ class TestGuidesErrorHandling:
 
     def test_nonexistent_content(self):
         """Test behavior when content markers aren't found."""
-        mock_page = Mock()
-        mock_page.bbox = (0, 0, 500, 600)
-        mock_page.find = Mock(return_value=None)  # No element found
+        # Create a simple class to avoid Mock's hasattr issues
+        class MockPage:
+            def __init__(self):
+                self.bbox = (0, 0, 500, 600)
+                self.find = Mock(return_value=None)  # No element found
+        
+        mock_page = MockPage()
 
         guides = Guides(mock_page)
 

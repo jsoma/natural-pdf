@@ -230,7 +230,7 @@ class TextElement(Element):
         # Default to black
         return (0, 0, 0)
 
-    def extract_text(self, keep_blank_chars=True, strip: Optional[bool] = True, **kwargs) -> str:
+    def extract_text(self, keep_blank_chars=True, strip: Optional[bool] = True, content_filter=None, **kwargs) -> str:
         """
         Extract text from this element.
 
@@ -238,13 +238,47 @@ class TextElement(Element):
             keep_blank_chars: Retained for API compatibility (unused).
             strip: If True (default) remove leading/trailing whitespace. Users may
                    pass ``strip=False`` to preserve whitespace exactly as stored.
+            content_filter: Optional content filter to exclude specific text patterns. Can be:
+                - A regex pattern string (characters matching the pattern are EXCLUDED)
+                - A callable that takes text and returns True to KEEP the character
+                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
             **kwargs: Accepted for forward-compatibility and ignored here.
 
         Returns:
-            The text content, optionally stripped.
+            The text content, optionally stripped and filtered.
         """
         # Basic retrieval
         result = self.text or ""
+
+        # Apply content filtering if provided
+        if content_filter is not None and result:
+            import re
+            
+            if isinstance(content_filter, str):
+                # Single regex pattern - remove matching characters
+                try:
+                    result = re.sub(content_filter, '', result)
+                except re.error:
+                    pass  # Invalid regex, skip filtering
+                    
+            elif isinstance(content_filter, list):
+                # List of regex patterns - remove characters matching ANY pattern
+                try:
+                    for pattern in content_filter:
+                        result = re.sub(pattern, '', result)
+                except re.error:
+                    pass  # Invalid regex, skip filtering
+                    
+            elif callable(content_filter):
+                # Callable filter - apply to individual characters
+                try:
+                    filtered_chars = []
+                    for char in result:
+                        if content_filter(char):
+                            filtered_chars.append(char)
+                    result = ''.join(filtered_chars)
+                except Exception:
+                    pass  # Function error, skip filtering
 
         # Apply optional stripping – align with global convention where simple
         # element extraction is stripped by default.

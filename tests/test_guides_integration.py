@@ -34,9 +34,9 @@ class TestGuidesIntegration:
 
         # Build grid (defaults: include_outer_boundaries=False)
         if len(guides.vertical) > 1 and len(guides.horizontal) > 1:
-            counts = guides.build_grid(page)
-            assert counts["table"] >= 0
-            assert counts["cells"] >= 0
+            result = guides.build_grid(page)
+            assert result["counts"]["table"] >= 0
+            assert result["counts"]["cells"] >= 0
 
     def test_outer_boundary_control(self, practice_pdf):
         """Test precise control over outer boundaries."""
@@ -114,14 +114,14 @@ class TestGuidesIntegration:
 
         # Test build_grid defaults
         if len(guides1.vertical) > 1 and len(guides1.horizontal) > 1:
-            counts1 = guides1.build_grid(page)  # include_outer_boundaries=False
+            result1 = guides1.build_grid(page)  # include_outer_boundaries=False
 
             # Test with explicit outer boundaries
             guides2 = Guides.from_lines(page, outer=True)
-            counts2 = guides2.build_grid(page)
+            result2 = guides2.build_grid(page)
 
             # Should have same or more cells with outer boundaries
-            assert counts2["cells"] >= counts1["cells"]
+            assert result2["counts"]["cells"] >= result1["counts"]["cells"]
 
     def test_error_recovery(self, practice_pdf):
         """Test that the system handles edge cases gracefully."""

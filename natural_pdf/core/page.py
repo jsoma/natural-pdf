@@ -1324,7 +1324,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         return self._page.crop(bbox, **kwargs)
 
     def extract_text(
-        self, preserve_whitespace=True, use_exclusions=True, debug_exclusions=False, **kwargs
+        self, preserve_whitespace=True, use_exclusions=True, debug_exclusions=False, content_filter=None, **kwargs
     ) -> str:
         """
         Extract text from this page, respecting exclusions and using pdfplumber's
@@ -1334,6 +1334,10 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             use_exclusions: Whether to apply exclusion regions (default: True).
                           Note: Filtering logic is now always applied if exclusions exist.
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
+            content_filter: Optional content filter to exclude specific text patterns. Can be:
+                - A regex pattern string (characters matching the pattern are EXCLUDED)
+                - A callable that takes text and returns True to KEEP the character
+                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
             **kwargs: Additional layout parameters passed directly to pdfplumber's
                       `chars_to_textmap` function. Common parameters include:
                       - layout (bool): If True (default), inserts spaces/newlines.
@@ -1401,6 +1405,10 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                 elif k in getattr(self._parent, "_config", {}):
                     merged_kwargs[k] = self._parent._config[k]
 
+        # Add content_filter to kwargs if provided
+        if content_filter is not None:
+            merged_kwargs["content_filter"] = content_filter
+
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=page_bbox,
@@ -1453,6 +1461,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         show_progress: bool = False,
+        content_filter=None,
     ) -> List[List[Optional[str]]]:
         """
         Extract the largest table from this page using enhanced region-based extraction.
@@ -1466,6 +1475,10 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             cell_extraction_func: Optional callable function that takes a cell Region object
                                   and returns its string content. For 'text' method only.
             show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
+            content_filter: Optional content filter to apply during cell text extraction. Can be:
+                - A regex pattern string (characters matching the pattern are EXCLUDED)
+                - A callable that takes text and returns True to KEEP the character
+                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
 
         Returns:
             Table data as a list of rows, where each row is a list of cell values (str or None).
@@ -1480,6 +1493,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             text_options=text_options,
             cell_extraction_func=cell_extraction_func,
             show_progress=show_progress,
+            content_filter=content_filter,
         )
 
     def extract_tables(

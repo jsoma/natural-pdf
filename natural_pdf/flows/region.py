@@ -6,6 +6,8 @@ from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes direct
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
 
+from natural_pdf.tables import TableResult
+
 if TYPE_CHECKING:
     from PIL.Image import Image as PIL_Image  # For type hints
 
@@ -53,18 +55,33 @@ class FlowRegion:
         self.source_flow_element: "FlowElement" = source_flow_element
         self.boundary_element_found: Optional["PhysicalElement"] = boundary_element_found
 
+        # Add attributes for grid building, similar to Region
+        self.source: Optional[str] = None
+        self.region_type: Optional[str] = None
+        self.metadata: Dict[str, Any] = {}
+
         # Cache for expensive operations
         self._cached_text: Optional[str] = None
         self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
 
+    def __getattr__(self, name: str) -> Any:
+        """
+        Dynamically proxy attribute access to the source FlowElement if the
+        attribute is not found in this instance.
+        """
+        if name in self.__dict__:
+            return self.__dict__[name]
+        elif self.source_flow_element is not None:
+            return getattr(self.source_flow_element, name)
+        else:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
     @property
     def bbox(self) -> Optional[Tuple[float, float, float, float]]:
         """
-        Calculates a conceptual bounding box that encompasses all constituent physical regions.
-        This is the union of the bounding boxes of the constituent regions in their
-        original physical coordinates.
-        Returns None if there are no constituent regions.
+        The bounding box that encloses all constituent regions.
+        Calculated dynamically and cached.
         """
         if self._cached_bbox is not None:
             return self._cached_bbox
@@ -252,7 +269,7 @@ class FlowRegion:
         for region in self.constituent_regions:
             try:
                 region_matches = region.find_all(
-                    selector=selector, text=text, **kwargs
+            selector=selector, text=text, **kwargs
                 )
                 if region_matches:
                     # ``region_matches`` is an ElementCollection – extend with its
@@ -615,7 +632,7 @@ class FlowRegion:
         cell_extraction_func: Optional[Callable[["PhysicalRegion"], Optional[str]]] = None,
         show_progress: bool = False,
         **kwargs,
-    ) -> List[List[Optional[str]]]:
+    ) -> TableResult:
         """Extracts a single logical table from the FlowRegion.
 
         This is a convenience wrapper that iterates through the constituent
@@ -631,9 +648,9 @@ class FlowRegion:
                 ``Region.extract_table`` implementation.
 
         Returns:
-            A list of rows (``List[List[Optional[str]]]``).  Rows returned from
+            A TableResult object containing the aggregated table data.  Rows returned from
             consecutive constituent regions are appended in document order.  If
-            no tables are detected in any region, an empty list is returned.
+            no tables are detected in any region, an empty TableResult is returned.
         """
 
         if table_settings is None:
@@ -642,13 +659,13 @@ class FlowRegion:
             text_options = {}
 
         if not self.constituent_regions:
-            return []
+            return TableResult([])
 
         aggregated_rows: List[List[Optional[str]]] = []
 
         for region in self.constituent_regions:
             try:
-                region_rows = region.extract_table(
+                region_result = region.extract_table(
                     method=method,
                     table_settings=table_settings.copy(),  # Avoid side-effects
                     use_ocr=use_ocr,
@@ -659,16 +676,16 @@ class FlowRegion:
                     **kwargs,
                 )
 
-                # ``region_rows`` can legitimately be [] if no table found.
-                if region_rows:
-                    aggregated_rows.extend(region_rows)
+                # region_result is now a TableResult object, extract the rows
+                if region_result:
+                    aggregated_rows.extend(region_result)
             except Exception as e:
                 logger.error(
                     f"FlowRegion.extract_table: Error extracting table from constituent region {region}: {e}",
                     exc_info=True,
                 )
 
-        return aggregated_rows
+        return TableResult(aggregated_rows)
 
     def extract_tables(
         self,
@@ -715,3 +732,22 @@ class FlowRegion:
                 )
 
         return all_tables
+
+    @property
+    def normalized_type(self) -> Optional[str]:
+        """
+        Return the normalized type for selector compatibility.
+        This allows FlowRegion to be found by selectors like 'table'.
+        """
+        if self.region_type:
+            # Convert region_type to normalized format (replace spaces with underscores, lowercase)
+            return self.region_type.lower().replace(" ", "_")
+        return None
+
+    @property
+    def type(self) -> Optional[str]:
+        """
+        Return the type attribute for selector compatibility.
+        This is an alias for normalized_type.
+        """
+        return self.normalized_type

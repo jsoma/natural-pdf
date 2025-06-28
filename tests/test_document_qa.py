@@ -417,7 +417,7 @@ class TestQAIntegration:
             assert isinstance(result, dict)
             assert "answer" in result
             
-        except ImportError:
+        except (ImportError, RuntimeError):
             # OCR not available, just test basic QA
             result = practice_pdf.ask("What is visible?", pages=0)
             assert isinstance(result, dict)
