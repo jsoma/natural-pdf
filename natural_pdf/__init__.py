@@ -76,6 +76,9 @@ from natural_pdf.core.page import Page
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
+from natural_pdf.flows.flow import Flow
+from natural_pdf.flows.region import FlowRegion
+from natural_pdf.analyzers.guides import Guides
 
 ElementCollection = None
 
@@ -116,6 +119,9 @@ __all__ = [
     "Page",
     "Region",
     "ElementCollection",
+    "Flow",
+    "FlowRegion",
+    "Guides",
     "TextSearchOptions",
     "MultiModalSearchOptions",
     "BaseSearchOptions",
