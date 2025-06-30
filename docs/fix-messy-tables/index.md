@@ -98,7 +98,7 @@ data = table_area.extract_table()
   brittle coordinate hack and a reusable extractor.
 </aside>
 
-## Define Table Boundaries Using Header Labels (pdfplumber)
+## Define Table Boundaries Using Header Labels
 
 Sometimes the easiest trick is to let the **column headers** tell you exactly where the table starts and ends.  
 Here's a quick, self-contained approach that works great on the violations table inside `01-practice.pdf`:

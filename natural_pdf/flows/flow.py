@@ -1,10 +1,10 @@
 import logging
-from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple, Callable
+from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple, Callable, overload
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.collections import ElementCollection as PhysicalElementCollection
+    from natural_pdf.elements.collections import ElementCollection as PhysicalElementCollection, PageCollection
     from natural_pdf.elements.region import Region as PhysicalRegion
     from PIL.Image import Image as PIL_Image
 
@@ -87,7 +87,7 @@ class Flow:
 
     def __init__(
         self,
-        segments: List[Union["Page", "PhysicalRegion"]],
+        segments: Union[List[Union["Page", "PhysicalRegion"]], "PageCollection"],
         arrangement: Literal["vertical", "horizontal"],
         alignment: Literal["start", "center", "end", "top", "left", "bottom", "right"] = "start",
         segment_gap: float = 0.0,
@@ -97,7 +97,8 @@ class Flow:
 
         Args:
             segments: An ordered list of natural_pdf.core.page.Page or
-                      natural_pdf.elements.region.Region objects that constitute the flow.
+                      natural_pdf.elements.region.Region objects that constitute the flow,
+                      or a PageCollection containing pages.
             arrangement: The primary direction of the flow.
                          - "vertical": Segments are stacked top-to-bottom.
                          - "horizontal": Segments are arranged left-to-right.
@@ -112,6 +113,10 @@ class Flow:
                        - "bottom" (or "end"): Align bottom edges.
             segment_gap: The virtual gap (in PDF points) between segments.
         """
+        # Handle PageCollection input
+        if hasattr(segments, 'pages'):  # It's a PageCollection
+            segments = list(segments.pages)
+        
         if not segments:
             raise ValueError("Flow segments cannot be empty.")
         if arrangement not in ["vertical", "horizontal"]:
@@ -315,6 +320,7 @@ class Flow:
             f"arrangement='{self.arrangement}', alignment='{self.alignment}', gap={self.segment_gap}>"
         )
 
+    @overload
     def extract_table(
         self,
         method: Optional[str] = None,
@@ -325,12 +331,37 @@ class Flow:
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
-        stitch_rows: Optional[
-            Callable[
-                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
-                bool,
-            ]
+        stitch_rows: Callable[[List[Optional[str]]], bool] = None,
+    ) -> TableResult: ...
+
+    @overload
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[dict] = None,
+        cell_extraction_func: Optional[Any] = None,
+        show_progress: bool = False,
+        content_filter: Optional[Any] = None,
+        stitch_rows: Callable[
+            [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
+            bool,
         ] = None,
+    ) -> TableResult: ...
+
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[dict] = None,
+        cell_extraction_func: Optional[Any] = None,
+        show_progress: bool = False,
+        content_filter: Optional[Any] = None,
+        stitch_rows: Optional[Callable] = None,
     ) -> TableResult:
         """
         Extract table data from all segments in the flow, combining results sequentially.
@@ -349,7 +380,21 @@ class Flow:
                                   and returns its string content. For 'text' method only.
             show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
             content_filter: Optional content filter to apply during cell text extraction.
-            stitch_rows: Row continuation handling (see FlowRegion.extract_table for details).
+            stitch_rows: Optional callable to determine when rows should be merged across
+                         segment boundaries. Two overloaded signatures are supported:
+                         
+                         • func(current_row) -> bool
+                           Called only on the first row of each segment (after the first).
+                           Return True to merge this first row with the last row from
+                           the previous segment.
+                           
+                         • func(prev_row, current_row, row_index, segment) -> bool
+                           Called for every row. Return True to merge current_row with
+                           the previous row in the aggregated results.
+                           
+                         When True is returned, rows are concatenated cell-by-cell.
+                         This is useful for handling table rows split across page
+                         boundaries or segments. If None, rows are never merged.
 
         Returns:
             TableResult object containing the aggregated table data from all segments.
@@ -368,6 +413,16 @@ class Flow:
             # Extract table as if it were continuous
             table_data = table_flow.extract_table()
             df = table_data.df  # Convert to pandas DataFrame
+            
+            # Custom row stitching - single parameter (simple case)
+            table_data = table_flow.extract_table(
+                stitch_rows=lambda row: row and not (row[0] or "").strip()
+            )
+            
+            # Custom row stitching - full parameters (advanced case)
+            table_data = table_flow.extract_table(
+                stitch_rows=lambda prev, curr, idx, seg: idx == 0 and curr and not (curr[0] or "").strip()
+            )
             ```
         """
         logger.info(f"Extracting table from Flow with {len(self.segments)} segments (method: {method or 'auto'})")
@@ -376,13 +431,25 @@ class Flow:
             logger.warning("Flow has no segments, returning empty table")
             return TableResult([])
 
-        # Resolve predicate
-        predicate: Optional[
-            Callable[
-                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
-                bool,
-            ]
-        ] = stitch_rows if callable(stitch_rows) else None
+        # Resolve predicate and determine its signature
+        predicate: Optional[Callable] = None
+        predicate_type: str = "none"
+        
+        if callable(stitch_rows):
+            import inspect
+            sig = inspect.signature(stitch_rows)
+            param_count = len(sig.parameters)
+            
+            if param_count == 1:
+                predicate = stitch_rows
+                predicate_type = "single_param"
+            elif param_count == 4:
+                predicate = stitch_rows
+                predicate_type = "full_params"
+            else:
+                logger.warning(f"stitch_rows function has {param_count} parameters, expected 1 or 4. Ignoring.")
+                predicate = None
+                predicate_type = "none"
 
         def _default_merge(prev_row: List[Optional[str]], cur_row: List[Optional[str]]) -> List[Optional[str]]:
             from itertools import zip_longest
@@ -425,11 +492,19 @@ class Flow:
                     continue
 
                 for row_idx, row in enumerate(segment_rows):
-                    if (
-                        predicate is not None
-                        and aggregated_rows
-                        and predicate(aggregated_rows[-1], row, row_idx, segment)
-                    ):
+                    should_merge = False
+                    
+                    if predicate is not None and aggregated_rows:
+                        if predicate_type == "single_param":
+                            # For single param: only call on first row of segment (row_idx == 0)
+                            # and pass the current row
+                            if row_idx == 0:
+                                should_merge = predicate(row)
+                        elif predicate_type == "full_params":
+                            # For full params: call with all arguments
+                            should_merge = predicate(aggregated_rows[-1], row, row_idx, segment)
+                    
+                    if should_merge:
                         aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
                     else:
                         aggregated_rows.append(row)

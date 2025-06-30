@@ -64,7 +64,6 @@ from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
-from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.qa import DocumentQA, get_qa_engine
@@ -76,8 +75,9 @@ from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerW
 
 # --- End Classification Imports --- #
 
-
-# --- End Shape Detection Mixin --- #
+# --- Text update mixin import --- #
+from natural_pdf.text_mixin import TextMixin
+from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 
 
 try:
@@ -92,7 +92,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
+class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
 
     This class provides a fluent interface for working with PDF pages,
@@ -2886,25 +2886,25 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
         logger.info(f"Searchable PDF saved to: {output_path_str}")
 
     # --- Added correct_ocr method ---
-    def correct_ocr(
+    def update_text(
         self,
-        correction_callback: Callable[[Any], Optional[str]],
-        selector: Optional[str] = "text[source=ocr]",
+        transform: Callable[[Any], Optional[str]],
+        selector: str = "text",
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
     ) -> "Page":  # Return self for chaining
         """
-        Applies corrections to OCR-generated text elements on this page
+        Applies corrections to text elements on this page
         using a user-provided callback function, potentially in parallel.
 
-        Finds text elements on this page whose 'source' attribute starts
-        with 'ocr' and calls the `correction_callback` for each, passing the
-        element itself. Updates the element's text if the callback returns
-        a new string.
+        Finds text elements on this page matching the *selector* argument and
+        calls the ``transform`` for each, passing the element itself.
+        Updates the element's text if the callback returns a new string.
 
         Args:
-            correction_callback: A function accepting an element and returning
-                                 `Optional[str]` (new text or None).
+            transform: A function accepting an element and returning
+                       `Optional[str]` (new text or None).
+            selector: CSS-like selector string to match text elements.
             max_workers: The maximum number of threads to use for parallel execution.
                          If None or 0 or 1, runs sequentially.
             progress_callback: Optional callback function to call after processing each element.
@@ -2913,21 +2913,21 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             Self for method chaining.
         """
         logger.info(
-            f"Page {self.number}: Starting OCR correction with callback '{correction_callback.__name__}' (max_workers={max_workers})"
+            f"Page {self.number}: Starting text update with callback '{transform.__name__}' (max_workers={max_workers}) and selector='{selector}'"
         )
 
         target_elements_collection = self.find_all(selector=selector, apply_exclusions=False)
         target_elements = target_elements_collection.elements  # Get the list
 
         if not target_elements:
-            logger.info(f"Page {self.number}: No OCR elements found to correct.")
+            logger.info(f"Page {self.number}: No text elements found to update.")
             return self
 
         element_pbar = None
         try:
             element_pbar = tqdm(
                 total=len(target_elements),
-                desc=f"Correcting OCR Page {self.number}",
+                desc=f"Updating text Page {self.number}",
                 unit="element",
                 leave=False,
             )
@@ -2941,7 +2941,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                 try:
                     current_text = getattr(element, "text", None)
                     # Call the user-provided callback
-                    corrected_text = correction_callback(element)
+                    corrected_text = transform(element)
 
                     # Validate result type
                     if corrected_text is not None and not isinstance(corrected_text, str):
@@ -2976,7 +2976,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
             if max_workers is not None and max_workers > 1:
                 # --- Parallel execution --- #
                 logger.info(
-                    f"Page {self.number}: Running OCR correction in parallel with {max_workers} workers."
+                    f"Page {self.number}: Running text update in parallel with {max_workers} workers."
                 )
                 futures = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -3012,7 +3012,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
 
             else:
                 # --- Sequential execution --- #
-                logger.info(f"Page {self.number}: Running OCR correction sequentially.")
+                logger.info(f"Page {self.number}: Running text update sequentially.")
                 for element in target_elements:
                     # Call the task function directly (it handles progress_callback)
                     processed_count += 1
@@ -3027,7 +3027,7 @@ class Page(ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMi
                             updated_count += 1
 
             logger.info(
-                f"Page {self.number}: OCR correction finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
+                f"Page {self.number}: Text update finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
             )
 
             return self  # Return self for chaining

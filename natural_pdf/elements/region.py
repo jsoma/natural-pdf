@@ -21,6 +21,7 @@ from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.text_mixin import TextMixin
 
 # ------------------------------------------------------------------
 # Table utilities
@@ -56,7 +57,12 @@ logger = logging.getLogger(__name__)
 
 
 class Region(
-    DirectionalMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin
+    TextMixin,
+    DirectionalMixin,
+    ClassificationMixin,
+    ExtractionMixin,
+    ShapeDetectionMixin,
+    DescribeMixin,
 ):
     """Represents a rectangular region on a page.
 
@@ -3076,45 +3082,20 @@ class Region(
         source_info = f" source='{self.source}'" if self.source else ""
         return f"<Region{name_info}{type_info}{source_info} bbox={self.bbox}{poly_info}>"
 
-    def correct_ocr(
+    def update_text(
         self,
-        correction_callback: Callable[[Any], Optional[str]],
-    ) -> "Region":  # Return self for chaining
+        transform: Callable[[Any], Optional[str]],
+        *,
+        selector: str = "text",
+        apply_exclusions: bool = False,
+    ) -> "Region":
+        """Apply *transform* to every text element matched by *selector* inside this region.
+
+        The heavy lifting is delegated to :py:meth:`TextMixin.update_text`; this
+        override simply ensures the search is scoped to the region.
         """
-        Applies corrections to OCR-generated text elements within this region
-        using a user-provided callback function.
 
-        Finds text elements within this region whose 'source' attribute starts
-        with 'ocr' and calls the `correction_callback` for each, passing the
-        element itself.
-
-        The `correction_callback` should contain the logic to:
-        1. Determine if the element needs correction.
-        2. Perform the correction (e.g., call an LLM).
-        3. Return the new text (`str`) or `None`.
-
-        If the callback returns a string, the element's `.text` is updated.
-        Metadata updates (source, confidence, etc.) should happen within the callback.
-
-        Args:
-            correction_callback: A function accepting an element and returning
-                                 `Optional[str]` (new text or None).
-
-        Returns:
-            Self for method chaining.
-        """
-        # Find OCR elements specifically within this region
-        # Note: We typically want to correct even if the element falls in an excluded area
-        target_elements = self.find_all(selector="text[source=ocr]", apply_exclusions=False)
-
-        # Delegate to the utility function
-        _apply_ocr_correction_to_elements(
-            elements=target_elements,  # Pass the ElementCollection directly
-            correction_callback=correction_callback,
-            caller_info=f"Region({self.bbox})",  # Pass caller info
-        )
-
-        return self  # Return self for chaining
+        return TextMixin.update_text(self, transform, selector=selector, apply_exclusions=apply_exclusions)
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":

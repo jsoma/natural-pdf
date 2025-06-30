@@ -11,6 +11,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Literal,
     Optional,
     Sequence,
     Tuple,
@@ -40,6 +41,7 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.text_mixin import TextMixin
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
@@ -66,6 +68,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
     from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
+    from natural_pdf.flows.flow import Flow
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Page")
@@ -1416,7 +1419,7 @@ class ElementCollection(
 
     def correct_ocr(
         self,
-        correction_callback: Callable[[Any], Optional[str]],
+        transform: Callable[[Any], Optional[str]],
         max_workers: Optional[int] = None,
     ) -> "ElementCollection":
         """
@@ -1425,10 +1428,10 @@ class ElementCollection(
         in parallel if `max_workers` is specified.
 
         Iterates through elements currently in the collection. If an element's
-        'source' attribute starts with 'ocr', it calls the `correction_callback`
+        'source' attribute starts with 'ocr', it calls the `transform`
         for that element, passing the element itself.
 
-        The `correction_callback` should contain the logic to:
+        The `transform` should contain the logic to:
         1. Determine if the element needs correction.
         2. Perform the correction (e.g., call an LLM).
         3. Return the new text (`str`) or `None`.
@@ -1438,8 +1441,8 @@ class ElementCollection(
         Elements without a source starting with 'ocr' are skipped.
 
         Args:
-            correction_callback: A function accepting an element and returning
-                                 `Optional[str]` (new text or None).
+            transform: A function accepting an element and returning
+                       `Optional[str]` (new text or None).
             max_workers: The maximum number of worker threads to use for parallel
                          correction on each page. If None, defaults are used.
 
@@ -1449,7 +1452,7 @@ class ElementCollection(
         # Delegate to the utility function
         _apply_ocr_correction_to_elements(
             elements=self._elements,
-            correction_callback=correction_callback,
+            correction_callback=transform,
             caller_info=f"ElementCollection(len={len(self._elements)})",  # Pass caller info
             max_workers=max_workers,
         )
@@ -2045,7 +2048,7 @@ class ElementCollection(
     # ------------------------------------------------------------------
 
 
-class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
+class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
     """
     Represents a collection of Page objects, often from a single PDF document.
     Provides methods for batch operations on these pages.
@@ -2363,22 +2366,24 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
         return ElementCollection(all_elements)
 
-    def correct_ocr(
+    def update_text(
         self,
-        correction_callback: Callable[[Any], Optional[str]],
+        transform: Callable[[Any], Optional[str]],
+        selector: str = "text",
         max_workers: Optional[int] = None,
     ) -> "PageCollection[P]":
         """
-        Applies corrections to OCR-generated text elements across all pages
+        Applies corrections to text elements across all pages
         in this collection using a user-provided callback function, executed
         in parallel if `max_workers` is specified.
 
-        This method delegates to the parent PDF's `correct_ocr` method,
+        This method delegates to the parent PDF's `update_text` method,
         targeting all pages within this collection.
 
         Args:
-            correction_callback: A function that accepts a single argument (an element
-                                 object) and returns `Optional[str]` (new text or None).
+            transform: A function that accepts a single argument (an element
+                       object) and returns `Optional[str]` (new text or None).
+            selector: The attribute name to update. Default is 'text'.
             max_workers: The maximum number of worker threads to use for parallel
                          correction on each page. If None, defaults are used.
 
@@ -2387,10 +2392,10 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
 
         Raises:
             RuntimeError: If the collection is empty, pages lack a parent PDF reference,
-                          or the parent PDF lacks the `correct_ocr` method.
+                          or the parent PDF lacks the `update_text` method.
         """
         if not self.pages:
-            logger.warning("Cannot correct OCR for an empty PageCollection.")
+            logger.warning("Cannot update text for an empty PageCollection.")
             # Return self even if empty to maintain chaining consistency
             return self
 
@@ -2398,24 +2403,25 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
         parent_pdf = self.pages[0]._parent
         if (
             not parent_pdf
-            or not hasattr(parent_pdf, "correct_ocr")
-            or not callable(parent_pdf.correct_ocr)
+            or not hasattr(parent_pdf, "update_text")
+            or not callable(parent_pdf.update_text)
         ):
             raise RuntimeError(
-                "Parent PDF reference not found or parent PDF lacks the required 'correct_ocr' method."
+                "Parent PDF reference not found or parent PDF lacks the required 'update_text' method."
             )
 
         page_indices = self._get_page_indices()
         logger.info(
-            f"PageCollection: Delegating correct_ocr to parent PDF for page indices: {page_indices} with max_workers={max_workers}."
+            f"PageCollection: Delegating text update to parent PDF for page indices: {page_indices} with max_workers={max_workers} and selector='{selector}'."
         )
 
         # Delegate the call to the parent PDF object for the relevant pages
         # Pass the max_workers parameter down
-        parent_pdf.correct_ocr(
-            correction_callback=correction_callback,
+        parent_pdf.update_text(
+            transform=transform,
             pages=page_indices,
-            max_workers=max_workers,  # Pass it here
+            selector=selector,
+            max_workers=max_workers,
         )
 
         return self
@@ -3243,6 +3249,61 @@ class PageCollection(Generic[P], ApplyMixin, ShapeDetectionMixin):
                 # Re-raise the exception caught from the exporter
                 raise e  # Keep the original exception type (ValueError, RuntimeError, etc.)
             # <--- END MODIFIED
+
+    def to_flow(
+        self,
+        arrangement: Literal["vertical", "horizontal"] = "vertical",
+        alignment: Literal["start", "center", "end", "top", "left", "bottom", "right"] = "start",
+        segment_gap: float = 0.0,
+    ) -> "Flow":
+        """
+        Convert this PageCollection to a Flow for cross-page operations.
+
+        This enables treating multiple pages as a continuous logical document
+        structure, useful for multi-page tables, articles spanning columns,
+        or any content requiring reading order across page boundaries.
+
+        Args:
+            arrangement: Primary flow direction ('vertical' or 'horizontal').
+                        'vertical' stacks pages top-to-bottom (most common).
+                        'horizontal' arranges pages left-to-right.
+            alignment: Cross-axis alignment for pages of different sizes:
+                      For vertical: 'left'/'start', 'center', 'right'/'end'
+                      For horizontal: 'top'/'start', 'center', 'bottom'/'end'
+            segment_gap: Virtual gap between pages in PDF points (default: 0.0).
+
+        Returns:
+            Flow object that can perform operations across all pages in sequence.
+
+        Example:
+            Multi-page table extraction:
+            ```python
+            pdf = npdf.PDF("multi_page_report.pdf")
+            
+            # Create flow for pages 2-4 containing a table
+            table_flow = pdf.pages[1:4].to_flow()
+            
+            # Extract table as if it were continuous
+            table_data = table_flow.extract_table()
+            df = table_data.df
+            ```
+
+            Cross-page element search:
+            ```python
+            # Find all headers across multiple pages
+            headers = pdf.pages[5:10].to_flow().find_all('text[size>12]:bold')
+            
+            # Analyze layout across pages
+            regions = pdf.pages.to_flow().analyze_layout(engine='yolo')
+            ```
+        """
+        from natural_pdf.flows.flow import Flow
+        return Flow(
+            segments=self,  # Flow constructor now handles PageCollection
+            arrangement=arrangement,
+            alignment=alignment,
+            segment_gap=segment_gap,
+        )
 
     # Alias .to_image() to .show() for convenience
     def show(

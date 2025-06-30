@@ -39,6 +39,10 @@ from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.text_mixin import TextMixin
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.collections import ElementCollection
 
 try:
     from typing import Any as TypingAny
@@ -247,7 +251,7 @@ class _LazyPageList(Sequence):
 # --- End Lazy Page List Helper --- #
 
 
-class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
+class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,
@@ -1229,6 +1233,62 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
 
         return all_tables
 
+    def get_sections(
+        self,
+        start_elements=None,
+        end_elements=None,
+        new_section_on_page_break=False,
+        boundary_inclusion="both",
+    ) -> "ElementCollection":
+        """
+        Extract sections from the entire PDF based on start/end elements.
+
+        This method delegates to the PageCollection.get_sections() method,
+        providing a convenient way to extract document sections across all pages.
+
+        Args:
+            start_elements: Elements or selector string that mark the start of sections (optional)
+            end_elements: Elements or selector string that mark the end of sections (optional)
+            new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
+            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
+
+        Returns:
+            ElementCollection of Region objects representing the extracted sections
+
+        Example:
+            Extract sections between headers:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            
+            # Get sections between headers
+            sections = pdf.get_sections(
+                start_elements='text[size>14]:bold',
+                end_elements='text[size>14]:bold'
+            )
+            
+            # Get sections that break at page boundaries
+            sections = pdf.get_sections(
+                start_elements='text:contains("Chapter")',
+                new_section_on_page_break=True
+            )
+            ```
+
+        Note:
+            You can provide only start_elements, only end_elements, or both.
+            - With only start_elements: sections go from each start to the next start (or end of document)
+            - With only end_elements: sections go from beginning of document to each end
+            - With both: sections go from each start to the corresponding end
+        """
+        if not hasattr(self, "_pages"):
+            raise AttributeError("PDF pages not yet initialized.")
+
+        return self.pages.get_sections(
+            start_elements=start_elements,
+            end_elements=end_elements,
+            new_section_on_page_break=new_section_on_page_break,
+            boundary_inclusion=boundary_inclusion,
+        )
+
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
         """
         DEPRECATED: Use save_pdf(..., ocr=True) instead.
@@ -1703,31 +1763,27 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
             logger.error(f"Failed to export correction task: {e}")
             raise
 
-    def correct_ocr(
+    def update_text(
         self,
-        correction_callback: Callable[[Any], Optional[str]],
+        transform: Callable[[Any], Optional[str]],
         pages: Optional[Union[Iterable[int], range, slice]] = None,
+        selector: str = "text",
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,
     ) -> "PDF":
         """
-        Applies corrections to OCR text elements using a callback function.
-        Applies corrections to OCR text elements using a callback function.
+        Applies corrections to text elements using a callback function.
 
         Args:
             correction_callback: Function that takes an element and returns corrected text or None
-            correction_callback: Function that takes an element and returns corrected text or None
             pages: Optional page indices/slice to limit the scope of correction
-            max_workers: Maximum number of threads to use for parallel execution
-            progress_callback: Optional callback function for progress updates
+            selector: Selector to apply corrections to (default: "text")
             max_workers: Maximum number of threads to use for parallel execution
             progress_callback: Optional callback function for progress updates
 
         Returns:
             Self for method chaining
-            Self for method chaining
         """
-        target_page_indices = []
         target_page_indices = []
         if pages is None:
             target_page_indices = list(range(len(self._pages)))
@@ -1741,32 +1797,29 @@ class PDF(ExtractionMixin, ExportMixin, ClassificationMixin):
                         raise IndexError(f"Page index {idx} out of range (0-{len(self._pages)-1}).")
             except (IndexError, TypeError, ValueError) as e:
                 raise ValueError(f"Invalid page index in 'pages': {pages}. Error: {e}") from e
-                raise ValueError(f"Invalid page index in 'pages': {pages}. Error: {e}") from e
         else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
             raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
 
         if not target_page_indices:
-            logger.warning("No pages selected for OCR correction.")
+            logger.warning("No pages selected for text update.")
             return self
 
-        logger.info(f"Starting OCR correction for pages: {target_page_indices}")
-        logger.info(f"Starting OCR correction for pages: {target_page_indices}")
+        logger.info(f"Starting text update for pages: {target_page_indices} with selector='{selector}'")
 
         for page_idx in target_page_indices:
             page = self._pages[page_idx]
             try:
-                page.correct_ocr(
-                    correction_callback=correction_callback,
-                    max_workers=max_workers,
-                    progress_callback=progress_callback,
-                )
+                            page.update_text(
+                transform=transform,
+                selector=selector,
+                max_workers=max_workers,
+                progress_callback=progress_callback,
+            )
             except Exception as e:
-                logger.error(f"Error during correct_ocr on page {page_idx}: {e}")
-                logger.error(f"Error during correct_ocr on page {page_idx}: {e}")
+                logger.error(f"Error during text update on page {page_idx}: {e}")
+                logger.error(f"Error during text update on page {page_idx}: {e}")
 
-        logger.info("OCR correction process finished.")
-        logger.info("OCR correction process finished.")
+        logger.info("Text update process finished.")
         return self
 
     def __len__(self) -> int:
