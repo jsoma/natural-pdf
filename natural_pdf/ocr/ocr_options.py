@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
-
 # --- Base Options ---
 @dataclass
 class BaseOCROptions:
@@ -52,7 +51,6 @@ class EasyOCROptions(BaseOCROptions):
     x_ths: float = 1.0
     add_margin: float = 0.1
     output_format: str = "standard"
-
 
 
 # --- PaddleOCR Specific Options ---

@@ -39,7 +39,13 @@ class TableResult(Sequence):
         """Quick property alias → calls :py:meth:`to_df` with default args."""
         return self.to_df()
 
-    def to_df(self, header: Union[str, int, List[int], None] = "first", index_col=None, skip_repeating_headers=None, **kwargs):
+    def to_df(
+        self,
+        header: Union[str, int, List[int], None] = "first",
+        index_col=None,
+        skip_repeating_headers=None,
+        **kwargs,
+    ):
         """Convert to *pandas* DataFrame.
 
         Parameters
@@ -95,8 +101,12 @@ class TableResult(Sequence):
             elif isinstance(hdr, list) and len(hdr) > 0 and isinstance(hdr[0], list):
                 # Multi-row header (less common)
                 hdr_set = {tuple(h) if isinstance(h, list) else h for h in hdr}
-                body = [row for row in body if (tuple(row) if isinstance(row, list) else row) not in hdr_set]
-            
+                body = [
+                    row
+                    for row in body
+                    if (tuple(row) if isinstance(row, list) else row) not in hdr_set
+                ]
+
             skipped_count = original_body_len - len(body)
             if skipped_count > 0:
                 # Could add logging here if desired

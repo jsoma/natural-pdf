@@ -19,4 +19,4 @@ def test_update_text_hello(tmp_path):
     # Verify
     for page in pdf.pages:
         for el in page.find_all("text").elements:
-            assert el.text == "hello" 
+            assert el.text == "hello"

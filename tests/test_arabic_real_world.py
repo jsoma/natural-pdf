@@ -55,7 +55,7 @@ class TestArabicPDF(unittest.TestCase):
         }
 
         for word in words:
-            has_ar = any("\u0600" <= c <= "\u06FF" for c in word.text)
+            has_ar = any("\u0600" <= c <= "\u06ff" for c in word.text)
             has_en = any("a" <= c.lower() <= "z" for c in word.text)
             has_num = any(c.isdigit() for c in word.text)
 

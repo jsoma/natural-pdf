@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_markers(
-    markers: Union[str, List[str], "ElementCollection", None], obj: Union["Page", "Region", "FlowRegion"]
+    markers: Union[str, List[str], "ElementCollection", None],
+    obj: Union["Page", "Region", "FlowRegion"],
 ) -> List[str]:
     """
     Normalize markers parameter to a list of text strings for guide creation.
@@ -168,7 +169,7 @@ class GuidesList(UserList):
             for region in self._parent.context.constituent_regions:
                 # Normalize markers for this region
                 marker_texts = _normalize_markers(markers, region)
-                
+
                 # Create guides for this region
                 region_guides = Guides.from_content(
                     obj=region,
@@ -178,24 +179,29 @@ class GuidesList(UserList):
                     outer=outer,
                     tolerance=tolerance,
                 )
-                
+
                 # Collect guides from this region
                 if self._axis == "vertical":
                     all_guides.extend(region_guides.vertical)
                 else:
                     all_guides.extend(region_guides.horizontal)
-            
+
             # Update parent's flow guides structure
             if append:
                 # Append to existing
-                existing = [coord for coord, _ in 
-                           (self._parent._unified_vertical if self._axis == "vertical" 
-                            else self._parent._unified_horizontal)]
+                existing = [
+                    coord
+                    for coord, _ in (
+                        self._parent._unified_vertical
+                        if self._axis == "vertical"
+                        else self._parent._unified_horizontal
+                    )
+                ]
                 all_guides = existing + all_guides
-            
+
             # Remove duplicates and sort
             unique_guides = sorted(list(set(all_guides)))
-            
+
             # Clear and rebuild unified view
             if self._axis == "vertical":
                 self._parent._unified_vertical = []
@@ -221,27 +227,27 @@ class GuidesList(UserList):
                                 break
                 self._parent._horizontal_cache = None
                 self.data = unique_guides
-            
+
             # Update per-region guides
             for region in self._parent.context.constituent_regions:
                 region_verticals = []
                 region_horizontals = []
-                
+
                 for coord, r in self._parent._unified_vertical:
                     if r == region:
                         region_verticals.append(coord)
-                        
+
                 for coord, r in self._parent._unified_horizontal:
                     if r == region:
                         region_horizontals.append(coord)
-                
+
                 self._parent._flow_guides[region] = (
                     sorted(region_verticals),
-                    sorted(region_horizontals)
+                    sorted(region_horizontals),
                 )
-            
+
             return self._parent
-        
+
         # Original single-region logic
         # Normalize markers to list of text strings
         marker_texts = _normalize_markers(markers, target_obj)
@@ -340,7 +346,7 @@ class GuidesList(UserList):
         if self._parent.is_flow_region:
             # Create guides across all constituent regions
             all_guides = []
-            
+
             for region in self._parent.context.constituent_regions:
                 # Create guides for this specific region
                 region_guides = Guides.from_lines(
@@ -353,26 +359,31 @@ class GuidesList(UserList):
                     outer=outer,
                     detection_method=detection_method,
                     resolution=resolution,
-                    **detect_kwargs
+                    **detect_kwargs,
                 )
-                
+
                 # Collect guides from this region
                 if self._axis == "vertical":
                     all_guides.extend(region_guides.vertical)
                 else:
                     all_guides.extend(region_guides.horizontal)
-            
+
             # Update parent's flow guides structure
             if append:
                 # Append to existing
-                existing = [coord for coord, _ in 
-                           (self._parent._unified_vertical if self._axis == "vertical" 
-                            else self._parent._unified_horizontal)]
+                existing = [
+                    coord
+                    for coord, _ in (
+                        self._parent._unified_vertical
+                        if self._axis == "vertical"
+                        else self._parent._unified_horizontal
+                    )
+                ]
                 all_guides = existing + all_guides
-            
+
             # Remove duplicates and sort
             unique_guides = sorted(list(set(all_guides)))
-            
+
             # Clear and rebuild unified view
             if self._axis == "vertical":
                 self._parent._unified_vertical = []
@@ -398,25 +409,25 @@ class GuidesList(UserList):
                                 break
                 self._parent._horizontal_cache = None
                 self.data = unique_guides
-            
+
             # Update per-region guides
             for region in self._parent.context.constituent_regions:
                 region_verticals = []
                 region_horizontals = []
-                
+
                 for coord, r in self._parent._unified_vertical:
                     if r == region:
                         region_verticals.append(coord)
-                        
+
                 for coord, r in self._parent._unified_horizontal:
                     if r == region:
                         region_horizontals.append(coord)
-                
+
                 self._parent._flow_guides[region] = (
                     sorted(region_verticals),
-                    sorted(region_horizontals)
+                    sorted(region_horizontals),
                 )
-            
+
             return self._parent
 
         # Original single-region logic
@@ -458,8 +469,11 @@ class GuidesList(UserList):
         return self._parent
 
     def from_whitespace(
-        self, obj: Optional[Union["Page", "Region", "FlowRegion"]] = None, min_gap: float = 10,
-        *, append: bool = False
+        self,
+        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
+        min_gap: float = 10,
+        *,
+        append: bool = False,
     ) -> "Guides":
         """
         Create guides from whitespace gaps.
@@ -479,32 +493,33 @@ class GuidesList(UserList):
         if self._parent.is_flow_region:
             # Create guides across all constituent regions
             all_guides = []
-            
+
             for region in self._parent.context.constituent_regions:
                 # Create guides for this specific region
-                region_guides = Guides.from_whitespace(
-                    obj=region,
-                    axis=self._axis,
-                    min_gap=min_gap
-                )
-                
+                region_guides = Guides.from_whitespace(obj=region, axis=self._axis, min_gap=min_gap)
+
                 # Collect guides from this region
                 if self._axis == "vertical":
                     all_guides.extend(region_guides.vertical)
                 else:
                     all_guides.extend(region_guides.horizontal)
-            
+
             # Update parent's flow guides structure
             if append:
                 # Append to existing
-                existing = [coord for coord, _ in 
-                           (self._parent._unified_vertical if self._axis == "vertical" 
-                            else self._parent._unified_horizontal)]
+                existing = [
+                    coord
+                    for coord, _ in (
+                        self._parent._unified_vertical
+                        if self._axis == "vertical"
+                        else self._parent._unified_horizontal
+                    )
+                ]
                 all_guides = existing + all_guides
-            
+
             # Remove duplicates and sort
             unique_guides = sorted(list(set(all_guides)))
-            
+
             # Clear and rebuild unified view
             if self._axis == "vertical":
                 self._parent._unified_vertical = []
@@ -530,25 +545,25 @@ class GuidesList(UserList):
                                 break
                 self._parent._horizontal_cache = None
                 self.data = unique_guides
-            
+
             # Update per-region guides
             for region in self._parent.context.constituent_regions:
                 region_verticals = []
                 region_horizontals = []
-                
+
                 for coord, r in self._parent._unified_vertical:
                     if r == region:
                         region_verticals.append(coord)
-                        
+
                 for coord, r in self._parent._unified_horizontal:
                     if r == region:
                         region_horizontals.append(coord)
-                
+
                 self._parent._flow_guides[region] = (
                     sorted(region_verticals),
-                    sorted(region_horizontals)
+                    sorted(region_horizontals),
                 )
-            
+
             return self._parent
 
         # Original single-region logic
@@ -915,7 +930,7 @@ class Guides:
 
         # Check if we're dealing with a FlowRegion
         self.is_flow_region = hasattr(context, "constituent_regions")
-        
+
         # If FlowRegion, we'll store guides per constituent region
         if self.is_flow_region:
             self._flow_guides: Dict["Region", Tuple[List[float], List[float]]] = {}
@@ -976,7 +991,7 @@ class Guides:
         if self.is_flow_region:
             # Invalidate cache when setting new values
             self._vertical_cache = None
-            
+
         if value is None:
             self._vertical.data = []
         elif isinstance(value, Guides):
@@ -1018,7 +1033,7 @@ class Guides:
         if self.is_flow_region:
             # Invalidate cache when setting new values
             self._horizontal_cache = None
-            
+
         if value is None:
             self._horizontal.data = []
         elif isinstance(value, Guides):
@@ -1163,7 +1178,7 @@ class Guides:
         # Handle FlowRegion
         if hasattr(obj, "constituent_regions"):
             guides = cls(context=obj)
-            
+
             # Process each constituent region
             for region in obj.constituent_regions:
                 # Create guides for this specific region
@@ -1177,27 +1192,27 @@ class Guides:
                     outer=outer,
                     detection_method=detection_method,
                     resolution=resolution,
-                    **detect_kwargs
+                    **detect_kwargs,
                 )
-                
+
                 # Store in flow guides
                 guides._flow_guides[region] = (
                     list(region_guides.vertical),
-                    list(region_guides.horizontal)
+                    list(region_guides.horizontal),
                 )
-                
+
                 # Add to unified view
                 for v in region_guides.vertical:
                     guides._unified_vertical.append((v, region))
                 for h in region_guides.horizontal:
                     guides._unified_horizontal.append((h, region))
-            
+
             # Invalidate caches to force rebuild on next access
             guides._vertical_cache = None
             guides._horizontal_cache = None
-            
+
             return guides
-        
+
         # Original single-region logic follows...
         # Get bounds for potential outer guides
         if hasattr(obj, "bbox"):
@@ -1399,7 +1414,7 @@ class Guides:
         # Handle FlowRegion
         if hasattr(obj, "constituent_regions"):
             guides = cls(context=obj)
-            
+
             # Process each constituent region
             for region in obj.constituent_regions:
                 # Create guides for this specific region
@@ -1409,27 +1424,27 @@ class Guides:
                     markers=markers,
                     align=align,
                     outer=outer,
-                    tolerance=tolerance
+                    tolerance=tolerance,
                 )
-                
+
                 # Store in flow guides
                 guides._flow_guides[region] = (
                     list(region_guides.vertical),
-                    list(region_guides.horizontal)
+                    list(region_guides.horizontal),
                 )
-                
+
                 # Add to unified view
                 for v in region_guides.vertical:
                     guides._unified_vertical.append((v, region))
                 for h in region_guides.horizontal:
                     guides._unified_horizontal.append((h, region))
-            
+
             # Invalidate caches
             guides._vertical_cache = None
             guides._horizontal_cache = None
-            
+
             return guides
-        
+
         # Original single-region logic follows...
         guides_coords = []
         bounds = None
@@ -1594,27 +1609,38 @@ class Guides:
         if self.is_flow_region:
             all_text_elements = []
             region_bounds = {}
-            
+
             for region in self.context.constituent_regions:
                 # Get text elements from this region
                 if hasattr(region, "find_all"):
                     try:
                         text_elements = region.find_all("text", apply_exclusions=False)
-                        elements = text_elements.elements if hasattr(text_elements, "elements") else text_elements
+                        elements = (
+                            text_elements.elements
+                            if hasattr(text_elements, "elements")
+                            else text_elements
+                        )
                         all_text_elements.extend(elements)
-                        
+
                         # Store bounds for each region
                         if hasattr(region, "bbox"):
                             region_bounds[region] = region.bbox
                         elif hasattr(region, "x0"):
-                            region_bounds[region] = (region.x0, region.top, region.x1, region.bottom)
+                            region_bounds[region] = (
+                                region.x0,
+                                region.top,
+                                region.x1,
+                                region.bottom,
+                            )
                     except Exception as e:
                         logger.warning(f"Error getting text elements from region: {e}")
-            
+
             if not all_text_elements:
-                logger.warning("No text elements found across flow regions for whitespace detection")
+                logger.warning(
+                    "No text elements found across flow regions for whitespace detection"
+                )
                 return self
-            
+
             # Find whitespace gaps across all regions
             if axis == "vertical":
                 gaps = self._find_vertical_whitespace_gaps(all_text_elements, min_gap, threshold)
@@ -1624,14 +1650,14 @@ class Guides:
                 for coord, region in self._unified_vertical:
                     all_guides.append(coord)
                     guide_to_region_map.setdefault(coord, []).append(region)
-                    
+
                 if gaps and all_guides:
                     # Keep a copy of original guides to maintain mapping
                     original_guides = all_guides.copy()
-                    
+
                     # Snap guides to gaps
                     self._snap_guides_to_gaps(all_guides, gaps, axis)
-                    
+
                     # Update the unified view with snapped positions
                     self._unified_vertical = []
                     for i, new_coord in enumerate(all_guides):
@@ -1641,7 +1667,7 @@ class Guides:
                         regions = guide_to_region_map.get(original_coord, [])
                         for region in regions:
                             self._unified_vertical.append((new_coord, region))
-                    
+
                     # Update individual region guides
                     for region in self._flow_guides:
                         region_verticals = []
@@ -1649,13 +1675,13 @@ class Guides:
                             if r == region:
                                 region_verticals.append(coord)
                         self._flow_guides[region] = (
-                            sorted(list(set(region_verticals))), # Deduplicate here
-                            self._flow_guides[region][1]
+                            sorted(list(set(region_verticals))),  # Deduplicate here
+                            self._flow_guides[region][1],
                         )
-                    
+
                     # Invalidate cache
                     self._vertical_cache = None
-                    
+
             elif axis == "horizontal":
                 gaps = self._find_horizontal_whitespace_gaps(all_text_elements, min_gap, threshold)
                 # Get all horizontal guides across regions
@@ -1664,14 +1690,14 @@ class Guides:
                 for coord, region in self._unified_horizontal:
                     all_guides.append(coord)
                     guide_to_region_map.setdefault(coord, []).append(region)
-                    
+
                 if gaps and all_guides:
                     # Keep a copy of original guides to maintain mapping
                     original_guides = all_guides.copy()
-                    
+
                     # Snap guides to gaps
                     self._snap_guides_to_gaps(all_guides, gaps, axis)
-                    
+
                     # Update the unified view with snapped positions
                     self._unified_horizontal = []
                     for i, new_coord in enumerate(all_guides):
@@ -1680,7 +1706,7 @@ class Guides:
                         regions = guide_to_region_map.get(original_coord, [])
                         for region in regions:
                             self._unified_horizontal.append((new_coord, region))
-                    
+
                     # Update individual region guides
                     for region in self._flow_guides:
                         region_horizontals = []
@@ -1689,17 +1715,17 @@ class Guides:
                                 region_horizontals.append(coord)
                         self._flow_guides[region] = (
                             self._flow_guides[region][0],
-                            sorted(list(set(region_horizontals))) # Deduplicate here
+                            sorted(list(set(region_horizontals))),  # Deduplicate here
                         )
-                    
+
                     # Invalidate cache
                     self._horizontal_cache = None
-            
+
             else:
                 raise ValueError("axis must be 'vertical' or 'horizontal'")
-            
+
             return self
-        
+
         # Original single-region logic
         # Get elements for trough detection
         text_elements = self._get_text_elements()
@@ -1794,10 +1820,10 @@ class Guides:
 
         # Handle FlowRegion context merging
         new_context = self.context or other.context
-        
+
         # If both are flow regions, we might need a more complex merge,
         # but for now, just picking one context is sufficient.
-        
+
         # Create the new Guides object
         new_guides = Guides(
             verticals=combined_verticals,
@@ -1815,7 +1841,7 @@ class Guides:
                 new_guides._flow_guides.update(self._flow_guides)
             if hasattr(other, "_flow_guides"):
                 new_guides._flow_guides.update(other._flow_guides)
-            
+
             # Re-initialize unified views
             if hasattr(self, "_unified_vertical"):
                 new_guides._unified_vertical.extend(self._unified_vertical)
@@ -1826,7 +1852,7 @@ class Guides:
                 new_guides._unified_horizontal.extend(self._unified_horizontal)
             if hasattr(other, "_unified_horizontal"):
                 new_guides._unified_horizontal.extend(other._unified_horizontal)
-                
+
             # Invalidate caches to force rebuild
             new_guides._vertical_cache = None
             new_guides._horizontal_cache = None
@@ -1850,65 +1876,65 @@ class Guides:
         if self.is_flow_region and (on is None or on == self.context):
             if not self._flow_guides:
                 raise ValueError("No guides to show for FlowRegion")
-            
+
             # Get stacking parameters from kwargs or use defaults
-            stack_direction = kwargs.get('stack_direction', 'vertical')
-            stack_gap = kwargs.get('stack_gap', 5)
-            stack_background_color = kwargs.get('stack_background_color', (255, 255, 255))
-            
+            stack_direction = kwargs.get("stack_direction", "vertical")
+            stack_gap = kwargs.get("stack_gap", 5)
+            stack_background_color = kwargs.get("stack_background_color", (255, 255, 255))
+
             # First, render all constituent regions without guides to get base images
             base_images = []
             region_infos = []  # Store region info for guide coordinate mapping
-            
+
             for region in self.context.constituent_regions:
                 try:
                     # Render region without guides
                     img = region.to_image(**kwargs)
                     if img:
                         base_images.append(img)
-                        
+
                         # Calculate scaling factors for this region
                         scale_x = img.width / region.width
                         scale_y = img.height / region.height
-                        
-                        region_infos.append({
-                            'region': region,
-                            'img_width': img.width,
-                            'img_height': img.height,
-                            'scale_x': scale_x,
-                            'scale_y': scale_y,
-                            'pdf_x0': region.x0,
-                            'pdf_top': region.top,
-                            'pdf_x1': region.x1,
-                            'pdf_bottom': region.bottom
-                        })
+
+                        region_infos.append(
+                            {
+                                "region": region,
+                                "img_width": img.width,
+                                "img_height": img.height,
+                                "scale_x": scale_x,
+                                "scale_y": scale_y,
+                                "pdf_x0": region.x0,
+                                "pdf_top": region.top,
+                                "pdf_x1": region.x1,
+                                "pdf_bottom": region.bottom,
+                            }
+                        )
                 except Exception as e:
                     logger.warning(f"Failed to render region: {e}")
-            
+
             if not base_images:
                 raise ValueError("Failed to render any images for FlowRegion")
-            
+
             # Calculate final canvas size based on stacking direction
             if stack_direction == "vertical":
                 final_width = max(img.width for img in base_images)
                 final_height = (
-                    sum(img.height for img in base_images)
-                    + (len(base_images) - 1) * stack_gap
+                    sum(img.height for img in base_images) + (len(base_images) - 1) * stack_gap
                 )
             else:  # horizontal
                 final_width = (
-                    sum(img.width for img in base_images)
-                    + (len(base_images) - 1) * stack_gap
+                    sum(img.width for img in base_images) + (len(base_images) - 1) * stack_gap
                 )
                 final_height = max(img.height for img in base_images)
-            
+
             # Create unified canvas
             canvas = Image.new("RGB", (final_width, final_height), stack_background_color)
             draw = ImageDraw.Draw(canvas)
-            
+
             # Paste base images and track positions
             region_positions = []  # (region_info, paste_x, paste_y)
-            
+
             if stack_direction == "vertical":
                 current_y = 0
                 for i, (img, info) in enumerate(zip(base_images, region_infos)):
@@ -1923,44 +1949,50 @@ class Guides:
                     canvas.paste(img, (current_x, paste_y))
                     region_positions.append((info, current_x, paste_y))
                     current_x += img.width + stack_gap
-            
+
             # Now draw guides on the unified canvas
             # Draw vertical guides (blue) - these extend through the full canvas height
             for v_coord in self.vertical:
                 # Find which region(s) this guide intersects
                 for info, paste_x, paste_y in region_positions:
-                    if info['pdf_x0'] <= v_coord <= info['pdf_x1']:
+                    if info["pdf_x0"] <= v_coord <= info["pdf_x1"]:
                         # This guide is within this region's x-bounds
                         # Convert PDF coordinate to pixel coordinate relative to the region
-                        adjusted_x = v_coord - info['pdf_x0']
-                        pixel_x = adjusted_x * info['scale_x'] + paste_x
-                        
+                        adjusted_x = v_coord - info["pdf_x0"]
+                        pixel_x = adjusted_x * info["scale_x"] + paste_x
+
                         # Draw full-height line on canvas (not clipped to region)
                         if 0 <= pixel_x <= final_width:
                             x_pixel = int(pixel_x)
-                            draw.line([(x_pixel, 0), (x_pixel, final_height - 1)], 
-                                    fill=(0, 0, 255, 200), width=2)
+                            draw.line(
+                                [(x_pixel, 0), (x_pixel, final_height - 1)],
+                                fill=(0, 0, 255, 200),
+                                width=2,
+                            )
                         break  # Only draw once per guide
-            
+
             # Draw horizontal guides (red) - these extend through the full canvas width
             for h_coord in self.horizontal:
                 # Find which region(s) this guide intersects
                 for info, paste_x, paste_y in region_positions:
-                    if info['pdf_top'] <= h_coord <= info['pdf_bottom']:
+                    if info["pdf_top"] <= h_coord <= info["pdf_bottom"]:
                         # This guide is within this region's y-bounds
                         # Convert PDF coordinate to pixel coordinate relative to the region
-                        adjusted_y = h_coord - info['pdf_top']
-                        pixel_y = adjusted_y * info['scale_y'] + paste_y
-                        
+                        adjusted_y = h_coord - info["pdf_top"]
+                        pixel_y = adjusted_y * info["scale_y"] + paste_y
+
                         # Draw full-width line on canvas (not clipped to region)
                         if 0 <= pixel_y <= final_height:
                             y_pixel = int(pixel_y)
-                            draw.line([(0, y_pixel), (final_width - 1, y_pixel)], 
-                                    fill=(255, 0, 0, 200), width=2)
+                            draw.line(
+                                [(0, y_pixel), (final_width - 1, y_pixel)],
+                                fill=(255, 0, 0, 200),
+                                width=2,
+                            )
                         break  # Only draw once per guide
-            
+
             return canvas
-        
+
         # Original single-region logic follows...
         # Determine what to display guides on
         target = on if on is not None else self.context
@@ -2620,43 +2652,41 @@ class Guides:
                 # FlowRegion context, but creating separate tables per page
                 total_counts = {"table": 0, "rows": 0, "columns": 0, "cells": 0}
                 all_regions = {"table": [], "rows": [], "columns": [], "cells": []}
-                
+
                 for region in self.context.constituent_regions:
                     if region in self._flow_guides:
                         verticals, horizontals = self._flow_guides[region]
-                        
+
                         region_guides = Guides(
-                            verticals=verticals,
-                            horizontals=horizontals,
-                            context=region
+                            verticals=verticals, horizontals=horizontals, context=region
                         )
-                        
+
                         try:
                             result = region_guides._build_grid_single_page(
                                 target=region,
                                 source=source,
                                 cell_padding=cell_padding,
-                                include_outer_boundaries=include_outer_boundaries
+                                include_outer_boundaries=include_outer_boundaries,
                             )
-                            
+
                             for key in total_counts:
                                 total_counts[key] += result["counts"][key]
-                            
+
                             if result["regions"]["table"]:
                                 all_regions["table"].append(result["regions"]["table"])
                             all_regions["rows"].extend(result["regions"]["rows"])
                             all_regions["columns"].extend(result["regions"]["columns"])
                             all_regions["cells"].extend(result["regions"]["cells"])
-                            
+
                         except Exception as e:
                             logger.warning(f"Failed to build grid on region: {e}")
-                
+
                 logger.info(
                     f"Created {total_counts['table']} tables, {total_counts['rows']} rows, "
                     f"{total_counts['columns']} columns, and {total_counts['cells']} cells "
                     f"from guides across {len(self._flow_guides)} regions"
                 )
-                
+
                 return {"counts": total_counts, "regions": all_regions}
 
         # Fallback for single page/region
@@ -2699,9 +2729,9 @@ class Guides:
             # Ensure the region's own boundaries are included to close off cells at page breaks
             clipped_verticals = sorted(list(set([bounds[0], bounds[2]] + clipped_verticals)))
             clipped_horizontals = sorted(list(set([bounds[1], bounds[3]] + clipped_horizontals)))
-            
+
             if len(clipped_verticals) < 2 or len(clipped_horizontals) < 2:
-                continue # Not enough guides to form a cell
+                continue  # Not enough guides to form a cell
 
             region_guides = Guides(
                 verticals=clipped_verticals,
@@ -2713,7 +2743,7 @@ class Guides:
                 target=region,
                 source=source,
                 cell_padding=cell_padding,
-                include_outer_boundaries=False, # Boundaries are already handled
+                include_outer_boundaries=False,  # Boundaries are already handled
             )
 
             if grid_parts["counts"]["table"] > 0:
@@ -2738,7 +2768,7 @@ class Guides:
         multi_page_table.metadata.update(
             {"is_multi_page": True, "num_rows": self.n_rows, "num_cols": self.n_cols}
         )
-        
+
         # Initialize final region collections
         final_rows = []
         final_cols = []
@@ -2756,32 +2786,53 @@ class Guides:
                 # Iterate through page breaks to merge split rows/cells
                 for i in range(len(results_by_region) - 1):
                     region_A = self.context.constituent_regions[i]
-                    
-                    # Check if a guide exists at the boundary
-                    is_break_bounded = any(abs(h - region_A.bottom) < 0.1 for h in self.horizontal.data)
 
-                    if not is_break_bounded and page_rows[i] and page_rows[i+1]:
+                    # Check if a guide exists at the boundary
+                    is_break_bounded = any(
+                        abs(h - region_A.bottom) < 0.1 for h in self.horizontal.data
+                    )
+
+                    if not is_break_bounded and page_rows[i] and page_rows[i + 1]:
                         # No guide at break -> merge last row of A with first row of B
                         last_row_A = page_rows[i].pop(-1)
-                        first_row_B = page_rows[i+1].pop(0)
-                        
-                        merged_row = FlowRegion(flow, [last_row_A, first_row_B], source_flow_element=None)
+                        first_row_B = page_rows[i + 1].pop(0)
+
+                        merged_row = FlowRegion(
+                            flow, [last_row_A, first_row_B], source_flow_element=None
+                        )
                         merged_row.source = source
                         merged_row.region_type = "table_row"
-                        merged_row.metadata.update({"row_index": last_row_A.metadata.get("row_index"), "is_multi_page": True})
-                        page_rows[i].append(merged_row) # Add merged row back in place of A's last
+                        merged_row.metadata.update(
+                            {
+                                "row_index": last_row_A.metadata.get("row_index"),
+                                "is_multi_page": True,
+                            }
+                        )
+                        page_rows[i].append(merged_row)  # Add merged row back in place of A's last
 
                         # Merge the corresponding cells using explicit row/col indices
                         last_row_idx = last_row_A.metadata.get("row_index")
                         first_row_idx = first_row_B.metadata.get("row_index")
 
                         # Cells belonging to those rows
-                        last_cells_A = [c for c in page_cells[i] if c.metadata.get("row_index") == last_row_idx]
-                        first_cells_B = [c for c in page_cells[i+1] if c.metadata.get("row_index") == first_row_idx]
+                        last_cells_A = [
+                            c for c in page_cells[i] if c.metadata.get("row_index") == last_row_idx
+                        ]
+                        first_cells_B = [
+                            c
+                            for c in page_cells[i + 1]
+                            if c.metadata.get("row_index") == first_row_idx
+                        ]
 
                         # Remove them from their page lists
-                        page_cells[i]   = [c for c in page_cells[i]   if c.metadata.get("row_index") != last_row_idx]
-                        page_cells[i+1] = [c for c in page_cells[i+1] if c.metadata.get("row_index") != first_row_idx]
+                        page_cells[i] = [
+                            c for c in page_cells[i] if c.metadata.get("row_index") != last_row_idx
+                        ]
+                        page_cells[i + 1] = [
+                            c
+                            for c in page_cells[i + 1]
+                            if c.metadata.get("row_index") != first_row_idx
+                        ]
 
                         # Sort both lists by column index to keep alignment stable
                         last_cells_A.sort(key=lambda c: c.metadata.get("col_index", 0))
@@ -2789,14 +2840,18 @@ class Guides:
 
                         # Pair-wise merge
                         for cell_A, cell_B in zip(last_cells_A, first_cells_B):
-                            merged_cell = FlowRegion(flow, [cell_A, cell_B], source_flow_element=None)
+                            merged_cell = FlowRegion(
+                                flow, [cell_A, cell_B], source_flow_element=None
+                            )
                             merged_cell.source = source
                             merged_cell.region_type = "table_cell"
-                            merged_cell.metadata.update({
-                                "row_index": cell_A.metadata.get("row_index"),
-                                "col_index": cell_A.metadata.get("col_index"),
-                                "is_multi_page": True
-                            })
+                            merged_cell.metadata.update(
+                                {
+                                    "row_index": cell_A.metadata.get("row_index"),
+                                    "col_index": cell_A.metadata.get("col_index"),
+                                    "is_multi_page": True,
+                                }
+                            )
                             page_cells[i].append(merged_cell)
 
                 # Flatten the potentially modified lists of rows and cells
@@ -2804,23 +2859,27 @@ class Guides:
                 final_cells = [cell for cells_list in page_cells for cell in cells_list]
 
                 # Stitch columns, which always span vertically
-                physical_cols_by_index = zip(*(res["regions"]["columns"] for res in results_by_region))
+                physical_cols_by_index = zip(
+                    *(res["regions"]["columns"] for res in results_by_region)
+                )
                 for j, physical_cols in enumerate(physical_cols_by_index):
-                    col_fr = FlowRegion(flow=flow, constituent_regions=list(physical_cols), source_flow_element=None)
+                    col_fr = FlowRegion(
+                        flow=flow, constituent_regions=list(physical_cols), source_flow_element=None
+                    )
                     col_fr.source = source
                     col_fr.region_type = "table_column"
                     col_fr.metadata.update({"col_index": j, "is_multi_page": True})
                     final_cols.append(col_fr)
 
         elif orientation == "horizontal":
-             # Symmetric logic for horizontal flow (not fully implemented here for brevity)
-             # This would merge last column of A with first column of B if no vertical guide exists
+            # Symmetric logic for horizontal flow (not fully implemented here for brevity)
+            # This would merge last column of A with first column of B if no vertical guide exists
             logger.warning("Horizontal table stitching not fully implemented.")
             final_rows = [row for res in results_by_region for row in res["regions"]["rows"]]
             final_cols = [col for res in results_by_region for col in res["regions"]["columns"]]
             final_cells = [cell for res in results_by_region for cell in res["regions"]["cells"]]
-        
-        else: # Unknown orientation, just flatten everything
+
+        else:  # Unknown orientation, just flatten everything
             final_rows = [row for res in results_by_region for row in res["regions"]["rows"]]
             final_cols = [col for res in results_by_region for col in res["regions"]["columns"]]
             final_cells = [cell for res in results_by_region for cell in res["regions"]["cells"]]
@@ -2829,63 +2888,79 @@ class Guides:
         # This ensures that page.find('table') finds the logical multi-page table, not fragments
         constituent_pages = set()
         for region in self.context.constituent_regions:
-            if hasattr(region, 'page') and hasattr(region.page, '_element_mgr'):
+            if hasattr(region, "page") and hasattr(region.page, "_element_mgr"):
                 constituent_pages.add(region.page)
-        
+
         # First, remove ONLY the specific individual Region tables that were created during this build
         # (i.e., the physical_tables), not ALL tables with the same source
         physical_tables_to_remove = set(physical_tables)  # Convert to set for fast lookup
-        
+
         for page in constituent_pages:
             try:
                 # Find and remove only the specific physical tables that are part of this multi-page table
-                existing_tables = page.find_all('table')
+                existing_tables = page.find_all("table")
                 tables_to_remove = [
-                    table for table in existing_tables 
-                    if (table in physical_tables_to_remove and 
-                        not isinstance(table, FlowRegion))  # Only remove the specific Region tables we created
+                    table
+                    for table in existing_tables
+                    if (
+                        table in physical_tables_to_remove and not isinstance(table, FlowRegion)
+                    )  # Only remove the specific Region tables we created
                 ]
-                
+
                 for table in tables_to_remove:
                     page._element_mgr.remove_element(table, element_type="regions")
                     logger.debug(f"Removed physical table fragment from page {page.page_number}")
-                
+
                 # Now register the multi-page table
                 page._element_mgr.add_element(multi_page_table, element_type="regions")
                 logger.debug(f"Registered multi-page table with page {page.page_number}")
-                
+
             except Exception as e:
-                logger.warning(f"Failed to register multi-page table with page {page.page_number}: {e}")
+                logger.warning(
+                    f"Failed to register multi-page table with page {page.page_number}: {e}"
+                )
 
         # SMART PAGE-LEVEL REGISTRY: Also register rows, columns, and cells with their respective pages
         # This ensures that page.find('table_cell') etc. also work across the multi-page structure
         for row in final_rows:
-            if hasattr(row, 'constituent_regions'):
+            if hasattr(row, "constituent_regions"):
                 # This is a FlowRegion row spanning multiple pages
                 for constituent_region in row.constituent_regions:
-                    if hasattr(constituent_region, 'page') and hasattr(constituent_region.page, '_element_mgr'):
+                    if hasattr(constituent_region, "page") and hasattr(
+                        constituent_region.page, "_element_mgr"
+                    ):
                         try:
-                            constituent_region.page._element_mgr.add_element(row, element_type="regions")
+                            constituent_region.page._element_mgr.add_element(
+                                row, element_type="regions"
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to register multi-page row: {e}")
-        
+
         for col in final_cols:
-            if hasattr(col, 'constituent_regions'):
+            if hasattr(col, "constituent_regions"):
                 # This is a FlowRegion column spanning multiple pages
                 for constituent_region in col.constituent_regions:
-                    if hasattr(constituent_region, 'page') and hasattr(constituent_region.page, '_element_mgr'):
+                    if hasattr(constituent_region, "page") and hasattr(
+                        constituent_region.page, "_element_mgr"
+                    ):
                         try:
-                            constituent_region.page._element_mgr.add_element(col, element_type="regions")
+                            constituent_region.page._element_mgr.add_element(
+                                col, element_type="regions"
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to register multi-page column: {e}")
-        
+
         for cell in final_cells:
-            if hasattr(cell, 'constituent_regions'):
+            if hasattr(cell, "constituent_regions"):
                 # This is a FlowRegion cell spanning multiple pages
                 for constituent_region in cell.constituent_regions:
-                    if hasattr(constituent_region, 'page') and hasattr(constituent_region.page, '_element_mgr'):
+                    if hasattr(constituent_region, "page") and hasattr(
+                        constituent_region.page, "_element_mgr"
+                    ):
                         try:
-                            constituent_region.page._element_mgr.add_element(cell, element_type="regions")
+                            constituent_region.page._element_mgr.add_element(
+                                cell, element_type="regions"
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to register multi-page cell: {e}")
 
@@ -3130,7 +3205,9 @@ class Guides:
                     try:
                         text_elements = region.find_all("text", apply_exclusions=False)
                         elements = (
-                            text_elements.elements if hasattr(text_elements, "elements") else text_elements
+                            text_elements.elements
+                            if hasattr(text_elements, "elements")
+                            else text_elements
                         )
                         all_text_elements.extend(elements)
                     except Exception as e:
@@ -3161,7 +3238,7 @@ class Guides:
         v_guide_pages = {}
         for coord, region in self._unified_vertical:
             v_guide_pages.setdefault(coord, set()).add(region.page.page_number)
-        
+
         for pages in v_guide_pages.values():
             if len(pages) > 1:
                 return True
@@ -3331,7 +3408,7 @@ class Guides:
             return "unknown"
 
         r1 = self.context.constituent_regions[0]
-        r2 = self.context.constituent_regions[1] # Compare first two regions
+        r2 = self.context.constituent_regions[1]  # Compare first two regions
 
         if not r1.bbox or not r2.bbox:
             return "unknown"

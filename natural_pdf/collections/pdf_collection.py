@@ -588,24 +588,25 @@ class PDFCollection(
         # Get classification manager from first PDF
         try:
             first_pdf = self._pdfs[0]
-            if not hasattr(first_pdf, 'get_manager'):
+            if not hasattr(first_pdf, "get_manager"):
                 raise RuntimeError("PDFs do not support classification manager")
-            manager = first_pdf.get_manager('classification')
+            manager = first_pdf.get_manager("classification")
             if not manager or not manager.is_available():
                 raise RuntimeError("ClassificationManager is not available")
         except Exception as e:
             from natural_pdf.classification.manager import ClassificationError
+
             raise ClassificationError(f"Cannot access ClassificationManager: {e}") from e
 
         # Determine processing mode early
         inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
-        
+
         # Gather content from all PDFs
         pdf_contents = []
         valid_pdfs = []
-        
+
         logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
-        
+
         for pdf in self._pdfs:
             try:
                 # Get the content for classification - use the same logic as individual PDF classify
@@ -618,16 +619,18 @@ class PDFCollection(
                 elif inferred_using == "vision":
                     # For vision, we need single-page PDFs only
                     if len(pdf.pages) != 1:
-                        logger.warning(f"Skipping PDF {pdf.path}: Vision classification requires single-page PDFs")
+                        logger.warning(
+                            f"Skipping PDF {pdf.path}: Vision classification requires single-page PDFs"
+                        )
                         continue
                     # Get first page image
                     content = pdf.pages[0].to_image()
                 else:
                     raise ValueError(f"Unsupported using mode: {inferred_using}")
-                
+
                 pdf_contents.append(content)
                 valid_pdfs.append(pdf)
-                
+
             except Exception as e:
                 logger.warning(f"Skipping PDF {pdf.path}: Error getting content - {e}")
                 continue
@@ -636,7 +639,9 @@ class PDFCollection(
             logger.warning("No valid content could be gathered from PDFs for classification.")
             return self
 
-        logger.info(f"Gathered content from {len(valid_pdfs)} PDFs. Running batch classification...")
+        logger.info(
+            f"Gathered content from {len(valid_pdfs)} PDFs. Running batch classification..."
+        )
 
         # Run batch classification
         try:
@@ -651,6 +656,7 @@ class PDFCollection(
         except Exception as e:
             logger.error(f"Batch classification failed: {e}")
             from natural_pdf.classification.manager import ClassificationError
+
             raise ClassificationError(f"Batch classification failed: {e}") from e
 
         # Assign results back to PDFs
@@ -660,10 +666,11 @@ class PDFCollection(
                 f"with PDFs processed ({len(valid_pdfs)}). Cannot assign results."
             )
             from natural_pdf.classification.manager import ClassificationError
+
             raise ClassificationError("Batch result count mismatch with input PDFs")
 
         logger.info(f"Assigning {len(batch_results)} results to PDFs under key '{analysis_key}'.")
-        
+
         processed_count = 0
         for pdf, result_obj in zip(valid_pdfs, batch_results):
             try:

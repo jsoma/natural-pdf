@@ -4,7 +4,7 @@ Memory comparison script to measure the effectiveness of the character duplicati
 
 This script compares memory usage before and after the optimization by:
 1. Testing with a text-heavy PDF
-2. Measuring detailed memory usage patterns  
+2. Measuring detailed memory usage patterns
 3. Calculating memory savings
 """
 

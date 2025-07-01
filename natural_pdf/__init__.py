@@ -70,6 +70,8 @@ options = Options()
 # Version
 __version__ = "0.1.1"
 
+from natural_pdf.analyzers.guides import Guides
+
 # Core imports
 from natural_pdf.collections.pdf_collection import PDFCollection
 from natural_pdf.core.page import Page
@@ -78,7 +80,6 @@ from natural_pdf.elements.collections import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
-from natural_pdf.analyzers.guides import Guides
 
 ElementCollection = None
 

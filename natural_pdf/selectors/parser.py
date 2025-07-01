@@ -24,7 +24,7 @@ This enables powerful document navigation like:
 - page.find('text[size>12]:bold:contains("Summary")')
 - page.find_all('rect[color~="red"]:above(text:contains("Total"))')
 - page.find('text:regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")')
-- page.find('text:regex("[\u2500-\u257F]")')  # Box drawing characters
+- page.find('text:regex("[\u2500-\u257f]")')  # Box drawing characters
 """
 
 import ast
@@ -100,7 +100,7 @@ def safe_parse_color(value_str: str) -> tuple:
         ValueError: If the color cannot be parsed
     """
     value_str = value_str.strip()
-    
+
     # Strip quotes first if it's a quoted string (same logic as safe_parse_value)
     if (value_str.startswith('"') and value_str.endswith('"')) or (
         value_str.startswith("'") and value_str.endswith("'")

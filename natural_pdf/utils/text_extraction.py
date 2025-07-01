@@ -175,28 +175,27 @@ def filter_chars_spatially(
 
 
 def _apply_content_filter(
-    char_dicts: List[Dict[str, Any]], 
-    content_filter: Union[str, Callable[[str], bool], List[str]]
+    char_dicts: List[Dict[str, Any]], content_filter: Union[str, Callable[[str], bool], List[str]]
 ) -> List[Dict[str, Any]]:
     """
     Applies content filtering to character dictionaries based on their text content.
-    
+
     Args:
         char_dicts: List of character dictionaries to filter.
         content_filter: Can be:
             - A regex pattern string (characters matching the pattern are EXCLUDED)
             - A callable that takes text and returns True to KEEP the character
             - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-    
+
     Returns:
         Filtered list of character dictionaries.
     """
     if not char_dicts or content_filter is None:
         return char_dicts
-    
+
     initial_count = len(char_dicts)
     filtered_chars = []
-    
+
     # Handle different filter types
     if isinstance(content_filter, str):
         # Single regex pattern - exclude matching characters
@@ -207,9 +206,11 @@ def _apply_content_filter(
                 if not pattern.search(text):
                     filtered_chars.append(char_dict)
         except re.error as e:
-            logger.warning(f"Invalid regex pattern '{content_filter}': {e}. Skipping content filtering.")
+            logger.warning(
+                f"Invalid regex pattern '{content_filter}': {e}. Skipping content filtering."
+            )
             return char_dicts
-            
+
     elif isinstance(content_filter, list):
         # List of regex patterns - exclude characters matching ANY pattern
         try:
@@ -221,7 +222,7 @@ def _apply_content_filter(
         except re.error as e:
             logger.warning(f"Invalid regex pattern in list: {e}. Skipping content filtering.")
             return char_dicts
-            
+
     elif callable(content_filter):
         # Callable filter - keep characters where function returns True
         try:
@@ -233,13 +234,15 @@ def _apply_content_filter(
             logger.warning(f"Error in content filter function: {e}. Skipping content filtering.")
             return char_dicts
     else:
-        logger.warning(f"Unsupported content_filter type: {type(content_filter)}. Skipping content filtering.")
+        logger.warning(
+            f"Unsupported content_filter type: {type(content_filter)}. Skipping content filtering."
+        )
         return char_dicts
-    
+
     filtered_count = initial_count - len(filtered_chars)
     if filtered_count > 0:
         logger.debug(f"Content filter removed {filtered_count} characters.")
-    
+
     return filtered_chars
 
 

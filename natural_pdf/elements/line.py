@@ -102,7 +102,6 @@ class LineElement(Element):
         elif self.is_vertical:
             return "vertical"
 
-
     def extract_text(self, keep_blank_chars=True, apply_exclusions=True, **kwargs) -> str:
         """
         Lines don't have text, so this returns an empty string.

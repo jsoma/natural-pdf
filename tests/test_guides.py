@@ -89,7 +89,7 @@ class TestGuidesFactoryMethods:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.lines = [mock_line1, mock_line2]
-        
+
         mock_page = MockPage()
 
         # Test default behavior (outer=False)
@@ -115,7 +115,7 @@ class TestGuidesFactoryMethods:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.lines = [mock_line]
-        
+
         mock_page = MockPage()
 
         guides = Guides.from_lines(mock_page, outer=True)
@@ -129,12 +129,12 @@ class TestGuidesFactoryMethods:
         mock_element.x0, mock_element.x1 = 100, 200
         mock_element.top, mock_element.bottom = 50, 70
 
-        # Create a simple class to avoid Mock's hasattr issues  
+        # Create a simple class to avoid Mock's hasattr issues
         class MockPage:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.find = Mock(return_value=mock_element)
-        
+
         mock_page = MockPage()
 
         # Test default behavior (outer=True, align='left')
@@ -176,7 +176,7 @@ class TestGuidesListMethods:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.find = Mock(return_value=mock_element)
-        
+
         mock_page = MockPage()
 
         guides = Guides(mock_page)
@@ -204,7 +204,7 @@ class TestGuidesListMethods:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.lines = [mock_line]
-        
+
         mock_page = MockPage()
 
         guides = Guides(mock_page)
@@ -346,12 +346,13 @@ class TestGuidesErrorHandling:
 
     def test_nonexistent_content(self):
         """Test behavior when content markers aren't found."""
+
         # Create a simple class to avoid Mock's hasattr issues
         class MockPage:
             def __init__(self):
                 self.bbox = (0, 0, 500, 600)
                 self.find = Mock(return_value=None)  # No element found
-        
+
         mock_page = MockPage()
 
         guides = Guides(mock_page)

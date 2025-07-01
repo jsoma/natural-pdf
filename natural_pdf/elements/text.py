@@ -230,7 +230,9 @@ class TextElement(Element):
         # Default to black
         return (0, 0, 0)
 
-    def extract_text(self, keep_blank_chars=True, strip: Optional[bool] = True, content_filter=None, **kwargs) -> str:
+    def extract_text(
+        self, keep_blank_chars=True, strip: Optional[bool] = True, content_filter=None, **kwargs
+    ) -> str:
         """
         Extract text from this element.
 
@@ -253,22 +255,22 @@ class TextElement(Element):
         # Apply content filtering if provided
         if content_filter is not None and result:
             import re
-            
+
             if isinstance(content_filter, str):
                 # Single regex pattern - remove matching characters
                 try:
-                    result = re.sub(content_filter, '', result)
+                    result = re.sub(content_filter, "", result)
                 except re.error:
                     pass  # Invalid regex, skip filtering
-                    
+
             elif isinstance(content_filter, list):
                 # List of regex patterns - remove characters matching ANY pattern
                 try:
                     for pattern in content_filter:
-                        result = re.sub(pattern, '', result)
+                        result = re.sub(pattern, "", result)
                 except re.error:
                     pass  # Invalid regex, skip filtering
-                    
+
             elif callable(content_filter):
                 # Callable filter - apply to individual characters
                 try:
@@ -276,7 +278,7 @@ class TextElement(Element):
                     for char in result:
                         if content_filter(char):
                             filtered_chars.append(char)
-                    result = ''.join(filtered_chars)
+                    result = "".join(filtered_chars)
                 except Exception:
                     pass  # Function error, skip filtering
 

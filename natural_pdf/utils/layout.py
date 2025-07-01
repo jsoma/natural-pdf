@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 
 
 def merge_bboxes(
-    bboxes: List[Optional[Tuple[float, float, float, float]]]
+    bboxes: List[Optional[Tuple[float, float, float, float]]],
 ) -> Optional[Tuple[float, float, float, float]]:
     """
     Merge multiple bounding boxes into a single one that encompasses all of them.
@@ -23,4 +23,4 @@ def merge_bboxes(
 
     x0s, tops, x1s, bottoms = zip(*valid_bboxes)
 
-    return (min(x0s), min(tops), max(x1s), max(bottoms)) 
+    return (min(x0s), min(tops), max(x1s), max(bottoms))

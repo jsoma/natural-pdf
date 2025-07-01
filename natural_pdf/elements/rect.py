@@ -88,7 +88,6 @@ class RectangleElement(Element):
         """Get the stroke width of the rectangle."""
         return self._obj.get("linewidth", 0)
 
-
     def extract_text(self, **kwargs) -> str:
         """
         Extract text from inside this rectangle.

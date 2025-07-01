@@ -1,21 +1,24 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable, List, Literal, Optional, Tuple, Union, overload
 
 if TYPE_CHECKING:
+    from PIL.Image import Image as PIL_Image
+
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.collections import ElementCollection as PhysicalElementCollection, PageCollection
+    from natural_pdf.elements.collections import ElementCollection as PhysicalElementCollection
+    from natural_pdf.elements.collections import PageCollection
     from natural_pdf.elements.region import Region as PhysicalRegion
-    from PIL.Image import Image as PIL_Image
 
     from .collections import FlowElementCollection
     from .element import FlowElement
 
 # Import required classes for the new methods
-from natural_pdf.tables import TableResult
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
+
+from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +118,9 @@ class Flow:
             segment_gap: The virtual gap (in PDF points) between segments.
         """
         # Handle PageCollection input
-        if hasattr(segments, 'pages'):  # It's a PageCollection
+        if hasattr(segments, "pages"):  # It's a PageCollection
             segments = list(segments.pages)
-        
+
         if not segments:
             raise ValueError("Flow segments cannot be empty.")
         if arrangement not in ["vertical", "horizontal"]:
@@ -225,11 +228,11 @@ class Flow:
     ) -> "FlowElementCollection":
         """
         Finds all elements within the flow that match the given selector or text criteria.
-        
+
         This method efficiently groups segments by their parent pages, searches at the page level,
         then filters results appropriately for each segment. This ensures elements that intersect
         with flow segments (but aren't fully contained) are still found.
-        
+
         Elements found are wrapped as FlowElement objects, anchored to this Flow,
         and returned in a FlowElementCollection.
         """
@@ -238,21 +241,26 @@ class Flow:
 
         # Step 1: Group segments by their parent pages (like in analyze_layout)
         segments_by_page = {}  # Dict[Page, List[Segment]]
-        
+
         for i, segment in enumerate(self.segments):
             # Determine the page for this segment - fix type detection
-            if hasattr(segment, 'page') and hasattr(segment.page, 'find_all'):
+            if hasattr(segment, "page") and hasattr(segment.page, "find_all"):
                 # It's a Region object (has a parent page)
                 page_obj = segment.page
                 segment_type = "region"
-            elif hasattr(segment, 'find_all') and hasattr(segment, 'width') and hasattr(segment, 'height') and not hasattr(segment, 'page'):
+            elif (
+                hasattr(segment, "find_all")
+                and hasattr(segment, "width")
+                and hasattr(segment, "height")
+                and not hasattr(segment, "page")
+            ):
                 # It's a Page object (has find_all but no parent page)
                 page_obj = segment
                 segment_type = "page"
             else:
                 logger.warning(f"Segment {i+1} does not support find_all, skipping")
                 continue
-            
+
             if page_obj not in segments_by_page:
                 segments_by_page[page_obj] = []
             segments_by_page[page_obj].append((segment, segment_type))
@@ -274,7 +282,7 @@ class Flow:
                 case=case,
                 **kwargs,
             )
-            
+
             if not page_matches:
                 continue
 
@@ -284,31 +292,41 @@ class Flow:
                     # Full page segment: include all elements
                     for phys_elem in page_matches.elements:
                         all_flow_elements.append(FlowElement(physical_object=phys_elem, flow=self))
-                
+
                 elif segment_type == "region":
                     # Region segment: filter to only intersecting elements
                     for phys_elem in page_matches.elements:
                         try:
                             # Check if element intersects with this flow segment
                             if segment.intersects(phys_elem):
-                                all_flow_elements.append(FlowElement(physical_object=phys_elem, flow=self))
+                                all_flow_elements.append(
+                                    FlowElement(physical_object=phys_elem, flow=self)
+                                )
                         except Exception as intersect_error:
-                            logger.debug(f"Error checking intersection for element: {intersect_error}")
+                            logger.debug(
+                                f"Error checking intersection for element: {intersect_error}"
+                            )
                             # Include the element anyway if intersection check fails
-                            all_flow_elements.append(FlowElement(physical_object=phys_elem, flow=self))
+                            all_flow_elements.append(
+                                FlowElement(physical_object=phys_elem, flow=self)
+                            )
 
         # Step 4: Remove duplicates (can happen if multiple segments intersect the same element)
         unique_flow_elements = []
         seen_element_ids = set()
-        
+
         for flow_elem in all_flow_elements:
             # Create a unique identifier for the underlying physical element
             phys_elem = flow_elem.physical_object
             elem_id = (
-                getattr(phys_elem.page, 'index', id(phys_elem.page)) if hasattr(phys_elem, 'page') else id(phys_elem),
-                phys_elem.bbox if hasattr(phys_elem, 'bbox') else id(phys_elem)
+                (
+                    getattr(phys_elem.page, "index", id(phys_elem.page))
+                    if hasattr(phys_elem, "page")
+                    else id(phys_elem)
+                ),
+                phys_elem.bbox if hasattr(phys_elem, "bbox") else id(phys_elem),
             )
-            
+
             if elem_id not in seen_element_ids:
                 unique_flow_elements.append(flow_elem)
                 seen_element_ids.add(elem_id)
@@ -390,16 +408,16 @@ class Flow:
             stitch_rows: Optional callable to determine when rows should be merged across
                          segment boundaries. Applied AFTER header removal if merge_headers
                          is enabled. Two overloaded signatures are supported:
-                         
+
                          • func(current_row) -> bool
                            Called only on the first row of each segment (after the first).
                            Return True to merge this first row with the last row from
                            the previous segment.
-                           
+
                          • func(prev_row, current_row, row_index, segment) -> bool
                            Called for every row. Return True to merge current_row with
                            the previous row in the aggregated results.
-                           
+
                          When True is returned, rows are concatenated cell-by-cell.
                          This is useful for handling table rows split across page
                          boundaries or segments. If None, rows are never merged.
@@ -411,30 +429,32 @@ class Flow:
             Multi-page table extraction:
             ```python
             pdf = npdf.PDF("multi_page_table.pdf")
-            
+
             # Create flow for table spanning pages 2-4
             table_flow = Flow(
                 segments=[pdf.pages[1], pdf.pages[2], pdf.pages[3]],
                 arrangement='vertical'
             )
-            
+
             # Extract table as if it were continuous
             table_data = table_flow.extract_table()
             df = table_data.df  # Convert to pandas DataFrame
-            
+
             # Custom row stitching - single parameter (simple case)
             table_data = table_flow.extract_table(
                 stitch_rows=lambda row: row and not (row[0] or "").strip()
             )
-            
+
             # Custom row stitching - full parameters (advanced case)
             table_data = table_flow.extract_table(
                 stitch_rows=lambda prev, curr, idx, seg: idx == 0 and curr and not (curr[0] or "").strip()
             )
             ```
         """
-        logger.info(f"Extracting table from Flow with {len(self.segments)} segments (method: {method or 'auto'})")
-        
+        logger.info(
+            f"Extracting table from Flow with {len(self.segments)} segments (method: {method or 'auto'})"
+        )
+
         if not self.segments:
             logger.warning("Flow has no segments, returning empty table")
             return TableResult([])
@@ -442,12 +462,13 @@ class Flow:
         # Resolve predicate and determine its signature
         predicate: Optional[Callable] = None
         predicate_type: str = "none"
-        
+
         if callable(stitch_rows):
             import inspect
+
             sig = inspect.signature(stitch_rows)
             param_count = len(sig.parameters)
-            
+
             if param_count == 1:
                 predicate = stitch_rows
                 predicate_type = "single_param"
@@ -455,12 +476,17 @@ class Flow:
                 predicate = stitch_rows
                 predicate_type = "full_params"
             else:
-                logger.warning(f"stitch_rows function has {param_count} parameters, expected 1 or 4. Ignoring.")
+                logger.warning(
+                    f"stitch_rows function has {param_count} parameters, expected 1 or 4. Ignoring."
+                )
                 predicate = None
                 predicate_type = "none"
 
-        def _default_merge(prev_row: List[Optional[str]], cur_row: List[Optional[str]]) -> List[Optional[str]]:
+        def _default_merge(
+            prev_row: List[Optional[str]], cur_row: List[Optional[str]]
+        ) -> List[Optional[str]]:
             from itertools import zip_longest
+
             merged: List[Optional[str]] = []
             for p, c in zip_longest(prev_row, cur_row, fillvalue=""):
                 if (p or "").strip() and (c or "").strip():
@@ -520,18 +546,20 @@ class Flow:
                     # Auto-detection: check if first row of second segment matches header
                     has_header = segment_rows and header_row and segment_rows[0] == header_row
                     segment_has_repeated_header.append(has_header)
-                    
+
                     if has_header:
                         merge_headers_enabled = True
                         # Remove the detected repeated header from this segment
                         segment_rows = segment_rows[1:]
-                        logger.debug(f"    Auto-detected repeated header in segment {seg_idx+1}, removed")
+                        logger.debug(
+                            f"    Auto-detected repeated header in segment {seg_idx+1}, removed"
+                        )
                         if not headers_warned:
                             warnings.warn(
                                 "Detected repeated headers in multi-page table. Merging by removing "
                                 "repeated headers from subsequent pages.",
                                 UserWarning,
-                                stacklevel=2
+                                stacklevel=2,
                             )
                             headers_warned = True
                     else:
@@ -541,7 +569,7 @@ class Flow:
                     # Check consistency: all segments should have same pattern
                     has_header = segment_rows and header_row and segment_rows[0] == header_row
                     segment_has_repeated_header.append(has_header)
-                    
+
                     # Remove header if merging is enabled and header is present
                     if merge_headers_enabled and has_header:
                         segment_rows = segment_rows[1:]
@@ -555,13 +583,13 @@ class Flow:
                             warnings.warn(
                                 "Removing repeated headers from multi-page table during merge.",
                                 UserWarning,
-                                stacklevel=2
+                                stacklevel=2,
                             )
                             headers_warned = True
 
                 for row_idx, row in enumerate(segment_rows):
                     should_merge = False
-                    
+
                     if predicate is not None and aggregated_rows:
                         if predicate_type == "single_param":
                             # For single param: only call on first row of segment (row_idx == 0)
@@ -571,14 +599,16 @@ class Flow:
                         elif predicate_type == "full_params":
                             # For full params: call with all arguments
                             should_merge = predicate(aggregated_rows[-1], row, row_idx, segment)
-                    
+
                     if should_merge:
                         aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
                     else:
                         aggregated_rows.append(row)
 
                 processed_segments += 1
-                logger.debug(f"    Added {len(segment_rows)} rows (post-merge) from segment {seg_idx+1}")
+                logger.debug(
+                    f"    Added {len(segment_rows)} rows (post-merge) from segment {seg_idx+1}"
+                )
 
             except Exception as e:
                 logger.error(f"Error extracting table from segment {seg_idx+1}: {e}", exc_info=True)
@@ -591,8 +621,12 @@ class Flow:
             for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
                 if has_header != expected_pattern:
                     # Inconsistent pattern detected
-                    segments_with_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h]
-                    segments_without_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h]
+                    segments_with_headers = [
+                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h
+                    ]
+                    segments_without_headers = [
+                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h
+                    ]
                     raise ValueError(
                         f"Inconsistent header pattern in multi-page table: "
                         f"segments {segments_with_headers} have repeated headers, "
@@ -642,45 +676,47 @@ class Flow:
             Multi-page layout analysis:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Create flow for first 3 pages
             page_flow = Flow(
                 segments=pdf.pages[:3],
                 arrangement='vertical'
             )
-            
+
             # Analyze layout across all pages (efficiently)
             all_regions = page_flow.analyze_layout(engine='yolo')
-            
+
             # Find all tables across the flow
             tables = all_regions.filter('region[type=table]')
             ```
         """
         from natural_pdf.elements.collections import ElementCollection
-        
-        logger.info(f"Analyzing layout across Flow with {len(self.segments)} segments (engine: {engine or 'default'})")
-        
+
+        logger.info(
+            f"Analyzing layout across Flow with {len(self.segments)} segments (engine: {engine or 'default'})"
+        )
+
         if not self.segments:
             logger.warning("Flow has no segments, returning empty collection")
             return ElementCollection([])
 
         # Step 1: Group segments by their parent pages to avoid redundant analysis
         segments_by_page = {}  # Dict[Page, List[Segment]]
-        
+
         for i, segment in enumerate(self.segments):
             # Determine the page for this segment
-            if hasattr(segment, 'analyze_layout'):
+            if hasattr(segment, "analyze_layout"):
                 # It's a Page object
                 page_obj = segment
                 segment_type = "page"
-            elif hasattr(segment, 'page') and hasattr(segment.page, 'analyze_layout'):
+            elif hasattr(segment, "page") and hasattr(segment.page, "analyze_layout"):
                 # It's a Region object
                 page_obj = segment.page
                 segment_type = "region"
             else:
                 logger.warning(f"Segment {i+1} does not support layout analysis, skipping")
                 continue
-            
+
             if page_obj not in segments_by_page:
                 segments_by_page[page_obj] = []
             segments_by_page[page_obj].append((segment, segment_type))
@@ -689,7 +725,9 @@ class Flow:
             logger.warning("No segments with analyzable pages found")
             return ElementCollection([])
 
-        logger.debug(f"  Grouped {len(self.segments)} segments into {len(segments_by_page)} unique pages")
+        logger.debug(
+            f"  Grouped {len(self.segments)} segments into {len(segments_by_page)} unique pages"
+        )
 
         # Step 2: Analyze each unique page only once
         all_detected_regions: List["PhysicalRegion"] = []
@@ -697,8 +735,10 @@ class Flow:
 
         for page_obj, page_segments in segments_by_page.items():
             try:
-                logger.debug(f"  Analyzing layout for page {getattr(page_obj, 'number', '?')} with {len(page_segments)} segments")
-                
+                logger.debug(
+                    f"  Analyzing layout for page {getattr(page_obj, 'number', '?')} with {len(page_segments)} segments"
+                )
+
                 # Run layout analysis once for this page
                 page_results = page_obj.analyze_layout(
                     engine=engine,
@@ -713,18 +753,22 @@ class Flow:
                 )
 
                 # Extract regions from results
-                if hasattr(page_results, 'elements'):
+                if hasattr(page_results, "elements"):
                     # It's an ElementCollection
                     page_regions = page_results.elements
                 elif isinstance(page_results, list):
                     # It's a list of regions
                     page_regions = page_results
                 else:
-                    logger.warning(f"Page {getattr(page_obj, 'number', '?')} returned unexpected layout analysis result type: {type(page_results)}")
+                    logger.warning(
+                        f"Page {getattr(page_obj, 'number', '?')} returned unexpected layout analysis result type: {type(page_results)}"
+                    )
                     continue
 
                 if not page_regions:
-                    logger.debug(f"    No layout regions found on page {getattr(page_obj, 'number', '?')}")
+                    logger.debug(
+                        f"    No layout regions found on page {getattr(page_obj, 'number', '?')}"
+                    )
                     continue
 
                 # Step 3: For each segment on this page, collect relevant regions
@@ -735,7 +779,7 @@ class Flow:
                         all_detected_regions.extend(page_regions)
                         segments_processed_on_page += 1
                         logger.debug(f"    Added {len(page_regions)} regions for full-page segment")
-                    
+
                     elif segment_type == "region":
                         # Region segment: filter to only intersecting regions
                         intersecting_regions = []
@@ -744,32 +788,41 @@ class Flow:
                                 if segment.intersects(region):
                                     intersecting_regions.append(region)
                             except Exception as intersect_error:
-                                logger.debug(f"Error checking intersection for region: {intersect_error}")
+                                logger.debug(
+                                    f"Error checking intersection for region: {intersect_error}"
+                                )
                                 # Include the region anyway if intersection check fails
                                 intersecting_regions.append(region)
-                        
+
                         all_detected_regions.extend(intersecting_regions)
                         segments_processed_on_page += 1
-                        logger.debug(f"    Added {len(intersecting_regions)} intersecting regions for region segment {segment.bbox}")
+                        logger.debug(
+                            f"    Added {len(intersecting_regions)} intersecting regions for region segment {segment.bbox}"
+                        )
 
                 processed_pages += 1
-                logger.debug(f"    Processed {segments_processed_on_page} segments on page {getattr(page_obj, 'number', '?')}")
+                logger.debug(
+                    f"    Processed {segments_processed_on_page} segments on page {getattr(page_obj, 'number', '?')}"
+                )
 
             except Exception as e:
-                logger.error(f"Error analyzing layout for page {getattr(page_obj, 'number', '?')}: {e}", exc_info=True)
+                logger.error(
+                    f"Error analyzing layout for page {getattr(page_obj, 'number', '?')}: {e}",
+                    exc_info=True,
+                )
                 continue
 
         # Step 4: Remove duplicates (can happen if multiple segments intersect the same region)
         unique_regions = []
         seen_region_ids = set()
-        
+
         for region in all_detected_regions:
             # Create a unique identifier for this region (page + bbox)
             region_id = (
-                getattr(region.page, 'index', id(region.page)),
-                region.bbox if hasattr(region, 'bbox') else id(region)
+                getattr(region.page, "index", id(region.page)),
+                region.bbox if hasattr(region, "bbox") else id(region),
             )
-            
+
             if region_id not in seen_region_ids:
                 unique_regions.append(region)
                 seen_region_ids.add(region_id)
@@ -778,7 +831,9 @@ class Flow:
         if dedupe_removed > 0:
             logger.debug(f"  Removed {dedupe_removed} duplicate regions")
 
-        logger.info(f"Flow layout analysis complete: {len(unique_regions)} unique regions from {processed_pages} pages")
+        logger.info(
+            f"Flow layout analysis complete: {len(unique_regions)} unique regions from {processed_pages} pages"
+        )
         return ElementCollection(unique_regions)
 
     def show(
@@ -801,9 +856,9 @@ class Flow:
         """
         Generates and returns a PIL Image showing all segments in the flow.
 
-        This method visualizes the entire flow either by highlighting each segment on its 
+        This method visualizes the entire flow either by highlighting each segment on its
         respective page (default mode) or by showing cropped segment images stacked together
-        (in_context mode). If multiple pages are involved, they are stacked according to 
+        (in_context mode). If multiple pages are involved, they are stacked according to
         the flow's arrangement.
 
         Args:
@@ -829,28 +884,29 @@ class Flow:
             Visualizing a multi-page flow in page context:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Create flow across multiple pages
             page_flow = Flow(
                 segments=[pdf.pages[0], pdf.pages[1], pdf.pages[2]],
                 arrangement='vertical'
             )
-            
+
             # Show with page context (default)
             flow_image = page_flow.show(color="green", labels=True)
-            
+
             # Show with flow context (cropped segments stacked)
             in_context_image = page_flow.show(in_context=True, separator_color=(255, 0, 0))
             ```
         """
         logger.info(f"Rendering Flow with {len(self.segments)} segments")
-        
+
         if not self.segments:
             logger.warning("Flow has no segments to show")
             return None
 
         # Apply global options as defaults for resolution
         import natural_pdf
+
         if resolution is None:
             if natural_pdf.options.image.resolution is not None:
                 resolution = natural_pdf.options.image.resolution
@@ -867,21 +923,25 @@ class Flow:
                 stack_background_color=stack_background_color,
                 separator_color=separator_color,
                 separator_thickness=separator_thickness,
-                **kwargs
+                **kwargs,
             )
 
         # 1. Group segments by their physical pages
         segments_by_page = {}  # Dict[Page, List[PhysicalRegion]]
-        
+
         for i, segment in enumerate(self.segments):
             # Get the page for this segment
-            if hasattr(segment, 'page') and segment.page is not None:
+            if hasattr(segment, "page") and segment.page is not None:
                 # It's a Region, use its page
                 page_obj = segment.page
                 if page_obj not in segments_by_page:
                     segments_by_page[page_obj] = []
                 segments_by_page[page_obj].append(segment)
-            elif hasattr(segment, 'index') and hasattr(segment, 'width') and hasattr(segment, 'height'):
+            elif (
+                hasattr(segment, "index")
+                and hasattr(segment, "width")
+                and hasattr(segment, "height")
+            ):
                 # It's a full Page object, create a full-page region for it
                 page_obj = segment
                 full_page_region = segment.region(0, 0, segment.width, segment.height)
@@ -898,10 +958,12 @@ class Flow:
 
         # 2. Get a highlighter service from the first page
         first_page = next(iter(segments_by_page.keys()))
-        if not hasattr(first_page, '_highlighter'):
-            logger.error("Cannot get highlighter service for Flow.show(). Page missing highlighter.")
+        if not hasattr(first_page, "_highlighter"):
+            logger.error(
+                "Cannot get highlighter service for Flow.show(). Page missing highlighter."
+            )
             return None
-        
+
         highlighter_service = first_page._highlighter
         output_page_images: List["PIL_Image_Runtime"] = []
 
@@ -929,11 +991,14 @@ class Flow:
                     except ValueError:
                         # If it's a generated full-page region, find its source page
                         for idx, orig_segment in enumerate(self.segments):
-                            if (hasattr(orig_segment, 'index') and hasattr(segment, 'page') 
-                                and orig_segment.index == segment.page.index):
+                            if (
+                                hasattr(orig_segment, "index")
+                                and hasattr(segment, "page")
+                                and orig_segment.index == segment.page.index
+                            ):
                                 global_segment_idx = idx
                                 break
-                    
+
                     if global_segment_idx is not None:
                         segment_label = f"{label_prefix}_{global_segment_idx + 1}"
                     else:
@@ -947,7 +1012,13 @@ class Flow:
                             else getattr(page_obj, "page_number", 1) - 1
                         ),
                         "bbox": segment.bbox,
-                        "polygon": segment.polygon if hasattr(segment, 'polygon') and hasattr(segment, 'has_polygon') and segment.has_polygon else None,
+                        "polygon": (
+                            segment.polygon
+                            if hasattr(segment, "polygon")
+                            and hasattr(segment, "has_polygon")
+                            and segment.has_polygon
+                            else None
+                        ),
                         "color": color,
                         "label": segment_label,
                         "use_color_cycling": False,  # Keep specific color
@@ -1017,7 +1088,7 @@ class Flow:
                 concatenated_image.paste(img, (paste_x, current_y))
                 current_y += img.height + stack_gap
             return concatenated_image
-            
+
         elif final_stack_direction == "horizontal":
             final_width = (
                 sum(img.width for img in output_page_images)
@@ -1054,7 +1125,7 @@ class Flow:
     ) -> Optional["PIL_Image"]:
         """
         Show segments as cropped images stacked together with separators between segments.
-        
+
         Args:
             resolution: Resolution in DPI for rendering segment images
             width: Optional width for segment images
@@ -1064,24 +1135,24 @@ class Flow:
             separator_color: RGB color for separator lines between segments
             separator_thickness: Thickness in pixels of separator lines
             **kwargs: Additional arguments passed to segment.to_image()
-            
+
         Returns:
             PIL Image with all segments stacked together
         """
         from PIL import Image, ImageDraw
-        
+
         segment_images = []
         segment_pages = []
-        
+
         # Determine stacking direction
         final_stack_direction = stack_direction
         if stack_direction == "auto":
             final_stack_direction = self.arrangement
-            
+
         # Get cropped images for each segment
         for i, segment in enumerate(self.segments):
             # Get the page reference for this segment
-            if hasattr(segment, 'page') and segment.page is not None:
+            if hasattr(segment, "page") and segment.page is not None:
                 segment_page = segment.page
                 # Get cropped image of the segment
                 segment_image = segment.to_image(
@@ -1089,106 +1160,108 @@ class Flow:
                     crop=True,
                     include_highlights=False,
                     width=width,
-                    **kwargs
+                    **kwargs,
                 )
-                    
-            elif hasattr(segment, 'index') and hasattr(segment, 'width') and hasattr(segment, 'height'):
+
+            elif (
+                hasattr(segment, "index")
+                and hasattr(segment, "width")
+                and hasattr(segment, "height")
+            ):
                 # It's a full Page object
                 segment_page = segment
-                segment_image = segment.to_image(
-                    resolution=resolution,
-                    width=width,
-                    **kwargs
-                )
+                segment_image = segment.to_image(resolution=resolution, width=width, **kwargs)
             else:
-                raise ValueError(f"Segment {i+1} has no identifiable page. Segment type: {type(segment)}, attributes: {dir(segment)}")
-                
+                raise ValueError(
+                    f"Segment {i+1} has no identifiable page. Segment type: {type(segment)}, attributes: {dir(segment)}"
+                )
+
             segment_images.append(segment_image)
             segment_pages.append(segment_page)
-                
+
         # We should have at least one segment image by now (or an exception would have been raised)
         if len(segment_images) == 1:
             return segment_images[0]
-            
+
         # Calculate dimensions for the final stacked image
         if final_stack_direction == "vertical":
             # Stack vertically
             final_width = max(img.width for img in segment_images)
-            
+
             # Calculate total height including gaps and separators
             total_height = sum(img.height for img in segment_images)
             total_height += (len(segment_images) - 1) * stack_gap
-            
+
             # Add separator thickness between all segments
             num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
             total_height += num_separators * separator_thickness
-            
+
             # Create the final image
             final_image = Image.new("RGB", (final_width, total_height), stack_background_color)
             draw = ImageDraw.Draw(final_image)
-            
+
             current_y = 0
-            
+
             for i, img in enumerate(segment_images):
                 # Add separator line before each segment (except the first one)
                 if i > 0:
                     # Draw separator line
                     draw.rectangle(
                         [(0, current_y), (final_width, current_y + separator_thickness)],
-                        fill=separator_color
+                        fill=separator_color,
                     )
                     current_y += separator_thickness
-                    
+
                 # Paste the segment image
                 paste_x = (final_width - img.width) // 2  # Center horizontally
                 final_image.paste(img, (paste_x, current_y))
                 current_y += img.height
-                
+
                 # Add gap after segment (except for the last one)
                 if i < len(segment_images) - 1:
                     current_y += stack_gap
-                
+
             return final_image
-            
+
         elif final_stack_direction == "horizontal":
             # Stack horizontally
             final_height = max(img.height for img in segment_images)
-            
+
             # Calculate total width including gaps and separators
             total_width = sum(img.width for img in segment_images)
             total_width += (len(segment_images) - 1) * stack_gap
-            
+
             # Add separator thickness between all segments
             num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
             total_width += num_separators * separator_thickness
-            
+
             # Create the final image
             final_image = Image.new("RGB", (total_width, final_height), stack_background_color)
             draw = ImageDraw.Draw(final_image)
-            
+
             current_x = 0
-            
+
             for i, img in enumerate(segment_images):
                 # Add separator line before each segment (except the first one)
                 if i > 0:
                     # Draw separator line
                     draw.rectangle(
                         [(current_x, 0), (current_x + separator_thickness, final_height)],
-                        fill=separator_color
+                        fill=separator_color,
                     )
                     current_x += separator_thickness
-                    
+
                 # Paste the segment image
                 paste_y = (final_height - img.height) // 2  # Center vertically
                 final_image.paste(img, (current_x, paste_y))
                 current_x += img.width
-                
+
                 # Add gap after segment (except for the last one)
                 if i < len(segment_images) - 1:
                     current_x += stack_gap
-                
+
             return final_image
-            
+
         else:
             raise ValueError(
                 f"Invalid stack_direction '{final_stack_direction}' for in_context. Must be 'vertical' or 'horizontal'."

@@ -423,6 +423,7 @@ class ElementCollection(
         # Apply content filtering if provided
         if content_filter is not None:
             from natural_pdf.utils.text_extraction import _apply_content_filter
+
             all_char_dicts = _apply_content_filter(all_char_dicts, content_filter)
 
         # Check if layout is requested
@@ -2063,7 +2064,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
         """
         # Store the sequence as-is to preserve lazy behavior
         # Only convert to list if we need list-specific operations
-        if hasattr(pages, '__iter__') and hasattr(pages, '__len__'):
+        if hasattr(pages, "__iter__") and hasattr(pages, "__len__"):
             self.pages = pages
         else:
             # Fallback for non-sequence types
@@ -2090,7 +2091,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
     def _get_items_for_apply(self) -> Iterator[P]:
         """
         Override ApplyMixin's _get_items_for_apply to preserve lazy behavior.
-        
+
         Returns an iterator that yields pages on-demand rather than materializing
         all pages at once, maintaining the lazy loading behavior.
         """
@@ -2099,12 +2100,12 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
     def _get_page_indices(self) -> List[int]:
         """
         Get page indices without forcing materialization of pages.
-        
+
         Returns:
             List of page indices for the pages in this collection.
         """
         # Handle different types of page sequences efficiently
-        if hasattr(self.pages, '_indices'):
+        if hasattr(self.pages, "_indices"):
             # If it's a _LazyPageList (or slice), get indices directly
             return list(self.pages._indices)
         else:
@@ -2444,7 +2445,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
 
         Returns:
             List of Region objects representing the extracted sections
-            
+
         Note:
             You can provide only start_elements, only end_elements, or both.
             - With only start_elements: sections go from each start to the next start (or end of page)
@@ -2497,20 +2498,22 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
         # If we only have end_elements (no start_elements), create implicit start elements
         if not start_elements and end_elements:
             from natural_pdf.elements.region import Region
-            
+
             start_elements = []
-            
+
             # Add implicit start at the beginning of the first page
             first_page = self.pages[0]
             first_start = Region(first_page, (0, 0, first_page.width, 1))
             first_start.is_implicit_start = True
             start_elements.append(first_start)
-            
+
             # For each end element (except the last), add an implicit start after it
             sorted_end_elements = sorted(end_elements, key=lambda e: (e.page.index, e.top, e.x0))
             for i, end_elem in enumerate(sorted_end_elements[:-1]):  # Exclude last end element
                 # Create implicit start element right after this end element
-                implicit_start = Region(end_elem.page, (0, end_elem.bottom, end_elem.page.width, end_elem.bottom + 1))
+                implicit_start = Region(
+                    end_elem.page, (0, end_elem.bottom, end_elem.page.width, end_elem.bottom + 1)
+                )
                 implicit_start.is_implicit_start = True
                 start_elements.append(implicit_start)
 
@@ -2587,7 +2590,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             priority = 0 if boundary["type"] == "start" else 1
 
             return (page_idx, y_pos, priority)
-        
+
         section_boundaries.sort(key=_sort_key)
 
         # Generate sections
@@ -2608,7 +2611,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             end_pg = end_el.page if end_el is not None else self.pages[-1]
 
             parts: list[Region] = []
-            
+
             # Use the actual top of the start element (for implicit starts this is
             # the bottom of the previous end element) instead of forcing to 0.
             start_top = start_el.top
@@ -2655,9 +2658,10 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
                     # For implicit start elements, create a region from the top of the page
                     if hasattr(start_element, "is_implicit_start"):
                         from natural_pdf.elements.region import Region
+
                         section = Region(
-                            start_element.page, 
-                            (0, start_element.top, start_element.page.width, end_element.bottom)
+                            start_element.page,
+                            (0, start_element.top, start_element.page.width, end_element.bottom),
                         )
                         section.start_element = start_element
                         section.boundary_element_found = end_element
@@ -2703,12 +2707,10 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
                     from natural_pdf.elements.region import Region
 
                     start_page = start_element.page
-                    
+
                     # Handle implicit start elements
                     start_top = start_element.top
-                    region = Region(
-                        start_page, (0, start_top, start_page.width, start_page.height)
-                    )
+                    region = Region(start_page, (0, start_top, start_page.width, start_page.height))
                     region.start_element = start_element
                     sections.append(region)
 
@@ -2736,9 +2738,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
 
                 # Handle implicit start elements
                 start_top = start_element.top
-                region = Region(
-                    start_page, (0, start_top, start_page.width, start_page.height)
-                )
+                region = Region(start_page, (0, start_top, start_page.width, start_page.height))
                 region.start_element = start_element
                 sections.append(region)
 
@@ -3127,7 +3127,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
         """Generate a grid of page images for this collection.
 
         This is a thin wrapper around :py:meth:`show` so that the API mirrors
-        other collection types. It forwards all arguments and returns the 
+        other collection types. It forwards all arguments and returns the
         resulting ``PIL.Image`` instance.
         """
         return self.show(*args, **kwargs)
@@ -3292,10 +3292,10 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             Multi-page table extraction:
             ```python
             pdf = npdf.PDF("multi_page_report.pdf")
-            
+
             # Create flow for pages 2-4 containing a table
             table_flow = pdf.pages[1:4].to_flow()
-            
+
             # Extract table as if it were continuous
             table_data = table_flow.extract_table()
             df = table_data.df
@@ -3305,17 +3305,16 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             ```python
             # Find all headers across multiple pages
             headers = pdf.pages[5:10].to_flow().find_all('text[size>12]:bold')
-            
+
             # Analyze layout across pages
             regions = pdf.pages.to_flow().analyze_layout(engine='yolo')
             ```
         """
         from natural_pdf.flows.flow import Flow
+
         return Flow(
             segments=self,  # Flow constructor now handles PageCollection
             arrangement=arrangement,
             alignment=alignment,
             segment_gap=segment_gap,
         )
-
-

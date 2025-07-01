@@ -70,9 +70,13 @@ class TextMixin:  # pylint: disable=too-few-public-methods
             )
 
         try:
-            elements_collection = self.find_all(selector=selector, apply_exclusions=apply_exclusions)
+            elements_collection = self.find_all(
+                selector=selector, apply_exclusions=apply_exclusions
+            )
         except Exception as exc:  # pragma: no cover – defensive
-            raise RuntimeError(f"Failed to gather elements with selector '{selector}': {exc}") from exc
+            raise RuntimeError(
+                f"Failed to gather elements with selector '{selector}': {exc}"
+            ) from exc
 
         # `find_all` returns an ElementCollection; fall back gracefully otherwise.
         elements_iter = getattr(elements_collection, "elements", elements_collection)
@@ -94,4 +98,4 @@ class TextMixin:  # pylint: disable=too-few-public-methods
             updated,
         )
 
-        return self 
+        return self

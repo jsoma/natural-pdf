@@ -76,16 +76,16 @@ class FlowElement:
     def __getattr__(self, name: str) -> Any:
         """
         Delegate unknown attribute access to the physical_object.
-        
+
         This ensures that attributes like 'type', 'region_type', 'source', 'model', etc.
         from the physical element are accessible on the FlowElement wrapper.
-        
+
         Args:
             name: The attribute name being accessed
-            
+
         Returns:
             The attribute value from physical_object
-            
+
         Raises:
             AttributeError: If the attribute doesn't exist on physical_object either
         """

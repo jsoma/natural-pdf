@@ -21,12 +21,12 @@ from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.text_mixin import TextMixin
 
 # ------------------------------------------------------------------
 # Table utilities
 # ------------------------------------------------------------------
 from natural_pdf.tables import TableResult
+from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # Import new utils
@@ -1227,7 +1227,9 @@ class Region(
             # Filter to elements in this region
             return [e for e in page_elements if self._is_element_in_region(e)]
 
-    def extract_text(self, apply_exclusions=True, debug=False, content_filter=None, **kwargs) -> str:
+    def extract_text(
+        self, apply_exclusions=True, debug=False, content_filter=None, **kwargs
+    ) -> str:
         """
         Extract text from this region, respecting page exclusions and using pdfplumber's
         layout engine (chars_to_textmap).
@@ -1299,7 +1301,7 @@ class Region(
         final_kwargs = kwargs.copy()
         if content_filter is not None:
             final_kwargs["content_filter"] = content_filter
-            
+
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=self.bbox,  # Use region's bbox for context
@@ -1319,7 +1321,9 @@ class Region(
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         # --- NEW: Add tqdm control option --- #
         show_progress: bool = False,  # Controls progress bar for text method
-        content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,  # NEW: Content filtering
+        content_filter: Optional[
+            Union[str, Callable[[str], bool], List[str]]
+        ] = None,  # NEW: Content filtering
     ) -> TableResult:  # Return type allows Optional[str] for cells
         """
         Extract a table from this region.
@@ -1379,7 +1383,11 @@ class Region(
                     logger.debug(
                         f"Region {self.bbox}: Found {len(cell_regions_in_table)} pre-computed table_cell regions – using 'cells' method."
                     )
-                    return TableResult(self._extract_table_from_cells(cell_regions_in_table, content_filter=content_filter))
+                    return TableResult(
+                        self._extract_table_from_cells(
+                            cell_regions_in_table, content_filter=content_filter
+                        )
+                    )
 
                 # --------------------------------------------------------------- #
 
@@ -1460,7 +1468,9 @@ class Region(
 
         # Use the selected method
         if effective_method == "tatr":
-            table_rows = self._extract_table_tatr(use_ocr=use_ocr, ocr_config=ocr_config, content_filter=content_filter)
+            table_rows = self._extract_table_tatr(
+                use_ocr=use_ocr, ocr_config=ocr_config, content_filter=content_filter
+            )
         elif effective_method == "text":
             current_text_options = text_options.copy()
             current_text_options["cell_extraction_func"] = cell_extraction_func
@@ -1763,10 +1773,12 @@ class Region(
                     if cell is not None:
                         # Apply RTL text processing first
                         rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
-                        
+
                         # Then apply content filter if provided
                         if content_filter is not None:
-                            filtered_cell = self._apply_content_filter_to_text(rtl_processed_cell, content_filter)
+                            filtered_cell = self._apply_content_filter_to_text(
+                                rtl_processed_cell, content_filter
+                            )
                             processed_row.append(filtered_cell)
                         else:
                             processed_row.append(rtl_processed_cell)
@@ -1776,7 +1788,9 @@ class Region(
             return processed_table
         return []
 
-    def _extract_table_tatr(self, use_ocr=False, ocr_config=None, content_filter=None) -> List[List[str]]:
+    def _extract_table_tatr(
+        self, use_ocr=False, ocr_config=None, content_filter=None
+    ) -> List[List[str]]:
         """
         Extract table using TATR structure detection.
 
@@ -3095,7 +3109,9 @@ class Region(
         override simply ensures the search is scoped to the region.
         """
 
-        return TextMixin.update_text(self, transform, selector=selector, apply_exclusions=apply_exclusions)
+        return TextMixin.update_text(
+            self, transform, selector=selector, apply_exclusions=apply_exclusions
+        )
 
     # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
@@ -3470,13 +3486,15 @@ class Region(
     # New helper: build table from pre-computed table_cell regions
     # ------------------------------------------------------------------
 
-    def _extract_table_from_cells(self, cell_regions: List["Region"], content_filter=None) -> List[List[Optional[str]]]:
+    def _extract_table_from_cells(
+        self, cell_regions: List["Region"], content_filter=None
+    ) -> List[List[Optional[str]]]:
         """Construct a table (list-of-lists) from table_cell regions.
 
         This assumes each cell Region has metadata.row_index / col_index as written by
         detect_table_structure_from_lines().  If these keys are missing we will
         fall back to sorting by geometry.
-        
+
         Args:
             cell_regions: List of table cell Region objects to extract text from
             content_filter: Optional content filter to apply to cell text extraction
@@ -3510,7 +3528,9 @@ class Region(
                 try:
                     r_idx = int(cell.metadata.get("row_index"))
                     c_idx = int(cell.metadata.get("col_index"))
-                    text_val = cell.extract_text(layout=False, apply_exclusions=False, content_filter=content_filter).strip()
+                    text_val = cell.extract_text(
+                        layout=False, apply_exclusions=False, content_filter=content_filter
+                    ).strip()
                     table_grid[r_idx][c_idx] = text_val if text_val else None
                 except Exception as _err:
                     # Skip problematic cell
@@ -3557,7 +3577,9 @@ class Region(
             row_idx = int(np.argmin([abs(cy - rc) for rc in row_centers]))
             col_idx = int(np.argmin([abs(cx - cc) for cc in col_centers]))
 
-            text_val = cell.extract_text(layout=False, apply_exclusions=False, content_filter=content_filter).strip()
+            text_val = cell.extract_text(
+                layout=False, apply_exclusions=False, content_filter=content_filter
+            ).strip()
             table_grid[row_idx][col_idx] = text_val if text_val else None
 
         return table_grid
@@ -3565,32 +3587,33 @@ class Region(
     def _apply_rtl_processing_to_text(self, text: str) -> str:
         """
         Apply RTL (Right-to-Left) text processing to a string.
-        
+
         This converts visual order text (as stored in PDFs) to logical order
         for proper display of Arabic, Hebrew, and other RTL scripts.
-        
+
         Args:
             text: Input text string in visual order
-            
+
         Returns:
             Text string in logical order
         """
         if not text or not text.strip():
             return text
-            
+
         # Quick check for RTL characters - if none found, return as-is
         import unicodedata
-        
+
         def _contains_rtl(s):
             return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
-        
+
         if not _contains_rtl(text):
             return text
-            
+
         try:
             from bidi.algorithm import get_display  # type: ignore
+
             from natural_pdf.utils.bidi_mirror import mirror_brackets
-            
+
             # Apply BiDi algorithm to convert from visual to logical order
             # Process line by line to handle mixed content properly
             processed_lines = []
@@ -3603,9 +3626,9 @@ class Region(
                     processed_lines.append(mirror_brackets(logical_line))
                 else:
                     processed_lines.append(line)
-            
+
             return "\n".join(processed_lines)
-            
+
         except (ImportError, Exception):
             # If bidi library is not available or fails, return original text
             return text
@@ -3613,36 +3636,36 @@ class Region(
     def _apply_content_filter_to_text(self, text: str, content_filter) -> str:
         """
         Apply content filter to a text string.
-        
+
         Args:
             text: Input text string
             content_filter: Content filter (regex, callable, or list of regexes)
-            
+
         Returns:
             Filtered text string
         """
         if not text or content_filter is None:
             return text
-            
+
         import re
-        
+
         if isinstance(content_filter, str):
             # Single regex pattern - remove matching parts
             try:
-                return re.sub(content_filter, '', text)
+                return re.sub(content_filter, "", text)
             except re.error:
                 return text  # Invalid regex, return original
-                
+
         elif isinstance(content_filter, list):
             # List of regex patterns - remove parts matching ANY pattern
             try:
                 result = text
                 for pattern in content_filter:
-                    result = re.sub(pattern, '', result)
+                    result = re.sub(pattern, "", result)
                 return result
             except re.error:
                 return text  # Invalid regex, return original
-                
+
         elif callable(content_filter):
             # Callable filter - apply to individual characters
             try:
@@ -3650,8 +3673,8 @@ class Region(
                 for char in text:
                     if content_filter(char):
                         filtered_chars.append(char)
-                return ''.join(filtered_chars)
+                return "".join(filtered_chars)
             except Exception:
                 return text  # Function error, return original
-        
+
         return text

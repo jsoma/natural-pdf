@@ -41,4 +41,4 @@ def test_get_sections_only_end_elements(pdf_path: str, selector: str):
     #         if prev.page is curr.page:
     #             assert curr.top >= prev.bottom, (
     #                 f"Sections {i-1} and {i} overlap on page {curr.page.index + 1} - {curr.top} >= {prev.bottom}"
-    #             ) 
+    #             )

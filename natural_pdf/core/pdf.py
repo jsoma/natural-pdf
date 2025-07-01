@@ -38,8 +38,8 @@ from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
-from natural_pdf.utils.locks import pdf_render_lock
 from natural_pdf.text_mixin import TextMixin
+from natural_pdf.utils.locks import pdf_render_lock
 
 if TYPE_CHECKING:
     from natural_pdf.elements.collections import ElementCollection
@@ -107,7 +107,6 @@ except ImportError:
 from collections.abc import Sequence
 
 
-
 class _LazyPageList(Sequence):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
 
@@ -145,18 +144,18 @@ class _LazyPageList(Sequence):
     """
 
     def __init__(
-        self, 
-        parent_pdf: "PDF", 
-        plumber_pdf: "pdfplumber.PDF", 
-        font_attrs=None, 
+        self,
+        parent_pdf: "PDF",
+        plumber_pdf: "pdfplumber.PDF",
+        font_attrs=None,
         load_text=True,
-        indices: Optional[List[int]] = None
+        indices: Optional[List[int]] = None,
     ):
         self._parent_pdf = parent_pdf
         self._plumber_pdf = plumber_pdf
         self._font_attrs = font_attrs
         self._load_text = load_text
-        
+
         # If indices is provided, this is a sliced view
         if indices is not None:
             self._indices = indices
@@ -184,23 +183,23 @@ class _LazyPageList(Sequence):
                 font_attrs=self._font_attrs,
                 load_text=self._load_text,
             )
-            
+
             # Apply any stored exclusions to the newly created page
-            if hasattr(self._parent_pdf, '_exclusions'):
+            if hasattr(self._parent_pdf, "_exclusions"):
                 for exclusion_data in self._parent_pdf._exclusions:
                     exclusion_func, label = exclusion_data
                     try:
                         cached.add_exclusion(exclusion_func, label=label)
                     except Exception as e:
                         logger.warning(f"Failed to apply exclusion to page {cached.number}: {e}")
-            
+
             # Apply any stored regions to the newly created page
-            if hasattr(self._parent_pdf, '_regions'):
+            if hasattr(self._parent_pdf, "_regions"):
                 for region_data in self._parent_pdf._regions:
                     region_func, name = region_data
                     try:
                         region_instance = region_func(cached)
-                        if region_instance and hasattr(region_instance, '__class__'):
+                        if region_instance and hasattr(region_instance, "__class__"):
                             # Check if it's a Region-like object (avoid importing Region here)
                             cached.add_region(region_instance, name=name, source="named")
                         elif region_instance is not None:
@@ -209,7 +208,7 @@ class _LazyPageList(Sequence):
                             )
                     except Exception as e:
                         logger.warning(f"Failed to apply region to page {cached.number}: {e}")
-            
+
             self._cache[index] = cached
         return cached
 
@@ -219,7 +218,7 @@ class _LazyPageList(Sequence):
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            # Get the slice of our current indices  
+            # Get the slice of our current indices
             slice_indices = range(*key.indices(len(self)))
             # Extract the actual page indices for this slice
             actual_indices = [self._indices[i] for i in slice_indices]
@@ -229,7 +228,7 @@ class _LazyPageList(Sequence):
                 self._plumber_pdf,
                 font_attrs=self._font_attrs,
                 load_text=self._load_text,
-                indices=actual_indices
+                indices=actual_indices,
             )
         elif isinstance(key, int):
             if key < 0:
@@ -612,7 +611,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             raise AttributeError("PDF pages not yet initialized.")
 
         self._exclusions = []
-        
+
         # Clear exclusions only from already-created (cached) pages to avoid forcing page creation
         for i in range(len(self._pages)):
             if self._pages._cache[i] is not None:  # Only clear from existing pages
@@ -622,9 +621,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                     logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
-    def add_exclusion(
-        self, exclusion_func, label: str = None
-    ) -> "PDF":
+    def add_exclusion(self, exclusion_func, label: str = None) -> "PDF":
         """Add an exclusion function to the PDF.
 
         Exclusion functions define regions of each page that should be ignored during
@@ -678,7 +675,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
         if isinstance(exclusion_func, str) or isinstance(exclusion_func, ElementCollection):
             # Store for bookkeeping and lazy application
             self._exclusions.append((exclusion_func, label))
-            
+
             # Apply only to already-created (cached) pages to avoid forcing page creation
             for i in range(len(self._pages)):
                 if self._pages._cache[i] is not None:  # Only apply to existing pages
@@ -1259,13 +1256,13 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             Extract sections between headers:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Get sections between headers
             sections = pdf.get_sections(
                 start_elements='text[size>14]:bold',
                 end_elements='text[size>14]:bold'
             )
-            
+
             # Get sections that break at page boundaries
             sections = pdf.get_sections(
                 start_elements='text:contains("Chapter")',
@@ -1440,13 +1437,13 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
         Example:
             ```python
             pdf = npdf.PDF("document.pdf")
-            
+
             # Show all pages in a grid
             img = pdf.show()
-            
+
             # Show first 6 pages in 2 columns
             img = pdf.show(max_pages=6, cols=2)
-            
+
             # Show pages with labels and categories
             img = pdf.show(add_labels=True, show_category=True)
             ```
@@ -1477,14 +1474,20 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             Dict containing: answer, confidence, found, page_num, source_elements, etc.
         """
         # Delegate to ask_batch and return the first result
-        results = self.ask_batch([question], mode=mode, pages=pages, min_confidence=min_confidence, model=model, **kwargs)
-        return results[0] if results else {
-            "answer": None,
-            "confidence": 0.0,
-            "found": False,
-            "page_num": None,
-            "source_elements": [],
-        }
+        results = self.ask_batch(
+            [question], mode=mode, pages=pages, min_confidence=min_confidence, model=model, **kwargs
+        )
+        return (
+            results[0]
+            if results
+            else {
+                "answer": None,
+                "confidence": 0.0,
+                "found": False,
+                "page_num": None,
+                "source_elements": [],
+            }
+        )
 
     def ask_batch(
         self,
@@ -1554,7 +1557,9 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                 for _ in questions
             ]
 
-        logger.info(f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA...")
+        logger.info(
+            f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA..."
+        )
 
         # Collect all page images and metadata for batch processing
         page_images = []
@@ -1568,22 +1573,21 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                 if page_image is None:
                     logger.warning(f"Failed to render image for page {page.number}, skipping")
                     continue
-                    
+
                 # Get text elements for word boxes
                 elements = page.find_all("text")
                 if not elements:
                     logger.warning(f"No text elements found on page {page.number}")
                     word_boxes = []
                 else:
-                    word_boxes = qa_engine._get_word_boxes_from_elements(elements, offset_x=0, offset_y=0)
-                
+                    word_boxes = qa_engine._get_word_boxes_from_elements(
+                        elements, offset_x=0, offset_y=0
+                    )
+
                 page_images.append(page_image)
                 page_word_boxes.append(word_boxes)
-                page_metadata.append({
-                    "page_number": page.number,
-                    "page_object": page
-                })
-                
+                page_metadata.append({"page_number": page.number, "page_object": page})
+
             except Exception as e:
                 logger.warning(f"Error processing page {page.number}: {e}")
                 continue
@@ -1603,22 +1607,24 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
 
         # Process all questions against all pages in batch
         all_results = []
-        
+
         for question_text in questions:
             question_results = []
-            
+
             # Ask this question against each page (but in batch per page)
-            for i, (page_image, word_boxes, page_meta) in enumerate(zip(page_images, page_word_boxes, page_metadata)):
+            for i, (page_image, word_boxes, page_meta) in enumerate(
+                zip(page_images, page_word_boxes, page_metadata)
+            ):
                 try:
-                    # Use the DocumentQA batch interface 
+                    # Use the DocumentQA batch interface
                     page_result = qa_engine.ask(
                         image=page_image,
                         question=question_text,
                         word_boxes=word_boxes,
                         min_confidence=min_confidence,
-                        **kwargs
+                        **kwargs,
                     )
-                    
+
                     if page_result and page_result.found:
                         # Add page metadata to result
                         page_result_dict = {
@@ -1626,30 +1632,34 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                             "confidence": page_result.confidence,
                             "found": page_result.found,
                             "page_num": page_meta["page_number"],
-                            "source_elements": getattr(page_result, 'source_elements', []),
-                            "start": getattr(page_result, 'start', -1),
-                            "end": getattr(page_result, 'end', -1),
+                            "source_elements": getattr(page_result, "source_elements", []),
+                            "start": getattr(page_result, "start", -1),
+                            "end": getattr(page_result, "end", -1),
                         }
                         question_results.append(page_result_dict)
-                        
+
                 except Exception as e:
-                    logger.warning(f"Error processing question '{question_text}' on page {page_meta['page_number']}: {e}")
+                    logger.warning(
+                        f"Error processing question '{question_text}' on page {page_meta['page_number']}: {e}"
+                    )
                     continue
-            
+
             # Sort results by confidence and take the best one for this question
             question_results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
-            
+
             if question_results:
                 all_results.append(question_results[0])
             else:
                 # No results found for this question
-                all_results.append({
-                    "answer": None,
-                    "confidence": 0.0,
-                    "found": False,
-                    "page_num": None,
-                    "source_elements": [],
-                })
+                all_results.append(
+                    {
+                        "answer": None,
+                        "confidence": 0.0,
+                        "found": False,
+                        "page_num": None,
+                        "source_elements": [],
+                    }
+                )
 
         return all_results
 
@@ -1834,17 +1844,19 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             logger.warning("No pages selected for text update.")
             return self
 
-        logger.info(f"Starting text update for pages: {target_page_indices} with selector='{selector}'")
+        logger.info(
+            f"Starting text update for pages: {target_page_indices} with selector='{selector}'"
+        )
 
         for page_idx in target_page_indices:
             page = self._pages[page_idx]
             try:
-                            page.update_text(
-                transform=transform,
-                selector=selector,
-                max_workers=max_workers,
-                progress_callback=progress_callback,
-            )
+                page.update_text(
+                    transform=transform,
+                    selector=selector,
+                    max_workers=max_workers,
+                    progress_callback=progress_callback,
+                )
             except Exception as e:
                 logger.error(f"Error during text update on page {page_idx}: {e}")
                 logger.error(f"Error during text update on page {page_idx}: {e}")
@@ -1865,8 +1877,9 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
 
         if isinstance(key, slice):
             from natural_pdf.elements.collections import PageCollection
+
             # Use the lazy page list's slicing which returns another _LazyPageList
-            lazy_slice = self._pages[key]  
+            lazy_slice = self._pages[key]
             # Wrap in PageCollection for compatibility
             return PageCollection(lazy_slice)
         elif isinstance(key, int):

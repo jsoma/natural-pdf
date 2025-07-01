@@ -64,9 +64,13 @@ from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
+from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.qa import DocumentQA, get_qa_engine
+
+# --- Text update mixin import --- #
+from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # # Import new utils
@@ -74,10 +78,6 @@ from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_t
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # --- End Classification Imports --- #
-
-# --- Text update mixin import --- #
-from natural_pdf.text_mixin import TextMixin
-from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 
 
 try:
@@ -322,7 +322,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
             exclusion_func_or_region: Either a callable function returning a Region,
                                       a Region object, or another object with a valid .bbox attribute.
             label: Optional label for this exclusion (e.g., 'header', 'footer').
-            method: Exclusion method - 'region' (exclude all elements in bounding box) or 
+            method: Exclusion method - 'region' (exclude all elements in bounding box) or
                     'element' (exclude only the specific elements). Default: 'region'.
 
         Returns:
@@ -346,7 +346,9 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         # Likewise, if an ElementCollection is passed we iterate over its
         # elements and create Regions for each one.
         # ------------------------------------------------------------------
-        from natural_pdf.elements.collections import ElementCollection  # local import to avoid cycle
+        from natural_pdf.elements.collections import (  # local import to avoid cycle
+            ElementCollection,
+        )
 
         # Selector string ---------------------------------------------------
         if isinstance(exclusion_func_or_region, str):
@@ -368,7 +370,12 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                 else:  # method == "region"
                     for el in matching_elements:
                         try:
-                            bbox_coords = (float(el.x0), float(el.top), float(el.x1), float(el.bottom))
+                            bbox_coords = (
+                                float(el.x0),
+                                float(el.top),
+                                float(el.x1),
+                                float(el.bottom),
+                            )
                             region = Region(self, bbox_coords, label=label)
                             # Store directly as a Region tuple so we don't recurse endlessly
                             self._exclusions.append((region, label, method))
@@ -425,7 +432,11 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         elif isinstance(exclusion_func_or_region, Region):
             # Store Region objects directly, assigning the label
             exclusion_func_or_region.label = label  # Assign label
-            exclusion_data = (exclusion_func_or_region, label, method)  # Store as tuple for consistency
+            exclusion_data = (
+                exclusion_func_or_region,
+                label,
+                method,
+            )  # Store as tuple for consistency
             logger.debug(
                 f"Page {self.index}: Added Region exclusion '{label}' with method '{method}': {exclusion_func_or_region}"
             )
@@ -547,7 +558,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
             else:
                 # New format: (exclusion_item, label, method)
                 exclusion_item, label, method = exclusion_data
-            
+
             exclusion_label = label if label else f"exclusion {i}"
 
             # Process callable exclusion functions
@@ -609,7 +620,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
     ) -> List["Element"]:
         """
         Filters a list of elements, removing those based on exclusion rules.
-        Handles both region-based exclusions (exclude all in area) and 
+        Handles both region-based exclusions (exclude all in area) and
         element-based exclusions (exclude only specific elements).
 
         Args:
@@ -633,7 +644,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
 
         # Collect element-based exclusions
         excluded_elements = set()  # Use set for O(1) lookup
-        
+
         for exclusion_data in self._exclusions:
             # Handle both old format (2-tuple) and new format (3-tuple)
             if len(exclusion_data) == 2:
@@ -641,15 +652,15 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                 method = "region"
             else:
                 exclusion_item, label, method = exclusion_data
-            
+
             # Skip callables (already handled in _get_exclusion_regions)
             if callable(exclusion_item):
                 continue
-                
+
             # Skip regions (already in exclusion_regions)
             if isinstance(exclusion_item, Region):
                 continue
-                
+
             # Handle element-based exclusions
             if method == "element" and hasattr(exclusion_item, "bbox"):
                 excluded_elements.add(id(exclusion_item))
@@ -665,10 +676,10 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         filtered_elements = []
         region_excluded_count = 0
         element_excluded_count = 0
-        
+
         for element in elements:
             exclude = False
-            
+
             # Check element-based exclusions first (faster)
             if id(element) in excluded_elements:
                 exclude = True
@@ -685,7 +696,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                         if debug_exclusions:
                             print(f"    Element {element} excluded by region {region}")
                         break  # No need to check other regions for this element
-            
+
             if not exclude:
                 filtered_elements.append(element)
 
@@ -1324,7 +1335,12 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         return self._page.crop(bbox, **kwargs)
 
     def extract_text(
-        self, preserve_whitespace=True, use_exclusions=True, debug_exclusions=False, content_filter=None, **kwargs
+        self,
+        preserve_whitespace=True,
+        use_exclusions=True,
+        debug_exclusions=False,
+        content_filter=None,
+        **kwargs,
     ) -> str:
         """
         Extract text from this page, respecting exclusions and using pdfplumber's
@@ -1363,11 +1379,15 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
 
         # 2. Apply element-based exclusions if enabled
         if use_exclusions and self._exclusions:
-            # Filter word elements through _filter_elements_by_exclusions 
+            # Filter word elements through _filter_elements_by_exclusions
             # This handles both element-based and region-based exclusions
-            word_elements = self._filter_elements_by_exclusions(word_elements, debug_exclusions=debug)
+            word_elements = self._filter_elements_by_exclusions(
+                word_elements, debug_exclusions=debug
+            )
             if debug:
-                logger.debug(f"Page {self.number}: {len(word_elements)} words remaining after exclusion filtering.")
+                logger.debug(
+                    f"Page {self.number}: {len(word_elements)} words remaining after exclusion filtering."
+                )
 
         # 3. Get region-based exclusions for spatial filtering
         apply_exclusions_flag = kwargs.get("use_exclusions", use_exclusions)
@@ -1375,7 +1395,9 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         if apply_exclusions_flag and self._exclusions:
             exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug)
             if debug:
-                logger.debug(f"Page {self.number}: Found {len(exclusion_regions)} region exclusions for spatial filtering.")
+                logger.debug(
+                    f"Page {self.number}: Found {len(exclusion_regions)} region exclusions for spatial filtering."
+                )
         elif debug:
             logger.debug(f"Page {self.number}: Not applying exclusions.")
 
@@ -1656,7 +1678,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                     table_settings.setdefault("join_y_tolerance", join)
 
             raw_tables = self._page.extract_tables(table_settings)
-            
+
             # Apply RTL text processing to all extracted tables
             if raw_tables:
                 processed_tables = []
@@ -1674,7 +1696,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                         processed_table.append(processed_row)
                     processed_tables.append(processed_table)
                 return processed_tables
-            
+
             return raw_tables
         else:
             raise ValueError(
@@ -1963,8 +1985,11 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         # Determine if this is likely a computational use (OCR, analysis, etc.)
         # If resolution is explicitly provided but width is not, assume computational use
         # and don't apply global display width settings
-        is_computational_use = (resolution is not None and width is None and 
-                               kwargs.get('include_highlights', True) is False)
+        is_computational_use = (
+            resolution is not None
+            and width is None
+            and kwargs.get("include_highlights", True) is False
+        )
 
         # Use global options if parameters are not explicitly set
         if width is None and not is_computational_use:
@@ -3303,32 +3328,33 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
     def _apply_rtl_processing_to_text(self, text: str) -> str:
         """
         Apply RTL (Right-to-Left) text processing to a string.
-        
+
         This converts visual order text (as stored in PDFs) to logical order
         for proper display of Arabic, Hebrew, and other RTL scripts.
-        
+
         Args:
             text: Input text string in visual order
-            
+
         Returns:
             Text string in logical order
         """
         if not text or not text.strip():
             return text
-            
+
         # Quick check for RTL characters - if none found, return as-is
         import unicodedata
-        
+
         def _contains_rtl(s):
             return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
-        
+
         if not _contains_rtl(text):
             return text
-            
+
         try:
             from bidi.algorithm import get_display  # type: ignore
+
             from natural_pdf.utils.bidi_mirror import mirror_brackets
-            
+
             # Apply BiDi algorithm to convert from visual to logical order
             # Process line by line to handle mixed content properly
             processed_lines = []
@@ -3341,9 +3367,9 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                     processed_lines.append(mirror_brackets(logical_line))
                 else:
                     processed_lines.append(line)
-            
+
             return "\n".join(processed_lines)
-            
+
         except (ImportError, Exception):
             # If bidi library is not available or fails, return original text
             return text

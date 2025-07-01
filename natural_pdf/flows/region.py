@@ -91,10 +91,12 @@ class FlowRegion:
 
         # Use merge_bboxes from pdfplumber.utils.geometry to merge bboxes
         # Extract bbox tuples from regions first
-        region_bboxes = [region.bbox for region in self.constituent_regions if hasattr(region, "bbox")]
+        region_bboxes = [
+            region.bbox for region in self.constituent_regions if hasattr(region, "bbox")
+        ]
         if not region_bboxes:
             return None
-            
+
         self._cached_bbox = merge_bboxes(region_bboxes)
         return self._cached_bbox
 
@@ -258,9 +260,7 @@ class FlowRegion:
         chains each region's native ``find_all`` call and concatenates their
         results into a single ElementCollection while preserving flow order.
         """
-        from natural_pdf.elements.collections import (
-            ElementCollection as RuntimeElementCollection,
-        )
+        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection
 
         matched_elements = []  # type: List["PhysicalElement"]
 
@@ -269,9 +269,7 @@ class FlowRegion:
 
         for region in self.constituent_regions:
             try:
-                region_matches = region.find_all(
-            selector=selector, text=text, **kwargs
-                )
+                region_matches = region.find_all(selector=selector, text=text, **kwargs)
                 if region_matches:
                     # ``region_matches`` is an ElementCollection – extend with its
                     # underlying list so we don't create nested collections.
@@ -432,7 +430,7 @@ class FlowRegion:
                 continue
 
             # Calculate crop bbox if cropping is enabled
-            crop_bbox = None 
+            crop_bbox = None
             if crop and constituent_regions_on_this_page:
                 # Calculate the bounding box that encompasses all constituent regions on this page
                 min_x0 = min(region.bbox[0] for region in constituent_regions_on_this_page)
@@ -687,9 +685,11 @@ class FlowRegion:
         # Resolve stitch_rows predicate -------------------------------------------------------
         predicate: Optional[
             Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
-        ] = stitch_rows if callable(stitch_rows) else None
+        ] = (stitch_rows if callable(stitch_rows) else None)
 
-        def _default_merge(prev_row: List[Optional[str]], cur_row: List[Optional[str]]) -> List[Optional[str]]:
+        def _default_merge(
+            prev_row: List[Optional[str]], cur_row: List[Optional[str]]
+        ) -> List[Optional[str]]:
             """Column-wise merge – concatenates non-empty strings with a space."""
             from itertools import zip_longest
 
@@ -746,7 +746,7 @@ class FlowRegion:
                     # Auto-detection: check if first row of second segment matches header
                     has_header = segment_rows and header_row and segment_rows[0] == header_row
                     segment_has_repeated_header.append(has_header)
-                    
+
                     if has_header:
                         merge_headers_enabled = True
                         # Remove the detected repeated header from this segment
@@ -756,7 +756,7 @@ class FlowRegion:
                                 "Detected repeated headers in multi-page table. Merging by removing "
                                 "repeated headers from subsequent pages.",
                                 UserWarning,
-                                stacklevel=2
+                                stacklevel=2,
                             )
                             headers_warned = True
                     else:
@@ -765,7 +765,7 @@ class FlowRegion:
                     # Check consistency: all segments should have same pattern
                     has_header = segment_rows and header_row and segment_rows[0] == header_row
                     segment_has_repeated_header.append(has_header)
-                    
+
                     # Remove header if merging is enabled and header is present
                     if merge_headers_enabled and has_header:
                         segment_rows = segment_rows[1:]
@@ -777,7 +777,7 @@ class FlowRegion:
                             warnings.warn(
                                 "Removing repeated headers from multi-page table during merge.",
                                 UserWarning,
-                                stacklevel=2
+                                stacklevel=2,
                             )
                             headers_warned = True
 
@@ -805,8 +805,12 @@ class FlowRegion:
             for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
                 if has_header != expected_pattern:
                     # Inconsistent pattern detected
-                    segments_with_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h]
-                    segments_without_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h]
+                    segments_with_headers = [
+                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h
+                    ]
+                    segments_without_headers = [
+                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h
+                    ]
                     raise ValueError(
                         f"Inconsistent header pattern in multi-page table: "
                         f"segments {segments_with_headers} have repeated headers, "

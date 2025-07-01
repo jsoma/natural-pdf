@@ -14,6 +14,7 @@ class TestDocumentQADependencies:
         try:
             from natural_pdf.qa import get_qa_engine
             from natural_pdf.qa.document_qa import DocumentQA
+
             # If we get here, dependencies are available
             assert True
         except ImportError:
@@ -33,7 +34,7 @@ class TestPDFAskSingle:
 
         # Ask a question that should be answerable from the practice PDF
         result = practice_pdf.ask("What is the total amount?", pages=0)
-        
+
         # Verify result structure
         assert isinstance(result, dict)
         assert "answer" in result
@@ -41,12 +42,12 @@ class TestPDFAskSingle:
         assert "found" in result
         assert "page_num" in result
         assert "source_elements" in result
-        
+
         # Verify result types
         assert isinstance(result["confidence"], float)
         assert isinstance(result["found"], bool)
         assert 0.0 <= result["confidence"] <= 1.0
-        
+
         if result["found"]:
             assert result["answer"] is not None
             assert result["page_num"] is not None
@@ -64,13 +65,13 @@ class TestPDFAskSingle:
 
         # Ask a general question across all pages
         result = practice_pdf.ask("What type of document is this?")
-        
-        # Verify result structure 
+
+        # Verify result structure
         assert isinstance(result, dict)
         assert "answer" in result
         assert "confidence" in result
         assert "found" in result
-        
+
         # Should be able to find something across all pages
         # (though we can't guarantee specific content)
 
@@ -86,7 +87,7 @@ class TestPDFAskSingle:
             result = practice_pdf.ask("What information is shown?", pages=[0, 1])
         else:
             result = practice_pdf.ask("What information is shown?", pages=[0])
-        
+
         assert isinstance(result, dict)
         assert "answer" in result
         assert "confidence" in result
@@ -112,7 +113,7 @@ class TestPDFAskSingle:
 
         # Empty string question
         result = practice_pdf.ask("", pages=0)
-        
+
         # Should still return valid structure
         assert isinstance(result, dict)
         assert "answer" in result
@@ -132,16 +133,16 @@ class TestPDFAskBatch:
 
         questions = [
             "What is the total amount?",
-            "What is the date?", 
-            "What type of document is this?"
+            "What is the date?",
+            "What type of document is this?",
         ]
-        
+
         results = practice_pdf.ask_batch(questions, pages=0)
-        
+
         # Should return a list of results
         assert isinstance(results, list)
         assert len(results) == len(questions)
-        
+
         # Each result should have the proper structure
         for i, result in enumerate(results):
             assert isinstance(result, dict)
@@ -150,7 +151,7 @@ class TestPDFAskBatch:
             assert "found" in result
             assert "page_num" in result
             assert "source_elements" in result
-            
+
             # Verify types
             assert isinstance(result["confidence"], float)
             assert isinstance(result["found"], bool)
@@ -163,17 +164,14 @@ class TestPDFAskBatch:
         except ImportError:
             pytest.skip("QA dependencies not installed")
 
-        questions = [
-            "What is the main topic?",
-            "Are there any dates mentioned?"
-        ]
-        
+        questions = ["What is the main topic?", "Are there any dates mentioned?"]
+
         results = practice_pdf.ask_batch(questions)
-        
+
         # Should return a list
         assert isinstance(results, list)
         assert len(results) == len(questions)
-        
+
         # Verify each result
         for result in results:
             assert isinstance(result, dict)
@@ -191,20 +189,20 @@ class TestPDFAskBatch:
         questions = [
             "What color is the text?",  # Likely findable
             "What is the secret nuclear launch code?",  # Definitely not findable
-            "What type of document is this?"  # Likely findable
+            "What type of document is this?",  # Likely findable
         ]
-        
+
         results = practice_pdf.ask_batch(questions)
-        
+
         assert isinstance(results, list)
         assert len(results) == len(questions)
-        
+
         # All should have proper structure even if not found
         for result in results:
             assert isinstance(result, dict)
             assert "found" in result
             assert isinstance(result["found"], bool)
-            
+
             if not result["found"]:
                 # Unfindable questions should have appropriate defaults
                 assert result["confidence"] == 0.0
@@ -218,7 +216,7 @@ class TestPDFAskBatch:
             pytest.skip("QA dependencies not installed")
 
         results = practice_pdf.ask_batch([])
-        
+
         # Should return empty list
         assert isinstance(results, list)
         assert len(results) == 0
@@ -232,10 +230,10 @@ class TestPDFAskBatch:
 
         # Single question in list
         results = practice_pdf.ask_batch(["What is shown?"])
-        
+
         assert isinstance(results, list)
         assert len(results) == 1
-        
+
         result = results[0]
         assert isinstance(result, dict)
         assert "answer" in result
@@ -256,7 +254,7 @@ class TestPDFAskErrorHandling:
         # Test with invalid question type for ask()
         with pytest.raises(TypeError):
             practice_pdf.ask(123)  # Number instead of string
-        
+
         with pytest.raises(TypeError):
             practice_pdf.ask(["list", "instead", "of", "string"])  # List instead of string
 
@@ -270,10 +268,10 @@ class TestPDFAskErrorHandling:
         # Test with invalid questions type for ask_batch()
         with pytest.raises(TypeError):
             practice_pdf.ask_batch("string instead of list")
-        
+
         with pytest.raises(TypeError):
             practice_pdf.ask_batch([123, 456])  # List of numbers instead of strings
-        
+
         with pytest.raises(TypeError):
             practice_pdf.ask_batch(["valid", 123])  # Mixed valid/invalid
 
@@ -287,7 +285,7 @@ class TestPDFAskErrorHandling:
         # Test with invalid pages type for both methods
         with pytest.raises(ValueError):
             practice_pdf.ask("What is this?", pages="invalid")
-        
+
         with pytest.raises(ValueError):
             practice_pdf.ask_batch(["What is this?"], pages={0, 1})  # Set instead of list
 
@@ -297,7 +295,7 @@ class TestPDFAskErrorHandling:
             from natural_pdf.qa import get_qa_engine
         except ImportError:
             pytest.skip("QA dependencies not installed")
-        
+
         # Create a minimal PDF or mock one with no pages
         # For now, skip this test as it's hard to create an empty PDF
         pytest.skip("Empty PDF test needs custom setup")
@@ -315,7 +313,7 @@ class TestPageAskMethod:
 
         page = practice_pdf.pages[0]
         result = page.ask("What is shown on this page?")
-        
+
         assert isinstance(result, dict)
         assert "answer" in result
         assert "confidence" in result
@@ -331,10 +329,10 @@ class TestPageAskMethod:
         page = practice_pdf.pages[0]
         questions = ["What is the main content?", "Are there any numbers?"]
         results = page.ask(questions)  # Page.ask() still supports batch
-        
+
         assert isinstance(results, list)
         assert len(results) == len(questions)
-        
+
         for result in results:
             assert isinstance(result, dict)
             assert "answer" in result
@@ -353,19 +351,19 @@ class TestQAPerformance:
             pytest.skip("QA dependencies not installed")
 
         questions = ["What is this document?", "What information is shown?"]
-        
+
         # Get batch results using ask_batch
         batch_results = practice_pdf.ask_batch(questions, pages=0)
-        
+
         # Get sequential results using individual ask calls
         sequential_results = []
         for question in questions:
             result = practice_pdf.ask(question, pages=0)
             sequential_results.append(result)
-        
+
         # Results should be similar (though not necessarily identical due to different processing)
         assert len(batch_results) == len(sequential_results)
-        
+
         # Both should find answers to the same questions
         for batch_result, seq_result in zip(batch_results, sequential_results):
             # If one found an answer, the other should too (mostly)
@@ -383,18 +381,18 @@ class TestQAPerformance:
         # This test mainly verifies that we don't get semaphore errors
         # when making multiple QA calls in succession
         questions = ["What is this?", "What type of document?", "What information?"]
-        
+
         # Make multiple batch calls
         for i in range(3):
             results = practice_pdf.ask_batch(questions)
             assert isinstance(results, list)
             assert len(results) == len(questions)
-        
+
         # Make multiple single calls
         for i in range(3):
             result = practice_pdf.ask("What is shown?")
             assert isinstance(result, dict)
-        
+
         # If we get here without errors, the semaphore leak issue is likely fixed
 
 
@@ -412,11 +410,11 @@ class TestQAIntegration:
         try:
             # Try OCR if available
             practice_pdf.apply_ocr(engine="easyocr", pages=[0])
-            
+
             result = practice_pdf.ask("What text is visible?", pages=0)
             assert isinstance(result, dict)
             assert "answer" in result
-            
+
         except (ImportError, RuntimeError):
             # OCR not available, just test basic QA
             result = practice_pdf.ask("What is visible?", pages=0)
@@ -431,10 +429,10 @@ class TestQAIntegration:
             pytest.skip("QA dependencies not installed")
 
         page = practice_pdf.pages[0]
-        
+
         # Create a region (top half of page)
-        region = page.region(top=0, bottom=page.height/2)
-        
+        region = page.region(top=0, bottom=page.height / 2)
+
         # Test QA on the region
         result = region.ask("What is in this area?")
         assert isinstance(result, dict)
@@ -445,38 +443,38 @@ class TestQAIntegration:
 
 class TestAPIConsistency:
     """Test that the API is consistent and discoverable."""
-    
+
     def test_ask_returns_single_dict(self, practice_pdf):
         """Test that ask() always returns a single dict."""
         try:
             from natural_pdf.qa import get_qa_engine
         except ImportError:
             pytest.skip("QA dependencies not installed")
-        
+
         result = practice_pdf.ask("What is this?")
-        
+
         # Should always be a dict, never a list
         assert isinstance(result, dict)
         assert not isinstance(result, list)
-    
+
     def test_ask_batch_returns_list(self, practice_pdf):
         """Test that ask_batch() always returns a list."""
         try:
             from natural_pdf.qa import get_qa_engine
         except ImportError:
             pytest.skip("QA dependencies not installed")
-        
+
         # Single question should still return list
         results = practice_pdf.ask_batch(["What is this?"])
         assert isinstance(results, list)
         assert len(results) == 1
-        
+
         # Multiple questions should return list
         results = practice_pdf.ask_batch(["What is this?", "What type is this?"])
         assert isinstance(results, list)
         assert len(results) == 2
-        
+
         # Empty list should return empty list
         results = practice_pdf.ask_batch([])
         assert isinstance(results, list)
-        assert len(results) == 0 
+        assert len(results) == 0
