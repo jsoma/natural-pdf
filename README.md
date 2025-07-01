@@ -1,5 +1,7 @@
 # Natural PDF
 
+[![CI](https://github.com/jsoma/natural-pdf/actions/workflows/ci.yml/badge.svg)](https://github.com/jsoma/natural-pdf/actions/workflows/ci.yml)
+
 A friendly library for working with PDFs, built on top of [pdfplumber](https://github.com/jsvine/pdfplumber).
 
 Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
