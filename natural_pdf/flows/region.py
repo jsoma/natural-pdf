@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from natural_pdf.core.page import Page as PhysicalPage
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region as PhysicalRegion
 
     from .element import FlowElement
@@ -174,7 +174,7 @@ class FlowRegion:
         Returns:
             An ElementCollection containing all unique elements.
         """
-        from natural_pdf.elements.collections import (
+        from natural_pdf.elements.element_collection import (
             ElementCollection as RuntimeElementCollection,  # Local import
         )
 
@@ -260,7 +260,9 @@ class FlowRegion:
         chains each region's native ``find_all`` call and concatenates their
         results into a single ElementCollection while preserving flow order.
         """
-        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection
+        from natural_pdf.elements.element_collection import (
+            ElementCollection as RuntimeElementCollection,
+        )
 
         matched_elements = []  # type: List["PhysicalElement"]
 

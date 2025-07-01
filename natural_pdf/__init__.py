@@ -71,17 +71,15 @@ options = Options()
 __version__ = "0.1.1"
 
 from natural_pdf.analyzers.guides import Guides
+from natural_pdf.core.page import Page
+from natural_pdf.core.page_collection import PageCollection
+from natural_pdf.core.pdf import PDF
 
 # Core imports
-from natural_pdf.collections.pdf_collection import PDFCollection
-from natural_pdf.core.page import Page
-from natural_pdf.core.pdf import PDF
-from natural_pdf.elements.collections import ElementCollection
+from natural_pdf.core.pdf_collection import PDFCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
-
-ElementCollection = None
 
 # Search options (if extras installed)
 try:
@@ -119,7 +117,6 @@ __all__ = [
     "PDFCollection",
     "Page",
     "Region",
-    "ElementCollection",
     "Flow",
     "FlowRegion",
     "Guides",
@@ -128,6 +125,7 @@ __all__ = [
     "BaseSearchOptions",
     "configure_logging",
     "options",
+    "PageCollection",
 ]
 
 # Add QA components to __all__ if available

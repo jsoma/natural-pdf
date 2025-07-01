@@ -14,7 +14,7 @@ from natural_pdf.analyzers.text_options import TextStyleOptions
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +282,7 @@ class TextStyleAnalyzer:
     def analyze(
         self, page: "Page", options: Optional[TextStyleOptions] = None
     ) -> "ElementCollection":
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         current_options = options or self.options
         logger.info(

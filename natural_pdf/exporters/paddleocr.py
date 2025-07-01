@@ -13,8 +13,8 @@ from natural_pdf.exporters.base import FinetuneExporter
 from natural_pdf.utils.identifiers import generate_short_path_hash
 
 if TYPE_CHECKING:
-    from natural_pdf.collections.pdf_collection import PDFCollection
     from natural_pdf.core.pdf import PDF
+    from natural_pdf.core.pdf_collection import PDFCollection
     from natural_pdf.elements.text import TextElement
 
 logger = logging.getLogger(__name__)

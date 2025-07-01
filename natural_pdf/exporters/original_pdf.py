@@ -17,8 +17,8 @@ except ImportError:
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.core.pdf import PDF
-    from natural_pdf.elements.collections import PageCollection
 
 logger = logging.getLogger(__name__)
 

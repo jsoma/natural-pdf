@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw
 
-from natural_pdf.elements.collections import ElementCollection
+from natural_pdf.elements.element_collection import ElementCollection
 
 from .qa_result import QAResult
 

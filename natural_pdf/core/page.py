@@ -26,7 +26,7 @@ import pdfplumber
 from PIL import Image, ImageDraw
 from tqdm.auto import tqdm  # Added tqdm import
 
-from natural_pdf.elements.collections import ElementCollection
+from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.pdf import PDF
     from natural_pdf.elements.base import Element
-    from natural_pdf.elements.collections import ElementCollection
 
 # # New Imports
 import itertools
@@ -346,9 +345,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         # Likewise, if an ElementCollection is passed we iterate over its
         # elements and create Regions for each one.
         # ------------------------------------------------------------------
-        from natural_pdf.elements.collections import (  # local import to avoid cycle
-            ElementCollection,
-        )
+        # Import ElementCollection from the new module path (old path removed)
+        from natural_pdf.elements.element_collection import ElementCollection
 
         # Selector string ---------------------------------------------------
         if isinstance(exclusion_func_or_region, str):
@@ -383,9 +381,12 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                                 f"Page {self.index}: Added exclusion region from selector '{selector_str}' -> {bbox_coords}"
                             )
                         except Exception as e:
-                            logger.warning(
-                                f"Page {self.index}: Failed to create exclusion region from element {el}: {e}"
+                            # Re-raise so calling code/test sees the failure immediately
+                            logger.error(
+                                f"Page {self.index}: Failed to create exclusion region from element {el}: {e}",
+                                exc_info=False,
                             )
+                            raise
             return self  # Completed processing for selector input
 
         # ElementCollection -----------------------------------------------
@@ -413,9 +414,11 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                             f"Page {self.index}: Added exclusion region from ElementCollection element {bbox_coords}"
                         )
                     except Exception as e:
-                        logger.warning(
-                            f"Page {self.index}: Failed to convert ElementCollection element to Region: {e}"
+                        logger.error(
+                            f"Page {self.index}: Failed to convert ElementCollection element to Region: {e}",
+                            exc_info=False,
                         )
+                        raise
             return self  # Completed processing for ElementCollection input
 
         # ------------------------------------------------------------------
@@ -848,7 +851,9 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         Returns:
             ElementCollection with matching elements.
         """
-        from natural_pdf.elements.collections import ElementCollection  # Import here for type hint
+        from natural_pdf.elements.element_collection import (  # Import here for type hint
+            ElementCollection,
+        )
 
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")

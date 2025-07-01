@@ -18,9 +18,9 @@ from natural_pdf.elements.text import TextElement
 
 # Import the specific PDF/Page types if possible, otherwise use Any
 if TYPE_CHECKING:
-    from natural_pdf.collections.pdf_collection import PDFCollection
     from natural_pdf.core.page import Page
     from natural_pdf.core.pdf import PDF
+    from natural_pdf.core.pdf_collection import PDFCollection
 else:
     PDF = Any
     Page = Any

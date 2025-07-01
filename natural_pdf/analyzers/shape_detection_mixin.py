@@ -11,7 +11,7 @@ from sklearn.cluster import MiniBatchKMeans
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.core.pdf import PDF
-    from natural_pdf.elements.collections import ElementCollection, PageCollection
+    from natural_pdf.elements.element_collection import ElementCollection, PageCollection
     from natural_pdf.elements.line import LineElement
 
     # from natural_pdf.elements.rect import RectangleElement # Removed

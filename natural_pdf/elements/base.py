@@ -15,7 +15,7 @@ from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 if TYPE_CHECKING:
     from natural_pdf.classification.manager import ClassificationManager  # noqa: F401
     from natural_pdf.core.page import Page
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
 
 

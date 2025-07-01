@@ -17,7 +17,7 @@ from .summary import ElementSummary, InspectionSummary
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
 
 logger = logging.getLogger(__name__)

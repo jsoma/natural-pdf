@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 import natural_pdf as npdf
-from natural_pdf.elements.collections import ElementCollection
+from natural_pdf.elements.element_collection import ElementCollection
 
 
 def analyze_pdf(

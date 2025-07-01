@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
     from natural_pdf.core.page import Page as PhysicalPage
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
 
     from .element import FlowElement
     from .flow import Flow  # Though not directly used in __init__, FlowRegion needs it.

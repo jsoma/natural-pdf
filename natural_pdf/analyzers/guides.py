@@ -13,7 +13,7 @@ from natural_pdf.utils.layout import merge_bboxes
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
     from natural_pdf.flows.region import FlowRegion
 

@@ -42,7 +42,7 @@ from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.locks import pdf_render_lock
 
 if TYPE_CHECKING:
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
 
 try:
     from typing import Any as TypingAny
@@ -579,7 +579,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                 print(f"Page {page.index} has {len(page.chars)} characters")
             ```
         """
-        from natural_pdf.elements.collections import PageCollection
+        from natural_pdf.core.page_collection import PageCollection
 
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
@@ -670,7 +670,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
         # Support selector strings and ElementCollection objects directly.
         # Store exclusion and apply only to already-created pages.
         # ------------------------------------------------------------------
-        from natural_pdf.elements.collections import ElementCollection  # local import
+        from natural_pdf.elements.element_collection import ElementCollection  # local import
 
         if isinstance(exclusion_func, str) or isinstance(exclusion_func, ElementCollection):
             # Store for bookkeeping and lazy application
@@ -1141,7 +1141,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             if page_elements:
                 all_elements.extend(page_elements.elements)
 
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         return ElementCollection(all_elements)
 
@@ -1876,7 +1876,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             raise AttributeError("PDF pages not initialized yet.")
 
         if isinstance(key, slice):
-            from natural_pdf.elements.collections import PageCollection
+            from natural_pdf.core.page_collection import PageCollection
 
             # Use the lazy page list's slicing which returns another _LazyPageList
             lazy_slice = self._pages[key]
@@ -2455,3 +2455,19 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                     os.unlink(path)
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary file '{path}': {e}")
+
+    def analyze_layout(self, *args, **kwargs) -> "ElementCollection[Region]":
+        """
+        Analyzes the layout of all pages in the PDF.
+
+        This is a convenience method that calls analyze_layout on the PDF's
+        page collection.
+
+        Args:
+            *args: Positional arguments passed to pages.analyze_layout().
+            **kwargs: Keyword arguments passed to pages.analyze_layout().
+
+        Returns:
+            An ElementCollection of all detected Region objects.
+        """
+        return self.pages.analyze_layout(*args, **kwargs)

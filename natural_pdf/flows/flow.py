@@ -6,9 +6,11 @@ if TYPE_CHECKING:
     from PIL.Image import Image as PIL_Image
 
     from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.elements.base import Element as PhysicalElement
-    from natural_pdf.elements.collections import ElementCollection as PhysicalElementCollection
-    from natural_pdf.elements.collections import PageCollection
+    from natural_pdf.elements.element_collection import (
+        ElementCollection as PhysicalElementCollection,
+    )
     from natural_pdf.elements.region import Region as PhysicalRegion
 
     from .collections import FlowElementCollection
@@ -690,7 +692,7 @@ class Flow:
             tables = all_regions.filter('region[type=table]')
             ```
         """
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         logger.info(
             f"Analyzing layout across Flow with {len(self.segments)} segments (engine: {engine or 'default'})"

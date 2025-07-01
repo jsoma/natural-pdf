@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element  # Added for type hint
-    from natural_pdf.elements.collections import ElementCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.text import TextElement
 
 # Import OCRManager conditionally to avoid circular imports
@@ -2187,7 +2187,7 @@ class Region(
         Returns:
             ElementCollection with matching elements.
         """
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
@@ -2729,7 +2729,7 @@ class Region(
         Returns:
             List of Region objects representing the extracted sections
         """
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         # Process string selectors to find elements WITHIN THIS REGION
         if isinstance(start_elements, str):
@@ -3284,7 +3284,7 @@ class Region(
             An ElementCollection containing temporary Region objects for each detected cell,
             or an empty ElementCollection if no cells are found or an error occurs.
         """
-        from natural_pdf.elements.collections import ElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         # 1. Perform the analysis (or use cached results)
         if "text_table_structure" in self.analyses:
