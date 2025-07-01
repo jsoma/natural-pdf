@@ -1423,6 +1423,36 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                 # Re-raise exception from exporter
                 raise e
 
+    def show(self, *args, **kwargs) -> Optional["Image.Image"]:
+        """
+        Generate a grid of page images for this PDF.
+
+        This method delegates to the pages collection's show method,
+        allowing visualization of all pages in the PDF.
+
+        Args:
+            *args: Positional arguments passed to pages.show()
+            **kwargs: Keyword arguments passed to pages.show()
+
+        Returns:
+            PIL Image of the page grid or None if no pages
+
+        Example:
+            ```python
+            pdf = npdf.PDF("document.pdf")
+            
+            # Show all pages in a grid
+            img = pdf.show()
+            
+            # Show first 6 pages in 2 columns
+            img = pdf.show(max_pages=6, cols=2)
+            
+            # Show pages with labels and categories
+            img = pdf.show(add_labels=True, show_category=True)
+            ```
+        """
+        return self.pages.show(*args, **kwargs)
+
     def ask(
         self,
         question: str,

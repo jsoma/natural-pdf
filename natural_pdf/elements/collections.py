@@ -2917,7 +2917,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
 
     # --- End Deskew Method --- #
 
-    def to_image(
+    def show(
         self,
         page_width: Optional[int] = None,
         cols: Optional[int] = 4,
@@ -2957,7 +2957,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             from PIL import Image, ImageDraw, ImageFont
         except ImportError:
             logger.error(
-                "Pillow library not found, required for to_image(). Install with 'pip install Pillow'"
+                "Pillow library not found, required for show(). Install with 'pip install Pillow'"
             )
             return None
 
@@ -3118,6 +3118,19 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             grid_img.paste(img, (x, y))
 
         return grid_img
+
+    def to_image(
+        self,
+        *args,
+        **kwargs,
+    ) -> Optional["Image.Image"]:
+        """Generate a grid of page images for this collection.
+
+        This is a thin wrapper around :py:meth:`show` so that the API mirrors
+        other collection types. It forwards all arguments and returns the 
+        resulting ``PIL.Image`` instance.
+        """
+        return self.show(*args, **kwargs)
 
     def save_pdf(
         self,
@@ -3305,16 +3318,4 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             segment_gap=segment_gap,
         )
 
-    # Alias .to_image() to .show() for convenience
-    def show(
-        self,
-        *args,
-        **kwargs,
-    ) -> Optional["Image.Image"]:
-        """Display pages similarly to ``to_image``.
 
-        This is a thin wrapper around :py:meth:`to_image` so that the API mirrors
-        ElementCollection, where ``show()`` already exists. It forwards all
-        arguments and returns the resulting ``PIL.Image`` instance.
-        """
-        return self.to_image(*args, **kwargs)

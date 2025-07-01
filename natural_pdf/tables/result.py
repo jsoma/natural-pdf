@@ -39,7 +39,7 @@ class TableResult(Sequence):
         """Quick property alias → calls :py:meth:`to_df` with default args."""
         return self.to_df()
 
-    def to_df(self, header: Union[str, int, List[int], None] = "first", index_col=None, **kwargs):
+    def to_df(self, header: Union[str, int, List[int], None] = "first", index_col=None, skip_repeating_headers=None, **kwargs):
         """Convert to *pandas* DataFrame.
 
         Parameters
@@ -47,6 +47,10 @@ class TableResult(Sequence):
         header : "first" | int | list[int] | None, default "first"
             • "first" – use row 0 as column names.\n            • int       – use that row index.\n            • list[int] – multi-row header.\n            • None/False– no header.
         index_col : same semantics as pandas, forwarded.
+        skip_repeating_headers : bool, optional
+            Whether to remove body rows that exactly match the header row(s).
+            Defaults to True when header is truthy, False otherwise.
+            Useful for PDFs where headers repeat throughout the table body.
         **kwargs  : forwarded to :pyclass:`pandas.DataFrame`.
         """
         try:
@@ -59,6 +63,10 @@ class TableResult(Sequence):
         rows = self._rows
         if not rows:
             return pd.DataFrame()
+
+        # Determine default for skip_repeating_headers based on header parameter
+        if skip_repeating_headers is None:
+            skip_repeating_headers = header is not None and header is not False
 
         # Determine header rows and body rows
         body = rows
@@ -77,6 +85,22 @@ class TableResult(Sequence):
             hdr = hdr_rows
         else:
             raise ValueError("Invalid value for header parameter")
+
+        # Skip repeating headers in body if requested
+        if skip_repeating_headers and hdr is not None and body:
+            original_body_len = len(body)
+            if isinstance(hdr, list) and len(hdr) > 0 and not isinstance(hdr[0], list):
+                # Single header row (most common case)
+                body = [row for row in body if row != hdr]
+            elif isinstance(hdr, list) and len(hdr) > 0 and isinstance(hdr[0], list):
+                # Multi-row header (less common)
+                hdr_set = {tuple(h) if isinstance(h, list) else h for h in hdr}
+                body = [row for row in body if (tuple(row) if isinstance(row, list) else row) not in hdr_set]
+            
+            skipped_count = original_body_len - len(body)
+            if skipped_count > 0:
+                # Could add logging here if desired
+                pass
 
         df = pd.DataFrame(body, columns=hdr)
         if index_col is not None and not df.empty:

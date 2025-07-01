@@ -711,7 +711,7 @@ class Region(
         page_kwargs = kwargs.copy()
         effective_resolution = resolution  # Start with the provided resolution
 
-        if crop and "width" in kwargs:
+        if crop and "width" in kwargs and kwargs["width"] is not None:
             target_width = kwargs["width"]
             # Calculate what resolution is needed to make the region crop have target_width
             region_width_points = self.width  # Region width in PDF points

@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
@@ -637,6 +638,7 @@ class FlowRegion:
         stitch_rows: Optional[
             Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
         ] = None,
+        merge_headers: Optional[bool] = None,
         **kwargs,
     ) -> TableResult:
         """Extracts a single logical table from the FlowRegion.
@@ -650,6 +652,11 @@ class FlowRegion:
             method, table_settings, use_ocr, ocr_config, text_options, cell_extraction_func, show_progress:
                 Same as in :pymeth:`Region.extract_table` and are forwarded as-is
                 to each physical region.
+            merge_headers: Whether to merge tables by removing repeated headers from subsequent
+                pages/segments. If None (default), auto-detects by checking if the first row
+                of each segment matches the first row of the first segment. If segments have
+                inconsistent header patterns (some repeat, others don't), raises ValueError.
+                Useful for multi-page tables where headers repeat on each page.
             **kwargs: Additional keyword arguments forwarded to the underlying
                 ``Region.extract_table`` implementation.
 
@@ -661,6 +668,7 @@ class FlowRegion:
         stitch_rows parameter:
             Controls whether the first rows of subsequent segments/regions should be merged
             into the previous row (to handle spill-over across page breaks).
+            Applied AFTER header removal if merge_headers is enabled.
 
             • None (default) – no merging (behaviour identical to previous versions).
             • Callable – custom predicate taking
@@ -694,6 +702,10 @@ class FlowRegion:
             return merged
 
         aggregated_rows: List[List[Optional[str]]] = []
+        header_row: Optional[List[Optional[str]]] = None
+        merge_headers_enabled = False
+        headers_warned = False  # Track if we've already warned about dropping headers
+        segment_has_repeated_header = []  # Track which segments have repeated headers
 
         for region_idx, region in enumerate(self.constituent_regions):
             try:
@@ -717,6 +729,59 @@ class FlowRegion:
                 else:
                     segment_rows = list(region_result)
 
+                # Handle header detection and merging for multi-page tables
+                if region_idx == 0:
+                    # First segment: capture potential header row
+                    if segment_rows:
+                        header_row = segment_rows[0]
+                        # Determine if we should merge headers
+                        if merge_headers is None:
+                            # Auto-detect: we'll check all subsequent segments
+                            merge_headers_enabled = False  # Will be determined later
+                        else:
+                            merge_headers_enabled = merge_headers
+                        # Track that first segment exists (for consistency checking)
+                        segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
+                elif region_idx == 1 and merge_headers is None:
+                    # Auto-detection: check if first row of second segment matches header
+                    has_header = segment_rows and header_row and segment_rows[0] == header_row
+                    segment_has_repeated_header.append(has_header)
+                    
+                    if has_header:
+                        merge_headers_enabled = True
+                        # Remove the detected repeated header from this segment
+                        segment_rows = segment_rows[1:]
+                        if not headers_warned:
+                            warnings.warn(
+                                "Detected repeated headers in multi-page table. Merging by removing "
+                                "repeated headers from subsequent pages.",
+                                UserWarning,
+                                stacklevel=2
+                            )
+                            headers_warned = True
+                    else:
+                        merge_headers_enabled = False
+                elif region_idx > 1:
+                    # Check consistency: all segments should have same pattern
+                    has_header = segment_rows and header_row and segment_rows[0] == header_row
+                    segment_has_repeated_header.append(has_header)
+                    
+                    # Remove header if merging is enabled and header is present
+                    if merge_headers_enabled and has_header:
+                        segment_rows = segment_rows[1:]
+                elif region_idx > 0 and merge_headers_enabled:
+                    # Explicit merge_headers=True: remove headers from subsequent segments
+                    if segment_rows and header_row and segment_rows[0] == header_row:
+                        segment_rows = segment_rows[1:]
+                        if not headers_warned:
+                            warnings.warn(
+                                "Removing repeated headers from multi-page table during merge.",
+                                UserWarning,
+                                stacklevel=2
+                            )
+                            headers_warned = True
+
+                # Process remaining rows with stitch_rows logic
                 for row_idx, row in enumerate(segment_rows):
                     if (
                         predicate is not None
@@ -732,6 +797,22 @@ class FlowRegion:
                     f"FlowRegion.extract_table: Error extracting table from constituent region {region}: {e}",
                     exc_info=True,
                 )
+
+        # Check for inconsistent header patterns after processing all segments
+        if merge_headers is None and len(segment_has_repeated_header) > 2:
+            # During auto-detection, check for consistency across all segments
+            expected_pattern = segment_has_repeated_header[1]  # Pattern from second segment
+            for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
+                if has_header != expected_pattern:
+                    # Inconsistent pattern detected
+                    segments_with_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h]
+                    segments_without_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h]
+                    raise ValueError(
+                        f"Inconsistent header pattern in multi-page table: "
+                        f"segments {segments_with_headers} have repeated headers, "
+                        f"but segments {segments_without_headers} do not. "
+                        f"All segments must have the same header pattern for reliable merging."
+                    )
 
         return TableResult(aggregated_rows)
 

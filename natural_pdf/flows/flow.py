@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union, Tuple, Callable, overload
 
 if TYPE_CHECKING:
@@ -362,6 +363,7 @@ class Flow:
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
         stitch_rows: Optional[Callable] = None,
+        merge_headers: Optional[bool] = None,
     ) -> TableResult:
         """
         Extract table data from all segments in the flow, combining results sequentially.
@@ -380,8 +382,14 @@ class Flow:
                                   and returns its string content. For 'text' method only.
             show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
             content_filter: Optional content filter to apply during cell text extraction.
+            merge_headers: Whether to merge tables by removing repeated headers from subsequent
+                segments. If None (default), auto-detects by checking if the first row
+                of each segment matches the first row of the first segment. If segments have
+                inconsistent header patterns (some repeat, others don't), raises ValueError.
+                Useful for multi-page tables where headers repeat on each page.
             stitch_rows: Optional callable to determine when rows should be merged across
-                         segment boundaries. Two overloaded signatures are supported:
+                         segment boundaries. Applied AFTER header removal if merge_headers
+                         is enabled. Two overloaded signatures are supported:
                          
                          • func(current_row) -> bool
                            Called only on the first row of each segment (after the first).
@@ -463,6 +471,10 @@ class Flow:
 
         aggregated_rows: List[List[Optional[str]]] = []
         processed_segments = 0
+        header_row: Optional[List[Optional[str]]] = None
+        merge_headers_enabled = False
+        headers_warned = False  # Track if we've already warned about dropping headers
+        segment_has_repeated_header = []  # Track which segments have repeated headers
 
         for seg_idx, segment in enumerate(self.segments):
             try:
@@ -491,6 +503,62 @@ class Flow:
                     logger.debug(f"    No table data found in segment {seg_idx+1}")
                     continue
 
+                # Handle header detection and merging for multi-page tables
+                if seg_idx == 0:
+                    # First segment: capture potential header row
+                    if segment_rows:
+                        header_row = segment_rows[0]
+                        # Determine if we should merge headers
+                        if merge_headers is None:
+                            # Auto-detect: we'll check all subsequent segments
+                            merge_headers_enabled = False  # Will be determined later
+                        else:
+                            merge_headers_enabled = merge_headers
+                        # Track that first segment exists (for consistency checking)
+                        segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
+                elif seg_idx == 1 and merge_headers is None:
+                    # Auto-detection: check if first row of second segment matches header
+                    has_header = segment_rows and header_row and segment_rows[0] == header_row
+                    segment_has_repeated_header.append(has_header)
+                    
+                    if has_header:
+                        merge_headers_enabled = True
+                        # Remove the detected repeated header from this segment
+                        segment_rows = segment_rows[1:]
+                        logger.debug(f"    Auto-detected repeated header in segment {seg_idx+1}, removed")
+                        if not headers_warned:
+                            warnings.warn(
+                                "Detected repeated headers in multi-page table. Merging by removing "
+                                "repeated headers from subsequent pages.",
+                                UserWarning,
+                                stacklevel=2
+                            )
+                            headers_warned = True
+                    else:
+                        merge_headers_enabled = False
+                        logger.debug(f"    No repeated header detected in segment {seg_idx+1}")
+                elif seg_idx > 1:
+                    # Check consistency: all segments should have same pattern
+                    has_header = segment_rows and header_row and segment_rows[0] == header_row
+                    segment_has_repeated_header.append(has_header)
+                    
+                    # Remove header if merging is enabled and header is present
+                    if merge_headers_enabled and has_header:
+                        segment_rows = segment_rows[1:]
+                        logger.debug(f"    Removed repeated header from segment {seg_idx+1}")
+                elif seg_idx > 0 and merge_headers_enabled:
+                    # Explicit merge_headers=True: remove headers from subsequent segments
+                    if segment_rows and header_row and segment_rows[0] == header_row:
+                        segment_rows = segment_rows[1:]
+                        logger.debug(f"    Removed repeated header from segment {seg_idx+1}")
+                        if not headers_warned:
+                            warnings.warn(
+                                "Removing repeated headers from multi-page table during merge.",
+                                UserWarning,
+                                stacklevel=2
+                            )
+                            headers_warned = True
+
                 for row_idx, row in enumerate(segment_rows):
                     should_merge = False
                     
@@ -515,6 +583,22 @@ class Flow:
             except Exception as e:
                 logger.error(f"Error extracting table from segment {seg_idx+1}: {e}", exc_info=True)
                 continue
+
+        # Check for inconsistent header patterns after processing all segments
+        if merge_headers is None and len(segment_has_repeated_header) > 2:
+            # During auto-detection, check for consistency across all segments
+            expected_pattern = segment_has_repeated_header[1]  # Pattern from second segment
+            for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
+                if has_header != expected_pattern:
+                    # Inconsistent pattern detected
+                    segments_with_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h]
+                    segments_without_headers = [i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h]
+                    raise ValueError(
+                        f"Inconsistent header pattern in multi-page table: "
+                        f"segments {segments_with_headers} have repeated headers, "
+                        f"but segments {segments_without_headers} do not. "
+                        f"All segments must have the same header pattern for reliable merging."
+                    )
 
         logger.info(
             f"Flow table extraction complete: {len(aggregated_rows)} total rows from {processed_segments}/{len(self.segments)} segments"
@@ -709,33 +793,40 @@ class Flow:
         stack_gap: int = 5,
         stack_background_color: Tuple[int, int, int] = (255, 255, 255),
         crop: bool = False,
+        in_context: bool = False,
+        separator_color: Tuple[int, int, int] = (255, 0, 0),
+        separator_thickness: int = 2,
         **kwargs,
     ) -> Optional["PIL_Image"]:
         """
-        Generates and returns a PIL Image showing all segments in the flow with highlights.
+        Generates and returns a PIL Image showing all segments in the flow.
 
-        This method visualizes the entire flow by highlighting each segment on its respective
-        page and combining the results into a single image. If multiple pages are involved,
-        they are stacked according to the flow's arrangement.
+        This method visualizes the entire flow either by highlighting each segment on its 
+        respective page (default mode) or by showing cropped segment images stacked together
+        (in_context mode). If multiple pages are involved, they are stacked according to 
+        the flow's arrangement.
 
         Args:
             resolution: Resolution in DPI for page rendering. If None, uses global setting or defaults to 144 DPI.
-            labels: Whether to include a legend for highlights.
+            labels: Whether to include a legend for highlights (page context mode only).
             legend_position: Position of the legend ('right', 'bottom', 'top', 'left').
-            color: Color for highlighting the flow segments.
+            color: Color for highlighting the flow segments (page context mode only).
             label_prefix: Prefix for segment labels (e.g., 'FlowSegment').
             width: Optional width for the output image (overrides resolution).
-            stack_direction: Direction to stack multiple pages ('vertical' or 'horizontal').
-            stack_gap: Gap in pixels between stacked pages.
+            stack_direction: Direction to stack multiple pages/segments ('vertical' or 'horizontal').
+            stack_gap: Gap in pixels between stacked pages/segments.
             stack_background_color: RGB background color for the stacked image.
-            crop: If True, crop each rendered page to the bounding box of segments on that page.
+            crop: If True, crop each rendered page to the bounding box of segments on that page (page context mode only).
+            in_context: If True, show segments as cropped images stacked together instead of highlighted on pages.
+            separator_color: RGB color for separator lines between segments (in_context mode only).
+            separator_thickness: Thickness in pixels of separator lines (in_context mode only).
             **kwargs: Additional arguments passed to the underlying rendering methods.
 
         Returns:
-            PIL Image of the rendered pages with highlighted flow segments, or None if rendering fails.
+            PIL Image of the rendered flow, or None if rendering fails.
 
         Example:
-            Visualizing a multi-page flow:
+            Visualizing a multi-page flow in page context:
             ```python
             pdf = npdf.PDF("document.pdf")
             
@@ -745,8 +836,11 @@ class Flow:
                 arrangement='vertical'
             )
             
-            # Show the entire flow
+            # Show with page context (default)
             flow_image = page_flow.show(color="green", labels=True)
+            
+            # Show with flow context (cropped segments stacked)
+            in_context_image = page_flow.show(in_context=True, separator_color=(255, 0, 0))
             ```
         """
         logger.info(f"Rendering Flow with {len(self.segments)} segments")
@@ -762,6 +856,19 @@ class Flow:
                 resolution = natural_pdf.options.image.resolution
             else:
                 resolution = 144  # Default resolution
+
+        # NEW: Flow context mode - show cropped segment images stacked together
+        if in_context:
+            return self._show_in_context(
+                resolution=resolution,
+                width=width,
+                stack_direction=stack_direction,
+                stack_gap=stack_gap,
+                stack_background_color=stack_background_color,
+                separator_color=separator_color,
+                separator_thickness=separator_thickness,
+                **kwargs
+            )
 
         # 1. Group segments by their physical pages
         segments_by_page = {}  # Dict[Page, List[PhysicalRegion]]
@@ -931,7 +1038,160 @@ class Flow:
             return concatenated_image
         else:
             raise ValueError(
-                f"Invalid stack_direction '{final_stack_direction}' for Flow.show(). Must be 'vertical' or 'horizontal'."
+                f"Invalid stack_direction '{final_stack_direction}' for in_context. Must be 'vertical' or 'horizontal'."
+            )
+
+    def _show_in_context(
+        self,
+        resolution: float,
+        width: Optional[int] = None,
+        stack_direction: str = "vertical",
+        stack_gap: int = 5,
+        stack_background_color: Tuple[int, int, int] = (255, 255, 255),
+        separator_color: Tuple[int, int, int] = (255, 0, 0),
+        separator_thickness: int = 2,
+        **kwargs,
+    ) -> Optional["PIL_Image"]:
+        """
+        Show segments as cropped images stacked together with separators between segments.
+        
+        Args:
+            resolution: Resolution in DPI for rendering segment images
+            width: Optional width for segment images
+            stack_direction: Direction to stack segments ('vertical' or 'horizontal')
+            stack_gap: Gap in pixels between segments
+            stack_background_color: RGB background color for the final image
+            separator_color: RGB color for separator lines between segments
+            separator_thickness: Thickness in pixels of separator lines
+            **kwargs: Additional arguments passed to segment.to_image()
+            
+        Returns:
+            PIL Image with all segments stacked together
+        """
+        from PIL import Image, ImageDraw
+        
+        segment_images = []
+        segment_pages = []
+        
+        # Determine stacking direction
+        final_stack_direction = stack_direction
+        if stack_direction == "auto":
+            final_stack_direction = self.arrangement
+            
+        # Get cropped images for each segment
+        for i, segment in enumerate(self.segments):
+            # Get the page reference for this segment
+            if hasattr(segment, 'page') and segment.page is not None:
+                segment_page = segment.page
+                # Get cropped image of the segment
+                segment_image = segment.to_image(
+                    resolution=resolution,
+                    crop=True,
+                    include_highlights=False,
+                    width=width,
+                    **kwargs
+                )
+                    
+            elif hasattr(segment, 'index') and hasattr(segment, 'width') and hasattr(segment, 'height'):
+                # It's a full Page object
+                segment_page = segment
+                segment_image = segment.to_image(
+                    resolution=resolution,
+                    width=width,
+                    **kwargs
+                )
+            else:
+                raise ValueError(f"Segment {i+1} has no identifiable page. Segment type: {type(segment)}, attributes: {dir(segment)}")
+                
+            segment_images.append(segment_image)
+            segment_pages.append(segment_page)
+                
+        # We should have at least one segment image by now (or an exception would have been raised)
+        if len(segment_images) == 1:
+            return segment_images[0]
+            
+        # Calculate dimensions for the final stacked image
+        if final_stack_direction == "vertical":
+            # Stack vertically
+            final_width = max(img.width for img in segment_images)
+            
+            # Calculate total height including gaps and separators
+            total_height = sum(img.height for img in segment_images)
+            total_height += (len(segment_images) - 1) * stack_gap
+            
+            # Add separator thickness between all segments
+            num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
+            total_height += num_separators * separator_thickness
+            
+            # Create the final image
+            final_image = Image.new("RGB", (final_width, total_height), stack_background_color)
+            draw = ImageDraw.Draw(final_image)
+            
+            current_y = 0
+            
+            for i, img in enumerate(segment_images):
+                # Add separator line before each segment (except the first one)
+                if i > 0:
+                    # Draw separator line
+                    draw.rectangle(
+                        [(0, current_y), (final_width, current_y + separator_thickness)],
+                        fill=separator_color
+                    )
+                    current_y += separator_thickness
+                    
+                # Paste the segment image
+                paste_x = (final_width - img.width) // 2  # Center horizontally
+                final_image.paste(img, (paste_x, current_y))
+                current_y += img.height
+                
+                # Add gap after segment (except for the last one)
+                if i < len(segment_images) - 1:
+                    current_y += stack_gap
+                
+            return final_image
+            
+        elif final_stack_direction == "horizontal":
+            # Stack horizontally
+            final_height = max(img.height for img in segment_images)
+            
+            # Calculate total width including gaps and separators
+            total_width = sum(img.width for img in segment_images)
+            total_width += (len(segment_images) - 1) * stack_gap
+            
+            # Add separator thickness between all segments
+            num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
+            total_width += num_separators * separator_thickness
+            
+            # Create the final image
+            final_image = Image.new("RGB", (total_width, final_height), stack_background_color)
+            draw = ImageDraw.Draw(final_image)
+            
+            current_x = 0
+            
+            for i, img in enumerate(segment_images):
+                # Add separator line before each segment (except the first one)
+                if i > 0:
+                    # Draw separator line
+                    draw.rectangle(
+                        [(current_x, 0), (current_x + separator_thickness, final_height)],
+                        fill=separator_color
+                    )
+                    current_x += separator_thickness
+                    
+                # Paste the segment image
+                paste_y = (final_height - img.height) // 2  # Center vertically
+                final_image.paste(img, (current_x, paste_y))
+                current_x += img.width
+                
+                # Add gap after segment (except for the last one)
+                if i < len(segment_images) - 1:
+                    current_x += stack_gap
+                
+            return final_image
+            
+        else:
+            raise ValueError(
+                f"Invalid stack_direction '{final_stack_direction}' for in_context. Must be 'vertical' or 'horizontal'."
             )
 
     # --- Helper methods for coordinate transformations and segment iteration ---
