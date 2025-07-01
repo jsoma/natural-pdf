@@ -87,6 +87,9 @@ def tutorials(session):
     session.install("surya-ocr")
     session.install("easyocr")
     session.install("doclayout_yolo")
+    # Ensure all optional packages (including paddle OCR dependencies) are available for tutorial execution
+    for package in OPTIONAL_PACKAGES:
+        session.install(package)
     # Run only tests marked as tutorial (no repetition across envs)
     workers = os.environ.get("NOTEBOOK_WORKERS", "10")
     session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
