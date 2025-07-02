@@ -61,7 +61,7 @@ guides.show()
 guides.build_grid()
 cells = page.find_all('table_cell')
 form_data = {
-    cell.extract_text().split(':')[0].strip(): 
+    cell.extract_text().split(':')[0].strip():
     cell.extract_text().split(':')[1].strip()
     for cell in cells if ':' in cell.extract_text()
 }
@@ -77,7 +77,7 @@ page.analyze_layout('tatr')
 if not page.find('table'):
     # Fallback to Guides
     guides = Guides(page)
-    
+
     # Detect from pixel-based lines (no vectors needed)
     guides.horizontal.from_lines(
         detection_method='pixels',
@@ -88,11 +88,11 @@ if not page.find('table'):
         detection_method='pixels',
         threshold='auto'
     )
-    
+
     # Clean up and align
     guides.horizontal.snap_to_whitespace()
     guides.vertical.snap_to_whitespace()
-    
+
     guides.build_grid()
     df = page.find('table').extract_table().df
 ```
@@ -232,7 +232,7 @@ page = PDF('quarterly.pdf').pages[0]
 
 # Bold headings mark each section
 sections = page.get_sections(start_elements='text:bold',
-                             boundary_inclusion='start')
+                             include_boundaries='start')
 
 for i, sec in enumerate(sections, 1):
     sec.save_image(f'section_{i}.png')
@@ -375,4 +375,4 @@ article_body = article_title.below(until='text[size>16], image')
 ```
 
 ---
-_Add more as new patterns emerge._ 
+_Add more as new patterns emerge._

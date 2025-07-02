@@ -92,9 +92,10 @@ class ApplyMixin:
 
         # Import here to avoid circular imports
         from natural_pdf import PDF, Page
+        from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.core.pdf_collection import PDFCollection
         from natural_pdf.elements.base import Element
-        from natural_pdf.elements.element_collection import ElementCollection, PageCollection
+        from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
 
         first_non_none = next((r for r in results if r is not None), None)

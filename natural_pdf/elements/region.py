@@ -2619,14 +2619,14 @@ class Region(
 
         return self
 
-    def get_section_between(self, start_element=None, end_element=None, boundary_inclusion="both"):
+    def get_section_between(self, start_element=None, end_element=None, include_boundaries="both"):
         """
         Get a section between two elements within this region.
 
         Args:
             start_element: Element marking the start of the section
             end_element: Element marking the end of the section
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
 
         Returns:
             Region representing the section
@@ -2675,15 +2675,15 @@ class Region(
         start_element_for_bbox = start_element
         end_element_for_bbox = end_element
 
-        if boundary_inclusion == "none":
+        if include_boundaries == "none":
             start_idx += 1
             end_idx -= 1
             start_element_for_bbox = elements[start_idx] if start_idx <= end_idx else None
             end_element_for_bbox = elements[end_idx] if start_idx <= end_idx else None
-        elif boundary_inclusion == "start":
+        elif include_boundaries == "start":
             end_idx -= 1
             end_element_for_bbox = elements[end_idx] if start_idx <= end_idx else None
-        elif boundary_inclusion == "end":
+        elif include_boundaries == "end":
             start_idx += 1
             start_element_for_bbox = elements[start_idx] if start_idx <= end_idx else None
 
@@ -2716,7 +2716,7 @@ class Region(
         return section
 
     def get_sections(
-        self, start_elements=None, end_elements=None, boundary_inclusion="both"
+        self, start_elements=None, end_elements=None, include_boundaries="both"
     ) -> "ElementCollection[Region]":
         """
         Get sections within this region based on start/end elements.
@@ -2724,7 +2724,7 @@ class Region(
         Args:
             start_elements: Elements or selector string that mark the start of sections
             end_elements: Elements or selector string that mark the end of sections
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
 
         Returns:
             List of Region objects representing the extracted sections
@@ -2803,7 +2803,7 @@ class Region(
                 start_element = current_start_boundary["element"]
                 end_element = boundary["element"]
                 # Use the helper, ensuring elements are from within the region
-                section = self.get_section_between(start_element, end_element, boundary_inclusion)
+                section = self.get_section_between(start_element, end_element, include_boundaries)
                 sections.append(section)
                 current_start_boundary = None  # Reset
 
@@ -2820,7 +2820,7 @@ class Region(
                 if end_idx >= 0 and end_idx >= current_start_boundary["index"]:
                     end_element = all_elements_in_region[end_idx]
                     section = self.get_section_between(
-                        start_element, end_element, boundary_inclusion
+                        start_element, end_element, include_boundaries
                     )
                     sections.append(section)
                 # Else: Section started and ended by consecutive start elements? Create empty?
@@ -2834,7 +2834,7 @@ class Region(
             start_element = current_start_boundary["element"]
             # End at the last element within the region
             end_element = all_elements_in_region[-1]
-            section = self.get_section_between(start_element, end_element, boundary_inclusion)
+            section = self.get_section_between(start_element, end_element, include_boundaries)
             sections.append(section)
 
         return ElementCollection(sections)

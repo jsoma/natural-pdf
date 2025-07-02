@@ -10,8 +10,9 @@ from sklearn.cluster import MiniBatchKMeans
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.core.pdf import PDF
-    from natural_pdf.elements.element_collection import ElementCollection, PageCollection
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.line import LineElement
 
     # from natural_pdf.elements.rect import RectangleElement # Removed
@@ -150,6 +151,12 @@ class ShapeDetectionMixin:
             origin_offset_pdf[1] + line_data_img["y2"] * effective_scale
         )  # y2 is the second y-coord
 
+        # Clamp coords to image dimensions
+        x0 = max(0, min(x0, page_obj.width))
+        top = max(0, min(top, page_obj.height))
+        x1 = max(0, min(x1, page_obj.width))
+        bottom = max(0, min(bottom, page_obj.height))
+
         # For lines, width attribute in PDF points
         line_width_pdf = line_data_img["width"] * effective_scale
 
@@ -158,7 +165,7 @@ class ShapeDetectionMixin:
             getattr(page_obj._page, "initial_doctop", 0) if hasattr(page_obj, "_page") else 0
         )
 
-        return {
+        attrs = {
             "x0": x0,
             "top": top,
             "x1": x1,
@@ -178,6 +185,8 @@ class ShapeDetectionMixin:
             ),  # Renamed from raw_nfa_score
             "raw_line_position_px": line_data_img.get("line_position_px"),  # Added for clarity
         }
+
+        return attrs
 
     def _find_lines_on_image_data(
         self,
@@ -710,7 +719,6 @@ class ShapeDetectionMixin:
                     logger.info(
                         f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}"
                     )
-
         lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
             cv_image=cv_image,
             pil_image_rgb=pil_image_for_dims,
@@ -733,7 +741,6 @@ class ShapeDetectionMixin:
             smoothing_sigma_v=smoothing_sigma_v,
             peak_width_rel_height=peak_width_rel_height,
         )
-
         from natural_pdf.elements.line import LineElement
 
         element_manager = page_object_ctx._element_mgr
@@ -742,14 +749,8 @@ class ShapeDetectionMixin:
             element_constructor_data = self._convert_line_to_element_data(
                 line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
             )
-            try:
-                line_element = LineElement(element_constructor_data, page_object_ctx)
-                element_manager.add_element(line_element, element_type="lines")
-            except Exception as e:
-                logger.error(
-                    f"Failed to create or add LineElement: {e}. Data: {element_constructor_data}",
-                    exc_info=True,
-                )
+            line_element = LineElement(element_constructor_data, page_object_ctx)
+            element_manager.add_element(line_element, element_type="lines")
 
         logger.info(
             f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using projection profiling."
@@ -826,14 +827,8 @@ class ShapeDetectionMixin:
             element_constructor_data = self._convert_line_to_element_data(
                 line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
             )
-            try:
-                line_element = LineElement(element_constructor_data, page_object_ctx)
-                element_manager.add_element(line_element, element_type="lines")
-            except Exception as e:
-                logger.error(
-                    f"Failed to create or add LineElement: {e}. Data: {element_constructor_data}",
-                    exc_info=True,
-                )
+            line_element = LineElement(element_constructor_data, page_object_ctx)
+            element_manager.add_element(line_element, element_type="lines")
 
         logger.info(
             f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using LSD."
@@ -1256,10 +1251,7 @@ class ShapeDetectionMixin:
                 and getattr(r, "source", None) == source_label
             ]
             for r in old_blobs:
-                try:
-                    page_obj._element_mgr.regions.remove(r)
-                except ValueError:
-                    pass
+                page_obj._element_mgr.regions.remove(r)
 
         # ── iterate clusters ───────────────────────────────────────────────────
         unique_clusters = [cid for cid in np.unique(labels_img) if cid >= 0]

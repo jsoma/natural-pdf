@@ -563,7 +563,54 @@ class DirectionalMixin:
         return matches[0]
 
 
-class Element(DirectionalMixin, ClassificationMixin, DescribeMixin):
+class HighlightableMixin:
+    """
+    Mixin that provides the highlighting protocol for elements.
+
+    This protocol enables ElementCollection.show() to work with mixed content
+    including FlowRegions and elements from multiple pages by providing a
+    standard way to get highlight specifications.
+    """
+
+    def get_highlight_specs(self) -> List[Dict[str, Any]]:
+        """
+        Get highlight specifications for this element.
+
+        Returns a list of dictionaries, each containing:
+        - page: The Page object to highlight on
+        - page_index: The 0-based index of the page
+        - bbox: The bounding box (x0, y0, x1, y1) to highlight
+        - polygon: Optional polygon coordinates for non-rectangular highlights
+        - element: Reference to the element being highlighted
+
+        For regular elements, this returns a single spec.
+        For FlowRegions, this returns specs for all constituent regions.
+
+        Returns:
+            List of highlight specification dictionaries
+        """
+        # Default implementation for regular elements
+        if not hasattr(self, "page") or self.page is None:
+            return []
+
+        if not hasattr(self, "bbox") or self.bbox is None:
+            return []
+
+        spec = {
+            "page": self.page,
+            "page_index": self.page.index if hasattr(self.page, "index") else 0,
+            "bbox": self.bbox,
+            "element": self,
+        }
+
+        # Add polygon if available
+        if hasattr(self, "polygon") and hasattr(self, "has_polygon") and self.has_polygon:
+            spec["polygon"] = self.polygon
+
+        return [spec]
+
+
+class Element(DirectionalMixin, ClassificationMixin, DescribeMixin, HighlightableMixin):
     """Base class for all PDF elements.
 
     This class provides common properties and methods for all PDF elements,

@@ -458,7 +458,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
         start_elements=None,
         end_elements=None,
         new_section_on_page_break=False,
-        boundary_inclusion="both",
+        include_boundaries="both",
     ) -> "ElementCollection[Region]":
         """
         Extract sections from a page collection based on start/end elements.
@@ -467,7 +467,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
             start_elements: Elements or selector string that mark the start of sections (optional)
             end_elements: Elements or selector string that mark the end of sections (optional)
             new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
 
         Returns:
             List of Region objects representing the extracted sections
@@ -693,7 +693,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
                         section.boundary_element_found = end_element
                     else:
                         section = start_element.page.get_section_between(
-                            start_element, end_element, boundary_inclusion
+                            start_element, end_element, include_boundaries
                         )
                     sections.append(section)
                 else:
@@ -725,7 +725,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
 
                     # Create the section
                     section = start_element.page.get_section_between(
-                        start_element, end_element, boundary_inclusion
+                        start_element, end_element, include_boundaries
                     )
                     sections.append(section)
                 else:

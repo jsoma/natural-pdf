@@ -292,7 +292,7 @@ class GuidesList(UserList):
         source_label: Optional[str] = None,
         max_lines: Optional[int] = None,
         outer: bool = False,
-        detection_method: str = "vector",
+        detection_method: str = "pixels",
         resolution: int = 192,
         *,
         n: Optional[int] = None,
@@ -1147,7 +1147,7 @@ class Guides:
         max_lines_h: Optional[int] = None,
         max_lines_v: Optional[int] = None,
         outer: bool = False,
-        detection_method: str = "vector",
+        detection_method: str = "pixels",
         resolution: int = 192,
         **detect_kwargs,
     ) -> "Guides":
@@ -1243,10 +1243,15 @@ class Guides:
             }
 
             # Handle threshold parameter
-            if threshold == "auto":
+            if threshold == "auto" and detection_method == "vector":
                 # Auto mode: use very low thresholds with max_lines constraints
                 detect_params["peak_threshold_h"] = 0.0
                 detect_params["peak_threshold_v"] = 0.0
+                detect_params["max_lines_h"] = max_lines_h
+                detect_params["max_lines_v"] = max_lines_v
+            if threshold == "auto" and detection_method == "pixels":
+                detect_params["peak_threshold_h"] = 0.5
+                detect_params["peak_threshold_v"] = 0.5
                 detect_params["max_lines_h"] = max_lines_h
                 detect_params["max_lines_v"] = max_lines_v
             else:
@@ -1290,6 +1295,7 @@ class Guides:
                 lines = []
 
             # Filter by the source we just used
+
             lines = [
                 l for l in lines if getattr(l, "source", None) == detect_params["source_label"]
             ]
@@ -2631,25 +2637,33 @@ class Guides:
             source: Source label for created regions (for identification)
             cell_padding: Internal padding for cell regions in points
             include_outer_boundaries: Whether to add boundaries at edges if missing
-            multi_page: Controls multi-page table creation for FlowRegions.
-                - "auto": (default) Creates a multi-page grid if guides span pages.
-                - True: Forces creation of a multi-page grid.
-                - False: Creates separate grids for each page.
+            multi_page: Controls multi-region table creation for FlowRegions.
+                - "auto": (default) Creates a unified grid if there are multiple regions or guides span pages.
+                - True: Forces creation of a unified multi-region grid.
+                - False: Creates separate grids for each region.
 
         Returns:
             Dictionary with 'counts' and 'regions' created.
         """
         # Dispatch to appropriate implementation based on context and flags
         if self.is_flow_region:
+            # Check if we should create a unified multi-region grid
+            has_multiple_regions = len(self.context.constituent_regions) > 1
             spans_pages = self._spans_pages()
-            if multi_page is True or (multi_page == "auto" and spans_pages):
+
+            # Create unified grid if:
+            # - multi_page is explicitly True, OR
+            # - multi_page is "auto" AND (spans pages OR has multiple regions)
+            if multi_page is True or (
+                multi_page == "auto" and (spans_pages or has_multiple_regions)
+            ):
                 return self._build_grid_multi_page(
                     source=source,
                     cell_padding=cell_padding,
                     include_outer_boundaries=include_outer_boundaries,
                 )
             else:
-                # FlowRegion context, but creating separate tables per page
+                # Single region FlowRegion or multi_page=False: create separate tables per region
                 total_counts = {"table": 0, "rows": 0, "columns": 0, "cells": 0}
                 all_regions = {"table": [], "rows": [], "columns": [], "cells": []}
 
@@ -2703,7 +2717,16 @@ class Guides:
         cell_padding: float,
         include_outer_boundaries: bool,
     ) -> Dict[str, Any]:
-        """Builds a single, coherent grid across multiple pages of a FlowRegion."""
+        """
+        Builds a single, coherent grid across multiple regions of a FlowRegion.
+
+        Creates physical Region objects for each constituent region with _fragment
+        region types (e.g., table_column_fragment), then stitches them into logical
+        FlowRegion objects. Both are registered with pages, but the fragment types
+        allow easy differentiation:
+        - find_all('table_column') returns only logical columns
+        - find_all('table_column_fragment') returns only physical fragments
+        """
         from natural_pdf.flows.region import FlowRegion
 
         if not self.is_flow_region or not hasattr(self.context, "flow") or not self.context.flow:
@@ -2747,6 +2770,26 @@ class Guides:
             )
 
             if grid_parts["counts"]["table"] > 0:
+                # Mark physical regions as fragments by updating their region_type
+                # This happens before stitching into logical FlowRegions
+                if len(self.context.constituent_regions) > 1:
+                    # Update region types to indicate these are fragments
+                    if grid_parts["regions"]["table"]:
+                        grid_parts["regions"]["table"].region_type = "table_fragment"
+                        grid_parts["regions"]["table"].metadata["is_fragment"] = True
+
+                    for row in grid_parts["regions"]["rows"]:
+                        row.region_type = "table_row_fragment"
+                        row.metadata["is_fragment"] = True
+
+                    for col in grid_parts["regions"]["columns"]:
+                        col.region_type = "table_column_fragment"
+                        col.metadata["is_fragment"] = True
+
+                    for cell in grid_parts["regions"]["cells"]:
+                        cell.region_type = "table_cell_fragment"
+                        cell.metadata["is_fragment"] = True
+
                 results_by_region.append(grid_parts)
 
         if not results_by_region:
@@ -2891,27 +2934,10 @@ class Guides:
             if hasattr(region, "page") and hasattr(region.page, "_element_mgr"):
                 constituent_pages.add(region.page)
 
-        # First, remove ONLY the specific individual Region tables that were created during this build
-        # (i.e., the physical_tables), not ALL tables with the same source
-        physical_tables_to_remove = set(physical_tables)  # Convert to set for fast lookup
-
+        # Register the logical multi-page table with all constituent pages
+        # Note: Physical table fragments are already registered with region_type="table_fragment"
         for page in constituent_pages:
             try:
-                # Find and remove only the specific physical tables that are part of this multi-page table
-                existing_tables = page.find_all("table")
-                tables_to_remove = [
-                    table
-                    for table in existing_tables
-                    if (
-                        table in physical_tables_to_remove and not isinstance(table, FlowRegion)
-                    )  # Only remove the specific Region tables we created
-                ]
-
-                for table in tables_to_remove:
-                    page._element_mgr.remove_element(table, element_type="regions")
-                    logger.debug(f"Removed physical table fragment from page {page.page_number}")
-
-                # Now register the multi-page table
                 page._element_mgr.add_element(multi_page_table, element_type="regions")
                 logger.debug(f"Registered multi-page table with page {page.page_number}")
 
@@ -2920,49 +2946,25 @@ class Guides:
                     f"Failed to register multi-page table with page {page.page_number}: {e}"
                 )
 
-        # SMART PAGE-LEVEL REGISTRY: Also register rows, columns, and cells with their respective pages
-        # This ensures that page.find('table_cell') etc. also work across the multi-page structure
-        for row in final_rows:
-            if hasattr(row, "constituent_regions"):
-                # This is a FlowRegion row spanning multiple pages
-                for constituent_region in row.constituent_regions:
-                    if hasattr(constituent_region, "page") and hasattr(
-                        constituent_region.page, "_element_mgr"
-                    ):
-                        try:
-                            constituent_region.page._element_mgr.add_element(
-                                row, element_type="regions"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to register multi-page row: {e}")
+        # SMART PAGE-LEVEL REGISTRY: Register logical FlowRegion elements.
+        # Physical fragments are already registered with their pages with _fragment region types,
+        # so users can differentiate between logical regions and physical fragments.
+        for page in constituent_pages:
+            try:
+                # Register all logical rows with this page
+                for row in final_rows:
+                    page._element_mgr.add_element(row, element_type="regions")
 
-        for col in final_cols:
-            if hasattr(col, "constituent_regions"):
-                # This is a FlowRegion column spanning multiple pages
-                for constituent_region in col.constituent_regions:
-                    if hasattr(constituent_region, "page") and hasattr(
-                        constituent_region.page, "_element_mgr"
-                    ):
-                        try:
-                            constituent_region.page._element_mgr.add_element(
-                                col, element_type="regions"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to register multi-page column: {e}")
+                # Register all logical columns with this page
+                for col in final_cols:
+                    page._element_mgr.add_element(col, element_type="regions")
 
-        for cell in final_cells:
-            if hasattr(cell, "constituent_regions"):
-                # This is a FlowRegion cell spanning multiple pages
-                for constituent_region in cell.constituent_regions:
-                    if hasattr(constituent_region, "page") and hasattr(
-                        constituent_region.page, "_element_mgr"
-                    ):
-                        try:
-                            constituent_region.page._element_mgr.add_element(
-                                cell, element_type="regions"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to register multi-page cell: {e}")
+                # Register all logical cells with this page
+                for cell in final_cells:
+                    page._element_mgr.add_element(cell, element_type="regions")
+
+            except Exception as e:
+                logger.warning(f"Failed to register multi-region table elements with page: {e}")
 
         final_counts = {
             "table": 1,

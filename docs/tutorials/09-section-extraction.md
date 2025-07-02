@@ -33,7 +33,7 @@ len(horizontal_lines)
 # Each section starts at a horizontal line and ends at the next one
 book_sections = page.get_sections(
     start_elements=horizontal_lines,
-    boundary_inclusion='start'  # Include the boundary in the section
+    include_boundaries='start'  # Include the boundary in the section
 )
 
 # Visualize each section
@@ -60,30 +60,30 @@ book_entries = []
 for i, section in enumerate(book_sections[:5]):
     # Extract the section text
     text = section.extract_text().strip()
-    
+
     # Try to parse book information
     title = ""
     author = ""
     isbn = ""
-    
+
     # Extract title (typically the first line)
     title_match = section.find('text:contains("Title:")')
     if title_match:
         title_value = title_match.right(width=400).extract_text()
         title = title_value.strip()
-    
+
     # Extract author
     author_match = section.find('text:contains("Author:")')
     if author_match:
         author_value = author_match.right(width=400).extract_text()
         author = author_value.strip()
-    
+
     # Extract ISBN
     isbn_match = section.find('text:contains("ISBN:")')
     if isbn_match:
         isbn_value = isbn_match.right(width=400).extract_text()
         isbn = isbn_value.strip()
-    
+
     # Add to our collection
     book_entries.append({
         "number": i + 1,
@@ -115,7 +115,7 @@ title_elements.show()
 # This now directly returns an ElementCollection
 title_sections = page.get_sections(
     start_elements=title_elements,
-    boundary_inclusion='start'
+    include_boundaries='start'
 )
 
 # Show the title-based sections
@@ -137,10 +137,10 @@ dividers = page.find_all('line:horizontal')
 
 # Compare the different boundary inclusion options
 inclusion_options = {
-    'none': page.get_sections(start_elements=dividers, boundary_inclusion='none'),
-    'start': page.get_sections(start_elements=dividers, boundary_inclusion='start'),
-    'end': page.get_sections(start_elements=dividers, boundary_inclusion='end'),
-    'both': page.get_sections(start_elements=dividers, boundary_inclusion='both')
+    'none': page.get_sections(start_elements=dividers, include_boundaries='none'),
+    'start': page.get_sections(start_elements=dividers, include_boundaries='start'),
+    'end': page.get_sections(start_elements=dividers, include_boundaries='end'),
+    'both': page.get_sections(start_elements=dividers, include_boundaries='both')
 }
 
 # Count sections with each option
@@ -162,12 +162,12 @@ end_point = title_elements[1]
 single_book_entry = page.get_sections(
     start_elements=[start_point],
     end_elements=[end_point],
-    boundary_inclusion='start'  # Include the start but not the end
+    include_boundaries='start'  # Include the start but not the end
 )
-    
+
 # Visualize the custom section
 single_book_entry.show(color="green", label="Single Book Entry")
-    
+
 print(single_book_entry[0].extract_text())
 
 page.to_image()
@@ -181,16 +181,16 @@ multi_page_sections = [] # Initialize as a list
 
 for page_num in range(min(2, len(pdf.pages))):
     page = pdf.pages[page_num]
-    
+
     # Find horizontal lines on this page
     title_elements = page.find('line[width=2]').below().find_all('text[fontname="AAAAAB+font000000002a8d158a"][size=10]')
-    
+
     # Get sections for this page (returns ElementCollection)
     page_sections = page.get_sections(
         start_elements=title_elements,
-        boundary_inclusion='start'
+        include_boundaries='start'
     )
-    
+
     # Add elements from the collection to our list
     multi_page_sections.extend(page_sections) # list.extend works with iterables like ElementCollection
 
@@ -210,25 +210,25 @@ book_database = []
 # Process first 3 pages (or fewer if the document is shorter)
 for page_num in range(min(3, len(pdf.pages))):
     page = pdf.pages[page_num]
-    
+
     # Find horizontal lines on this page
     title_elements = page.find('line[width=2]').below().find_all('text[fontname="AAAAAB+font000000002a8d158a"][size=10]')
-    
+
     # Get sections for this page
     book_sections = page.get_sections(
         start_elements=title_elements,
-        boundary_inclusion='start'
+        include_boundaries='start'
     )
-    
+
     # Process each book section
     for section in book_sections:
         # Skip sections that are too short (might be headers/footers)
         if len(section.extract_text()) < 50:
             continue
-            
+
         # Extract book information
         book_info = {"page": page_num + 1}
-        
+
         for field in ["Title:", "Author:", "ISBN:", "Publisher:", "Copyright:"]:
             field_element = section.find(f'text:contains("{field}")')
             if field_element:
@@ -253,11 +253,11 @@ df = pd.json_normalize(book_database)
 df.head()
 ```
 
-Section extraction lets you break down documents into logical parts, making it easier to generate summaries, extract specific content, and create structured data from semi-structured documents. In this example, we've shown how to convert a PDF library catalog into a structured book database. 
+Section extraction lets you break down documents into logical parts, making it easier to generate summaries, extract specific content, and create structured data from semi-structured documents. In this example, we've shown how to convert a PDF library catalog into a structured book database.
 
 ## TODO
 
 * Demonstrate using `page.init_search()` to pre-index all pages and retrieve section headings quickly.
 * Add an example that merges multi-page sections by passing `new_section_on_page_break=False`.
 * Include tips for detecting numbered headings ("1.", "2.") when ruling lines are absent.
-* Provide a performance note on large PDFs and how to stream through pages lazily. 
+* Provide a performance note on large PDFs and how to stream through pages lazily.

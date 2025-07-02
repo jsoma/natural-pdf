@@ -1307,3 +1307,615 @@ class Flow:
         raise NotImplementedError(
             "Translating element coordinates to a unified flow coordinate system is not yet implemented."
         )
+
+    def get_sections(
+        self,
+        start_elements=None,
+        end_elements=None,
+        new_section_on_page_break: bool = False,
+        boundary_inclusion: str = "both",
+    ) -> "ElementCollection":
+        """
+        Extract logical sections from the Flow based on *start* and *end* boundary
+        elements, mirroring the behaviour of PDF/PageCollection.get_sections().
+
+        This implementation is a thin wrapper that converts the Flow into a
+        temporary PageCollection (constructed from the unique pages that the
+        Flow spans) and then delegates the heavy‐lifting to that existing
+        implementation.  Any FlowElement / FlowElementCollection inputs are
+        automatically unwrapped to their underlying physical elements so that
+        PageCollection can work with them directly.
+
+        Args:
+            start_elements: Elements or selector string that mark the start of
+                sections (optional).
+            end_elements: Elements or selector string that mark the end of
+                sections (optional).
+            new_section_on_page_break: Whether to start a new section at page
+                boundaries (default: False).
+            boundary_inclusion: How to include boundary elements: 'start',
+                'end', 'both', or 'none' (default: 'both').
+
+        Returns:
+            ElementCollection of Region/FlowRegion objects representing the
+            extracted sections.
+        """
+        # ------------------------------------------------------------------
+        # Unwrap FlowElement(-Collection) inputs and selector strings so we
+        # can reason about them generically.
+        # ------------------------------------------------------------------
+        from natural_pdf.flows.collections import FlowElementCollection
+        from natural_pdf.flows.element import FlowElement
+
+        def _unwrap(obj):
+            """Convert Flow-specific wrappers to their underlying physical objects.
+
+            Keeps selector strings as-is; converts FlowElement to its physical
+            element; converts FlowElementCollection to list of physical
+            elements; passes through ElementCollection by taking .elements.
+            """
+
+            if obj is None or isinstance(obj, str):
+                return obj
+
+            if isinstance(obj, FlowElement):
+                return obj.physical_object
+
+            if isinstance(obj, FlowElementCollection):
+                return [fe.physical_object for fe in obj.flow_elements]
+
+            if hasattr(obj, "elements"):
+                return obj.elements
+
+            if isinstance(obj, (list, tuple, set)):
+                out = []
+                for item in obj:
+                    if isinstance(item, FlowElement):
+                        out.append(item.physical_object)
+                    else:
+                        out.append(item)
+                return out
+
+            return obj  # Fallback – unknown type
+
+        start_elements_unwrapped = _unwrap(start_elements)
+        end_elements_unwrapped = _unwrap(end_elements)
+
+        # ------------------------------------------------------------------
+        # PRIMARY IMPLEMENTATION – operate on each Flow **segment region**
+        # independently so that sectioning happens *per-region*, not per page.
+        # ------------------------------------------------------------------
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        aggregated_sections = []
+
+        # Helper to decide if an element lies inside a segment (Region)
+        def _element_in_segment(elem, segment_region):
+            try:
+                return segment_region.intersects(elem)  # Region method – robust
+            except Exception:
+                # Fallback to bounding-box containment checks
+                if not hasattr(elem, "bbox"):
+                    return False
+                ex0, etop, ex1, ebottom = elem.bbox
+                sx0, stop, sx1, sbottom = segment_region.bbox
+                return not (ex1 < sx0 or ex0 > sx1 or ebottom < stop or etop > sbottom)
+
+        for seg in self.segments:
+            # Each *seg* is guaranteed to be a Region (see _normalize_segments)
+
+            # Resolve segment-specific boundary arguments
+            seg_start_elems = None
+            seg_end_elems = None
+
+            # --- Handle selector strings ---
+            if isinstance(start_elements_unwrapped, str):
+                seg_start_elems = seg.find_all(start_elements_unwrapped).elements
+            elif start_elements_unwrapped is not None:
+                seg_start_elems = [
+                    e for e in start_elements_unwrapped if _element_in_segment(e, seg)
+                ]
+
+            if isinstance(end_elements_unwrapped, str):
+                seg_end_elems = seg.find_all(end_elements_unwrapped).elements
+            elif end_elements_unwrapped is not None:
+                seg_end_elems = [e for e in end_elements_unwrapped if _element_in_segment(e, seg)]
+
+            # Call Region.get_sections – this returns ElementCollection[Region]
+            seg_sections = seg.get_sections(
+                start_elements=seg_start_elems,
+                end_elements=seg_end_elems,
+                boundary_inclusion=boundary_inclusion,
+            )
+
+            if seg_sections:
+                aggregated_sections.extend(seg_sections.elements)
+
+            # Optionally, handle new_section_on_page_break – interpreted here as
+            # *new_section_on_segment_break*: if True and there were *no* explicit
+            # boundaries, treat the entire segment as a single section.
+            if (
+                new_section_on_page_break
+                and not seg_sections
+                and start_elements_unwrapped is None
+                and end_elements_unwrapped is None
+            ):
+                aggregated_sections.append(seg)
+
+        # ------------------------------------------------------------------
+        # CROSS-SEGMENT SECTION DETECTION: Check if we have boundaries that
+        # span multiple segments and create FlowRegions for those cases.
+        # ------------------------------------------------------------------
+
+        # If we have explicit start/end elements, check for cross-segment sections
+        if start_elements_unwrapped is not None and end_elements_unwrapped is not None:
+            # Find all start and end elements across all segments
+            all_start_elements = []
+            all_end_elements = []
+
+            # Map elements to their segments for tracking
+            element_to_segment = {}
+
+            for seg_idx, seg in enumerate(self.segments):
+                if isinstance(start_elements_unwrapped, str):
+                    seg_starts = seg.find_all(start_elements_unwrapped).elements
+                else:
+                    seg_starts = [
+                        e for e in start_elements_unwrapped if _element_in_segment(e, seg)
+                    ]
+
+                if isinstance(end_elements_unwrapped, str):
+                    seg_ends = seg.find_all(end_elements_unwrapped).elements
+                else:
+                    seg_ends = [e for e in end_elements_unwrapped if _element_in_segment(e, seg)]
+
+                for elem in seg_starts:
+                    all_start_elements.append((elem, seg_idx))
+                    element_to_segment[id(elem)] = seg_idx
+
+                for elem in seg_ends:
+                    all_end_elements.append((elem, seg_idx))
+                    element_to_segment[id(elem)] = seg_idx
+
+            # Sort by segment index, then by position within segment
+            all_start_elements.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
+            all_end_elements.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
+
+            # Look for cross-segment pairs (start in one segment, end in another)
+            cross_segment_sections = []
+            used_starts = set()
+            used_ends = set()
+
+            for start_elem, start_seg_idx in all_start_elements:
+                if id(start_elem) in used_starts:
+                    continue
+
+                # Find the next end element that comes after this start
+                matching_end = None
+                for end_elem, end_seg_idx in all_end_elements:
+                    if id(end_elem) in used_ends:
+                        continue
+
+                    # Check if this end comes after the start (by segment order or position)
+                    if end_seg_idx > start_seg_idx or (
+                        end_seg_idx == start_seg_idx
+                        and (
+                            end_elem.top > start_elem.top
+                            or (end_elem.top == start_elem.top and end_elem.x0 >= start_elem.x0)
+                        )
+                    ):
+                        matching_end = (end_elem, end_seg_idx)
+                        break
+
+                if matching_end is not None:
+                    end_elem, end_seg_idx = matching_end
+
+                    # If start and end are in different segments, create FlowRegion
+                    if start_seg_idx != end_seg_idx:
+                        cross_segment_sections.append(
+                            (start_elem, start_seg_idx, end_elem, end_seg_idx)
+                        )
+                        used_starts.add(id(start_elem))
+                        used_ends.add(id(end_elem))
+
+            # Create FlowRegions for cross-segment sections
+            from natural_pdf.elements.region import Region
+            from natural_pdf.flows.element import FlowElement
+            from natural_pdf.flows.region import FlowRegion
+
+            for start_elem, start_seg_idx, end_elem, end_seg_idx in cross_segment_sections:
+                # Build constituent regions spanning from start segment to end segment
+                constituent_regions = []
+
+                # First segment: from start element to bottom
+                start_seg = self.segments[start_seg_idx]
+                first_region = Region(
+                    start_seg.page, (start_seg.x0, start_elem.top, start_seg.x1, start_seg.bottom)
+                )
+                constituent_regions.append(first_region)
+
+                # Middle segments: full segments
+                for seg_idx in range(start_seg_idx + 1, end_seg_idx):
+                    constituent_regions.append(self.segments[seg_idx])
+
+                # Last segment: from top to end element
+                if end_seg_idx != start_seg_idx:
+                    end_seg = self.segments[end_seg_idx]
+                    last_region = Region(
+                        end_seg.page, (end_seg.x0, end_seg.top, end_seg.x1, end_elem.bottom)
+                    )
+                    constituent_regions.append(last_region)
+
+                # Create FlowRegion
+                flow_element = FlowElement(physical_object=start_elem, flow=self)
+                flow_region = FlowRegion(
+                    flow=self,
+                    constituent_regions=constituent_regions,
+                    source_flow_element=flow_element,
+                    boundary_element_found=end_elem,
+                )
+
+                # Remove any single-segment sections that are now covered by this FlowRegion
+                # This prevents duplication of content
+                aggregated_sections = [
+                    s
+                    for s in aggregated_sections
+                    if not any(
+                        cr.intersects(s)
+                        for cr in constituent_regions
+                        if hasattr(cr, "intersects") and hasattr(s, "intersects")
+                    )
+                ]
+
+                aggregated_sections.append(flow_region)
+
+        # ------------------------------------------------------------------
+        # NEW APPROACH: First collect ALL boundary elements across all segments,
+        # then pair them up to create sections (either single-segment Regions
+        # or multi-segment FlowRegions).
+        # ------------------------------------------------------------------
+        from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.elements.region import Region
+        from natural_pdf.flows.element import FlowElement
+        from natural_pdf.flows.region import FlowRegion
+
+        # Helper to decide if an element lies inside a segment (Region)
+        def _element_in_segment(elem, segment_region):
+            try:
+                return segment_region.intersects(elem)  # Region method – robust
+            except Exception:
+                # Fallback to bounding-box containment checks
+                if not hasattr(elem, "bbox"):
+                    return False
+                ex0, etop, ex1, ebottom = elem.bbox
+                sx0, stop, sx1, sbottom = segment_region.bbox
+                return not (ex1 < sx0 or ex0 > sx1 or ebottom < stop or etop > sbottom)
+
+        # Collect ALL boundary elements across all segments with their segment indices
+        all_start_elements = []
+        all_end_elements = []
+
+        for seg_idx, seg in enumerate(self.segments):
+            # Find start elements in this segment
+            if isinstance(start_elements_unwrapped, str):
+                seg_starts = seg.find_all(start_elements_unwrapped).elements
+            elif start_elements_unwrapped is not None:
+                seg_starts = [e for e in start_elements_unwrapped if _element_in_segment(e, seg)]
+            else:
+                seg_starts = []
+
+            logger.debug(f"\n=== Processing segment {seg_idx} ===")
+            logger.debug(f"Segment bbox: {seg.bbox}")
+            logger.debug(
+                f"Segment page: {seg.page.number if hasattr(seg.page, 'number') else 'unknown'}"
+            )
+
+            logger.debug(f"Found {len(seg_starts)} start elements in segment {seg_idx}")
+            for i, elem in enumerate(seg_starts):
+                logger.debug(
+                    f"  Start {i}: bbox={elem.bbox}, text='{getattr(elem, 'text', 'N/A')[:50]}...'"
+                )
+
+            # Find end elements in this segment
+            if isinstance(end_elements_unwrapped, str):
+                seg_ends = seg.find_all(end_elements_unwrapped).elements
+            elif end_elements_unwrapped is not None:
+                seg_ends = [e for e in end_elements_unwrapped if _element_in_segment(e, seg)]
+            else:
+                seg_ends = []
+
+            logger.debug(f"Found {len(seg_ends)} end elements in segment {seg_idx}")
+            for i, elem in enumerate(seg_ends):
+                logger.debug(
+                    f"  End {i}: bbox={elem.bbox}, text='{getattr(elem, 'text', 'N/A')[:50]}...'"
+                )
+
+            # Add to global lists with segment index
+            for elem in seg_starts:
+                all_start_elements.append((elem, seg_idx))
+            for elem in seg_ends:
+                all_end_elements.append((elem, seg_idx))
+
+        # Sort by flow order: segment index first, then position within segment
+        all_start_elements.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
+        all_end_elements.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
+
+        logger.debug(f"\n=== Total boundary elements found ===")
+        logger.debug(f"Total start elements: {len(all_start_elements)}")
+        logger.debug(f"Total end elements: {len(all_end_elements)}")
+
+        # Pair up start and end elements to create sections
+        sections = []
+        used_starts = set()
+        used_ends = set()
+
+        for start_elem, start_seg_idx in all_start_elements:
+            if id(start_elem) in used_starts:
+                continue
+
+            logger.debug(f"\n--- Pairing start element from segment {start_seg_idx} ---")
+            logger.debug(
+                f"Start: bbox={start_elem.bbox}, text='{getattr(start_elem, 'text', 'N/A')[:30]}...'"
+            )
+
+            # Find the next unused end element that comes after this start
+            matching_end = None
+            for end_elem, end_seg_idx in all_end_elements:
+                if id(end_elem) in used_ends:
+                    continue
+
+                # Check if this end comes after the start in flow order
+                if end_seg_idx > start_seg_idx or (
+                    end_seg_idx == start_seg_idx
+                    and (
+                        end_elem.top > start_elem.top
+                        or (end_elem.top == start_elem.top and end_elem.x0 >= start_elem.x0)
+                    )
+                ):
+                    matching_end = (end_elem, end_seg_idx)
+                    break
+
+            if matching_end is not None:
+                end_elem, end_seg_idx = matching_end
+                used_starts.add(id(start_elem))
+                used_ends.add(id(end_elem))
+
+                logger.debug(f"  Matched! Start seg={start_seg_idx}, End seg={end_seg_idx}")
+
+                # Create section based on whether it spans segments
+                if start_seg_idx == end_seg_idx:
+                    # Single segment section - use Region.get_section_between
+                    seg = self.segments[start_seg_idx]
+                    section = seg.get_section_between(start_elem, end_elem, boundary_inclusion)
+                    sections.append(section)
+                    logger.debug(f"  Created single-segment Region")
+                else:
+                    # Multi-segment section - create FlowRegion
+                    logger.debug(
+                        f"  Creating multi-segment FlowRegion spanning segments {start_seg_idx} to {end_seg_idx}"
+                    )
+                    constituent_regions = []
+
+                    # First segment: from start element to bottom
+                    start_seg = self.segments[start_seg_idx]
+                    if boundary_inclusion in ["start", "both"]:
+                        first_top = start_elem.top
+                    else:
+                        first_top = start_elem.bottom
+                    first_region = Region(
+                        start_seg.page, (start_seg.x0, first_top, start_seg.x1, start_seg.bottom)
+                    )
+                    constituent_regions.append(first_region)
+
+                    # Middle segments: full segments
+                    for seg_idx in range(start_seg_idx + 1, end_seg_idx):
+                        constituent_regions.append(self.segments[seg_idx])
+
+                    # Last segment: from top to end element
+                    end_seg = self.segments[end_seg_idx]
+                    if boundary_inclusion in ["end", "both"]:
+                        last_bottom = end_elem.bottom
+                    else:
+                        last_bottom = end_elem.top
+                    last_region = Region(
+                        end_seg.page, (end_seg.x0, end_seg.top, end_seg.x1, last_bottom)
+                    )
+                    constituent_regions.append(last_region)
+
+                    # Create FlowRegion
+                    flow_element = FlowElement(physical_object=start_elem, flow=self)
+                    flow_region = FlowRegion(
+                        flow=self,
+                        constituent_regions=constituent_regions,
+                        source_flow_element=flow_element,
+                        boundary_element_found=end_elem,
+                    )
+                    sections.append(flow_region)
+
+        # Handle special cases when only start or only end elements are provided
+        if start_elements_unwrapped is not None and end_elements_unwrapped is None:
+            logger.debug(f"\n=== Handling start-only elements (no end elements provided) ===")
+            for i, (start_elem, start_seg_idx) in enumerate(all_start_elements):
+                if id(start_elem) in used_starts:
+                    continue
+
+                # Find next start element
+                next_start = None
+                if i + 1 < len(all_start_elements):
+                    next_start_elem, next_start_seg_idx = all_start_elements[i + 1]
+                    # Create section from this start to just before next start
+                    if start_seg_idx == next_start_seg_idx:
+                        # Same segment
+                        seg = self.segments[start_seg_idx]
+                        # Find element just before next start
+                        all_elems = seg.get_elements()
+                        all_elems.sort(key=lambda e: (e.top, e.x0))
+                        try:
+                            next_idx = all_elems.index(next_start_elem)
+                            if next_idx > 0:
+                                end_elem = all_elems[next_idx - 1]
+                                section = seg.get_section_between(
+                                    start_elem, end_elem, boundary_inclusion
+                                )
+                                sections.append(section)
+                        except ValueError:
+                            pass
+                    elif next_start_seg_idx == start_seg_idx + 1:
+                        # Next start is in the immediately following segment in the flow
+                        # Create a FlowRegion that spans from current start to just before next start
+                        logger.debug(f"  Next start is in next flow segment - creating FlowRegion")
+
+                        constituent_regions = []
+
+                        # First segment: from start element to bottom
+                        start_seg = self.segments[start_seg_idx]
+                        if boundary_inclusion in ["start", "both"]:
+                            first_top = start_elem.top
+                        else:
+                            first_top = start_elem.bottom
+                        first_region = Region(
+                            start_seg.page,
+                            (start_seg.x0, first_top, start_seg.x1, start_seg.bottom),
+                        )
+                        constituent_regions.append(first_region)
+
+                        # Next segment: from top to just before next start
+                        next_seg = self.segments[next_start_seg_idx]
+                        # Find element just before next start in the next segment
+                        next_seg_elems = next_seg.get_elements()
+                        next_seg_elems.sort(key=lambda e: (e.top, e.x0))
+
+                        last_bottom = next_start_elem.top  # Default to just before the next start
+                        try:
+                            next_idx = next_seg_elems.index(next_start_elem)
+                            if next_idx > 0:
+                                # Use the bottom of the element before next start
+                                prev_elem = next_seg_elems[next_idx - 1]
+                                last_bottom = prev_elem.bottom
+                        except ValueError:
+                            pass
+
+                        last_region = Region(
+                            next_seg.page, (next_seg.x0, next_seg.top, next_seg.x1, last_bottom)
+                        )
+                        constituent_regions.append(last_region)
+
+                        # Create FlowRegion
+                        flow_element = FlowElement(physical_object=start_elem, flow=self)
+                        flow_region = FlowRegion(
+                            flow=self,
+                            constituent_regions=constituent_regions,
+                            source_flow_element=flow_element,
+                            boundary_element_found=None,
+                        )
+                        sections.append(flow_region)
+                        logger.debug(
+                            f"  Created FlowRegion with {len(constituent_regions)} constituent regions"
+                        )
+                    else:
+                        # Next start is more than one segment away - just end at current segment
+                        start_seg = self.segments[start_seg_idx]
+                        if boundary_inclusion in ["start", "both"]:
+                            region_top = start_elem.top
+                        else:
+                            region_top = start_elem.bottom
+                        section = Region(
+                            start_seg.page,
+                            (start_seg.x0, region_top, start_seg.x1, start_seg.bottom),
+                        )
+                        sections.append(section)
+                        logger.debug(
+                            f"  Next start is {next_start_seg_idx - start_seg_idx} segments away - ending at current segment"
+                        )
+                else:
+                    # Last start element: section goes to end of flow
+                    # This could span multiple segments
+                    if start_seg_idx == len(self.segments) - 1:
+                        # Only in last segment
+                        seg = self.segments[start_seg_idx]
+                        if boundary_inclusion in ["start", "both"]:
+                            region_top = start_elem.top
+                        else:
+                            region_top = start_elem.bottom
+                        section = Region(seg.page, (seg.x0, region_top, seg.x1, seg.bottom))
+                        sections.append(section)
+                    else:
+                        # Spans to end of flow - create FlowRegion
+                        constituent_regions = []
+
+                        # First segment
+                        start_seg = self.segments[start_seg_idx]
+                        if boundary_inclusion in ["start", "both"]:
+                            first_top = start_elem.top
+                        else:
+                            first_top = start_elem.bottom
+                        first_region = Region(
+                            start_seg.page,
+                            (start_seg.x0, first_top, start_seg.x1, start_seg.bottom),
+                        )
+                        constituent_regions.append(first_region)
+
+                        # Remaining segments
+                        for seg_idx in range(start_seg_idx + 1, len(self.segments)):
+                            constituent_regions.append(self.segments[seg_idx])
+
+                        flow_element = FlowElement(physical_object=start_elem, flow=self)
+                        flow_region = FlowRegion(
+                            flow=self,
+                            constituent_regions=constituent_regions,
+                            source_flow_element=flow_element,
+                            boundary_element_found=None,
+                        )
+                        sections.append(flow_region)
+
+        # Handle new_section_on_page_break when no explicit boundaries
+        if (
+            new_section_on_page_break
+            and start_elements_unwrapped is None
+            and end_elements_unwrapped is None
+        ):
+            # Each segment becomes its own section
+            sections = list(self.segments)
+
+        # Sort sections by their position in the flow
+        def _section_sort_key(section):
+            if hasattr(section, "constituent_regions"):
+                # FlowRegion - use first constituent region
+                first_region = (
+                    section.constituent_regions[0] if section.constituent_regions else None
+                )
+                if first_region:
+                    # Find which segment this region belongs to
+                    for idx, seg in enumerate(self.segments):
+                        try:
+                            if seg.intersects(first_region):
+                                return (
+                                    idx,
+                                    getattr(first_region, "top", 0),
+                                    getattr(first_region, "x0", 0),
+                                )
+                        except:
+                            pass
+            else:
+                # Regular Region
+                for idx, seg in enumerate(self.segments):
+                    try:
+                        if seg.intersects(section):
+                            return (idx, getattr(section, "top", 0), getattr(section, "x0", 0))
+                    except:
+                        pass
+            return (float("inf"), 0, 0)
+
+        sections.sort(key=_section_sort_key)
+
+        logger.debug(f"\n=== Section creation complete ===")
+        logger.debug(f"Total sections created: {len(sections)}")
+        for i, section in enumerate(sections):
+            if hasattr(section, "constituent_regions"):
+                logger.debug(
+                    f"Section {i}: FlowRegion with {len(section.constituent_regions)} constituent regions"
+                )
+            else:
+                logger.debug(f"Section {i}: Region with bbox={section.bbox}")
+
+        return ElementCollection(sections)

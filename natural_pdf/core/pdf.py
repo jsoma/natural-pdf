@@ -1235,7 +1235,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
         start_elements=None,
         end_elements=None,
         new_section_on_page_break=False,
-        boundary_inclusion="both",
+        include_boundaries="both",
     ) -> "ElementCollection":
         """
         Extract sections from the entire PDF based on start/end elements.
@@ -1247,7 +1247,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             start_elements: Elements or selector string that mark the start of sections (optional)
             end_elements: Elements or selector string that mark the end of sections (optional)
             new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
-            boundary_inclusion: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
 
         Returns:
             ElementCollection of Region objects representing the extracted sections
@@ -1283,7 +1283,7 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             start_elements=start_elements,
             end_elements=end_elements,
             new_section_on_page_break=new_section_on_page_break,
-            boundary_inclusion=boundary_inclusion,
+            include_boundaries=include_boundaries,
         )
 
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):

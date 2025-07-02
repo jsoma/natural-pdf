@@ -81,14 +81,14 @@ panel = heading.parent('rect', mode='overlap')  # coloured background box
 * `overlap` – any intersection is enough
 ```
 
-**Tip – per-element behaviour**  
-`find_all(...).below()` is applied *for every element in the collection*.  
+**Tip – per-element behaviour**
+`find_all(...).below()` is applied *for every element in the collection*.
 If you `page.find_all('text:bold').below(until='text:bold')` you will get *n* distinct
 regions – one for each bold heading – not one giant block.
 
-**Prefer anchors over magic numbers**  
+**Prefer anchors over magic numbers**
 Whenever possible use `until=...` to mark the *end* of a region instead of guessing
-a pixel height.  
+a pixel height.
 ```python
 # Good – resilient to different font sizes / scans
 body = header.below(until="text:contains('Total')", include_endpoint=False)
@@ -273,7 +273,7 @@ clean.save_pdf('deskewed.pdf', original=True)
 ```python
 sections = page.get_sections(
     start_elements='text:bold',
-    boundary_inclusion='start'
+    include_boundaries='start'
 )
 for sec in sections:
     print(sec.extract_text()[:100])

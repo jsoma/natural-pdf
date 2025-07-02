@@ -2521,7 +2521,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         return self
 
     def get_section_between(
-        self, start_element=None, end_element=None, boundary_inclusion="both"
+        self, start_element=None, end_element=None, include_boundaries="both"
     ) -> Optional["Region"]:  # Return Optional
         """
         Get a section between two elements on this page.
@@ -2534,7 +2534,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
             return page_region.get_section_between(
                 start_element=start_element,
                 end_element=end_element,
-                boundary_inclusion=boundary_inclusion,
+                include_boundaries=include_boundaries,
             )
         except Exception as e:
             logger.error(
@@ -2556,7 +2556,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         self,
         start_elements=None,
         end_elements=None,
-        boundary_inclusion="start",
+        include_boundaries="start",
         y_threshold=5.0,
         bounding_box=None,
     ) -> "ElementCollection[Region]":
@@ -2597,8 +2597,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
             end_elements = []
 
         valid_inclusions = ["start", "end", "both", "none"]
-        if boundary_inclusion not in valid_inclusions:
-            raise ValueError(f"boundary_inclusion must be one of {valid_inclusions}")
+        if include_boundaries not in valid_inclusions:
+            raise ValueError(f"include_boundaries must be one of {valid_inclusions}")
 
         if not start_elements:
             # Return an empty ElementCollection if no start elements
@@ -2630,12 +2630,12 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                     # Determine region boundaries
                     sec_top = (
                         current_start_element.top
-                        if boundary_inclusion in ["start", "both"]
+                        if include_boundaries in ["start", "both"]
                         else current_start_element.bottom
                     )
                     sec_bottom = (
                         end_boundary_el.top
-                        if boundary_inclusion not in ["end", "both"]
+                        if include_boundaries not in ["end", "both"]
                         else end_boundary_el.bottom
                     )
 
@@ -2657,12 +2657,12 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                 end_boundary_el = element
                 sec_top = (
                     current_start_element.top
-                    if boundary_inclusion in ["start", "both"]
+                    if include_boundaries in ["start", "both"]
                     else current_start_element.bottom
                 )
                 sec_bottom = (
                     end_boundary_el.bottom
-                    if boundary_inclusion in ["end", "both"]
+                    if include_boundaries in ["end", "both"]
                     else end_boundary_el.top
                 )
 
@@ -2682,7 +2682,7 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         if active_section_started:
             sec_top = (
                 current_start_element.top
-                if boundary_inclusion in ["start", "both"]
+                if include_boundaries in ["start", "both"]
                 else current_start_element.bottom
             )
             x0, _, x1, page_bottom = get_bounds()

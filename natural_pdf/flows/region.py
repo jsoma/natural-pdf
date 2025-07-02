@@ -68,15 +68,38 @@ class FlowRegion:
 
     def __getattr__(self, name: str) -> Any:
         """
-        Dynamically proxy attribute access to the source FlowElement if the
-        attribute is not found in this instance.
+        Dynamically proxy attribute access to the source FlowElement for safe attributes only.
+        Spatial methods (above, below, left, right) are explicitly implemented to prevent
+        silent failures and incorrect behavior.
         """
         if name in self.__dict__:
             return self.__dict__[name]
-        elif self.source_flow_element is not None:
-            return getattr(self.source_flow_element, name)
-        else:
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+        # List of methods that should NOT be proxied - they need proper FlowRegion implementation
+        spatial_methods = {"above", "below", "left", "right", "to_region"}
+
+        if name in spatial_methods:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'. "
+                f"This method requires proper FlowRegion implementation to handle spatial relationships correctly."
+            )
+
+        # Only proxy safe attributes and methods
+        if self.source_flow_element is not None:
+            try:
+                attr = getattr(self.source_flow_element, name)
+                # Only proxy non-callable attributes and explicitly safe methods
+                if not callable(attr) or name in {"page", "document"}:  # Add safe methods as needed
+                    return attr
+                else:
+                    raise AttributeError(
+                        f"Method '{name}' cannot be safely proxied from FlowElement to FlowRegion. "
+                        f"It may need explicit implementation."
+                    )
+            except AttributeError:
+                pass
+
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     @property
     def bbox(self) -> Optional[Tuple[float, float, float, float]]:
@@ -604,6 +627,418 @@ class FlowRegion:
             f"source_bbox={self.source_flow_element.bbox if self.source_flow_element else 'N/A'}>"
         )
 
+    def expand(
+        self,
+        left: float = 0,
+        right: float = 0,
+        top: float = 0,
+        bottom: float = 0,
+        width_factor: float = 1.0,
+        height_factor: float = 1.0,
+    ) -> "FlowRegion":
+        """
+        Create a new FlowRegion with all constituent regions expanded.
+
+        Args:
+            left: Amount to expand left edge (positive value expands leftwards)
+            right: Amount to expand right edge (positive value expands rightwards)
+            top: Amount to expand top edge (positive value expands upwards)
+            bottom: Amount to expand bottom edge (positive value expands downwards)
+            width_factor: Factor to multiply width by (applied after absolute expansion)
+            height_factor: Factor to multiply height by (applied after absolute expansion)
+
+        Returns:
+            New FlowRegion with expanded constituent regions
+        """
+        if not self.constituent_regions:
+            return FlowRegion(
+                flow=self.flow,
+                constituent_regions=[],
+                source_flow_element=self.source_flow_element,
+                boundary_element_found=self.boundary_element_found,
+            )
+
+        expanded_regions = []
+        for idx, region in enumerate(self.constituent_regions):
+            # Determine which adjustments to apply based on flow arrangement
+            apply_left = left
+            apply_right = right
+            apply_top = top
+            apply_bottom = bottom
+
+            if self.flow.arrangement == "vertical":
+                # In a vertical flow, only the *first* region should react to `top`
+                # and only the *last* region should react to `bottom`.  This keeps
+                # the virtual contiguous area intact while allowing users to nudge
+                # the flow boundaries.
+                if idx != 0:
+                    apply_top = 0
+                if idx != len(self.constituent_regions) - 1:
+                    apply_bottom = 0
+                # left/right apply to every region (same column width change)
+            else:  # horizontal flow
+                # In a horizontal flow, only the first region reacts to `left`
+                # and only the last region reacts to `right`.
+                if idx != 0:
+                    apply_left = 0
+                if idx != len(self.constituent_regions) - 1:
+                    apply_right = 0
+                # top/bottom apply to every region in horizontal flows
+
+            # Skip no-op expansion to avoid extra Region objects
+            needs_expansion = (
+                any(
+                    v not in (0, 1.0)  # compare width/height factor logically later
+                    for v in (apply_left, apply_right, apply_top, apply_bottom)
+                )
+                or width_factor != 1.0
+                or height_factor != 1.0
+            )
+
+            try:
+                expanded_region = (
+                    region.expand(
+                        left=apply_left,
+                        right=apply_right,
+                        top=apply_top,
+                        bottom=apply_bottom,
+                        width_factor=width_factor,
+                        height_factor=height_factor,
+                    )
+                    if needs_expansion
+                    else region
+                )
+                expanded_regions.append(expanded_region)
+            except Exception as e:
+                logger.warning(
+                    f"FlowRegion.expand: Error expanding constituent region {region.bbox}: {e}",
+                    exc_info=False,
+                )
+                expanded_regions.append(region)
+
+        # Create new FlowRegion with expanded constituent regions
+        new_flow_region = FlowRegion(
+            flow=self.flow,
+            constituent_regions=expanded_regions,
+            source_flow_element=self.source_flow_element,
+            boundary_element_found=self.boundary_element_found,
+        )
+
+        # Copy metadata
+        new_flow_region.source = self.source
+        new_flow_region.region_type = self.region_type
+        new_flow_region.metadata = self.metadata.copy()
+
+        # Clear caches since the regions have changed
+        new_flow_region._cached_text = None
+        new_flow_region._cached_elements = None
+        new_flow_region._cached_bbox = None
+
+        return new_flow_region
+
+    def above(
+        self,
+        height: Optional[float] = None,
+        width: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegion":
+        """
+        Create a FlowRegion with regions above this FlowRegion.
+
+        For vertical flows: Only expands the topmost constituent region upward.
+        For horizontal flows: Expands all constituent regions upward.
+
+        Args:
+            height: Height of the region above, in points
+            width: Width mode - "full" for full page width or "element" for element width
+            include_source: Whether to include this FlowRegion in the result
+            until: Optional selector string to specify an upper boundary element
+            include_endpoint: Whether to include the boundary element in the region
+            **kwargs: Additional parameters
+
+        Returns:
+            New FlowRegion with regions above
+        """
+        if not self.constituent_regions:
+            return FlowRegion(
+                flow=self.flow,
+                constituent_regions=[],
+                source_flow_element=self.source_flow_element,
+                boundary_element_found=self.boundary_element_found,
+            )
+
+        new_regions = []
+
+        if self.flow.arrangement == "vertical":
+            # For vertical flow, use FLOW ORDER (index 0 is earliest). Only expand the
+            # first constituent region in that order.
+            first_region = self.constituent_regions[0]
+            for idx, region in enumerate(self.constituent_regions):
+                if idx == 0:  # Only expand the first region (earliest in flow)
+                    above_region = region.above(
+                        height=height,
+                        width="element",  # Keep original column width
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        **kwargs,
+                    )
+                    new_regions.append(above_region)
+                elif include_source:
+                    new_regions.append(region)
+        else:  # horizontal flow
+            # For horizontal flow, expand all regions upward
+            for region in self.constituent_regions:
+                above_region = region.above(
+                    height=height,
+                    width=width,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **kwargs,
+                )
+                new_regions.append(above_region)
+
+        return FlowRegion(
+            flow=self.flow,
+            constituent_regions=new_regions,
+            source_flow_element=self.source_flow_element,
+            boundary_element_found=self.boundary_element_found,
+        )
+
+    def below(
+        self,
+        height: Optional[float] = None,
+        width: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegion":
+        """
+        Create a FlowRegion with regions below this FlowRegion.
+
+        For vertical flows: Only expands the bottommost constituent region downward.
+        For horizontal flows: Expands all constituent regions downward.
+
+        Args:
+            height: Height of the region below, in points
+            width: Width mode - "full" for full page width or "element" for element width
+            include_source: Whether to include this FlowRegion in the result
+            until: Optional selector string to specify a lower boundary element
+            include_endpoint: Whether to include the boundary element in the region
+            **kwargs: Additional parameters
+
+        Returns:
+            New FlowRegion with regions below
+        """
+        if not self.constituent_regions:
+            return FlowRegion(
+                flow=self.flow,
+                constituent_regions=[],
+                source_flow_element=self.source_flow_element,
+                boundary_element_found=self.boundary_element_found,
+            )
+
+        new_regions = []
+
+        if self.flow.arrangement == "vertical":
+            # For vertical flow, expand only the LAST constituent region in flow order.
+            last_idx = len(self.constituent_regions) - 1
+            for idx, region in enumerate(self.constituent_regions):
+                if idx == last_idx:
+                    below_region = region.below(
+                        height=height,
+                        width="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        **kwargs,
+                    )
+                    new_regions.append(below_region)
+                elif include_source:
+                    new_regions.append(region)
+        else:  # horizontal flow
+            # For horizontal flow, expand all regions downward
+            for region in self.constituent_regions:
+                below_region = region.below(
+                    height=height,
+                    width=width,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **kwargs,
+                )
+                new_regions.append(below_region)
+
+        return FlowRegion(
+            flow=self.flow,
+            constituent_regions=new_regions,
+            source_flow_element=self.source_flow_element,
+            boundary_element_found=self.boundary_element_found,
+        )
+
+    def left(
+        self,
+        width: Optional[float] = None,
+        height: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegion":
+        """
+        Create a FlowRegion with regions to the left of this FlowRegion.
+
+        For vertical flows: Expands all constituent regions leftward.
+        For horizontal flows: Only expands the leftmost constituent region leftward.
+
+        Args:
+            width: Width of the region to the left, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_source: Whether to include this FlowRegion in the result
+            until: Optional selector string to specify a left boundary element
+            include_endpoint: Whether to include the boundary element in the region
+            **kwargs: Additional parameters
+
+        Returns:
+            New FlowRegion with regions to the left
+        """
+        if not self.constituent_regions:
+            return FlowRegion(
+                flow=self.flow,
+                constituent_regions=[],
+                source_flow_element=self.source_flow_element,
+                boundary_element_found=self.boundary_element_found,
+            )
+
+        new_regions = []
+
+        if self.flow.arrangement == "vertical":
+            # For vertical flow, expand all regions leftward
+            for region in self.constituent_regions:
+                left_region = region.left(
+                    width=width,
+                    height="element",
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **kwargs,
+                )
+                new_regions.append(left_region)
+        else:  # horizontal flow
+            # For horizontal flow, only expand the leftmost region leftward
+            leftmost_region = min(self.constituent_regions, key=lambda r: r.x0)
+            for region in self.constituent_regions:
+                if region == leftmost_region:
+                    # Expand this region leftward
+                    left_region = region.left(
+                        width=width,
+                        height="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        **kwargs,
+                    )
+                    new_regions.append(left_region)
+                elif include_source:
+                    # Include other regions unchanged if include_source is True
+                    new_regions.append(region)
+
+        return FlowRegion(
+            flow=self.flow,
+            constituent_regions=new_regions,
+            source_flow_element=self.source_flow_element,
+            boundary_element_found=self.boundary_element_found,
+        )
+
+    def right(
+        self,
+        width: Optional[float] = None,
+        height: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegion":
+        """
+        Create a FlowRegion with regions to the right of this FlowRegion.
+
+        For vertical flows: Expands all constituent regions rightward.
+        For horizontal flows: Only expands the rightmost constituent region rightward.
+
+        Args:
+            width: Width of the region to the right, in points
+            height: Height mode - "full" for full page height or "element" for element height
+            include_source: Whether to include this FlowRegion in the result
+            until: Optional selector string to specify a right boundary element
+            include_endpoint: Whether to include the boundary element in the region
+            **kwargs: Additional parameters
+
+        Returns:
+            New FlowRegion with regions to the right
+        """
+        if not self.constituent_regions:
+            return FlowRegion(
+                flow=self.flow,
+                constituent_regions=[],
+                source_flow_element=self.source_flow_element,
+                boundary_element_found=self.boundary_element_found,
+            )
+
+        new_regions = []
+
+        if self.flow.arrangement == "vertical":
+            # For vertical flow, expand all regions rightward
+            for region in self.constituent_regions:
+                right_region = region.right(
+                    width=width,
+                    height="element",
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **kwargs,
+                )
+                new_regions.append(right_region)
+        else:  # horizontal flow
+            # For horizontal flow, only expand the rightmost region rightward
+            rightmost_region = max(self.constituent_regions, key=lambda r: r.x1)
+            for region in self.constituent_regions:
+                if region == rightmost_region:
+                    # Expand this region rightward
+                    right_region = region.right(
+                        width=width,
+                        height="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        **kwargs,
+                    )
+                    new_regions.append(right_region)
+                elif include_source:
+                    # Include other regions unchanged if include_source is True
+                    new_regions.append(region)
+
+        return FlowRegion(
+            flow=self.flow,
+            constituent_regions=new_regions,
+            source_flow_element=self.source_flow_element,
+            boundary_element_found=self.boundary_element_found,
+        )
+
+    def to_region(self) -> "FlowRegion":
+        """
+        Convert this FlowRegion to a region (returns a copy).
+        This is equivalent to calling expand() with no arguments.
+
+        Returns:
+            Copy of this FlowRegion
+        """
+        return self.expand()
+
     @property
     def is_empty(self) -> bool:
         """Checks if the FlowRegion contains no constituent regions or if all are empty."""
@@ -886,3 +1321,39 @@ class FlowRegion:
         This is an alias for normalized_type.
         """
         return self.normalized_type
+
+    def get_highlight_specs(self) -> List[Dict[str, Any]]:
+        """
+        Get highlight specifications for all constituent regions.
+
+        This implements the highlighting protocol for FlowRegions, returning
+        specs for each constituent region so they can be highlighted on their
+        respective pages.
+
+        Returns:
+            List of highlight specification dictionaries, one for each
+            constituent region.
+        """
+        specs = []
+
+        for region in self.constituent_regions:
+            if not hasattr(region, "page") or region.page is None:
+                continue
+
+            if not hasattr(region, "bbox") or region.bbox is None:
+                continue
+
+            spec = {
+                "page": region.page,
+                "page_index": region.page.index if hasattr(region.page, "index") else 0,
+                "bbox": region.bbox,
+                "element": region,  # Reference to the constituent region
+            }
+
+            # Add polygon if available
+            if hasattr(region, "polygon") and hasattr(region, "has_polygon") and region.has_polygon:
+                spec["polygon"] = region.polygon
+
+            specs.append(spec)
+
+        return specs

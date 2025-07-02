@@ -175,9 +175,14 @@ class ElementCollection(
         """Get the number of elements in the collection."""
         return len(self._elements)
 
-    def __getitem__(self, index: int) -> "Element":
-        """Get an element by index."""
-        return self._elements[index]
+    def __getitem__(self, index: Union[int, slice]) -> Union["Element", "ElementCollection"]:
+        """Get an element by index or a collection by slice."""
+        if isinstance(index, slice):
+            # Return a new ElementCollection for slices
+            return ElementCollection(self._elements[index])
+        else:
+            # Return the element for integer indices
+            return self._elements[index]
 
     def __repr__(self) -> str:
         """Return a string representation showing the element count."""
@@ -673,11 +678,25 @@ class ElementCollection(
             return prepared_data
 
         # Need access to the HighlightingService to determine colors correctly.
+        # Use highlighting protocol to find a valid service from any element
         highlighter = None
-        first_element = self._elements[0]
-        if hasattr(first_element, "page") and hasattr(first_element.page, "_highlighter"):
-            highlighter = first_element.page._highlighter
-        else:
+
+        for element in self._elements:
+            # Try direct page access first (for regular elements)
+            if hasattr(element, "page") and hasattr(element.page, "_highlighter"):
+                highlighter = element.page._highlighter
+                break
+            # Try highlighting protocol for FlowRegions and other complex elements
+            elif hasattr(element, "get_highlight_specs"):
+                specs = element.get_highlight_specs()
+                for spec in specs:
+                    if "page" in spec and hasattr(spec["page"], "_highlighter"):
+                        highlighter = spec["page"]._highlighter
+                        break
+                if highlighter:
+                    break
+
+        if not highlighter:
             logger.warning(
                 "Cannot determine highlight colors: HighlightingService not accessible from elements."
             )
@@ -1009,26 +1028,85 @@ class ElementCollection(
                 "show() currently only supports collections where all elements are from the same PDF."
             )
 
-        # Check if elements are on multiple pages
-        if self._are_on_multiple_pages():
-            raise ValueError(
-                "show() currently only supports collections where all elements are on the same page."
+        # NEW: Use highlighting protocol to support multi-page and FlowRegions
+        # Collect highlight specs from all elements
+        specs_by_page = {}  # Dict[Page, List[spec]]
+
+        for i, element in enumerate(self._elements):
+            # Get highlight specs using the protocol
+            if hasattr(element, "get_highlight_specs"):
+                specs = element.get_highlight_specs()
+            else:
+                # Fallback for elements without the protocol
+                if not hasattr(element, "page") or not element.page:
+                    logger.warning(f"Element {i} has no page, skipping")
+                    continue
+
+                if not hasattr(element, "bbox"):
+                    logger.warning(f"Element {i} has no bbox, skipping")
+                    continue
+
+                specs = [
+                    {
+                        "page": element.page,
+                        "page_index": element.page.index if hasattr(element.page, "index") else 0,
+                        "bbox": element.bbox,
+                        "polygon": (
+                            element.polygon
+                            if hasattr(element, "has_polygon") and element.has_polygon
+                            else None
+                        ),
+                        "element": element,
+                    }
+                ]
+
+            # Add specs to page groups
+            for spec in specs:
+                page = spec["page"]
+                if page not in specs_by_page:
+                    specs_by_page[page] = []
+                specs_by_page[page].append((i, spec))  # Store element index with spec
+
+        if not specs_by_page:
+            logger.warning("No valid elements to show")
+            return None
+
+        # If all elements are on the same page, use the existing single-page logic
+        if len(specs_by_page) == 1:
+            # Get the single page and its specs
+            page = next(iter(specs_by_page.keys()))
+            element_specs = specs_by_page[page]
+
+            # Check if we have a valid page and highlighting service
+            if not hasattr(page, "_highlighter"):
+                logger.warning("Cannot show collection: Page has no highlighting service.")
+                return None
+
+            service = page._highlighter
+            if not service:
+                logger.warning("Cannot show collection: Page highlighting service is None.")
+                return None
+
+            # Continue with existing single-page logic using the page we already have
+            pass
+        else:
+            # Multiple pages - need to render each and stack them
+            return self._render_multipage_highlights(
+                specs_by_page,
+                resolution,
+                width,
+                labels,
+                legend_position,
+                group_by,
+                label,
+                color,
+                label_format,
+                distinct,
+                include_attrs,
+                render_ocr,
+                crop,
             )
-
-        # Get the page and highlighting service from the first element
-        first_element = self._elements[0]
-        if not hasattr(first_element, "page") or not first_element.page:
-            logger.warning("Cannot show collection: First element has no associated page.")
-            return None
-        page = first_element.page
-        if not hasattr(page, "pdf") or not page.pdf:
-            logger.warning("Cannot show collection: Page has no associated PDF object.")
-            return None
-
-        service = page._highlighter
-        if not service:
-            logger.warning("Cannot show collection: PDF object has no highlighting service.")
-            return None
+        # Page and service are already validated above
 
         # 1. Prepare temporary highlight data based on grouping parameters
         # This returns a list of dicts, suitable for render_preview
@@ -1078,6 +1156,187 @@ class ElementCollection(
         except Exception as e:
             logger.error(f"Error calling highlighting_service.render_preview: {e}", exc_info=True)
             return None
+
+    def _render_multipage_highlights(
+        self,
+        specs_by_page,
+        resolution,
+        width,
+        labels,
+        legend_position,
+        group_by,
+        label,
+        color,
+        label_format,
+        distinct,
+        include_attrs,
+        render_ocr,
+        crop,
+        stack_direction="vertical",
+        stack_gap=5,
+        stack_background_color=(255, 255, 255),
+    ):
+        """Render highlights across multiple pages and stack them."""
+        from PIL import Image
+
+        # Sort pages by index for consistent output
+        sorted_pages = sorted(
+            specs_by_page.keys(), key=lambda p: p.index if hasattr(p, "index") else 0
+        )
+
+        page_images = []
+
+        for page in sorted_pages:
+            element_specs = specs_by_page[page]
+
+            # Get highlighter service from the page
+            if not hasattr(page, "_highlighter"):
+                logger.warning(
+                    f"Page {getattr(page, 'number', '?')} has no highlighter service, skipping"
+                )
+                continue
+
+            service = page._highlighter
+
+            # Prepare highlight data for this page
+            highlight_data_list = []
+
+            for element_idx, spec in element_specs:
+                # Use the element index to generate consistent colors/labels across pages
+                element = spec.get(
+                    "element",
+                    self._elements[element_idx] if element_idx < len(self._elements) else None,
+                )
+
+                # Prepare highlight data based on grouping parameters
+                if distinct:
+                    # Use cycling colors for distinct mode
+                    element_color = None  # Let the highlighter service pick from palette
+                    use_color_cycling = True
+                    element_label = (
+                        f"Element_{element_idx + 1}"
+                        if label is None
+                        else f"{label}_{element_idx + 1}"
+                    )
+                elif label:
+                    # Explicit label for all elements
+                    element_color = color
+                    use_color_cycling = color is None
+                    element_label = label
+                elif group_by and element:
+                    # Group by attribute
+                    try:
+                        group_key = getattr(element, group_by, None)
+                        element_label = self._format_group_label(
+                            group_key, label_format, element, group_by
+                        )
+                        element_color = None  # Let service assign color by group
+                        use_color_cycling = True
+                    except:
+                        element_label = f"Element_{element_idx + 1}"
+                        element_color = color
+                        use_color_cycling = color is None
+                else:
+                    # Default behavior
+                    element_color = color
+                    use_color_cycling = color is None
+                    element_label = f"Element_{element_idx + 1}"
+
+                # Build highlight data
+                highlight_item = {
+                    "page_index": spec["page_index"],
+                    "bbox": spec["bbox"],
+                    "polygon": spec.get("polygon"),
+                    "color": element_color,
+                    "label": element_label if labels else None,
+                    "use_color_cycling": use_color_cycling,
+                }
+
+                # Add attributes if requested
+                if include_attrs and element:
+                    highlight_item["attributes_to_draw"] = {}
+                    for attr_name in include_attrs:
+                        try:
+                            attr_value = getattr(element, attr_name, None)
+                            if attr_value is not None:
+                                highlight_item["attributes_to_draw"][attr_name] = attr_value
+                        except:
+                            pass
+
+                highlight_data_list.append(highlight_item)
+
+            # Calculate crop bbox if requested
+            crop_bbox = None
+            if crop:
+                try:
+                    # Get bboxes from all specs on this page
+                    bboxes = [spec["bbox"] for _, spec in element_specs if spec.get("bbox")]
+                    if bboxes:
+                        crop_bbox = (
+                            min(bbox[0] for bbox in bboxes),
+                            min(bbox[1] for bbox in bboxes),
+                            max(bbox[2] for bbox in bboxes),
+                            max(bbox[3] for bbox in bboxes),
+                        )
+                except Exception as bbox_err:
+                    logger.error(f"Error determining crop bbox: {bbox_err}")
+
+            # Render this page
+            try:
+                img = service.render_preview(
+                    page_index=page.index,
+                    temporary_highlights=highlight_data_list,
+                    resolution=resolution,
+                    width=width,
+                    labels=labels,
+                    legend_position=legend_position,
+                    render_ocr=render_ocr,
+                    crop_bbox=crop_bbox,
+                )
+
+                if img:
+                    page_images.append(img)
+            except Exception as e:
+                logger.error(
+                    f"Error rendering page {getattr(page, 'number', '?')}: {e}", exc_info=True
+                )
+
+        if not page_images:
+            logger.warning("Failed to render any pages")
+            return None
+
+        if len(page_images) == 1:
+            return page_images[0]
+
+        # Stack the images
+        if stack_direction == "vertical":
+            final_width = max(img.width for img in page_images)
+            final_height = (
+                sum(img.height for img in page_images) + (len(page_images) - 1) * stack_gap
+            )
+
+            stacked_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+
+            current_y = 0
+            for img in page_images:
+                # Center horizontally
+                x_offset = (final_width - img.width) // 2
+                stacked_image.paste(img, (x_offset, current_y))
+                current_y += img.height + stack_gap
+        else:  # horizontal
+            final_width = sum(img.width for img in page_images) + (len(page_images) - 1) * stack_gap
+            final_height = max(img.height for img in page_images)
+
+            stacked_image = Image.new("RGB", (final_width, final_height), stack_background_color)
+
+            current_x = 0
+            for img in page_images:
+                # Center vertically
+                y_offset = (final_height - img.height) // 2
+                stacked_image.paste(img, (current_x, y_offset))
+                current_x += img.width + stack_gap
+
+        return stacked_image
 
     def save(
         self,
@@ -1223,8 +1482,48 @@ class ElementCollection(
         self, element: T, include_attrs: Optional[List[str]]
     ) -> Optional[Dict]:
         """Extracts common parameters needed for highlighting a single element."""
+        # For FlowRegions and other complex elements, use highlighting protocol
+        if hasattr(element, "get_highlight_specs"):
+            specs = element.get_highlight_specs()
+            if not specs:
+                logger.warning(f"Element {element} returned no highlight specs")
+                return None
+
+            # For now, we'll use the first spec for the prepared data
+            # The actual rendering will use all specs
+            first_spec = specs[0]
+            page = first_spec["page"]
+
+            base_data = {
+                "page_index": first_spec["page_index"],
+                "element": element,
+                "include_attrs": include_attrs,
+                "attributes_to_draw": {},
+                "bbox": first_spec.get("bbox"),
+                "polygon": first_spec.get("polygon"),
+                "multi_spec": len(specs) > 1,  # Flag to indicate multiple specs
+                "all_specs": specs,  # Store all specs for rendering
+            }
+
+            # Extract attributes if requested
+            if include_attrs:
+                for attr_name in include_attrs:
+                    try:
+                        attr_value = getattr(element, attr_name, None)
+                        if attr_value is not None:
+                            base_data["attributes_to_draw"][attr_name] = attr_value
+                    except AttributeError:
+                        logger.warning(
+                            f"Attribute '{attr_name}' not found on element {element} for include_attrs"
+                        )
+
+            return base_data
+
+        # Fallback for regular elements with direct page access
         if not hasattr(element, "page"):
+            logger.warning(f"Element {element} has no page attribute and no highlighting protocol")
             return None
+
         page = element.page
 
         base_data = {
@@ -1990,8 +2289,8 @@ class ElementCollection(
     # ------------------------------------------------------------------
     def apply_ocr(
         self,
-        *,
         function: Optional[Callable[["Region"], Optional[str]]] = None,
+        *,
         show_progress: bool = True,
         **kwargs,
     ) -> "ElementCollection":
