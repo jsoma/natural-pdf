@@ -386,7 +386,7 @@ def analyze_pdf(
             # 7. Render page as image
             print(f"\n🖼️  RENDERING PAGE AS IMAGE:")
             try:
-                img = page.to_image(resolution=144)
+                img = page.render(resolution=144)
                 print(f"Image: {img.width}x{img.height} pixels")
 
                 # Save image in output folder

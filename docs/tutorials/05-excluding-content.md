@@ -49,7 +49,7 @@ page = pdf.pages[0]
 # Visualize the excluded area
 footer_region_viz = page.region(top=page.height - footer_height)
 footer_region_viz.show(label="Excluded Footer Area")
-page.to_image()
+page.show()
 ```
 
 ```python
@@ -95,7 +95,7 @@ page.clear_highlights()
 footer_boundary = page.find_all('line')[-1]
 footer_region_element = footer_boundary.below()
 footer_region_element.show(label="Excluded Footer Area (Element)")
-page.to_image()
+page.show()
 ```
 
 This element-based approach is usually more reliable as it adapts to the content's position, but it depends on finding consistent boundary elements (like lines or specific text markers).
@@ -113,4 +113,4 @@ This element-based approach is usually more reliable as it adapts to the content
     *   `pdf.add_exclusion(func)` applies the exclusion function (which takes a page and returns a region) to *all* pages in the PDF.
     *   `page.add_exclusion(region)` adds an exclusion region only to that specific page.
     *   `extract_text(use_exclusions=False)` can be used to temporarily disable exclusions.
-</div> 
+</div>

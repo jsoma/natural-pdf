@@ -356,7 +356,8 @@ class DocumentQA:
             temp_path = temp_file.name
 
         # Save a high resolution image (300 DPI)
-        page_image = page.to_image(resolution=300, include_highlights=False)
+        # Use render() for clean image without highlights
+        page_image = page.render(resolution=300)
         page_image.save(temp_path)
 
         try:
@@ -470,7 +471,8 @@ class DocumentQA:
             temp_path = temp_file.name
 
         # Get page image at high resolution - this returns a PIL Image directly
-        page_image = region.page.to_image(resolution=300, include_highlights=False)
+        # Use render() for clean image without highlights
+        page_image = region.page.render(resolution=300)
 
         # Crop to region
         x0, top, x1, bottom = int(region.x0), int(region.top), int(region.x1), int(region.bottom)

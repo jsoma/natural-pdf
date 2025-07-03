@@ -2,11 +2,12 @@
 Base Element class for natural-pdf.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, overload
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union, overload
 
 from PIL import Image
 
 from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin
 
 # Import selector parsing functions
@@ -610,7 +611,9 @@ class HighlightableMixin:
         return [spec]
 
 
-class Element(DirectionalMixin, ClassificationMixin, DescribeMixin, HighlightableMixin):
+class Element(
+    DirectionalMixin, ClassificationMixin, DescribeMixin, HighlightableMixin, Visualizable
+):
     """Base class for all PDF elements.
 
     This class provides common properties and methods for all PDF elements,
@@ -1103,84 +1106,67 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin, Highlightabl
 
         return self
 
-    def show(
+    def _get_render_specs(
         self,
-        resolution: Optional[float] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        color: Optional[Union[Tuple, str]] = "red",  # Default color for single element
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         label: Optional[str] = None,
-        width: Optional[int] = None,  # Add width parameter
-        crop: bool = False,  # NEW: Crop to element bounds before legend
-    ) -> Optional["Image.Image"]:
-        """
-        Show the page with only this element highlighted temporarily.
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this element.
 
         Args:
-            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
-            labels: Whether to include a legend for the highlight
-            legend_position: Position of the legend
-            color: Color to highlight this element (default: red)
-            label: Optional label for this element in the legend
-            width: Optional width for the output image in pixels
-            crop: If True, crop the rendered image to this element's
-                        bounding box before legends/overlays are added.
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting this element in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop to element bounds
+            crop_bbox: Explicit crop bounds
+            label: Optional label for this element
+            **kwargs: Additional parameters
 
         Returns:
-            PIL Image of the page with only this element highlighted, or None if error.
+            List with single RenderSpec for this element's page
         """
-        # Apply global options as defaults
-        import natural_pdf
+        if not hasattr(self, "page") or self.page is None:
+            return []
 
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
-        if not hasattr(self, "page") or not self.page:
-            logger.warning(f"Cannot show element, missing 'page' attribute: {self}")
-            return None
-        if not hasattr(self.page, "_highlighter") or not self.page._highlighter:
-            logger.warning(f"Cannot show element, page lacks highlighter service: {self}")
-            return None
+        spec = RenderSpec(page=self.page)
 
-        service = self.page._highlighter
+        # Handle cropping
+        if crop_bbox:
+            spec.crop_bbox = crop_bbox
+        elif crop == "content" or crop is True:
+            # Crop to element bounds
+            if hasattr(self, "bbox") and self.bbox:
+                spec.crop_bbox = self.bbox
 
-        # Determine the label if not provided
-        display_label = label if label is not None else f"{self.__class__.__name__}"
+        # Add highlight in show mode
+        if mode == "show":
+            # Use provided label or generate one
+            element_label = label if label is not None else self.__class__.__name__
 
-        # Prepare temporary highlight data for just this element
-        temp_highlight_data = {
-            "page_index": self.page.index,
-            "bbox": self.bbox if not self.has_polygon else None,
-            "polygon": self.polygon if self.has_polygon else None,
-            "color": color,  # Use provided or default color
-            "label": display_label,
-            "use_color_cycling": False,  # Explicitly false for single preview
-        }
-
-        # Determine crop bbox
-        crop_bbox = self.bbox if crop else None
-
-        # Check if we actually got geometry data
-        if temp_highlight_data["bbox"] is None and temp_highlight_data["polygon"] is None:
-            logger.warning(f"Cannot show element, failed to get bbox or polygon: {self}")
-            return None
-
-        # Use render_preview to show only this highlight
-        try:
-            return service.render_preview(
-                page_index=self.page.index,
-                temporary_highlights=[temp_highlight_data],
-                resolution=resolution,
-                width=width,  # Pass the width parameter
-                labels=labels,
-                legend_position=legend_position,
-                crop_bbox=crop_bbox,
+            spec.add_highlight(
+                element=self,
+                color=color or "red",  # Default red for single element
+                label=element_label,
             )
-        except Exception as e:
-            logger.error(f"Error calling render_preview for element {self}: {e}", exc_info=True)
-            return None
+
+            # Add additional highlight groups if provided
+            if highlights:
+                for group in highlights:
+                    group_elements = group.get("elements", [])
+                    group_color = group.get("color", color)
+                    group_label = group.get("label")
+
+                    for elem in group_elements:
+                        # Only add if element is on same page
+                        if hasattr(elem, "page") and elem.page == self.page:
+                            spec.add_highlight(element=elem, color=group_color, label=group_label)
+
+        return [spec]
 
     def save(
         self,
@@ -1393,21 +1379,13 @@ class Element(DirectionalMixin, ClassificationMixin, DescribeMixin, Highlightabl
             resolution = kwargs.get("resolution", 150)
             from natural_pdf.elements.region import Region  # Local import to avoid cycles
 
-            return self.expand().to_image(
+            # Use render() for clean image without highlights
+            return self.expand().render(
                 resolution=resolution,
-                include_highlights=False,
                 crop=True,
             )
         else:
             raise ValueError(f"Unsupported model_type for classification: {model_type}")
-
-    # ------------------------------------------------------------------
-    # Lightweight to_image proxy (vision models, previews, etc.)
-    # ------------------------------------------------------------------
-
-    def to_image(self, *args, **kwargs):  # type: ignore[override]
-        """Generate an image of this element by delegating to a temporary Region."""
-        return self.expand().to_image(*args, **kwargs)
 
     # ------------------------------------------------------------------
     # Unified analysis storage (maps to metadata["analysis"])

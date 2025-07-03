@@ -1,12 +1,13 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
 
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FlowRegion:
+class FlowRegion(Visualizable):
     """
     Represents a selected area within a Flow, potentially composed of multiple
     physical Region objects (constituent_regions) that might span across
@@ -65,6 +66,122 @@ class FlowRegion:
         self._cached_text: Optional[str] = None
         self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
+
+    def _get_highlighter(self):
+        """Get the highlighting service from constituent regions."""
+        if not self.constituent_regions:
+            raise RuntimeError("FlowRegion has no constituent regions to get highlighter from")
+
+        # Get highlighter from first constituent region
+        first_region = self.constituent_regions[0]
+        if hasattr(first_region, "_highlighter"):
+            return first_region._highlighter
+        elif hasattr(first_region, "page") and hasattr(first_region.page, "_highlighter"):
+            return first_region.page._highlighter
+        else:
+            raise RuntimeError(
+                f"Cannot find HighlightingService from FlowRegion constituent regions. "
+                f"First region type: {type(first_region).__name__}"
+            )
+
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this flow region.
+
+        Args:
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting this region in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop to constituent regions
+            crop_bbox: Explicit crop bounds
+            **kwargs: Additional parameters
+
+        Returns:
+            List of RenderSpec objects, one per page with constituent regions
+        """
+        if not self.constituent_regions:
+            return []
+
+        # Group constituent regions by page
+        regions_by_page = {}
+        for region in self.constituent_regions:
+            if hasattr(region, "page") and region.page:
+                page = region.page
+                if page not in regions_by_page:
+                    regions_by_page[page] = []
+                regions_by_page[page].append(region)
+
+        if not regions_by_page:
+            return []
+
+        # Create RenderSpec for each page
+        specs = []
+        for page, page_regions in regions_by_page.items():
+            spec = RenderSpec(page=page)
+
+            # Handle cropping
+            if crop_bbox:
+                spec.crop_bbox = crop_bbox
+            elif crop == "content" or crop is True:
+                # Calculate bounds of regions on this page
+                x_coords = []
+                y_coords = []
+                for region in page_regions:
+                    if hasattr(region, "bbox") and region.bbox:
+                        x0, y0, x1, y1 = region.bbox
+                        x_coords.extend([x0, x1])
+                        y_coords.extend([y0, y1])
+
+                if x_coords and y_coords:
+                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+
+            # Add highlights in show mode
+            if mode == "show":
+                # Highlight constituent regions
+                for i, region in enumerate(page_regions):
+                    # Label each part if multiple regions
+                    label = None
+                    if len(self.constituent_regions) > 1:
+                        # Find global index
+                        try:
+                            global_idx = self.constituent_regions.index(region)
+                            label = f"FlowPart_{global_idx + 1}"
+                        except ValueError:
+                            label = f"FlowPart_{i + 1}"
+                    else:
+                        label = "FlowRegion"
+
+                    spec.add_highlight(
+                        bbox=region.bbox,
+                        polygon=region.polygon if region.has_polygon else None,
+                        color=color or "fuchsia",
+                        label=label,
+                    )
+
+                # Add additional highlight groups if provided
+                if highlights:
+                    for group in highlights:
+                        group_elements = group.get("elements", [])
+                        group_color = group.get("color", color)
+                        group_label = group.get("label")
+
+                        for elem in group_elements:
+                            # Only add if element is on this page
+                            if hasattr(elem, "page") and elem.page == page:
+                                spec.add_highlight(
+                                    element=elem, color=group_color, label=group_label
+                                )
+
+            specs.append(spec)
+
+        return specs
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -336,200 +453,33 @@ class FlowRegion:
             region.highlight(label=current_label, color=color, **kwargs)
         return self
 
-    def show(
-        self,
-        resolution: Optional[float] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        color: Optional[Union[Tuple, str]] = "fuchsia",
-        label_prefix: Optional[str] = "FlowPart",
-        width: Optional[int] = None,
-        stack_direction: str = "vertical",
-        stack_gap: int = 5,
-        stack_background_color: Tuple[int, int, int] = (255, 255, 255),
-        crop: bool = False,
-        **kwargs,
-    ) -> Optional["PIL_Image"]:
+    def highlights(self, show: bool = False) -> "HighlightContext":
         """
-        Generates and returns a PIL Image of relevant pages with constituent regions highlighted.
-        If multiple pages are involved, they are stacked into a single image.
+        Create a highlight context for accumulating highlights.
+
+        This allows for clean syntax to show multiple highlight groups:
+
+        Example:
+            with flow_region.highlights() as h:
+                h.add(flow_region.find_all('table'), label='tables', color='blue')
+                h.add(flow_region.find_all('text:bold'), label='bold text', color='red')
+                h.show()
+
+        Or with automatic display:
+            with flow_region.highlights(show=True) as h:
+                h.add(flow_region.find_all('table'), label='tables')
+                h.add(flow_region.find_all('text:bold'), label='bold')
+                # Automatically shows when exiting the context
 
         Args:
-            resolution: Resolution in DPI for page rendering. If None, uses global setting or defaults to 144 DPI.
-            labels: Whether to include a legend for highlights.
-            legend_position: Position of the legend ('right', 'bottom', 'top', 'left').
-            color: Color for highlighting the constituent regions.
-            label_prefix: Prefix for region labels (e.g., 'FlowPart').
-            width: Optional width for the output image (overrides resolution).
-            stack_direction: Direction to stack multiple pages ('vertical' or 'horizontal').
-            stack_gap: Gap in pixels between stacked pages.
-            stack_background_color: RGB background color for the stacked image.
-            crop: If True, crop each rendered page to the bounding box of constituent regions on that page.
-            **kwargs: Additional arguments passed to the underlying rendering methods.
+            show: If True, automatically show highlights when exiting context
 
         Returns:
-            PIL Image of the rendered pages with highlighted regions, or None if rendering fails.
+            HighlightContext for accumulating highlights
         """
-        if not self.constituent_regions:
-            logger.info("FlowRegion.show() called with no constituent regions.")
-            return None
+        from natural_pdf.core.highlighting_service import HighlightContext
 
-        # 1. Group constituent regions by their physical page
-        regions_by_page: Dict["PhysicalPage", List["PhysicalRegion"]] = {}
-        for region in self.constituent_regions:
-            if region.page:
-                if region.page not in regions_by_page:
-                    regions_by_page[region.page] = []
-                regions_by_page[region.page].append(region)
-            else:
-                raise ValueError(f"Constituent region {region.bbox} has no page.")
-
-        if not regions_by_page:
-            logger.info("FlowRegion.show() found no constituent regions with associated pages.")
-            return None
-
-        # 2. Get a highlighter service (e.g., from the first page involved)
-        first_page_with_regions = next(iter(regions_by_page.keys()), None)
-        highlighter_service = None
-        if first_page_with_regions and hasattr(first_page_with_regions, "_highlighter"):
-            highlighter_service = first_page_with_regions._highlighter
-
-        if not highlighter_service:
-            raise ValueError(
-                "Cannot get highlighter service for FlowRegion.show(). "
-                "Ensure constituent regions' pages are initialized with a highlighter."
-            )
-
-        output_page_images: List["PIL_Image_Runtime"] = []
-
-        # Sort pages by index for consistent output order
-        sorted_pages = sorted(
-            regions_by_page.keys(),
-            key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
-        )
-
-        # 3. Render each page with its relevant constituent regions highlighted
-        for page_idx, page_obj in enumerate(sorted_pages):
-            constituent_regions_on_this_page = regions_by_page[page_obj]
-            if not constituent_regions_on_this_page:
-                continue
-
-            temp_highlights_for_page = []
-            for i, region_part in enumerate(constituent_regions_on_this_page):
-                part_label = None
-                if labels and label_prefix:  # Ensure labels is True for label_prefix to apply
-                    # If FlowRegion consists of multiple parts on this page, or overall
-                    count_indicator = ""
-                    if (
-                        len(self.constituent_regions) > 1
-                    ):  # If flow region has multiple parts overall
-                        # Find global index of this region_part in self.constituent_regions
-                        try:
-                            global_idx = self.constituent_regions.index(region_part)
-                            count_indicator = f"_{global_idx + 1}"
-                        except ValueError:  # Should not happen if region_part is from the list
-                            count_indicator = f"_p{page_idx}i{i+1}"  # fallback local index
-                    elif (
-                        len(constituent_regions_on_this_page) > 1
-                    ):  # If multiple parts on *this* page, but FR is single part overall
-                        count_indicator = f"_{i+1}"
-
-                    part_label = f"{label_prefix}{count_indicator}" if label_prefix else None
-
-                temp_highlights_for_page.append(
-                    {
-                        "page_index": (
-                            page_obj.index
-                            if hasattr(page_obj, "index")
-                            else getattr(page_obj, "page_number", 1) - 1
-                        ),
-                        "bbox": region_part.bbox,
-                        "polygon": region_part.polygon if region_part.has_polygon else None,
-                        "color": color,  # Use the passed color
-                        "label": part_label,
-                        "use_color_cycling": False,  # Keep specific color
-                    }
-                )
-
-            if not temp_highlights_for_page:
-                continue
-
-            # Calculate crop bbox if cropping is enabled
-            crop_bbox = None
-            if crop and constituent_regions_on_this_page:
-                # Calculate the bounding box that encompasses all constituent regions on this page
-                min_x0 = min(region.bbox[0] for region in constituent_regions_on_this_page)
-                min_y0 = min(region.bbox[1] for region in constituent_regions_on_this_page)
-                max_x1 = max(region.bbox[2] for region in constituent_regions_on_this_page)
-                max_y1 = max(region.bbox[3] for region in constituent_regions_on_this_page)
-                crop_bbox = (min_x0, min_y0, max_x1, max_y1)
-
-            page_image = highlighter_service.render_preview(
-                page_index=(
-                    page_obj.index
-                    if hasattr(page_obj, "index")
-                    else getattr(page_obj, "page_number", 1) - 1
-                ),
-                temporary_highlights=temp_highlights_for_page,
-                resolution=resolution,
-                width=width,
-                labels=labels,  # Pass through labels
-                legend_position=legend_position,
-                crop_bbox=crop_bbox,
-                **kwargs,
-            )
-            if page_image:
-                output_page_images.append(page_image)
-
-        # 4. Stack the generated page images if multiple
-        if not output_page_images:
-            logger.info("FlowRegion.show() produced no page images to concatenate.")
-            return None
-
-        if len(output_page_images) == 1:
-            return output_page_images[0]
-
-        # Stacking logic (same as in FlowRegionCollection.show)
-        if stack_direction == "vertical":
-            final_width = max(img.width for img in output_page_images)
-            final_height = (
-                sum(img.height for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = PIL_Image_Runtime.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_y = 0
-            for img in output_page_images:
-                paste_x = (final_width - img.width) // 2
-                concatenated_image.paste(img, (paste_x, current_y))
-                current_y += img.height + stack_gap
-            return concatenated_image
-        elif stack_direction == "horizontal":
-            final_width = (
-                sum(img.width for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            final_height = max(img.height for img in output_page_images)
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = PIL_Image_Runtime.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_x = 0
-            for img in output_page_images:
-                paste_y = (final_height - img.height) // 2
-                concatenated_image.paste(img, (current_x, paste_y))
-                current_x += img.width + stack_gap
-            return concatenated_image
-        else:
-            raise ValueError(
-                f"Invalid stack_direction '{stack_direction}' for FlowRegion.show(). Must be 'vertical' or 'horizontal'."
-            )
+        return HighlightContext(self, show_on_exit=show)
 
     def to_images(
         self,
@@ -547,9 +497,8 @@ class FlowRegion:
         cropped_images: List["PIL_Image"] = []
         for region_part in self.constituent_regions:
             try:
-                img = region_part.to_image(
-                    resolution=resolution, crop=True, include_highlights=False, **kwargs
-                )
+                # Use render() for clean image without highlights
+                img = region_part.render(resolution=resolution, crop=True, **kwargs)
                 if img:
                     cropped_images.append(img)
             except Exception as e:
@@ -559,67 +508,6 @@ class FlowRegion:
                 )
 
         return cropped_images
-
-    def to_image(self, background_color=(255, 255, 255), **kwargs) -> Optional["PIL_Image"]:
-        """
-        Creates a single composite image by stacking the images of its constituent regions.
-        Stacking direction is based on the Flow's arrangement.
-        Individual region images are obtained by calling to_images(**kwargs).
-
-        Args:
-            background_color: Tuple for RGB background color of the composite image.
-            **kwargs: Additional arguments passed to to_images() for rendering individual parts
-                      (e.g., resolution).
-
-        Returns:
-            A single PIL.Image.Image object, or None if no constituent images.
-        """
-        # Use PIL_Image_Runtime for creating new images at runtime
-        images = self.to_images(**kwargs)
-        if not images:
-            return None
-        if len(images) == 1:
-            return images[0]
-
-        if self.flow.arrangement == "vertical":
-            # Stack vertically
-            composite_width = max(img.width for img in images)
-            composite_height = sum(img.height for img in images)
-            if composite_width == 0 or composite_height == 0:
-                return None  # Avoid zero-size image
-
-            new_image = PIL_Image_Runtime.new(
-                "RGB", (composite_width, composite_height), background_color
-            )
-            current_y = 0
-            for img in images:
-                # Default to left alignment for vertical stacking
-                new_image.paste(img, (0, current_y))
-                current_y += img.height
-            return new_image
-
-        elif self.flow.arrangement == "horizontal":
-            # Stack horizontally
-            composite_width = sum(img.width for img in images)
-            composite_height = max(img.height for img in images)
-            if composite_width == 0 or composite_height == 0:
-                return None
-
-            new_image = PIL_Image_Runtime.new(
-                "RGB", (composite_width, composite_height), background_color
-            )
-            current_x = 0
-            for img in images:
-                # Default to top alignment for horizontal stacking
-                new_image.paste(img, (current_x, 0))
-                current_x += img.width
-            return new_image
-        else:
-            # Should not happen if flow.arrangement is validated
-            logger.warning(
-                f"Unknown flow arrangement: {self.flow.arrangement}. Cannot stack images."
-            )
-            return None
 
     def __repr__(self) -> str:
         return (

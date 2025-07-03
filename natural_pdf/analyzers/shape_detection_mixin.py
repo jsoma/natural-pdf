@@ -60,14 +60,13 @@ class ShapeDetectionMixin:
 
         # Determine the type of self and get the appropriate image and page context
         if (
-            hasattr(self, "to_image") and hasattr(self, "width") and hasattr(self, "height")
+            hasattr(self, "render") and hasattr(self, "width") and hasattr(self, "height")
         ):  # Page or Region
             if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):  # Region
                 logger.debug(f"Shape detection on Region: {self}")
                 page_obj = self._page
-                pil_image = self.to_image(
-                    resolution=resolution, crop=True, include_highlights=False
-                )
+                # Use render() for clean image without highlights, with cropping
+                pil_image = self.render(resolution=resolution, crop=True)
                 if pil_image:  # Ensure pil_image is not None before accessing attributes
                     origin_offset_pdf = (self.x0, self.top)
                     logger.debug(
@@ -76,7 +75,8 @@ class ShapeDetectionMixin:
             else:  # Page
                 logger.debug(f"Shape detection on Page: {self}")
                 page_obj = self
-                pil_image = self.to_image(resolution=resolution, include_highlights=False)
+                # Use render() for clean image without highlights
+                pil_image = self.render(resolution=resolution)
                 logger.debug(
                     f"Page image rendered successfully: {pil_image.width}x{pil_image.height}"
                 )
@@ -689,13 +689,12 @@ class ShapeDetectionMixin:
             return self
 
         pil_image_for_dims = None
-        if hasattr(self, "to_image") and hasattr(self, "width") and hasattr(self, "height"):
+        if hasattr(self, "render") and hasattr(self, "width") and hasattr(self, "height"):
             if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):
-                pil_image_for_dims = self.to_image(
-                    resolution=resolution, crop=True, include_highlights=False
-                )
+                pil_image_for_dims = self.render(resolution=resolution, crop=True)
             else:
-                pil_image_for_dims = self.to_image(resolution=resolution, include_highlights=False)
+                # Use render() for clean image without highlights
+                pil_image_for_dims = self.render(resolution=resolution)
         if pil_image_for_dims is None:
             logger.warning(f"Could not re-render PIL image for dimensions for {self}.")
             pil_image_for_dims = Image.fromarray(cv_image)  # Ensure it's not None

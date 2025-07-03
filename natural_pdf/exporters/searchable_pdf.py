@@ -345,7 +345,8 @@ def create_searchable_pdf(
                 # 1. Render page image at target DPI
                 logger.debug(f"  Rendering page {i} to image ({dpi} DPI)...")
                 # Use the Page's to_image method
-                pil_image = page.to_image(resolution=dpi, include_highlights=False)
+                # Use render() for clean image without highlights
+                pil_image = page.render(resolution=dpi)
                 pil_image.save(img_path, format="PNG")
                 img_width, img_height = pil_image.size
                 logger.debug(f"  Image saved to {img_path} ({img_width}x{img_height})")

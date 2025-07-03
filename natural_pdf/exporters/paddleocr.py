@@ -216,9 +216,7 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
                     try:
                         # Expand region, render, and save image
                         region = element.expand(self.padding)
-                        img = region.to_image(
-                            resolution=self.resolution, crop=True, include_highlights=False
-                        )
+                        img = region.render(resolution=self.resolution, crop=True)
                         img.save(absolute_image_path, "PNG")
 
                         # Add to labels and character set

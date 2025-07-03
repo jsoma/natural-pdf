@@ -36,7 +36,7 @@ date_label.highlight(color="blue", label="Date")
 }
 
 # Display page with both highlights
-page.to_image()
+page.show()
 ```
 
 ## Finding Elements by Color
@@ -73,7 +73,7 @@ thick_lines.highlight(color="red", label="Thick")
 rectangles.highlight(color="green", label="Rectangles")
 
 # Display page with all shapes highlighted
-page.to_image()
+page.show()
 ```
 
 ## Finding Elements by Font Properties
@@ -139,4 +139,4 @@ highlighted_text = page.find('rect').find_all('text[color~=red]')
     elements = page.find_all('text[color~=red]')
     elements.show()
     ```
-</div> 
+</div>

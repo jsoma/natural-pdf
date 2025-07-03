@@ -36,7 +36,7 @@ summary_elements.extract_text()
 
 ```python
 # Display the page image to see the visualization
-page.to_image()
+page.show()
 ```
 
 This selects the elements using `.below(until=...)` and extracts their text. The second code block displays the page image with the visualized section.

@@ -188,9 +188,8 @@ class SuryaLayoutDetector(LayoutDetector):
         high_res_dpi = getattr(self._page_ref._parent, "_config", {}).get(
             "surya_table_rec_dpi", 192
         )
-        high_res_page_image = self._page_ref.to_image(
-            resolution=high_res_dpi, include_highlights=False
-        )
+        # Use render() for clean image without highlights
+        high_res_page_image = self._page_ref.render(resolution=high_res_dpi)
 
         # Render high-res page ONCE
         self.logger.debug(

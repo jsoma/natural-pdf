@@ -16,6 +16,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -31,6 +32,7 @@ from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.classification.results import ClassificationResult
 from natural_pdf.core.highlighting_service import HighlightingService
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
@@ -250,7 +252,7 @@ class _LazyPageList(Sequence):
 # --- End Lazy Page List Helper --- #
 
 
-class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
+class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin, Visualizable):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,
@@ -843,10 +845,10 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                     "include_highlights": False,
                     "exclusions": "mask" if apply_exclusions else None,
                 }
-                img = page.to_image(**to_image_kwargs)
+                # Use render() for clean image without highlights
+                img = page.render(resolution=final_resolution)
                 if img is None:
                     logger.error(f"  Failed to render page {page.number} to image.")
-                    continue
                     continue
                 images_pil.append(img)
                 page_image_map.append((page, img))
@@ -1420,35 +1422,35 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
                 # Re-raise exception from exporter
                 raise e
 
-    def show(self, *args, **kwargs) -> Optional["Image.Image"]:
-        """
-        Generate a grid of page images for this PDF.
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this PDF.
 
-        This method delegates to the pages collection's show method,
-        allowing visualization of all pages in the PDF.
+        For PDF objects, this delegates to the pages collection to handle
+        multi-page rendering.
 
         Args:
-            *args: Positional arguments passed to pages.show()
-            **kwargs: Keyword arguments passed to pages.show()
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting pages in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop pages
+            crop_bbox: Explicit crop bounds
+            **kwargs: Additional parameters
 
         Returns:
-            PIL Image of the page grid or None if no pages
-
-        Example:
-            ```python
-            pdf = npdf.PDF("document.pdf")
-
-            # Show all pages in a grid
-            img = pdf.show()
-
-            # Show first 6 pages in 2 columns
-            img = pdf.show(max_pages=6, cols=2)
-
-            # Show pages with labels and categories
-            img = pdf.show(add_labels=True, show_category=True)
-            ```
+            List of RenderSpec objects, one per page
         """
-        return self.pages.show(*args, **kwargs)
+        # Delegate to pages collection
+        return self.pages._get_render_specs(
+            mode=mode, color=color, highlights=highlights, crop=crop, crop_bbox=crop_bbox, **kwargs
+        )
 
     def ask(
         self,
@@ -1569,7 +1571,8 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
         for page in target_pages:
             # Get page image
             try:
-                page_image = page.to_image(resolution=150, include_highlights=False)
+                # Use render() for clean image without highlights
+                page_image = page.render(resolution=150)
                 if page_image is None:
                     logger.warning(f"Failed to render image for page {page.number}, skipping")
                     continue
@@ -2222,10 +2225,9 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
 
             try:
                 for page in tqdm(self.pages, desc="Rendering Pages"):
-                    img = page.to_image(
+                    # Use render() for clean images
+                    img = page.render(
                         resolution=resolution,
-                        include_highlights=include_highlights,
-                        labels=labels,
                         **kwargs,
                     )
                     if img:
@@ -2471,3 +2473,31 @@ class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin):
             An ElementCollection of all detected Region objects.
         """
         return self.pages.analyze_layout(*args, **kwargs)
+
+    def highlights(self, show: bool = False) -> "HighlightContext":
+        """
+        Create a highlight context for accumulating highlights.
+
+        This allows for clean syntax to show multiple highlight groups:
+
+        Example:
+            with pdf.highlights() as h:
+                h.add(pdf.find_all('table'), label='tables', color='blue')
+                h.add(pdf.find_all('text:bold'), label='bold text', color='red')
+                h.show()
+
+        Or with automatic display:
+            with pdf.highlights(show=True) as h:
+                h.add(pdf.find_all('table'), label='tables')
+                h.add(pdf.find_all('text:bold'), label='bold')
+                # Automatically shows when exiting the context
+
+        Args:
+            show: If True, automatically show highlights when exiting context
+
+        Returns:
+            HighlightContext for accumulating highlights
+        """
+        from natural_pdf.core.highlighting_service import HighlightContext
+
+        return HighlightContext(self, show_on_exit=show)

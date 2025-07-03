@@ -1,5 +1,16 @@
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
 
@@ -15,6 +26,9 @@ from natural_pdf.classification.manager import ClassificationManager  # Keep for
 
 # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin
+
+# Add Visualizable import
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.elements.base import DirectionalMixin
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
@@ -63,6 +77,7 @@ class Region(
     ExtractionMixin,
     ShapeDetectionMixin,
     DescribeMixin,
+    Visualizable,
 ):
     """Represents a rectangular region on a page.
 
@@ -198,6 +213,62 @@ class Region(
         self.child_regions = []
         self.text_content = None  # Direct text content (e.g., from Docling)
         self.associated_text_elements = []  # Native text elements that overlap with this region
+
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = True,  # Default to True for regions
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this region.
+
+        Args:
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting this region in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop to this region
+            crop_bbox: Explicit crop bounds (overrides region bounds)
+            **kwargs: Additional parameters
+
+        Returns:
+            List containing a single RenderSpec for this region's page
+        """
+        from typing import Literal
+
+        spec = RenderSpec(page=self.page)
+
+        # Handle cropping
+        if crop_bbox:
+            spec.crop_bbox = crop_bbox
+        elif crop:
+            # Crop to this region's bounds
+            spec.crop_bbox = self.bbox
+
+        # Add highlights in show mode
+        if mode == "show":
+            # Highlight this region
+            if color or mode == "show":  # Always highlight in show mode
+                spec.add_highlight(
+                    bbox=self.bbox,
+                    polygon=self.polygon if self.has_polygon else None,
+                    color=color or "blue",
+                    label=self.label or self.name or "Region",
+                )
+
+            # Add additional highlight groups if provided
+            if highlights:
+                for group in highlights:
+                    elements = group.get("elements", [])
+                    group_color = group.get("color", color)
+                    group_label = group.get("label")
+
+                    for elem in elements:
+                        spec.add_highlight(element=elem, color=group_color, label=group_label)
+
+        return [spec]
 
     def _direction(
         self,
@@ -679,178 +750,6 @@ class Region(
 
         return self
 
-    def to_image(
-        self,
-        resolution: Optional[float] = None,
-        crop: bool = False,
-        include_highlights: bool = True,
-        **kwargs,
-    ) -> "Image.Image":
-        """
-        Generate an image of just this region.
-
-        Args:
-            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
-            crop: If True, only crop the region without highlighting its boundaries
-            include_highlights: Whether to include existing highlights (default: True)
-            **kwargs: Additional parameters for page.to_image()
-
-        Returns:
-            PIL Image of just this region
-        """
-        # Apply global options as defaults
-        import natural_pdf
-
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
-
-        # Handle the case where user wants the cropped region to have a specific width
-        page_kwargs = kwargs.copy()
-        effective_resolution = resolution  # Start with the provided resolution
-
-        if crop and "width" in kwargs and kwargs["width"] is not None:
-            target_width = kwargs["width"]
-            # Calculate what resolution is needed to make the region crop have target_width
-            region_width_points = self.width  # Region width in PDF points
-
-            if region_width_points > 0:
-                # Calculate scale needed: target_width / region_width_points
-                required_scale = target_width / region_width_points
-                # Convert scale to resolution: scale * 72 DPI
-                effective_resolution = required_scale * 72.0
-                page_kwargs.pop("width")  # Remove width parameter to avoid conflicts
-                logger.debug(
-                    f"Region {self.bbox}: Calculated required resolution {effective_resolution:.1f} DPI for region crop width {target_width}"
-                )
-            else:
-                logger.warning(
-                    f"Region {self.bbox}: Invalid region width {region_width_points}, using original resolution"
-                )
-
-        # First get the full page image with highlights if requested
-        page_image = self._page.to_image(
-            resolution=effective_resolution,
-            include_highlights=include_highlights,
-            **page_kwargs,
-        )
-
-        # Calculate the actual scale factor used by the page image
-        if page_image.width > 0 and self._page.width > 0:
-            scale_factor = page_image.width / self._page.width
-        else:
-            # Fallback to resolution-based calculation if dimensions are invalid
-            scale_factor = resolution / 72.0
-
-        # Apply scaling to the coordinates
-        x0 = int(self.x0 * scale_factor)
-        top = int(self.top * scale_factor)
-        x1 = int(self.x1 * scale_factor)
-        bottom = int(self.bottom * scale_factor)
-
-        # Ensure coords are valid for cropping (left < right, top < bottom)
-        if x0 >= x1:
-            logger.warning(
-                f"Region {self.bbox} resulted in non-positive width after scaling ({x0} >= {x1}). Cannot create image."
-            )
-            return None
-        if top >= bottom:
-            logger.warning(
-                f"Region {self.bbox} resulted in non-positive height after scaling ({top} >= {bottom}). Cannot create image."
-            )
-            return None
-
-        # Crop the image to just this region
-        region_image = page_image.crop((x0, top, x1, bottom))
-
-        # If not crop, add a border to highlight the region boundaries
-        if not crop:
-            from PIL import ImageDraw
-
-            # Create a 1px border around the region
-            draw = ImageDraw.Draw(region_image)
-            draw.rectangle(
-                (0, 0, region_image.width - 1, region_image.height - 1),
-                outline=(255, 0, 0),
-                width=1,
-            )
-
-        return region_image
-
-    def show(
-        self,
-        resolution: Optional[float] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        # Add a default color for standalone show
-        color: Optional[Union[Tuple, str]] = "blue",
-        label: Optional[str] = None,
-        width: Optional[int] = None,  # Add width parameter
-        crop: bool = False,  # NEW: Crop output to region bounds before legend
-    ) -> "Image.Image":
-        """
-        Show the page with just this region highlighted temporarily.
-
-        Args:
-            resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
-            labels: Whether to include a legend for labels
-            legend_position: Position of the legend
-            color: Color to highlight this region (default: blue)
-            label: Optional label for this region in the legend
-            width: Optional width for the output image in pixels
-            crop: If True, crop the rendered image to this region's
-                        bounding box (with a small margin handled inside
-                        HighlightingService) before legends/overlays are added.
-
-        Returns:
-            PIL Image of the page with only this region highlighted
-        """
-        # Apply global options as defaults
-        import natural_pdf
-
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
-
-        if not self._page:
-            raise ValueError("Region must be associated with a page to show.")
-
-        # Use the highlighting service via the page's property
-        service = self._page._highlighter
-
-        # Determine the label if not provided
-        display_label = (
-            label if label is not None else f"Region ({self.type})" if self.type else "Region"
-        )
-
-        # Prepare temporary highlight data for just this region
-        temp_highlight_data = {
-            "page_index": self._page.index,
-            "bbox": self.bbox,
-            "polygon": self.polygon if self.has_polygon else None,
-            "color": color,  # Use provided or default color
-            "label": display_label,
-            "use_color_cycling": False,  # Explicitly false for single preview
-        }
-
-        # Determine crop bbox if requested
-        crop_bbox = self.bbox if crop else None
-
-        # Use render_preview to show only this highlight
-        return service.render_preview(
-            page_index=self._page.index,
-            temporary_highlights=[temp_highlight_data],
-            resolution=resolution,
-            width=width,  # Pass the width parameter
-            labels=labels,
-            legend_position=legend_position,
-            crop_bbox=crop_bbox,
-        )
-
     def save(
         self,
         filename: str,
@@ -904,7 +803,7 @@ class Region(
             resolution: Resolution in DPI for rendering (default: uses global options, fallback to 144 DPI)
             crop: If True, only crop the region without highlighting its boundaries
             include_highlights: Whether to include existing highlights (default: True)
-            **kwargs: Additional parameters for page.to_image()
+            **kwargs: Additional parameters for rendering
 
         Returns:
             Self for method chaining
@@ -918,16 +817,23 @@ class Region(
             else:
                 resolution = 144  # Default resolution when none specified
 
-        # Get the region image
-        image = self.to_image(
-            resolution=resolution,
-            crop=crop,
-            include_highlights=include_highlights,
-            **kwargs,
-        )
+        # Use export() to save the image
+        if include_highlights:
+            # With highlights, use export() which includes them
+            self.export(
+                path=filename,
+                resolution=resolution,
+                crop=crop,
+                **kwargs,
+            )
+        else:
+            # Without highlights, use render() and save manually
+            image = self.render(resolution=resolution, crop=crop, **kwargs)
+            if image:
+                image.save(filename)
+            else:
+                logger.error(f"Failed to render region image for saving to {filename}")
 
-        # Save the image
-        image.save(filename)
         return self
 
     def trim(
@@ -988,7 +894,8 @@ class Region(
         )
 
         # Get the region image
-        image = work_region.to_image(resolution=resolution, crop=True, include_highlights=False)
+        # Use render() for clean image without highlights, with cropping
+        image = work_region.render(resolution=resolution, crop=True)
 
         if image is None:
             logger.warning(
@@ -2272,7 +2179,7 @@ class Region(
         ---------
         ```python
         def llm_ocr(region):
-            image = region.to_image(resolution=300, crop=True)
+            image = region.render(resolution=300, crop=True)
             return my_llm_client.ocr(image)
         region.apply_ocr(function=llm_ocr)
         ```
@@ -2382,9 +2289,8 @@ class Region(
 
         # Render the page region to an image using the determined resolution
         try:
-            region_image = self.to_image(
-                resolution=final_resolution, include_highlights=False, crop=True
-            )
+            # Use render() for clean image without highlights, with cropping
+            region_image = self.render(resolution=final_resolution, crop=True)
             if not region_image:
                 logger.error("Failed to render region to image for OCR.")
                 return self
@@ -2506,7 +2412,7 @@ class Region(
         Example:
             # Using with an LLM
             def ocr_with_llm(region):
-                image = region.to_image(resolution=300, crop=True)
+                image = region.render(resolution=300, crop=True)
                 # Call your LLM API here
                 return llm_client.ocr(image)
 
@@ -2514,7 +2420,7 @@ class Region(
 
             # Using with a custom OCR service
             def ocr_with_service(region):
-                img_bytes = region.to_image(crop=True).tobytes()
+                img_bytes = region.render(crop=True).tobytes()
                 response = ocr_service.process(img_bytes)
                 return response.text
 
@@ -3152,9 +3058,8 @@ class Region(
                 else default_resolution
             )
 
-            img = self.to_image(
+            img = self.render(
                 resolution=resolution,
-                include_highlights=False,  # No highlights for classification input
                 crop=True,  # Just the region content
             )
             if img is None:

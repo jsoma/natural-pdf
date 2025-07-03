@@ -93,7 +93,7 @@ class TestGuidesFactoryMethods:
         mock_page = MockPage()
 
         # Test default behavior (outer=False)
-        guides = Guides.from_lines(mock_page)
+        guides = Guides.from_lines(mock_page, detection_method="vector")
         assert 151.0 in guides.vertical  # Midpoint of vertical line
         assert 201.0 in guides.horizontal  # Midpoint of horizontal line
 
@@ -118,7 +118,7 @@ class TestGuidesFactoryMethods:
 
         mock_page = MockPage()
 
-        guides = Guides.from_lines(mock_page, outer=True)
+        guides = Guides.from_lines(mock_page, outer=True, detection_method="vector")
         assert 0.0 in guides.vertical  # Left boundary
         assert 151.0 in guides.vertical  # Line midpoint
         assert 500.0 in guides.vertical  # Right boundary
@@ -208,7 +208,7 @@ class TestGuidesListMethods:
         mock_page = MockPage()
 
         guides = Guides(mock_page)
-        result = guides.horizontal.from_lines()
+        result = guides.horizontal.from_lines(detection_method="vector")
 
         # Should return parent Guides for chaining
         assert result is guides

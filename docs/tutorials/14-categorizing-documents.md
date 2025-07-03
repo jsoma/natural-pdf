@@ -10,7 +10,7 @@ When working with a collection of PDFs, you might need to automatically categori
 from natural_pdf import PDF
 
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/cia-doc.pdf")
-pdf.pages.to_image(cols=6)
+pdf.pages.show(columns=6)
 ```
 
 ## Vision classification
@@ -30,7 +30,7 @@ How did it do?
 (
     pdf.pages
     .filter(lambda page: page.category == 'diagram')
-    .to_image(show_category=True)
+    .show(show_category=True)
 )
 ```
 
@@ -60,7 +60,7 @@ for page in pdf.pages:
 How does it compare to our vision option?
 
 ```python
-pdf.pages.filter(lambda page: page.category == 'diagram').to_image(show_category=True)
+pdf.pages.filter(lambda page: page.category == 'diagram').show(show_category=True)
 ```
 
 Yes, you can notice that it's *wrong*, but more importantly **look at the confidence scores**. Low scores are your best clue that something might not be perfect (beyond manually checking things, of course).

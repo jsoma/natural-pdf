@@ -6,7 +6,7 @@ import io
 import logging  # Added
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from colour import Color
 from PIL import Image, ImageDraw, ImageFont
@@ -16,6 +16,8 @@ try:
     from .page import Page
 except ImportError:
     Page = Any  # Fallback if circular import issue arises during type checking
+
+from natural_pdf.core.render_spec import RenderSpec
 
 # Import ColorManager and related utils
 from natural_pdf.utils.visualization import (
@@ -300,6 +302,134 @@ class HighlightRenderer:
 
         # Composite the OCR text overlay onto the result image
         self.result_image = Image.alpha_composite(self.result_image, overlay)
+
+
+class HighlightContext:
+    """
+    Context manager for accumulating highlights before displaying them together.
+
+    This allows for a clean syntax to show multiple highlight groups:
+
+    Example:
+        with pdf.highlights() as h:
+            h.add(page.find_all('table'), label='tables', color='blue')
+            h.add(page.find_all('text:bold'), label='bold text', color='red')
+            h.show()  # Display all highlights together
+
+    Or for automatic display on exit:
+        with pdf.highlights(show=True) as h:
+            h.add(page.find_all('table'), label='tables')
+            h.add(page.find_all('text:bold'), label='bold')
+            # Automatically shows when exiting the context
+    """
+
+    def __init__(self, source, show_on_exit: bool = False):
+        """
+        Initialize the highlight context.
+
+        Args:
+            source: The source object (PDF, Page, PageCollection, etc.)
+            show_on_exit: If True, automatically show highlights when exiting context
+        """
+        self.source = source
+        self.show_on_exit = show_on_exit
+        self.highlight_groups = []
+        self._color_manager = ColorManager()
+
+    def add(
+        self,
+        elements,
+        label: Optional[str] = None,
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        **kwargs,
+    ) -> "HighlightContext":
+        """
+        Add a group of elements to highlight.
+
+        Args:
+            elements: Elements to highlight (can be ElementCollection, list, or single element)
+            label: Label for this highlight group
+            color: Color for this group (if None, uses color cycling)
+            **kwargs: Additional highlight parameters
+
+        Returns:
+            Self for method chaining
+        """
+        # Convert single element to list
+        if hasattr(elements, "elements"):
+            # It's an ElementCollection
+            element_list = elements.elements
+        elif isinstance(elements, list):
+            element_list = elements
+        else:
+            # Single element
+            element_list = [elements]
+
+        # Determine color if not specified
+        if color is None:
+            color = self._color_manager.get_color(label=label, force_cycle=True)
+
+        self.highlight_groups.append(
+            {"elements": element_list, "label": label, "color": color, **kwargs}
+        )
+
+        return self
+
+    def show(self, **kwargs) -> Optional[Image.Image]:
+        """
+        Display all accumulated highlights.
+
+        Args:
+            **kwargs: Additional parameters passed to the show method
+
+        Returns:
+            PIL Image with all highlights, or None if no source
+        """
+        if not self.source:
+            return None
+
+        # If source has the new unified show method, use it with highlights parameter
+        if hasattr(self.source, "show"):
+            return self.source.show(highlights=self.highlight_groups, **kwargs)
+        else:
+            # Fallback for objects without the new show method
+            logger.warning(
+                f"Object {type(self.source)} does not support unified show() with highlights"
+            )
+            return None
+
+    def render(self, **kwargs) -> Optional[Image.Image]:
+        """
+        Render all accumulated highlights (clean image without debug elements).
+
+        Args:
+            **kwargs: Additional parameters passed to the render method
+
+        Returns:
+            PIL Image with all highlights, or None if no source
+        """
+        if not self.source:
+            return None
+
+        # If source has the new unified render method, use it with highlights parameter
+        if hasattr(self.source, "render"):
+            return self.source.render(highlights=self.highlight_groups, **kwargs)
+        else:
+            # Fallback for objects without the new render method
+            logger.warning(
+                f"Object {type(self.source)} does not support unified render() with highlights"
+            )
+            return None
+
+    def __enter__(self) -> "HighlightContext":
+        """Enter the context."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context, optionally showing highlights."""
+        if self.show_on_exit and not exc_type:
+            self.show()
+        return False
 
 
 class HighlightingService:
@@ -953,3 +1083,361 @@ class HighlightingService:
             raise
 
         return final_image
+
+    def unified_render(
+        self,
+        specs: List["RenderSpec"],
+        resolution: float = 150,
+        width: Optional[int] = None,
+        labels: bool = True,
+        label_format: Optional[str] = None,
+        layout: Literal["stack", "grid", "single"] = "stack",
+        stack_direction: Literal["vertical", "horizontal"] = "vertical",
+        gap: int = 5,
+        columns: Optional[int] = None,
+        background_color: Tuple[int, int, int] = (255, 255, 255),
+        **kwargs,
+    ) -> Optional[Image.Image]:
+        """
+        Unified rendering method that processes RenderSpec objects.
+
+        This is the single entry point for all image generation in natural-pdf.
+        It handles page rendering, cropping, highlighting, and layout of multiple images.
+
+        Args:
+            specs: List of RenderSpec objects describing what to render
+            resolution: DPI for rendering (default 150)
+            width: Target width in pixels (overrides resolution)
+            labels: Whether to show labels for highlights
+            label_format: Format string for labels
+            layout: How to arrange multiple images
+            stack_direction: Direction for stack layout
+            gap: Pixels between images
+            columns: Number of columns for grid layout
+            background_color: RGB color for background
+            **kwargs: Additional parameters
+
+        Returns:
+            PIL Image or None if nothing to render
+        """
+        from natural_pdf.core.render_spec import RenderSpec
+
+        if not specs:
+            logger.warning("unified_render called with empty specs list")
+            return None
+
+        # Process each spec into an image
+        images = []
+
+        for spec_idx, spec in enumerate(specs):
+            if not isinstance(spec, RenderSpec):
+                logger.error(f"Invalid spec type at index {spec_idx}: {type(spec)}")
+                continue
+
+            try:
+                # Render the page
+                page_image = self._render_spec(
+                    spec=spec,
+                    resolution=resolution,
+                    width=width,
+                    labels=labels,
+                    label_format=label_format,
+                    spec_index=spec_idx,
+                    **kwargs,
+                )
+
+                if page_image:
+                    images.append(page_image)
+
+            except Exception as e:
+                logger.error(f"Error rendering spec {spec_idx}: {e}", exc_info=True)
+                continue
+
+        if not images:
+            logger.warning("No images generated from specs")
+            return None
+
+        # Single image - return directly
+        if len(images) == 1:
+            return images[0]
+
+        # Multiple images - apply layout
+        if layout == "stack":
+            return self._stack_images(
+                images, direction=stack_direction, gap=gap, background_color=background_color
+            )
+        elif layout == "grid":
+            return self._grid_images(
+                images, columns=columns, gap=gap, background_color=background_color
+            )
+        else:  # "single" - just return first image
+            logger.warning(f"Multiple specs with layout='single', returning first image only")
+            return images[0]
+
+    def _render_spec(
+        self,
+        spec: "RenderSpec",
+        resolution: float,
+        width: Optional[int],
+        labels: bool,
+        label_format: Optional[str],
+        spec_index: int,
+        **kwargs,
+    ) -> Optional[Image.Image]:
+        """Render a single RenderSpec to an image."""
+        # Get the page
+        page = spec.page
+        if not hasattr(page, "width") or not hasattr(page, "height"):
+            logger.error(f"Spec {spec_index} page does not have width/height attributes")
+            return None
+
+        # Calculate actual resolution/width
+        if width is not None and page.width > 0:
+            # Calculate resolution from width
+            actual_resolution = (width / page.width) * 72
+        else:
+            # Use provided resolution or default
+            actual_resolution = resolution if resolution is not None else 150
+
+        # Get base page image
+        try:
+            # Use render_plain_page for clean rendering
+            logger.debug(
+                f"Calling render_plain_page with page={page}, resolution={actual_resolution}"
+            )
+            page_image = render_plain_page(page, resolution=actual_resolution)
+        except Exception as e:
+            logger.error(f"Failed to render page: {e}")
+            logger.error(f"Page: {page}, Resolution: {actual_resolution}, Width: {width}")
+            import traceback
+
+            traceback.print_exc()
+            return None
+
+        if page_image is None:
+            return None
+
+        # Apply crop if specified
+        if spec.crop_bbox:
+            page_image = self._crop_image(
+                page_image, spec.crop_bbox, page, actual_resolution / 72  # scale factor
+            )
+
+        # Apply highlights if any
+        if spec.highlights:
+            page_image = self._apply_spec_highlights(
+                page_image,
+                spec.highlights,
+                page,
+                actual_resolution / 72,  # scale factor
+                labels=labels,
+                label_format=label_format,
+                spec_index=spec_index,
+            )
+
+        return page_image
+
+    def _crop_image(
+        self,
+        image: Image.Image,
+        crop_bbox: Tuple[float, float, float, float],
+        page: "Page",
+        scale_factor: float,
+    ) -> Image.Image:
+        """Crop an image to the specified bbox."""
+        # Convert PDF coordinates to pixel coordinates
+        x0, y0, x1, y1 = crop_bbox
+        pixel_bbox = (
+            int(x0 * scale_factor),
+            int(y0 * scale_factor),
+            int(x1 * scale_factor),
+            int(y1 * scale_factor),
+        )
+
+        # Ensure valid crop bounds
+        pixel_bbox = (
+            max(0, pixel_bbox[0]),
+            max(0, pixel_bbox[1]),
+            min(image.width, pixel_bbox[2]),
+            min(image.height, pixel_bbox[3]),
+        )
+
+        if pixel_bbox[2] <= pixel_bbox[0] or pixel_bbox[3] <= pixel_bbox[1]:
+            logger.warning(f"Invalid crop bounds: {crop_bbox}")
+            return image
+
+        return image.crop(pixel_bbox)
+
+    def _apply_spec_highlights(
+        self,
+        image: Image.Image,
+        highlights: List[Dict[str, Any]],
+        page: "Page",
+        scale_factor: float,
+        labels: bool,
+        label_format: Optional[str],
+        spec_index: int,
+    ) -> Image.Image:
+        """Apply highlights from a RenderSpec to an image."""
+        # Convert to RGBA for transparency
+        if image.mode != "RGBA":
+            image = image.convert("RGBA")
+
+        # Create overlay for highlights
+        overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Process each highlight
+        for idx, highlight_dict in enumerate(highlights):
+            # Get geometry
+            bbox = highlight_dict.get("bbox")
+            polygon = highlight_dict.get("polygon")
+
+            if bbox is None and polygon is None:
+                logger.warning(f"Highlight {idx} has no geometry")
+                continue
+
+            # Get color
+            color = highlight_dict.get("color")
+            label = highlight_dict.get("label")
+
+            if color is None:
+                # Use label-based color assignment for consistency
+                color = self._color_manager.get_color(label=label, force_cycle=False)
+            else:
+                # Process color input
+                color = self._process_color_input(color)
+                if color is None:
+                    color = self._color_manager.get_color(label=label, force_cycle=False)
+
+            # Generate label if needed
+            if label is None and labels and label_format:
+                # Generate label from format
+                label = label_format.format(index=idx, spec_index=spec_index, total=len(highlights))
+
+            # Draw the highlight
+            if polygon:
+                # Scale polygon points
+                scaled_polygon = [(p[0] * scale_factor, p[1] * scale_factor) for p in polygon]
+                draw.polygon(
+                    scaled_polygon, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
+                )
+            else:
+                # Scale bbox
+                x0, y0, x1, y1 = bbox
+                scaled_bbox = [
+                    x0 * scale_factor,
+                    y0 * scale_factor,
+                    x1 * scale_factor,
+                    y1 * scale_factor,
+                ]
+                draw.rectangle(
+                    scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
+                )
+
+        # Composite overlay onto image
+        return Image.alpha_composite(image, overlay)
+
+    def _stack_images(
+        self,
+        images: List[Image.Image],
+        direction: str,
+        gap: int,
+        background_color: Tuple[int, int, int],
+    ) -> Image.Image:
+        """Stack images vertically or horizontally."""
+        if direction == "vertical":
+            # Calculate dimensions
+            max_width = max(img.width for img in images)
+            total_height = sum(img.height for img in images) + gap * (len(images) - 1)
+
+            # Create canvas
+            canvas = Image.new("RGB", (max_width, total_height), background_color)
+
+            # Paste images
+            y_offset = 0
+            for img in images:
+                # Center horizontally
+                x_offset = (max_width - img.width) // 2
+                # Convert RGBA to RGB if needed
+                if img.mode == "RGBA":
+                    # Create white background
+                    bg = Image.new("RGB", img.size, background_color)
+                    bg.paste(img, mask=img.split()[3])  # Use alpha channel as mask
+                    img = bg
+                canvas.paste(img, (x_offset, y_offset))
+                y_offset += img.height + gap
+
+        else:  # horizontal
+            # Calculate dimensions
+            total_width = sum(img.width for img in images) + gap * (len(images) - 1)
+            max_height = max(img.height for img in images)
+
+            # Create canvas
+            canvas = Image.new("RGB", (total_width, max_height), background_color)
+
+            # Paste images
+            x_offset = 0
+            for img in images:
+                # Center vertically
+                y_offset = (max_height - img.height) // 2
+                # Convert RGBA to RGB if needed
+                if img.mode == "RGBA":
+                    bg = Image.new("RGB", img.size, background_color)
+                    bg.paste(img, mask=img.split()[3])
+                    img = bg
+                canvas.paste(img, (x_offset, y_offset))
+                x_offset += img.width + gap
+
+        return canvas
+
+    def _grid_images(
+        self,
+        images: List[Image.Image],
+        columns: Optional[int],
+        gap: int,
+        background_color: Tuple[int, int, int],
+    ) -> Image.Image:
+        """Arrange images in a grid."""
+        n_images = len(images)
+
+        # Determine grid dimensions
+        if columns is None:
+            # Auto-calculate columns for roughly square grid
+            columns = int(n_images**0.5)
+            if columns * columns < n_images:
+                columns += 1
+
+        rows = (n_images + columns - 1) // columns  # Ceiling division
+
+        # Get max dimensions for cells
+        max_width = max(img.width for img in images)
+        max_height = max(img.height for img in images)
+
+        # Calculate canvas size
+        canvas_width = columns * max_width + (columns - 1) * gap
+        canvas_height = rows * max_height + (rows - 1) * gap
+
+        # Create canvas
+        canvas = Image.new("RGB", (canvas_width, canvas_height), background_color)
+
+        # Place images
+        for idx, img in enumerate(images):
+            row = idx // columns
+            col = idx % columns
+
+            # Calculate position (centered in cell)
+            cell_x = col * (max_width + gap)
+            cell_y = row * (max_height + gap)
+            x_offset = cell_x + (max_width - img.width) // 2
+            y_offset = cell_y + (max_height - img.height) // 2
+
+            # Convert RGBA to RGB if needed
+            if img.mode == "RGBA":
+                bg = Image.new("RGB", img.size, background_color)
+                bg.paste(img, mask=img.split()[3])
+                img = bg
+
+            canvas.paste(img, (x_offset, y_offset))
+
+        return canvas

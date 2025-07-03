@@ -1,6 +1,17 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, List, Literal, Optional, Tuple, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 if TYPE_CHECKING:
     from PIL.Image import Image as PIL_Image
@@ -20,12 +31,13 @@ if TYPE_CHECKING:
 # For runtime image manipulation
 from PIL import Image as PIL_Image_Runtime
 
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
 
 
-class Flow:
+class Flow(Visualizable):
     """Defines a logical flow or sequence of physical Page or Region objects.
 
     A Flow represents a continuous logical document structure that spans across
@@ -181,6 +193,103 @@ class Flow:
                 f"Invalid alignment '{self.alignment}' for '{self.arrangement}' arrangement. "
                 f"Valid options are: {valid_alignments[self.arrangement]}"
             )
+
+    def _get_highlighter(self):
+        """Get the highlighting service from the first segment."""
+        if not self.segments:
+            raise RuntimeError("Flow has no segments to get highlighter from")
+
+        # Get highlighter from first segment
+        first_segment = self.segments[0]
+        if hasattr(first_segment, "_highlighter"):
+            return first_segment._highlighter
+        elif hasattr(first_segment, "page") and hasattr(first_segment.page, "_highlighter"):
+            return first_segment.page._highlighter
+        else:
+            raise RuntimeError(
+                f"Cannot find HighlightingService from Flow segments. "
+                f"First segment type: {type(first_segment).__name__}"
+            )
+
+    def show(
+        self,
+        *,
+        # Basic rendering options
+        resolution: Optional[float] = None,
+        width: Optional[int] = None,
+        # Highlight options
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        labels: bool = True,
+        label_format: Optional[str] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        # Layout options for multi-page/region
+        layout: Literal["stack", "grid", "single"] = "stack",
+        stack_direction: Literal["vertical", "horizontal"] = "vertical",
+        gap: int = 5,
+        columns: Optional[int] = None,  # For grid layout
+        # Cropping options
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        # Flow-specific options
+        in_context: bool = False,
+        separator_color: Optional[Tuple[int, int, int]] = None,
+        separator_thickness: int = 2,
+        **kwargs,
+    ) -> Optional["PIL_Image"]:
+        """Generate a preview image with highlights.
+
+        If in_context=True, shows segments as cropped images stacked together
+        with separators between segments.
+
+        Args:
+            resolution: DPI for rendering (default from global settings)
+            width: Target width in pixels (overrides resolution)
+            color: Default highlight color
+            labels: Whether to show labels for highlights
+            label_format: Format string for labels
+            highlights: Additional highlight groups to show
+            layout: How to arrange multiple pages/regions
+            stack_direction: Direction for stack layout
+            gap: Pixels between stacked images
+            columns: Number of columns for grid layout
+            crop: Whether to crop
+            crop_bbox: Explicit crop bounds
+            in_context: If True, use special Flow visualization with separators
+            separator_color: RGB color for separator lines (default: red)
+            separator_thickness: Thickness of separator lines
+            **kwargs: Additional parameters passed to rendering
+
+        Returns:
+            PIL Image object or None if nothing to render
+        """
+        if in_context:
+            # Use the special in_context visualization
+            return self._show_in_context(
+                resolution=resolution or 150,
+                width=width,
+                stack_direction=stack_direction,
+                stack_gap=gap,
+                separator_color=separator_color or (255, 0, 0),
+                separator_thickness=separator_thickness,
+                **kwargs,
+            )
+
+        # Otherwise use the standard show method
+        return super().show(
+            resolution=resolution,
+            width=width,
+            color=color,
+            labels=labels,
+            label_format=label_format,
+            highlights=highlights,
+            layout=layout,
+            stack_direction=stack_direction,
+            gap=gap,
+            columns=columns,
+            crop=crop,
+            crop_bbox=crop_bbox,
+            **kwargs,
+        )
 
     def find(
         self,
@@ -838,97 +947,34 @@ class Flow:
         )
         return ElementCollection(unique_regions)
 
-    def show(
+    def _get_render_specs(
         self,
-        resolution: Optional[float] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        color: Optional[Union[Tuple, str]] = "blue",
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         label_prefix: Optional[str] = "FlowSegment",
-        width: Optional[int] = None,
-        stack_direction: str = "vertical",
-        stack_gap: int = 5,
-        stack_background_color: Tuple[int, int, int] = (255, 255, 255),
-        crop: bool = False,
-        in_context: bool = False,
-        separator_color: Tuple[int, int, int] = (255, 0, 0),
-        separator_thickness: int = 2,
         **kwargs,
-    ) -> Optional["PIL_Image"]:
-        """
-        Generates and returns a PIL Image showing all segments in the flow.
-
-        This method visualizes the entire flow either by highlighting each segment on its
-        respective page (default mode) or by showing cropped segment images stacked together
-        (in_context mode). If multiple pages are involved, they are stacked according to
-        the flow's arrangement.
+    ) -> List[RenderSpec]:
+        """Get render specifications for this flow.
 
         Args:
-            resolution: Resolution in DPI for page rendering. If None, uses global setting or defaults to 144 DPI.
-            labels: Whether to include a legend for highlights (page context mode only).
-            legend_position: Position of the legend ('right', 'bottom', 'top', 'left').
-            color: Color for highlighting the flow segments (page context mode only).
-            label_prefix: Prefix for segment labels (e.g., 'FlowSegment').
-            width: Optional width for the output image (overrides resolution).
-            stack_direction: Direction to stack multiple pages/segments ('vertical' or 'horizontal').
-            stack_gap: Gap in pixels between stacked pages/segments.
-            stack_background_color: RGB background color for the stacked image.
-            crop: If True, crop each rendered page to the bounding box of segments on that page (page context mode only).
-            in_context: If True, show segments as cropped images stacked together instead of highlighted on pages.
-            separator_color: RGB color for separator lines between segments (in_context mode only).
-            separator_thickness: Thickness in pixels of separator lines (in_context mode only).
-            **kwargs: Additional arguments passed to the underlying rendering methods.
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting segments in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop to segments
+            crop_bbox: Explicit crop bounds
+            label_prefix: Prefix for segment labels
+            **kwargs: Additional parameters
 
         Returns:
-            PIL Image of the rendered flow, or None if rendering fails.
-
-        Example:
-            Visualizing a multi-page flow in page context:
-            ```python
-            pdf = npdf.PDF("document.pdf")
-
-            # Create flow across multiple pages
-            page_flow = Flow(
-                segments=[pdf.pages[0], pdf.pages[1], pdf.pages[2]],
-                arrangement='vertical'
-            )
-
-            # Show with page context (default)
-            flow_image = page_flow.show(color="green", labels=True)
-
-            # Show with flow context (cropped segments stacked)
-            in_context_image = page_flow.show(in_context=True, separator_color=(255, 0, 0))
-            ```
+            List of RenderSpec objects, one per page with segments
         """
-        logger.info(f"Rendering Flow with {len(self.segments)} segments")
-
         if not self.segments:
-            logger.warning("Flow has no segments to show")
-            return None
+            return []
 
-        # Apply global options as defaults for resolution
-        import natural_pdf
-
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution
-
-        # NEW: Flow context mode - show cropped segment images stacked together
-        if in_context:
-            return self._show_in_context(
-                resolution=resolution,
-                width=width,
-                stack_direction=stack_direction,
-                stack_gap=stack_gap,
-                stack_background_color=stack_background_color,
-                separator_color=separator_color,
-                separator_thickness=separator_thickness,
-                **kwargs,
-            )
-
-        # 1. Group segments by their physical pages
+        # Group segments by their physical pages
         segments_by_page = {}  # Dict[Page, List[PhysicalRegion]]
 
         for i, segment in enumerate(self.segments):
@@ -955,19 +1001,10 @@ class Flow:
                 continue
 
         if not segments_by_page:
-            logger.warning("No segments with identifiable pages found")
-            return None
+            return []
 
-        # 2. Get a highlighter service from the first page
-        first_page = next(iter(segments_by_page.keys()))
-        if not hasattr(first_page, "_highlighter"):
-            logger.error(
-                "Cannot get highlighter service for Flow.show(). Page missing highlighter."
-            )
-            return None
-
-        highlighter_service = first_page._highlighter
-        output_page_images: List["PIL_Image_Runtime"] = []
+        # Create RenderSpec for each page
+        specs = []
 
         # Sort pages by index for consistent output order
         sorted_pages = sorted(
@@ -975,144 +1012,80 @@ class Flow:
             key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
         )
 
-        # 3. Render each page with its relevant segments highlighted
         for page_idx, page_obj in enumerate(sorted_pages):
             segments_on_this_page = segments_by_page[page_obj]
             if not segments_on_this_page:
                 continue
 
-            temp_highlights_for_page = []
-            for i, segment in enumerate(segments_on_this_page):
-                segment_label = None
-                if labels and label_prefix:
-                    # Create label for this segment
-                    global_segment_idx = None
-                    try:
-                        # Find the global index of this segment in the original flow
-                        global_segment_idx = self.segments.index(segment)
-                    except ValueError:
-                        # If it's a generated full-page region, find its source page
-                        for idx, orig_segment in enumerate(self.segments):
-                            if (
-                                hasattr(orig_segment, "index")
-                                and hasattr(segment, "page")
-                                and orig_segment.index == segment.page.index
-                            ):
-                                global_segment_idx = idx
-                                break
+            spec = RenderSpec(page=page_obj)
 
-                    if global_segment_idx is not None:
-                        segment_label = f"{label_prefix}_{global_segment_idx + 1}"
-                    else:
-                        segment_label = f"{label_prefix}_p{page_idx + 1}s{i + 1}"
+            # Handle cropping
+            if crop_bbox:
+                spec.crop_bbox = crop_bbox
+            elif crop == "content" or crop is True:
+                # Calculate bounds of segments on this page
+                x_coords = []
+                y_coords = []
+                for segment in segments_on_this_page:
+                    if hasattr(segment, "bbox") and segment.bbox:
+                        x0, y0, x1, y1 = segment.bbox
+                        x_coords.extend([x0, x1])
+                        y_coords.extend([y0, y1])
 
-                temp_highlights_for_page.append(
-                    {
-                        "page_index": (
-                            page_obj.index
-                            if hasattr(page_obj, "index")
-                            else getattr(page_obj, "page_number", 1) - 1
-                        ),
-                        "bbox": segment.bbox,
-                        "polygon": (
-                            segment.polygon
-                            if hasattr(segment, "polygon")
-                            and hasattr(segment, "has_polygon")
-                            and segment.has_polygon
-                            else None
-                        ),
-                        "color": color,
-                        "label": segment_label,
-                        "use_color_cycling": False,  # Keep specific color
-                    }
-                )
+                if x_coords and y_coords:
+                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
 
-            if not temp_highlights_for_page:
-                continue
+            # Add highlights in show mode
+            if mode == "show":
+                # Highlight segments
+                for i, segment in enumerate(segments_on_this_page):
+                    segment_label = None
+                    if label_prefix:
+                        # Create label for this segment
+                        global_segment_idx = None
+                        try:
+                            # Find the global index of this segment in the original flow
+                            global_segment_idx = self.segments.index(segment)
+                        except ValueError:
+                            # If it's a generated full-page region, find its source page
+                            for idx, orig_segment in enumerate(self.segments):
+                                if (
+                                    hasattr(orig_segment, "index")
+                                    and hasattr(segment, "page")
+                                    and orig_segment.index == segment.page.index
+                                ):
+                                    global_segment_idx = idx
+                                    break
 
-            # Calculate crop bbox if cropping is enabled
-            crop_bbox = None
-            if crop and segments_on_this_page:
-                # Calculate the bounding box that encompasses all segments on this page
-                min_x0 = min(segment.bbox[0] for segment in segments_on_this_page)
-                min_y0 = min(segment.bbox[1] for segment in segments_on_this_page)
-                max_x1 = max(segment.bbox[2] for segment in segments_on_this_page)
-                max_y1 = max(segment.bbox[3] for segment in segments_on_this_page)
-                crop_bbox = (min_x0, min_y0, max_x1, max_y1)
+                        if global_segment_idx is not None:
+                            segment_label = f"{label_prefix}_{global_segment_idx + 1}"
+                        else:
+                            segment_label = f"{label_prefix}_p{page_idx + 1}s{i + 1}"
 
-            # Render this page with highlights
-            page_image = highlighter_service.render_preview(
-                page_index=(
-                    page_obj.index
-                    if hasattr(page_obj, "index")
-                    else getattr(page_obj, "page_number", 1) - 1
-                ),
-                temporary_highlights=temp_highlights_for_page,
-                resolution=resolution,
-                width=width,
-                labels=labels,
-                legend_position=legend_position,
-                crop_bbox=crop_bbox,
-                **kwargs,
-            )
-            if page_image:
-                output_page_images.append(page_image)
+                    spec.add_highlight(
+                        bbox=segment.bbox,
+                        polygon=segment.polygon if segment.has_polygon else None,
+                        color=color or "blue",
+                        label=segment_label,
+                    )
 
-        # 4. Stack the generated page images if multiple
-        if not output_page_images:
-            logger.warning("Flow.show() produced no page images")
-            return None
+                # Add additional highlight groups if provided
+                if highlights:
+                    for group in highlights:
+                        group_elements = group.get("elements", [])
+                        group_color = group.get("color", color)
+                        group_label = group.get("label")
 
-        if len(output_page_images) == 1:
-            return output_page_images[0]
+                        for elem in group_elements:
+                            # Only add if element is on this page
+                            if hasattr(elem, "page") and elem.page == page_obj:
+                                spec.add_highlight(
+                                    element=elem, color=group_color, label=group_label
+                                )
 
-        # Determine stacking direction (default to flow arrangement, but allow override)
-        final_stack_direction = stack_direction
-        if stack_direction == "auto":
-            final_stack_direction = self.arrangement
+            specs.append(spec)
 
-        # Stack multiple page images
-        if final_stack_direction == "vertical":
-            final_width = max(img.width for img in output_page_images)
-            final_height = (
-                sum(img.height for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = PIL_Image_Runtime.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_y = 0
-            for img in output_page_images:
-                paste_x = (final_width - img.width) // 2
-                concatenated_image.paste(img, (paste_x, current_y))
-                current_y += img.height + stack_gap
-            return concatenated_image
-
-        elif final_stack_direction == "horizontal":
-            final_width = (
-                sum(img.width for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            final_height = max(img.height for img in output_page_images)
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = PIL_Image_Runtime.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_x = 0
-            for img in output_page_images:
-                paste_y = (final_height - img.height) // 2
-                concatenated_image.paste(img, (current_x, paste_y))
-                current_x += img.width + stack_gap
-            return concatenated_image
-        else:
-            raise ValueError(
-                f"Invalid stack_direction '{final_stack_direction}' for in_context. Must be 'vertical' or 'horizontal'."
-            )
+        return specs
 
     def _show_in_context(
         self,
@@ -1136,7 +1109,7 @@ class Flow:
             stack_background_color: RGB background color for the final image
             separator_color: RGB color for separator lines between segments
             separator_thickness: Thickness in pixels of separator lines
-            **kwargs: Additional arguments passed to segment.to_image()
+            **kwargs: Additional arguments passed to segment rendering
 
         Returns:
             PIL Image with all segments stacked together
@@ -1157,10 +1130,10 @@ class Flow:
             if hasattr(segment, "page") and segment.page is not None:
                 segment_page = segment.page
                 # Get cropped image of the segment
-                segment_image = segment.to_image(
+                # Use render() for clean image without highlights
+                segment_image = segment.render(
                     resolution=resolution,
                     crop=True,
-                    include_highlights=False,
                     width=width,
                     **kwargs,
                 )
@@ -1172,14 +1145,23 @@ class Flow:
             ):
                 # It's a full Page object
                 segment_page = segment
-                segment_image = segment.to_image(resolution=resolution, width=width, **kwargs)
+                # Use render() for clean image without highlights
+                segment_image = segment.render(resolution=resolution, width=width, **kwargs)
             else:
                 raise ValueError(
                     f"Segment {i+1} has no identifiable page. Segment type: {type(segment)}, attributes: {dir(segment)}"
                 )
 
-            segment_images.append(segment_image)
-            segment_pages.append(segment_page)
+            if segment_image is not None:
+                segment_images.append(segment_image)
+                segment_pages.append(segment_page)
+            else:
+                logger.warning(f"Segment {i+1} render() returned None, skipping")
+
+        # Check if we have any valid images
+        if not segment_images:
+            logger.error("No valid segment images could be rendered")
+            return None
 
         # We should have at least one segment image by now (or an exception would have been raised)
         if len(segment_images) == 1:
@@ -1313,7 +1295,7 @@ class Flow:
         start_elements=None,
         end_elements=None,
         new_section_on_page_break: bool = False,
-        boundary_inclusion: str = "both",
+        include_boundaries: str = "both",
     ) -> "ElementCollection":
         """
         Extract logical sections from the Flow based on *start* and *end* boundary
@@ -1333,7 +1315,7 @@ class Flow:
                 sections (optional).
             new_section_on_page_break: Whether to start a new section at page
                 boundaries (default: False).
-            boundary_inclusion: How to include boundary elements: 'start',
+            include_boundaries: How to include boundary elements: 'start',
                 'end', 'both', or 'none' (default: 'both').
 
         Returns:
@@ -1425,7 +1407,7 @@ class Flow:
             seg_sections = seg.get_sections(
                 start_elements=seg_start_elems,
                 end_elements=seg_end_elems,
-                boundary_inclusion=boundary_inclusion,
+                include_boundaries=include_boundaries,
             )
 
             if seg_sections:
@@ -1686,7 +1668,7 @@ class Flow:
                 if start_seg_idx == end_seg_idx:
                     # Single segment section - use Region.get_section_between
                     seg = self.segments[start_seg_idx]
-                    section = seg.get_section_between(start_elem, end_elem, boundary_inclusion)
+                    section = seg.get_section_between(start_elem, end_elem, include_boundaries)
                     sections.append(section)
                     logger.debug(f"  Created single-segment Region")
                 else:
@@ -1698,7 +1680,7 @@ class Flow:
 
                     # First segment: from start element to bottom
                     start_seg = self.segments[start_seg_idx]
-                    if boundary_inclusion in ["start", "both"]:
+                    if include_boundaries in ["start", "both"]:
                         first_top = start_elem.top
                     else:
                         first_top = start_elem.bottom
@@ -1713,7 +1695,7 @@ class Flow:
 
                     # Last segment: from top to end element
                     end_seg = self.segments[end_seg_idx]
-                    if boundary_inclusion in ["end", "both"]:
+                    if include_boundaries in ["end", "both"]:
                         last_bottom = end_elem.bottom
                     else:
                         last_bottom = end_elem.top
@@ -1755,7 +1737,7 @@ class Flow:
                             if next_idx > 0:
                                 end_elem = all_elems[next_idx - 1]
                                 section = seg.get_section_between(
-                                    start_elem, end_elem, boundary_inclusion
+                                    start_elem, end_elem, include_boundaries
                                 )
                                 sections.append(section)
                         except ValueError:
@@ -1769,7 +1751,7 @@ class Flow:
 
                         # First segment: from start element to bottom
                         start_seg = self.segments[start_seg_idx]
-                        if boundary_inclusion in ["start", "both"]:
+                        if include_boundaries in ["start", "both"]:
                             first_top = start_elem.top
                         else:
                             first_top = start_elem.bottom
@@ -1815,7 +1797,7 @@ class Flow:
                     else:
                         # Next start is more than one segment away - just end at current segment
                         start_seg = self.segments[start_seg_idx]
-                        if boundary_inclusion in ["start", "both"]:
+                        if include_boundaries in ["start", "both"]:
                             region_top = start_elem.top
                         else:
                             region_top = start_elem.bottom
@@ -1833,7 +1815,7 @@ class Flow:
                     if start_seg_idx == len(self.segments) - 1:
                         # Only in last segment
                         seg = self.segments[start_seg_idx]
-                        if boundary_inclusion in ["start", "both"]:
+                        if include_boundaries in ["start", "both"]:
                             region_top = start_elem.top
                         else:
                             region_top = start_elem.bottom
@@ -1845,7 +1827,7 @@ class Flow:
 
                         # First segment
                         start_seg = self.segments[start_seg_idx]
-                        if boundary_inclusion in ["start", "both"]:
+                        if include_boundaries in ["start", "both"]:
                             first_top = start_elem.top
                         else:
                             first_top = start_elem.bottom
@@ -1919,3 +1901,31 @@ class Flow:
                 logger.debug(f"Section {i}: Region with bbox={section.bbox}")
 
         return ElementCollection(sections)
+
+    def highlights(self, show: bool = False) -> "HighlightContext":
+        """
+        Create a highlight context for accumulating highlights.
+
+        This allows for clean syntax to show multiple highlight groups:
+
+        Example:
+            with flow.highlights() as h:
+                h.add(flow.find_all('table'), label='tables', color='blue')
+                h.add(flow.find_all('text:bold'), label='bold text', color='red')
+                h.show()
+
+        Or with automatic display:
+            with flow.highlights(show=True) as h:
+                h.add(flow.find_all('table'), label='tables')
+                h.add(flow.find_all('text:bold'), label='bold')
+                # Automatically shows when exiting the context
+
+        Args:
+            show: If True, automatically show highlights when exiting context
+
+        Returns:
+            HighlightContext for accumulating highlights
+        """
+        from natural_pdf.core.highlighting_service import HighlightContext
+
+        return HighlightContext(self, show_on_exit=show)

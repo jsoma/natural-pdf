@@ -38,7 +38,7 @@ title = page.find('text:contains("Jungle Health")')
 
 # Create regions relative to this element
 below_title = title.below(height=100)
-right_of_title = title.right(width=200) 
+right_of_title = title.right(width=200)
 above_title = title.above(height=50)
 
 # Visualize these regions
@@ -47,7 +47,7 @@ below_title.highlight(color="green", label="Below")
 right_of_title.highlight(color="red", label="Right")
 above_title.highlight(color="orange", label="Above")
 
-page.to_image()
+page.show()
 ```
 
 ```python
@@ -62,7 +62,7 @@ below_title.extract_text()
 form_region = page.create_region(50, 100, page.width - 50, 300)
 
 # Find elements only within this region
-labels = form_region.find_all('text:contains(":")') 
+labels = form_region.find_all('text:contains(":")')
 
 # Visualize the region and the elements found
 form_region.show(
@@ -94,7 +94,7 @@ page.clear_highlights()
 tight_region.highlight(color="red", label="Original")
 expanded_region.highlight(color="blue", label="Expanded")
 
-page.to_image()
+page.show()
 ```
 
 ## Creating Bounded Regions
@@ -149,7 +149,7 @@ table_region = table_header.below(height=100)
 table_region.show(color="purple", label="Table Region")
 
 # Create an image of just this region
-table_region.to_image(resolution=150)
+table_region.show(resolution=150)
 ```
 
-Regions allow you to precisely target specific parts of a document for extraction and analysis. They're essential for handling complex document layouts and isolating the exact content you need. 
+Regions allow you to precisely target specific parts of a document for extraction and analysis. They're essential for handling complex document layouts and isolating the exact content you need.

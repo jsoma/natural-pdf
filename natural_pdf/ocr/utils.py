@@ -90,7 +90,8 @@ def direct_ocr_llm(
     buffered = io.BytesIO()
     # Use the global PDF render lock when rendering images
     with pdf_render_lock:
-        region_img = region.to_image(resolution=resolution, include_highlights=False)
+        # Use render() for clean image without highlights
+        region_img = region.render(resolution=resolution)
 
     # Handle cases where image creation might fail (e.g., zero-dim region)
     if region_img is None:

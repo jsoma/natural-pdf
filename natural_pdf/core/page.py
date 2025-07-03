@@ -16,6 +16,7 @@ from typing import (  # Added overload
     Callable,
     Dict,
     List,
+    Literal,
     Optional,
     Tuple,
     Union,
@@ -60,6 +61,9 @@ from natural_pdf.classification.manager import ClassificationManager  # For type
 # # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
 from natural_pdf.core.element_manager import ElementManager
+
+# Add new import
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
@@ -91,7 +95,14 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin, DescribeMixin):
+class Page(
+    TextMixin,
+    ClassificationMixin,
+    ExtractionMixin,
+    ShapeDetectionMixin,
+    DescribeMixin,
+    Visualizable,
+):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
 
     This class provides a fluent interface for working with PDF pages,
@@ -260,6 +271,77 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
 
         self._load_elements()
         self._to_image_cache: Dict[tuple, Optional["Image.Image"]] = {}
+
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this page.
+
+        Args:
+            mode: Rendering mode - 'show' includes page highlights, 'render' is clean
+            color: Default color for highlights in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop the page
+            crop_bbox: Explicit crop bounds
+            **kwargs: Additional parameters
+
+        Returns:
+            List containing a single RenderSpec for this page
+        """
+        spec = RenderSpec(page=self)
+
+        # Handle cropping
+        if crop_bbox:
+            spec.crop_bbox = crop_bbox
+        elif crop == "content":
+            # Calculate content bounds from all elements
+            elements = self.get_elements(apply_exclusions=False)
+            if elements:
+                # Get bounding box of all elements
+                x_coords = []
+                y_coords = []
+                for elem in elements:
+                    if hasattr(elem, "bbox") and elem.bbox:
+                        x0, y0, x1, y1 = elem.bbox
+                        x_coords.extend([x0, x1])
+                        y_coords.extend([y0, y1])
+
+                if x_coords and y_coords:
+                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+        elif crop is True:
+            # Crop to full page (no-op, but included for consistency)
+            spec.crop_bbox = (0, 0, self.width, self.height)
+
+        # Add highlights in show mode
+        if mode == "show":
+            # Add page's persistent highlights if any
+            page_highlights = self._highlighter.get_highlights_for_page(self.index)
+            for highlight in page_highlights:
+                spec.add_highlight(
+                    bbox=highlight.bbox,
+                    polygon=highlight.polygon,
+                    color=highlight.color,
+                    label=highlight.label,
+                    element=None,  # Persistent highlights don't have element refs
+                )
+
+            # Add additional highlight groups if provided
+            if highlights:
+                for group in highlights:
+                    elements = group.get("elements", [])
+                    group_color = group.get("color", color)
+                    group_label = group.get("label")
+
+                    for elem in elements:
+                        spec.add_highlight(element=elem, color=group_color, label=group_label)
+
+        return [spec]
 
     @property
     def pdf(self) -> "PDF":
@@ -1840,36 +1922,6 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         )
         return self
 
-    def show(
-        self,
-        resolution: float = 144,
-        width: Optional[int] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        render_ocr: bool = False,
-    ) -> Optional[Image.Image]:
-        """
-        Generates and returns an image of the page with persistent highlights rendered.
-
-        Args:
-            resolution: Resolution in DPI for rendering (default: 144 DPI, equivalent to previous scale=2.0).
-            width: Optional width for the output image.
-            labels: Whether to include a legend for labels.
-            legend_position: Position of the legend.
-            render_ocr: Whether to render OCR text.
-
-        Returns:
-            PIL Image object of the page with highlights, or None if rendering fails.
-        """
-        return self.to_image(
-            resolution=resolution,
-            width=width,
-            labels=labels,
-            legend_position=legend_position,
-            render_ocr=render_ocr,
-            include_highlights=True,  # Ensure highlights are requested
-        )
-
     def save_image(
         self,
         filename: str,
@@ -1897,17 +1949,38 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         Returns:
             Self for method chaining.
         """
-        # Use to_image to generate and save the image
-        self.to_image(
-            path=filename,
-            width=width,
-            labels=labels,
-            legend_position=legend_position,
-            render_ocr=render_ocr,
-            include_highlights=include_highlights,
-            resolution=resolution,
-            **kwargs,
-        )
+        # Use export() to save the image
+        if include_highlights:
+            self.export(
+                path=filename,
+                resolution=resolution,
+                width=width,
+                labels=labels,
+                legend_position=legend_position,
+                render_ocr=render_ocr,
+                **kwargs,
+            )
+        else:
+            # For saving without highlights, use render() and save manually
+            img = self.render(resolution=resolution, **kwargs)
+            if img:
+                # Resize if width is specified
+                if width is not None and width > 0 and img.width > 0:
+                    aspect_ratio = img.height / img.width
+                    height = int(width * aspect_ratio)
+                    try:
+                        img = img.resize((width, height), Image.Resampling.LANCZOS)
+                    except Exception as e:
+                        logger.warning(f"Could not resize image: {e}")
+
+                # Save the image
+                try:
+                    if os.path.dirname(filename):
+                        os.makedirs(os.path.dirname(filename), exist_ok=True)
+                    img.save(filename)
+                except Exception as e:
+                    logger.error(f"Failed to save image to {filename}: {e}")
+
         return self
 
     def clear_highlights(self) -> "Page":
@@ -1949,283 +2022,6 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
 
         # Return the collection of elements which now have style attributes
         return processed_elements_collection
-
-    def to_image(
-        self,
-        path: Optional[str] = None,
-        width: Optional[int] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        render_ocr: bool = False,
-        resolution: Optional[float] = None,
-        include_highlights: bool = True,
-        exclusions: Optional[str] = None,  # New parameter
-        **kwargs,
-    ) -> Optional[Image.Image]:
-        """
-        Generate a PIL image of the page, using HighlightingService if needed.
-
-        Args:
-            path: Optional path to save the image to.
-            width: Optional width for the output image.
-            labels: Whether to include a legend for highlights.
-            legend_position: Position of the legend.
-            render_ocr: Whether to render OCR text on highlights.
-            resolution: Resolution in DPI for base page image. If None, uses global setting or defaults to 144 DPI.
-            include_highlights: Whether to render highlights.
-            exclusions: Accepts one of the following:
-                        • None  – no masking (default)
-                        • "mask" – mask using solid white (back-compat)
-                        • CSS/HTML colour string (e.g. "red", "#ff0000", "#ff000080")
-                        • Tuple of RGB or RGBA values (ints 0-255 or floats 0-1)
-                        All excluded regions are filled with this colour.
-            **kwargs: Additional parameters for pdfplumber.to_image.
-
-        Returns:
-            PIL Image of the page, or None if rendering fails.
-        """
-        # Apply global options as defaults, but allow explicit parameters to override
-        import natural_pdf
-
-        # Determine if this is likely a computational use (OCR, analysis, etc.)
-        # If resolution is explicitly provided but width is not, assume computational use
-        # and don't apply global display width settings
-        is_computational_use = (
-            resolution is not None
-            and width is None
-            and kwargs.get("include_highlights", True) is False
-        )
-
-        # Use global options if parameters are not explicitly set
-        if width is None and not is_computational_use:
-            width = natural_pdf.options.image.width
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
-        # 1. Create cache key (excluding path)
-        cache_key_parts = [
-            width,
-            labels,
-            legend_position,
-            render_ocr,
-            resolution,
-            include_highlights,
-            exclusions,
-        ]
-        # Convert kwargs to a stable, hashable representation
-        sorted_kwargs_list = []
-        for k, v in sorted(kwargs.items()):
-            if isinstance(v, list):
-                try:
-                    v = tuple(v)  # Convert lists to tuples
-                except TypeError:  # pragma: no cover
-                    # If list contains unhashable items, fall back to repr or skip
-                    # For simplicity, we'll try to proceed; hashing will fail if v remains unhashable
-                    logger.warning(
-                        f"Cache key generation: List item in kwargs['{k}'] could not be converted to tuple due to unhashable elements."
-                    )
-            sorted_kwargs_list.append((k, v))
-
-        cache_key_parts.append(tuple(sorted_kwargs_list))
-
-        try:
-            cache_key = tuple(cache_key_parts)
-        except TypeError as e:  # pragma: no cover
-            logger.warning(
-                f"Page {self.index}: Could not create cache key for to_image due to unhashable item: {e}. Proceeding without cache for this call."
-            )
-            cache_key = None  # Fallback to not using cache for this call
-
-        image_to_return: Optional[Image.Image] = None
-
-        # 2. Check cache
-        if cache_key is not None and cache_key in self._to_image_cache:
-            image_to_return = self._to_image_cache[cache_key]
-            logger.debug(f"Page {self.index}: Returning cached image for key: {cache_key}")
-        else:
-            # --- This is the original logic to generate the image ---
-            rendered_image_component: Optional[Image.Image] = (
-                None  # Renamed from 'image' in original
-            )
-            render_resolution = resolution
-            thread_id = threading.current_thread().name
-            logger.debug(
-                f"[{thread_id}] Page {self.index}: Attempting to acquire pdf_render_lock for to_image..."
-            )
-            lock_wait_start = time.monotonic()
-            try:
-                # Acquire the global PDF rendering lock
-                with pdf_render_lock:
-                    lock_acquired_time = time.monotonic()
-                    logger.debug(
-                        f"[{thread_id}] Page {self.index}: Acquired pdf_render_lock (waited {lock_acquired_time - lock_wait_start:.2f}s). Starting render..."
-                    )
-                    if include_highlights:
-                        # Delegate rendering to the central service
-                        rendered_image_component = self._highlighter.render_page(
-                            page_index=self.index,
-                            resolution=render_resolution,
-                            labels=labels,
-                            legend_position=legend_position,
-                            render_ocr=render_ocr,
-                            **kwargs,
-                        )
-                    else:
-                        rendered_image_component = render_plain_page(self, render_resolution)
-            except Exception as e:
-                logger.error(f"Error rendering page {self.index}: {e}", exc_info=True)
-                # rendered_image_component remains None
-            finally:
-                render_end_time = time.monotonic()
-                logger.debug(
-                    f"[{thread_id}] Page {self.index}: Released pdf_render_lock. Total render time (incl. lock wait): {render_end_time - lock_wait_start:.2f}s"
-                )
-
-            if rendered_image_component is None:
-                if cache_key is not None:
-                    self._to_image_cache[cache_key] = None  # Cache the failure
-                # Save the image if path is provided (will try to save None, handled by PIL/OS)
-                if path:
-                    try:
-                        if os.path.dirname(path):
-                            os.makedirs(os.path.dirname(path), exist_ok=True)
-                        if rendered_image_component is not None:  # Should be None here
-                            rendered_image_component.save(path)  # This line won't be hit if None
-                        # else: logger.debug("Not saving None image") # Not strictly needed
-                    except Exception as save_error:  # pragma: no cover
-                        logger.error(f"Failed to save image to {path}: {save_error}")
-                return None
-
-            # --- Apply exclusion masking if requested ---
-            # This modifies 'rendered_image_component'
-            image_after_masking = rendered_image_component  # Start with the rendered image
-
-            # Determine if masking is requested and establish the fill colour
-            mask_requested = exclusions is not None and self._exclusions
-            mask_color: Union[str, Tuple[int, int, int, int]] = "white"  # default
-
-            if mask_requested:
-                if exclusions != "mask":
-                    # Attempt to parse custom colour input
-                    try:
-                        if isinstance(exclusions, tuple):
-                            # Handle RGB/RGBA tuples with ints 0-255 or floats 0-1
-                            processed = []
-                            all_float = all(isinstance(c, float) for c in exclusions)
-                            for i, c in enumerate(exclusions):
-                                if isinstance(c, float):
-                                    val = int(c * 255) if all_float or i == 3 else int(c)
-                                else:
-                                    val = int(c)
-                                processed.append(max(0, min(255, val)))
-                            if len(processed) == 3:
-                                processed.append(255)  # add full alpha
-                            mask_color = tuple(processed)  # type: ignore[assignment]
-                        elif isinstance(exclusions, str):
-                            # Try using the optional 'colour' library for rich parsing
-                            try:
-                                from colour import Color  # type: ignore
-
-                                color_obj = Color(exclusions)
-                                mask_color = (
-                                    int(color_obj.red * 255),
-                                    int(color_obj.green * 255),
-                                    int(color_obj.blue * 255),
-                                    255,
-                                )
-                            except Exception:
-                                # Fallback: if parsing fails, treat as plain string accepted by PIL
-                                mask_color = exclusions  # e.g. "red"
-                        else:
-                            logger.warning(
-                                f"Unsupported exclusions colour spec: {exclusions!r}. Using white."
-                            )
-                    except Exception as colour_parse_err:  # pragma: no cover
-                        logger.warning(
-                            f"Failed to parse exclusions colour {exclusions!r}: {colour_parse_err}. Using white."
-                        )
-
-                try:
-                    # Ensure image is mutable (RGB or RGBA)
-                    if image_after_masking.mode not in ("RGB", "RGBA"):
-                        image_after_masking = image_after_masking.convert("RGB")
-
-                    exclusion_regions = self._get_exclusion_regions(
-                        include_callable=True, debug=False
-                    )
-                    if exclusion_regions:
-                        draw = ImageDraw.Draw(image_after_masking)
-                        # Scaling factor for converting PDF pts → image px
-                        img_scale = render_resolution / 72.0
-
-                        # Determine fill colour compatible with current mode
-                        def _mode_compatible(colour):
-                            if isinstance(colour, tuple) and image_after_masking.mode != "RGBA":
-                                return colour[:3]  # drop alpha for RGB images
-                            return colour
-
-                        fill_colour = _mode_compatible(mask_color)
-
-                        for region in exclusion_regions:
-                            img_x0 = region.x0 * img_scale
-                            img_top = region.top * img_scale
-                            img_x1 = region.x1 * img_scale
-                            img_bottom = region.bottom * img_scale
-
-                            img_coords = (
-                                max(0, img_x0),
-                                max(0, img_top),
-                                min(image_after_masking.width, img_x1),
-                                min(image_after_masking.height, img_bottom),
-                            )
-                            if img_coords[0] < img_coords[2] and img_coords[1] < img_coords[3]:
-                                draw.rectangle(img_coords, fill=fill_colour)
-                            else:  # pragma: no cover
-                                logger.warning(
-                                    f"Skipping invalid exclusion rect for masking: {img_coords}"
-                                )
-                        del draw  # Release drawing context
-                except Exception as mask_error:  # pragma: no cover
-                    logger.error(
-                        f"Error applying exclusion mask to page {self.index}: {mask_error}",
-                        exc_info=True,
-                    )
-                    # Continue with potentially unmasked or partially masked image
-
-            # --- Resize the final image if width is provided ---
-            image_final_content = image_after_masking  # Start with image after masking
-            if width is not None and width > 0 and image_final_content.width > 0:
-                aspect_ratio = image_final_content.height / image_final_content.width
-                height = int(width * aspect_ratio)
-                try:
-                    image_final_content = image_final_content.resize(
-                        (width, height), Image.Resampling.LANCZOS
-                    )
-                except Exception as resize_error:  # pragma: no cover
-                    logger.warning(f"Could not resize image: {resize_error}")
-                    # image_final_content remains the un-resized version if resize fails
-
-            # Store in cache
-            if cache_key is not None:
-                self._to_image_cache[cache_key] = image_final_content
-                logger.debug(f"Page {self.index}: Cached image for key: {cache_key}")
-            image_to_return = image_final_content
-        # --- End of cache miss block ---
-
-        # Save the image (either from cache or newly generated) if path is provided
-        if path and image_to_return:
-            try:
-                # Ensure directory exists
-                if os.path.dirname(path):  # Only call makedirs if there's a directory part
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
-                image_to_return.save(path)
-                logger.debug(f"Saved page image to: {path}")
-            except Exception as save_error:  # pragma: no cover
-                logger.error(f"Failed to save image to {path}: {save_error}")
-
-        return image_to_return
 
     def _create_text_elements_from_ocr(
         self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None
@@ -2339,7 +2135,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
             # Get base image without highlights using the determined resolution
             # Use the global PDF rendering lock
             with pdf_render_lock:
-                image = self.to_image(resolution=final_resolution, include_highlights=False)
+                # Use render() for clean image without highlights
+                image = self.render(resolution=final_resolution)
                 if not image:
                     logger.error(
                         f"  Failed to render page {self.number} to image for OCR extraction."
@@ -3099,13 +2896,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
                 else default_resolution
             )
 
-            # Use to_image, ensuring no highlights interfere
-            img = self.to_image(
-                resolution=resolution,
-                include_highlights=False,
-                labels=False,
-                exclusions=None,  # Don't mask exclusions for classification input image
-            )
+            # Use render() for clean image without highlights
+            img = self.render(resolution=resolution)
             if img is None:
                 raise ValueError(
                     "Cannot classify page with 'vision' model: Failed to render image."
@@ -3164,7 +2956,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
         logger.debug(f"Page {self.number}: Detecting skew angle (resolution={resolution} DPI)...")
         try:
             # Render the page at the specified detection resolution
-            img = self.to_image(resolution=resolution, include_highlights=False)
+            # Use render() for clean image without highlights
+            img = self.render(resolution=resolution)
             if not img:
                 logger.warning(f"Page {self.number}: Failed to render image for skew detection.")
                 self._skew_angle = None
@@ -3243,7 +3036,8 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
 
         try:
             # Render the original page at the desired output resolution
-            img = self.to_image(resolution=resolution, include_highlights=False)
+            # Use render() for clean image without highlights
+            img = self.render(resolution=resolution)
             if not img:
                 logger.error(f"Page {self.number}: Failed to render image for deskewing.")
                 return None
@@ -3392,3 +3186,31 @@ class Page(TextMixin, ClassificationMixin, ExtractionMixin, ShapeDetectionMixin,
     def images(self) -> List[Any]:
         """Get all embedded raster images on this page."""
         return self._element_mgr.images
+
+    def highlights(self, show: bool = False) -> "HighlightContext":
+        """
+        Create a highlight context for accumulating highlights.
+
+        This allows for clean syntax to show multiple highlight groups:
+
+        Example:
+            with page.highlights() as h:
+                h.add(page.find_all('table'), label='tables', color='blue')
+                h.add(page.find_all('text:bold'), label='bold text', color='red')
+                h.show()
+
+        Or with automatic display:
+            with page.highlights(show=True) as h:
+                h.add(page.find_all('table'), label='tables')
+                h.add(page.find_all('text:bold'), label='bold')
+                # Automatically shows when exiting the context
+
+        Args:
+            show: If True, automatically show highlights when exiting context
+
+        Returns:
+            HighlightContext for accumulating highlights
+        """
+        from natural_pdf.core.highlighting_service import HighlightContext
+
+        return HighlightContext(self, show_on_exit=show)

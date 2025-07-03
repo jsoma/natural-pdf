@@ -145,9 +145,10 @@ def create_correction_task_package(
                 image_filename = f"{pdf_short_id}_page_{page.index}.png"
                 image_save_path = os.path.join(images_dir, image_filename)
                 try:
-                    img = page.to_image(resolution=resolution, include_highlights=False)
+                    # Use render() for clean image without highlights
+                    img = page.render(resolution=resolution)
                     if img is None:
-                        raise ValueError("page.to_image returned None")
+                        raise ValueError("page.render returned None")
                     img.save(image_save_path, "PNG")
                 except Exception as e:
                     logger.error(

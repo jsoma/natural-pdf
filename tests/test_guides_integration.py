@@ -16,11 +16,11 @@ class TestGuidesIntegration:
         guides = Guides(page)
 
         # Add vertical guides from lines (defaults: threshold='auto', outer=False)
-        guides.vertical.from_lines()
+        guides.vertical.from_lines(detection_method="vector")
         assert len(guides.vertical) > 0
 
         # Add horizontal guides from lines
-        guides.horizontal.from_lines()
+        guides.horizontal.from_lines(detection_method="vector")
         assert len(guides.horizontal) > 0
 
         # Test that we can manipulate individual axes
@@ -43,11 +43,11 @@ class TestGuidesIntegration:
         page = practice_pdf.pages[0]
 
         # Internal boundaries only (default)
-        internal_guides = Guides.from_lines(page)
+        internal_guides = Guides.from_lines(page, detection_method="vector")
         internal_count = len(internal_guides.vertical) + len(internal_guides.horizontal)
 
         # Include page boundaries
-        full_guides = Guides.from_lines(page, outer=True)
+        full_guides = Guides.from_lines(page, outer=True, detection_method="vector")
         full_count = len(full_guides.vertical) + len(full_guides.horizontal)
 
         # Should have more guides when including boundaries
@@ -65,7 +65,7 @@ class TestGuidesIntegration:
         guides = Guides.new(page)
 
         # Add guides from different sources
-        guides.vertical.from_lines()  # Lines for vertical
+        guides.vertical.from_lines(detection_method="vector")  # Lines for vertical
         guides.horizontal.divide(n=3)  # Even division for horizontal
 
         # Manual additions
@@ -81,7 +81,7 @@ class TestGuidesIntegration:
         page = practice_pdf.pages[0]
 
         # Create guides from different sources
-        line_guides = Guides.from_lines(page)
+        line_guides = Guides.from_lines(page, detection_method="vector")
         division_guides = Guides.divide(page, cols=4, rows=3)
 
         # Test intelligent assignment
@@ -97,7 +97,9 @@ class TestGuidesIntegration:
         page = practice_pdf.pages[0]
 
         # Test from_lines defaults
-        guides1 = Guides.from_lines(page)  # threshold='auto', outer=False
+        guides1 = Guides.from_lines(
+            page, detection_method="vector"
+        )  # threshold='auto', outer=False
 
         # Should not include page boundaries by default
         page_boundaries = {0.0, page.width, page.height}
@@ -117,7 +119,7 @@ class TestGuidesIntegration:
             result1 = guides1.build_grid(page)  # include_outer_boundaries=False
 
             # Test with explicit outer boundaries
-            guides2 = Guides.from_lines(page, outer=True)
+            guides2 = Guides.from_lines(page, outer=True, detection_method="vector")
             result2 = guides2.build_grid(page)
 
             # Should have same or more cells with outer boundaries

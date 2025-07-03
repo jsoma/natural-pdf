@@ -49,7 +49,7 @@ class Indexable(Protocol):
         """
         Return the primary content of this item.
         The SearchService implementation will determine how to process this content
-        (e.g., call .extract_text(), .to_image(), or handle directly).
+        (e.g., call .extract_text(), .render(), or handle directly).
         """
         ...
 

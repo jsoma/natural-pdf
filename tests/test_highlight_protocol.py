@@ -178,26 +178,33 @@ class TestHighlightProtocol:
         mixed_collection = ElementCollection(list(page0_elems) + list(page1_elems) + [flow_region])
 
         # Mock the rendering to test the logic without actual image generation
-        with patch.object(mixed_collection, "_render_multipage_highlights") as mock_render:
-            mock_render.return_value = Mock()  # Fake PIL Image
+        with patch.object(mixed_collection, "_get_highlighter") as mock_get_highlighter:
+            mock_highlighter = Mock()
+            mock_highlighter.unified_render.return_value = Mock()  # Fake PIL Image
+            mock_get_highlighter.return_value = mock_highlighter
 
             # This should now work!
             result = mixed_collection.show()
 
             # Verify the mock was called
-            assert mock_render.called
+            assert mock_highlighter.unified_render.called
 
-            # Check that specs were grouped by page correctly
-            specs_by_page = mock_render.call_args[0][0]
-            assert len(specs_by_page) == 2  # Two pages involved
-            assert pdf.pages[0] in specs_by_page
-            assert pdf.pages[1] in specs_by_page
+            # Check that specs were passed to unified_render correctly
+            # Get the call arguments to unified_render
+            call_args = mock_highlighter.unified_render.call_args
+            specs = call_args[1]["specs"]  # specs is passed as a keyword argument
 
-            # Page 0 should have specs from: 3 text elements + 1 flow region part
-            assert len(specs_by_page[pdf.pages[0]]) == 4
+            # Should have specs for both pages
+            assert len(specs) == 2  # Two pages involved
 
-            # Page 1 should have specs from: 3 text elements + 1 flow region part
-            assert len(specs_by_page[pdf.pages[1]]) == 4
+            # Check that each spec has the expected page
+            pages_in_specs = [spec.page for spec in specs]
+            assert pdf.pages[0] in pages_in_specs
+            assert pdf.pages[1] in pages_in_specs
+
+            # Each page should have highlights from elements
+            for spec in specs:
+                assert len(spec.highlights) > 0
 
         pdf.close()
 

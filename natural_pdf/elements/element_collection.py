@@ -33,6 +33,9 @@ from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 from natural_pdf.core.pdf import PDF
+
+# Add Visualizable import
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
@@ -82,6 +85,7 @@ class ElementCollection(
     DirectionalCollectionMixin,
     DescribeMixin,
     InspectMixin,
+    Visualizable,
     MutableSequence,
 ):
     """Collection of PDF elements with batch operations.
@@ -170,6 +174,143 @@ class ElementCollection(
             with additional natural-pdf functionality for document processing.
         """
         self._elements = elements or []
+
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this element collection.
+
+        Args:
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Default color for highlights in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop to element bounds
+            crop_bbox: Explicit crop bounds
+            **kwargs: Additional parameters
+
+        Returns:
+            List of RenderSpec objects, one per page with elements
+        """
+        if not self._elements:
+            return []
+
+        # Group elements by page
+        elements_by_page = {}
+        for elem in self._elements:
+            if hasattr(elem, "page"):
+                page = elem.page
+                if page not in elements_by_page:
+                    elements_by_page[page] = []
+                elements_by_page[page].append(elem)
+
+        if not elements_by_page:
+            return []
+
+        # Create RenderSpec for each page
+        specs = []
+        for page, page_elements in elements_by_page.items():
+            spec = RenderSpec(page=page)
+
+            # Handle cropping
+            if crop_bbox:
+                spec.crop_bbox = crop_bbox
+            elif crop == "content" or crop is True:
+                # Calculate bounds of elements on this page
+                x_coords = []
+                y_coords = []
+                for elem in page_elements:
+                    if hasattr(elem, "bbox") and elem.bbox:
+                        x0, y0, x1, y1 = elem.bbox
+                        x_coords.extend([x0, x1])
+                        y_coords.extend([y0, y1])
+
+                if x_coords and y_coords:
+                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+
+            # Add highlights in show mode
+            if mode == "show":
+                # Determine if all elements are of the same type
+                element_types = set(type(elem).__name__ for elem in page_elements)
+
+                if len(element_types) == 1:
+                    # All elements are the same type - use a single label
+                    type_name = element_types.pop()
+                    # Generate a clean label from the type name
+                    base_name = (
+                        type_name.replace("Element", "").replace("Region", "")
+                        if type_name != "Region"
+                        else "Region"
+                    )
+                    # Handle special cases for common types
+                    if base_name == "Text":
+                        shared_label = "Text Elements"
+                    elif base_name == "table_cell" or (
+                        hasattr(page_elements[0], "region_type")
+                        and page_elements[0].region_type == "table_cell"
+                    ):
+                        shared_label = "Table Cells"
+                    elif base_name == "table":
+                        shared_label = "Tables"
+                    else:
+                        shared_label = f"{base_name} Elements" if base_name else "Elements"
+
+                    # Add all elements with the same label (no color cycling)
+                    for elem in page_elements:
+                        spec.add_highlight(
+                            element=elem,
+                            color=color,  # Use provided color or None
+                            label=shared_label,
+                        )
+                else:
+                    # Mixed types - use individual labels (existing behavior)
+                    for elem in page_elements:
+                        spec.add_highlight(
+                            element=elem,
+                            color=color,
+                            label=getattr(elem, "text", None) or str(elem),
+                        )
+
+                # Add additional highlight groups if provided
+                if highlights:
+                    for group in highlights:
+                        group_elements = group.get("elements", [])
+                        group_color = group.get("color", color)
+                        group_label = group.get("label")
+
+                        # Only add elements from this page
+                        for elem in group_elements:
+                            if hasattr(elem, "page") and elem.page == page:
+                                spec.add_highlight(
+                                    element=elem, color=group_color, label=group_label
+                                )
+
+            specs.append(spec)
+
+        return specs
+
+    def _get_highlighter(self):
+        """Get the highlighting service for rendering.
+
+        For ElementCollection, we get it from the first element's page.
+        """
+        if not self._elements:
+            raise RuntimeError("Cannot get highlighter from empty ElementCollection")
+
+        # Try to get highlighter from first element's page
+        for elem in self._elements:
+            if hasattr(elem, "page") and hasattr(elem.page, "_highlighter"):
+                return elem.page._highlighter
+
+        # If no elements have pages, we can't render
+        raise RuntimeError(
+            "Cannot find HighlightingService. ElementCollection elements don't have page access."
+        )
 
     def __len__(self) -> int:
         """Get the number of elements in the collection."""
@@ -956,207 +1097,6 @@ class ElementCollection(
                 existing=existing,
             )
 
-    def show(
-        self,
-        # --- Visualization Parameters ---
-        group_by: Optional[str] = None,
-        label: Optional[str] = None,
-        color: Optional[Union[Tuple, str]] = None,
-        label_format: Optional[str] = None,
-        distinct: bool = False,
-        include_attrs: Optional[List[str]] = None,
-        # --- Rendering Parameters ---
-        resolution: Optional[float] = None,
-        labels: bool = True,  # Use 'labels' consistent with service
-        legend_position: str = "right",
-        render_ocr: bool = False,
-        width: Optional[int] = None,  # Add width parameter
-        page: Optional[Any] = None,  # NEW: Optional page parameter for empty collections
-        crop: bool = False,  # NEW: If True, crop output to element bounds
-    ) -> Optional["Image.Image"]:
-        """
-        Generates a temporary preview image highlighting elements in this collection
-        on their page, ignoring any persistent highlights.
-
-        Currently only supports collections where all elements are on the same page
-        of the same PDF.
-
-        Allows grouping and coloring elements based on attributes, similar to the
-        persistent `highlight()` method, but only for this temporary view.
-
-        Args:
-            group_by: Attribute name to group elements by for distinct colors/labels.
-            label: Explicit label for all elements (overrides group_by).
-            color: Explicit color for all elements (if label used) or base color.
-            label_format: F-string to format group labels if group_by is used.
-            distinct: Highlight each element distinctly (overrides group_by/label).
-            include_attrs: Attributes to display on individual highlights.
-            resolution: Resolution in DPI for rendering (uses global options if not specified, defaults to 144 DPI).
-            labels: Whether to include a legend for the temporary highlights.
-            legend_position: Position of the legend ('right', 'left', 'top', 'bottom').
-            render_ocr: Whether to render OCR text.
-            width: Optional width for the output image in pixels.
-            crop: If True, crop the resulting image to the tight bounding box
-                        containing all elements in the collection. The elements are
-                        still highlighted first, then the image is cropped.
-
-        Returns:
-            PIL Image object of the temporary preview, or None if rendering fails or
-            elements span multiple pages/PDFs.
-
-        Raises:
-            ValueError: If the collection is empty or elements are on different pages/PDFs.
-        """
-        # Apply global options as defaults, but allow explicit parameters to override
-        import natural_pdf
-
-        # Use global options if parameters are not explicitly set
-        if width is None:
-            width = natural_pdf.options.image.width
-        if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
-
-        if not self._elements:
-            raise ValueError("Cannot show an empty collection.")
-
-        # Check if elements are on multiple PDFs
-        if self._are_on_multiple_pdfs():
-            raise ValueError(
-                "show() currently only supports collections where all elements are from the same PDF."
-            )
-
-        # NEW: Use highlighting protocol to support multi-page and FlowRegions
-        # Collect highlight specs from all elements
-        specs_by_page = {}  # Dict[Page, List[spec]]
-
-        for i, element in enumerate(self._elements):
-            # Get highlight specs using the protocol
-            if hasattr(element, "get_highlight_specs"):
-                specs = element.get_highlight_specs()
-            else:
-                # Fallback for elements without the protocol
-                if not hasattr(element, "page") or not element.page:
-                    logger.warning(f"Element {i} has no page, skipping")
-                    continue
-
-                if not hasattr(element, "bbox"):
-                    logger.warning(f"Element {i} has no bbox, skipping")
-                    continue
-
-                specs = [
-                    {
-                        "page": element.page,
-                        "page_index": element.page.index if hasattr(element.page, "index") else 0,
-                        "bbox": element.bbox,
-                        "polygon": (
-                            element.polygon
-                            if hasattr(element, "has_polygon") and element.has_polygon
-                            else None
-                        ),
-                        "element": element,
-                    }
-                ]
-
-            # Add specs to page groups
-            for spec in specs:
-                page = spec["page"]
-                if page not in specs_by_page:
-                    specs_by_page[page] = []
-                specs_by_page[page].append((i, spec))  # Store element index with spec
-
-        if not specs_by_page:
-            logger.warning("No valid elements to show")
-            return None
-
-        # If all elements are on the same page, use the existing single-page logic
-        if len(specs_by_page) == 1:
-            # Get the single page and its specs
-            page = next(iter(specs_by_page.keys()))
-            element_specs = specs_by_page[page]
-
-            # Check if we have a valid page and highlighting service
-            if not hasattr(page, "_highlighter"):
-                logger.warning("Cannot show collection: Page has no highlighting service.")
-                return None
-
-            service = page._highlighter
-            if not service:
-                logger.warning("Cannot show collection: Page highlighting service is None.")
-                return None
-
-            # Continue with existing single-page logic using the page we already have
-            pass
-        else:
-            # Multiple pages - need to render each and stack them
-            return self._render_multipage_highlights(
-                specs_by_page,
-                resolution,
-                width,
-                labels,
-                legend_position,
-                group_by,
-                label,
-                color,
-                label_format,
-                distinct,
-                include_attrs,
-                render_ocr,
-                crop,
-            )
-        # Page and service are already validated above
-
-        # 1. Prepare temporary highlight data based on grouping parameters
-        # This returns a list of dicts, suitable for render_preview
-        highlight_data_list = self._prepare_highlight_data(
-            distinct=distinct,
-            label=label,
-            color=color,
-            group_by=group_by,
-            label_format=label_format,
-            include_attrs=include_attrs,
-        )
-
-        if not highlight_data_list:
-            logger.warning("No highlight data generated for show(). Rendering clean page.")
-            # Render the page without any temporary highlights
-            highlight_data_list = []
-
-        # 2. Call render_preview on the HighlightingService
-        try:
-            # Calculate crop bounding box in PDF coordinates if crop is requested
-            crop_bbox = None
-            if crop:
-                try:
-                    crop_bbox = (
-                        min(el.x0 for el in self._elements),
-                        min(el.top for el in self._elements),
-                        max(el.x1 for el in self._elements),
-                        max(el.bottom for el in self._elements),
-                    )
-                except Exception as bbox_err:
-                    logger.error(
-                        f"Error determining crop bbox for collection show: {bbox_err}",
-                        exc_info=True,
-                    )
-
-            img = service.render_preview(
-                page_index=page.index,
-                temporary_highlights=highlight_data_list,
-                resolution=resolution,
-                width=width,  # Pass the width parameter
-                labels=labels,  # Use 'labels'
-                legend_position=legend_position,
-                render_ocr=render_ocr,
-                crop_bbox=crop_bbox,
-            )
-            return img
-        except Exception as e:
-            logger.error(f"Error calling highlighting_service.render_preview: {e}", exc_info=True)
-            return None
-
     def _render_multipage_highlights(
         self,
         specs_by_page,
@@ -1373,8 +1313,8 @@ class ElementCollection(
             else:
                 resolution = 144  # Default resolution when none specified
 
-        # Use to_image to generate and save the image
-        self.to_image(
+        # Use export() to save the image
+        self.export(
             path=filename,
             resolution=resolution,
             width=width,
@@ -1384,42 +1324,6 @@ class ElementCollection(
         )
         return self
 
-    def to_image(
-        self,
-        path: Optional[str] = None,
-        resolution: Optional[float] = None,
-        width: Optional[int] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        render_ocr: bool = False,
-    ) -> Optional["Image.Image"]:
-        """
-        Generate an image of the page with this collection's elements highlighted,
-        optionally saving it to a file.
-
-        Args:
-            path: Optional path to save the image to
-            resolution: Resolution in DPI for rendering (uses global options if not specified, defaults to 144 DPI)
-            width: Optional width for the output image in pixels (height calculated to maintain aspect ratio)
-            labels: Whether to include a legend for labels
-            legend_position: Position of the legend
-            render_ocr: Whether to render OCR text with white background boxes
-
-        Returns:
-            PIL Image of the page with elements highlighted, or None if no valid page
-        """
-        # Get the page from the first element (if available)
-        if self._elements and hasattr(self._elements[0], "page"):
-            page = self._elements[0].page
-            # Generate the image using to_image
-            return page.to_image(
-                path=path,
-                resolution=resolution,
-                width=width,
-                labels=labels,
-                legend_position=legend_position,
-                render_ocr=render_ocr,
-            )
         return None
 
     def _group_elements_by_attr(self, group_by: str) -> Dict[Any, List[T]]:
@@ -1999,9 +1903,7 @@ class ElementCollection(
                     image_path = image_dir / image_filename
 
                     # Save image
-                    element.to_image(
-                        path=str(image_path), resolution=image_resolution, include_highlights=True
-                    )
+                    element.show(path=str(image_path), resolution=image_resolution)
 
                     # Add relative path to data
                     element_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))

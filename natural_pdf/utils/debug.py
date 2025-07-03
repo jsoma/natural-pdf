@@ -24,7 +24,8 @@ def _get_page_image_base64(page: Page) -> str:
     """Generate a base64 encoded image of the page."""
     # Create a clean image of the page without highlights for the base background
     # Use a fixed scale consistent with the HTML/JS rendering logic
-    img = page.to_image(scale=2.0, include_highlights=False)
+    # Use render() for clean image without highlights
+    img = page.render(resolution=144)
     if img is None:
         raise ValueError(f"Failed to render image for page {page.number}")
 

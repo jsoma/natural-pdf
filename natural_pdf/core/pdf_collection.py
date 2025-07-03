@@ -624,7 +624,7 @@ class PDFCollection(
                         )
                         continue
                     # Get first page image
-                    content = pdf.pages[0].to_image()
+                    content = pdf.pages[0].render()
                 else:
                     raise ValueError(f"Unsupported using mode: {inferred_using}")
 

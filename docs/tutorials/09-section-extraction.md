@@ -18,7 +18,7 @@ horizontal_lines = page.find_all('line:horizontal')
 
 # Visualize the potential section boundaries (single element type ➜ use .show())
 horizontal_lines.show(color="red", label="Section Boundaries")
-page.to_image()
+page.show()
 ```
 
 ```python
@@ -40,7 +40,7 @@ book_sections = page.get_sections(
 page.clear_highlights()
 for section in book_sections:
     section.show()
-page.to_image()
+page.show()
 ```
 
 ```python
@@ -121,7 +121,7 @@ title_sections = page.get_sections(
 # Show the title-based sections
 page.clear_highlights()
 title_sections.show()
-page.to_image()
+page.show()
 ```
 
 ```python
@@ -170,7 +170,7 @@ single_book_entry.show(color="green", label="Single Book Entry")
 
 print(single_book_entry[0].extract_text())
 
-page.to_image()
+page.show()
 ```
 
 ## Multi-page Sections

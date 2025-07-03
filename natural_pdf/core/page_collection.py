@@ -33,6 +33,7 @@ from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 from natural_pdf.core.pdf import PDF
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.element_collection import ElementCollection
@@ -75,7 +76,7 @@ T = TypeVar("T")
 P = TypeVar("P", bound="Page")
 
 
-class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
+class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Visualizable):
     """
     Represents a collection of Page objects, often from a single PDF document.
     Provides methods for batch operations on these pages.
@@ -943,220 +944,57 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
 
     # --- End Deskew Method --- #
 
-    def show(
+    def _get_render_specs(
         self,
-        page_width: Optional[int] = None,
-        cols: Optional[int] = 4,
-        rows: Optional[int] = None,
-        max_pages: Optional[int] = None,
-        spacing: int = 10,
-        add_labels: bool = True,  # Add new flag
-        show_category: bool = False,
-    ) -> Optional["Image.Image"]:
-        """
-        Generate a grid of page images for this collection.
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, Literal["content"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        """Get render specifications for this page collection.
+
+        For page collections, we return specs for all pages that will be
+        rendered into a grid layout.
 
         Args:
-            page_width: Width in pixels for rendering individual pages
-            cols: Number of columns in grid (default: 4)
-            rows: Number of rows in grid (calculated automatically if None)
-            max_pages: Maximum number of pages to include (default: all)
-            spacing: Spacing between page thumbnails in pixels
-            add_labels: Whether to add page number labels
-            show_category: Whether to add category and confidence labels (if available)
+            mode: Rendering mode - 'show' includes highlights, 'render' is clean
+            color: Color for highlighting pages in show mode
+            highlights: Additional highlight groups to show
+            crop: Whether to crop pages
+            crop_bbox: Explicit crop bounds
+            **kwargs: Additional parameters
 
         Returns:
-            PIL Image of the page grid or None if no pages
+            List of RenderSpec objects, one per page
         """
-        # Determine default page width from global options if not explicitly provided
-        if page_width is None:
-            try:
-                import natural_pdf
+        specs = []
 
-                page_width = natural_pdf.options.image.width or 300
-            except Exception:
-                # Fallback if natural_pdf import fails in some edge context
-                page_width = 300
-
-        # Ensure PIL is imported, handle potential ImportError if not done globally/lazily
-        try:
-            from PIL import Image, ImageDraw, ImageFont
-        except ImportError:
-            logger.error(
-                "Pillow library not found, required for show(). Install with 'pip install Pillow'"
-            )
-            return None
-
-        if not self.pages:
-            logger.warning("Cannot generate image for empty PageCollection")
-            return None
-
-        # Limit pages if max_pages is specified
+        # Get max pages from kwargs if specified
+        max_pages = kwargs.get("max_pages")
         pages_to_render = self.pages[:max_pages] if max_pages else self.pages
 
-        # Load font once outside the loop
-        font = None
-        if add_labels:
-            try:
-                # Try loading a commonly available font first
-                font = ImageFont.truetype("DejaVuSans.ttf", 16)
-            except IOError:
-                try:
-                    font = ImageFont.load_default(16)
-                except IOError:
-                    logger.warning("Default font not found. Labels cannot be added.")
-                    add_labels = False  # Disable if no font
-
-        # Render individual page images
-        page_images = []
         for page in pages_to_render:
-            try:
-                # Assume page.to_image returns a PIL Image or None
-                img = page.to_image(
-                    width=page_width, include_highlights=True
-                )  # Render with highlights for visual context
-                if img is None:
-                    logger.warning(f"Failed to generate image for page {page.number}. Skipping.")
-                    continue
-            except Exception as img_err:
-                logger.error(
-                    f"Error generating image for page {page.number}: {img_err}", exc_info=True
+            if hasattr(page, "_get_render_specs"):
+                # Page has the new unified rendering
+                page_specs = page._get_render_specs(
+                    mode=mode,
+                    color=color,
+                    highlights=highlights,
+                    crop=crop,
+                    crop_bbox=crop_bbox,
+                    **kwargs,
                 )
-                continue
+                specs.extend(page_specs)
+            else:
+                # Fallback for pages without unified rendering
+                spec = RenderSpec(page=page)
+                if crop_bbox:
+                    spec.crop_bbox = crop_bbox
+                specs.append(spec)
 
-            # Add page number label
-            if add_labels and font:
-                draw = ImageDraw.Draw(img)
-                pdf_name = (
-                    Path(page.pdf.path).stem
-                    if hasattr(page, "pdf") and page.pdf and hasattr(page.pdf, "path")
-                    else ""
-                )
-                label_text = f"p{page.number}"
-                if pdf_name:
-                    label_text += f" - {pdf_name}"
-
-                # Add category if requested and available
-                if show_category:
-                    # Placeholder logic - adjust based on how classification results are stored
-                    category = None
-                    confidence = None
-                    if (
-                        hasattr(page, "analyses")
-                        and page.analyses
-                        and "classification" in page.analyses
-                    ):
-                        result = page.analyses["classification"]
-                        # Adapt based on actual structure of classification result
-                        category = (
-                            getattr(result, "label", None) or result.get("label", None)
-                            if isinstance(result, dict)
-                            else None
-                        )
-                        confidence = (
-                            getattr(result, "score", None) or result.get("score", None)
-                            if isinstance(result, dict)
-                            else None
-                        )
-
-                    if category is not None and confidence is not None:
-                        try:
-                            category_str = f"{category} ({confidence:.2f})"  # Format confidence
-                            label_text += f"\\n{category_str}"
-                        except (TypeError, ValueError):
-                            pass  # Ignore formatting errors
-
-                # Calculate bounding box for multi-line text and draw background/text
-                try:
-                    # Using textbbox for potentially better accuracy with specific fonts
-                    # Note: textbbox needs Pillow 8+
-                    bbox = draw.textbbox(
-                        (5, 5), label_text, font=font, spacing=2
-                    )  # Use textbbox if available
-                    bg_rect = (
-                        max(0, bbox[0] - 2),
-                        max(0, bbox[1] - 2),
-                        min(img.width, bbox[2] + 2),
-                        min(img.height, bbox[3] + 2),
-                    )
-
-                    # Draw semi-transparent background
-                    overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
-                    draw_overlay = ImageDraw.Draw(overlay)
-                    draw_overlay.rectangle(bg_rect, fill=(255, 255, 255, 180))  # White with alpha
-                    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
-                    draw = ImageDraw.Draw(img)  # Recreate draw object
-
-                    # Draw the potentially multi-line text
-                    draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
-                except AttributeError:  # Fallback for older Pillow without textbbox
-                    # Approximate size and draw
-                    # This might not be perfectly aligned
-                    draw.rectangle(
-                        (2, 2, 150, 40), fill=(255, 255, 255, 180)
-                    )  # Simple fixed background
-                    draw.multiline_text((5, 5), label_text, fill=(0, 0, 0), font=font, spacing=2)
-                except Exception as draw_err:
-                    logger.error(
-                        f"Error drawing label on page {page.number}: {draw_err}", exc_info=True
-                    )
-
-            page_images.append(img)
-
-        if not page_images:
-            logger.warning("No page images were successfully rendered for the grid.")
-            return None
-
-        # Calculate grid dimensions if not provided
-        num_images = len(page_images)
-        if not rows and not cols:
-            cols = min(4, int(num_images**0.5) + 1)
-            rows = (num_images + cols - 1) // cols
-        elif rows and not cols:
-            cols = (num_images + rows - 1) // rows
-        elif cols and not rows:
-            rows = (num_images + cols - 1) // cols
-        cols = max(1, cols if cols else 1)  # Ensure at least 1
-        rows = max(1, rows if rows else 1)
-
-        # Get maximum dimensions for consistent grid cells
-        max_width = max(img.width for img in page_images) if page_images else 1
-        max_height = max(img.height for img in page_images) if page_images else 1
-
-        # Create grid image
-        grid_width = cols * max_width + (cols + 1) * spacing
-        grid_height = rows * max_height + (rows + 1) * spacing
-        grid_img = Image.new(
-            "RGB", (grid_width, grid_height), (220, 220, 220)
-        )  # Lighter gray background
-
-        # Place images in grid
-        for i, img in enumerate(page_images):
-            if i >= rows * cols:  # Ensure we don't exceed grid capacity
-                break
-
-            row = i // cols
-            col = i % cols
-
-            x = col * max_width + (col + 1) * spacing
-            y = row * max_height + (row + 1) * spacing
-
-            grid_img.paste(img, (x, y))
-
-        return grid_img
-
-    def to_image(
-        self,
-        *args,
-        **kwargs,
-    ) -> Optional["Image.Image"]:
-        """Generate a grid of page images for this collection.
-
-        This is a thin wrapper around :py:meth:`show` so that the API mirrors
-        other collection types. It forwards all arguments and returns the
-        resulting ``PIL.Image`` instance.
-        """
-        return self.show(*args, **kwargs)
+        return specs
 
     def save_pdf(
         self,
@@ -1381,3 +1219,31 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin):
                 all_regions.extend(regions_collection.elements)
 
         return ElementCollection(all_regions)
+
+    def highlights(self, show: bool = False) -> "HighlightContext":
+        """
+        Create a highlight context for accumulating highlights.
+
+        This allows for clean syntax to show multiple highlight groups:
+
+        Example:
+            with pages.highlights() as h:
+                h.add(pages.find_all('table'), label='tables', color='blue')
+                h.add(pages.find_all('text:bold'), label='bold text', color='red')
+                h.show()
+
+        Or with automatic display:
+            with pages.highlights(show=True) as h:
+                h.add(pages.find_all('table'), label='tables')
+                h.add(pages.find_all('text:bold'), label='bold')
+                # Automatically shows when exiting the context
+
+        Args:
+            show: If True, automatically show highlights when exiting context
+
+        Returns:
+            HighlightContext for accumulating highlights
+        """
+        from natural_pdf.core.highlighting_service import HighlightContext
+
+        return HighlightContext(self, show_on_exit=show)

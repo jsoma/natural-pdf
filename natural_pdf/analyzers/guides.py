@@ -1894,8 +1894,16 @@ class Guides:
 
             for region in self.context.constituent_regions:
                 try:
-                    # Render region without guides
-                    img = region.to_image(**kwargs)
+                    # Render region without guides using new system
+                    if hasattr(region, "render"):
+                        img = region.render(
+                            resolution=kwargs.get("resolution", 150),
+                            width=kwargs.get("width", None),
+                            crop=True,  # Always crop regions to their bounds
+                        )
+                    else:
+                        # Fallback to old method
+                        img = region.render(**kwargs)
                     if img:
                         base_images.append(img)
 
@@ -2019,10 +2027,15 @@ class Guides:
             raise ValueError("No target specified and no context available for guides display")
 
         # Prepare kwargs for image generation
-        image_kwargs = kwargs.copy()
+        image_kwargs = {}
 
-        # Always turn off highlights to avoid visual clutter
-        image_kwargs["include_highlights"] = False
+        # Extract only the parameters that the new render() method accepts
+        if "resolution" in kwargs:
+            image_kwargs["resolution"] = kwargs["resolution"]
+        if "width" in kwargs:
+            image_kwargs["width"] = kwargs["width"]
+        if "crop" in kwargs:
+            image_kwargs["crop"] = kwargs["crop"]
 
         # If target is a region-like object, crop to just that region
         if hasattr(target, "bbox") and hasattr(target, "page"):
@@ -2030,13 +2043,17 @@ class Guides:
             image_kwargs["crop"] = True
 
         # Get base image
-        if hasattr(target, "to_image"):
-            img = target.to_image(**image_kwargs)
+        if hasattr(target, "render"):
+            # Use the new unified rendering system
+            img = target.render(**image_kwargs)
+        elif hasattr(target, "render"):
+            # Fallback to old method if available
+            img = target.render(**image_kwargs)
         elif hasattr(target, "mode") and hasattr(target, "size"):
             # It's already a PIL Image
             img = target
         else:
-            raise ValueError(f"Object {target} does not support to_image() and is not a PIL Image")
+            raise ValueError(f"Object {target} does not support render() and is not a PIL Image")
 
         if img is None:
             raise ValueError("Failed to generate base image")

@@ -94,10 +94,8 @@ class ExtractionMixin(ABC):
                 resolution = kwargs.pop("resolution", 72)
                 include_highlights = kwargs.pop("include_highlights", False)
                 labels = kwargs.pop("labels", False)
-                return self.to_image(
+                return self.render(
                     resolution=resolution,
-                    include_highlights=include_highlights,
-                    labels=labels,
                     **kwargs,
                 )
             else:

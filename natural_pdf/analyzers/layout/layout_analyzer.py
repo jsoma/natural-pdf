@@ -86,9 +86,8 @@ class LayoutAnalyzer:
             layout_resolution = getattr(self._page._parent, "_config", {}).get(
                 "layout_image_resolution", 72
             )
-            std_res_page_image = self._page.to_image(
-                resolution=layout_resolution, include_highlights=False
-            )
+            # Use render() for clean image without highlights
+            std_res_page_image = self._page.render(resolution=layout_resolution)
             if not std_res_page_image:
                 raise ValueError("Initial page rendering returned None")
             logger.debug(
