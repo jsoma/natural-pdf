@@ -212,7 +212,6 @@ class TestHighlightProtocol:
 class TestHighlightProtocolIntegration:
     """Integration tests with real rendering."""
 
-    @pytest.mark.slow
     def test_multipage_table_cells_visualization(self):
         """Test the motivating use case: showing table cells across pages."""
         pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
