@@ -63,8 +63,22 @@ class DocumentQA:
 
             logger.info(f"Initializing DocumentQA with model {model_name} on {device}")
 
-            # Initialize the pipeline
-            self.pipe = pipeline("document-question-answering", model=model_name, device=device)
+            # Try MPS, fallback to CPU if OOM
+            if device is None and torch.backends.mps.is_available():
+                try:
+                    self.pipe = pipeline(
+                        "document-question-answering", model=model_name, device="mps"
+                    )
+                    self.device = "mps"
+                except RuntimeError as e:
+                    logger.warning(f"MPS OOM: {e}, falling back to CPU")
+                    self.pipe = pipeline(
+                        "document-question-answering", model=model_name, device="cpu"
+                    )
+                    self.device = "cpu"
+            else:
+                self.pipe = pipeline("document-question-answering", model=model_name, device=device)
+                self.device = device
 
             self.model_name = model_name
             self.device = device

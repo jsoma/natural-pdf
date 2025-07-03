@@ -51,6 +51,7 @@ jobs:
       - name: Run Nox sessions
         env:
           NOTEBOOK_WORKERS: 1
+          PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
         run: |
           # Run linting and the full test suite
           nox --non-interactive -s lint test_full
