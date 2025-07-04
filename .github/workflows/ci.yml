@@ -17,6 +17,8 @@ jobs:
   tests:
     name: nox (${{ matrix.os }} | py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
+    env:
+      TORCH_DEVICE: cpu  # Force Surya to use CPU
     strategy:
       fail-fast: false
       max-parallel: 1
