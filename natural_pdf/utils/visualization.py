@@ -184,8 +184,8 @@ def create_colorbar(
     values: List[float],
     colormap: str = "viridis",
     bins: Optional[Union[int, List[float]]] = None,
-    width: int = 200,
-    height: int = 30,
+    width: int = 80,
+    height: int = 20,
     orientation: str = "horizontal",
 ) -> Image.Image:
     """
@@ -214,14 +214,14 @@ def create_colorbar(
 
     # Create the colorbar image
     if orientation == "horizontal":
-        bar_width = width - 60  # Leave space for labels
+        bar_width = width - 40  # Leave space for labels (reduced from 60)
         bar_height = height
         total_width = width
         total_height = height + 40  # Extra space for labels
     else:
         bar_width = width
-        bar_height = max(height, 100)  # Ensure minimum height for vertical colorbar
-        total_width = width + 60  # Extra space for labels
+        bar_height = max(height, 120)  # Ensure minimum height for vertical colorbar
+        total_width = width + 80  # Extra space for labels (increased for larger text)
         total_height = bar_height + 60  # Extra space for labels
 
     # Create base image
@@ -230,31 +230,44 @@ def create_colorbar(
 
     # Try to load a font
     try:
-        font = ImageFont.truetype("DejaVuSans.ttf", 12)
+        font = ImageFont.truetype("DejaVuSans.ttf", 16)
     except IOError:
         try:
-            font = ImageFont.truetype("Arial.ttf", 12)
+            font = ImageFont.truetype("Arial.ttf", 16)
         except IOError:
-            font = ImageFont.load_default()
+            # Load default font but try to get a larger size
+            try:
+                font = ImageFont.load_default(size=16)
+            except:
+                font = ImageFont.load_default()
 
-    # Draw the gradient bar
+    # Draw the color blocks (5 discrete blocks)
     if orientation == "horizontal":
-        # Draw horizontal gradient
-        for x in range(bar_width):
-            # Calculate value at this position
-            value = vmin + (x / (bar_width - 1)) * (vmax - vmin)
+        # Create 5 discrete color blocks
+        num_blocks = 5
+        block_width = bar_width // num_blocks
 
-            # Get color for this value
+        for i in range(num_blocks):
+            # Calculate value for this block (center of block)
+            block_start = i / num_blocks
+            block_center = (i + 0.5) / num_blocks
+            value = vmin + block_center * (vmax - vmin)
+
+            # Get color for this block
             rgb = get_colormap_color(colormap, value, vmin, vmax)
             color = (*rgb, 255)
 
-            # Draw vertical line
-            draw.line([(x + 30, 10), (x + 30, 10 + bar_height)], fill=color, width=1)
+            # Calculate block position
+            x_start = 20 + i * block_width
+            x_end = 20 + (i + 1) * block_width
 
-        # Draw border around bar
-        draw.rectangle(
-            [(30, 10), (30 + bar_width, 10 + bar_height)], outline=(0, 0, 0, 255), width=1
-        )
+            # Draw filled rectangle for this block
+            draw.rectangle(
+                [(x_start, 10), (x_end, 10 + bar_height)],
+                fill=color,
+                outline=(0, 0, 0, 255),
+                width=1,
+            )
 
         # Add value labels
         if bins is not None:
@@ -269,7 +282,7 @@ def create_colorbar(
 
             for tick_val in tick_values:
                 if vmin <= tick_val <= vmax:
-                    x_pos = int(30 + (tick_val - vmin) / (vmax - vmin) * bar_width)
+                    x_pos = int(20 + (tick_val - vmin) / (vmax - vmin) * bar_width)
                     # Draw tick mark
                     draw.line(
                         [(x_pos, 10 + bar_height), (x_pos, 10 + bar_height + 5)],
@@ -290,36 +303,44 @@ def create_colorbar(
             # Show min and max values
             # Min value
             min_text = f"{vmin:.2f}".rstrip("0").rstrip(".")
-            draw.text((30, 10 + bar_height + 8), min_text, fill=(0, 0, 0, 255), font=font)
+            draw.text((20, 10 + bar_height + 8), min_text, fill=(0, 0, 0, 255), font=font)
 
             # Max value
             max_text = f"{vmax:.2f}".rstrip("0").rstrip(".")
             text_bbox = draw.textbbox((0, 0), max_text, font=font)
             text_width = text_bbox[2] - text_bbox[0]
             draw.text(
-                (30 + bar_width - text_width, 10 + bar_height + 8),
+                (20 + bar_width - text_width, 10 + bar_height + 8),
                 max_text,
                 fill=(0, 0, 0, 255),
                 font=font,
             )
 
     else:  # vertical orientation
-        # Draw vertical gradient
-        for y in range(bar_height):
-            # Calculate value at this position (top = max, bottom = min)
-            value = vmax - (y / (bar_height - 1)) * (vmax - vmin)
+        # Create 5 discrete color blocks
+        num_blocks = 5
+        block_height = bar_height // num_blocks
 
-            # Get color for this value
+        for i in range(num_blocks):
+            # Calculate value for this block (center of block, top = max, bottom = min)
+            block_center = (i + 0.5) / num_blocks
+            value = vmax - block_center * (vmax - vmin)
+
+            # Get color for this block
             rgb = get_colormap_color(colormap, value, vmin, vmax)
             color = (*rgb, 255)
 
-            # Draw horizontal line
-            draw.line([(10, y + 30), (10 + bar_width, y + 30)], fill=color, width=1)
+            # Calculate block position
+            y_start = 30 + i * block_height
+            y_end = 30 + (i + 1) * block_height
 
-        # Draw border around bar
-        draw.rectangle(
-            [(10, 30), (10 + bar_width, 30 + bar_height)], outline=(0, 0, 0, 255), width=1
-        )
+            # Draw filled rectangle for this block
+            draw.rectangle(
+                [(10, y_start), (10 + bar_width, y_end)],
+                fill=color,
+                outline=(0, 0, 0, 255),
+                width=1,
+            )
 
         # Add value labels
         if bins is not None:

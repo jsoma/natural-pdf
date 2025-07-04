@@ -35,7 +35,7 @@ detected_regions = page.find_all('region[source="detected"]')
 
 ```python
 # Visualize all detected regions, using default colors based on type
-detected_regions.show(group_by='type', include_attrs=['confidence'])
+detected_regions.show(group_by='type', annotate=['confidence'])
 ```
 
 ```python

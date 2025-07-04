@@ -143,6 +143,8 @@ class Visualizable:
         labels: bool = True,
         label_format: Optional[str] = None,
         highlights: Optional[List[Dict[str, Any]]] = None,
+        legend_position: str = "right",
+        annotate: Optional[Union[str, List[str]]] = None,
         # Layout options for multi-page/region
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
@@ -165,6 +167,8 @@ class Visualizable:
             labels: Whether to show labels for highlights
             label_format: Format string for labels (e.g., "Element {index}")
             highlights: Additional highlight groups to show
+            legend_position: Position of legend/colorbar ('right', 'left', 'top', 'bottom')
+            annotate: Attribute name(s) to display on highlights (string or list)
             layout: How to arrange multiple pages/regions
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
@@ -176,12 +180,17 @@ class Visualizable:
         Returns:
             PIL Image object or None if nothing to render
         """
+        # Convert string to list if needed
+        if isinstance(annotate, str):
+            annotate = [annotate]
+
         specs = self._get_render_specs(
             mode="show",
             color=color,
             highlights=highlights,
             crop=crop,
             crop_bbox=crop_bbox,
+            annotate=annotate,
             **kwargs,
         )
 
@@ -196,6 +205,7 @@ class Visualizable:
             width=width,
             labels=labels,
             label_format=label_format,
+            legend_position=legend_position,
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,

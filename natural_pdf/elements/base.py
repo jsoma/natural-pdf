@@ -1074,7 +1074,7 @@ class Element(
         label: str = "",
         color: Optional[Tuple[float, float, float]] = None,
         use_color_cycling: bool = True,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ) -> "Element":
         """Highlight the element with the specified colour.
@@ -1092,7 +1092,7 @@ class Element(
             "label": label,
             "use_color_cycling": use_color_cycling,
             "element": self,  # Pass the element itself so attributes can be accessed
-            "include_attrs": include_attrs,
+            "annotate": annotate,
             "existing": existing,
         }
 

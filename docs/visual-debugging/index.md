@@ -165,7 +165,7 @@ pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta
 page = pdf.pages[0]
 
 lines = page.find_all('line')
-lines.show(include_attrs=['width', 'color'], width=700)
+lines.show(annotate=['width', 'color'], width=700)
 ```
 
 Does it get busy? YES.

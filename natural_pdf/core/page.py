@@ -1852,7 +1852,7 @@ class Page(
         label: Optional[str] = None,
         use_color_cycling: bool = False,
         element: Optional[Any] = None,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ) -> "Page":
         """
@@ -1865,7 +1865,7 @@ class Page(
             label: Optional label for the highlight.
             use_color_cycling: If True and no label/color, use next cycle color.
             element: Optional original element being highlighted (for attribute extraction).
-            include_attrs: List of attribute names from 'element' to display.
+            annotate: List of attribute names from 'element' to display.
             existing: How to handle existing highlights ('append' or 'replace').
 
         Returns:
@@ -1879,7 +1879,7 @@ class Page(
             label=label,
             use_color_cycling=use_color_cycling,
             element=element,
-            include_attrs=include_attrs,
+            annotate=annotate,
             existing=existing,
         )
         return self
@@ -1891,7 +1891,7 @@ class Page(
         label: Optional[str] = None,
         use_color_cycling: bool = False,
         element: Optional[Any] = None,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ) -> "Page":
         """
@@ -1904,7 +1904,7 @@ class Page(
             label: Optional label for the highlight.
             use_color_cycling: If True and no label/color, use next cycle color.
             element: Optional original element being highlighted (for attribute extraction).
-            include_attrs: List of attribute names from 'element' to display.
+            annotate: List of attribute names from 'element' to display.
             existing: How to handle existing highlights ('append' or 'replace').
 
         Returns:
@@ -1917,7 +1917,7 @@ class Page(
             label=label,
             use_color_cycling=use_color_cycling,
             element=element,
-            include_attrs=include_attrs,
+            annotate=annotate,
             existing=existing,
         )
         return self

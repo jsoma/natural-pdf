@@ -184,6 +184,7 @@ class ElementCollection(
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         group_by: Optional[str] = None,
         bins: Optional[Union[int, List[float]]] = None,
+        annotate: Optional[List[str]] = None,
         **kwargs,
     ) -> List[RenderSpec]:
         """Get render specifications for this element collection.
@@ -196,6 +197,7 @@ class ElementCollection(
             crop_bbox: Explicit crop bounds
             group_by: Attribute to group elements by for color mapping
             bins: Binning specification for quantitative data (int for equal-width bins, list for custom bins)
+            annotate: List of attribute names to display on highlights
             **kwargs: Additional parameters
 
         Returns:
@@ -243,19 +245,56 @@ class ElementCollection(
                 if group_by is not None:
                     # Use the improved highlighting logic from _prepare_highlight_data
                     prepared_highlights = self._prepare_highlight_data(
-                        group_by=group_by, color=color, bins=bins, **kwargs
+                        group_by=group_by, color=color, bins=bins, annotate=annotate, **kwargs
                     )
+
+                    # Check if we have quantitative metadata to preserve
+                    quantitative_metadata = None
+                    for highlight_data in prepared_highlights:
+                        if (
+                            "quantitative_metadata" in highlight_data
+                            and highlight_data["quantitative_metadata"]
+                        ):
+                            quantitative_metadata = highlight_data["quantitative_metadata"]
+                            break
 
                     # Add highlights from prepared data
                     for highlight_data in prepared_highlights:
                         # Only add elements from this page
                         elem = highlight_data.get("element")
                         if elem and hasattr(elem, "page") and elem.page == page:
-                            spec.add_highlight(
-                                element=elem,
-                                color=highlight_data.get("color"),
-                                label=highlight_data.get("label"),
-                            )
+                            # Create the highlight dict manually to preserve quantitative metadata
+                            highlight_dict = {
+                                "element": elem,
+                                "color": highlight_data.get("color"),
+                                "label": highlight_data.get("label"),
+                            }
+
+                            # Add quantitative metadata to the first highlight
+                            if quantitative_metadata and not any(
+                                h.get("quantitative_metadata") for h in spec.highlights
+                            ):
+                                highlight_dict["quantitative_metadata"] = quantitative_metadata
+
+                            # Add annotate if provided in the prepared data
+                            if "annotate" in highlight_data:
+                                highlight_dict["annotate"] = highlight_data["annotate"]
+                            if "attributes_to_draw" in highlight_data:
+                                highlight_dict["attributes_to_draw"] = highlight_data[
+                                    "attributes_to_draw"
+                                ]
+
+                            # Extract geometry from element
+                            if (
+                                hasattr(elem, "polygon")
+                                and hasattr(elem, "has_polygon")
+                                and elem.has_polygon
+                            ):
+                                highlight_dict["polygon"] = elem.polygon
+                            elif hasattr(elem, "bbox"):
+                                highlight_dict["bbox"] = elem.bbox
+
+                            spec.highlights.append(highlight_dict)
                 else:
                     # Default behavior when no group_by is specified
                     # Determine if all elements are of the same type
@@ -285,19 +324,36 @@ class ElementCollection(
 
                         # Add all elements with the same label (no color cycling)
                         for elem in page_elements:
-                            spec.add_highlight(
-                                element=elem,
-                                color=color,  # Use provided color or None
-                                label=shared_label,
-                            )
+                            # Get element highlight params with annotate
+                            element_data = self._get_element_highlight_params(elem, annotate)
+                            if element_data:
+                                # Use add_highlight with basic params
+                                spec.add_highlight(
+                                    element=elem,
+                                    color=color,  # Use provided color or None
+                                    label=shared_label,
+                                )
+                                # Update last highlight with attributes if present
+                                if element_data.get("attributes_to_draw") and spec.highlights:
+                                    spec.highlights[-1]["attributes_to_draw"] = element_data[
+                                        "attributes_to_draw"
+                                    ]
                     else:
                         # Mixed types - use individual labels (existing behavior)
                         for elem in page_elements:
-                            spec.add_highlight(
-                                element=elem,
-                                color=color,
-                                label=getattr(elem, "text", None) or str(elem),
-                            )
+                            # Get element highlight params with annotate
+                            element_data = self._get_element_highlight_params(elem, annotate)
+                            if element_data:
+                                spec.add_highlight(
+                                    element=elem,
+                                    color=color,
+                                    label=getattr(elem, "text", None) or str(elem),
+                                )
+                                # Update last highlight with attributes if present
+                                if element_data.get("attributes_to_draw") and spec.highlights:
+                                    spec.highlights[-1]["attributes_to_draw"] = element_data[
+                                        "attributes_to_draw"
+                                    ]
 
                 # Add additional highlight groups if provided
                 if highlights:
@@ -704,7 +760,7 @@ class ElementCollection(
         group_by: Optional[str] = None,
         label_format: Optional[str] = None,
         distinct: bool = False,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         replace: bool = False,
         bins: Optional[Union[int, List[float]]] = None,
     ) -> "ElementCollection":
@@ -740,8 +796,8 @@ class ElementCollection(
             distinct: If True, bypasses all grouping and highlights each element
                       individually with cycling colors (the previous default behavior).
                       (default: False)
-            include_attrs: List of attribute names from the element to display directly
-                           on the highlight itself (distinct from group label).
+            annotate: List of attribute names from the element to display directly
+                      on the highlight itself (distinct from group label).
             replace: If True, existing highlights on the affected page(s)
                      are cleared before adding these highlights.
                      If False (default), highlights are appended to existing ones.
@@ -769,7 +825,7 @@ class ElementCollection(
             color=color,
             group_by=group_by,
             label_format=label_format,
-            include_attrs=include_attrs,
+            annotate=annotate,
             bins=bins,
             # 'replace' flag is handled during the add call below
         )
@@ -811,7 +867,7 @@ class ElementCollection(
                     "use_color_cycling", False
                 ),  # Set by _prepare if distinct
                 "element": data["element"],
-                "include_attrs": data["include_attrs"],
+                "annotate": data["annotate"],
                 # Internal call to service always appends, as clearing was handled above
                 "existing": "append",
             }
@@ -833,7 +889,7 @@ class ElementCollection(
         color: Optional[Union[Tuple, str]] = None,
         group_by: Optional[str] = None,
         label_format: Optional[str] = None,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         bins: Optional[Union[int, List[float]]] = None,
     ) -> List[Dict]:
         """
@@ -843,7 +899,7 @@ class ElementCollection(
 
         Returns:
             List of dictionaries, each containing parameters for a single highlight
-            (e.g., page_index, bbox/polygon, color, label, element, include_attrs, attributes_to_draw).
+            (e.g., page_index, bbox/polygon, color, label, element, annotate, attributes_to_draw).
             Color and label determination happens here.
         """
         prepared_data = []
@@ -882,7 +938,7 @@ class ElementCollection(
                 final_color = highlighter._determine_highlight_color(
                     label=None, color_input=None, use_color_cycling=True
                 )
-                element_data = self._get_element_highlight_params(element, include_attrs)
+                element_data = self._get_element_highlight_params(element, annotate)
                 if element_data:
                     element_data.update(
                         {"color": final_color, "label": None, "use_color_cycling": True}
@@ -895,7 +951,7 @@ class ElementCollection(
                 label=label, color_input=color, use_color_cycling=False
             )
             for element in self._elements:
-                element_data = self._get_element_highlight_params(element, include_attrs)
+                element_data = self._get_element_highlight_params(element, annotate)
                 if element_data:
                     element_data.update({"color": final_color, "label": label})
                     prepared_data.append(element_data)
@@ -954,7 +1010,7 @@ class ElementCollection(
                         f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}"
                     )
                     for element in group_elements:
-                        element_data = self._get_element_highlight_params(element, include_attrs)
+                        element_data = self._get_element_highlight_params(element, annotate)
                         if element_data:
                             element_data.update({"color": final_color, "label": group_label})
                             # Add quantitative metadata to the first element in each group
@@ -977,7 +1033,7 @@ class ElementCollection(
                         f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}"
                     )
                     for element in group_elements:
-                        element_data = self._get_element_highlight_params(element, include_attrs)
+                        element_data = self._get_element_highlight_params(element, annotate)
                         if element_data:
                             element_data.update({"color": final_color, "label": group_label})
                             prepared_data.append(element_data)
@@ -999,7 +1055,7 @@ class ElementCollection(
                 )
                 logger.debug(f"  _prepare default group '{auto_label}' -> color {final_color}")
                 for element in self._elements:
-                    element_data = self._get_element_highlight_params(element, include_attrs)
+                    element_data = self._get_element_highlight_params(element, annotate)
                     if element_data:
                         element_data.update({"color": final_color, "label": auto_label})
                         prepared_data.append(element_data)
@@ -1018,7 +1074,7 @@ class ElementCollection(
                 # Determine color *before* logging or using it (already done above for this branch)
                 logger.debug(f"  _prepare default group '{auto_label}' -> color {final_color}")
                 for element in self._elements:
-                    element_data = self._get_element_highlight_params(element, include_attrs)
+                    element_data = self._get_element_highlight_params(element, annotate)
                     if element_data:
                         element_data.update({"color": final_color, "label": auto_label})
                         prepared_data.append(element_data)
@@ -1031,7 +1087,7 @@ class ElementCollection(
         color: Optional[Union[Tuple, str]],
         label: Optional[str],
         use_color_cycling: bool,
-        include_attrs: Optional[List[str]],
+        annotate: Optional[List[str]],
         existing: str,
     ):
         """Low-level helper to call the appropriate HighlightingService method for an element."""
@@ -1047,7 +1103,7 @@ class ElementCollection(
             "color": color,
             "label": label,
             "use_color_cycling": use_color_cycling,
-            "include_attrs": include_attrs,
+            "annotate": annotate,
             "existing": existing,
             "element": element,
         }
@@ -1082,7 +1138,7 @@ class ElementCollection(
         self,
         label: str,
         color: Optional[Union[Tuple, str]],
-        include_attrs: Optional[List[str]],
+        annotate: Optional[List[str]],
         existing: str,
     ):
         """Highlights all elements with the same explicit label and color."""
@@ -1092,7 +1148,7 @@ class ElementCollection(
                 color=color,  # Use explicit color if provided
                 label=label,  # Use the explicit group label
                 use_color_cycling=False,  # Use consistent color for the label
-                include_attrs=include_attrs,
+                annotate=annotate,
                 existing=existing,
             )
 
@@ -1100,7 +1156,7 @@ class ElementCollection(
         self,
         group_by: str,
         label_format: Optional[str],
-        include_attrs: Optional[List[str]],
+        annotate: Optional[List[str]],
         existing: str,
     ):
         """Groups elements by attribute and highlights each group distinctly."""
@@ -1172,11 +1228,11 @@ class ElementCollection(
                     color=None,  # Let ColorManager choose based on label
                     label=group_label,  # Use the derived group label
                     use_color_cycling=False,  # Use consistent color for the label
-                    include_attrs=include_attrs,
+                    annotate=annotate,
                     existing=existing,
                 )
 
-    def _highlight_distinctly(self, include_attrs: Optional[List[str]], existing: str):
+    def _highlight_distinctly(self, annotate: Optional[List[str]], existing: str):
         """DEPRECATED: Logic moved to _prepare_highlight_data. Kept for reference/potential reuse."""
         # This method is no longer called directly by the main highlight path.
         # The distinct logic is handled within _prepare_highlight_data.
@@ -1186,7 +1242,7 @@ class ElementCollection(
                 color=None,  # Let ColorManager cycle
                 label=None,  # No label for distinct elements
                 use_color_cycling=True,  # Force cycling
-                include_attrs=include_attrs,
+                annotate=annotate,
                 existing=existing,
             )
 
@@ -1202,7 +1258,7 @@ class ElementCollection(
         color,
         label_format,
         distinct,
-        include_attrs,
+        annotate,
         render_ocr,
         crop,
         stack_direction="vertical",
@@ -1286,9 +1342,9 @@ class ElementCollection(
                 }
 
                 # Add attributes if requested
-                if include_attrs and element:
+                if annotate and element:
                     highlight_item["attributes_to_draw"] = {}
-                    for attr_name in include_attrs:
+                    for attr_name in annotate:
                         try:
                             attr_value = getattr(element, attr_name, None)
                             if attr_value is not None:
@@ -1476,7 +1532,7 @@ class ElementCollection(
             return str(group_key)
 
     def _get_element_highlight_params(
-        self, element: T, include_attrs: Optional[List[str]]
+        self, element: T, annotate: Optional[List[str]]
     ) -> Optional[Dict]:
         """Extracts common parameters needed for highlighting a single element."""
         # For FlowRegions and other complex elements, use highlighting protocol
@@ -1494,7 +1550,7 @@ class ElementCollection(
             base_data = {
                 "page_index": first_spec["page_index"],
                 "element": element,
-                "include_attrs": include_attrs,
+                "annotate": annotate,
                 "attributes_to_draw": {},
                 "bbox": first_spec.get("bbox"),
                 "polygon": first_spec.get("polygon"),
@@ -1503,15 +1559,15 @@ class ElementCollection(
             }
 
             # Extract attributes if requested
-            if include_attrs:
-                for attr_name in include_attrs:
+            if annotate:
+                for attr_name in annotate:
                     try:
                         attr_value = getattr(element, attr_name, None)
                         if attr_value is not None:
                             base_data["attributes_to_draw"][attr_name] = attr_value
                     except AttributeError:
                         logger.warning(
-                            f"Attribute '{attr_name}' not found on element {element} for include_attrs"
+                            f"Attribute '{attr_name}' not found on element {element} for annotate"
                         )
 
             return base_data
@@ -1526,7 +1582,7 @@ class ElementCollection(
         base_data = {
             "page_index": page.index,
             "element": element,
-            "include_attrs": include_attrs,
+            "annotate": annotate,
             "attributes_to_draw": {},
             "bbox": None,
             "polygon": None,
@@ -1551,15 +1607,15 @@ class ElementCollection(
             return None
 
         # Extract attributes if requested
-        if include_attrs:
-            for attr_name in include_attrs:
+        if annotate:
+            for attr_name in annotate:
                 try:
                     attr_value = getattr(element, attr_name, None)
                     if attr_value is not None:
                         base_data["attributes_to_draw"][attr_name] = attr_value
                 except AttributeError:
                     logger.warning(
-                        f"Attribute '{attr_name}' not found on element {element} for include_attrs"
+                        f"Attribute '{attr_name}' not found on element {element} for annotate"
                     )
 
         return base_data

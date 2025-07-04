@@ -710,7 +710,7 @@ class Region(
         label: Optional[str] = None,
         color: Optional[Union[Tuple, str]] = None,
         use_color_cycling: bool = False,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ) -> "Region":
         """
@@ -720,7 +720,7 @@ class Region(
             label: Optional label for the highlight
             color: Color tuple/string for the highlight, or None to use automatic color
             use_color_cycling: Force color cycling even with no label (default: False)
-            include_attrs: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
+            annotate: List of attribute names to display on the highlight (e.g., ['confidence', 'type'])
             existing: How to handle existing highlights ('append' or 'replace').
 
         Returns:
@@ -736,7 +736,7 @@ class Region(
             "label": label,
             "use_color_cycling": use_color_cycling,
             "element": self,  # Pass the region itself so attributes can be accessed
-            "include_attrs": include_attrs,
+            "annotate": annotate,
             "existing": existing,
         }
 

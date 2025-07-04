@@ -548,7 +548,7 @@ class HighlightingService:
         label: Optional[str] = None,
         use_color_cycling: bool = False,
         element: Optional[Any] = None,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ):
         """Adds a rectangular highlight."""
@@ -598,7 +598,7 @@ class HighlightingService:
             label=label,
             use_color_cycling=use_color_cycling,
             element=element,
-            include_attrs=include_attrs,
+            annotate=annotate,
             existing=existing,
         )
 
@@ -610,7 +610,7 @@ class HighlightingService:
         label: Optional[str] = None,
         use_color_cycling: bool = False,
         element: Optional[Any] = None,
-        include_attrs: Optional[List[str]] = None,
+        annotate: Optional[List[str]] = None,
         existing: str = "append",
     ):
         """Adds a polygonal highlight."""
@@ -631,7 +631,7 @@ class HighlightingService:
             label=label,
             use_color_cycling=use_color_cycling,
             element=element,
-            include_attrs=include_attrs,
+            annotate=annotate,
             existing=existing,
         )
 
@@ -644,7 +644,7 @@ class HighlightingService:
         label: Optional[str],
         use_color_cycling: bool,
         element: Optional[Any],
-        include_attrs: Optional[List[str]],
+        annotate: Optional[List[str]],
         existing: str,
     ):
         """Internal method to create and store a Highlight object."""
@@ -663,8 +663,8 @@ class HighlightingService:
 
         # Extract attributes from the element if requested
         attributes_to_draw = {}
-        if element and include_attrs:
-            for attr_name in include_attrs:
+        if element and annotate:
+            for attr_name in annotate:
                 try:
                     attr_value = getattr(element, attr_name, None)
                     if attr_value is not None:
@@ -1037,9 +1037,9 @@ class HighlightingService:
                 )
                 attrs_to_draw = {}
                 element = hl_data.get("element")
-                include_attrs = hl_data.get("include_attrs")
-                if element and include_attrs:
-                    for attr_name in include_attrs:
+                annotate = hl_data.get("annotate")
+                if element and annotate:
+                    for attr_name in annotate:
                         try:
                             attr_value = getattr(element, attr_name, None)
                             if attr_value is not None:
@@ -1161,6 +1161,7 @@ class HighlightingService:
         gap: int = 5,
         columns: Optional[int] = None,
         background_color: Tuple[int, int, int] = (255, 255, 255),
+        legend_position: str = "right",
         **kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -1207,6 +1208,7 @@ class HighlightingService:
                     width=width,
                     labels=labels,
                     label_format=label_format,
+                    legend_position=legend_position,
                     spec_index=spec_idx,
                     **kwargs,
                 )
@@ -1246,6 +1248,7 @@ class HighlightingService:
         width: Optional[int],
         labels: bool,
         label_format: Optional[str],
+        legend_position: str,
         spec_index: int,
         **kwargs,
     ) -> Optional[Image.Image]:
@@ -1298,7 +1301,66 @@ class HighlightingService:
                 labels=labels,
                 label_format=label_format,
                 spec_index=spec_index,
+                crop_offset=spec.crop_bbox[:2] if spec.crop_bbox else None,  # Pass crop offset
             )
+
+            # Add legend or colorbar if labels are enabled
+            if labels:
+                # Import visualization functions
+                from natural_pdf.utils.visualization import (
+                    create_colorbar,
+                    create_legend,
+                    merge_images_with_legend,
+                )
+
+                # Check if we have quantitative metadata (for colorbar)
+                quantitative_metadata = None
+                for highlight_data in spec.highlights:
+                    if (
+                        "quantitative_metadata" in highlight_data
+                        and highlight_data["quantitative_metadata"]
+                    ):
+                        quantitative_metadata = highlight_data["quantitative_metadata"]
+                        break
+
+                if quantitative_metadata:
+                    # Create colorbar for quantitative data
+                    try:
+                        colorbar = create_colorbar(
+                            values=quantitative_metadata["values"],
+                            colormap=quantitative_metadata["colormap"],
+                            bins=quantitative_metadata["bins"],
+                            orientation=(
+                                "horizontal" if legend_position in ["top", "bottom"] else "vertical"
+                            ),
+                        )
+                        page_image = merge_images_with_legend(
+                            page_image, colorbar, position=legend_position
+                        )
+                        logger.debug(
+                            f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' in spec {spec_index}."
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to create colorbar for spec {spec_index}: {e}")
+                        # Fall back to regular legend
+                        quantitative_metadata = None
+
+                if not quantitative_metadata:
+                    # Create regular categorical legend
+                    spec_labels = {
+                        hl.get("label"): hl.get("color")
+                        for hl in spec.highlights
+                        if hl.get("label") and hl.get("color")
+                    }
+                    if spec_labels:
+                        legend = create_legend(spec_labels)
+                        if legend:
+                            page_image = merge_images_with_legend(
+                                page_image, legend, position=legend_position
+                            )
+                            logger.debug(
+                                f"Added legend with {len(spec_labels)} labels for spec {spec_index}."
+                            )
 
         return page_image
 
@@ -1342,6 +1404,7 @@ class HighlightingService:
         labels: bool,
         label_format: Optional[str],
         spec_index: int,
+        crop_offset: Optional[Tuple[float, float]] = None,
     ) -> Image.Image:
         """Apply highlights from a RenderSpec to an image."""
         # Convert to RGBA for transparency
@@ -1380,28 +1443,115 @@ class HighlightingService:
                 # Generate label from format
                 label = label_format.format(index=idx, spec_index=spec_index, total=len(highlights))
 
+            # Calculate offset for cropped images
+            offset_x = 0
+            offset_y = 0
+            if crop_offset:
+                offset_x = crop_offset[0] * scale_factor
+                offset_y = crop_offset[1] * scale_factor
+
             # Draw the highlight
             if polygon:
-                # Scale polygon points
-                scaled_polygon = [(p[0] * scale_factor, p[1] * scale_factor) for p in polygon]
+                # Scale polygon points and apply offset
+                scaled_polygon = [
+                    (p[0] * scale_factor - offset_x, p[1] * scale_factor - offset_y)
+                    for p in polygon
+                ]
                 draw.polygon(
                     scaled_polygon, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
             else:
-                # Scale bbox
+                # Scale bbox and apply offset
                 x0, y0, x1, y1 = bbox
                 scaled_bbox = [
-                    x0 * scale_factor,
-                    y0 * scale_factor,
-                    x1 * scale_factor,
-                    y1 * scale_factor,
+                    x0 * scale_factor - offset_x,
+                    y0 * scale_factor - offset_y,
+                    x1 * scale_factor - offset_x,
+                    y1 * scale_factor - offset_y,
                 ]
                 draw.rectangle(
                     scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
 
+                # Draw attributes if present
+                attributes_to_draw = highlight_dict.get("attributes_to_draw")
+                if attributes_to_draw and scaled_bbox:
+                    self._draw_spec_attributes(draw, attributes_to_draw, scaled_bbox, scale_factor)
+
         # Composite overlay onto image
         return Image.alpha_composite(image, overlay)
+
+    def _draw_spec_attributes(
+        self,
+        draw: ImageDraw.Draw,
+        attributes: Dict[str, Any],
+        bbox_scaled: List[float],
+        scale_factor: float,
+    ) -> None:
+        """Draw attribute key-value pairs on the highlight."""
+        try:
+            # Slightly larger font, scaled
+            font_size = max(10, int(8 * scale_factor))
+            # Try to load a font
+            try:
+                font = ImageFont.truetype("Arial.ttf", font_size)
+            except IOError:
+                try:
+                    font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+                except IOError:
+                    font = ImageFont.load_default()
+                    font_size = 10  # Reset size for default font
+        except Exception:
+            font = ImageFont.load_default()
+            font_size = 10
+
+        line_height = font_size + int(4 * scale_factor)  # Scaled line spacing
+        bg_padding = int(3 * scale_factor)
+        max_width = 0
+        text_lines = []
+
+        # Format attribute lines
+        for name, value in attributes.items():
+            if isinstance(value, float):
+                value_str = f"{value:.2f}"  # Format floats
+            else:
+                value_str = str(value)
+            line = f"{name}: {value_str}"
+            text_lines.append(line)
+            try:
+                # Calculate max width for background box
+                max_width = max(max_width, draw.textlength(line, font=font))
+            except AttributeError:
+                # Fallback for older PIL versions
+                bbox = draw.textbbox((0, 0), line, font=font)
+                max_width = max(max_width, bbox[2] - bbox[0])
+
+        if not text_lines:
+            return  # Nothing to draw
+
+        total_height = line_height * len(text_lines)
+
+        # Position near top-right corner with padding
+        x = bbox_scaled[2] - int(2 * scale_factor) - max_width
+        y = bbox_scaled[1] + int(2 * scale_factor)
+
+        # Draw background rectangle (semi-transparent white)
+        bg_x0 = x - bg_padding
+        bg_y0 = y - bg_padding
+        bg_x1 = x + max_width + bg_padding
+        bg_y1 = y + total_height + bg_padding
+        draw.rectangle(
+            [bg_x0, bg_y0, bg_x1, bg_y1],
+            fill=(255, 255, 255, 240),
+            outline=(0, 0, 0, 180),  # Light black outline
+            width=1,
+        )
+
+        # Draw text lines (black)
+        current_y = y
+        for line in text_lines:
+            draw.text((x, current_y), line, fill=(0, 0, 0, 255), font=font)
+            current_y += line_height
 
     def _stack_images(
         self,
