@@ -2327,9 +2327,9 @@ page.find_all('text').show(group_by='size', bins=[8, 12, 16])  # Small/medium/la
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jupyter-widgets jp-OutputArea-output" id="63fbd68d-d470-4e1e-995a-3c885c8d9968" tabindex="0">
+<div class="jupyter-widgets jp-OutputArea-output" id="443a30cf-2a05-4beb-9335-bdde8b274e18" tabindex="0">
 <script type="text/javascript">
-var element = document.getElementById('63fbd68d-d470-4e1e-995a-3c885c8d9968');
+var element = document.getElementById('443a30cf-2a05-4beb-9335-bdde8b274e18');
 </script>
 <script type="application/vnd.jupyter.widget-view+json">
 {"model_id": "b2162b207701452da8e376503eb4379d", "version_major": 2, "version_minor": 0}
@@ -2812,13 +2812,13 @@ page.find_all('text').show(group_by='style_label')</div>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="n">lines</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">'line'</span><span class="p">)</span>
-<span class="n">lines</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">include_attrs</span><span class="o">=</span><span class="p">[</span><span class="s1">'width'</span><span class="p">,</span> <span class="s1">'color'</span><span class="p">],</span> <span class="n">width</span><span class="o">=</span><span class="mi">700</span><span class="p">)</span>
+<span class="n">lines</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="p">[</span><span class="s1">'width'</span><span class="p">,</span> <span class="s1">'color'</span><span class="p">],</span> <span class="n">width</span><span class="o">=</span><span class="mi">700</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-10">pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 
 lines = page.find_all('line')
-lines.show(include_attrs=['width', 'color'], width=700)</div>
+lines.show(annotate=['width', 'color'], width=700)</div>
 </div>
 </div>
 </div>
