@@ -42,12 +42,11 @@ right_of_title = title.right(width=200)
 above_title = title.above(height=50)
 
 # Visualize these regions
-page.clear_highlights()
-below_title.highlight(color="green", label="Below")
-right_of_title.highlight(color="red", label="Right")
-above_title.highlight(color="orange", label="Above")
-
-page.show()
+with page.highlights() as h:
+    h.add(below_title, color="green", label="Below")
+    h.add(right_of_title, color="red", label="Right")
+    h.add(above_title, color="orange", label="Above")
+    h.show()
 ```
 
 ```python
@@ -90,11 +89,10 @@ expanded_region = tight_region.expand(
 )
 
 # Visualize both regions
-page.clear_highlights()
-tight_region.highlight(color="red", label="Original")
-expanded_region.highlight(color="blue", label="Expanded")
-
-page.show()
+with page.highlights() as h:
+    h.add(tight_region, color="red", label="Original")
+    h.add(expanded_region, color="blue", label="Expanded")
+    h.show()
 ```
 
 ## Creating Bounded Regions

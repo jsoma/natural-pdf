@@ -151,18 +151,24 @@ data = page.extract(schema=Invoice, client=client).extracted()
 
 ### Highlighting
 ```py
-elements.highlight(color="red")                 # Simple highlight
-elements.highlight(color="blue", label="Headers") # With label
-elements.highlight(group_by='type')             # Color by type
-page.clear_highlights()                         # Remove highlights
+# Simple visualization
+elements.show(color="red")                      # Single collection
+elements.show(color="blue", label="Headers")    # With label
+elements.show(group_by='type')                  # Color by type
+
+# Multiple collections together
+with page.highlights() as h:
+    h.add(elements1, color="red", label="Type 1")
+    h.add(elements2, color="blue", label="Type 2")
+    h.show()
 ```
 
 ### Viewing
 ```py
 page.show()                                     # Show page with highlights
 element.show()                                  # Show specific element
-page.to_image(width=700)                        # Generate image
-region.to_image(crop=True)                 # Crop to region only
+page.show(width=700)                        # Generate image
+region.show(crop=True)                 # Crop to region only
 ```
 
 ### Interactive Viewer
@@ -276,7 +282,7 @@ exporter.export(pdf, "searchable.pdf")
 
 ## Next Steps
 
-- **New to Natural PDF?** → Start with [Installation](../installation/) 
+- **New to Natural PDF?** → Start with [Installation](../installation/)
 - **Learning the basics?** → Follow the [Tutorials](../tutorials/)
 - **Solving specific problems?** → Check the how-to guides
-- **Need detailed info?** → See the [API Reference](../api/) 
+- **Need detailed info?** → See the [API Reference](../api/)

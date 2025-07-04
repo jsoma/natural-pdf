@@ -26,17 +26,14 @@ summary_elements = start_marker.below(
     until="line[height > 1]"
 )
 
-# Visualize the elements found in this block
-summary_elements.highlight(color="lightgreen", label="Summary Block")
-
 # Extract and display the text from the collection of summary elements
 summary_elements.extract_text()
 
 ```
 
 ```python
-# Display the page image to see the visualization
-page.show()
+# Visualize the elements found in this block
+summary_elements.show(color="lightgreen", label="Summary Block")
 ```
 
 This selects the elements using `.below(until=...)` and extracts their text. The second code block displays the page image with the visualized section.

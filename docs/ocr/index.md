@@ -109,26 +109,43 @@ See what the OCR engine actually found:
 ocr_elements = page.apply_ocr()
 
 # Color-code by confidence level
-for element in ocr_elements:
-    if element.confidence >= 0.8:
-        color = "green"     # High confidence
-    elif element.confidence >= 0.5:
-        color = "yellow"    # Medium confidence  
-    else:
-        color = "red"       # Low confidence
-        
-    element.highlight(color=color, label=f"OCR ({element.confidence:.2f})")
+with page.highlights() as h:
+    for element in ocr_elements:
+        if element.confidence >= 0.8:
+            color = "green"     # High confidence
+        elif element.confidence >= 0.5:
+            color = "yellow"    # Medium confidence
+        else:
+            color = "red"       # Low confidence
 
-# Show the results
-page.to_image()
+        h.add(element, color=color, label=f"OCR ({element.confidence:.2f})")
+    h.show()
 ```
+
+## Visualizing OCR Confidence with Gradient Colors
+
+Natural PDF can automatically detect when you're working with quantitative data (like confidence scores) and use gradient colors instead of categorical colors:
 
 ```python
-# Or just highlight the good stuff
-high_conf = page.find_all('text[source=ocr][confidence>=0.8]')
-high_conf.highlight(color="green", label="High Confidence OCR")
-page.to_image()
+# Get OCR elements
+ocr_elements = page.apply_ocr()
+
+# Visualize confidence scores with gradient colors
+ocr_elements.show(group_by='confidence')
+
+# Try different colormaps for better contrast
+ocr_elements.show(group_by='confidence', color='plasma')    # Purple to yellow
+ocr_elements.show(group_by='confidence', color='viridis')   # Blue to yellow
+ocr_elements.show(group_by='confidence', color='coolwarm')  # Blue to red
+
+# Focus on problematic areas (low confidence)
+ocr_elements.show(group_by='confidence', bins=[0, 0.5])     # Only show 0-0.5 range
+
+# Create meaningful confidence bands
+ocr_elements.show(group_by='confidence', bins=[0, 0.3, 0.7, 1.0])  # Poor/OK/Good
 ```
+
+This makes it much easier to spot problematic OCR results at a glance compared to manual color coding. You'll automatically get a color scale showing the confidence range instead of a discrete legend.
 
 ## Advanced: Local Detection + LLM Cleanup
 
@@ -146,21 +163,21 @@ page.apply_ocr('paddle', resolution=120, detect_only=True)
 
 # Step 2: Set up LLM for cleanup
 client = openai.OpenAI(
-    base_url="https://api.anthropic.com/v1/",  
+    base_url="https://api.anthropic.com/v1/",
     api_key='your-api-key-here'
 )
 
-prompt = """OCR this image. Return only the exact text from the image. 
+prompt = """OCR this image. Return only the exact text from the image.
 Include misspellings, punctuation, etc. Do not add quotes or comments.
 The text is from a Greek spreadsheet, so expect Modern Greek or numbers."""
 
 # Step 3: Define cleanup function
 def correct(region):
     return direct_ocr_llm(
-        region, 
-        client, 
-        prompt=prompt, 
-        resolution=300, 
+        region,
+        client,
+        prompt=prompt,
+        resolution=300,
         model="claude-3-5-haiku-20241022"
     )
 
@@ -177,7 +194,7 @@ Natural PDF includes a web app for reviewing and correcting OCR results:
 1. **Package your PDF data:**
    ```python
    from natural_pdf.utils.packaging import create_correction_task_package
-   
+
    # After running OCR on your PDF
    create_correction_task_package(pdf, "correction_package.zip", overwrite=True)
    ```
@@ -189,7 +206,7 @@ If you're a crazy person, alternatively you can do it locally like this:
    ```bash
    # Find where Natural PDF is installed
    NATURAL_PDF_PATH=$(python -c "import site; print(site.getsitepackages()[0])")/natural_pdf
-   
+
    # Start the web server
    cd $NATURAL_PDF_PATH/templates/spa
    python -m http.server 8000

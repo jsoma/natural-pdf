@@ -38,7 +38,7 @@ mid_region = page.create_region(
 )
 
 # Highlight the region to see it
-mid_region.highlight(color="blue").show()
+mid_region.show(color="blue")
 ```
 
 ### Using Element Methods: `above()`, `below()`, `left()`, `right()`
@@ -52,11 +52,12 @@ heading = page.find('text[size>=12]:bold')
 # Create a region below this heading element
 if heading:
     region_below = heading.below()
-    
+
     # Highlight the heading and the region below it
-    heading.highlight(color="red")
-    region_below.highlight(color="blue")
-    page.show()
+    with page.highlights() as h:
+        h.add(heading, color="red")
+        h.add(region_below, color="blue")
+        h.show()
 ```
 
 ```python
@@ -64,11 +65,11 @@ if heading:
 if heading:
     # Only include 100px below the heading
     small_region_below = heading.below(height=100)
-    
-    page.clear_highlights()
-    heading.highlight(color="red")
-    small_region_below.highlight(color="green")
-    page.show()
+
+    with page.highlights() as h:
+        h.add(heading, color="red")
+        h.add(small_region_below, color="green")
+        h.show()
 ```
 
 ```python
@@ -77,11 +78,11 @@ line = page.find('line')
 if line:
     # Create a region above the line
     region_above = line.above()
-    
-    page.clear_highlights()
-    line.highlight(color="black")
-    region_above.highlight(color="purple")
-    page.show()
+
+    with page.highlights() as h:
+        h.add(line, color="black")
+        h.add(region_above, color="purple")
+        h.show()
 ```
 
 ### Creating a Region Between Elements with `until()`
@@ -94,13 +95,13 @@ next_heading = first_heading.next('text[size>=11]:bold') if first_heading else N
 if first_heading and next_heading:
     # Create a region from the first heading until the next heading
     section = first_heading.below(until=next_heading, include_endpoint=False)
-    
+
     # Highlight both elements and the region between them
-    page.clear_highlights()
-    first_heading.highlight(color="red")
-    next_heading.highlight(color="red")
-    section.highlight(color="yellow")
-    page.show()
+    with page.highlights() as h:
+        h.add(first_heading, color="red")
+        h.add(next_heading, color="red")
+        h.add(section, color="yellow")
+        h.show()
 ```
 
 ### Jump to the enclosing area with `parent()`
@@ -143,15 +144,13 @@ title = page.find('text:contains("Site")')  # Adjust if needed
 if title:
     # Create a region from title down to the next bold text
     content_region = title.below(until='line:horizontal', include_endpoint=False)
-    
+
     # Extract text from just this region
     region_text = content_region.extract_text()
-    
+
     # Show the region and the extracted text
-    page.clear_highlights()
-    content_region.highlight(color="green")
-    page.show()
-    
+    content_region.show(color="green")
+
     # Displaying the text (first 300 chars if long)
     print(region_text[:300] + "..." if len(region_text) > 300 else region_text)
 ```
@@ -163,9 +162,9 @@ You can use a region as a "filter" to only find elements within its boundaries.
 ```python
 # Create a region in an interesting part of the page
 test_region = page.create_region(
-    x0=page.width * 0.1, 
-    top=page.height * 0.25, 
-    x1=page.width * 0.9, 
+    x0=page.width * 0.1,
+    top=page.height * 0.25,
+    x1=page.width * 0.9,
     bottom=page.height * 0.75
 )
 
@@ -173,10 +172,10 @@ test_region = page.create_region(
 text_in_region = test_region.find_all('text')
 
 # Display result
-page.clear_highlights()
-test_region.highlight(color="blue")
-text_in_region.highlight(color="red")
-page.show()
+with page.highlights() as h:
+    h.add(test_region, color="blue")
+    h.add(text_in_region, color="red")
+    h.show()
 
 len(text_in_region)  # Number of text elements found in region
 ```
@@ -187,14 +186,14 @@ len(text_in_region)  # Number of text elements found in region
 # Find a specific region to capture
 # (Could be a table, figure, or any significant area)
 region_for_image = page.create_region(
-    x0=100, 
+    x0=100,
     top=150,
     x1=page.width - 100,
     bottom=300
 )
 
 # Generate an image of just this region
-region_for_image.to_image(crop=True)  # Shows just the region
+region_for_image.show(crop=True)  # Shows just the region
 ```
 
 ### Adjust and Expand Regions
@@ -207,10 +206,10 @@ region_a = page.create_region(200, 200, 400, 400)
 expanded = region_a.expand(left=20, right=20, top=20, bottom=20)
 
 # Visualize original and expanded regions
-page.clear_highlights()
-region_a.highlight(color="blue", label="Original")
-expanded.highlight(color="red", label="Expanded")
-page.to_image()
+with page.highlights() as h:
+    h.add(region_a, color="blue", label="Original")
+    h.add(expanded, color="red", label="Expanded")
+    h.show()
 ```
 
 ## Using Exclusion Zones with Regions
@@ -235,9 +234,7 @@ header_zone = page.create_region(0, 0, page.width, page.height * 0.1)
 page.add_exclusion(header_zone)
 
 # Visualize the exclusion
-page.clear_highlights()
-header_zone.highlight(color="red", label="Excluded")
-page.show()
+header_zone.show(color="red", label="Excluded")
 ```
 
 ```python
@@ -302,7 +299,7 @@ print(f"Found {len(detected_regions)} layout regions")
 
 ```python
 # Highlight all detected regions by type
-detected_regions.highlight(group_by='region_type').show()
+detected_regions.show(group_by='region_type')
 ```
 
 ```python

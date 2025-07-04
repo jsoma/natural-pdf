@@ -4,8 +4,8 @@ Sometimes it's hard to understand what's happening when working with PDFs. Natur
 
 ## Quick Visualization with `.show()`
 
-The **fastest** way to see what you have selected is to call `.show()` on the element (or collection/region) that you receive.  
-Unlike `.highlight()` this does **not** persist anything on the page – it simply returns a `PIL.Image` with temporary highlights that you can display right away.
+The **fastest** way to see what you have selected is to call `.show()` on the element (or collection/region) that you receive.
+This simply returns a `PIL.Image` with highlights that you can display right away.
 
 ```python
 from natural_pdf import PDF
@@ -25,11 +25,35 @@ region_below.show(crop=True)
 page.find_all('text, rect, line').show(group_by='type')
 ```
 
-Need a prettier image for an article or report? `.show()` accepts the same keyword arguments as `.highlight()` (`color`, `label`, `group_by`, `include_attrs`, …) so you can style the output exactly the way you like without leaving any permanent marks on the page.
+## Visualizing Quantitative Data
 
-**Tip – `crop=True`**  
+Natural PDF automatically detects when you're working with quantitative data (like confidence scores, sizes, or coordinates) and uses gradient colors instead of categorical colors:
 
-Pass `crop=True` to `.show()` (or `.to_image()`) when you want the *smallest* image that still contains all of the selected elements/region.  
+```python
+# After applying OCR, visualize confidence scores with gradient colors
+page.apply_ocr()
+page.find_all('text[source=ocr]').show(group_by='confidence')
+
+# Visualize font sizes with gradient colors
+page.find_all('text').show(group_by='size')
+
+# Use different colormaps for better visualization
+page.find_all('text').show(group_by='size', color='plasma')    # Purple to yellow
+page.find_all('text').show(group_by='size', color='viridis')   # Blue to yellow
+page.find_all('text').show(group_by='size', color='coolwarm')  # Blue to red
+
+# Focus on specific ranges
+page.find_all('text').show(group_by='size', bins=[8, 14])      # Only sizes 8-14
+page.find_all('text').show(group_by='size', bins=[8, 12, 16])  # Small/medium/large
+```
+
+This makes it easy to spot patterns in your data - like identifying all the large headings or low-confidence OCR results.
+
+**Note:** When using quantitative data, you'll automatically get a color scale/bar instead of a discrete legend, showing the continuous mapping from values to colors.
+
+**Tip – `crop=True`**
+
+Pass `crop=True` to `.show()` (or `.render()`) when you want the *smallest* image that still contains all of the selected elements/region.
 This works for both `Region` objects and regular `ElementCollection`s – perfect for quickly zooming into the exact area you're debugging.
 
 ```python
@@ -37,9 +61,9 @@ This works for both `Region` objects and regular `ElementCollection`s – perfec
 page.find_all('text:bold').show(crop=True)
 ```
 
-## Adding Persistent Highlights
+## Adding Multiple Highlights
 
-Use the `.highlight()` method on `Element` or `ElementCollection` objects to add persistent highlights to a page. These highlights are stored and will appear when viewing the page later.
+Use the context manager pattern with `page.highlights()` to show multiple groups of elements together in a single image. This is perfect when you want to visualize different types of elements with different colors and labels.
 
 ```python
 from natural_pdf import PDF
@@ -47,54 +71,53 @@ from natural_pdf import PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
-# Find a specific element and add a persistent highlight
-page.find_all('text:contains("Summary")').highlight()
-page.find_all('text:contains("Date")').highlight()
-page.find_all('line').highlight()
-page.to_image(width=700)
+# Find different types of elements
+summary_elements = page.find_all('text:contains("Summary")')
+date_elements = page.find_all('text:contains("Date")')
+line_elements = page.find_all('line')
+
+with page.highlights() as h:
+    h.add(summary_elements, label='Summary')
+    h.add(date_elements, label='Date')
+    h.add(line_elements, label='Lines')
+    h.show()
 ```
 
-## Customizing Persistent Highlights
+## Customizing Multiple Highlights
 
-Customize the appearance of persistent highlights added with `.highlight()`:
+Customize the appearance of multiple highlights using the context manager:
 
 ```python
-page.clear_highlights()
-
 title = page.find('text:bold[size>=12]')
-
-# Highlight with a specific color (string name, hex, or RGB/RGBA tuple)
-# title.highlight(color=(1, 0, 0, 0.3))  # Red with 30% opacity
-# title.highlight(color="#FF0000")        # Hex color
-title.highlight(color="red")           # Color name
-
 text = page.find('text:contains("Critical")')
-
-# Add a label to the highlight (appears in legend)
-text.highlight(label="Critical")
-
-# Combine color and label
 rect = page.find('rect')
-rect.highlight(color=(0, 0, 1, 0.2), label="Box")
 
-page.to_image(width=700)
+with page.highlights() as h:
+    h.add(title, color="red", label="Title")           # Color name
+    # h.add(title, color="#FF0000", label="Title")        # Hex color
+
+    # Add a label to the highlight (appears in legend)
+    h.add(text, label="Critical")
+
+    # Combine color and label
+    h.add(rect, color=(0, 0, 1), label="Box")
+
+    h.show()
 ```
 
-## Highlighting Multiple Elements
+## Highlighting Multiple Collections
 
-Highlighting an `ElementCollection` applies the highlight to all elements within it. By default, all elements in the collection get the same color and a label based on their type.
+Adding an `ElementCollection` to the context manager applies the highlight to all elements within it. This is great for comparing different types of elements on the same page.
 
 ```python
-# Find and highlight all headings with a single color/label
+# Find different types of elements
 headings = page.find_all('text[size>=14]:bold')
-headings.highlight(color=(0, 0.5, 0, 0.3), label="Headings")
-
-# Find and highlight all tables
 tables = page.find_all('region[type=table]')
-tables.highlight(color=(0, 0, 1, 0.2), label="Tables")
 
-# View the result
-page.viewer()
+with page.highlights() as h:
+    h.add(headings, color=(0, 0.5, 0, 0.3), label="Headings")
+    h.add(tables, color=(0, 0, 1, 0.2), label="Tables")
+    h.show()
 ```
 
 ## Viewing Regions
@@ -118,7 +141,7 @@ title = page.find('text:contains("Violations")')
 content = title.below(height=200)
 
 # Crop to the region
-content.to_image(crop=True, include_highlights=False)
+content.show(crop=True)
 ```
 
 ## Working with Text Styles
@@ -131,8 +154,6 @@ page.clear_highlights()
 
 page.analyze_text_styles()
 page.find_all('text').show(group_by='style_label')
-
-page.to_image(width=700)
 ```
 
 ## Displaying Attributes
@@ -143,26 +164,13 @@ You can display element attributes directly on the highlights:
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 page = pdf.pages[0]
 
-text = page.find_all('line')
-text.highlight(include_attrs=['width', 'color'])
-
-page.to_image(width=700)
+lines = page.find_all('line')
+lines.show(include_attrs=['width', 'color'], width=700)
 ```
 
 Does it get busy? YES.
 
-## Clearing Highlights
 
-You can clear persistent highlights from a page:
-
-```python
-# Clear all highlights on the page
-page.clear_highlights()
-
-# Apply new highlights
-page.find_all('text:bold').highlight(label="Bold Text")
-page.viewer()
-```
 
 ## Document QA Visualization
 
@@ -171,7 +179,7 @@ Visualize document QA results:
 ```python
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/0500000US42007.pdf")
 page = pdf.pages[0]
-page.to_image(width=700)
+page.show(width=700)
 ```
 
 ```python

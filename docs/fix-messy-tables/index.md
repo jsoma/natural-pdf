@@ -7,7 +7,7 @@ Your PDF has tables, but when you try to extract them, you get garbled data, mis
 PDF tables come in many flavors, and each one breaks in its own special way:
 
 - **No visible borders**: Text that looks like a table but has no lines
-- **Merged cells**: Headers that span multiple columns 
+- **Merged cells**: Headers that span multiple columns
 - **Inconsistent spacing**: Columns that don't line up perfectly
 - **Multiple tables**: Several tables crammed onto one page
 - **Rotated tables**: Tables turned sideways or upside down
@@ -47,7 +47,7 @@ page.analyze_layout(engine='tatr')
 # TATR understands rows, columns, and headers
 table = page.find('region[type=table][model=tatr]')
 rows = page.find_all('region[type=table-row][model=tatr]')
-cols = page.find_all('region[type=table-column][model=tatr]') 
+cols = page.find_all('region[type=table-column][model=tatr]')
 headers = page.find_all('region[type=table-column-header][model=tatr]')
 
 print(f"Found: {len(rows)} rows, {len(cols)} columns, {len(headers)} headers")
@@ -67,14 +67,13 @@ page.show()
 # Manually define the table region
 table_area = page.create_region(
     x0=50,      # Left edge of table
-    top=200,    # Top edge of table  
+    top=200,    # Top edge of table
     x1=550,     # Right edge of table
     bottom=400  # Bottom edge of table
 )
 
 # Highlight to verify
-table_area.highlight(color="blue", label="Table area")
-page.show()
+table_area.show(color="blue", label="Table area")
 
 # Extract from the defined area
 data = table_area.extract_table()
@@ -100,7 +99,7 @@ data = table_area.extract_table()
 
 ## Define Table Boundaries Using Header Labels
 
-Sometimes the easiest trick is to let the **column headers** tell you exactly where the table starts and ends.  
+Sometimes the easiest trick is to let the **column headers** tell you exactly where the table starts and ends.
 Here's a quick, self-contained approach that works great on the violations table inside `01-practice.pdf`:
 
 ```python
@@ -143,7 +142,7 @@ row_items.show()
 
 ```python
 options = {
-    "vertical_strategy": "explicit", 
+    "vertical_strategy": "explicit",
     "horizontal_strategy": "explicit",
     "explicit_vertical_lines": col_edges,
     "explicit_horizontal_lines": row_borders,
@@ -183,13 +182,14 @@ print(f"Found {len(tables)} tables")
 # Extract each table separately
 all_data = []
 for i, table in enumerate(tables):
-    # Show which table we're working on
-    table.highlight(color="red", label=f"Table {i+1}")
-    
     data = table.extract_table()
     all_data.append(data)
-    
-page.show()  # See all highlighted tables
+
+# Show all tables together
+with page.highlights() as h:
+    for i, table in enumerate(tables):
+        h.add(table, color="red", label=f"Table {i+1}")
+    h.show()
 
 # Save each table separately
 import pandas as pd
@@ -208,7 +208,7 @@ Some PDFs have sideways tables:
 page.analyze_layout(engine='yolo')
 tables = page.find_all('region[type=table]')
 
-# If the table appears rotated in the highlights, 
+# If the table appears rotated in the highlights,
 # the extraction might still work normally
 for table in tables:
     table.show()  # Check if this looks right
@@ -255,9 +255,10 @@ lines = table_area.find_all('line')
 print(f"Found {len(lines)} lines in table area")
 
 # Step 4: Visualize everything
-elements.highlight(color="blue", label="Text")
-lines.highlight(color="red", label="Lines")
-page.show()
+with page.highlights() as h:
+    h.add(elements, color="blue", label="Text")
+    h.add(lines, color="red", label="Lines")
+    h.show()
 ```
 
 ## Troubleshooting Checklist
@@ -285,7 +286,7 @@ page.show()
 **Multiple tables mixed together?**
 - Use layout detection to separate them first
 - Define manual regions for each table
-- Process tables in reading order 
+- Process tables in reading order
 
 ## Auto-ignore headers & footers with exclusions
 

@@ -138,7 +138,7 @@ current = table_heading
 for i in range(4):
     # Find the next row below the current one
     next_row = current.below(height=15)
-    
+
     if next_row:
         rows.append(next_row)
         current = next_row  # Move to the next row
@@ -146,9 +146,10 @@ for i in range(4):
         break
 
 # Visualize all found rows
-page.clear_highlights()
-for i, row in enumerate(rows):
-    row.highlight(label=f"Row {i+1}", use_color_cycling=True)
+with page.highlights() as h:
+    for i, row in enumerate(rows):
+        h.add(row, label=f"Row {i+1}")
+    h.show()
 ```
 
 ```python
@@ -160,7 +161,7 @@ for i, row in enumerate(rows):
 
 ```python
 # Find all potential field labels (text with a colon)
-labels = page.find_all('text:contains(":")') 
+labels = page.find_all('text:contains(":")')
 
 # Visualize the labels
 labels.show(color="blue", label="Labels")
@@ -171,14 +172,14 @@ field_data = {}
 for label in labels:
     # Clean up the label text
     key = label.text.strip().rstrip(':')
-    
+
     # Skip if not a proper label
     if not key:
         continue
-    
+
     # Get the value to the right
     value = label.right(width=200).extract_text().strip()
-    
+
     # Add to our collection
     field_data[key] = value
 

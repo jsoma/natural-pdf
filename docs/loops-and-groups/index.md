@@ -12,9 +12,9 @@ from natural_pdf import PDF
 # Path to sample PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta_Public_Schools_GA_sample.pdf")
 
-# Display the first page 
+# Display the first page
 page = pdf.pages[0]
-page.to_image(width=500)
+page.show(width=500)
 ```
 
 We can find all of the book titles by finding **(Removed:** on the page...

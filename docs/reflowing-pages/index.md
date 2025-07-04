@@ -12,7 +12,7 @@ from natural_pdf.flows import Flow
 
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/multicolumn.pdf")
 page = pdf.pages[0]
-page.to_image(width=500)
+page.show(width=500)
 ```
 
 We can grab individual columns from it.

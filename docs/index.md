@@ -47,7 +47,7 @@ clean_text = page.extract_text()
 Follow the tutorial series to learn Natural PDF systematically:
 
 1. [Loading and Basic Text Extraction](tutorials/01-loading-and-extraction.md)
-2. [Finding Specific Elements](tutorials/02-finding-elements.md) 
+2. [Finding Specific Elements](tutorials/02-finding-elements.md)
 3. [Extracting Content Blocks](tutorials/03-extracting-blocks.md)
 4. [Table Extraction](tutorials/04-table-extraction.md)
 5. [Excluding Unwanted Content](tutorials/05-excluding-content.md)
@@ -67,7 +67,7 @@ Follow the tutorial series to learn Natural PDF systematically:
 - **[Extract Clean Text Without Headers and Footers](extracting-clean-text/)** - Remove repeated content that's cluttering your text extraction
 - **[Getting Text from Scanned Documents](ocr/)** - Use OCR to extract text from image-based PDFs
 
-### Table Problems  
+### Table Problems
 - **[Fix Messy Table Extraction](fix-messy-tables/)** - Handle tables with no borders, merged cells, or poor alignment
 - **[Getting Tables Out of PDFs](tables/)** - Basic to advanced table extraction techniques
 
@@ -150,8 +150,8 @@ Use AI models to detect document structures like titles, paragraphs, and tables.
 page.analyze_layout()
 
 # Highlight titles and tables
-page.find_all('region[type=title]').highlight(color="purple")
-page.find_all('region[type=table]').highlight(color="blue")
+page.find_all('region[type=title]').show()
+page.find_all('region[type=table]').show()
 
 # Extract data from the first table
 table_data = page.find('region[type=table]').extract_table()

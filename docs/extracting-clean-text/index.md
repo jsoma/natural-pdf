@@ -7,7 +7,7 @@ You've got a PDF where you need the main content, but every page has headers, fo
 PDFs often have repeated content on every page that you don't want:
 
 - Company headers with logos and contact info
-- Page numbers and footers  
+- Page numbers and footers
 - "CONFIDENTIAL" watermarks
 - Navigation elements from web-to-PDF conversions
 
@@ -27,7 +27,7 @@ page = pdf.pages[0]
 header_region = page.create_region(0, 0, page.width, page.height * 0.1)
 page.add_exclusion(header_region)
 
-# Find and exclude footer (bottom 10% of page)  
+# Find and exclude footer (bottom 10% of page)
 footer_region = page.create_region(0, page.height * 0.9, page.width, page.height)
 page.add_exclusion(footer_region)
 
@@ -66,7 +66,7 @@ def exclude_header(page):
     return page.create_region(0, 0, page.width, 50)
 
 def exclude_footer(page):
-    # Bottom 30 points of every page  
+    # Bottom 30 points of every page
     return page.create_region(0, page.height - 30, page.width, page.height)
 
 def exclude_watermark(page):
@@ -76,7 +76,7 @@ def exclude_watermark(page):
 
 # Apply to entire PDF
 pdf.add_exclusion(exclude_header, label="Headers")
-pdf.add_exclusion(exclude_footer, label="Footers") 
+pdf.add_exclusion(exclude_footer, label="Footers")
 pdf.add_exclusion(exclude_watermark, label="Watermarks")
 
 # Extract clean text from any page
@@ -126,15 +126,16 @@ See what you're excluding before committing:
 header = page.create_region(0, 0, page.width, 50)
 footer = page.create_region(0, page.height - 30, page.width, page.height)
 
-header.highlight(color="red", label="Will exclude")
-footer.highlight(color="red", label="Will exclude") 
-
 # Show the page to verify
-page.show()
+header.show()
+footer.show()
 
 # If it looks right, apply the exclusions
 page.add_exclusion(header)
 page.add_exclusion(footer)
+
+# Review what it looks like
+page.show(exclusions='red')
 ```
 
 ## Compare Before and After
@@ -160,7 +161,7 @@ page.add_exclusion(page.create_region(0, 0, page.width, 80))
 page.add_exclusion(page.create_region(0, page.height - 40, page.width, page.height))
 ```
 
-### Academic Papers  
+### Academic Papers
 ```python
 # Remove running headers with paper title
 header = page.find('text[size<=10]').above() if page.find('text[size<=10]') else None
@@ -197,7 +198,7 @@ def smart_header_exclusion(page):
     # Look for common header patterns
     logo = page.find('image')
     company_name = page.find('text:contains("ACME Corp")')
-    
+
     if logo:
         return logo.above()
     elif company_name and company_name.top < page.height * 0.2:
@@ -208,7 +209,7 @@ def smart_header_exclusion(page):
 pdf.add_exclusion(smart_header_exclusion)
 ```
 
-- **Problem**: Need to preserve some header information  
+- **Problem**: Need to preserve some header information
 - **Solution**: Extract before excluding
 
 ```py
@@ -222,7 +223,7 @@ body_text = page.extract_text()
 ```
 
 ## Handling Right-to-left (Arabic, Hebrew) Text
-Natural-PDF now automatically detects bidirectional (RTL) lines and applies the Unicode **BiDi** algorithm when you call `page.extract_text()`.  
+Natural-PDF now automatically detects bidirectional (RTL) lines and applies the Unicode **BiDi** algorithm when you call `page.extract_text()`.
 This means the returned string is in *logical* reading order with brackets/parentheses correctly mirrored and Western digits left untouched.
 
 ```python
@@ -237,4 +238,4 @@ row = page.find("text:contains('الجريدة الرسمية')")
 raw = page.extract_text(bidi=False)
 ```
 
-> Tip: This RTL handling is line-aware, so mixed LTR/RTL documents (e.g. Arabic with English dates) still extract correctly without affecting Latin text on other pages. 
+> Tip: This RTL handling is line-aware, so mixed LTR/RTL documents (e.g. Arabic with English dates) still extract correctly without affecting Latin text on other pages.

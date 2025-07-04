@@ -34,6 +34,10 @@ _BASE_HIGHLIGHT_COLORS = [
 # Default Alpha for highlight fills
 DEFAULT_FILL_ALPHA = 100
 
+# Add quantitative color mapping functionality
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+
 
 class ColorManager:
     """
@@ -176,6 +180,187 @@ def create_legend(
     return legend
 
 
+def create_colorbar(
+    values: List[float],
+    colormap: str = "viridis",
+    bins: Optional[Union[int, List[float]]] = None,
+    width: int = 200,
+    height: int = 30,
+    orientation: str = "horizontal",
+) -> Image.Image:
+    """
+    Create a color bar for quantitative data visualization.
+
+    Args:
+        values: List of numeric values to create color bar for
+        colormap: Name of the matplotlib colormap to use
+        bins: Optional binning specification (int for equal bins, list for custom bins)
+        width: Width of the color bar
+        height: Height of the color bar
+        orientation: 'horizontal' or 'vertical'
+
+    Returns:
+        PIL Image with the color bar
+    """
+    import numpy as np
+
+    # Get value range
+    vmin = min(values)
+    vmax = max(values)
+
+    if vmin == vmax:
+        # Handle edge case where all values are the same
+        vmax = vmin + 1
+
+    # Create the colorbar image
+    if orientation == "horizontal":
+        bar_width = width - 60  # Leave space for labels
+        bar_height = height
+        total_width = width
+        total_height = height + 40  # Extra space for labels
+    else:
+        bar_width = width
+        bar_height = max(height, 100)  # Ensure minimum height for vertical colorbar
+        total_width = width + 60  # Extra space for labels
+        total_height = bar_height + 60  # Extra space for labels
+
+    # Create base image
+    img = Image.new("RGBA", (total_width, total_height), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Try to load a font
+    try:
+        font = ImageFont.truetype("DejaVuSans.ttf", 12)
+    except IOError:
+        try:
+            font = ImageFont.truetype("Arial.ttf", 12)
+        except IOError:
+            font = ImageFont.load_default()
+
+    # Draw the gradient bar
+    if orientation == "horizontal":
+        # Draw horizontal gradient
+        for x in range(bar_width):
+            # Calculate value at this position
+            value = vmin + (x / (bar_width - 1)) * (vmax - vmin)
+
+            # Get color for this value
+            rgb = get_colormap_color(colormap, value, vmin, vmax)
+            color = (*rgb, 255)
+
+            # Draw vertical line
+            draw.line([(x + 30, 10), (x + 30, 10 + bar_height)], fill=color, width=1)
+
+        # Draw border around bar
+        draw.rectangle(
+            [(30, 10), (30 + bar_width, 10 + bar_height)], outline=(0, 0, 0, 255), width=1
+        )
+
+        # Add value labels
+        if bins is not None:
+            # Show bin boundaries
+            if isinstance(bins, int):
+                # Equal-width bins
+                step = (vmax - vmin) / bins
+                tick_values = [vmin + i * step for i in range(bins + 1)]
+            else:
+                # Custom bins
+                tick_values = bins
+
+            for tick_val in tick_values:
+                if vmin <= tick_val <= vmax:
+                    x_pos = int(30 + (tick_val - vmin) / (vmax - vmin) * bar_width)
+                    # Draw tick mark
+                    draw.line(
+                        [(x_pos, 10 + bar_height), (x_pos, 10 + bar_height + 5)],
+                        fill=(0, 0, 0, 255),
+                        width=1,
+                    )
+                    # Draw label
+                    label_text = f"{tick_val:.2f}".rstrip("0").rstrip(".")
+                    text_bbox = draw.textbbox((0, 0), label_text, font=font)
+                    text_width = text_bbox[2] - text_bbox[0]
+                    draw.text(
+                        (x_pos - text_width // 2, 10 + bar_height + 8),
+                        label_text,
+                        fill=(0, 0, 0, 255),
+                        font=font,
+                    )
+        else:
+            # Show min and max values
+            # Min value
+            min_text = f"{vmin:.2f}".rstrip("0").rstrip(".")
+            draw.text((30, 10 + bar_height + 8), min_text, fill=(0, 0, 0, 255), font=font)
+
+            # Max value
+            max_text = f"{vmax:.2f}".rstrip("0").rstrip(".")
+            text_bbox = draw.textbbox((0, 0), max_text, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            draw.text(
+                (30 + bar_width - text_width, 10 + bar_height + 8),
+                max_text,
+                fill=(0, 0, 0, 255),
+                font=font,
+            )
+
+    else:  # vertical orientation
+        # Draw vertical gradient
+        for y in range(bar_height):
+            # Calculate value at this position (top = max, bottom = min)
+            value = vmax - (y / (bar_height - 1)) * (vmax - vmin)
+
+            # Get color for this value
+            rgb = get_colormap_color(colormap, value, vmin, vmax)
+            color = (*rgb, 255)
+
+            # Draw horizontal line
+            draw.line([(10, y + 30), (10 + bar_width, y + 30)], fill=color, width=1)
+
+        # Draw border around bar
+        draw.rectangle(
+            [(10, 30), (10 + bar_width, 30 + bar_height)], outline=(0, 0, 0, 255), width=1
+        )
+
+        # Add value labels
+        if bins is not None:
+            # Show bin boundaries
+            if isinstance(bins, int):
+                # Equal-width bins
+                step = (vmax - vmin) / bins
+                tick_values = [vmin + i * step for i in range(bins + 1)]
+            else:
+                # Custom bins
+                tick_values = bins
+
+            for tick_val in tick_values:
+                if vmin <= tick_val <= vmax:
+                    y_pos = int(30 + (vmax - tick_val) / (vmax - vmin) * bar_height)
+                    # Draw tick mark
+                    draw.line(
+                        [(10 + bar_width, y_pos), (10 + bar_width + 5, y_pos)],
+                        fill=(0, 0, 0, 255),
+                        width=1,
+                    )
+                    # Draw label
+                    label_text = f"{tick_val:.2f}".rstrip("0").rstrip(".")
+                    draw.text(
+                        (10 + bar_width + 8, y_pos - 6), label_text, fill=(0, 0, 0, 255), font=font
+                    )
+        else:
+            # Show min and max values
+            # Max value (top)
+            max_text = f"{vmax:.2f}".rstrip("0").rstrip(".")
+            draw.text((10 + bar_width + 8, 30 - 6), max_text, fill=(0, 0, 0, 255), font=font)
+
+            # Min value (bottom)
+            min_text = f"{vmin:.2f}".rstrip("0").rstrip(".")
+            draw.text(
+                (10 + bar_width + 8, 30 + bar_height - 6), min_text, fill=(0, 0, 0, 255), font=font
+            )
+
+    return img
+
+
 def merge_images_with_legend(
     image: Image.Image, legend: Image.Image, position: str = "right"
 ) -> Image.Image:
@@ -262,3 +447,182 @@ def render_plain_page(page, resolution):
     doc.close()
 
     return image
+
+
+def detect_quantitative_data(values: List[Any]) -> bool:
+    """
+    Detect if a list of values represents quantitative data suitable for gradient coloring.
+
+    Args:
+        values: List of attribute values from elements
+
+    Returns:
+        True if data appears to be quantitative, False otherwise
+    """
+    # Filter out None values
+    numeric_values = []
+    for v in values:
+        if v is not None:
+            try:
+                # Try to convert to float
+                numeric_values.append(float(v))
+            except (ValueError, TypeError):
+                # Not numeric, likely categorical
+                pass
+
+    # If we have fewer than 2 numeric values, treat as categorical
+    if len(numeric_values) < 2:
+        return False
+
+    # If more than 80% of values are numeric and we have >8 unique values, treat as quantitative
+    numeric_ratio = len(numeric_values) / len(values)
+    unique_values = len(set(numeric_values))
+
+    return numeric_ratio > 0.8 and unique_values > 8
+
+
+def get_colormap_color(
+    colormap_name: str, value: float, vmin: float, vmax: float
+) -> Tuple[int, int, int]:
+    """
+    Get a color from a matplotlib colormap based on a normalized value.
+
+    Args:
+        colormap_name: Name of the colormap ('viridis', 'plasma', etc.)
+        value: The value to map to a color
+        vmin: Minimum value in the data range
+        vmax: Maximum value in the data range
+
+    Returns:
+        RGB color tuple (0-255)
+    """
+    # Try to get the colormap from matplotlib
+    try:
+        cmap = cm.get_cmap(colormap_name)
+    except (ValueError, KeyError):
+        # Fallback to viridis if colormap doesn't exist
+        cmap = cm.get_cmap("viridis")
+
+    # Normalize value to [0, 1]
+    if vmax == vmin:
+        t = 0.0
+    else:
+        t = (value - vmin) / (vmax - vmin)
+
+    # Clamp to [0, 1]
+    t = max(0.0, min(1.0, t))
+
+    # Get RGBA color from matplotlib (values are 0-1)
+    rgba = cmap(t)
+
+    # Convert to 0-255 RGB
+    r = int(rgba[0] * 255)
+    g = int(rgba[1] * 255)
+    b = int(rgba[2] * 255)
+
+    return (r, g, b)
+
+
+def apply_bins_to_values(
+    values: List[float], bins: Union[int, List[float]]
+) -> Tuple[List[str], List[float]]:
+    """
+    Apply binning to quantitative values.
+
+    Args:
+        values: List of numeric values
+        bins: Either number of bins (int) or list of bin edges (List[float])
+
+    Returns:
+        Tuple of (bin_labels, bin_values) where bin_values are the centers of bins
+    """
+    if isinstance(bins, int):
+        # Equal-width bins
+        min_val = min(values)
+        max_val = max(values)
+        bin_edges = [min_val + i * (max_val - min_val) / bins for i in range(bins + 1)]
+    else:
+        # Custom bin edges
+        bin_edges = sorted(bins)
+
+    # Create bin labels and centers
+    bin_labels = []
+    bin_centers = []
+    for i in range(len(bin_edges) - 1):
+        start = bin_edges[i]
+        end = bin_edges[i + 1]
+        bin_labels.append(f"{start:.2f}-{end:.2f}")
+        bin_centers.append((start + end) / 2)
+
+    return bin_labels, bin_centers
+
+
+def create_quantitative_color_mapping(
+    values: List[Any], colormap: str = "viridis", bins: Optional[Union[int, List[float]]] = None
+) -> Dict[Any, Tuple[int, int, int, int]]:
+    """
+    Create a color mapping for quantitative data using matplotlib colormaps.
+
+    Args:
+        values: List of values to map to colors
+        colormap: Name of any matplotlib colormap (e.g., 'viridis', 'plasma', 'inferno',
+                 'magma', 'coolwarm', 'RdBu', 'tab10', etc.). See matplotlib.cm for full list.
+        bins: Optional binning specification (int for equal-width bins, list for custom bins)
+
+    Returns:
+        Dictionary mapping values to RGBA colors
+    """
+    # Convert to numeric values, filtering out None/non-numeric
+    numeric_values = []
+    value_to_numeric = {}
+
+    for v in values:
+        if v is not None:
+            try:
+                numeric_val = float(v)
+                numeric_values.append(numeric_val)
+                value_to_numeric[v] = numeric_val
+            except (ValueError, TypeError):
+                pass
+
+    if not numeric_values:
+        # Fallback to categorical if no numeric values
+        return {}
+
+    # Determine min/max for normalization
+    vmin = min(numeric_values)
+    vmax = max(numeric_values)
+
+    # Apply binning if specified
+    if bins is not None:
+        bin_labels, bin_centers = apply_bins_to_values(numeric_values, bins)
+        # Create mapping from original values to bin centers
+        result = {}
+        for orig_val, numeric_val in value_to_numeric.items():
+            # Find which bin this value belongs to
+            if isinstance(bins, int):
+                bin_width = (vmax - vmin) / bins
+                bin_idx = min(int((numeric_val - vmin) / bin_width), bins - 1)
+            else:
+                bin_idx = 0
+                for i, edge in enumerate(bins[1:], 1):
+                    if numeric_val <= edge:
+                        bin_idx = i - 1
+                        break
+                else:
+                    bin_idx = len(bins) - 2
+
+            # Get color for this bin center
+            bin_center = bin_centers[bin_idx]
+            rgb = get_colormap_color(colormap, bin_center, vmin, vmax)
+            result[orig_val] = (*rgb, DEFAULT_FILL_ALPHA)
+
+        return result
+    else:
+        # Continuous gradient mapping
+        result = {}
+        for orig_val, numeric_val in value_to_numeric.items():
+            rgb = get_colormap_color(colormap, numeric_val, vmin, vmax)
+            result[orig_val] = (*rgb, DEFAULT_FILL_ALPHA)
+
+        return result

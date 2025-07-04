@@ -12,7 +12,7 @@ from natural_pdf import PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
-page.to_image(width=700)
+page.show(width=700)
 ```
 
 ## Running Basic Layout Analysis
@@ -38,12 +38,11 @@ f"First region: type='{first_region.type}', confidence={first_region.confidence:
 
 ## Visualizing Detected Layout
 
-Use `highlight()` or `show()` on the detected regions.
+Use `show()` on the detected regions.
 
 ```python
 # Highlight all detected regions, colored by type
-regions.highlight(group_by='type')
-page.to_image(width=700)
+regions.show(group_by='type', width=700)
 ```
 
 ## Finding Specific Region Types
@@ -83,8 +82,7 @@ page.clear_detected_layout_regions()
 page.clear_highlights()
 
 page.analyze_layout(engine="paddle")
-page.find_all('region[model=paddle]').highlight(group_by='region_type')
-page.to_image(width=700)
+page.find_all('region[model=paddle]').show(group_by='region_type', width=700)
 ```
 
 ```python
@@ -93,8 +91,7 @@ page.clear_detected_layout_regions()
 page.clear_highlights()
 
 page.analyze_layout(engine="tatr")
-page.find_all('region[model=tatr]').highlight(group_by='region_type')
-page.to_image(width=700)
+page.find_all('region[model=tatr]').show(group_by='region_type', width=700)
 ```
 
 ```python
@@ -107,7 +104,7 @@ page.to_image(width=700)
 # page.clear_highlights()
 
 # page.analyze_layout(engine="docling")
-# page.find_all('region[model=docling]').highlight(group_by='region_type')
+# page.find_all('region[model=docling]').show(group_by='region_type')
 # page.to_image(width=700)
 ```
 
@@ -117,11 +114,10 @@ page.clear_detected_layout_regions()
 page.clear_highlights()
 
 page.analyze_layout(engine="surya")
-page.find_all('region[model=surya]').highlight(group_by='region_type')
-page.to_image(width=700)
+page.find_all('region[model=surya]').show(group_by='region_type', width=700)
 ```
 
-*Note: Calling `analyze_layout` multiple times (even with the same engine) can add duplicate regions. You might want to use `page.clear_detected_layout_regions()` first, or filter by model using `region[model=yolo]`.* 
+*Note: Calling `analyze_layout` multiple times (even with the same engine) can add duplicate regions. You might want to use `page.clear_detected_layout_regions()` first, or filter by model using `region[model=yolo]`.*
 
 ## Controlling Confidence Threshold
 
@@ -147,8 +143,7 @@ page.clear_detected_layout_regions()
 page.clear_highlights()
 
 page.analyze_layout(engine="tatr")
-page.find_all('region[model=tatr]').highlight(group_by='region_type')
-page.to_image(width=700)
+page.find_all('region[model=tatr]').show(group_by='region_type', width=700)
 ```
 
 ```python

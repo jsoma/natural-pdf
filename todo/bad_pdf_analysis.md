@@ -5,7 +5,7 @@
 
 **Currently misplaced folders that should probably be in `bad_pdf_analysis/`:**
 - `test_enhanced/`
-- `test_final/` 
+- `test_final/`
 - `test_fix/`
 - `test_models/`
 
@@ -14,44 +14,44 @@ These appear to be related to the PDF analysis project and should be organized p
 ## High Priority Development Tasks
 
 ### 1. Text Formatting Detection (HIGH IMPACT)
-**Pattern**: Text formatting (underlines, strikethroughs) stored as separate `rect` or `line` elements  
-**Examples**: Georgia legislature bills, legal documents with change markup  
-**Gap**: No association between visual formatting elements and text content  
-**Approach**: 
+**Pattern**: Text formatting (underlines, strikethroughs) stored as separate `rect` or `line` elements
+**Examples**: Georgia legislature bills, legal documents with change markup
+**Gap**: No association between visual formatting elements and text content
+**Approach**:
 - Investigate `@natural_pdf/elements/text.py` for existing formatting patterns
 - Extend text elements to detect nearby formatting rects/lines
 - Add formatting attributes like bold/italic but for underline/strikethrough
 - Handle table line vs formatting line distinction
-**Code**: `text.find_nearby('rect[height<2]')` for underlines, direct overlap for strikethrough  
+**Code**: `text.find_nearby('rect[height<2]')` for underlines, direct overlap for strikethrough
 **Priority**: HIGH - common pattern across legal/legislative documents
 
 ### 2. Graceful Exclusion Error Handling (QUALITY OF LIFE)
-**Specific Issue**: When adding exclusions, handle missing element errors by skipping that page so you can apply exclusions broadly without lots of try/except blocks  
-**Example Problem**: `pdf.add_exclusion(lambda page: page.find('text[x0<60]').filter(lambda t: t.extract_text().isdigit()).region())` fails if no text elements exist at x0<60 on some pages  
-**Solution**: Allow exclusion lambdas to fail gracefully and skip pages where elements don't exist  
-**Implementation**: Maybe `pdf.add_exclusion(lambda page: page.find('text[x0<60]'), on_error='skip')` or similar  
+**Specific Issue**: When adding exclusions, handle missing element errors by skipping that page so you can apply exclusions broadly without lots of try/except blocks
+**Example Problem**: `pdf.add_exclusion(lambda page: page.find('text[x0<60]').filter(lambda t: t.extract_text().isdigit()).region())` fails if no text elements exist at x0<60 on some pages
+**Solution**: Allow exclusion lambdas to fail gracefully and skip pages where elements don't exist
+**Implementation**: Maybe `pdf.add_exclusion(lambda page: page.find('text[x0<60]'), on_error='skip')` or similar
 **Priority**: HIGH - enables broad exclusion patterns without page-by-page error handling
 
-### 2b. Spatial Navigation Error Handling  
-**Issue**: When elements don't exist (e.g., `text[size>12]` not found), trying `.above()` causes errors  
-**Solution**: Add `on_error='skip'` vs `'raise'` parameter to spatial navigation methods  
-**Example**: `page.find('text[size>12]', on_error='skip').below()` or fallback patterns  
+### 2b. Spatial Navigation Error Handling
+**Issue**: When elements don't exist (e.g., `text[size>12]` not found), trying `.above()` causes errors
+**Solution**: Add `on_error='skip'` vs `'raise'` parameter to spatial navigation methods
+**Example**: `page.find('text[size>12]', on_error='skip').below()` or fallback patterns
 **Priority**: MEDIUM - improves robustness on malformed documents
 
 ### 3. Multi-Engine OCR Workflow Examples (DOCUMENTATION)
-**Gap**: Users don't know how to leverage multiple OCR engines effectively  
+**Gap**: Users don't know how to leverage multiple OCR engines effectively
 **Specific Examples Needed**:
 - **Detect-only + Recognition**: `page.apply_ocr('easyocr', detect_only=True)` followed by `page.correct_ocr('trocr')` for high-quality recognition on detected regions
 - **Engine Comparison**: Visual comparison workflow where user can see results from multiple engines side-by-side to judge quality
 - **Mixed Script Handling**: Show how to use different engines for different script types within same document
-**Documentation Location**: Probably in OCR tutorial or advanced workflows section  
+**Documentation Location**: Probably in OCR tutorial or advanced workflows section
 **Priority**: MEDIUM - improves user adoption of existing capabilities
 
 ## Medium Priority Development Tasks
 
 ### 4. Multi-Engine Comparison System
-**Issue**: No easy way to compare multiple OCR engines on same document  
-**Specific Implementation Ideas**: 
+**Issue**: No easy way to compare multiple OCR engines on same document
+**Specific Implementation Ideas**:
 - `page.compare_ocr_engines(['easyocr', 'surya', 'paddleocr'])` returns comparison object
 - Compare overlapping elements detected by each engine (same regions, different text)
 - Visual comparison interface - show detected text side-by-side for user evaluation
@@ -59,64 +59,64 @@ These appear to be related to the PDF analysis project and should be organized p
 **Use Case**: User wants to pick best OCR engine for their document type
 **Priority**: MEDIUM - helpful for OCR engine selection
 
-### 5. Exclusions Element Type Support  
-**Issue**: Unclear if exclusions can handle element types other than regions  
-**Specific Test**: Try `pdf.add_exclusion(lambda page: page.find('text[x0<60]').filter(lambda t: t.extract_text().isdigit()))` without calling `.region()` - does it work or require conversion?  
-**Goal**: Determine if exclusions can accept text elements, char elements, etc. directly or must be regions  
+### 5. Exclusions Element Type Support
+**Issue**: Unclear if exclusions can handle element types other than regions
+**Specific Test**: Try `pdf.add_exclusion(lambda page: page.find('text[x0<60]').filter(lambda t: t.extract_text().isdigit()))` without calling `.region()` - does it work or require conversion?
+**Goal**: Determine if exclusions can accept text elements, char elements, etc. directly or must be regions
 **Priority**: LOW - documentation/API clarity issue, affects usability
 
 ## Low Priority / Future Investigation
 
 ### 6. Large Document Flows Benchmarking
-**Issue**: Haven't tested flows system with very large documents (34K+ pages)  
+**Issue**: Haven't tested flows system with very large documents (34K+ pages)
 **Specific Tasks**:
 - Test Puerto Rico court document (34,606 pages) with flows to see performance
 - Monitor memory usage when flows span thousands of pages
 - Identify any circular reference issues in flow construction
 - Measure time to construct flows vs memory consumption tradeoffs
-**Trigger**: Only when we have actual users trying to process massive documents  
+**Trigger**: Only when we have actual users trying to process massive documents
 **Priority**: LOW - wait for real use case first
 
 ### 7. Memory Management for Large OCR Documents
-**Issue**: Performance characteristics unclear for very large documents requiring OCR  
+**Issue**: Performance characteristics unclear for very large documents requiring OCR
 **Specific Questions**:
 - At what document size does memory become an issue with OCR results stored?
 - When do we need to unload earlier pages that have been OCR'd?
 - What happens when user tries to access unloaded pages - can they be re-OCR'd?
 - What are the actual memory limits before performance degrades?
-**Test Case**: Japanese historical document or other large OCR document  
-**Focus**: Identify breaking points rather than premature optimization  
+**Test Case**: Japanese historical document or other large OCR document
+**Focus**: Identify breaking points rather than premature optimization
 **Priority**: LOW - needs real use case with large OCR documents first
 
 ## Research Tasks
 
 ### 8. Investigate text.py Formatting Attributes
-**Task**: Understand current bold/italic implementation to model strikethrough/underline  
-**File**: `@natural_pdf/elements/text.py`  
-**Specific Research**: 
+**Task**: Understand current bold/italic implementation to model strikethrough/underline
+**File**: `@natural_pdf/elements/text.py`
+**Specific Research**:
 - How are bold/italic attributes currently stored and accessed?
 - What's the pattern for adding new formatting attributes?
 - How do formatting attributes integrate with text extraction?
 - Can we extend this pattern for underline/strikethrough detected from rects/lines?
-**Goal**: Consistent API for all text formatting attributes  
+**Goal**: Consistent API for all text formatting attributes
 **Priority**: RESEARCH - supports task #1 (text formatting detection)
 
 ### 9. Spatial Navigation Intersection Logic
-**Issue**: Need to distinguish between table lines and formatting lines when detecting underlines  
-**Specific Challenge**: `text.find_nearby('rect[height<2]')` for underlines vs table grid lines  
-**Analysis Needed**: 
+**Issue**: Need to distinguish between table lines and formatting lines when detecting underlines
+**Specific Challenge**: `text.find_nearby('rect[height<2]')` for underlines vs table grid lines
+**Analysis Needed**:
 - Line/rect properties that distinguish formatting vs structure (thickness, length, position)
 - How to handle intersections with table lines when detecting underlines
 - Direct overlap detection for strikethrough vs proximity for underlines
-**Approach**: Analyze geometric properties and spatial relationships  
+**Approach**: Analyze geometric properties and spatial relationships
 **Priority**: RESEARCH - supports task #1 (text formatting detection)
 
 ### 10. Multi-line Cell Cleanup Patterns
-**Issue**: Users need guidance on cleaning multi-line table cells after extraction  
-**Specific Solution**: Document pandas-based cleanup patterns for common table structures  
-**Example**: Senate expenditure tables where logical records span multiple visual rows - show how to group by document number, combine description lines, etc.  
-**Documentation Location**: Tutorial or cookbook section showing post-processing patterns  
-**Important Note**: This is post-processing, not a Natural PDF core feature - extraction gets you the data, pandas cleans it up  
+**Issue**: Users need guidance on cleaning multi-line table cells after extraction
+**Specific Solution**: Document pandas-based cleanup patterns for common table structures
+**Example**: Senate expenditure tables where logical records span multiple visual rows - show how to group by document number, combine description lines, etc.
+**Documentation Location**: Tutorial or cookbook section showing post-processing patterns
+**Important Note**: This is post-processing, not a Natural PDF core feature - extraction gets you the data, pandas cleans it up
 **Priority**: LOW - mostly documentation, could be community contributed
 
 ## Command Documentation (CRITICAL - Don't Forget!)
@@ -135,7 +135,7 @@ python optimization/pdf_analyzer.py <pdf_path> [num_pages] [output_folder] [--no
 # Analyze first page with timestamp folder
 python optimization/pdf_analyzer.py bad_pdf_analysis/ODX1DW8.pdf 1 analysis_results
 
-# Analyze 3 pages without timestamp folder  
+# Analyze 3 pages without timestamp folder
 python optimization/pdf_analyzer.py bad_pdf_analysis/eqrZ5yq.pdf 3 my_analysis --no-timestamp
 
 # Analyze specific pages (requires enhanced script)
@@ -209,7 +209,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 
 ## Key Insights for Context Preservation
 - **Natural PDF is more capable than initially assessed** - many "gaps" are actually existing features
-- **Real gaps are subtle** - edge cases in existing systems, not missing foundational capabilities  
+- **Real gaps are subtle** - edge cases in existing systems, not missing foundational capabilities
 - **Multi-line cell cleanup is post-processing** - pandas work, not Natural PDF core feature
 - **Microscopic fonts**: High-resolution OCR works or you can't recover zero signal
 - **Exclusions are very flexible** - can handle complex lambda patterns for filtering
@@ -223,10 +223,10 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 #### 1. **Dense Text Processing & Character Overlap Handling** (HIGH IMPACT - ELEVATED PRIORITY)
 **From q4DXYk8 (Sheriff's disciplinary log) & user feedback**:
 - **Pattern**: 5.0pt fonts + overlapping text creates extraction failures and text concatenation
-- **Evidence**: `"0cclloosseedd"` (should be "0 closed"), `"I7n/c1: 7N/a1r5r aOtPivAe"` 
+- **Evidence**: `"0cclloosseedd"` (should be "0 closed"), `"I7n/c1: 7N/a1r5r aOtPivAe"`
 
 **USER'S SPECIFIC SUGGESTIONS**:
-- **Use pdfplumber parameters**: Check @https://github.com/jsvine/pdfplumber docs for `x_tolerance`, `y_tolerance`, `x_tolerance_ratio` 
+- **Use pdfplumber parameters**: Check @https://github.com/jsvine/pdfplumber docs for `x_tolerance`, `y_tolerance`, `x_tolerance_ratio`
 - **Auto-detection question**: "how can we auto-detect it as a problem? maybe should auto-detect if there are so many repeats?"
 - **Key pdfplumber features to explore**:
   - `x_tolerance_ratio=None` - dynamic tolerance based on character size
@@ -247,13 +247,13 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 - **Priority**: HIGH - user elevated this as bigger problem than multi-row complexity
 
 #### 2. **PDF Text Corruption Handling** (CRITICAL)
-**From zxyRByM**: Password-protected PDF conversion artifacts  
+**From zxyRByM**: Password-protected PDF conversion artifacts
 - **Evidence**: `"F\u0000\u0000\u0000\u0000 D\u0000\u0000\u0000 R\u0000\u0000"` (should be "FINANCIAL DISCLOSURE REPORT")
 - **Impact**: Null byte corruption breaks normal string processing throughout document
 - **Need**: Automatic detection and cleanup of common PDF conversion artifacts
 - **Pattern**: Users frequently convert password-protected documents and don't realize corruption occurred
 
-#### 3. **Microscopic Font Processing** (HIGH IMPACT)  
+#### 3. **Microscopic Font Processing** (HIGH IMPACT)
 **From q4DXYk8 (Sheriff's disciplinary log)**:
 - **Pattern**: 5.0pt fonts create extraction failures due to density
 - **Challenge**: Text concatenation without proper field separation (`"0cclloosseedd"`, `"I7n/c1: 7N/a1r5r"`)
@@ -266,16 +266,16 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 **USER'S SPECIFIC SUGGESTIONS**:
 - **Existing Natural PDF solutions**: `.detect_lines()` and `detect_table_structure_from_lines()` (Natural PDF methods)
 - **Pdfplumber table strategies**: "lines", "lines_strict", "text", "explicit" with customizable table_settings
-- **Current limitation**: "right now it tries to find BLACK as lines" 
+- **Current limitation**: "right now it tries to find BLACK as lines"
 - **Key innovation**: "we could also invert it to try to find WHITE gaps"
 - **Peak detection approach**: "find the peak(s) and treat them the same way"
 - **Documentation location**: "You can find a tutorial in /docs/ about it"
-- **Pdfplumber features to leverage**: 
+- **Pdfplumber features to leverage**:
   - `"vertical_strategy": "text"` and `"horizontal_strategy": "text"` for unruled tables
   - `min_words_vertical` and `min_words_horizontal` settings
   - Custom tolerance settings for text-based detection
 
-**Implementation approach**: 
+**Implementation approach**:
   ```python
   # Instead of looking for black lines, find white gaps
   white_gaps = detect_white_space_peaks(page, min_gap_width=10)
@@ -287,7 +287,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 - **Current approach**: Looks for BLACK lines to define table structure
 - **Enhanced approach**: Invert to look for WHITE gaps between columns/rows
   - Analyze white space distribution across page
-  - Find peaks in white space that indicate column/row boundaries  
+  - Find peaks in white space that indicate column/row boundaries
   - Use gap analysis same way as line detection
 - **Enhancement**: Combine line detection + gap detection for robust unruled table handling
 
@@ -296,15 +296,15 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 #### 5. **Formatting Code Extraction** (MEDIUM IMPACT)
 **From zxyRByM**: Gray text markers [RP], [OL], [ST] embedded within table cells
 - **Pattern**: Semantic codes positioned as separate text elements within cells
-- **Challenge**: Standard extraction treats codes as separate columns  
+- **Challenge**: Standard extraction treats codes as separate columns
 - **Need**: Built-in patterns for extracting embedded formatting codes
 
 ## Next Steps
 
 1. **Continue PDF analysis**: Review more submissions to find additional edge cases ✅ **IN PROGRESS**
-2. **High Priority Development**: 
+2. **High Priority Development**:
    - **#1 Dense text processing** (pdfplumber parameter tuning, auto-detection)
-   - **#2 PDF text corruption handling** (null byte cleanup)  
+   - **#2 PDF text corruption handling** (null byte cleanup)
    - **#3 Unruled table detection** (white gap analysis + existing line detection)
    - **#4 Visual area/shape detection** (colored regions, prefer non-OpenCV)
 3. **Medium Priority**: Text formatting detection, multi-row table reconstruction, OCR workflow examples
@@ -321,7 +321,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 
 #### 7. **Multi-Page Table Flow Integration** (HIGH IMPACT)
 **From eqrZ5yq**: Natural PDF flows designed for this exact use case but not leveraged
-- **Pattern**: Tables spanning multiple pages ("Annex 6, pages 89-92") 
+- **Pattern**: Tables spanning multiple pages ("Annex 6, pages 89-92")
 - **Existing solution**: Natural PDF flows system handles page-spanning content
 - **Integration gap**: Analysis workflow doesn't use flows for multi-page table requests
 - **Enhancement**: Built-in workflows for multi-page table extraction using flow system
@@ -338,7 +338,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 - **Goal**: "i don't need to know exact sizes or dimensions or anything, just 'there's a big yellow thing'"
 - **OpenCV recognition**: "I know there is something in opencv-python that can do it"
 
-**Technical approach**: 
+**Technical approach**:
 - **Problem**: `page.find('rect[color=yellow]')` only works for actual vector shapes, not visual areas in scanned docs
 - **Need**: Detect pixel-based colored regions - blobs, areas, collective pixel groups
 - **Preference**: Avoid OpenCV if possible, but acknowledged as potentially best option
@@ -350,13 +350,13 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 **Implementation ideas**:
   ```python
   # Convert page to image, detect yellow areas (prefer non-opencv)
-  page_image = page.to_image(resolution=150)
+  page_image = page.render(resolution=150)
   yellow_areas = detect_color_areas_pil(page_image, color='yellow', min_size=100, min_width=30)
-  
+
   # Create area elements with bounding boxes
   for area in yellow_areas:
       area_element = page.create_area_element(bbox=area.bbox, color=area.dominant_color)
-  
+
   # Use in spatial navigation
   yellow_regions = page.find_all('area[color~=yellow]')
   text_in_yellow = yellow_regions[0].find_all('text')
@@ -375,7 +375,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 ## Current Analysis Progress - ENHANCED RESULTS ✅
 
 ### Completed Deep Analysis (5 documents)
-- **zxyRByM**: ✅ **COMPLETED** - Financial disclosure with multi-row cells and text corruption  
+- **zxyRByM**: ✅ **COMPLETED** - Financial disclosure with multi-row cells and text corruption
 - **q4DXYk8**: ✅ **COMPLETED** - Disciplinary log with microscopic fonts and unruled structure
 - **Gx9jayj**: ✅ **COMPLETED** - Law enforcement complaints with hierarchical relationships
 - **ODX1DW8**: ✅ **RE-ANALYZED** - Arabic financial table on page 179 successfully extracted (4×14 table, 391 TATR regions)
@@ -403,7 +403,7 @@ python bad_pdf_analysis/analyze_specific_pages_direct.py
 - **Status**: **HIGHEST PRIORITY** - Real-world evidence for TODO #1
 
 #### 📊 **Mathematical Formula Detection Pattern**
-- **Document**: b5eVqGg (Russian government document with complex formulas)  
+- **Document**: b5eVqGg (Russian government document with complex formulas)
 - **YOLO Detection**: 3 `isolate_formulas` regions automatically detected
 - **Content**: Complex mathematical notation with subscripts, superscripts, fractions
 - **Opportunity**: Natural PDF already detects formula regions - could enhance formula extraction
@@ -443,7 +443,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 
 #### ✅ **Line Detection Capability Found - BUT WITH MAJOR GAPS**
 - **Method exists**: `page.detect_lines(method="projection")` - No OpenCV required
-- **Evidence of limited success**: 
+- **Evidence of limited success**:
   - Y5G72LB page 11: 32H + 4V lines detected → claimed "93 cells" but analysis shows **character access bug prevented verification**
   - Pd1KBb1: 13H + 13V lines → claimed "144 cells" but **actual table extraction quality unknown due to text analysis failure**
 - **Critical flaw discovered**: `'TextElement' object has no attribute 'get'` error **prevented validation of line detection quality**
@@ -472,7 +472,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 #### 1. **Fundamental Character Analysis Bug (BLOCKING)**
 - **Specific error**: `'TextElement' object has no attribute 'get'` in line ~30 of analysis script
 - **Code location**: `char.get('x0', 0)` and `char.get('x0', 0)` calls fail on TextElement objects
-- **Impact**: 
+- **Impact**:
   - **ALL text analysis failed** across 10 documents (Y5G72LB, Pd1KBb1, Pd9WVDb, etc.)
   - **Dense text detection impossible** - cannot access character coordinates
   - **Overlap analysis blocked** - prevents microscopic font handling for documents like q4DXYk8
@@ -481,7 +481,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 - **Priority**: **CRITICAL** - blocks all advanced text analysis features
 
 #### 2. **Massive Document Memory Issues (REAL PERFORMANCE GAPS)**
-- **Specific examples**: 
+- **Specific examples**:
   - **OD49rjM**: 34,606 pages (1.2M+ mailing list records) - as documented in analysis
   - **Pd9WVDb**: 24,909 pages - user requested "spreadsheet showing all columns"
   - **2EAOEvb**: 196 pages with 2-column layout issues
@@ -503,7 +503,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
   - **obe1Vq5**: Georgia House Bill with clear underlined amendments (legislative markup)
   - **Pd1KBb1**: Found "1 underline candidate" but no automatic text association
   - **Multiple documents**: Detected `rect[height<3]` elements (potential underlines)
-- **Current state**: 
+- **Current state**:
   - ✅ Can find thin rects: `page.find_all('rect[height<3]')`
   - ❌ No spatial analysis to associate with text
   - ❌ No formatting attributes added to text elements
@@ -512,7 +512,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
   # Find potential underlines near text
   underlines = page.find_all('rect[height<3]')
   for text_elem in page.find_all('text'):
-      nearby_underlines = [r for r in underlines 
+      nearby_underlines = [r for r in underlines
                           if abs(r.top - text_elem.bottom) < 5 and  # Below text
                              r.x0 <= text_elem.x1 and r.x1 >= text_elem.x0]  # Overlaps horizontally
       if nearby_underlines:
@@ -524,7 +524,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 
 #### 4. **Visual Area Detection Missing (USER PRIORITY)**
 - **User's specific request**: `page.find('area[color~=yellow][size>100][width>30]')` for OCR documents
-- **Current state**: 
+- **Current state**:
   - ✅ Color parsing exists in selectors (`safe_parse_color()` function found)
   - ✅ Can detect `rect[fill]` elements
   - ❌ No pixel-based area/blob detection for scanned documents
@@ -546,7 +546,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 
 #### ❓ **UNPROVEN: Unruled Table Detection Claims**
 - **Status**: **Method exists but UNVALIDATED** due to character analysis bug
-- **Reality check**: I claimed "works excellently" but **cannot verify data quality** 
+- **Reality check**: I claimed "works excellently" but **cannot verify data quality**
 - **Evidence gap**: Line detection created regions but text extraction failed on all documents
 - **Action needed**: Fix character bug first, then actually validate table extraction quality
 - **Real priority**: **UNKNOWN until proven** - could be great or could be broken
@@ -556,14 +556,14 @@ I was being overly positive about capabilities. Let me be more critical about wh
 - **Documented in**: Y5G72LB, Pd1KBb1, ALL 10 final analysis documents
 - **Blocks these features**:
   - Dense text detection (q4DXYk8 microscopic fonts)
-  - Character overlap analysis  
+  - Character overlap analysis
   - Text formatting validation
   - ANY character-level analysis
 - **Fix complexity**: Simple - change attribute access pattern
 - **Impact**: **Unlocks all advanced text processing** currently blocked
 
 #### 🔥 **CRITICAL #2: Massive Document Processing - REAL USER PAIN**
-- **Specific user problems**: 
+- **Specific user problems**:
   - OD49rjM (34,606 pages): "DocumentCloud viewer won't even open in my local web browser, it simply eats too much memory"
   - Pd9WVDb (24,909 pages): User wants "spreadsheet showing all the columns"
 - **Missing core functionality**:
@@ -572,7 +572,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
   - No progress tracking for long operations
   - No streaming CSV export for 1.2M+ records
 - **Business impact**: Government transparency work blocked by memory issues
-- **Implementation needed**: 
+- **Implementation needed**:
   ```python
   # Need these missing features
   pdf.process_in_chunks(chunk_size=100, progress_callback=print_progress)
@@ -581,7 +581,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
   ```
 
 #### 🔥 **HIGH #3: Text Formatting Detection - LEGISLATIVE USE CASE**
-- **Specific evidence**: 
+- **Specific evidence**:
   - obe1Vq5: Georgia House Bill with amendment underlines
   - User working on legislative document analysis
 - **Current capability gap**: Found thin rects but no text association
@@ -605,7 +605,7 @@ I was being overly positive about capabilities. Let me be more critical about wh
 I was initially **overly optimistic** about Natural PDF capabilities and **under-critical** about limitations. Key mistakes:
 
 1. **Claimed "excellent" line detection** without validating extracted data quality
-2. **Overstated capability coverage** when fundamental bugs prevented proper testing  
+2. **Overstated capability coverage** when fundamental bugs prevented proper testing
 3. **Focused on quantity over quality** - analyzed 25 documents but character bug invalidated most advanced analysis
 4. **Made assumptions about working features** instead of rigorously testing edge cases
 
@@ -646,7 +646,7 @@ I was initially **overly optimistic** about Natural PDF capabilities and **under
 2. **Update unruled table documentation** - highlight existing line detection
 3. **Fix star selector syntax** - improve selector robustness
 
-#### Phase 2: Core Features (1-2 weeks)  
+#### Phase 2: Core Features (1-2 weeks)
 1. **Text formatting detection** - associate thin rects with text
 2. **Visual area detection** - PIL-based color blob detection for OCR docs
 3. **Dense text processing** - pdfplumber parameter optimization

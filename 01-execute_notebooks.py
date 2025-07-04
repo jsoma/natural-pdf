@@ -127,7 +127,9 @@ def find_markdown_files(base_dir: Path, exclude_patterns: List[str]) -> List[Pat
 
 
 # --- Worker Function ---
-def process_notebook(md_file_path_str: str, log_level: int) -> Dict[str, Any]:
+def process_notebook(
+    md_file_path_str: str, log_level: int, kernel_name: str = "python3"
+) -> Dict[str, Any]:
     """
     Processes a single markdown file: converts, executes, saves ipynb.
     Designed to be run in a separate process. Log level is passed explicitly.
@@ -179,7 +181,7 @@ def process_notebook(md_file_path_str: str, log_level: int) -> Dict[str, Any]:
         client = NotebookClient(
             notebook,
             timeout=600,
-            kernel_name="natural-pdf-project-venv",
+            kernel_name=kernel_name,
             resources={"metadata": {"path": str(cwd)}},
         )
         client.execute()  # Modifies 'notebook' object
@@ -269,6 +271,12 @@ def main():
         type=str,
         default=None,
         help="Path to a file for detailed logging (DEBUG level).",
+    )
+    parser.add_argument(
+        "--kernel",
+        type=str,
+        default="python3",
+        help="Jupyter kernel name to use for execution (default: python3).",
     )
     # Verbosity control
     verbosity_group = parser.add_mutually_exclusive_group()
@@ -364,7 +372,7 @@ def main():
         # Use `disable=args.quiet` in tqdm call if you want to hide it in quiet mode.
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
             future_to_path = {
-                executor.submit(process_notebook, path_str, log_level): path_str
+                executor.submit(process_notebook, path_str, log_level, args.kernel): path_str
                 for path_str in files_to_process_paths
             }
 

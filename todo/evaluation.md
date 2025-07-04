@@ -28,7 +28,7 @@ This markdown collects open tasks and per-PDF follow-ups discovered during the a
 | 44J0yXY | Goal unspecified → placeholder snippet; LLM failed to infer task | Ensure `description` → `goal` mapping; add template-check in collator |
 | 5BjDYeM | Complex newspaper layout; no extraction goal | Detect news-page vs data table; propose column grouping demo |
 | 7RKyoKL | Tamil NDC – tables on later pages but prompt left unknown | Teach LLM to look beyond first pages or ask for target pages |
-| A72GaWl | Bus route map PDF – graphics heavy, OCR unlikely | Flag as map/diagram; advise `page.to_image()` + manual annotation |
+| A72GaWl | Bus route map PDF – graphics heavy, OCR unlikely | Flag as map/diagram; advise `page.show()` + manual annotation |
 | Ekl7KXB | 1790 census – curly-brace totals confuse LLM; unknown goal | Add curly-brace table heuristics; demonstrate `regex_rows()` |
 
 _Add rows as evaluation proceeds. Use short notes; detailed summaries live in each `eval_results/<ID>/summary.json`_
@@ -83,40 +83,40 @@ _Add rows as evaluation proceeds. Use short notes; detailed summaries live in ea
 >
 > Each sub-item should log metrics or produce assertions so we can flag regressions automatically.
 
-- **Size & performance metrics**  
-  - [ ] Include a 10 k-page PDF and a 1 GB scanned book.  Record wall-clock time, pages/sec, peak RAM and written-image MB.  
+- **Size & performance metrics**
+  - [ ] Include a 10 k-page PDF and a 1 GB scanned book.  Record wall-clock time, pages/sec, peak RAM and written-image MB.
   - [ ] Add an image-heavy PDF (hundreds of inline PNG/JPEG) and track cache memory release.
 
-- **Concurrency / re-entrancy**  
+- **Concurrency / re-entrancy**
   - [ ] Run N=10 PDFs concurrently (ThreadPool / asyncio) to expose thread-safety bugs in glyph cache, OCR pool, etc.
 
-- **Robust error paths**  
+- **Robust error paths**
   - [ ] Feed password-protected, zero-byte, and corrupt-xref PDFs. Assert clean `NaturalPDFError` with helpful message.
 
-- **Language & script coverage**  
-  - [ ] Add PDFs that exercise **right-to-left scripts** (Arabic, Hebrew) including pages with mixed RTL/LTR tables (e.g. Arabic text with Western digits).  
-  - [ ] Add complex scripts (Khmer/Burmese) and vertical Japanese + Latin footers.  
+- **Language & script coverage**
+  - [ ] Add PDFs that exercise **right-to-left scripts** (Arabic, Hebrew) including pages with mixed RTL/LTR tables (e.g. Arabic text with Western digits).
+  - [ ] Add complex scripts (Khmer/Burmese) and vertical Japanese + Latin footers.
   - [X] Verify `page.extract_text()` returns Unicode in logical reading order for RTL paragraphs; assert a known Arabic snippet appears without reversed glyph order.
-  - [ ] Table direction check: ensure `TableResult.to_df()` preserves column order when headers are RTL and Pandas renders them right-aligned.  
+  - [ ] Table direction check: ensure `TableResult.to_df()` preserves column order when headers are RTL and Pandas renders them right-aligned.
   - [ ] LLM task: list every script on the first 3 pages and highlight any bidirectional reordering issues it sees compared to `extract_text()` output.
 
-- **Layout primitives**  
-  - [ ] Forms with check-marks/key-value pairs.  
-  - [ ] SVG-heavy technical drawings.  
-  - [ ] Newspaper columns with ads interrupting tables.  
+- **Layout primitives**
+  - [ ] Forms with check-marks/key-value pairs.
+  - [ ] SVG-heavy technical drawings.
+  - [ ] Newspaper columns with ads interrupting tables.
   - [ ] LLM prompt: provide three selectors to isolate only checked boxes.
 
-- **Geometry helper coverage**  
+- **Geometry helper coverage**
   - [ ] Synthetic docs that require percentage `region()`, `Region.union()`, and multi-page table stitching to succeed.
 
-- **Table semantics**  
-  - [ ] Verify `.to_df(header='first')` sets correct dtypes.  
-  - [ ] Wide table dtype inference; de-duplicate repeated headers across pages.  
+- **Table semantics**
+  - [ ] Verify `.to_df(header='first')` sets correct dtypes.
+  - [ ] Wide table dtype inference; de-duplicate repeated headers across pages.
   - [ ] LLM task: output JSON schema of resulting DataFrame.
 
-- **CLI / API smoke tests**  
+- **CLI / API smoke tests**
   - [ ] Invoke every public call with default kwargs on a small page; flag default-value regressions.
 
-- **Documentation fitness**  
-  - [ ] Randomly pick 3 PDFs, drop docs + summary into a temp dir, prompt LLM to write an extraction script using *only* `docs/quick-reference`.  
-  - [ ] Score compilation success and runtime warnings; surface doc gaps automatically. 
+- **Documentation fitness**
+  - [ ] Randomly pick 3 PDFs, drop docs + summary into a temp dir, prompt LLM to write an extraction script using *only* `docs/quick-reference`.
+  - [ ] Score compilation success and runtime warnings; surface doc gaps automatically.

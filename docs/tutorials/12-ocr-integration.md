@@ -36,6 +36,28 @@ print(f"Found {len(text_elements)} text elements using default OCR")
 text_elements.show()
 ```
 
+## Visualizing OCR Confidence Scores
+
+OCR engines provide confidence scores for each detected text element. You can visualize these scores using gradient colors to quickly identify areas that may need attention:
+
+```python
+# Visualize confidence scores with gradient colors (auto-detected as quantitative)
+text_elements.show(group_by='confidence')
+
+# Use different colormaps for better visualization
+text_elements.show(group_by='confidence', color='viridis')  # Blue to yellow
+text_elements.show(group_by='confidence', color='plasma')   # Purple to yellow
+text_elements.show(group_by='confidence', color='RdYlBu')   # Red-yellow-blue
+
+# Focus on a specific confidence range
+text_elements.show(group_by='confidence', bins=[0.3, 0.8])  # Only show 0.3-0.8 range
+
+# Create custom bins for confidence levels
+text_elements.show(group_by='confidence', bins=[0, 0.5, 0.8, 1.0])  # Low/medium/high
+```
+
+This makes it easy to spot low-confidence OCR results that might need manual review or correction. You'll automatically get a color scale showing the confidence range instead of a discrete legend.
+
 ```python
 # Apply OCR using PaddleOCR for English
 page.apply_ocr(engine='paddle', languages=['en'])

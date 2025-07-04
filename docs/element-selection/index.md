@@ -39,9 +39,10 @@ len(contains_inadequate)
 
 ```python
 # Let's see what we found
-summary_text.highlight(label='summary')
-contains_inadequate.highlight(label="inadequate")
-page.to_image(width=700)
+with page.highlights() as h:
+    h.add(summary_text, color='red', label='Summary')
+    h.add(contains_inadequate, color='blue', label='Inadequate')
+    h.show()
 ```
 
 ## Finding Different Types of Elements
@@ -144,7 +145,7 @@ Sometimes it's easier to say what you don't want than what you do want.
 # Find all text that's NOT bold
 non_bold_text = page.find_all('text:not(:bold)')
 
-# Find all elements that are NOT tables  
+# Find all elements that are NOT tables
 not_tables = page.find_all(':not(region[type=table])')
 
 # Find text that doesn't contain "Total"

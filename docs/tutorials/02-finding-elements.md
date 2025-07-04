@@ -25,18 +25,17 @@ site_label = page.find('text:contains("Site:")')
 # Find the text element containing "Date:"
 date_label = page.find('text:contains("Date:")')
 
-# Visualize the found elements
-site_label.highlight(color="red", label="Site")
-date_label.highlight(color="blue", label="Date")
-
 # Access the text content directly
 {
     "Site Label": site_label.text,
     "Date Label": date_label.text
 }
 
-# Display page with both highlights
-page.show()
+# Visualize the found elements
+with page.highlights() as h:
+    h.add(site_label, color="red", label="Site")
+    h.add(date_label, color="blue", label="Date")
+    h.show()
 ```
 
 ## Finding Elements by Color
@@ -68,12 +67,11 @@ thick_lines = page.find_all('line[width>=2]')
 rectangles = page.find_all('rect')
 
 # Visualize what we found
-horizontal_lines.highlight(color="blue", label="Horizontal")
-thick_lines.highlight(color="red", label="Thick")
-rectangles.highlight(color="green", label="Rectangles")
-
-# Display page with all shapes highlighted
-page.show()
+with page.highlights() as h:
+    h.add(horizontal_lines, color="blue", label="Horizontal")
+    h.add(thick_lines, color="red", label="Thick")
+    h.add(rectangles, color="green", label="Rectangles")
+    h.show()
 ```
 
 ## Finding Elements by Font Properties

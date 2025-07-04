@@ -182,16 +182,20 @@ class ElementCollection(
         highlights: Optional[List[Dict[str, Any]]] = None,
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        group_by: Optional[str] = None,
+        bins: Optional[Union[int, List[float]]] = None,
         **kwargs,
     ) -> List[RenderSpec]:
         """Get render specifications for this element collection.
 
         Args:
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
-            color: Default color for highlights in show mode
+            color: Default color for highlights in show mode (or colormap name when using group_by)
             highlights: Additional highlight groups to show
             crop: Whether to crop to element bounds
             crop_bbox: Explicit crop bounds
+            group_by: Attribute to group elements by for color mapping
+            bins: Binning specification for quantitative data (int for equal-width bins, list for custom bins)
             **kwargs: Additional parameters
 
         Returns:
@@ -235,46 +239,65 @@ class ElementCollection(
 
             # Add highlights in show mode
             if mode == "show":
-                # Determine if all elements are of the same type
-                element_types = set(type(elem).__name__ for elem in page_elements)
-
-                if len(element_types) == 1:
-                    # All elements are the same type - use a single label
-                    type_name = element_types.pop()
-                    # Generate a clean label from the type name
-                    base_name = (
-                        type_name.replace("Element", "").replace("Region", "")
-                        if type_name != "Region"
-                        else "Region"
+                # Handle group_by parameter for quantitative/categorical grouping
+                if group_by is not None:
+                    # Use the improved highlighting logic from _prepare_highlight_data
+                    prepared_highlights = self._prepare_highlight_data(
+                        group_by=group_by, color=color, bins=bins, **kwargs
                     )
-                    # Handle special cases for common types
-                    if base_name == "Text":
-                        shared_label = "Text Elements"
-                    elif base_name == "table_cell" or (
-                        hasattr(page_elements[0], "region_type")
-                        and page_elements[0].region_type == "table_cell"
-                    ):
-                        shared_label = "Table Cells"
-                    elif base_name == "table":
-                        shared_label = "Tables"
-                    else:
-                        shared_label = f"{base_name} Elements" if base_name else "Elements"
 
-                    # Add all elements with the same label (no color cycling)
-                    for elem in page_elements:
-                        spec.add_highlight(
-                            element=elem,
-                            color=color,  # Use provided color or None
-                            label=shared_label,
-                        )
+                    # Add highlights from prepared data
+                    for highlight_data in prepared_highlights:
+                        # Only add elements from this page
+                        elem = highlight_data.get("element")
+                        if elem and hasattr(elem, "page") and elem.page == page:
+                            spec.add_highlight(
+                                element=elem,
+                                color=highlight_data.get("color"),
+                                label=highlight_data.get("label"),
+                            )
                 else:
-                    # Mixed types - use individual labels (existing behavior)
-                    for elem in page_elements:
-                        spec.add_highlight(
-                            element=elem,
-                            color=color,
-                            label=getattr(elem, "text", None) or str(elem),
+                    # Default behavior when no group_by is specified
+                    # Determine if all elements are of the same type
+                    element_types = set(type(elem).__name__ for elem in page_elements)
+
+                    if len(element_types) == 1:
+                        # All elements are the same type - use a single label
+                        type_name = element_types.pop()
+                        # Generate a clean label from the type name
+                        base_name = (
+                            type_name.replace("Element", "").replace("Region", "")
+                            if type_name != "Region"
+                            else "Region"
                         )
+                        # Handle special cases for common types
+                        if base_name == "Text":
+                            shared_label = "Text Elements"
+                        elif base_name == "table_cell" or (
+                            hasattr(page_elements[0], "region_type")
+                            and page_elements[0].region_type == "table_cell"
+                        ):
+                            shared_label = "Table Cells"
+                        elif base_name == "table":
+                            shared_label = "Tables"
+                        else:
+                            shared_label = f"{base_name} Elements" if base_name else "Elements"
+
+                        # Add all elements with the same label (no color cycling)
+                        for elem in page_elements:
+                            spec.add_highlight(
+                                element=elem,
+                                color=color,  # Use provided color or None
+                                label=shared_label,
+                            )
+                    else:
+                        # Mixed types - use individual labels (existing behavior)
+                        for elem in page_elements:
+                            spec.add_highlight(
+                                element=elem,
+                                color=color,
+                                label=getattr(elem, "text", None) or str(elem),
+                            )
 
                 # Add additional highlight groups if provided
                 if highlights:
@@ -683,6 +706,7 @@ class ElementCollection(
         distinct: bool = False,
         include_attrs: Optional[List[str]] = None,
         replace: bool = False,
+        bins: Optional[Union[int, List[float]]] = None,
     ) -> "ElementCollection":
         """
         Adds persistent highlights for all elements in the collection to the page
@@ -700,12 +724,15 @@ class ElementCollection(
             label: Optional explicit label for the entire collection. If provided,
                    all elements are highlighted as a single group with this label,
                    ignoring 'group_by' and the default type-based grouping.
-            color: Optional explicit color for the highlight (tuple/string). Applied
-                   consistently if 'label' is provided or if grouping occurs.
+            color: Optional explicit color for the highlight (tuple/string), or
+                   matplotlib colormap name for quantitative group_by (e.g., 'viridis', 'plasma',
+                   'inferno', 'coolwarm', 'RdBu'). Applied consistently if 'label' is provided
+                   or if grouping occurs.
             group_by: Optional attribute name present on the elements. If provided
                       (and 'label' is None), elements will be grouped based on the
                       value of this attribute, and each group will be highlighted
-                      with a distinct label and color.
+                      with a distinct label and color. Automatically detects quantitative
+                      data and uses gradient colormaps when appropriate.
             label_format: Optional Python f-string to format the group label when
                           'group_by' is used. Can reference element attributes
                           (e.g., "Type: {region_type}, Conf: {confidence:.2f}").
@@ -718,6 +745,9 @@ class ElementCollection(
             replace: If True, existing highlights on the affected page(s)
                      are cleared before adding these highlights.
                      If False (default), highlights are appended to existing ones.
+            bins: Optional binning specification for quantitative data when using group_by.
+                  Can be an integer (number of equal-width bins) or a list of bin edges.
+                  Only used when group_by contains quantitative data.
 
         Returns:
             Self for method chaining
@@ -740,6 +770,7 @@ class ElementCollection(
             group_by=group_by,
             label_format=label_format,
             include_attrs=include_attrs,
+            bins=bins,
             # 'replace' flag is handled during the add call below
         )
 
@@ -803,6 +834,7 @@ class ElementCollection(
         group_by: Optional[str] = None,
         label_format: Optional[str] = None,
         include_attrs: Optional[List[str]] = None,
+        bins: Optional[Union[int, List[float]]] = None,
     ) -> List[Dict]:
         """
         Determines the parameters for highlighting each element based on the strategy.
@@ -871,23 +903,84 @@ class ElementCollection(
         elif group_by is not None:
             logger.debug("_prepare: Grouping by attribute strategy.")
             grouped_elements = self._group_elements_by_attr(group_by)
+
+            # Collect all values for quantitative detection
+            all_values = []
             for group_key, group_elements in grouped_elements.items():
-                if not group_elements:
-                    continue
-                group_label = self._format_group_label(
-                    group_key, label_format, group_elements[0], group_by
+                if group_elements:
+                    all_values.append(group_key)
+
+            # Import the quantitative detection function
+            from natural_pdf.utils.visualization import (
+                create_quantitative_color_mapping,
+                detect_quantitative_data,
+            )
+
+            # Determine if we should use quantitative color mapping
+            use_quantitative = detect_quantitative_data(all_values)
+
+            if use_quantitative:
+                logger.debug("  _prepare: Using quantitative color mapping.")
+                # Use quantitative color mapping with specified colormap
+                colormap_name = color if isinstance(color, str) else "viridis"
+                value_to_color = create_quantitative_color_mapping(
+                    all_values, colormap=colormap_name, bins=bins
                 )
-                final_color = highlighter._determine_highlight_color(
-                    label=group_label, color_input=None, use_color_cycling=False
-                )
-                logger.debug(
-                    f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}"
-                )
-                for element in group_elements:
-                    element_data = self._get_element_highlight_params(element, include_attrs)
-                    if element_data:
-                        element_data.update({"color": final_color, "label": group_label})
-                        prepared_data.append(element_data)
+
+                # Store quantitative metadata for colorbar creation
+                quantitative_metadata = {
+                    "values": all_values,
+                    "colormap": colormap_name,
+                    "bins": bins,
+                    "attribute": group_by,
+                }
+
+                for group_key, group_elements in grouped_elements.items():
+                    if not group_elements:
+                        continue
+                    group_label = self._format_group_label(
+                        group_key, label_format, group_elements[0], group_by
+                    )
+
+                    # Get quantitative color for this value
+                    final_color = value_to_color.get(group_key)
+                    if final_color is None:
+                        # Fallback to traditional color assignment
+                        final_color = highlighter._determine_highlight_color(
+                            label=group_label, color_input=None, use_color_cycling=False
+                        )
+
+                    logger.debug(
+                        f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}"
+                    )
+                    for element in group_elements:
+                        element_data = self._get_element_highlight_params(element, include_attrs)
+                        if element_data:
+                            element_data.update({"color": final_color, "label": group_label})
+                            # Add quantitative metadata to the first element in each group
+                            if not any("quantitative_metadata" in pd for pd in prepared_data):
+                                element_data["quantitative_metadata"] = quantitative_metadata
+                            prepared_data.append(element_data)
+            else:
+                logger.debug("  _prepare: Using categorical color mapping.")
+                # Use traditional categorical color mapping
+                for group_key, group_elements in grouped_elements.items():
+                    if not group_elements:
+                        continue
+                    group_label = self._format_group_label(
+                        group_key, label_format, group_elements[0], group_by
+                    )
+                    final_color = highlighter._determine_highlight_color(
+                        label=group_label, color_input=None, use_color_cycling=False
+                    )
+                    logger.debug(
+                        f"  _prepare group '{group_label}' ({len(group_elements)} elements) -> color {final_color}"
+                    )
+                    for element in group_elements:
+                        element_data = self._get_element_highlight_params(element, include_attrs)
+                        if element_data:
+                            element_data.update({"color": final_color, "label": group_label})
+                            prepared_data.append(element_data)
         else:
             logger.debug("_prepare: Default grouping strategy.")
             element_types = set(type(el).__name__ for el in self._elements)

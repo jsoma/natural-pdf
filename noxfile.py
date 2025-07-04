@@ -3,6 +3,26 @@ import sys
 
 import nox
 
+# ============================================================================
+# DOCUMENTATION WORKFLOW
+# ============================================================================
+#
+# Common commands for documentation and tutorials:
+#
+# 1. Execute notebooks + run tests (recommended):
+#    nox -s docs
+#
+# 2. Force re-execute all notebooks + run tests:
+#    nox -s docs-force
+#
+# 3. Run only tutorial tests (old workflow):
+#    nox -s tutorials
+#
+# 4. Advanced: Execute notebooks only with custom options:
+#    python 01-execute_notebooks.py --force --workers 8
+#
+# ============================================================================
+
 # Ensure nox uses the same Python version you are developing with or whichever is appropriate
 # Make sure this Python version has nox installed (`pip install nox`)
 # You can specify multiple Python versions to test against, e.g., ["3.9", "3.10", "3.11"]
@@ -81,7 +101,11 @@ def test_favorites(session):
 
 @nox.session(name="tutorials", python="3.10")
 def tutorials(session):
-    """Execute markdown tutorials once to populate executed notebooks for docs."""
+    """Run tutorial tests only (assumes notebooks are already executed).
+
+    This is the old workflow - use 'nox -s docs' instead for complete workflow.
+    Only use this if you've already run notebook execution separately.
+    """
     # Install dev extras that include jupytext/nbclient etc.
     session.install(".[all,dev]")
     session.install("surya-ocr")
@@ -92,6 +116,61 @@ def tutorials(session):
         session.install(package)
     # Run only tests marked as tutorial (no repetition across envs)
     workers = os.environ.get("NOTEBOOK_WORKERS", "10")
+    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
+
+
+@nox.session(name="docs", python="3.10")
+def docs(session):
+    """Execute markdown tutorials and run tutorial tests in one command.
+
+    This replaces the old two-step process:
+    - OLD: python 01-execute_notebooks.py && nox -s tutorials
+    - NEW: nox -s docs
+
+    Uses intelligent caching to skip unchanged notebooks.
+    """
+    # Install all dependencies needed for both notebook execution and testing
+    session.install(".[all,dev]")
+    session.install("surya-ocr")
+    session.install("easyocr")
+    session.install("doclayout_yolo")
+    for package in OPTIONAL_PACKAGES:
+        session.install(package)
+
+    # First, execute notebooks (convert md to ipynb and run them)
+    session.log("Step 1: Executing markdown notebooks...")
+    workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
+    session.run("python", "01-execute_notebooks.py", "--workers", workers)
+
+    # Then run tutorial tests
+    session.log("Step 2: Running tutorial tests...")
+    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
+
+
+@nox.session(name="docs-force", python="3.10")
+def docs_force(session):
+    """Force execute all markdown tutorials and run tutorial tests.
+
+    Use this when you want to re-execute ALL notebooks regardless of cache:
+    - nox -s docs-force
+
+    This is useful when dependencies change or for clean rebuilds.
+    """
+    # Install all dependencies
+    session.install(".[all,dev]")
+    session.install("surya-ocr")
+    session.install("easyocr")
+    session.install("doclayout_yolo")
+    for package in OPTIONAL_PACKAGES:
+        session.install(package)
+
+    # Execute notebooks with --force flag
+    session.log("Step 1: Force executing all markdown notebooks...")
+    workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
+    session.run("python", "01-execute_notebooks.py", "--force", "--workers", workers)
+
+    # Run tutorial tests
+    session.log("Step 2: Running tutorial tests...")
     session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
 
 

@@ -22,7 +22,7 @@ page = pdf.pages[0]
 
 ```python
 # Find the first word element
-word = page.find('word') 
+word = page.find('word')
 
 print(f"Text:", word.text)
 print(f"Font Name:", word.fontname) # Font reference (e.g., F1) or name
@@ -76,10 +76,10 @@ page.find_all('text[style_label="10.0pt Bold Helvetica"]')
 Use highlighting to visually inspect text properties. Grouping by attributes like `fontname` or `size` can be very insightful. In the example below we go right to grouping by the `style_label`, which combines font name, size and variant.
 
 ```python
-page.find_all('text').highlight(group_by='style_label', replace=True).to_image(width=700)
+page.find_all('text').show(group_by='style_label', width=700)
 ```
 
-This allows you to quickly see patterns in font usage across the page layout. 
+This allows you to quickly see patterns in font usage across the page layout.
 
 ## Weird font names
 
@@ -93,7 +93,7 @@ pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/Atlanta
 
 # Select the first page
 page = pdf.pages[0]
-page.to_image(width=700)
+page.show(width=700)
 ```
 
 Look!

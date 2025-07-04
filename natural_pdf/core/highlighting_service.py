@@ -875,27 +875,59 @@ class HighlightingService:
             else:
                 rendered_image = base_image_pil  # No highlights, no OCR requested
 
-        # --- Add Legend (Based ONLY on this page's highlights) ---
+        # --- Add Legend or Colorbar (Based ONLY on this page's highlights) ---
         if labels:
-            # CHANGE: Create label_colors map only from highlights_on_page
-            labels_colors_on_page: Dict[str, Tuple[int, int, int, int]] = {}
+            # Check if we have quantitative metadata (for colorbar)
+            quantitative_metadata = None
             for hl in highlights_on_page:
-                if hl.label and hl.label not in labels_colors_on_page:
-                    labels_colors_on_page[hl.label] = hl.color
+                if hasattr(hl, "quantitative_metadata") and hl.quantitative_metadata:
+                    quantitative_metadata = hl.quantitative_metadata
+                    break
 
-            if labels_colors_on_page:  # Only add legend if there are labels on this page
-                legend = create_legend(labels_colors_on_page)
-                if legend:  # Ensure create_legend didn't return None
+            if quantitative_metadata:
+                # Create colorbar for quantitative data
+                from natural_pdf.utils.visualization import create_colorbar
+
+                try:
+                    colorbar = create_colorbar(
+                        values=quantitative_metadata["values"],
+                        colormap=quantitative_metadata["colormap"],
+                        bins=quantitative_metadata["bins"],
+                        orientation=(
+                            "horizontal" if legend_position in ["top", "bottom"] else "vertical"
+                        ),
+                    )
                     rendered_image = merge_images_with_legend(
-                        rendered_image, legend, legend_position
+                        rendered_image, colorbar, legend_position
                     )
                     logger.debug(
-                        f"Added legend with {len(labels_colors_on_page)} labels for page {page_index}."
+                        f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' on page {page_index}."
                     )
+                except Exception as e:
+                    logger.warning(f"Failed to create colorbar for page {page_index}: {e}")
+                    # Fall back to regular legend
+                    quantitative_metadata = None
+
+            if not quantitative_metadata:
+                # Create regular categorical legend
+                labels_colors_on_page: Dict[str, Tuple[int, int, int, int]] = {}
+                for hl in highlights_on_page:
+                    if hl.label and hl.label not in labels_colors_on_page:
+                        labels_colors_on_page[hl.label] = hl.color
+
+                if labels_colors_on_page:  # Only add legend if there are labels on this page
+                    legend = create_legend(labels_colors_on_page)
+                    if legend:  # Ensure create_legend didn't return None
+                        rendered_image = merge_images_with_legend(
+                            rendered_image, legend, legend_position
+                        )
+                        logger.debug(
+                            f"Added legend with {len(labels_colors_on_page)} labels for page {page_index}."
+                        )
+                    else:
+                        logger.debug(f"Legend creation returned None for page {page_index}.")
                 else:
-                    logger.debug(f"Legend creation returned None for page {page_index}.")
-            else:
-                logger.debug(f"No labels found on page {page_index}, skipping legend.")
+                    logger.debug(f"No labels found on page {page_index}, skipping legend.")
 
         return rendered_image
 
@@ -1064,14 +1096,47 @@ class HighlightingService:
 
             legend = None
             if labels:
-                preview_labels = {h.label: h.color for h in preview_highlights if h.label}
-                if preview_labels:
-                    legend = create_legend(preview_labels)
-                    final_image = merge_images_with_legend(
-                        rendered_image, legend, position=legend_position
-                    )
-                else:
-                    final_image = rendered_image
+                # Check if we have quantitative metadata (for colorbar)
+                quantitative_metadata = None
+                for hl_data in temporary_highlights:
+                    if "quantitative_metadata" in hl_data and hl_data["quantitative_metadata"]:
+                        quantitative_metadata = hl_data["quantitative_metadata"]
+                        break
+
+                if quantitative_metadata:
+                    # Create colorbar for quantitative data
+                    from natural_pdf.utils.visualization import create_colorbar
+
+                    try:
+                        colorbar = create_colorbar(
+                            values=quantitative_metadata["values"],
+                            colormap=quantitative_metadata["colormap"],
+                            bins=quantitative_metadata["bins"],
+                            orientation=(
+                                "horizontal" if legend_position in ["top", "bottom"] else "vertical"
+                            ),
+                        )
+                        final_image = merge_images_with_legend(
+                            rendered_image, colorbar, position=legend_position
+                        )
+                        logger.debug(
+                            f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' on page {page_index}."
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to create colorbar for page {page_index}: {e}")
+                        # Fall back to regular legend
+                        quantitative_metadata = None
+
+                if not quantitative_metadata:
+                    # Create regular categorical legend
+                    preview_labels = {h.label: h.color for h in preview_highlights if h.label}
+                    if preview_labels:
+                        legend = create_legend(preview_labels)
+                        final_image = merge_images_with_legend(
+                            rendered_image, legend, position=legend_position
+                        )
+                    else:
+                        final_image = rendered_image
             else:
                 final_image = rendered_image
 
