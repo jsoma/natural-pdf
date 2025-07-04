@@ -2143,7 +2143,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=04f36cd2">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bf2e3630">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2159,7 +2159,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b9542ef0">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=02446d8a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2186,7 +2186,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4c8e70b7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=497bf5df">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2198,7 +2198,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3824ca6e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=d95fe532">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2253,13 +2253,6 @@ len(labels)</div>
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>CropBox missing from /Page, defaulting to MediaBox
-</pre>
-</div>
-</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
@@ -2270,7 +2263,7 @@ len(labels)</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f710e476">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5b238d50">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2281,7 +2274,7 @@ len(labels)</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=18b753f8">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9367d9d7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2305,11 +2298,11 @@ len(labels)</div>
 <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
     <span class="c1"># Clean up the label text</span>
     <span class="n">field_name</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">':'</span><span class="p">)</span>
-    
+
     <span class="c1"># Find the value to the right of the label</span>
     <span class="n">value_region</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="n">value</span> <span class="o">=</span> <span class="n">value_region</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-    
+
     <span class="c1"># Store in our dictionary</span>
     <span class="n">form_data</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
@@ -2322,11 +2315,11 @@ form_data = {}
 for label in labels:
     # Clean up the label text
     field_name = label.text.strip().rstrip(':')
-    
+
     # Find the value to the right of the label
     value_region = label.right(width=200)
     value = value_region.extract_text().strip()
-    
+
     # Store in our dictionary
     form_data[field_name] = value
 
@@ -2353,7 +2346,7 @@ form_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=413d9a37">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5fcbcbb0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2364,7 +2357,7 @@ form_data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=57219eb4">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=56f3deff">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2389,7 +2382,7 @@ form_data</div>
 <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
     <span class="c1"># Highlight the label in red</span>
     <span class="n">label</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"red"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Label"</span><span class="p">)</span>
-    
+
     <span class="c1"># Highlight the value area in blue</span>
     <span class="n">label</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"blue"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Value"</span><span class="p">)</span>
 
@@ -2403,7 +2396,7 @@ page.clear_highlights()
 for label in labels:
     # Highlight the label in red
     label.show(color="red", label="Label")
-    
+
     # Highlight the value area in blue
     label.right(width=200).show(color="blue", label="Value")
 
@@ -2427,7 +2420,7 @@ page.show()</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f8d9287d">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d5389d0f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2438,7 +2431,7 @@ page.show()</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e1177852">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=faa693e8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2462,17 +2455,17 @@ page.show()</div>
 <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
     <span class="c1"># Get the field name</span>
     <span class="n">field_name</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">':'</span><span class="p">)</span>
-    
+
     <span class="c1"># Look both to the right and below</span>
     <span class="n">right_value</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="n">below_value</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-    
+
     <span class="c1"># Combine the values if they're different</span>
     <span class="k">if</span> <span class="n">right_value</span> <span class="ow">in</span> <span class="n">below_value</span><span class="p">:</span>
         <span class="n">value</span> <span class="o">=</span> <span class="n">below_value</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">value</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">right_value</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">below_value</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-    
+
     <span class="c1"># Add to results</span>
     <span class="n">multi_line_data</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
@@ -2485,17 +2478,17 @@ multi_line_data = {}
 for label in labels:
     # Get the field name
     field_name = label.text.strip().rstrip(':')
-    
+
     # Look both to the right and below
     right_value = label.right(width=200).extract_text().strip()
     below_value = label.below(height=50).extract_text().strip()
-    
+
     # Combine the values if they're different
     if right_value in below_value:
         value = below_value
     else:
         value = f"{right_value} {below_value}".strip()
-    
+
     # Add to results
     multi_line_data[field_name] = value
 
@@ -2522,7 +2515,7 @@ multi_line_data</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9c618345">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=854887eb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2533,7 +2526,7 @@ multi_line_data</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=56bd2d67">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=13a077b7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2609,7 +2602,7 @@ date_texts</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f2dc184f">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ca30ac2f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2620,7 +2613,7 @@ date_texts</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=cc1f2684">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=81a7ca29">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2647,7 +2640,7 @@ date_texts</div>
 <span class="k">if</span> <span class="n">tables</span><span class="p">:</span>
     <span class="c1"># Visualize the tables</span>
     <span class="n">tables</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"purple"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Form Table"</span><span class="p">)</span>
-    
+
     <span class="c1"># Extract data from the first table</span>
     <span class="n">first_table</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">table_data</span> <span class="o">=</span> <span class="n">first_table</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
@@ -2656,37 +2649,37 @@ date_texts</div>
     <span class="c1"># Try to find form-like structure using text alignment</span>
     <span class="c1"># Create a region where a form might be</span>
     <span class="n">form_region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span> <span class="o">-</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
-    
+
     <span class="c1"># Group text by vertical position</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">text_elements</span> <span class="o">=</span> <span class="n">form_region</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">'text'</span><span class="p">)</span>
-    
+
     <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">text_elements</span><span class="p">:</span>
         <span class="c1"># Round y-position to group elements in the same row</span>
         <span class="n">row_pos</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">top</span> <span class="o">/</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">5</span>
         <span class="k">if</span> <span class="n">row_pos</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
             <span class="n">rows</span><span class="p">[</span><span class="n">row_pos</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">rows</span><span class="p">[</span><span class="n">row_pos</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">elem</span><span class="p">)</span>
-    
+
     <span class="c1"># Extract data from rows (first 5 rows)</span>
     <span class="n">row_data</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">rows</span><span class="o">.</span><span class="n">keys</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]:</span>
         <span class="c1"># Sort elements by x-position (left to right)</span>
         <span class="n">elements</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">x0</span><span class="p">)</span>
-        
+
         <span class="c1"># Show the row</span>
         <span class="n">row_box</span> <span class="o">=</span> <span class="n">form_region</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span>
-            <span class="nb">min</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">x0</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">),</span> 
+            <span class="nb">min</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">x0</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">),</span>
             <span class="nb">min</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">top</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">),</span>
             <span class="nb">max</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">x1</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">),</span>
             <span class="nb">max</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">bottom</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">row_box</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_color_cycling</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
+
         <span class="c1"># Extract text from row</span>
         <span class="n">row_text</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">]</span>
         <span class="n">row_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_text</span><span class="p">)</span>
-    
+
     <span class="c1"># Show the extracted rows</span>
     <span class="n">row_data</span>
 </pre></div>
@@ -2699,7 +2692,7 @@ tables = page.find_all('region[type=table]')
 if tables:
     # Visualize the tables
     tables.show(color="purple", label="Form Table")
-    
+
     # Extract data from the first table
     first_table = tables[0]
     table_data = first_table.extract_table()
@@ -2708,37 +2701,37 @@ else:
     # Try to find form-like structure using text alignment
     # Create a region where a form might be
     form_region = page.create_region(50, 200, page.width - 50, 500)
-    
+
     # Group text by vertical position
     rows = {}
     text_elements = form_region.find_all('text')
-    
+
     for elem in text_elements:
         # Round y-position to group elements in the same row
         row_pos = round(elem.top / 5) * 5
         if row_pos not in rows:
             rows[row_pos] = []
         rows[row_pos].append(elem)
-    
+
     # Extract data from rows (first 5 rows)
     row_data = []
     for y in sorted(rows.keys())[:5]:
         # Sort elements by x-position (left to right)
         elements = sorted(rows[y], key=lambda e: e.x0)
-        
+
         # Show the row
         row_box = form_region.create_region(
-            min(e.x0 for e in elements), 
+            min(e.x0 for e in elements),
             min(e.top for e in elements),
             max(e.x1 for e in elements),
             max(e.bottom for e in elements)
         )
         row_box.show(color=None, use_color_cycling=True)
-        
+
         # Extract text from row
         row_text = [e.text for e in elements]
         row_data.append(row_text)
-    
+
     # Show the extracted rows
     row_data</div>
 </div>
@@ -2759,14 +2752,14 @@ else:
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmp44_o3vpz/temp_layout_image.png: 1024x800 1 title, 3 plain texts, 2 abandons, 1 table, 731.9ms
+<pre>image 1/1 /var/folders/25/h3prywj14qb0mlkl2s8bxq5m0000gn/T/tmp7ns9pqit/temp_layout_image.png: 1024x800 1 title, 3 plain texts, 2 abandons, 1 table, 1856.1ms
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Speed: 5.2ms preprocess, 731.9ms inference, 1.0ms postprocess per image at shape (1, 3, 1024, 800)
+<pre>Speed: 6.8ms preprocess, 1856.1ms inference, 3.0ms postprocess per image at shape (1, 3, 1024, 800)
 </pre>
 </div>
 </div>
@@ -2774,7 +2767,7 @@ else:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=66d078bc">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9c33a222">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2785,7 +2778,7 @@ else:
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f59a55da">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=94b5a6a8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2816,14 +2809,14 @@ else:
 <span class="k">for</span> <span class="n">date_elem</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
     <span class="c1"># Find the nearest label</span>
     <span class="n">nearby_label</span> <span class="o">=</span> <span class="n">date_elem</span><span class="o">.</span><span class="n">nearest</span><span class="p">(</span><span class="s1">'text:contains(":")'</span><span class="p">)</span>
-    
+
     <span class="k">if</span> <span class="n">nearby_label</span><span class="p">:</span>
         <span class="c1"># Extract the label text</span>
         <span class="n">label_text</span> <span class="o">=</span> <span class="n">nearby_label</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">':'</span><span class="p">)</span>
-        
+
         <span class="c1"># Get the date value</span>
         <span class="n">date_value</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">date_pattern</span><span class="p">,</span> <span class="n">date_elem</span><span class="o">.</span><span class="n">text</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        
+
         <span class="c1"># Add to our results if not already present</span>
         <span class="k">if</span> <span class="n">label_text</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">all_fields</span><span class="p">:</span>
             <span class="n">all_fields</span><span class="p">[</span><span class="n">label_text</span><span class="p">]</span> <span class="o">=</span> <span class="n">date_value</span>
@@ -2844,14 +2837,14 @@ for label in labels:
 for date_elem in dates:
     # Find the nearest label
     nearby_label = date_elem.nearest('text:contains(":")')
-    
+
     if nearby_label:
         # Extract the label text
         label_text = nearby_label.text.strip().rstrip(':')
-        
+
         # Get the date value
         date_value = re.search(date_pattern, date_elem.text).group(0)
-        
+
         # Add to our results if not already present
         if label_text not in all_fields:
             all_fields[label_text] = date_value
@@ -2879,7 +2872,7 @@ all_fields</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=faa5378a">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c4ba8b80">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2890,7 +2883,7 @@ all_fields</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=84edd43c">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=cd4a8eb9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2922,7 +2915,7 @@ all_fields</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>Device set to use mps:0
+<pre>Device set to use mps
 </pre>
 </div>
 </div>
@@ -2930,7 +2923,7 @@ all_fields</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=749a19f7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=60a081b2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

@@ -1536,6 +1536,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#visualizing-ocr-confidence-with-gradient-colors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualizing OCR Confidence with Gradient Colors
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#advanced-local-detection-llm-cleanup" class="md-nav__link">
     <span class="md-ellipsis">
       Advanced: Local Detection + LLM Cleanup
@@ -1663,24 +1672,38 @@
 <span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
 
 <span class="c1"># Color-code by confidence level</span>
-<span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">ocr_elements</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">element</span><span class="o">.</span><span class="n">confidence</span> <span class="o">&gt;=</span> <span class="mf">0.8</span><span class="p">:</span>
-        <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;green&quot;</span>     <span class="c1"># High confidence</span>
-    <span class="k">elif</span> <span class="n">element</span><span class="o">.</span><span class="n">confidence</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">:</span>
-        <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;yellow&quot;</span>    <span class="c1"># Medium confidence  </span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;red&quot;</span>       <span class="c1"># Low confidence</span>
+<span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">highlights</span><span class="p">()</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">ocr_elements</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">element</span><span class="o">.</span><span class="n">confidence</span> <span class="o">&gt;=</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;green&quot;</span>     <span class="c1"># High confidence</span>
+        <span class="k">elif</span> <span class="n">element</span><span class="o">.</span><span class="n">confidence</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;yellow&quot;</span>    <span class="c1"># Medium confidence</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;red&quot;</span>       <span class="c1"># Low confidence</span>
 
-    <span class="n">element</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;OCR (</span><span class="si">{</span><span class="n">element</span><span class="o">.</span><span class="n">confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;OCR (</span><span class="si">{</span><span class="n">element</span><span class="o">.</span><span class="n">confidence</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="visualizing-ocr-confidence-with-gradient-colors">Visualizing OCR Confidence with Gradient Colors</h2>
+<p>Natural PDF can automatically detect when you're working with quantitative data (like confidence scores) and use gradient colors instead of categorical colors:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get OCR elements</span>
+<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">apply_ocr</span><span class="p">()</span>
 
-<span class="c1"># Show the results</span>
-<span class="n">page</span><span class="o">.</span><span class="n">to_image</span><span class="p">()</span>
+<span class="c1"># Visualize confidence scores with gradient colors</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">)</span>
+
+<span class="c1"># Try different colormaps for better contrast</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;plasma&#39;</span><span class="p">)</span>    <span class="c1"># Purple to yellow</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">)</span>   <span class="c1"># Blue to yellow</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;coolwarm&#39;</span><span class="p">)</span>  <span class="c1"># Blue to red</span>
+
+<span class="c1"># Focus on problematic areas (low confidence)</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])</span>     <span class="c1"># Only show 0-0.5 range</span>
+
+<span class="c1"># Create meaningful confidence bands</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>  <span class="c1"># Poor/OK/Good</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Or just highlight the good stuff</span>
-<span class="n">high_conf</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr][confidence&gt;=0.8]&#39;</span><span class="p">)</span>
-<span class="n">high_conf</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;High Confidence OCR&quot;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">to_image</span><span class="p">()</span>
-</code></pre></div>
+<p>This makes it much easier to spot problematic OCR results at a glance compared to manual color coding. You'll automatically get a color scale showing the confidence range instead of a discrete legend.</p>
 <h2 id="advanced-local-detection-llm-cleanup">Advanced: Local Detection + LLM Cleanup</h2>
 <p>For really tricky documents, you can use a local model to find text regions, then send those specific regions to a language model for cleanup:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.ocr.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">direct_ocr_llm</span>
@@ -1694,21 +1717,21 @@
 
 <span class="c1"># Step 2: Set up LLM for cleanup</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">openai</span><span class="o">.</span><span class="n">OpenAI</span><span class="p">(</span>
-    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://api.anthropic.com/v1/&quot;</span><span class="p">,</span>  
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://api.anthropic.com/v1/&quot;</span><span class="p">,</span>
     <span class="n">api_key</span><span class="o">=</span><span class="s1">&#39;your-api-key-here&#39;</span>
 <span class="p">)</span>
 
-<span class="n">prompt</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;OCR this image. Return only the exact text from the image. </span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;OCR this image. Return only the exact text from the image.</span>
 <span class="s2">Include misspellings, punctuation, etc. Do not add quotes or comments.</span>
 <span class="s2">The text is from a Greek spreadsheet, so expect Modern Greek or numbers.&quot;&quot;&quot;</span>
 
 <span class="c1"># Step 3: Define cleanup function</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">correct</span><span class="p">(</span><span class="n">region</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">direct_ocr_llm</span><span class="p">(</span>
-        <span class="n">region</span><span class="p">,</span> 
-        <span class="n">client</span><span class="p">,</span> 
-        <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span> 
-        <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> 
+        <span class="n">region</span><span class="p">,</span>
+        <span class="n">client</span><span class="p">,</span>
+        <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">resolution</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
         <span class="n">model</span><span class="o">=</span><span class="s2">&quot;claude-3-5-haiku-20241022&quot;</span>
     <span class="p">)</span>
 

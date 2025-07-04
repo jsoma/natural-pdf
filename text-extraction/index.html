@@ -2881,14 +2881,14 @@ manual_region.extract_text()[:500]</div>
 
 <span class="n">header_content</span><span class="o">.</span><span class="n">highlight</span><span class="p">()</span>
 <span class="n">footer_content</span><span class="o">.</span><span class="n">highlight</span><span class="p">()</span>
-<span class="n">page</span><span class="o">.</span><span class="n">to_image</span><span class="p">()</span>
+<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-19">header_content = page.find('rect')
 footer_content = page.find_all('line')[-1].below()
 
 header_content.highlight()
 footer_content.highlight()
-page.to_image()</div>
+page.show()</div>
 </div>
 </div>
 </div>
@@ -3871,7 +3871,7 @@ page.extract_text()[:100]</div>
 <span class="n">start</span><span class="o">.</span><span class="n">next</span><span class="p">()</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">'Maybe the date'</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'green'</span><span class="p">)</span>
 <span class="n">start</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="s1">'text:contains("\d")'</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">'Probably the date'</span><span class="p">)</span>
 
-<span class="n">page</span><span class="o">.</span><span class="n">to_image</span><span class="p">()</span>
+<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-40">page.clear_highlights()
 
@@ -3880,7 +3880,7 @@ start.highlight(label='Date label')
 start.next().highlight(label='Maybe the date', color='green')
 start.next('text:contains("\d")', regex=True).highlight(label='Probably the date')
 
-page.to_image()</div>
+page.show()</div>
 </div>
 </div>
 </div>

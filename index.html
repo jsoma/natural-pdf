@@ -2022,7 +2022,7 @@ pip install &quot;natural_pdf[all]&quot;
 <p>Follow the tutorial series to learn Natural PDF systematically:</p>
 <ol>
 <li><a href="tutorials/01-loading-and-extraction.md">Loading and Basic Text Extraction</a></li>
-<li><a href="tutorials/02-finding-elements.md">Finding Specific Elements</a> </li>
+<li><a href="tutorials/02-finding-elements.md">Finding Specific Elements</a></li>
 <li><a href="tutorials/03-extracting-blocks.md">Extracting Content Blocks</a></li>
 <li><a href="tutorials/04-table-extraction.md">Table Extraction</a></li>
 <li><a href="tutorials/05-excluding-content.md">Excluding Unwanted Content</a></li>
@@ -2110,8 +2110,8 @@ pip install &quot;natural_pdf[all]&quot;
 <span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">()</span>
 
 <span class="c1"># Highlight titles and tables</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=title]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;purple&quot;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=title]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="c1"># Extract data from the first table</span>
 <span class="n">table_data</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>

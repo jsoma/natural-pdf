@@ -1929,7 +1929,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e2fd7a35">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c14582d8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1941,7 +1941,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=60aa5e5a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=543eceae">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -1968,7 +1968,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=ca325405">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1f3a4bd8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2002,9 +2002,6 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
     <span class="n">until</span><span class="o">=</span><span class="s2">"line[height &gt; 1]"</span>
 <span class="p">)</span>
 
-<span class="c1"># Visualize the elements found in this block</span>
-<span class="n">summary_elements</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"lightgreen"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Summary Block"</span><span class="p">)</span>
-
 <span class="c1"># Extract and display the text from the collection of summary elements</span>
 <span class="n">summary_elements</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 </pre></div>
@@ -2024,9 +2021,6 @@ summary_elements = start_marker.below(
     until="line[height &gt; 1]"
 )
 
-# Visualize the elements found in this block
-summary_elements.highlight(color="lightgreen", label="Summary Block")
-
 # Extract and display the text from the collection of summary elements
 summary_elements.extract_text()
 </div>
@@ -2038,13 +2032,6 @@ summary_elements.extract_text()
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>CropBox missing from /Page, defaulting to MediaBox
-</pre>
-</div>
-</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[2]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
@@ -2055,7 +2042,7 @@ summary_elements.extract_text()
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=1c17f4e7">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=21b4db76">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -2073,11 +2060,11 @@ summary_elements.extract_text()
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Display the page image to see the visualization</span>
-<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Visualize the elements found in this block</span>
+<span class="n">summary_elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">"lightgreen"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Summary Block"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-3"># Display the page image to see the visualization
-page.show()</div>
+<div class="clipboard-copy-txt" id="cell-3"># Visualize the elements found in this block
+summary_elements.show(color="lightgreen", label="Summary Block")</div>
 </div>
 </div>
 </div>
@@ -2096,7 +2083,7 @@ page.show()</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1500e6f0">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=436b6bbf">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

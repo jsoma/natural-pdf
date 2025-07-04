@@ -1755,7 +1755,7 @@
 <p>PDF tables come in many flavors, and each one breaks in its own special way:</p>
 <ul>
 <li><strong>No visible borders</strong>: Text that looks like a table but has no lines</li>
-<li><strong>Merged cells</strong>: Headers that span multiple columns </li>
+<li><strong>Merged cells</strong>: Headers that span multiple columns</li>
 <li><strong>Inconsistent spacing</strong>: Columns that don't line up perfectly</li>
 <li><strong>Multiple tables</strong>: Several tables crammed onto one page</li>
 <li><strong>Rotated tables</strong>: Tables turned sideways or upside down</li>
@@ -1787,7 +1787,7 @@
 <span class="c1"># TATR understands rows, columns, and headers</span>
 <span class="n">table</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;region[type=table][model=tatr]&#39;</span><span class="p">)</span>
 <span class="n">rows</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table-row][model=tatr]&#39;</span><span class="p">)</span>
-<span class="n">cols</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table-column][model=tatr]&#39;</span><span class="p">)</span> 
+<span class="n">cols</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table-column][model=tatr]&#39;</span><span class="p">)</span>
 <span class="n">headers</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table-column-header][model=tatr]&#39;</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span><span class="si">}</span><span class="s2"> headers&quot;</span><span class="p">)</span>
@@ -1803,14 +1803,13 @@
 <span class="c1"># Manually define the table region</span>
 <span class="n">table_area</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span>
     <span class="n">x0</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>      <span class="c1"># Left edge of table</span>
-    <span class="n">top</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>    <span class="c1"># Top edge of table  </span>
+    <span class="n">top</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>    <span class="c1"># Top edge of table</span>
     <span class="n">x1</span><span class="o">=</span><span class="mi">550</span><span class="p">,</span>     <span class="c1"># Right edge of table</span>
     <span class="n">bottom</span><span class="o">=</span><span class="mi">400</span>  <span class="c1"># Bottom edge of table</span>
 <span class="p">)</span>
 
 <span class="c1"># Highlight to verify</span>
-<span class="n">table_area</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Table area&quot;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">table_area</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Table area&quot;</span><span class="p">)</span>
 
 <span class="c1"># Extract from the defined area</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">table_area</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
@@ -1833,7 +1832,7 @@
 </aside>
 
 <h2 id="define-table-boundaries-using-header-labels">Define Table Boundaries Using Header Labels</h2>
-<p>Sometimes the easiest trick is to let the <strong>column headers</strong> tell you exactly where the table starts and ends.<br />
+<p>Sometimes the easiest trick is to let the <strong>column headers</strong> tell you exactly where the table starts and ends.
 Here's a quick, self-contained approach that works great on the violations table inside <code>01-practice.pdf</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -1868,7 +1867,7 @@ Here's a quick, self-contained approach that works great on the violations table
 <span class="n">row_items</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="n">options</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;vertical_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;explicit&quot;</span><span class="p">,</span> 
+    <span class="s2">&quot;vertical_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;explicit&quot;</span><span class="p">,</span>
     <span class="s2">&quot;horizontal_strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;explicit&quot;</span><span class="p">,</span>
     <span class="s2">&quot;explicit_vertical_lines&quot;</span><span class="p">:</span> <span class="n">col_edges</span><span class="p">,</span>
     <span class="s2">&quot;explicit_horizontal_lines&quot;</span><span class="p">:</span> <span class="n">row_borders</span><span class="p">,</span>
@@ -1900,13 +1899,14 @@ Here's a quick, self-contained approach that works great on the violations table
 <span class="c1"># Extract each table separately</span>
 <span class="n">all_data</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tables</span><span class="p">):</span>
-    <span class="c1"># Show which table we&#39;re working on</span>
-    <span class="n">table</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Table </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
     <span class="n">data</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">extract_table</span><span class="p">()</span>
     <span class="n">all_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
-<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># See all highlighted tables</span>
+<span class="c1"># Show all tables together</span>
+<span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">highlights</span><span class="p">()</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tables</span><span class="p">):</span>
+        <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Table </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 
 <span class="c1"># Save each table separately</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -1921,7 +1921,7 @@ Here's a quick, self-contained approach that works great on the violations table
 <span class="n">page</span><span class="o">.</span><span class="n">analyze_layout</span><span class="p">(</span><span class="n">engine</span><span class="o">=</span><span class="s1">&#39;yolo&#39;</span><span class="p">)</span>
 <span class="n">tables</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;region[type=table]&#39;</span><span class="p">)</span>
 
-<span class="c1"># If the table appears rotated in the highlights, </span>
+<span class="c1"># If the table appears rotated in the highlights,</span>
 <span class="c1"># the extraction might still work normally</span>
 <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>
     <span class="n">table</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>  <span class="c1"># Check if this looks right</span>
@@ -1960,9 +1960,10 @@ Here's a quick, self-contained approach that works great on the violations table
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s2"> lines in table area&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 4: Visualize everything</span>
-<span class="n">elements</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Text&quot;</span><span class="p">)</span>
-<span class="n">lines</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lines&quot;</span><span class="p">)</span>
-<span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">highlights</span><span class="p">()</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Text&quot;</span><span class="p">)</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Lines&quot;</span><span class="p">)</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="troubleshooting-checklist">Troubleshooting Checklist</h2>
 <p><strong>No tables detected?</strong>
@@ -1984,7 +1985,7 @@ Here's a quick, self-contained approach that works great on the violations table
 <p><strong>Multiple tables mixed together?</strong>
 - Use layout detection to separate them first
 - Define manual regions for each table
-- Process tables in reading order </p>
+- Process tables in reading order</p>
 <h2 id="auto-ignore-headers-footers-with-exclusions">Auto-ignore headers &amp; footers with exclusions</h2>
 <p>Before you even think about column alignment, make sure <strong>repeated page furniture</strong>
 (running headers, footers, page numbers) is out of the way.  Two lines of code
