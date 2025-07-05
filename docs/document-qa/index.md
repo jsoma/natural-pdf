@@ -12,7 +12,7 @@ from natural_pdf import PDF
 # Path to sample PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/0500000US42001.pdf")
 
-# Display the first page 
+# Display the first page
 page = pdf.pages[0]
 page.show()
 ```
@@ -65,7 +65,6 @@ questions = [
 results = [page.ask(q) for q in questions]
 
 df = pd.json_normalize(results)
-df.insert(0, 'question', questions)
 df
 ```
 

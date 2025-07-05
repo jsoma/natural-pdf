@@ -101,6 +101,7 @@ ai = [
     "timm",
     "doclayout_yolo",
     "easyocr",
+    "openai",
 ]
 
 [project.urls]

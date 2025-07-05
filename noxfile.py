@@ -115,6 +115,7 @@ def tutorials(session):
     session.install("surya-ocr")
     session.install("easyocr")
     session.install("doclayout_yolo")
+    session.install("paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2")
     # Ensure all optional packages (including paddle OCR dependencies) are available for tutorial execution
     for package in OPTIONAL_PACKAGES:
         session.install(package)
