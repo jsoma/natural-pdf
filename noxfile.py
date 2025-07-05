@@ -87,6 +87,10 @@ def test_full(session):
         #     continue
         session.install(package)
 
+    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
+        session.log("Reinstalling torch from official PyTorch wheel to avoid shm.dll error")
+        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
+
     # Run tests with all dependencies available
     session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
 
