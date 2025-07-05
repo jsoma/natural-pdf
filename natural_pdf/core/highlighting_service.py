@@ -1347,11 +1347,19 @@ class HighlightingService:
 
                 if not quantitative_metadata:
                     # Create regular categorical legend
-                    spec_labels = {
-                        hl.get("label"): hl.get("color")
-                        for hl in spec.highlights
-                        if hl.get("label") and hl.get("color")
-                    }
+                    spec_labels = {}
+                    for hl in spec.highlights:
+                        label = hl.get("label")
+                        color = hl.get("color")
+                        if label and color:
+                            # Process color to ensure it's an RGBA tuple
+                            processed_color = self._process_color_input(color)
+                            if processed_color:
+                                spec_labels[label] = processed_color
+                            else:
+                                # Fallback to color manager if processing fails
+                                spec_labels[label] = self._color_manager.get_color(label=label)
+
                     if spec_labels:
                         legend = create_legend(spec_labels)
                         if legend:
