@@ -37,6 +37,7 @@ jobs:
         run: |
           source .venv/bin/activate
           uv pip install nox nox-uv
+          uv pip install --upgrade nbclient jupyter_core
           # Install the project in editable mode with all dependencies,
           # including those needed for notebooks and nox sessions.
           uv pip install -e .[all,dev]
