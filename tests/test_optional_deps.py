@@ -61,9 +61,23 @@ def are_optional_deps_installed():
     This helps determine if we're running in the 'test_full' nox session.
     """
     try:
-        importlib.import_module("easyocr")
-        return True
-    except ImportError:
+        # Check multiple packages to be more certain we're in a full environment
+        sentinel_packages = ["easyocr", "paddleocr", "surya-ocr", "doclayout_yolo"]
+        installed_count = 0
+        for pkg in sentinel_packages:
+            try:
+                if pkg == "surya-ocr":
+                    importlib.import_module("surya")
+                elif pkg == "doclayout_yolo":
+                    importlib.import_module("doclayout_yolo")
+                else:
+                    importlib.import_module(pkg)
+                installed_count += 1
+            except ImportError:
+                pass
+        # If most sentinel packages are installed, we're likely in test_full
+        return installed_count >= 2
+    except Exception:
         return False
 
 
@@ -150,6 +164,11 @@ def test_engine_fails_gracefully_when_not_installed(
         pytest.skip(
             f"Skipping test: All optional dependencies, including {package_name}, are installed."
         )
+
+    # Skip on Windows CI to avoid torch DLL issues when checking availability
+    if sys.platform.startswith("win") and os.environ.get("GITHUB_ACTIONS"):
+        if engine in ["easyocr", "surya", "doctr", "yolo", "docling", "gemini"]:
+            pytest.skip(f"Skipping {engine} test on Windows CI to avoid torch DLL issues")
 
     if engine == "gemini":
         with pytest.raises(RuntimeError, match="No client provided"):

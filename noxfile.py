@@ -78,6 +78,11 @@ def test_full(session):
     # Install the main package with test dependencies first
     session.install(".[test]")
 
+    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
+    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
+        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
+        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
+
     # Install all optional packages
     # Using separate install commands can help with complex dependencies
     for package in OPTIONAL_PACKAGES:
@@ -86,10 +91,6 @@ def test_full(session):
         #     session.log(f"Skipping {package} on macOS for now.")
         #     continue
         session.install(package)
-
-    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
-        session.log("Reinstalling torch from official PyTorch wheel to avoid shm.dll error")
-        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
 
     # Run tests with all dependencies available
     session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
@@ -112,6 +113,12 @@ def tutorials(session):
     """
     # Install dev extras that include jupytext/nbclient etc.
     session.install(".[all,dev]")
+
+    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
+    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
+        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
+        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
+
     session.install("surya-ocr")
     session.install("easyocr")
     session.install("doclayout_yolo")
@@ -136,6 +143,12 @@ def docs(session):
     """
     # Install all dependencies needed for both notebook execution and testing
     session.install(".[all,dev]")
+
+    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
+    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
+        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
+        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
+
     session.install("surya-ocr")
     session.install("easyocr")
     session.install("doclayout_yolo")
@@ -163,6 +176,12 @@ def docs_force(session):
     """
     # Install all dependencies
     session.install(".[all,dev]")
+
+    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
+    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
+        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
+        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
+
     session.install("surya-ocr")
     session.install("easyocr")
     session.install("doclayout_yolo")
