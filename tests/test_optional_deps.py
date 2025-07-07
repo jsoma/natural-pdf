@@ -119,6 +119,11 @@ def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engi
     if engine in ["surya", "docling"] and sys.version_info < (3, 10):
         pytest.skip(f"{engine} tests skipped on Python < 3.10")
 
+    # Skip on Windows CI to avoid torch DLL issues
+    if sys.platform.startswith("win") and os.environ.get("GITHUB_ACTIONS"):
+        if engine in ["easyocr", "surya", "doctr", "yolo", "docling"]:
+            pytest.skip(f"Skipping {engine} test on Windows CI to avoid torch DLL issues")
+
     try:
         if engine in ["easyocr", "paddle", "surya", "doctr"]:
             result = needs_ocr_pdf_page.apply_ocr(engine=engine)

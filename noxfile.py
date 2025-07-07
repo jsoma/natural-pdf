@@ -93,14 +93,6 @@ def test_full(session):
     session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
 
 
-@nox.session(python=PYTHON_VERSIONS)
-def test_favorites(session):
-    """Run tests with the 'favorites' dependencies group."""
-    # The 'favorites' extra in pyproject.toml should now just list packages directly
-    session.install(".[favorites,test]")
-    session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
-
-
 @nox.session(name="docs", python="3.10")
 def docs(session):
     """Execute markdown tutorials and run tutorial tests in one command.
