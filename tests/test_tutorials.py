@@ -5,10 +5,6 @@ import pytest
 # Conditionally import heavy dependencies; skip tests if unavailable in the environment.
 jupytext = pytest.importorskip("jupytext")
 nbformat = pytest.importorskip("nbformat")
-nbclient_mod = pytest.importorskip("nbclient")
-# Import NotebookClient from nbclient root, but CellExecutionError lives in nbclient.exceptions
-from nbclient import NotebookClient
-from nbclient.exceptions import CellExecutionError
 
 # Directory that holds all markdown tutorials (adjust if layout changes)
 TUTORIALS_DIR = Path(__file__).resolve().parent.parent / "docs" / "tutorials"
@@ -21,32 +17,49 @@ pytestmark = pytest.mark.tutorial
 
 @pytest.mark.parametrize("md_path", MD_TUTORIALS, ids=[p.stem for p in MD_TUTORIALS])
 def test_tutorial_markdown_executes(md_path: Path):
-    """Convert the markdown tutorial to a notebook, execute it, and save outputs.
+    """Check that the markdown tutorial has been converted to a notebook with outputs.
 
-    The test will fail if any cell errors, mirroring the behaviour of nbclient.
-    The executed notebook is written back to the same location with the .ipynb
-    extension so it can be published in docs builds.
+    This test verifies that:
+    1. A corresponding .ipynb file exists
+    2. The notebook has been executed (contains outputs)
+
+    It does NOT re-execute the notebook, as that should be done by 01-execute_notebooks.py
     """
-    # Read markdown and convert to an nbformat.NotebookNode via jupytext
-    md_text = md_path.read_text(encoding="utf-8")
-    notebook = jupytext.reads(md_text, fmt="md")
-
-    # Path where we will write the executed notebook
+    # Path where the executed notebook should exist
     ipynb_path = md_path.with_suffix(".ipynb")
 
-    # Execute the notebook in-memory
-    client = NotebookClient(
-        notebook,
-        timeout=600,
-        kernel_name="python3",  # Use default Python kernel available in CI/local env
-        resources={"metadata": {"path": str(md_path.parent)}},
-    )
+    # Check that the notebook exists
+    if not ipynb_path.exists():
+        pytest.fail(f"Expected notebook not found: {ipynb_path}")
 
+    # Read and verify the notebook has outputs
     try:
-        client.execute()
-    except CellExecutionError as exc:
-        # Re-raise with a clearer assertion message for Pytest output
-        pytest.fail(f"Execution failed for {md_path.name}: {exc}")
+        with open(ipynb_path, "r", encoding="utf-8") as f:
+            notebook = nbformat.read(f, as_version=4)
+    except Exception as e:
+        pytest.fail(f"Failed to read notebook {ipynb_path}: {e}")
 
-    # Persist the executed notebook so rendered outputs are available for docs
-    ipynb_path.write_text(nbformat.writes(notebook), encoding="utf-8")
+    # Check that at least some cells have outputs (indicating execution)
+    cells_with_output = 0
+    for cell in notebook.cells:
+        if cell.cell_type == "code" and cell.get("outputs"):
+            cells_with_output += 1
+
+    # If there are code cells but none have outputs, the notebook wasn't executed
+    code_cells = [c for c in notebook.cells if c.cell_type == "code"]
+    if code_cells and cells_with_output == 0:
+        pytest.fail(
+            f"Notebook {ipynb_path.name} exists but appears not to have been executed (no outputs found)"
+        )
+
+    # Optional: Check for execution errors in outputs
+    for cell in notebook.cells:
+        if cell.cell_type == "code":
+            for output in cell.get("outputs", []):
+                if output.get("output_type") == "error":
+                    # Get error details
+                    ename = output.get("ename", "Unknown")
+                    evalue = output.get("evalue", "No error message")
+                    pytest.fail(
+                        f"Notebook {ipynb_path.name} has execution error in cell: {ename}: {evalue}"
+                    )

@@ -12,6 +12,7 @@ permissions:
 jobs:
   execute-tutorials:
     runs-on: ubuntu-latest
+    timeout-minutes: 120  # Set explicit 2-hour timeout
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,7 +46,9 @@ jobs:
       - name: Execute notebooks and run tutorial tests
         run: |
           source .venv/bin/activate
+          echo "Starting at $(date)"
           nox --non-interactive -s docs
+          echo "Completed at $(date)"
 
       - name: Commit and push changes
         run: |

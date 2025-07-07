@@ -15,10 +15,7 @@ import nox
 # 2. Force re-execute all notebooks + run tests:
 #    nox -s docs-force
 #
-# 3. Run only tutorial tests (old workflow):
-#    nox -s tutorials
-#
-# 4. Advanced: Execute notebooks only with custom options:
+# 3. Advanced: Execute notebooks only with custom options:
 #    python 01-execute_notebooks.py --force --workers 8
 #
 # ============================================================================
@@ -104,33 +101,6 @@ def test_favorites(session):
     session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
 
 
-@nox.session(name="tutorials", python="3.10")
-def tutorials(session):
-    """Run tutorial tests only (assumes notebooks are already executed).
-
-    This is the old workflow - use 'nox -s docs' instead for complete workflow.
-    Only use this if you've already run notebook execution separately.
-    """
-    # Install dev extras that include jupytext/nbclient etc.
-    session.install(".[all,dev]")
-
-    # On Windows in CI, pre-install torch from official PyTorch wheel to avoid DLL issues
-    if sys.platform.startswith("win") and "GITHUB_ACTIONS" in os.environ:
-        session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
-        session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
-
-    session.install("surya-ocr")
-    session.install("easyocr")
-    session.install("doclayout_yolo")
-    session.install("paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2")
-    # Ensure all optional packages (including paddle OCR dependencies) are available for tutorial execution
-    for package in OPTIONAL_PACKAGES:
-        session.install(package)
-    # Run only tests marked as tutorial (no repetition across envs)
-    workers = os.environ.get("NOTEBOOK_WORKERS", "10")
-    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
-
-
 @nox.session(name="docs", python="3.10")
 def docs(session):
     """Execute markdown tutorials and run tutorial tests in one command.
@@ -161,8 +131,10 @@ def docs(session):
     session.run("python", "01-execute_notebooks.py", "--workers", workers)
 
     # Then run tutorial tests
+    # Note: These tests verify the notebooks were executed successfully,
+    # they do NOT re-execute the notebooks (that would be redundant)
     session.log("Step 2: Running tutorial tests...")
-    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
+    session.run("pytest", "tests", "-m", "tutorial", "-n", workers, "-v", "--tb=short")
 
 
 @nox.session(name="docs-force", python="3.10")
@@ -194,8 +166,10 @@ def docs_force(session):
     session.run("python", "01-execute_notebooks.py", "--force", "--workers", workers)
 
     # Run tutorial tests
+    # Note: These tests verify the notebooks were executed successfully,
+    # they do NOT re-execute the notebooks (that would be redundant)
     session.log("Step 2: Running tutorial tests...")
-    session.run("pytest", "tests", "-m", "tutorial", "-n", workers)
+    session.run("pytest", "tests", "-m", "tutorial", "-n", workers, "-v", "--tb=short")
 
 
 # Optional: Add a test dependency group to pyproject.toml if needed
