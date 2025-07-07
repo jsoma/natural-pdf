@@ -42,13 +42,21 @@ logger = logging.getLogger(__name__)
 paddle_spec = importlib.util.find_spec("paddle") or importlib.util.find_spec("paddlepaddle")
 paddleocr_spec = importlib.util.find_spec("paddleocr")
 PPStructureV3 = None
+_paddle_import_error = None  # Store the import error for debugging
 
 if paddle_spec and paddleocr_spec:
     try:
         from paddleocr import PPStructureV3
     except ImportError as e:
+        _paddle_import_error = str(e)
         logger.warning(f"Could not import Paddle dependencies: {e}")
 else:
+    if not paddle_spec:
+        _paddle_import_error = "paddlepaddle not found"
+    elif not paddleocr_spec:
+        _paddle_import_error = "paddleocr not found"
+    else:
+        _paddle_import_error = "Unknown import issue"
     logger.warning(
         "paddlepaddle or paddleocr not found. PaddleLayoutDetector will not be available."
     )
@@ -82,6 +90,9 @@ class PaddleLayoutDetector(LayoutDetector):
 
     def is_available(self) -> bool:
         """Check if dependencies are installed."""
+        if PPStructureV3 is None and _paddle_import_error:
+            # Raise an informative error instead of just returning False
+            raise RuntimeError(f"Paddle dependencies check failed: {_paddle_import_error}")
         return PPStructureV3 is not None
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:

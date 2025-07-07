@@ -41,15 +41,10 @@ jobs:
           # including those needed for notebooks and nox sessions.
           uv pip install -e .[all,dev]
 
-      - name: Execute notebook script
+      - name: Execute notebooks and run tutorial tests
         run: |
           source .venv/bin/activate
-          python 01-execute_notebooks.py
-
-      - name: Run tutorials session via Nox
-        run: |
-          source .venv/bin/activate
-          nox --non-interactive -s tutorials
+          nox --non-interactive -s docs
 
       - name: Commit and push changes
         run: |

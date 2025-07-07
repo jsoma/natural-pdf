@@ -128,7 +128,17 @@ class LayoutManager:
                 engine_class = engine_class_or_factory
 
             detector_instance = engine_class()  # Instantiate
-            if not detector_instance.is_available():
+
+            # Try to check availability and capture any errors
+            availability_error = None
+            is_available = False
+            try:
+                is_available = detector_instance.is_available()
+            except Exception as e:
+                availability_error = e
+                logger.error(f"Error checking availability of {engine_name}: {e}", exc_info=True)
+
+            if not is_available:
                 # Check availability before storing
                 # Construct helpful error message with install hint
                 install_hint = ""
@@ -141,9 +151,13 @@ class LayoutManager:
                 else:
                     install_hint = f"(Check installation requirements for {engine_name})"
 
-                raise RuntimeError(
-                    f"Layout engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
-                )
+                error_msg = f"Layout engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
+
+                # If we have an availability error, include it
+                if availability_error:
+                    error_msg += f"\nAvailability check error: {availability_error}"
+
+                raise RuntimeError(error_msg)
             self._detector_instances[engine_name] = detector_instance  # Store if available
 
         return self._detector_instances[engine_name]
