@@ -4,6 +4,13 @@ import sys
 
 import pytest
 
+# Skip all tests in this module on Windows to avoid torch DLL issues
+if sys.platform.startswith("win"):
+    pytest.skip(
+        "Skipping optional dependency tests on Windows due to torch DLL issues",
+        allow_module_level=True,
+    )
+
 from natural_pdf import PDF, PDFCollection  # Import PDFCollection
 from natural_pdf.core.page import Page
 
