@@ -42,6 +42,10 @@ prune pdfs/hidden
 prune my_paddleocr_finetune_data
 prune notebooks
 prune docs/tutorials/pdfs
+prune bad_pdf_analysis
+prune eval_results
+prune pdfs
+prune docs/ocr-tool
 
 # Individual files in nested directories
 exclude docs/tutorials/needs-ocr-searchable.pdf
@@ -49,3 +53,4 @@ exclude notebooks/Examples.md
 
 # File patterns
 global-exclude *.hocr
+global-exclude *.ipynb
