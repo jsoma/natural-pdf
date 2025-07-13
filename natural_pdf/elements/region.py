@@ -46,6 +46,9 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 
+# Import viewer widget support
+from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+
 # --- End Classification Imports --- #
 
 
@@ -3583,3 +3586,147 @@ class Region(
                 return text  # Function error, return original
 
         return text
+
+    # ------------------------------------------------------------------
+    # Interactive Viewer Support
+    # ------------------------------------------------------------------
+
+    def viewer(
+        self,
+        *,
+        resolution: int = 150,
+        include_chars: bool = False,
+        include_attributes: Optional[List[str]] = None,
+    ) -> Optional["InteractiveViewerWidget"]:
+        """Create an interactive ipywidget viewer for **this specific region**.
+
+        The method renders the region to an image (cropped to the region bounds) and
+        overlays all elements that intersect the region (optionally excluding noisy
+        character-level elements).  The resulting widget offers the same zoom / pan
+        experience as :py:meth:`Page.viewer` but scoped to the region.
+
+        Parameters
+        ----------
+        resolution : int, default 150
+            Rendering resolution (DPI).  This should match the value used by the
+            page-level viewer so element scaling is accurate.
+        include_chars : bool, default False
+            Whether to include individual *char* elements in the overlay.  These
+            are often too dense for a meaningful visualisation so are skipped by
+            default.
+        include_attributes : list[str], optional
+            Additional element attributes to expose in the info panel (on top of
+            the default set used by the page viewer).
+
+        Returns
+        -------
+        InteractiveViewerWidget | None
+            The widget instance, or ``None`` if *ipywidgets* is not installed or
+            an error occurred during creation.
+        """
+
+        # ------------------------------------------------------------------
+        # Dependency / environment checks
+        # ------------------------------------------------------------------
+        if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
+            logger.error(
+                "Interactive viewer requires 'ipywidgets'. "
+                'Please install with: pip install "ipywidgets>=7.0.0,<10.0.0"'
+            )
+            return None
+
+        try:
+            # ------------------------------------------------------------------
+            # Render region image (cropped) and encode as data URI
+            # ------------------------------------------------------------------
+            import base64
+            from io import BytesIO
+
+            # Use unified render() with crop=True to obtain just the region
+            img = self.render(resolution=resolution, crop=True)
+            if img is None:
+                logger.error(f"Failed to render image for region {self.bbox} viewer.")
+                return None
+
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            img_str = base64.b64encode(buf.getvalue()).decode()
+            image_uri = f"data:image/png;base64,{img_str}"
+
+            # ------------------------------------------------------------------
+            # Prepare element overlay data (coordinates relative to region)
+            # ------------------------------------------------------------------
+            scale = resolution / 72.0  # Same convention as page viewer
+
+            # Gather elements intersecting the region
+            region_elements = self.get_elements(apply_exclusions=False)
+
+            # Optionally filter out chars
+            if not include_chars:
+                region_elements = [
+                    el for el in region_elements if str(getattr(el, "type", "")).lower() != "char"
+                ]
+
+            default_attrs = [
+                "text",
+                "fontname",
+                "size",
+                "bold",
+                "italic",
+                "color",
+                "linewidth",
+                "is_horizontal",
+                "is_vertical",
+                "source",
+                "confidence",
+                "label",
+                "model",
+                "upright",
+                "direction",
+            ]
+
+            if include_attributes:
+                default_attrs.extend([a for a in include_attributes if a not in default_attrs])
+
+            elements_json: List[dict] = []
+            for idx, el in enumerate(region_elements):
+                try:
+                    # Calculate coordinates relative to region bbox and apply scale
+                    x0 = (el.x0 - self.x0) * scale
+                    y0 = (el.top - self.top) * scale
+                    x1 = (el.x1 - self.x0) * scale
+                    y1 = (el.bottom - self.top) * scale
+
+                    elem_dict = {
+                        "id": idx,
+                        "type": getattr(el, "type", "unknown"),
+                        "x0": round(x0, 2),
+                        "y0": round(y0, 2),
+                        "x1": round(x1, 2),
+                        "y1": round(y1, 2),
+                        "width": round(x1 - x0, 2),
+                        "height": round(y1 - y0, 2),
+                    }
+
+                    # Add requested / default attributes
+                    for attr_name in default_attrs:
+                        if hasattr(el, attr_name):
+                            val = getattr(el, attr_name)
+                            # Ensure JSON serialisable
+                            if not isinstance(val, (str, int, float, bool, list, dict, type(None))):
+                                val = str(val)
+                            elem_dict[attr_name] = val
+                    elements_json.append(elem_dict)
+                except Exception as e:
+                    logger.warning(f"Error preparing element {idx} for region viewer: {e}")
+
+            viewer_data = {"page_image": image_uri, "elements": elements_json}
+
+            # ------------------------------------------------------------------
+            # Instantiate the widget directly using the prepared data
+            # ------------------------------------------------------------------
+            return InteractiveViewerWidget(pdf_data=viewer_data)
+
+        except Exception as e:
+            logger.error(f"Error creating viewer for region {self.bbox}: {e}", exc_info=True)
+            return None
