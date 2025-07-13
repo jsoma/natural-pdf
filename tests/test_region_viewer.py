@@ -35,13 +35,17 @@ def test_region_viewer_no_error():
     except Exception as exc:
         pytest.fail(f"Region.viewer() raised an unexpected exception: {exc}")
 
-    # If ipywidgets is present we should get an InteractiveViewerWidget instance
-    if pytest.importorskip(
-        "ipywidgets", reason="ipywidgets not installed", allow_module_level=False
-    ):
-        from natural_pdf.widgets.viewer import InteractiveViewerWidget
+    # The library expects *ipywidgets* to be available in our test environment.
+    # Attempt to import it directly; if this fails we skip the test entirely.
+    try:
+        import ipywidgets as _  # noqa: F401
+    except ModuleNotFoundError:
+        pytest.skip("ipywidgets not installed – skipping interactive viewer test")
 
-        assert viewer_widget is None or isinstance(viewer_widget, InteractiveViewerWidget)
-    else:
-        # When ipywidgets is missing the function should gracefully return None
-        assert viewer_widget is None
+    # Validate that the viewer returns the expected widget type.
+    from natural_pdf.widgets.viewer import InteractiveViewerWidget
+
+    assert (
+        viewer_widget is not None
+    ), "Region.viewer() should return a widget when ipywidgets is installed"
+    assert isinstance(viewer_widget, InteractiveViewerWidget)
