@@ -22,7 +22,7 @@ dependencies = [
     "scikit-learn",
     "markdown",
     "pandas",
-    "pdfplumber",
+    "pdfplumber>=0.11.7",
     "colormath2",
     "pillow",
     "colour",

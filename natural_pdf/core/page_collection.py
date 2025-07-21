@@ -1247,3 +1247,40 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         from natural_pdf.core.highlighting_service import HighlightContext
 
         return HighlightContext(self, show_on_exit=show)
+
+    def groupby(self, by: Union[str, Callable], *, show_progress: bool = True) -> "PageGroupBy":
+        """
+        Group pages by selector text or callable result.
+
+        Args:
+            by: CSS selector string or callable function
+            show_progress: Whether to show progress bar during computation (default: True)
+
+        Returns:
+            PageGroupBy object supporting iteration and dict-like access
+
+        Examples:
+            # Group by header text
+            for title, pages in pdf.pages.groupby('text[size=16]'):
+                print(f"Section: {title}")
+
+            # Group by callable
+            for city, pages in pdf.pages.groupby(lambda p: p.find('text:contains("CITY")').extract_text()):
+                process_city_pages(pages)
+
+            # Quick exploration with indexing
+            grouped = pdf.pages.groupby('text[size=16]')
+            grouped.info()                    # Show all groups
+            first_section = grouped[0]        # First group
+            last_section = grouped[-1]       # Last group
+
+            # Dict-like access by name
+            madison_pages = grouped.get('CITY OF MADISON')
+            madison_pages = grouped['CITY OF MADISON']  # Alternative
+
+            # Disable progress bar for small collections
+            grouped = pdf.pages.groupby('text[size=16]', show_progress=False)
+        """
+        from natural_pdf.core.page_groupby import PageGroupBy
+
+        return PageGroupBy(self, by, show_progress=show_progress)

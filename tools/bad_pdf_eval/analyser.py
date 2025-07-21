@@ -39,7 +39,7 @@ class BadPDFAnalyzer:
     # ---------------------------------------------------------------------
     def _save_page_image(self, page, page_num: int) -> Path:
         """Render and save page image as high-quality JPG."""
-        img: Image.Image = page.to_image(resolution=self.resolution)
+        img: Image.Image = page.render(resolution=self.resolution)
         if img.mode != "RGB":
             img = img.convert("RGB")
         img_path = self.output_dir / f"page_{page_num:04d}.jpg"

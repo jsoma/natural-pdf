@@ -689,7 +689,7 @@ class HighlightingService:
         logger.debug(f"Added highlight to page {page_index}: {highlight}")
 
         # --- Invalidate page-level image cache --------------------------------
-        # The Page.to_image method maintains an internal cache keyed by rendering
+        # The Page.render method maintains an internal cache keyed by rendering
         # parameters.  Because the cache key currently does **not** incorporate
         # any information about the highlights themselves, it can return stale
         # images after highlights are added or removed.  To ensure the next
@@ -700,11 +700,11 @@ class HighlightingService:
             if hasattr(page_obj, "_to_image_cache"):
                 page_obj._to_image_cache.clear()
                 logger.debug(
-                    f"Cleared cached to_image renders for page {page_index} after adding a highlight."
+                    f"Cleared cached render images for page {page_index} after adding a highlight."
                 )
         except Exception as cache_err:  # pragma: no cover – never fail highlight creation
             logger.warning(
-                f"Failed to invalidate to_image cache for page {page_index}: {cache_err}",
+                f"Failed to invalidate render cache for page {page_index}: {cache_err}",
                 exc_info=True,
             )
 
@@ -737,11 +737,11 @@ class HighlightingService:
             if hasattr(page_obj, "_to_image_cache"):
                 page_obj._to_image_cache.clear()
                 logger.debug(
-                    f"Cleared cached to_image renders for page {page_index} after removing highlights."
+                    f"Cleared cached render images for page {page_index} after removing highlights."
                 )
         except Exception as cache_err:  # pragma: no cover
             logger.warning(
-                f"Failed to invalidate to_image cache for page {page_index}: {cache_err}",
+                f"Failed to invalidate render cache for page {page_index}: {cache_err}",
                 exc_info=True,
             )
 
@@ -760,7 +760,7 @@ class HighlightingService:
         labels: bool = True,
         legend_position: str = "right",
         render_ocr: bool = False,
-        **kwargs,  # Pass other args to pdfplumber.page.to_image if needed
+        **kwargs,  # Pass other args to pdfplumber.page.to_image if needed (internal API)
     ) -> Optional[Image.Image]:
         """
         Renders a specific page with its highlights.
@@ -773,7 +773,7 @@ class HighlightingService:
             labels: Whether to include a legend for highlights.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text on the image.
-            kwargs: Additional keyword arguments for pdfplumber's page.to_image (e.g., width, height).
+            kwargs: Additional keyword arguments for pdfplumber's internal page.to_image (e.g., width, height).
 
         Returns:
             A PIL Image object of the rendered page, or None if rendering fails.
@@ -957,7 +957,7 @@ class HighlightingService:
             crop_bbox: Optional bounding box (x0, top, x1, bottom) in PDF coordinate
                 space to crop the output image to, before legends or other overlays are
                 applied. If None, no cropping is performed.
-            **kwargs: Additional args for pdfplumber's to_image (e.g., width, height).
+            **kwargs: Additional args for pdfplumber's internal to_image (e.g., width, height).
 
         Returns:
             PIL Image of the preview, or None if rendering fails.

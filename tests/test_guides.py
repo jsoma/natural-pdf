@@ -139,7 +139,7 @@ class TestGuidesFactoryMethods:
 
         # Test default behavior (outer=True, align='left')
         guides = Guides.from_content(mock_page, markers=["Header"])
-        mock_page.find.assert_called_with('text:contains("Header")')
+        mock_page.find.assert_called_with('text:contains("Header")', apply_exclusions=True)
 
         # Should include the element's left edge and outer boundaries
         assert 0.0 in guides.vertical  # Left boundary (outer=True)

@@ -341,6 +341,26 @@ class Page(
                     for elem in elements:
                         spec.add_highlight(element=elem, color=group_color, label=group_label)
 
+            # Handle exclusions visualization
+            exclusions_param = kwargs.get("exclusions")
+            if exclusions_param:
+                # Get exclusion regions
+                exclusion_regions = self._get_exclusion_regions(include_callable=True)
+
+                if exclusion_regions:
+                    # Determine color for exclusions
+                    exclusion_color = (
+                        exclusions_param if isinstance(exclusions_param, str) else "red"
+                    )
+
+                    # Add exclusion regions as highlights
+                    for region in exclusion_regions:
+                        spec.add_highlight(
+                            element=region,
+                            color=exclusion_color,
+                            label=f"Exclusion: {region.label or 'unnamed'}",
+                        )
+
         return [spec]
 
     @property
@@ -391,7 +411,9 @@ class Page(
 
     def add_exclusion(
         self,
-        exclusion_func_or_region: Union[Callable[["Page"], "Region"], "Region", Any],
+        exclusion_func_or_region: Union[
+            Callable[["Page"], "Region"], "Region", List[Any], Tuple[Any, ...], Any
+        ],
         label: Optional[str] = None,
         method: str = "region",
     ) -> "Page":
@@ -401,7 +423,8 @@ class Page(
 
         Args:
             exclusion_func_or_region: Either a callable function returning a Region,
-                                      a Region object, or another object with a valid .bbox attribute.
+                                      a Region object, a list/tuple of regions or elements,
+                                      or another object with a valid .bbox attribute.
             label: Optional label for this exclusion (e.g., 'header', 'footer').
             method: Exclusion method - 'region' (exclude all elements in bounding box) or
                     'element' (exclude only the specific elements). Default: 'region'.
@@ -551,10 +574,53 @@ class Page(
                     raise TypeError(
                         f"Failed to convert exclusion object {exclusion_func_or_region} with bbox {getattr(exclusion_func_or_region, 'bbox', 'N/A')} to Region: {e}"
                     ) from e
+        elif isinstance(exclusion_func_or_region, (list, tuple)):
+            # Handle lists/tuples of regions or elements
+            if not exclusion_func_or_region:
+                logger.warning(f"Page {self.index}: Empty list provided for exclusion, ignoring.")
+                return self
+
+            if method == "element":
+                # Store each element directly
+                for item in exclusion_func_or_region:
+                    if hasattr(item, "bbox") and len(getattr(item, "bbox", [])) == 4:
+                        self._exclusions.append((item, label, method))
+                        logger.debug(
+                            f"Page {self.index}: Added element exclusion from list -> {item}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Page {self.index}: Skipping item without valid bbox in list: {item}"
+                        )
+            else:  # method == "region"
+                # Convert each item to a Region and add
+                for item in exclusion_func_or_region:
+                    try:
+                        if isinstance(item, Region):
+                            item.label = label
+                            self._exclusions.append((item, label, method))
+                            logger.debug(f"Page {self.index}: Added Region from list: {item}")
+                        elif hasattr(item, "bbox") and len(getattr(item, "bbox", [])) == 4:
+                            bbox_coords = tuple(float(v) for v in item.bbox)
+                            region = Region(self, bbox_coords, label=label)
+                            self._exclusions.append((region, label, method))
+                            logger.debug(
+                                f"Page {self.index}: Added exclusion region from list item {bbox_coords}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Page {self.index}: Skipping item without valid bbox in list: {item}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Page {self.index}: Failed to convert list item to Region: {e}"
+                        )
+                        continue
+            return self
         else:
             # Reject invalid types
             raise TypeError(
-                f"Invalid exclusion type: {type(exclusion_func_or_region)}. Must be callable, Region, or have a valid .bbox attribute."
+                f"Invalid exclusion type: {type(exclusion_func_or_region)}. Must be callable, Region, list/tuple of regions/elements, or have a valid .bbox attribute."
             )
 
         # Append the stored data (tuple of object/callable, label, and method)
@@ -668,6 +734,46 @@ class Page(
                         regions.append(region_result)
                         if debug:
                             print(f"    ✓ Added region from callable '{label}': {region_result}")
+                    elif hasattr(region_result, "__iter__") and hasattr(region_result, "__len__"):
+                        # Handle ElementCollection or other iterables
+                        from natural_pdf.elements.element_collection import ElementCollection
+
+                        if isinstance(region_result, ElementCollection) or (
+                            hasattr(region_result, "__iter__") and region_result
+                        ):
+                            if debug:
+                                print(
+                                    f"    Converting {type(region_result)} with {len(region_result)} elements to regions..."
+                                )
+
+                            # Convert each element to a region
+                            for elem in region_result:
+                                try:
+                                    if hasattr(elem, "bbox") and len(elem.bbox) == 4:
+                                        bbox_coords = tuple(float(v) for v in elem.bbox)
+                                        region = Region(self, bbox_coords, label=label)
+                                        regions.append(region)
+                                        if debug:
+                                            print(
+                                                f"      ✓ Added region from element: {bbox_coords}"
+                                            )
+                                    else:
+                                        if debug:
+                                            print(
+                                                f"      ✗ Skipping element without valid bbox: {elem}"
+                                            )
+                                except Exception as e:
+                                    if debug:
+                                        print(f"      ✗ Failed to convert element to region: {e}")
+                                    continue
+
+                            if debug and len(region_result) > 0:
+                                print(
+                                    f"    ✓ Converted {len(region_result)} elements from callable '{label}'"
+                                )
+                        else:
+                            if debug:
+                                print(f"    ✗ Empty iterable returned from callable '{label}'")
                     elif region_result:
                         logger.warning(
                             f"Callable exclusion '{exclusion_label}' returned non-Region object: {type(region_result)}. Skipping."
@@ -1013,6 +1119,22 @@ class Page(
                         "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                     )
 
+            # Handle collection-level pseudo-classes (:first, :last) for OR selectors
+            # Note: We only apply :first/:last if they appear in any of the sub-selectors
+            has_first = False
+            has_last = False
+            for sub_selector in selector_obj.get("selectors", []):
+                for pseudo in sub_selector.get("pseudo_classes", []):
+                    if pseudo.get("name") == "first":
+                        has_first = True
+                    elif pseudo.get("name") == "last":
+                        has_last = True
+
+            if has_first:
+                matching_elements = matching_elements[:1] if matching_elements else []
+            elif has_last:
+                matching_elements = matching_elements[-1:] if matching_elements else []
+
             # Return result collection
             return ElementCollection(matching_elements)
 
@@ -1133,6 +1255,15 @@ class Page(
                 logger.warning(
                     "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                 )
+
+        # Handle collection-level pseudo-classes (:first, :last)
+        for pseudo in selector_obj.get("pseudo_classes", []):
+            name = pseudo.get("name")
+
+            if name == "first":
+                matching_elements = matching_elements[:1] if matching_elements else []
+            elif name == "last":
+                matching_elements = matching_elements[-1:] if matching_elements else []
 
         # Create result collection - exclusions are handled by the calling methods (find, find_all)
         result = ElementCollection(matching_elements)
@@ -1944,7 +2075,7 @@ class Page(
             render_ocr: Whether to render OCR text.
             include_highlights: Whether to render highlights.
             resolution: Resolution in DPI for base image rendering (default: 144 DPI, equivalent to previous scale=2.0).
-            **kwargs: Additional args for pdfplumber's to_image.
+            **kwargs: Additional args for pdfplumber's internal to_image.
 
         Returns:
             Self for method chaining.

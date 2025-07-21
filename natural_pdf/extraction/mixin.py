@@ -35,7 +35,7 @@ class ExtractionMixin(ABC):
 
     Host class requirements:
     - Must implement extract_text(**kwargs) -> str
-    - Must implement to_image(**kwargs) -> PIL.Image
+    - Must implement render(**kwargs) -> PIL.Image
     - Must have access to StructuredDataManager (usually via parent PDF)
 
     Example:
@@ -72,25 +72,24 @@ class ExtractionMixin(ABC):
 
         Args:
             using: 'text' or 'vision'
-            **kwargs: Additional arguments passed to extract_text or to_image
+            **kwargs: Additional arguments passed to extract_text or render
 
         Returns:
             str: Extracted text if using='text'
             PIL.Image.Image: Rendered image if using='vision'
             None: If content cannot be retrieved
         """
-        if not hasattr(self, "extract_text") or not callable(self.extract_text):
-            logger.error(f"ExtractionMixin requires 'extract_text' method on {self!r}")
-            return None
-        if not hasattr(self, "to_image") or not callable(self.to_image):
-            logger.error(f"ExtractionMixin requires 'to_image' method on {self!r}")
-            return None
-
         try:
             if using == "text":
+                if not hasattr(self, "extract_text") or not callable(self.extract_text):
+                    logger.error(f"ExtractionMixin requires 'extract_text' method on {self!r}")
+                    return None
                 layout = kwargs.pop("layout", True)
                 return self.extract_text(layout=layout, **kwargs)
             elif using == "vision":
+                if not hasattr(self, "render") or not callable(self.render):
+                    logger.error(f"ExtractionMixin requires 'render' method on {self!r}")
+                    return None
                 resolution = kwargs.pop("resolution", 72)
                 include_highlights = kwargs.pop("include_highlights", False)
                 labels = kwargs.pop("labels", False)
@@ -102,8 +101,13 @@ class ExtractionMixin(ABC):
                 logger.error(f"Unsupported value for 'using': {using}")
                 return None
         except Exception as e:
-            logger.error(f"Error getting {using} content from {self!r}: {e}")
-            return None
+            import warnings
+
+            warnings.warn(
+                f"Error getting {using} content from {self!r}: {e}",
+                RuntimeWarning,
+            )
+            raise
 
     def extract(
         self: Any,
@@ -275,10 +279,7 @@ class ExtractionMixin(ABC):
             raise RuntimeError("StructuredDataManager is not available")
 
         # Get content
-        layout_for_text = kwargs.pop("layout", True)
-        content = self._get_extraction_content(
-            using=using, layout=layout_for_text, **kwargs
-        )  # Pass kwargs
+        content = self._get_extraction_content(using=using, **kwargs)  # Pass kwargs
 
         if content is None or (
             using == "text" and isinstance(content, str) and not content.strip()
@@ -359,10 +360,11 @@ class ExtractionMixin(ABC):
             )
 
         if not result.success:
-            raise ValueError(
-                f"Stored result for '{target_key}' indicates a failed extraction attempt. "
-                f"Error: {result.error_message}"
+            # Return None for failed extractions to allow batch processing to continue
+            logger.warning(
+                f"Extraction '{target_key}' failed: {result.error_message}. Returning None."
             )
+            return None
 
         if result.data is None:
             # This case might occur if success=True but data is somehow None
@@ -591,16 +593,28 @@ class ExtractionMixin(ABC):
             raise RuntimeError("StructuredDataManager is not available")
 
         # Content preparation
-        layout_for_text = kwargs.pop("layout", True)
-        content = self._get_extraction_content(using=using, layout=layout_for_text, **kwargs)
+        content = self._get_extraction_content(using=using, **kwargs)
+
+        import warnings
 
         if content is None or (
             using == "text" and isinstance(content, str) and not content.strip()
         ):
+            preview = None
+            if isinstance(content, str):
+                preview = content[:120]
+            msg = (
+                f"No content available for extraction (using='{using}'). "
+                "Ensure the page has a text layer or render() returns an image. "
+                "For scanned PDFs run apply_ocr() or switch to using='vision'. "
+                f"Content preview: {preview!r}"
+            )
+            warnings.warn(msg, RuntimeWarning)
+
             result = StructuredDataResult(
                 data=None,
                 success=False,
-                error_message=f"No content available for extraction (using='{using}')",
+                error_message=msg,
                 model_used=model,
             )
         else:

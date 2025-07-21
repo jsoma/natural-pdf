@@ -3,7 +3,7 @@
 import json
 import logging
 from collections import UserList
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
     from natural_pdf.flows.region import FlowRegion
+    from natural_pdf.tables.result import TableResult
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,15 @@ class GuidesList(UserList):
         self._parent = parent_guides
         self._axis = axis
 
+    def __getitem__(self, i):
+        """Override to handle slicing properly."""
+        if isinstance(i, slice):
+            # Return a new GuidesList with the sliced data
+            return self.__class__(self._parent, self._axis, self.data[i])
+        else:
+            # For single index, return the value directly
+            return self.data[i]
+
     def from_content(
         self,
         markers: Union[str, List[str], "ElementCollection", None],
@@ -140,6 +150,7 @@ class GuidesList(UserList):
         tolerance: float = 5,
         *,
         append: bool = False,
+        apply_exclusions: bool = True,
     ) -> "Guides":
         """
         Create guides from content markers and add to this axis.
@@ -154,6 +165,7 @@ class GuidesList(UserList):
             align: How to align guides relative to found elements
             outer: Whether to add outer boundary guides
             tolerance: Tolerance for snapping to element edges
+            apply_exclusions: Whether to apply exclusion zones when searching for text
 
         Returns:
             Parent Guides object for chaining
@@ -178,6 +190,7 @@ class GuidesList(UserList):
                     align=align,
                     outer=outer,
                     tolerance=tolerance,
+                    apply_exclusions=apply_exclusions,
                 )
 
                 # Collect guides from this region
@@ -260,6 +273,7 @@ class GuidesList(UserList):
             align=align,
             outer=outer,
             tolerance=tolerance,
+            apply_exclusions=apply_exclusions,
         )
 
         # Replace or append based on parameter
@@ -1398,6 +1412,7 @@ class Guides:
         align: Literal["left", "right", "center", "between"] = "left",
         outer: bool = True,
         tolerance: float = 5,
+        apply_exclusions: bool = True,
     ) -> "Guides":
         """
         Create guides based on text content positions.
@@ -1413,6 +1428,7 @@ class Guides:
             align: Where to place guides relative to found text
             outer: Whether to add guides at the boundaries
             tolerance: Maximum distance to search for text
+            apply_exclusions: Whether to apply exclusion zones when searching for text
 
         Returns:
             New Guides object aligned to text content
@@ -1431,6 +1447,7 @@ class Guides:
                     align=align,
                     outer=outer,
                     tolerance=tolerance,
+                    apply_exclusions=apply_exclusions,
                 )
 
                 # Store in flow guides
@@ -1469,7 +1486,7 @@ class Guides:
         # Find each marker and determine guide position
         for marker in marker_texts:
             if hasattr(obj, "find"):
-                element = obj.find(f'text:contains("{marker}")')
+                element = obj.find(f'text:contains("{marker}")', apply_exclusions=apply_exclusions)
                 if element:
                     if axis == "vertical":
                         if align == "left":
@@ -1498,7 +1515,9 @@ class Guides:
             marker_bounds = []
             for marker in marker_texts:
                 if hasattr(obj, "find"):
-                    element = obj.find(f'text:contains("{marker}")')
+                    element = obj.find(
+                        f'text:contains("{marker}")', apply_exclusions=apply_exclusions
+                    )
                     if element:
                         if axis == "vertical":
                             marker_bounds.append((element.x0, element.x1))
@@ -3285,6 +3304,7 @@ class Guides:
         align: Literal["left", "right", "center", "between"] = "left",
         outer: bool = True,
         tolerance: float = 5,
+        apply_exclusions: bool = True,
     ) -> "Guides":
         """
         Instance method: Add guides from content, allowing chaining.
@@ -3301,6 +3321,7 @@ class Guides:
             align: How to align guides relative to found elements
             outer: Whether to add outer boundary guides
             tolerance: Tolerance for snapping to element edges
+            apply_exclusions: Whether to apply exclusion zones when searching for text
 
         Returns:
             Self for method chaining
@@ -3318,6 +3339,7 @@ class Guides:
             align=align,
             outer=outer,
             tolerance=tolerance,
+            apply_exclusions=apply_exclusions,
         )
 
         # Add the appropriate coordinates to this object
@@ -3420,6 +3442,140 @@ class Guides:
             self.horizontal = list(set(self.horizontal + new_guides.horizontal))
 
         return self
+
+    def extract_table(
+        self,
+        target: Optional[Union["Page", "Region"]] = None,
+        source: str = "guides_temp",
+        cell_padding: float = 0.5,
+        include_outer_boundaries: bool = False,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict] = None,
+        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        show_progress: bool = False,
+        content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
+        *,
+        multi_page: Literal["auto", True, False] = "auto",
+    ) -> "TableResult":
+        """
+        Extract table data directly from guides without leaving temporary regions.
+
+        This method:
+        1. Creates table structure using build_grid()
+        2. Extracts table data from the created table region
+        3. Cleans up all temporary regions
+        4. Returns the TableResult
+
+        Args:
+            target: Page or Region to create regions on (uses self.context if None)
+            source: Source label for temporary regions (will be cleaned up)
+            cell_padding: Internal padding for cell regions in points
+            include_outer_boundaries: Whether to add boundaries at edges if missing
+            method: Table extraction method ('tatr', 'pdfplumber', 'text', etc.)
+            table_settings: Settings for pdfplumber table extraction
+            use_ocr: Whether to use OCR for text extraction
+            ocr_config: OCR configuration parameters
+            text_options: Dictionary of options for the 'text' method
+            cell_extraction_func: Optional callable for custom cell text extraction
+            show_progress: Controls progress bar for text method
+            content_filter: Content filtering function or patterns
+            multi_page: Controls multi-region table creation for FlowRegions
+
+        Returns:
+            TableResult: Extracted table data
+
+        Raises:
+            ValueError: If no table region is created from the guides
+
+        Example:
+            ```python
+            from natural_pdf.analyzers import Guides
+
+            # Create guides from detected lines
+            guides = Guides.from_lines(page, source_label="detected")
+
+            # Extract table directly - no temporary regions left behind
+            table_data = guides.extract_table()
+
+            # Convert to pandas DataFrame
+            df = table_data.to_df()
+            ```
+        """
+        target_obj = target or self.context
+        if not target_obj:
+            raise ValueError("No target object available. Provide target parameter or context.")
+
+        # Get the page for cleanup later
+        if hasattr(target_obj, "x0") and hasattr(target_obj, "top"):  # Region
+            page = target_obj._page
+            element_manager = page._element_mgr
+        elif hasattr(target_obj, "_element_mgr"):  # Page
+            page = target_obj
+            element_manager = page._element_mgr
+        else:
+            raise ValueError(f"Target object {target_obj} is not a Page or Region")
+
+        try:
+            # Step 1: Build grid structure (creates temporary regions)
+            grid_result = self.build_grid(
+                target=target_obj,
+                source=source,
+                cell_padding=cell_padding,
+                include_outer_boundaries=include_outer_boundaries,
+                multi_page=multi_page,
+            )
+
+            # Step 2: Get the table region and extract table data
+            table_region = grid_result["regions"]["table"]
+            if table_region is None:
+                raise ValueError(
+                    "No table region was created from the guides. Check that you have both vertical and horizontal guides."
+                )
+
+            # Handle multi-page case where table_region might be a list
+            if isinstance(table_region, list):
+                if not table_region:
+                    raise ValueError("No table regions were created from the guides.")
+                # Use the first table region for extraction
+                table_region = table_region[0]
+
+            # Step 3: Extract table data using the region's extract_table method
+            table_result = table_region.extract_table(
+                method=method,
+                table_settings=table_settings,
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                text_options=text_options,
+                cell_extraction_func=cell_extraction_func,
+                show_progress=show_progress,
+                content_filter=content_filter,
+            )
+
+            return table_result
+
+        finally:
+            # Step 4: Clean up all temporary regions created by build_grid
+            # This ensures no regions are left behind regardless of success/failure
+            try:
+                regions_to_remove = [
+                    r
+                    for r in element_manager.regions
+                    if getattr(r, "source", None) == source
+                    and getattr(r, "region_type", None)
+                    in {"table", "table_row", "table_column", "table_cell"}
+                ]
+
+                for region in regions_to_remove:
+                    element_manager.remove_element(region, element_type="regions")
+
+                if regions_to_remove:
+                    logger.debug(f"Cleaned up {len(regions_to_remove)} temporary regions")
+
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to clean up temporary regions: {cleanup_err}")
 
     def _get_flow_orientation(self) -> Literal["vertical", "horizontal", "unknown"]:
         """Determines if a FlowRegion's constituent parts are arranged vertically or horizontally."""

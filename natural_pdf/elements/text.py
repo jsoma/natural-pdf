@@ -215,6 +215,11 @@ class TextElement(Element):
         if isinstance(color, (int, float)):
             return (color, color, color)
 
+        # If it's a single-value tuple (grayscale), treat as grayscale
+        if isinstance(color, tuple) and len(color) == 1:
+            gray = color[0]
+            return (gray, gray, gray)
+
         # If it's a tuple of 3 values, treat as RGB
         if isinstance(color, tuple) and len(color) == 3:
             return color

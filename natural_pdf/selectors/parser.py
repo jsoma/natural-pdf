@@ -721,8 +721,8 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
         # Start with a base name, modify for specifics like :not
         filter_name = f"pseudo-class :{name}"
 
-        # Relational pseudo-classes are handled separately by the caller
-        if name in ("above", "below", "near", "left-of", "right-of"):
+        # Relational pseudo-classes and collection-level pseudo-classes are handled separately by the caller
+        if name in ("above", "below", "near", "left-of", "right-of", "first", "last"):
             continue
 
         # --- Handle :not() ---

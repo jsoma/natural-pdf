@@ -211,7 +211,7 @@ class PDFPerformanceTester:
 
             for resolution in resolutions:
                 try:
-                    img = page.to_image(resolution=resolution)
+                    img = page.render(resolution=resolution)
 
                     self.profiler.take_snapshot(
                         f"image_{resolution}dpi_{i+1}",

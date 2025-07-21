@@ -52,7 +52,7 @@ _Add rows as evaluation proceeds. Use short notes; detailed summaries live in ea
 - [ ] Investigate polygon support so a `Region` can be defined by an arbitrary convex hull; today all regions are axis-aligned rectangles so you must approximate with the bounding box.
 
 ## Rejected geometry helpers
-- [REJECTED IDEA] `figure.save(...)` shortcut.  You can already call `fig_region.to_image().save('fig.png')` or use the global `page.save_image()` helper.
+- [REJECTED IDEA] `figure.save(...)` shortcut.  You can already call `fig_region.save_image('fig.png')` or use the global `page.save_image()` helper.
 
 # Helper utilities
 

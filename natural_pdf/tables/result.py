@@ -44,6 +44,7 @@ class TableResult(Sequence):
         header: Union[str, int, List[int], None] = "first",
         index_col=None,
         skip_repeating_headers=None,
+        keep_blank: bool = False,
         **kwargs,
     ):
         """Convert to *pandas* DataFrame.
@@ -52,11 +53,22 @@ class TableResult(Sequence):
         ----------
         header : "first" | int | list[int] | None, default "first"
             • "first" – use row 0 as column names.\n            • int       – use that row index.\n            • list[int] – multi-row header.\n            • None/False– no header.
+
+            Note: If the header row has a different number of columns than the
+            body rows, the method will automatically fall back to header=None
+            to prevent pandas errors. This commonly occurs when headers are
+            merged into a single cell during PDF extraction.
+
         index_col : same semantics as pandas, forwarded.
         skip_repeating_headers : bool, optional
             Whether to remove body rows that exactly match the header row(s).
             Defaults to True when header is truthy, False otherwise.
             Useful for PDFs where headers repeat throughout the table body.
+        keep_blank : bool, default False
+            Whether to preserve empty strings ('') as-is in the DataFrame.
+            When False (default), empty cells become pd.NA for better pandas integration
+            with numerical operations and missing data functions (.dropna(), .fillna(), etc.).
+            When True, empty strings are preserved as empty strings.
         **kwargs  : forwarded to :pyclass:`pandas.DataFrame`.
         """
         try:
@@ -112,7 +124,32 @@ class TableResult(Sequence):
                 # Could add logging here if desired
                 pass
 
+        # Check for header/body column count mismatch and fallback to no header
+        if hdr is not None and body:
+            # Get the maximum number of columns from all body rows
+            # This handles cases where some rows have different column counts
+            max_cols = max(len(row) for row in body) if body else 0
+
+            # Check if header matches the maximum column count
+            header_cols = 0
+            if isinstance(hdr, list) and not isinstance(hdr[0], list):
+                # Single header row
+                header_cols = len(hdr)
+            elif isinstance(hdr, list) and len(hdr) > 0 and isinstance(hdr[0], list):
+                # Multi-row header - check first header row
+                header_cols = len(hdr[0])
+
+            if header_cols != max_cols:
+                # Column count mismatch - fallback to no header
+                hdr = None
+                body = self._rows  # Use all rows as body
+
         df = pd.DataFrame(body, columns=hdr)
+
+        # Convert empty strings to NaN by default
+        if not keep_blank:
+            df = df.replace("", pd.NA)
+
         if index_col is not None and not df.empty:
             df.set_index(
                 df.columns[index_col] if isinstance(index_col, int) else index_col, inplace=True

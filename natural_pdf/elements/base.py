@@ -260,7 +260,7 @@ class DirectionalMixin:
 
         Args:
             height: Height of the region above, in points
-            width: Width mode - "full" for full page width or "element" for element width
+            width: Width mode - "full" (default) for full page width or "element" for element width
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
@@ -268,6 +268,18 @@ class DirectionalMixin:
 
         Returns:
             Region object representing the area above
+
+        Examples:
+            ```python
+            # Default: full page width
+            signature.above()  # Gets everything above across full page width
+
+            # Match element width
+            signature.above(width='element')  # Gets region above matching signature width
+
+            # Stop at specific element
+            signature.above(until='text:contains("Date")')  # Region from date to signature
+            ```
         """
         return self._direction(
             direction="above",
@@ -293,7 +305,7 @@ class DirectionalMixin:
 
         Args:
             height: Height of the region below, in points
-            width: Width mode - "full" for full page width or "element" for element width
+            width: Width mode - "full" (default) for full page width or "element" for element width
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
@@ -301,6 +313,18 @@ class DirectionalMixin:
 
         Returns:
             Region object representing the area below
+
+        Examples:
+            ```python
+            # Default: full page width
+            header.below()  # Gets everything below across full page width
+
+            # Match element width
+            header.below(width='element')  # Gets region below matching header width
+
+            # Limited height
+            header.below(height=200)  # Gets 200pt tall region below header
+            ```
         """
         return self._direction(
             direction="below",
@@ -315,7 +339,7 @@ class DirectionalMixin:
     def left(
         self,
         width: Optional[float] = None,
-        height: str = "full",
+        height: str = "element",
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
@@ -326,7 +350,7 @@ class DirectionalMixin:
 
         Args:
             width: Width of the region to the left, in points
-            height: Height mode - "full" for full page height or "element" for element height
+            height: Height mode - "element" (default) for element height or "full" for full page height
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
@@ -334,6 +358,18 @@ class DirectionalMixin:
 
         Returns:
             Region object representing the area to the left
+
+        Examples:
+            ```python
+            # Default: matches element height
+            table.left()  # Gets region to the left at same height as table
+
+            # Full page height
+            table.left(height='full')  # Gets entire left side of page
+
+            # Custom height
+            table.left(height=100)  # Gets 100pt tall region to the left
+            ```
         """
         return self._direction(
             direction="left",
@@ -348,7 +384,7 @@ class DirectionalMixin:
     def right(
         self,
         width: Optional[float] = None,
-        height: str = "full",
+        height: str = "element",
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
@@ -359,7 +395,7 @@ class DirectionalMixin:
 
         Args:
             width: Width of the region to the right, in points
-            height: Height mode - "full" for full page height or "element" for element height
+            height: Height mode - "element" (default) for element height or "full" for full page height
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
@@ -367,6 +403,18 @@ class DirectionalMixin:
 
         Returns:
             Region object representing the area to the right
+
+        Examples:
+            ```python
+            # Default: matches element height
+            label.right()  # Gets region to the right at same height as label
+
+            # Full page height
+            label.right(height='full')  # Gets entire right side of page
+
+            # Custom height
+            label.right(height=50)  # Gets 50pt tall region to the right
+            ```
         """
         return self._direction(
             direction="right",

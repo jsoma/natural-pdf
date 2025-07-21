@@ -105,7 +105,7 @@ page.find_all('region[model=tatr]').show(group_by='region_type', width=700)
 
 # page.analyze_layout(engine="docling")
 # page.find_all('region[model=docling]').show(group_by='region_type')
-# page.to_image(width=700)
+# page.render(width=700)
 ```
 
 ```python

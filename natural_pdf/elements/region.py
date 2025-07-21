@@ -960,7 +960,7 @@ class Region(
         right_content_col = min(width - 1, content_col_indices[-1] + padding)
 
         # Convert trimmed pixel coordinates back to PDF coordinates
-        scale_factor = resolution / 72.0  # Scale factor used in to_image()
+        scale_factor = resolution / 72.0  # Scale factor used in render()
 
         # Calculate new PDF coordinates and ensure they are Python floats
         trimmed_x0 = float(work_region.x0 + (left_content_col / scale_factor))
@@ -3437,7 +3437,7 @@ class Region(
                     r_idx = int(cell.metadata.get("row_index"))
                     c_idx = int(cell.metadata.get("col_index"))
                     text_val = cell.extract_text(
-                        layout=False, apply_exclusions=False, content_filter=content_filter
+                        layout=False, apply_exclusions=True, content_filter=content_filter
                     ).strip()
                     table_grid[r_idx][c_idx] = text_val if text_val else None
                 except Exception as _err:

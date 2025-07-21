@@ -891,6 +891,7 @@ class ElementCollection(
         label_format: Optional[str] = None,
         annotate: Optional[List[str]] = None,
         bins: Optional[Union[int, List[float]]] = None,
+        **kwargs,
     ) -> List[Dict]:
         """
         Determines the parameters for highlighting each element based on the strategy.

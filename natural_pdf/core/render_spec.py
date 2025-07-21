@@ -146,10 +146,11 @@ class Visualizable:
         legend_position: str = "right",
         annotate: Optional[Union[str, List[str]]] = None,
         # Layout options for multi-page/region
-        layout: Literal["stack", "grid", "single"] = "stack",
+        layout: Optional[Literal["stack", "grid", "single"]] = None,
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
-        columns: Optional[int] = None,  # For grid layout
+        columns: Optional[int] = 6,  # For grid layout, defaults to 6 columns
+        limit: Optional[int] = 30,  # Max pages to show (default 30)
         # Cropping options
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
@@ -169,10 +170,11 @@ class Visualizable:
             highlights: Additional highlight groups to show
             legend_position: Position of legend/colorbar ('right', 'left', 'top', 'bottom')
             annotate: Attribute name(s) to display on highlights (string or list)
-            layout: How to arrange multiple pages/regions
+            layout: How to arrange multiple pages/regions (defaults to 'grid' for multi-page, 'single' for single page)
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
-            columns: Number of columns for grid layout
+            columns: Number of columns for grid layout (defaults to 6)
+            limit: Maximum number of pages to display (default 30, None for all)
             crop: Whether to crop (True, False, or 'content' for bbox of elements)
             crop_bbox: Explicit crop bounds
             **kwargs: Additional parameters passed to rendering
@@ -183,6 +185,10 @@ class Visualizable:
         # Convert string to list if needed
         if isinstance(annotate, str):
             annotate = [annotate]
+
+        # Pass limit as max_pages to _get_render_specs
+        if limit is not None:
+            kwargs["max_pages"] = limit
 
         specs = self._get_render_specs(
             mode="show",
@@ -197,6 +203,14 @@ class Visualizable:
         if not specs:
             logger.warning(f"{self.__class__.__name__}.show() generated no render specs")
             return None
+
+        # Determine default layout based on content and parameters
+        if layout is None:
+            # For PDFs and multi-page collections, default to grid with 6 columns
+            if len(specs) > 1:
+                layout = "grid"
+            else:
+                layout = "single"
 
         highlighter = self._get_highlighter()
         return highlighter.unified_render(
