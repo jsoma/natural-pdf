@@ -1976,7 +1976,7 @@ class Page(
         """Get all line elements on this page."""
         return self._element_mgr.lines
 
-    def highlight(
+    def add_highlight(
         self,
         bbox: Optional[Tuple[float, float, float, float]] = None,
         color: Optional[Union[Tuple, str]] = None,
@@ -1987,7 +1987,7 @@ class Page(
         existing: str = "append",
     ) -> "Page":
         """
-        Highlight a bounding box or the entire page.
+        Add a highlight to a bounding box or the entire page.
         Delegates to the central HighlightingService.
 
         Args:
@@ -2015,7 +2015,7 @@ class Page(
         )
         return self
 
-    def highlight_polygon(
+    def add_highlight_polygon(
         self,
         polygon: List[Tuple[float, float]],
         color: Optional[Union[Tuple, str]] = None,
