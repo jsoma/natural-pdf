@@ -29,9 +29,22 @@ class DirectionalCollectionMixin:
         """Find regions to the right of all elements in this collection."""
         return self.apply(lambda element: element.right(**kwargs))
 
-    def expand(self, **kwargs) -> "ElementCollection":
-        """Expand all elements in this collection."""
-        return self.apply(lambda element: element.expand(**kwargs))
+    def expand(self, *args, **kwargs) -> "ElementCollection":
+        """Expand all elements in this collection.
+
+        Args:
+            *args: If a single positional argument is provided, expands all elements
+                   by that amount in all directions.
+            **kwargs: Keyword arguments for directional expansion (left, right, top, bottom, etc.)
+
+        Examples:
+            # Expand all elements by 5 pixels in all directions
+            collection.expand(5)
+
+            # Expand with different amounts in each direction
+            collection.expand(left=10, right=5, top=3, bottom=7)
+        """
+        return self.apply(lambda element: element.expand(*args, **kwargs))
 
 
 class ApplyMixin:

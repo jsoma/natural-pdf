@@ -259,7 +259,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -271,7 +271,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -283,7 +283,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -297,9 +297,9 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -313,7 +313,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
             element = page.find(
                 selector=selector,
                 text=text,
-                contains=contains,
+                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
@@ -328,7 +328,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -340,7 +340,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -352,7 +352,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -366,9 +366,9 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -383,7 +383,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
             elements = page.find_all(
                 selector=selector,
                 text=text,
-                contains=contains,
+                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,

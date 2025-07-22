@@ -1982,7 +1982,7 @@ class Region(
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1994,7 +1994,7 @@ class Region(
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -2006,7 +2006,7 @@ class Region(
         selector: Optional[str] = None,  # Now optional
         *,
         text: Optional[str] = None,  # New text parameter
-        contains: str = "all",  # New parameter for containment behavior
+        overlap: str = "full",  # How elements overlap with the region
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -2020,9 +2020,9 @@ class Region(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap with the region: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -2035,7 +2035,7 @@ class Region(
         elements = self.find_all(
             selector=selector,
             text=text,
-            contains=contains,
+            overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
@@ -2048,7 +2048,7 @@ class Region(
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -2060,7 +2060,7 @@ class Region(
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -2072,7 +2072,7 @@ class Region(
         selector: Optional[str] = None,  # Now optional
         *,
         text: Optional[str] = None,  # New text parameter
-        contains: str = "all",  # New parameter to control inside/overlap behavior
+        overlap: str = "full",  # How elements overlap with the region
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -2086,9 +2086,9 @@ class Region(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap with the region: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -2104,10 +2104,10 @@ class Region(
         if selector is None and text is None:
             raise ValueError("Provide either 'selector' or 'text'.")
 
-        # Validate contains parameter
-        if contains not in ["all", "any", "center"]:
+        # Validate overlap parameter
+        if overlap not in ["full", "partial", "center"]:
             raise ValueError(
-                f"Invalid contains value: {contains}. Must be 'all', 'any', or 'center'"
+                f"Invalid overlap value: {overlap}. Must be 'full', 'partial', or 'center'"
             )
 
         # Construct selector if 'text' is provided
@@ -2142,7 +2142,7 @@ class Region(
             region_bbox = self.bbox
             matching_elements = []
 
-            if contains == "all":  # Fully inside (strict)
+            if overlap == "full":  # Fully inside (strict)
                 matching_elements = [
                     el
                     for el in potential_elements
@@ -2151,9 +2151,9 @@ class Region(
                     and el.x1 <= region_bbox[2]
                     and el.bottom <= region_bbox[3]
                 ]
-            elif contains == "any":  # Any overlap
+            elif overlap == "partial":  # Any overlap
                 matching_elements = [el for el in potential_elements if self.intersects(el)]
-            elif contains == "center":  # Center point inside
+            elif overlap == "center":  # Center point inside
                 matching_elements = [
                     el for el in potential_elements if self.is_element_center_inside(el)
                 ]

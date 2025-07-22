@@ -1673,9 +1673,9 @@ class ElementCollection(
 
         Args:
             selector: CSS-like selector string
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                      'any' (any overlap), or 'center' (center point inside).
-                      (default: "all")
+            overlap: How to determine if elements overlap: 'full' (fully inside),
+                      'partial' (any overlap), or 'center' (center point inside).
+                      (default: "full")
             apply_exclusions: Whether to exclude elements in exclusion regions
         """
         return self.apply(lambda element: element.find(selector, **kwargs))
@@ -1685,7 +1685,7 @@ class ElementCollection(
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1697,7 +1697,7 @@ class ElementCollection(
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1709,7 +1709,7 @@ class ElementCollection(
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1724,9 +1724,9 @@ class ElementCollection(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1748,7 +1748,7 @@ class ElementCollection(
                 found_in_element: "ElementCollection" = element.find_all(
                     selector=selector,
                     text=text,
-                    contains=contains,
+                    overlap=overlap,
                     apply_exclusions=apply_exclusions,
                     regex=regex,
                     case=case,

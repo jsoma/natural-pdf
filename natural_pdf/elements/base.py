@@ -429,8 +429,28 @@ class DirectionalMixin:
     def to_region(self):
         return self.expand()
 
+    @overload
+    def expand(self, amount: float) -> "Region":
+        """Expand in all directions by the same amount."""
+        ...
+
+    @overload
     def expand(
         self,
+        *,
+        left: float = 0,
+        right: float = 0,
+        top: float = 0,
+        bottom: float = 0,
+        width_factor: float = 1.0,
+        height_factor: float = 1.0,
+    ) -> "Region":
+        """Expand by different amounts in each direction."""
+        ...
+
+    def expand(
+        self,
+        amount: Optional[float] = None,
         left: float = 0,
         right: float = 0,
         top: float = 0,
@@ -442,6 +462,7 @@ class DirectionalMixin:
         Create a new region expanded from this element/region.
 
         Args:
+            amount: If provided as the first positional argument, expand all edges by this amount
             left: Amount to expand left edge (positive value expands leftwards)
             right: Amount to expand right edge (positive value expands rightwards)
             top: Amount to expand top edge (positive value expands upwards)
@@ -451,7 +472,20 @@ class DirectionalMixin:
 
         Returns:
             New expanded Region object
+
+        Examples:
+            # Expand 5 pixels in all directions
+            expanded = element.expand(5)
+
+            # Expand by different amounts in each direction
+            expanded = element.expand(left=10, right=5, top=3, bottom=7)
+
+            # Use width/height factors
+            expanded = element.expand(width_factor=1.5, height_factor=2.0)
         """
+        # If amount is provided as first positional argument, use it for all directions
+        if amount is not None:
+            left = right = top = bottom = amount
         # Start with current coordinates
         new_x0 = self.x0
         new_x1 = self.x1
@@ -1260,7 +1294,7 @@ class Element(
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1272,7 +1306,7 @@ class Element(
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1284,7 +1318,7 @@ class Element(
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1299,9 +1333,9 @@ class Element(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap with this element: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1318,7 +1352,7 @@ class Element(
         return temp_region.find(
             selector=selector,
             text=text,
-            contains=contains,
+            overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
@@ -1330,7 +1364,7 @@ class Element(
         self,
         *,
         text: str,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1342,7 +1376,7 @@ class Element(
         self,
         selector: str,
         *,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1354,7 +1388,7 @@ class Element(
         selector: Optional[str] = None,
         *,
         text: Optional[str] = None,
-        contains: str = "all",
+        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1369,9 +1403,9 @@ class Element(
         Args:
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)').
-            contains: How to determine if elements are inside: 'all' (fully inside),
-                     'any' (any overlap), or 'center' (center point inside).
-                     (default: "all")
+            overlap: How to determine if elements overlap with this element: 'full' (fully inside),
+                     'partial' (any overlap), or 'center' (center point inside).
+                     (default: "full")
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1388,7 +1422,7 @@ class Element(
         return temp_region.find_all(
             selector=selector,
             text=text,
-            contains=contains,
+            overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
