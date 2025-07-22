@@ -2431,11 +2431,25 @@
 <span class="n">elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headers&quot;</span><span class="p">)</span>    <span class="c1"># With label</span>
 <span class="n">elements</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">group_by</span><span class="o">=</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>                  <span class="c1"># Color by type</span>
 
-<span class="c1"># Multiple collections together</span>
+<span class="c1"># Quick highlighting (one-liner)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span><span class="n">elements1</span><span class="p">,</span> <span class="n">elements2</span><span class="p">,</span> <span class="n">elements3</span><span class="p">)</span>  <span class="c1"># Multiple elements</span>
+<span class="n">page</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>                                  <span class="c1"># With custom colors</span>
+    <span class="p">(</span><span class="n">elements1</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="n">elements2</span><span class="p">,</span> <span class="s1">&#39;blue&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="n">elements3</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Multiple collections with context manager</span>
 <span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">highlights</span><span class="p">()</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
     <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elements1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Type 1&quot;</span><span class="p">)</span>
     <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elements2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Type 2&quot;</span><span class="p">)</span>
     <span class="n">h</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Auto-display in Jupyter/Colab</span>
+<span class="k">with</span> <span class="n">page</span><span class="o">.</span><span class="n">highlights</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">h</span><span class="p">:</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elements1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headers&quot;</span><span class="p">)</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">elements2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Content&quot;</span><span class="p">)</span>
+    <span class="c1"># Displays automatically when exiting context</span>
 </code></pre></div>
 <h3 id="viewing">Viewing</h3>
 <div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>                                     <span class="c1"># Show page with highlights</span>
