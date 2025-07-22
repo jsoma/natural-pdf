@@ -92,6 +92,50 @@ class Visualizable:
     _get_render_specs() to gain full image generation capabilities.
     """
 
+    def highlight(self, *elements, **kwargs):
+        """
+        Convenience method for highlighting elements in Jupyter/Colab.
+
+        This method creates a highlight context, adds the elements, and returns
+        the resulting image. It's designed for simple one-liner usage in notebooks.
+
+        Args:
+            *elements: Elements or element collections to highlight
+            **kwargs: Additional parameters passed to show()
+
+        Returns:
+            PIL Image with highlights
+
+        Example:
+            # Simple one-liner highlighting
+            page.highlight(left, mid, right)
+
+            # With custom colors
+            page.highlight(
+                (tables, 'blue'),
+                (headers, 'red'),
+                (footers, 'green')
+            )
+        """
+        from natural_pdf.core.highlighting_service import HighlightContext
+
+        # Create context and add elements
+        ctx = HighlightContext(self, show_on_exit=False)
+
+        for element in elements:
+            if isinstance(element, tuple) and len(element) == 2:
+                # Element with color: (element, color)
+                ctx.add(element[0], color=element[1])
+            elif isinstance(element, tuple) and len(element) == 3:
+                # Element with color and label: (element, color, label)
+                ctx.add(element[0], color=element[1], label=element[2])
+            else:
+                # Just element
+                ctx.add(element)
+
+        # Return the image directly
+        return ctx.show(**kwargs)
+
     def _get_render_specs(
         self, mode: Literal["show", "render"] = "show", **kwargs
     ) -> List[RenderSpec]:

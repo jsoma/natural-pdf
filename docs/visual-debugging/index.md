@@ -83,6 +83,47 @@ with page.highlights() as h:
     h.show()
 ```
 
+### Jupyter/Colab Support
+
+In Jupyter notebooks and Google Colab, you can use `show=True` to automatically display the highlights when exiting the context:
+
+```python
+# Automatically displays the image in Jupyter/Colab
+with page.highlights(show=True) as h:
+    h.add(summary_elements, label='Summary')
+    h.add(date_elements, label='Date')
+    h.add(line_elements, label='Lines')
+    # No need to call h.show() - displays automatically!
+```
+
+### Quick Highlighting with `.highlight()`
+
+For simple highlighting tasks, use the `.highlight()` convenience method:
+
+```python
+# Highlight multiple elements in one line
+page.highlight(summary_elements, date_elements, line_elements)
+
+# With custom colors
+page.highlight(
+    (summary_elements, 'red'),
+    (date_elements, 'blue'),
+    (line_elements, 'green')
+)
+
+# With colors and labels
+page.highlight(
+    (summary_elements, 'red', 'Summary Text'),
+    (date_elements, 'blue', 'Date Fields'),
+    (line_elements, 'green', 'Separator Lines')
+)
+
+# Pass additional parameters like width or resolution
+page.highlight(summary_elements, date_elements, width=800, labels=True)
+```
+
+This method is particularly useful in Jupyter/Colab environments where the image displays automatically as the cell output.
+
 ## Customizing Multiple Highlights
 
 Customize the appearance of multiple highlights using the context manager:
@@ -133,7 +174,7 @@ content = title.below(height=200)
 content.show()
 ```
 
-Or look at just the region by itself
+Or look at just the region by itself:
 
 ```python
 # Find a title and create a region below it
@@ -142,6 +183,27 @@ content = title.below(height=200)
 
 # Crop to the region
 content.show(crop=True)
+```
+
+### Highlighting Multiple Regions
+
+The `.highlight()` method works with regions too:
+
+```python
+# Create multiple regions
+left = page.region(left=0, right=page.width/3, top=0, bottom=page.height)
+mid = page.region(left=page.width/3, right=page.width/3*2, top=0, bottom=page.height)
+right = page.region(left=page.width/3*2, right=page.width, top=0, bottom=page.height)
+
+# Highlight all three regions
+page.highlight(left, mid, right)
+
+# Or with custom colors
+page.highlight(
+    (left, 'red', 'Left Column'),
+    (mid, 'green', 'Middle Column'),
+    (right, 'blue', 'Right Column')
+)
 ```
 
 ## Working with Text Styles

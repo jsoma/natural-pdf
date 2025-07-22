@@ -156,11 +156,25 @@ elements.show(color="red")                      # Single collection
 elements.show(color="blue", label="Headers")    # With label
 elements.show(group_by='type')                  # Color by type
 
-# Multiple collections together
+# Quick highlighting (one-liner)
+page.highlight(elements1, elements2, elements3)  # Multiple elements
+page.highlight(                                  # With custom colors
+    (elements1, 'red'),
+    (elements2, 'blue'),
+    (elements3, 'green')
+)
+
+# Multiple collections with context manager
 with page.highlights() as h:
     h.add(elements1, color="red", label="Type 1")
     h.add(elements2, color="blue", label="Type 2")
     h.show()
+
+# Auto-display in Jupyter/Colab
+with page.highlights(show=True) as h:
+    h.add(elements1, label="Headers")
+    h.add(elements2, label="Content")
+    # Displays automatically when exiting context
 ```
 
 ### Viewing

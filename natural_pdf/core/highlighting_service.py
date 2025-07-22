@@ -335,6 +335,7 @@ class HighlightContext:
         self.show_on_exit = show_on_exit
         self.highlight_groups = []
         self._color_manager = ColorManager()
+        self._exit_image = None  # Store image for Jupyter display
 
     def add(
         self,
@@ -421,6 +422,11 @@ class HighlightContext:
             )
             return None
 
+    @property
+    def image(self) -> Optional[Image.Image]:
+        """Get the last generated image (useful after context exit)."""
+        return self._exit_image
+
     def __enter__(self) -> "HighlightContext":
         """Enter the context."""
         return self
@@ -428,7 +434,25 @@ class HighlightContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the context, optionally showing highlights."""
         if self.show_on_exit and not exc_type:
-            self.show()
+            self._exit_image = self.show()
+
+            # Check if we're in a Jupyter/IPython environment
+            try:
+                # Try to get IPython instance
+                from IPython import get_ipython
+
+                ipython = get_ipython()
+                if ipython is not None:
+                    # We're in IPython/Jupyter
+                    from IPython.display import display
+
+                    if self._exit_image is not None:
+                        display(self._exit_image)
+            except (ImportError, NameError):
+                # Not in Jupyter or IPython not available - that's OK
+                pass
+
+        # __exit__ must return False to not suppress exceptions
         return False
 
 
