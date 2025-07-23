@@ -42,6 +42,7 @@ from natural_pdf.ocr import OCRManager, OCROptions
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.vision.mixin import VisualSearchMixin
 
 if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
@@ -252,7 +253,9 @@ class _LazyPageList(Sequence):
 # --- End Lazy Page List Helper --- #
 
 
-class PDF(TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin, Visualizable):
+class PDF(
+    TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin, VisualSearchMixin, Visualizable
+):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,

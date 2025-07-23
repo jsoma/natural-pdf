@@ -78,6 +78,7 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
+from natural_pdf.vision.mixin import VisualSearchMixin
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # --- End Classification Imports --- #
@@ -101,6 +102,7 @@ class Page(
     ExtractionMixin,
     ShapeDetectionMixin,
     DescribeMixin,
+    VisualSearchMixin,
     Visualizable,
 ):
     """Enhanced Page wrapper built on top of pdfplumber.Page.

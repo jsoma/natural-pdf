@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
+from natural_pdf.vision.mixin import VisualSearchMixin
 
 # --- Search Imports ---
 try:
@@ -69,8 +70,8 @@ from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the ne
 
 
 class PDFCollection(
-    SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin
-):  # Add ExportMixin and ShapeDetectionMixin
+    SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMixin
+):
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -258,14 +259,140 @@ class PDFCollection(
         return iter(self._pdfs)
 
     def __repr__(self) -> str:
-        # Removed search status
-        return f"<PDFCollection(count={len(self._pdfs)})>"
         return f"<PDFCollection(count={len(self._pdfs)})>"
 
     @property
     def pdfs(self) -> List["PDF"]:
         """Returns the list of PDF objects held by the collection."""
         return self._pdfs
+
+    def show(self, limit: Optional[int] = 30, per_pdf_limit: Optional[int] = 10, **kwargs):
+        """
+        Display all PDFs in the collection with labels.
+
+        Each PDF is shown with its pages in a grid layout (6 columns by default),
+        and all PDFs are stacked vertically with labels.
+
+        Args:
+            limit: Maximum total pages to show across all PDFs (default: 30)
+            per_pdf_limit: Maximum pages to show per PDF (default: 10)
+            **kwargs: Additional arguments passed to each PDF's show() method
+                     (e.g., columns, exclusions, resolution, etc.)
+
+        Returns:
+            Displayed image in Jupyter or None
+        """
+        if not self._pdfs:
+            print("Empty collection")
+            return None
+
+        # Import here to avoid circular imports
+        import numpy as np
+        from PIL import Image, ImageDraw, ImageFont
+
+        # Calculate pages per PDF if total limit is set
+        if limit and not per_pdf_limit:
+            per_pdf_limit = max(1, limit // len(self._pdfs))
+
+        # Collect images from each PDF
+        all_images = []
+        total_pages_shown = 0
+
+        for pdf in self._pdfs:
+            if limit and total_pages_shown >= limit:
+                break
+
+            # Calculate limit for this PDF
+            pdf_limit = per_pdf_limit
+            if limit:
+                remaining = limit - total_pages_shown
+                pdf_limit = min(per_pdf_limit or remaining, remaining)
+
+            # Get PDF identifier
+            pdf_name = getattr(pdf, "filename", None) or getattr(pdf, "path", "Unknown")
+            if isinstance(pdf_name, Path):
+                pdf_name = pdf_name.name
+            elif "/" in str(pdf_name):
+                pdf_name = str(pdf_name).split("/")[-1]
+
+            # Render this PDF
+            try:
+                # Get render specs from the PDF
+                render_specs = pdf._get_render_specs(mode="show", max_pages=pdf_limit, **kwargs)
+
+                if not render_specs:
+                    continue
+
+                # Get the highlighter and render without displaying
+                highlighter = pdf._get_highlighter()
+                pdf_image = highlighter.unified_render(
+                    specs=render_specs,
+                    layout="grid" if len(render_specs) > 1 else "single",
+                    columns=6,
+                    **kwargs,
+                )
+
+                if pdf_image:
+                    # Add label above the PDF image
+                    label_height = 40
+                    label_bg_color = (240, 240, 240)
+                    label_text_color = (0, 0, 0)
+
+                    # Create new image with space for label
+                    width, height = pdf_image.size
+                    labeled_image = Image.new("RGB", (width, height + label_height), "white")
+
+                    # Draw label background
+                    draw = ImageDraw.Draw(labeled_image)
+                    draw.rectangle([0, 0, width, label_height], fill=label_bg_color)
+
+                    # Draw label text
+                    try:
+                        # Try to use a nice font if available
+                        font = ImageFont.truetype("Arial", 20)
+                    except:
+                        # Fallback to default font
+                        font = ImageFont.load_default()
+
+                    label_text = f"{pdf_name} ({len(pdf.pages)} pages)"
+                    draw.text((10, 10), label_text, fill=label_text_color, font=font)
+
+                    # Paste PDF image below label
+                    labeled_image.paste(pdf_image, (0, label_height))
+
+                    all_images.append(labeled_image)
+                    total_pages_shown += min(pdf_limit, len(pdf.pages))
+
+            except Exception as e:
+                logger.warning(f"Failed to render PDF {pdf_name}: {e}")
+                continue
+
+        if not all_images:
+            print("No PDFs could be rendered")
+            return None
+
+        # Combine all images vertically
+        if len(all_images) == 1:
+            combined = all_images[0]
+        else:
+            # Add spacing between PDFs
+            spacing = 20
+            total_height = sum(img.height for img in all_images) + spacing * (len(all_images) - 1)
+            max_width = max(img.width for img in all_images)
+
+            combined = Image.new("RGB", (max_width, total_height), "white")
+
+            y_offset = 0
+            for i, img in enumerate(all_images):
+                # Center images if they're narrower than max width
+                x_offset = (max_width - img.width) // 2
+                combined.paste(img, (x_offset, y_offset))
+                y_offset += img.height
+                if i < len(all_images) - 1:
+                    y_offset += spacing
+
+        # Return the combined image (Jupyter will display it automatically)
+        return combined
 
     @overload
     def find_all(
