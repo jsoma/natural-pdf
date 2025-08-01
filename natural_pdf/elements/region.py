@@ -221,7 +221,7 @@ class Region(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, Literal["content"]] = True,  # Default to True for regions
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
@@ -231,7 +231,7 @@ class Region(
         Args:
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
             color: Color for highlighting this region in show mode
-            highlights: Additional highlight groups to show
+            highlights: Additional highlight groups to show, or False to disable all highlights
             crop: Whether to crop to this region
             crop_bbox: Explicit crop bounds (overrides region bounds)
             **kwargs: Additional parameters
@@ -250,10 +250,12 @@ class Region(
             # Crop to this region's bounds
             spec.crop_bbox = self.bbox
 
-        # Add highlights in show mode
-        if mode == "show":
-            # Highlight this region
-            if color or mode == "show":  # Always highlight in show mode
+        # Add highlights in show mode (unless explicitly disabled with highlights=False)
+        if mode == "show" and highlights is not False:
+            # Only highlight this region if:
+            # 1. We're not cropping, OR
+            # 2. We're cropping but color was explicitly specified
+            if not crop or color is not None:
                 spec.add_highlight(
                     bbox=self.bbox,
                     polygon=self.polygon if self.has_polygon else None,
@@ -261,8 +263,8 @@ class Region(
                     label=self.label or self.name or "Region",
                 )
 
-            # Add additional highlight groups if provided
-            if highlights:
+            # Add additional highlight groups if provided (and highlights is a list)
+            if highlights and isinstance(highlights, list):
                 for group in highlights:
                     elements = group.get("elements", [])
                     group_color = group.get("color", color)

@@ -1192,7 +1192,7 @@ class Element(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         crop: Union[bool, Literal["content"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         label: Optional[str] = None,
@@ -1203,7 +1203,7 @@ class Element(
         Args:
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
             color: Color for highlighting this element in show mode
-            highlights: Additional highlight groups to show
+            highlights: Additional highlight groups to show, or False to disable all highlights
             crop: Whether to crop to element bounds
             crop_bbox: Explicit crop bounds
             label: Optional label for this element
@@ -1225,19 +1225,23 @@ class Element(
             if hasattr(self, "bbox") and self.bbox:
                 spec.crop_bbox = self.bbox
 
-        # Add highlight in show mode
-        if mode == "show":
-            # Use provided label or generate one
-            element_label = label if label is not None else self.__class__.__name__
+        # Add highlight in show mode (unless explicitly disabled with highlights=False)
+        if mode == "show" and highlights is not False:
+            # Only highlight this element if:
+            # 1. We're not cropping, OR
+            # 2. We're cropping but color was explicitly specified
+            if not crop or color is not None:
+                # Use provided label or generate one
+                element_label = label if label is not None else self.__class__.__name__
 
-            spec.add_highlight(
-                element=self,
-                color=color or "red",  # Default red for single element
-                label=element_label,
-            )
+                spec.add_highlight(
+                    element=self,
+                    color=color or "red",  # Default red for single element
+                    label=element_label,
+                )
 
-            # Add additional highlight groups if provided
-            if highlights:
+            # Add additional highlight groups if provided (and highlights is a list)
+            if highlights and isinstance(highlights, list):
                 for group in highlights:
                     group_elements = group.get("elements", [])
                     group_color = group.get("color", color)

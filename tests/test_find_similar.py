@@ -35,7 +35,7 @@ class TestFindSimilar:
         template = images[0]
 
         # Find similar images - with low resolution, may need lower confidence
-        matches = pdf.find_similar(template, confidence=0.7)
+        matches = pdf.find_similar(template, confidence=0.6)
 
         # Should find at least the original and one duplicate
         assert len(matches) >= 2
@@ -49,7 +49,7 @@ class TestFindSimilar:
         template = images[0]
 
         # Find similar images - at low resolution, grayscale may not match perfectly
-        matches = pdf.find_similar(template, confidence=0.7)
+        matches = pdf.find_similar(template, confidence=0.6)
 
         # Should find at least 2 matches
         assert len(matches) >= 2

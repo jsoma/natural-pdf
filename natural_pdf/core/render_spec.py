@@ -186,7 +186,7 @@ class Visualizable:
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         labels: bool = True,
         label_format: Optional[str] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         legend_position: str = "right",
         annotate: Optional[Union[str, List[str]]] = None,
         # Layout options for multi-page/region
@@ -211,7 +211,7 @@ class Visualizable:
             color: Default highlight color
             labels: Whether to show labels for highlights
             label_format: Format string for labels (e.g., "Element {index}")
-            highlights: Additional highlight groups to show
+            highlights: Additional highlight groups to show, or False to disable all highlights
             legend_position: Position of legend/colorbar ('right', 'left', 'top', 'bottom')
             annotate: Attribute name(s) to display on highlights (string or list)
             layout: How to arrange multiple pages/regions (defaults to 'grid' for multi-page, 'single' for single page)
