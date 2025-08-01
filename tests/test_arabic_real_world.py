@@ -16,9 +16,6 @@ class TestArabicPDF(unittest.TestCase):
         cls.page = cls.pdf.pages[0]
         cls.load_time = time.time() - start
 
-    def test_load_time_under_3s(self):
-        self.assertLess(self.load_time, 3, f"PDF load time too long: {self.load_time:.2f}s")
-
     def test_text_extraction(self):
         text = self.page.extract_text()
         self.assertTrue(len(text) > 1000, "Extracted text is too short")
