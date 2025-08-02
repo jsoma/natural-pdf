@@ -41,7 +41,7 @@ class TableResult(Sequence):
 
     def to_df(
         self,
-        header: Union[str, int, List[int], None] = "first",
+        header: Union[str, int, List[int], List[str], None] = "first",
         index_col=None,
         skip_repeating_headers=None,
         keep_blank: bool = False,
@@ -51,8 +51,8 @@ class TableResult(Sequence):
 
         Parameters
         ----------
-        header : "first" | int | list[int] | None, default "first"
-            • "first" – use row 0 as column names.\n            • int       – use that row index.\n            • list[int] – multi-row header.\n            • None/False– no header.
+        header : "first" | int | list[int] | list[str] | None, default "first"
+            • "first" – use row 0 as column names.\n            • int       – use that row index.\n            • list[int] – multi-row header.\n            • list[str] – custom column names.\n            • None/False– no header.
 
             Note: If the header row has a different number of columns than the
             body rows, the method will automatically fall back to header=None
@@ -84,7 +84,11 @@ class TableResult(Sequence):
 
         # Determine default for skip_repeating_headers based on header parameter
         if skip_repeating_headers is None:
-            skip_repeating_headers = header is not None and header is not False
+            skip_repeating_headers = (
+                header is not None
+                and header is not False
+                and not (isinstance(header, (list, tuple)) and len(header) == 0)
+            )
 
         # Determine header rows and body rows
         body = rows
@@ -97,10 +101,31 @@ class TableResult(Sequence):
         elif isinstance(header, int):
             hdr = rows[header]
             body = rows[:header] + rows[header + 1 :]
-        elif isinstance(header, (list, tuple)):
+        elif isinstance(header, (list, tuple)) and all(isinstance(i, int) for i in header):
+            # List of integers - multi-row header
             hdr_rows = [rows[i] for i in header]
             body = [r for idx, r in enumerate(rows) if idx not in header]
             hdr = hdr_rows
+        elif (
+            isinstance(header, (list, tuple))
+            and len(header) > 0
+            and all(isinstance(i, str) for i in header)
+        ):
+            # List of strings - custom column names
+            hdr = list(header)
+            body = rows
+            # Validate column count matches
+            if body:
+                max_cols = max(len(row) for row in body)
+                if len(hdr) != max_cols:
+                    raise ValueError(
+                        f"Number of column names ({len(hdr)}) must match "
+                        f"number of columns in data ({max_cols})"
+                    )
+        elif isinstance(header, (list, tuple)) and len(header) == 0:
+            # Empty list behaves like None
+            hdr = None
+            body = rows
         else:
             raise ValueError("Invalid value for header parameter")
 
@@ -125,7 +150,12 @@ class TableResult(Sequence):
                 pass
 
         # Check for header/body column count mismatch and fallback to no header
-        if hdr is not None and body:
+        if (
+            hdr is not None
+            and body
+            and not (isinstance(header, (list, tuple)) and all(isinstance(i, str) for i in header))
+        ):
+            # Skip this check for custom string headers
             # Get the maximum number of columns from all body rows
             # This handles cases where some rows have different column counts
             max_cols = max(len(row) for row in body) if body else 0
@@ -144,6 +174,9 @@ class TableResult(Sequence):
                 hdr = None
                 body = self._rows  # Use all rows as body
 
+        # Handle empty list case - pandas needs None not empty list
+        if isinstance(hdr, list) and len(hdr) == 0:
+            hdr = None
         df = pd.DataFrame(body, columns=hdr)
 
         # Convert empty strings to NaN by default

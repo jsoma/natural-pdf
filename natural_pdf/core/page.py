@@ -494,6 +494,9 @@ class Page(
                                 exc_info=False,
                             )
                             raise
+            # Invalidate ElementManager cache since exclusions affect element filtering
+            if hasattr(self, "_element_mgr") and self._element_mgr:
+                self._element_mgr.invalidate_cache()
             return self  # Completed processing for selector input
 
         # ElementCollection -----------------------------------------------
@@ -526,6 +529,9 @@ class Page(
                             exc_info=False,
                         )
                         raise
+            # Invalidate ElementManager cache since exclusions affect element filtering
+            if hasattr(self, "_element_mgr") and self._element_mgr:
+                self._element_mgr.invalidate_cache()
             return self  # Completed processing for ElementCollection input
 
         # ------------------------------------------------------------------
@@ -618,6 +624,9 @@ class Page(
                             f"Page {self.index}: Failed to convert list item to Region: {e}"
                         )
                         continue
+            # Invalidate ElementManager cache since exclusions affect element filtering
+            if hasattr(self, "_element_mgr") and self._element_mgr:
+                self._element_mgr.invalidate_cache()
             return self
         else:
             # Reject invalid types
@@ -628,6 +637,10 @@ class Page(
         # Append the stored data (tuple of object/callable, label, and method)
         if exclusion_data:
             self._exclusions.append(exclusion_data)
+
+        # Invalidate ElementManager cache since exclusions affect element filtering
+        if hasattr(self, "_element_mgr") and self._element_mgr:
+            self._element_mgr.invalidate_cache()
 
         return self
 
@@ -699,10 +712,26 @@ class Page(
         """
         regions = []
 
-        if debug:
-            print(f"\nPage {self.index}: Evaluating {len(self._exclusions)} exclusions")
+        # Combine page-specific exclusions with PDF-level exclusions
+        all_exclusions = list(self._exclusions)  # Start with page-specific
 
-        for i, exclusion_data in enumerate(self._exclusions):
+        # Add PDF-level exclusions if we have a parent PDF
+        if hasattr(self, "_parent") and self._parent and hasattr(self._parent, "_exclusions"):
+            for pdf_exclusion in self._parent._exclusions:
+                # Check if this exclusion is already in our list (avoid duplicates)
+                if pdf_exclusion not in all_exclusions:
+                    # Ensure consistent format (PDF exclusions might be 2-tuples, need to be 3-tuples)
+                    if len(pdf_exclusion) == 2:
+                        # Convert to 3-tuple format with default method
+                        pdf_exclusion = (pdf_exclusion[0], pdf_exclusion[1], "region")
+                    all_exclusions.append(pdf_exclusion)
+
+        if debug:
+            print(
+                f"\nPage {self.index}: Evaluating {len(all_exclusions)} exclusions ({len(self._exclusions)} page-specific, {len(all_exclusions) - len(self._exclusions)} from PDF)"
+            )
+
+        for i, exclusion_data in enumerate(all_exclusions):
             # Handle both old format (2-tuple) and new format (3-tuple) for backward compatibility
             if len(exclusion_data) == 2:
                 # Old format: (exclusion_item, label)
@@ -1598,7 +1627,14 @@ class Page(
             return ""
 
         # 2. Apply element-based exclusions if enabled
-        if use_exclusions and self._exclusions:
+        # Check both page-level and PDF-level exclusions
+        has_exclusions = bool(self._exclusions) or (
+            hasattr(self, "_parent")
+            and self._parent
+            and hasattr(self._parent, "_exclusions")
+            and self._parent._exclusions
+        )
+        if use_exclusions and has_exclusions:
             # Filter word elements through _filter_elements_by_exclusions
             # This handles both element-based and region-based exclusions
             word_elements = self._filter_elements_by_exclusions(
@@ -1612,7 +1648,7 @@ class Page(
         # 3. Get region-based exclusions for spatial filtering
         apply_exclusions_flag = kwargs.get("use_exclusions", use_exclusions)
         exclusion_regions = []
-        if apply_exclusions_flag and self._exclusions:
+        if apply_exclusions_flag and has_exclusions:
             exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug)
             if debug:
                 logger.debug(

@@ -1236,6 +1236,7 @@ class Region(
         content_filter: Optional[
             Union[str, Callable[[str], bool], List[str]]
         ] = None,  # NEW: Content filtering
+        apply_exclusions: bool = True,  # Whether to apply exclusion regions during extraction
     ) -> TableResult:  # Return type allows Optional[str] for cells
         """
         Extract a table from this region.
@@ -1260,6 +1261,8 @@ class Region(
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
                 Works with all extraction methods by filtering cell content.
+            apply_exclusions: Whether to apply exclusion regions during text extraction (default: True).
+                When True, text within excluded regions (e.g., headers/footers) will not be extracted.
 
         Returns:
             Table data as a list of rows, where each row is a list of cell values (str or None).
@@ -1297,7 +1300,9 @@ class Region(
                     )
                     return TableResult(
                         self._extract_table_from_cells(
-                            cell_regions_in_table, content_filter=content_filter
+                            cell_regions_in_table,
+                            content_filter=content_filter,
+                            apply_exclusions=apply_exclusions,
                         )
                     )
 
@@ -1381,16 +1386,22 @@ class Region(
         # Use the selected method
         if effective_method == "tatr":
             table_rows = self._extract_table_tatr(
-                use_ocr=use_ocr, ocr_config=ocr_config, content_filter=content_filter
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
             )
         elif effective_method == "text":
             current_text_options = text_options.copy()
             current_text_options["cell_extraction_func"] = cell_extraction_func
             current_text_options["show_progress"] = show_progress
             current_text_options["content_filter"] = content_filter
+            current_text_options["apply_exclusions"] = apply_exclusions
             table_rows = self._extract_table_text(**current_text_options)
         elif effective_method == "pdfplumber":
-            table_rows = self._extract_table_plumber(table_settings, content_filter=content_filter)
+            table_rows = self._extract_table_plumber(
+                table_settings, content_filter=content_filter, apply_exclusions=apply_exclusions
+            )
         else:
             raise ValueError(
                 f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
@@ -1604,7 +1615,9 @@ class Region(
         # Return empty list if no tables found
         return []
 
-    def _extract_table_plumber(self, table_settings: dict, content_filter=None) -> List[List[str]]:
+    def _extract_table_plumber(
+        self, table_settings: dict, content_filter=None, apply_exclusions=True
+    ) -> List[List[str]]:
         """
         Extract table using pdfplumber's table extraction.
         This method extracts the largest table within the region.
@@ -1646,7 +1659,7 @@ class Region(
         # -------------------------------------------------------------
         base_plumber_page = self.page._page
 
-        if getattr(self.page, "_exclusions", None):
+        if apply_exclusions and getattr(self.page, "_exclusions", None):
             exclusion_regions = self.page._get_exclusion_regions(include_callable=True)
 
             def _keep_char(obj):
@@ -1701,7 +1714,7 @@ class Region(
         return []
 
     def _extract_table_tatr(
-        self, use_ocr=False, ocr_config=None, content_filter=None
+        self, use_ocr=False, ocr_config=None, content_filter=None, apply_exclusions=True
     ) -> List[List[str]]:
         """
         Extract table using TATR structure detection.
@@ -1789,7 +1802,7 @@ class Region(
                             continue
 
                 # Fallback to normal extraction
-                header_text = header.extract_text().strip()
+                header_text = header.extract_text(apply_exclusions=apply_exclusions).strip()
                 if content_filter is not None:
                     header_text = self._apply_content_filter_to_text(header_text, content_filter)
                 header_texts.append(header_text)
@@ -1824,7 +1837,7 @@ class Region(
                                 continue
 
                     # Fallback to normal extraction
-                    cell_text = cell_region.extract_text().strip()
+                    cell_text = cell_region.extract_text(apply_exclusions=apply_exclusions).strip()
                     if content_filter is not None:
                         cell_text = self._apply_content_filter_to_text(cell_text, content_filter)
                     row_cells.append(cell_text)
@@ -1840,7 +1853,7 @@ class Region(
                             continue
 
                 # Fallback to normal extraction
-                row_text = row.extract_text().strip()
+                row_text = row.extract_text(apply_exclusions=apply_exclusions).strip()
                 if content_filter is not None:
                     row_text = self._apply_content_filter_to_text(row_text, content_filter)
                 row_cells.append(row_text)
@@ -1866,6 +1879,8 @@ class Region(
         show_progress = text_options.pop("show_progress", False)
         # --- Get content_filter option --- #
         content_filter = text_options.pop("content_filter", None)
+        # --- Get apply_exclusions option --- #
+        apply_exclusions = text_options.pop("apply_exclusions", True)
 
         # Analyze structure first (or use cached results)
         if "text_table_structure" in self.analyses:
@@ -1946,7 +1961,9 @@ class Region(
                         cell_value = None
                 else:
                     cell_value = cell_region.extract_text(
-                        layout=False, apply_exclusions=False, content_filter=content_filter
+                        layout=False,
+                        apply_exclusions=apply_exclusions,
+                        content_filter=content_filter,
                     ).strip()
 
                 rounded_top = round(cell_data["top"] / coord_tolerance) * coord_tolerance
@@ -3397,7 +3414,7 @@ class Region(
     # ------------------------------------------------------------------
 
     def _extract_table_from_cells(
-        self, cell_regions: List["Region"], content_filter=None
+        self, cell_regions: List["Region"], content_filter=None, apply_exclusions=True
     ) -> List[List[Optional[str]]]:
         """Construct a table (list-of-lists) from table_cell regions.
 
@@ -3439,7 +3456,9 @@ class Region(
                     r_idx = int(cell.metadata.get("row_index"))
                     c_idx = int(cell.metadata.get("col_index"))
                     text_val = cell.extract_text(
-                        layout=False, apply_exclusions=True, content_filter=content_filter
+                        layout=False,
+                        apply_exclusions=apply_exclusions,
+                        content_filter=content_filter,
                     ).strip()
                     table_grid[r_idx][c_idx] = text_val if text_val else None
                 except Exception as _err:
@@ -3488,7 +3507,7 @@ class Region(
             col_idx = int(np.argmin([abs(cx - cc) for cc in col_centers]))
 
             text_val = cell.extract_text(
-                layout=False, apply_exclusions=False, content_filter=content_filter
+                layout=False, apply_exclusions=apply_exclusions, content_filter=content_filter
             ).strip()
             table_grid[row_idx][col_idx] = text_val if text_val else None
 

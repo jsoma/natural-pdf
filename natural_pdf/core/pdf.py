@@ -173,11 +173,26 @@ class _LazyPageList(Sequence):
         """Create and cache a page at the given index within this list."""
         cached = self._cache[index]
         if cached is None:
+            # Get the actual page index in the full PDF
+            actual_page_index = self._indices[index]
+
+            # First check if this page is already cached in the parent PDF's main page list
+            if (
+                hasattr(self._parent_pdf, "_pages")
+                and hasattr(self._parent_pdf._pages, "_cache")
+                and actual_page_index < len(self._parent_pdf._pages._cache)
+                and self._parent_pdf._pages._cache[actual_page_index] is not None
+            ):
+                # Reuse the already-cached page from the parent PDF
+                # This ensures we get any exclusions that were already applied
+                cached = self._parent_pdf._pages._cache[actual_page_index]
+                self._cache[index] = cached
+                return cached
+
             # Import here to avoid circular import problems
             from natural_pdf.core.page import Page
 
-            # Get the actual page index in the full PDF
-            actual_page_index = self._indices[index]
+            # Create new page
             plumber_page = self._plumber_pdf.pages[actual_page_index]
             cached = Page(
                 plumber_page,
@@ -195,6 +210,30 @@ class _LazyPageList(Sequence):
                         cached.add_exclusion(exclusion_func, label=label)
                     except Exception as e:
                         logger.warning(f"Failed to apply exclusion to page {cached.number}: {e}")
+
+            # Check if the parent PDF already has a cached page with page-specific exclusions
+            if hasattr(self._parent_pdf, "_pages") and hasattr(self._parent_pdf._pages, "_cache"):
+                parent_cache = self._parent_pdf._pages._cache
+                if (
+                    actual_page_index < len(parent_cache)
+                    and parent_cache[actual_page_index] is not None
+                ):
+                    existing_page = parent_cache[actual_page_index]
+                    # Copy over any page-specific exclusions from the existing page
+                    # Only copy non-callable exclusions (regions/elements) to avoid duplicating PDF-level exclusions
+                    if hasattr(existing_page, "_exclusions") and existing_page._exclusions:
+                        for exclusion_data in existing_page._exclusions:
+                            exclusion_item = exclusion_data[0]
+                            # Skip callable exclusions as they're PDF-level and already applied above
+                            if not callable(exclusion_item):
+                                try:
+                                    cached.add_exclusion(
+                                        *exclusion_data[:2]
+                                    )  # exclusion_item and label
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Failed to copy page-specific exclusion to page {cached.number}: {e}"
+                                    )
 
             # Apply any stored regions to the newly created page
             if hasattr(self._parent_pdf, "_regions"):

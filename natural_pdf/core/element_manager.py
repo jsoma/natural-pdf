@@ -939,6 +939,11 @@ class ElementManager:
         self.load_elements()
         return self._elements.get("chars", [])
 
+    def invalidate_cache(self):
+        """Invalidate the cached elements, forcing a reload on next access."""
+        self._elements = None
+        logger.debug(f"Page {self._page.number}: ElementManager cache invalidated")
+
     @property
     def words(self):
         """Get all word elements."""

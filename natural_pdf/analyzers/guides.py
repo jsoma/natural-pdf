@@ -143,7 +143,7 @@ class GuidesList(UserList):
 
     def from_content(
         self,
-        markers: Union[str, List[str], "ElementCollection", None],
+        markers: Union[str, List[str], "ElementCollection", Callable, None],
         obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
         align: Literal["left", "right", "center", "between"] = "left",
         outer: bool = True,
@@ -160,6 +160,7 @@ class GuidesList(UserList):
                 - str: single selector (e.g., 'text:contains("Name")') or literal text
                 - List[str]: list of selectors or literal text strings
                 - ElementCollection: collection of elements to extract text from
+                - Callable: function that takes a page and returns markers
                 - None: no markers
             obj: Page/Region/FlowRegion to search (uses parent's context if None)
             align: How to align guides relative to found elements
@@ -174,13 +175,22 @@ class GuidesList(UserList):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
+        # Store callable markers for later evaluation
+        if callable(markers):
+            self._callable = markers
+            # For now, evaluate with the current target object to get initial guides
+            actual_markers = markers(target_obj)
+        else:
+            self._callable = None
+            actual_markers = markers
+
         # Check if parent is in flow mode
         if self._parent.is_flow_region:
             # Create guides across all constituent regions
             all_guides = []
             for region in self._parent.context.constituent_regions:
                 # Normalize markers for this region
-                marker_texts = _normalize_markers(markers, region)
+                marker_texts = _normalize_markers(actual_markers, region)
 
                 # Create guides for this region
                 region_guides = Guides.from_content(
@@ -263,7 +273,7 @@ class GuidesList(UserList):
 
         # Original single-region logic
         # Normalize markers to list of text strings
-        marker_texts = _normalize_markers(markers, target_obj)
+        marker_texts = _normalize_markers(actual_markers, target_obj)
 
         # Create guides for this axis
         new_guides = Guides.from_content(
@@ -1541,11 +1551,15 @@ class Guides:
         # Add outer guides if requested
         if outer and bounds:
             if axis == "vertical":
-                guides_coords.insert(0, bounds[0])  # x0
-                guides_coords.append(bounds[2])  # x1
+                if outer == True or outer == "first":
+                    guides_coords.insert(0, bounds[0])  # x0
+                if outer == True or outer == "last":
+                    guides_coords.append(bounds[2])  # x1
             else:
-                guides_coords.insert(0, bounds[1])  # y0
-                guides_coords.append(bounds[3])  # y1
+                if outer == True or outer == "first":
+                    guides_coords.insert(0, bounds[1])  # y0
+                if outer == True or outer == "last":
+                    guides_coords.append(bounds[3])  # y1
 
         # Remove duplicates and sort
         guides_coords = sorted(list(set(guides_coords)))
@@ -3302,7 +3316,7 @@ class Guides:
         markers: Union[str, List[str], "ElementCollection", None] = None,
         obj: Optional[Union["Page", "Region"]] = None,
         align: Literal["left", "right", "center", "between"] = "left",
-        outer: bool = True,
+        outer: Union[str, bool] = True,
         tolerance: float = 5,
         apply_exclusions: bool = True,
     ) -> "Guides":
@@ -3319,7 +3333,10 @@ class Guides:
                 - None: no markers
             obj: Page or Region to search (uses self.context if None)
             align: How to align guides relative to found elements
-            outer: Whether to add outer boundary guides
+            outer: Whether to add outer boundary guides. Can be:
+                - bool: True/False to add/not add both
+                - "first": To add boundary before the first element
+                - "last": To add boundary before the last element
             tolerance: Tolerance for snapping to element edges
             apply_exclusions: Whether to apply exclusion zones when searching for text
 
@@ -3457,6 +3474,7 @@ class Guides:
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         show_progress: bool = False,
         content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
+        apply_exclusions: bool = True,
         *,
         multi_page: Literal["auto", True, False] = "auto",
     ) -> "TableResult":
@@ -3482,6 +3500,7 @@ class Guides:
             cell_extraction_func: Optional callable for custom cell text extraction
             show_progress: Controls progress bar for text method
             content_filter: Content filtering function or patterns
+            apply_exclusions: Whether to apply exclusion regions during text extraction (default: True)
             multi_page: Controls multi-region table creation for FlowRegions
 
         Returns:
@@ -3552,6 +3571,7 @@ class Guides:
                 cell_extraction_func=cell_extraction_func,
                 show_progress=show_progress,
                 content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
             )
 
             return table_result
@@ -3576,6 +3596,162 @@ class Guides:
 
             except Exception as cleanup_err:
                 logger.warning(f"Failed to clean up temporary regions: {cleanup_err}")
+
+    def extract_table_from_pages(
+        self,
+        pages: Union["PageCollection", List["Page"]],
+        header: Union[str, List[str], None] = "first",
+        skip_repeating_headers: Optional[bool] = None,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict] = None,
+        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        show_progress: bool = True,
+        content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
+        apply_exclusions: bool = True,
+    ) -> "TableResult":
+        """
+        Extract tables from multiple pages using this guide pattern.
+
+        This method applies the guide to each page, extracts tables, and combines
+        them into a single TableResult. Dynamic guides (using lambdas) are evaluated
+        for each page.
+
+        Args:
+            pages: PageCollection or list of Pages to extract from
+            header: How to handle headers:
+                - "first": Use first row of first page as headers (default)
+                - "all": Expect headers on each page, use from first page
+                - None: No headers, use numeric indices
+                - List[str]: Custom column names
+            skip_repeating_headers: Whether to remove duplicate header rows.
+                Defaults to True when header is "first" or "all", False otherwise.
+            method: Table extraction method (passed to extract_table)
+            table_settings: Settings for pdfplumber table extraction
+            use_ocr: Whether to use OCR for text extraction
+            ocr_config: OCR configuration parameters
+            text_options: Dictionary of options for the 'text' method
+            cell_extraction_func: Optional callable for custom cell text extraction
+            show_progress: Show progress bar for multi-page extraction (default: True)
+            content_filter: Content filtering function or patterns
+            apply_exclusions: Whether to apply exclusion regions during extraction
+
+        Returns:
+            TableResult: Combined table data from all pages
+
+        Example:
+            ```python
+            # Create guide with static vertical, dynamic horizontal
+            guide = Guides(pages[0])
+            guide.vertical.from_content(columns, outer="last")
+            guide.horizontal.from_content(lambda p: p.find_all('text:starts-with(NF-)'))
+
+            # Extract from all pages
+            table_result = guide.extract_table_from_pages(pages, header=columns)
+            df = table_result.to_df()
+            ```
+        """
+        from natural_pdf.core.page_collection import PageCollection
+        from natural_pdf.tables.result import TableResult
+
+        # Convert to list if it's a PageCollection
+        if isinstance(pages, PageCollection):
+            page_list = list(pages)
+        else:
+            page_list = pages
+
+        if not page_list:
+            return TableResult([])
+
+        # Determine header handling
+        if skip_repeating_headers is None:
+            skip_repeating_headers = header in ["first", "all"] or isinstance(header, list)
+
+        all_rows = []
+        header_row = None
+
+        # Configure progress bar
+        iterator = page_list
+        if show_progress and len(page_list) > 1:
+            try:
+                from tqdm.auto import tqdm
+
+                iterator = tqdm(page_list, desc="Extracting tables from pages", unit="page")
+            except ImportError:
+                pass
+
+        for i, page in enumerate(iterator):
+            # Create a new Guides object for this page
+            page_guide = Guides(page)
+
+            # Copy vertical guides (usually static)
+            if hasattr(self.vertical, "_callable") and self.vertical._callable is not None:
+                # If vertical is dynamic (lambda), evaluate it
+                page_guide.vertical.from_content(self.vertical._callable(page))
+            else:
+                # Copy static vertical positions
+                page_guide.vertical.data = self.vertical.data.copy()
+
+            # Handle horizontal guides
+            if hasattr(self.horizontal, "_callable") and self.horizontal._callable is not None:
+                # If horizontal is dynamic (lambda), evaluate it
+                page_guide.horizontal.from_content(self.horizontal._callable(page))
+            else:
+                # Copy static horizontal positions
+                page_guide.horizontal.data = self.horizontal.data.copy()
+
+            # Extract table from this page
+            table_result = page_guide.extract_table(
+                method=method,
+                table_settings=table_settings,
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                text_options=text_options,
+                cell_extraction_func=cell_extraction_func,
+                show_progress=False,  # Don't show nested progress
+                content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
+            )
+
+            # Convert to list of rows
+            rows = list(table_result)
+
+            # Handle headers based on strategy
+            if i == 0:  # First page
+                if header == "first" or header == "all":
+                    # Use first row as header
+                    if rows:
+                        header_row = rows[0]
+                        rows = rows[1:]  # Remove header from data
+                elif isinstance(header, list):
+                    # Custom headers provided
+                    header_row = header
+            else:  # Subsequent pages
+                if header == "all" and skip_repeating_headers and rows:
+                    # Expect and remove header row
+                    if rows and header_row and rows[0] == header_row:
+                        rows = rows[1:]
+                    elif rows:
+                        # Still remove first row if it looks like a header
+                        rows = rows[1:]
+
+            # Add rows to combined result
+            all_rows.extend(rows)
+
+        # Create final TableResult
+        if isinstance(header, list):
+            # Custom headers - prepend to data
+            final_result = TableResult(all_rows)
+        elif header_row is not None:
+            # Prepend discovered header
+            final_result = TableResult([header_row] + all_rows)
+        else:
+            # No headers
+            final_result = TableResult(all_rows)
+
+        return final_result
 
     def _get_flow_orientation(self) -> Literal["vertical", "horizontal", "unknown"]:
         """Determines if a FlowRegion's constituent parts are arranged vertically or horizontally."""
