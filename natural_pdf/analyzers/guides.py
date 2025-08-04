@@ -128,7 +128,8 @@ class GuidesList(UserList):
     """A list of guide coordinates that also provides methods for creating guides."""
 
     def __init__(self, parent_guides: "Guides", axis: Literal["vertical", "horizontal"], data=None):
-        super().__init__(data or [])
+        # Always sort the initial data
+        super().__init__(sorted(data) if data else [])
         self._parent = parent_guides
         self._axis = axis
 
@@ -140,6 +141,42 @@ class GuidesList(UserList):
         else:
             # For single index, return the value directly
             return self.data[i]
+
+    def __setitem__(self, i, item):
+        """Override to maintain sorted order."""
+        self.data[i] = item
+        self.data.sort()
+
+    def append(self, item):
+        """Override to maintain sorted order."""
+        self.data.append(item)
+        self.data.sort()
+
+    def extend(self, other):
+        """Override to maintain sorted order."""
+        self.data.extend(other)
+        self.data.sort()
+
+    def insert(self, i, item):
+        """Override to maintain sorted order."""
+        self.data.append(item)  # Just append and sort
+        self.data.sort()
+
+    def __iadd__(self, other):
+        """Override to maintain sorted order."""
+        self.data.extend(other)
+        self.data.sort()
+        return self
+
+    @property
+    def data(self):
+        """Get the data list."""
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        """Set the data list, always keeping it sorted."""
+        self._data = sorted(value) if value else []
 
     def from_content(
         self,
@@ -1841,6 +1878,370 @@ class Guides:
         if 0 <= index < len(self.horizontal):
             self.horizontal.pop(index)
         return self
+
+    # -------------------------------------------------------------------------
+    # Region extraction properties
+    # -------------------------------------------------------------------------
+
+    @property
+    def columns(self):
+        """Access columns by index like guides.columns[0]."""
+        return _ColumnAccessor(self)
+
+    @property
+    def rows(self):
+        """Access rows by index like guides.rows[0]."""
+        return _RowAccessor(self)
+
+    @property
+    def cells(self):
+        """Access cells by index like guides.cells[row][col] or guides.cells[row, col]."""
+        return _CellAccessor(self)
+
+    # -------------------------------------------------------------------------
+    # Region extraction methods (alternative API)
+    # -------------------------------------------------------------------------
+
+    def column(self, index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a column region from the guides.
+
+        Args:
+            index: Column index (0-based)
+            obj: Page or Region to create the column on (uses self.context if None)
+
+        Returns:
+            Region representing the specified column
+
+        Raises:
+            IndexError: If column index is out of range
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.vertical or index < 0 or index >= len(self.vertical) - 1:
+            raise IndexError(
+                f"Column index {index} out of range (have {len(self.vertical)-1} columns)"
+            )
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        _, y0, _, y1 = bounds
+
+        # Get column boundaries
+        x0 = self.vertical[index]
+        x1 = self.vertical[index + 1]
+
+        # Create region using absolute coordinates
+        if hasattr(target, "region"):
+            # Target has a region method (Page)
+            return target.region(x0, y0, x1, y1)
+        elif hasattr(target, "page"):
+            # Target is a Region, use its parent page
+            # The coordinates from guides are already absolute
+            return target.page.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def row(self, index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a row region from the guides.
+
+        Args:
+            index: Row index (0-based)
+            obj: Page or Region to create the row on (uses self.context if None)
+
+        Returns:
+            Region representing the specified row
+
+        Raises:
+            IndexError: If row index is out of range
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.horizontal or index < 0 or index >= len(self.horizontal) - 1:
+            raise IndexError(f"Row index {index} out of range (have {len(self.horizontal)-1} rows)")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        x0, _, x1, _ = bounds
+
+        # Get row boundaries
+        y0 = self.horizontal[index]
+        y1 = self.horizontal[index + 1]
+
+        # Create region using absolute coordinates
+        if hasattr(target, "region"):
+            # Target has a region method (Page)
+            return target.region(x0, y0, x1, y1)
+        elif hasattr(target, "page"):
+            # Target is a Region, use its parent page
+            # The coordinates from guides are already absolute
+            return target.page.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def cell(self, row: int, col: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a cell region from the guides.
+
+        Args:
+            row: Row index (0-based)
+            col: Column index (0-based)
+            obj: Page or Region to create the cell on (uses self.context if None)
+
+        Returns:
+            Region representing the specified cell
+
+        Raises:
+            IndexError: If row or column index is out of range
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.vertical or col < 0 or col >= len(self.vertical) - 1:
+            raise IndexError(
+                f"Column index {col} out of range (have {len(self.vertical)-1} columns)"
+            )
+        if not self.horizontal or row < 0 or row >= len(self.horizontal) - 1:
+            raise IndexError(f"Row index {row} out of range (have {len(self.horizontal)-1} rows)")
+
+        # Get cell boundaries
+        x0 = self.vertical[col]
+        x1 = self.vertical[col + 1]
+        y0 = self.horizontal[row]
+        y1 = self.horizontal[row + 1]
+
+        # Create region using absolute coordinates
+        if hasattr(target, "region"):
+            # Target has a region method (Page)
+            return target.region(x0, y0, x1, y1)
+        elif hasattr(target, "page"):
+            # Target is a Region, use its parent page
+            # The coordinates from guides are already absolute
+            return target.page.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def left_of(self, guide_index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a region to the left of a vertical guide.
+
+        Args:
+            guide_index: Vertical guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region to the left of the specified guide
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.vertical or guide_index < 0 or guide_index >= len(self.vertical):
+            raise IndexError(f"Guide index {guide_index} out of range")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        x0, y0, _, y1 = bounds
+
+        # Create region from left edge to guide
+        x1 = self.vertical[guide_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def right_of(self, guide_index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a region to the right of a vertical guide.
+
+        Args:
+            guide_index: Vertical guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region to the right of the specified guide
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.vertical or guide_index < 0 or guide_index >= len(self.vertical):
+            raise IndexError(f"Guide index {guide_index} out of range")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        _, y0, x1, y1 = bounds
+
+        # Create region from guide to right edge
+        x0 = self.vertical[guide_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def above(self, guide_index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a region above a horizontal guide.
+
+        Args:
+            guide_index: Horizontal guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region above the specified guide
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.horizontal or guide_index < 0 or guide_index >= len(self.horizontal):
+            raise IndexError(f"Guide index {guide_index} out of range")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        x0, y0, x1, _ = bounds
+
+        # Create region from top edge to guide
+        y1 = self.horizontal[guide_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def below(self, guide_index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
+        """
+        Get a region below a horizontal guide.
+
+        Args:
+            guide_index: Horizontal guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region below the specified guide
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.horizontal or guide_index < 0 or guide_index >= len(self.horizontal):
+            raise IndexError(f"Guide index {guide_index} out of range")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        x0, _, x1, y1 = bounds
+
+        # Create region from guide to bottom edge
+        y0 = self.horizontal[guide_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def between_vertical(
+        self, start_index: int, end_index: int, obj: Optional[Union["Page", "Region"]] = None
+    ) -> "Region":
+        """
+        Get a region between two vertical guides.
+
+        Args:
+            start_index: Starting vertical guide index
+            end_index: Ending vertical guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region between the specified guides
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.vertical:
+            raise ValueError("No vertical guides available")
+        if start_index < 0 or start_index >= len(self.vertical):
+            raise IndexError(f"Start index {start_index} out of range")
+        if end_index < 0 or end_index >= len(self.vertical):
+            raise IndexError(f"End index {end_index} out of range")
+        if start_index >= end_index:
+            raise ValueError("Start index must be less than end index")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        _, y0, _, y1 = bounds
+
+        # Get horizontal boundaries
+        x0 = self.vertical[start_index]
+        x1 = self.vertical[end_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
+
+    def between_horizontal(
+        self, start_index: int, end_index: int, obj: Optional[Union["Page", "Region"]] = None
+    ) -> "Region":
+        """
+        Get a region between two horizontal guides.
+
+        Args:
+            start_index: Starting horizontal guide index
+            end_index: Ending horizontal guide index
+            obj: Page or Region to create the region on (uses self.context if None)
+
+        Returns:
+            Region between the specified guides
+        """
+        target = obj or self.context
+        if target is None:
+            raise ValueError("No context available for region creation")
+
+        if not self.horizontal:
+            raise ValueError("No horizontal guides available")
+        if start_index < 0 or start_index >= len(self.horizontal):
+            raise IndexError(f"Start index {start_index} out of range")
+        if end_index < 0 or end_index >= len(self.horizontal):
+            raise IndexError(f"End index {end_index} out of range")
+        if start_index >= end_index:
+            raise ValueError("Start index must be less than end index")
+
+        # Get bounds from context
+        bounds = self._get_context_bounds()
+        if not bounds:
+            raise ValueError("Could not determine bounds")
+        x0, _, x1, _ = bounds
+
+        # Get vertical boundaries
+        y0 = self.horizontal[start_index]
+        y1 = self.horizontal[end_index]
+
+        if hasattr(target, "region"):
+            return target.region(x0, y0, x1, y1)
+        else:
+            raise TypeError(f"Cannot create region on {type(target)}")
 
     # -------------------------------------------------------------------------
     # Operations
@@ -3825,3 +4226,78 @@ class Guides:
             return "vertical"
         else:
             return "horizontal"
+
+
+# -------------------------------------------------------------------------
+# Accessor classes for property-based access
+# -------------------------------------------------------------------------
+
+
+class _ColumnAccessor:
+    """Provides indexed access to columns via guides.columns[index]."""
+
+    def __init__(self, guides: "Guides"):
+        self._guides = guides
+
+    def __len__(self):
+        """Return number of columns (vertical guides - 1)."""
+        return max(0, len(self._guides.vertical) - 1)
+
+    def __getitem__(self, index: int) -> "Region":
+        """Get column at the specified index."""
+        return self._guides.column(index)
+
+
+class _RowAccessor:
+    """Provides indexed access to rows via guides.rows[index]."""
+
+    def __init__(self, guides: "Guides"):
+        self._guides = guides
+
+    def __len__(self):
+        """Return number of rows (horizontal guides - 1)."""
+        return max(0, len(self._guides.horizontal) - 1)
+
+    def __getitem__(self, index: int) -> "Region":
+        """Get row at the specified index."""
+        return self._guides.row(index)
+
+
+class _CellAccessor:
+    """Provides indexed access to cells via guides.cells[row][col] or guides.cells[row, col]."""
+
+    def __init__(self, guides: "Guides"):
+        self._guides = guides
+
+    def __getitem__(self, key) -> Union["Region", "_CellRowAccessor"]:
+        """
+        Get cell(s) at the specified position.
+
+        Supports:
+        - guides.cells[row, col] - tuple indexing
+        - guides.cells[row][col] - nested indexing
+        """
+        if isinstance(key, tuple) and len(key) == 2:
+            # Direct tuple access: guides.cells[row, col]
+            row, col = key
+            return self._guides.cell(row, col)
+        elif isinstance(key, int):
+            # First level of nested access: guides.cells[row]
+            # Return a row accessor that allows [col] indexing
+            return _CellRowAccessor(self._guides, key)
+        else:
+            raise TypeError(
+                f"Cell indices must be integers or tuple of two integers, got {type(key)}"
+            )
+
+
+class _CellRowAccessor:
+    """Provides column access for a specific row in nested cell indexing."""
+
+    def __init__(self, guides: "Guides", row: int):
+        self._guides = guides
+        self._row = row
+
+    def __getitem__(self, col: int) -> "Region":
+        """Get cell at [row][col]."""
+        return self._guides.cell(self._row, col)

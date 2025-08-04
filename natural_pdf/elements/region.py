@@ -1138,6 +1138,67 @@ class Region(
         )
         return clipped_region
 
+    def region(
+        self,
+        left: float = None,
+        top: float = None,
+        right: float = None,
+        bottom: float = None,
+        width: Union[str, float, None] = None,
+        height: Optional[float] = None,
+        relative: bool = False,
+    ) -> "Region":
+        """
+        Create a sub-region within this region using the same API as Page.region().
+
+        By default, coordinates are absolute (relative to the page), matching Page.region().
+        Set relative=True to use coordinates relative to this region's top-left corner.
+
+        Args:
+            left: Left x-coordinate (absolute by default, or relative to region if relative=True)
+            top: Top y-coordinate (absolute by default, or relative to region if relative=True)
+            right: Right x-coordinate (absolute by default, or relative to region if relative=True)
+            bottom: Bottom y-coordinate (absolute by default, or relative to region if relative=True)
+            width: Width definition (same as Page.region())
+            height: Height of the region (same as Page.region())
+            relative: If True, coordinates are relative to this region's top-left (0,0).
+                     If False (default), coordinates are absolute page coordinates.
+
+        Returns:
+            Region object for the specified coordinates, clipped to this region's bounds
+
+        Examples:
+            # Absolute coordinates (default) - same as page.region()
+            sub = region.region(left=100, top=200, width=50, height=30)
+
+            # Relative to region's top-left
+            sub = region.region(left=10, top=10, width=50, height=30, relative=True)
+
+            # Mix relative positioning with this region's bounds
+            sub = region.region(left=region.x0 + 10, width=50, height=30)
+        """
+        # If relative coordinates requested, convert to absolute
+        if relative:
+            if left is not None:
+                left = self.x0 + left
+            if top is not None:
+                top = self.top + top
+            if right is not None:
+                right = self.x0 + right
+            if bottom is not None:
+                bottom = self.top + bottom
+
+            # For numeric width/height with relative coords, we need to handle the calculation
+            # in the context of absolute positioning
+
+        # Use the parent page's region method to create the region with all its logic
+        new_region = self.page.region(
+            left=left, top=top, right=right, bottom=bottom, width=width, height=height
+        )
+
+        # Clip the new region to this region's bounds
+        return new_region.clip(self)
+
     def get_elements(
         self, selector: Optional[str] = None, apply_exclusions=True, **kwargs
     ) -> List["Element"]:
