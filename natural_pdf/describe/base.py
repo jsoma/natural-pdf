@@ -344,7 +344,7 @@ def _extract_element_value(element: "Element", column: str) -> Any:
 
         elif column == "highlight":
             # If element is highlighted, return its colour; otherwise blank
-            if getattr(element, "highlight", False):
+            if getattr(element, "is_highlighted", False):
                 col_val = getattr(element, "highlight_color", None)
                 if col_val is None:
                     return "True"  # fallback if colour missing

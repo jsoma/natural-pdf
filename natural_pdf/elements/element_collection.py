@@ -21,7 +21,7 @@ from typing import (
     overload,
 )
 
-from pdfplumber.utils.geometry import objects_to_bbox
+from pdfplumber.utils.geometry import get_bbox_overlap, objects_to_bbox
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
@@ -45,6 +45,7 @@ from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.text_mixin import TextMixin
+from natural_pdf.utils.color_utils import format_color_value
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
@@ -180,7 +181,7 @@ class ElementCollection(
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         highlights: Optional[List[Dict[str, Any]]] = None,
-        crop: Union[bool, Literal["content"]] = False,
+        crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         group_by: Optional[str] = None,
         bins: Optional[Union[int, List[float]]] = None,
@@ -193,7 +194,7 @@ class ElementCollection(
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
             color: Default color for highlights in show mode (or colormap name when using group_by)
             highlights: Additional highlight groups to show
-            crop: Whether to crop to element bounds
+            crop: Cropping mode (False, True, int for padding, 'wide', or Region)
             crop_bbox: Explicit crop bounds
             group_by: Attribute to group elements by for color mapping
             bins: Binning specification for quantitative data (int for equal-width bins, list for custom bins)
@@ -226,7 +227,7 @@ class ElementCollection(
             # Handle cropping
             if crop_bbox:
                 spec.crop_bbox = crop_bbox
-            elif crop == "content" or crop is True:
+            elif crop:
                 # Calculate bounds of elements on this page
                 x_coords = []
                 y_coords = []
@@ -237,7 +238,27 @@ class ElementCollection(
                         y_coords.extend([y0, y1])
 
                 if x_coords and y_coords:
-                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+                    content_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+
+                    if crop is True:
+                        # Tight crop to content bounds
+                        spec.crop_bbox = content_bbox
+                    elif isinstance(crop, (int, float)):
+                        # Add padding around content
+                        padding = float(crop)
+                        x0, y0, x1, y1 = content_bbox
+                        spec.crop_bbox = (
+                            max(0, x0 - padding),
+                            max(0, y0 - padding),
+                            min(page.width, x1 + padding),
+                            min(page.height, y1 + padding),
+                        )
+                    elif crop == "wide":
+                        # Full page width, cropped vertically to content
+                        spec.crop_bbox = (0, content_bbox[1], page.width, content_bbox[3])
+                    elif hasattr(crop, "bbox"):
+                        # Crop to another region's bounds
+                        spec.crop_bbox = crop.bbox
 
             # Add highlights in show mode
             if mode == "show":
@@ -413,10 +434,16 @@ class ElementCollection(
                 element_type = types.pop()
         return f"<ElementCollection[{element_type}](count={len(self)})>"
 
-    def __add__(self, other: "ElementCollection") -> "ElementCollection":
-        if not isinstance(other, ElementCollection):
+    def __add__(self, other: Union["ElementCollection", "Element"]) -> "ElementCollection":
+        from natural_pdf.elements.base import Element
+        from natural_pdf.elements.region import Region
+
+        if isinstance(other, ElementCollection):
+            return ElementCollection(self._elements + other._elements)
+        elif isinstance(other, (Element, Region)):
+            return ElementCollection(self._elements + [other])
+        else:
             return NotImplemented
-        return ElementCollection(self._elements + other._elements)
 
     def __setitem__(self, index, value):
         self._elements[index] = value
@@ -726,6 +753,67 @@ class ElementCollection(
             result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
 
         return result
+
+    def merge(self) -> "Region":
+        """
+        Merge all elements into a single region encompassing their bounding box.
+
+        Unlike dissolve() which only connects touching elements, merge() creates
+        a single region that spans from the minimum to maximum coordinates of all
+        elements, regardless of whether they touch.
+
+        Returns:
+            A single Region object encompassing all elements
+
+        Raises:
+            ValueError: If the collection is empty or elements have no valid bounding boxes
+
+        Example:
+            ```python
+            # Find scattered form fields and merge into one region
+            fields = pdf.find_all('text:contains(Name|Date|Phone)')
+            merged_region = fields.merge()
+
+            # Extract all text from the merged area
+            text = merged_region.extract_text()
+            ```
+        """
+        if not self._elements:
+            raise ValueError("Cannot merge an empty ElementCollection")
+
+        # Collect all bounding boxes
+        bboxes = []
+        page = None
+
+        for elem in self._elements:
+            if hasattr(elem, "bbox") and elem.bbox:
+                bboxes.append(elem.bbox)
+                # Get the page from the first element that has one
+                if page is None and hasattr(elem, "page"):
+                    page = elem.page
+
+        if not bboxes:
+            raise ValueError("No elements with valid bounding boxes to merge")
+
+        if page is None:
+            raise ValueError("Cannot determine page for merged region")
+
+        # Find min/max coordinates
+        x_coords = []
+        y_coords = []
+
+        for bbox in bboxes:
+            x0, y0, x1, y1 = bbox
+            x_coords.extend([x0, x1])
+            y_coords.extend([y0, y1])
+
+        # Create encompassing bounding box
+        merged_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+
+        # Create and return the merged region
+        from natural_pdf.elements.region import Region
+
+        return Region(page, merged_bbox)
 
     def filter(self, func: Callable[["Element"], bool]) -> "ElementCollection":
         """
@@ -1514,23 +1602,27 @@ class ElementCollection(
         self, group_key: Any, label_format: Optional[str], sample_element: T, group_by_attr: str
     ) -> str:
         """Formats the label for a group based on the key and format string."""
+        # Format the group_key if it's a color attribute
+        formatted_key = format_color_value(group_key, attr_name=group_by_attr)
+
         if label_format:
             try:
                 element_attrs = sample_element.__dict__.copy()
-                element_attrs[group_by_attr] = group_key  # Ensure key is present
+                # Use the formatted key in the attributes
+                element_attrs[group_by_attr] = formatted_key  # Ensure key is present
                 return label_format.format(**element_attrs)
             except KeyError as e:
                 logger.warning(
                     f"Invalid key '{e}' in label_format '{label_format}'. Using group key as label."
                 )
-                return str(group_key)
+                return formatted_key
             except Exception as format_e:
                 logger.warning(
                     f"Error formatting label '{label_format}': {format_e}. Using group key as label."
                 )
-                return str(group_key)
+                return formatted_key
         else:
-            return str(group_key)
+            return formatted_key
 
     def _get_element_highlight_params(
         self, element: T, annotate: Optional[List[str]]
@@ -2335,6 +2427,632 @@ class ElementCollection(
         return self.apply(
             lambda element: element.clip(obj=obj, left=left, top=top, right=right, bottom=bottom)
         )
+
+    def merge_connected(
+        self,
+        proximity_threshold: float = 5.0,
+        merge_across_pages: bool = False,
+        merge_non_regions: bool = False,
+        text_separator: str = " ",
+        preserve_order: bool = True,
+    ) -> "ElementCollection":
+        """
+        Merge connected/adjacent regions in the collection into larger regions.
+
+        This method identifies regions that are adjacent or overlapping (within a proximity
+        threshold) and merges them into single regions. This is particularly useful for
+        handling text that gets split due to font variations, accented characters, or
+        other PDF rendering quirks.
+
+        The method uses a graph-based approach (union-find) to identify connected components
+        of regions and merges each component into a single region.
+
+        Args:
+            proximity_threshold: Maximum distance in points between regions to consider
+                them connected. Default is 5.0 points. Use 0 for only overlapping regions.
+            merge_across_pages: If True, allow merging regions from different pages.
+                Default is False (only merge within same page).
+            merge_non_regions: If True, attempt to merge non-Region elements by converting
+                them to regions first. Default is False (skip non-Region elements).
+            text_separator: String to use when joining text from merged regions.
+                Default is a single space.
+            preserve_order: If True, order merged text by reading order (top-to-bottom,
+                left-to-right). Default is True.
+
+        Returns:
+            New ElementCollection containing the merged regions. Non-Region elements
+            (if merge_non_regions=False) and elements that couldn't be merged are
+            included unchanged.
+
+        Example:
+            ```python
+            # Find all text regions with potential splits
+            text_regions = page.find_all('region[type=text]')
+
+            # Merge adjacent regions (useful for accented characters)
+            merged = text_regions.merge_connected(proximity_threshold=2.0)
+
+            # Extract clean text from merged regions
+            for region in merged:
+                print(region.extract_text())
+            ```
+
+        Note:
+            - Regions are considered connected if their bounding boxes are within
+              proximity_threshold distance of each other
+            - The merged region's bbox encompasses all constituent regions
+            - Text content is combined in reading order
+            - Original metadata is preserved from the first region in each group
+        """
+        if not self._elements:
+            return ElementCollection([])
+
+        from natural_pdf.elements.region import Region
+
+        # Separate Region and non-Region elements
+        regions = []
+        region_indices = []
+        non_regions = []
+        non_region_indices = []
+
+        for i, elem in enumerate(self._elements):
+            if isinstance(elem, Region):
+                regions.append(elem)
+                region_indices.append(i)
+            else:
+                non_regions.append(elem)
+                non_region_indices.append(i)
+
+        if not regions:
+            # No regions to merge
+            return ElementCollection(self._elements)
+
+        # Group regions by page if not merging across pages
+        page_groups = {}
+        if not merge_across_pages:
+            for region in regions:
+                page = getattr(region, "page", None)
+                if page is not None:
+                    page_id = id(page)  # Use object id as unique identifier
+                    if page_id not in page_groups:
+                        page_groups[page_id] = []
+                    page_groups[page_id].append(region)
+                else:
+                    # Region without page - treat as separate group
+                    page_groups[id(region)] = [region]
+        else:
+            # All regions in one group
+            page_groups = {0: regions}
+
+        # Process each page group and collect merged regions
+        all_merged_regions = []
+
+        for page_id, page_regions in page_groups.items():
+            if len(page_regions) == 1:
+                # Only one region on this page, nothing to merge
+                all_merged_regions.extend(page_regions)
+                continue
+
+            # Build adjacency graph using union-find
+            parent = list(range(len(page_regions)))
+
+            def find(x):
+                if parent[x] != x:
+                    parent[x] = find(parent[x])
+                return parent[x]
+
+            def union(x, y):
+                px, py = find(x), find(y)
+                if px != py:
+                    parent[px] = py
+
+            # Check all pairs of regions for connectivity
+            for i in range(len(page_regions)):
+                for j in range(i + 1, len(page_regions)):
+                    if self._are_regions_connected(
+                        page_regions[i], page_regions[j], proximity_threshold
+                    ):
+                        union(i, j)
+
+            # Group regions by their connected component
+            components = {}
+            for i, region in enumerate(page_regions):
+                root = find(i)
+                if root not in components:
+                    components[root] = []
+                components[root].append(region)
+
+            # Merge each component
+            for component_regions in components.values():
+                if len(component_regions) == 1:
+                    # Single region, no merge needed
+                    all_merged_regions.append(component_regions[0])
+                else:
+                    # Merge multiple regions
+                    merged = self._merge_region_group(
+                        component_regions, text_separator, preserve_order
+                    )
+                    all_merged_regions.append(merged)
+
+        # Combine merged regions with non-regions (if any)
+        # Reconstruct in original order as much as possible
+        result_elements = []
+
+        if not non_regions:
+            # All elements were regions
+            result_elements = all_merged_regions
+        else:
+            # Need to interleave merged regions and non-regions
+            # This is a simplified approach - just append non-regions at the end
+            # A more sophisticated approach would maintain relative ordering
+            result_elements = all_merged_regions + non_regions
+
+        return ElementCollection(result_elements)
+
+    def _are_regions_connected(
+        self, region1: "Region", region2: "Region", threshold: float
+    ) -> bool:
+        """Check if two regions are connected (adjacent or overlapping)."""
+        bbox1 = region1.bbox
+        bbox2 = region2.bbox
+
+        # Check for overlap first
+        overlap = get_bbox_overlap(bbox1, bbox2)
+        if overlap is not None:
+            return True
+
+        # If no overlap and threshold is 0, regions are not connected
+        if threshold == 0:
+            return False
+
+        # Check proximity - calculate minimum distance between bboxes
+        # bbox format: (x0, top, x1, bottom)
+        x0_1, top_1, x1_1, bottom_1 = bbox1
+        x0_2, top_2, x1_2, bottom_2 = bbox2
+
+        # Calculate horizontal distance
+        if x1_1 < x0_2:
+            h_dist = x0_2 - x1_1
+        elif x1_2 < x0_1:
+            h_dist = x0_1 - x1_2
+        else:
+            h_dist = 0  # Horizontally overlapping
+
+        # Calculate vertical distance
+        if bottom_1 < top_2:
+            v_dist = top_2 - bottom_1
+        elif bottom_2 < top_1:
+            v_dist = top_1 - bottom_2
+        else:
+            v_dist = 0  # Vertically overlapping
+
+        # Use Chebyshev distance (max of horizontal and vertical)
+        # This creates a square proximity zone
+        distance = max(h_dist, v_dist)
+
+        return distance <= threshold
+
+    def _merge_region_group(
+        self, regions: List["Region"], text_separator: str, preserve_order: bool
+    ) -> "Region":
+        """Merge a group of connected regions into a single region."""
+        if not regions:
+            raise ValueError("Cannot merge empty region group")
+
+        if len(regions) == 1:
+            return regions[0]
+
+        # Calculate merged bbox
+        bboxes = [r.bbox for r in regions]
+        x0s = [b[0] for b in bboxes]
+        tops = [b[1] for b in bboxes]
+        x1s = [b[2] for b in bboxes]
+        bottoms = [b[3] for b in bboxes]
+
+        merged_bbox = (min(x0s), min(tops), max(x1s), max(bottoms))
+
+        # Use the page from the first region
+        page = regions[0].page
+
+        # Sort regions for text ordering if requested
+        if preserve_order:
+            # Sort by reading order: top-to-bottom, left-to-right
+            sorted_regions = sorted(regions, key=lambda r: (r.top, r.x0))
+        else:
+            sorted_regions = regions
+
+        # Merge text content
+        text_parts = []
+        for region in sorted_regions:
+            try:
+                text = region.extract_text()
+                if text:
+                    text_parts.append(text)
+            except:
+                # Region might not have text extraction capability
+                pass
+
+        merged_text = text_separator.join(text_parts) if text_parts else None
+
+        # Create merged region
+        from natural_pdf.elements.region import Region
+
+        merged_region = Region(
+            page=page, bbox=merged_bbox, label=f"Merged ({len(regions)} regions)"
+        )
+
+        # Copy metadata from first region and add merge info
+        if hasattr(regions[0], "metadata") and regions[0].metadata:
+            merged_region.metadata = regions[0].metadata.copy()
+
+        merged_region.metadata["merge_info"] = {
+            "source_count": len(regions),
+            "merged_text": merged_text,
+            "source_bboxes": bboxes,
+        }
+
+        # If regions have region_type, preserve it if consistent
+        region_types = set()
+        for r in regions:
+            if hasattr(r, "region_type") and r.region_type:
+                region_types.add(r.region_type)
+
+        if len(region_types) == 1:
+            merged_region.region_type = region_types.pop()
+
+        return merged_region
+
+    def dissolve(
+        self,
+        padding: float = 2.0,
+        geometry: Literal["rect", "polygon"] = "rect",
+        group_by: List[str] = None,
+    ) -> "ElementCollection":
+        """
+        Merge connected elements based on proximity and grouping attributes.
+
+        This method groups elements by specified attributes (if any), then finds
+        connected components within each group based on a proximity threshold.
+        Connected elements are merged by creating new Region objects with merged
+        bounding boxes.
+
+        Args:
+            padding: Maximum distance in points between elements to consider
+                them connected. Default is 2.0 points.
+            geometry: Type of geometry to use for merged regions. Currently only
+                "rect" (bounding box) is supported. "polygon" will raise
+                NotImplementedError.
+            group_by: List of attribute names to group elements by before merging.
+                Elements are grouped by exact attribute values (floats are rounded
+                to 2 decimal places). If None, all elements are considered in the
+                same group. Common attributes include 'size' (for TextElements),
+                'font_family', 'fontname', etc.
+
+        Returns:
+            New ElementCollection containing the dissolved regions. All elements
+            with bbox attributes are processed and converted to Region objects.
+
+        Example:
+            ```python
+            # Dissolve elements that are close together
+            dissolved = elements.dissolve(padding=5.0)
+
+            # Group by font size before dissolving
+            dissolved = elements.dissolve(padding=2.0, group_by=['size'])
+
+            # Group by multiple attributes
+            dissolved = elements.dissolve(
+                padding=3.0,
+                group_by=['size', 'font_family']
+            )
+            ```
+
+        Note:
+            - All elements with bbox attributes are processed
+            - Float attribute values are rounded to 2 decimal places for grouping
+            - The method uses Chebyshev distance (max of dx, dy) for proximity
+            - Merged regions inherit the page from the first element in each group
+            - Output is always Region objects, regardless of input element types
+        """
+        if geometry == "polygon":
+            raise NotImplementedError("Polygon geometry is not yet supported for dissolve()")
+
+        if geometry not in ["rect", "polygon"]:
+            raise ValueError(f"Invalid geometry type: {geometry}. Must be 'rect' or 'polygon'")
+
+        from natural_pdf.elements.region import Region
+
+        # Filter to elements with bbox (all elements that can be dissolved)
+        elements_with_bbox = [
+            elem for elem in self._elements if hasattr(elem, "bbox") and elem.bbox
+        ]
+
+        if not elements_with_bbox:
+            logger.debug("No elements with bbox found in collection for dissolve()")
+            return ElementCollection([])
+
+        # Group elements by specified attributes
+        if group_by:
+            grouped_elements = self._group_elements_by_attributes(elements_with_bbox, group_by)
+        else:
+            # All elements in one group
+            grouped_elements = {None: elements_with_bbox}
+
+        # Process each group and collect dissolved regions
+        all_dissolved_regions = []
+
+        for group_key, group_elements in grouped_elements.items():
+            if not group_elements:
+                continue
+
+            logger.debug(f"Processing group {group_key} with {len(group_elements)} elements")
+
+            # Find connected components within this group
+            components = self._find_connected_components_elements(group_elements, padding)
+
+            # Merge each component
+            for component_elements in components:
+                if len(component_elements) == 1:
+                    # Single element, convert to Region
+                    elem = component_elements[0]
+                    region = Region(
+                        page=elem.page, bbox=elem.bbox, label=f"Dissolved (1 {elem.type})"
+                    )
+                    # Copy relevant attributes from source element
+                    self._copy_element_attributes_to_region(elem, region, group_by)
+                    all_dissolved_regions.append(region)
+                else:
+                    # Merge multiple elements
+                    merged = self._merge_elements_for_dissolve(component_elements, group_by)
+                    all_dissolved_regions.append(merged)
+
+        logger.debug(
+            f"Dissolved {len(elements_with_bbox)} elements into {len(all_dissolved_regions)} regions"
+        )
+
+        return ElementCollection(all_dissolved_regions)
+
+    def _group_elements_by_attributes(
+        self, elements: List["Element"], group_by: List[str]
+    ) -> Dict[Tuple, List["Element"]]:
+        """Group elements by specified attributes."""
+        groups = {}
+
+        for element in elements:
+            # Build group key from attribute values
+            key_values = []
+            for attr in group_by:
+                value = None
+
+                # Try to get attribute value from various sources
+                if hasattr(element, attr):
+                    value = getattr(element, attr)
+                elif hasattr(element, "_obj") and element._obj and attr in element._obj:
+                    value = element._obj[attr]
+                elif hasattr(element, "metadata") and element.metadata and attr in element.metadata:
+                    value = element.metadata[attr]
+
+                # Round float values to 2 decimal places for grouping
+                if isinstance(value, float):
+                    value = round(value, 2)
+
+                key_values.append(value)
+
+            key = tuple(key_values)
+
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(element)
+
+        return groups
+
+    def _find_connected_components_elements(
+        self, elements: List["Element"], padding: float
+    ) -> List[List["Element"]]:
+        """Find connected components among elements using union-find."""
+        if not elements:
+            return []
+
+        if len(elements) == 1:
+            return [elements]
+
+        # Build adjacency using union-find
+        parent = list(range(len(elements)))
+
+        def find(x):
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x, y):
+            px, py = find(x), find(y)
+            if px != py:
+                parent[px] = py
+
+        # Check all pairs of elements for connectivity
+        for i in range(len(elements)):
+            for j in range(i + 1, len(elements)):
+                if self._are_elements_connected(elements[i], elements[j], padding):
+                    union(i, j)
+
+        # Group elements by their connected component
+        components = {}
+        for i, element in enumerate(elements):
+            root = find(i)
+            if root not in components:
+                components[root] = []
+            components[root].append(element)
+
+        return list(components.values())
+
+    def _merge_elements_for_dissolve(
+        self, elements: List["Element"], group_by: List[str] = None
+    ) -> "Region":
+        """Merge a group of elements for dissolve operation."""
+        if not elements:
+            raise ValueError("Cannot merge empty element group")
+
+        if len(elements) == 1:
+            elem = elements[0]
+            from natural_pdf.elements.region import Region
+
+            region = Region(page=elem.page, bbox=elem.bbox, label=f"Dissolved (1 {elem.type})")
+            self._copy_element_attributes_to_region(elem, region, group_by)
+            return region
+
+        # Calculate merged bbox
+        bboxes = [e.bbox for e in elements]
+        x0s = [b[0] for b in bboxes]
+        tops = [b[1] for b in bboxes]
+        x1s = [b[2] for b in bboxes]
+        bottoms = [b[3] for b in bboxes]
+
+        merged_bbox = (min(x0s), min(tops), max(x1s), max(bottoms))
+
+        # Use the page from the first element
+        page = elements[0].page
+
+        # Count element types for label
+        type_counts = {}
+        for elem in elements:
+            elem_type = elem.type
+            type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
+
+        # Create label showing element types
+        label_parts = []
+        for elem_type, count in sorted(type_counts.items()):
+            # Pluralize element type if count > 1
+            type_label = elem_type + ("s" if count > 1 else "")
+            label_parts.append(f"{count} {type_label}")
+        label = f"Dissolved ({', '.join(label_parts)})"
+
+        # Create merged region
+        from natural_pdf.elements.region import Region
+
+        merged_region = Region(page=page, bbox=merged_bbox, label=label)
+
+        # Copy attributes from first element if they're consistent
+        self._copy_element_attributes_to_region(elements[0], merged_region, group_by)
+
+        # Check if all elements have the same region_type
+        region_types = set()
+        for elem in elements:
+            if hasattr(elem, "region_type") and elem.region_type:
+                region_types.add(elem.region_type)
+
+        # Handle region_type based on consistency
+        if len(region_types) == 1:
+            # All elements have the same region_type, preserve it
+            merged_region.region_type = region_types.pop()
+        elif len(region_types) > 1:
+            # Multiple different region types, clear it
+            merged_region.region_type = None
+
+        # Add dissolve metadata
+        merged_region.metadata["dissolve_info"] = {
+            "source_count": len(elements),
+            "source_bboxes": bboxes,
+            "source_types": type_counts,
+        }
+
+        return merged_region
+
+    def _are_elements_connected(self, elem1: "Element", elem2: "Element", threshold: float) -> bool:
+        """Check if two elements are connected (adjacent or overlapping)."""
+        # Check if elements are on the same page
+        # Handle edge cases where elements might not have a page attribute
+        page1 = getattr(elem1, "page", None)
+        page2 = getattr(elem2, "page", None)
+
+        # If either element doesn't have a page, we can't compare pages
+        # In this case, only consider them connected if both lack pages
+        if page1 is None or page2 is None:
+            if page1 is not page2:  # One has page, one doesn't
+                return False
+            # Both None - continue with proximity check
+        elif page1 != page2:  # Both have pages but different
+            return False
+
+        bbox1 = elem1.bbox
+        bbox2 = elem2.bbox
+
+        # Check for overlap first
+        overlap = get_bbox_overlap(bbox1, bbox2)
+        if overlap is not None:
+            return True
+
+        # If no overlap and threshold is 0, elements are not connected
+        if threshold == 0:
+            return False
+
+        # Check proximity - calculate minimum distance between bboxes
+        # bbox format: (x0, top, x1, bottom)
+        x0_1, top_1, x1_1, bottom_1 = bbox1
+        x0_2, top_2, x1_2, bottom_2 = bbox2
+
+        # Calculate horizontal distance
+        if x1_1 < x0_2:
+            h_dist = x0_2 - x1_1
+        elif x1_2 < x0_1:
+            h_dist = x0_1 - x1_2
+        else:
+            h_dist = 0  # Horizontally overlapping
+
+        # Calculate vertical distance
+        if bottom_1 < top_2:
+            v_dist = top_2 - bottom_1
+        elif bottom_2 < top_1:
+            v_dist = top_1 - bottom_2
+        else:
+            v_dist = 0  # Vertically overlapping
+
+        # Use Chebyshev distance (max of horizontal and vertical)
+        # This creates a square proximity zone
+        distance = max(h_dist, v_dist)
+
+        return distance <= threshold
+
+    def _copy_element_attributes_to_region(
+        self, element: "Element", region: "Region", group_by: List[str] = None
+    ) -> None:
+        """Copy relevant attributes from source element to region."""
+        # Common text attributes to check
+        text_attrs = [
+            "size",
+            "font_family",
+            "fontname",
+            "font_size",
+            "font_name",
+            "bold",
+            "italic",
+            "color",
+            "text_color",
+            "region_type",
+        ]
+
+        # If group_by is specified, prioritize those attributes
+        attrs_to_check = (group_by or []) + text_attrs
+
+        for attr in attrs_to_check:
+            value = None
+
+            # Try different ways to get the attribute
+            if hasattr(element, attr):
+                value = getattr(element, attr)
+            elif hasattr(element, "_obj") and element._obj and attr in element._obj:
+                value = element._obj[attr]
+            elif hasattr(element, "metadata") and element.metadata and attr in element.metadata:
+                value = element.metadata[attr]
+
+            # Set the attribute on the region if we found a value
+            if value is not None:
+                # Map common attribute names
+                if attr == "size" and not hasattr(region, "font_size"):
+                    setattr(region, "font_size", value)
+                elif attr == "fontname" and not hasattr(region, "font_name"):
+                    setattr(region, "font_name", value)
+                else:
+                    setattr(region, attr, value)
 
     # ------------------------------------------------------------------
     # NEW METHOD: apply_ocr for collections (supports custom function)

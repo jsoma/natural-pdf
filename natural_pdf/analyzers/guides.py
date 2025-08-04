@@ -3462,7 +3462,15 @@ class Guides:
 
     def extract_table(
         self,
-        target: Optional[Union["Page", "Region"]] = None,
+        target: Optional[
+            Union[
+                "Page",
+                "Region",
+                "PageCollection",
+                "ElementCollection",
+                List[Union["Page", "Region"]],
+            ]
+        ] = None,
         source: str = "guides_temp",
         cell_padding: float = 0.5,
         include_outer_boundaries: bool = False,
@@ -3477,6 +3485,8 @@ class Guides:
         apply_exclusions: bool = True,
         *,
         multi_page: Literal["auto", True, False] = "auto",
+        header: Union[str, List[str], None] = "first",
+        skip_repeating_headers: Optional[bool] = None,
     ) -> "TableResult":
         """
         Extract table data directly from guides without leaving temporary regions.
@@ -3487,8 +3497,11 @@ class Guides:
         3. Cleans up all temporary regions
         4. Returns the TableResult
 
+        When passed a collection (PageCollection, ElementCollection, or list), this method
+        will extract tables from each element and combine them into a single result.
+
         Args:
-            target: Page or Region to create regions on (uses self.context if None)
+            target: Page, Region, or collection of Pages/Regions to extract from (uses self.context if None)
             source: Source label for temporary regions (will be cleaned up)
             cell_padding: Internal padding for cell regions in points
             include_outer_boundaries: Whether to add boundaries at edges if missing
@@ -3502,6 +3515,13 @@ class Guides:
             content_filter: Content filtering function or patterns
             apply_exclusions: Whether to apply exclusion regions during text extraction (default: True)
             multi_page: Controls multi-region table creation for FlowRegions
+            header: How to handle headers when extracting from collections:
+                - "first": Use first row of first element as headers (default)
+                - "all": Expect headers on each element, use from first element
+                - None: No headers, use numeric indices
+                - List[str]: Custom column names
+            skip_repeating_headers: Whether to remove duplicate header rows when extracting from collections.
+                Defaults to True when header is "first" or "all", False otherwise.
 
         Returns:
             TableResult: Extracted table data
@@ -3513,19 +3533,48 @@ class Guides:
             ```python
             from natural_pdf.analyzers import Guides
 
-            # Create guides from detected lines
+            # Single page extraction
             guides = Guides.from_lines(page, source_label="detected")
-
-            # Extract table directly - no temporary regions left behind
             table_data = guides.extract_table()
-
-            # Convert to pandas DataFrame
             df = table_data.to_df()
+
+            # Multiple page extraction
+            guides = Guides(pages[0])
+            guides.vertical.from_content(['Column 1', 'Column 2'])
+            table_result = guides.extract_table(pages, header=['Col1', 'Col2'])
+            df = table_result.to_df()
+
+            # Region collection extraction
+            regions = pdf.find_all('region[type=table]')
+            guides = Guides(regions[0])
+            guides.vertical.from_lines(n=3)
+            table_result = guides.extract_table(regions)
             ```
         """
-        target_obj = target or self.context
-        if not target_obj:
+        from natural_pdf.core.page_collection import PageCollection
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        target_obj = target if target is not None else self.context
+        if target_obj is None:
             raise ValueError("No target object available. Provide target parameter or context.")
+
+        # Check if target is a collection - if so, delegate to _extract_table_from_collection
+        if isinstance(target_obj, (PageCollection, ElementCollection, list)):
+            # For collections, pass through most parameters as-is
+            return self._extract_table_from_collection(
+                elements=target_obj,
+                header=header,
+                skip_repeating_headers=skip_repeating_headers,
+                method=method,
+                table_settings=table_settings,
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                text_options=text_options,
+                cell_extraction_func=cell_extraction_func,
+                show_progress=show_progress,
+                content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
+            )
 
         # Get the page for cleanup later
         if hasattr(target_obj, "x0") and hasattr(target_obj, "top"):  # Region
@@ -3597,9 +3646,9 @@ class Guides:
             except Exception as cleanup_err:
                 logger.warning(f"Failed to clean up temporary regions: {cleanup_err}")
 
-    def extract_table_from_pages(
+    def _extract_table_from_collection(
         self,
-        pages: Union["PageCollection", List["Page"]],
+        elements: Union["PageCollection", "ElementCollection", List[Union["Page", "Region"]]],
         header: Union[str, List[str], None] = "first",
         skip_repeating_headers: Optional[bool] = None,
         method: Optional[str] = None,
@@ -3613,17 +3662,17 @@ class Guides:
         apply_exclusions: bool = True,
     ) -> "TableResult":
         """
-        Extract tables from multiple pages using this guide pattern.
+        Extract tables from multiple pages or regions using this guide pattern.
 
-        This method applies the guide to each page, extracts tables, and combines
+        This method applies the guide to each element, extracts tables, and combines
         them into a single TableResult. Dynamic guides (using lambdas) are evaluated
-        for each page.
+        for each element.
 
         Args:
-            pages: PageCollection or list of Pages to extract from
+            elements: PageCollection, ElementCollection, or list of Pages/Regions to extract from
             header: How to handle headers:
-                - "first": Use first row of first page as headers (default)
-                - "all": Expect headers on each page, use from first page
+                - "first": Use first row of first element as headers (default)
+                - "all": Expect headers on each element, use from first element
                 - None: No headers, use numeric indices
                 - List[str]: Custom column names
             skip_repeating_headers: Whether to remove duplicate header rows.
@@ -3634,35 +3683,36 @@ class Guides:
             ocr_config: OCR configuration parameters
             text_options: Dictionary of options for the 'text' method
             cell_extraction_func: Optional callable for custom cell text extraction
-            show_progress: Show progress bar for multi-page extraction (default: True)
+            show_progress: Show progress bar for multi-element extraction (default: True)
             content_filter: Content filtering function or patterns
             apply_exclusions: Whether to apply exclusion regions during extraction
 
         Returns:
-            TableResult: Combined table data from all pages
+            TableResult: Combined table data from all elements
 
         Example:
             ```python
             # Create guide with static vertical, dynamic horizontal
-            guide = Guides(pages[0])
+            guide = Guides(regions[0])
             guide.vertical.from_content(columns, outer="last")
-            guide.horizontal.from_content(lambda p: p.find_all('text:starts-with(NF-)'))
+            guide.horizontal.from_content(lambda r: r.find_all('text:starts-with(NF-)'))
 
-            # Extract from all pages
-            table_result = guide.extract_table_from_pages(pages, header=columns)
+            # Extract from all regions
+            table_result = guide._extract_table_from_collection(regions, header=columns)
             df = table_result.to_df()
             ```
         """
         from natural_pdf.core.page_collection import PageCollection
+        from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.tables.result import TableResult
 
-        # Convert to list if it's a PageCollection
-        if isinstance(pages, PageCollection):
-            page_list = list(pages)
+        # Convert to list if it's a collection
+        if isinstance(elements, (PageCollection, ElementCollection)):
+            element_list = list(elements)
         else:
-            page_list = pages
+            element_list = elements
 
-        if not page_list:
+        if not element_list:
             return TableResult([])
 
         # Determine header handling
@@ -3673,37 +3723,39 @@ class Guides:
         header_row = None
 
         # Configure progress bar
-        iterator = page_list
-        if show_progress and len(page_list) > 1:
+        iterator = element_list
+        if show_progress and len(element_list) > 1:
             try:
                 from tqdm.auto import tqdm
 
-                iterator = tqdm(page_list, desc="Extracting tables from pages", unit="page")
+                iterator = tqdm(
+                    element_list, desc="Extracting tables from elements", unit="element"
+                )
             except ImportError:
                 pass
 
-        for i, page in enumerate(iterator):
-            # Create a new Guides object for this page
-            page_guide = Guides(page)
+        for i, element in enumerate(iterator):
+            # Create a new Guides object for this element
+            element_guide = Guides(element)
 
             # Copy vertical guides (usually static)
             if hasattr(self.vertical, "_callable") and self.vertical._callable is not None:
                 # If vertical is dynamic (lambda), evaluate it
-                page_guide.vertical.from_content(self.vertical._callable(page))
+                element_guide.vertical.from_content(self.vertical._callable(element))
             else:
                 # Copy static vertical positions
-                page_guide.vertical.data = self.vertical.data.copy()
+                element_guide.vertical.data = self.vertical.data.copy()
 
             # Handle horizontal guides
             if hasattr(self.horizontal, "_callable") and self.horizontal._callable is not None:
                 # If horizontal is dynamic (lambda), evaluate it
-                page_guide.horizontal.from_content(self.horizontal._callable(page))
+                element_guide.horizontal.from_content(self.horizontal._callable(element))
             else:
                 # Copy static horizontal positions
-                page_guide.horizontal.data = self.horizontal.data.copy()
+                element_guide.horizontal.data = self.horizontal.data.copy()
 
-            # Extract table from this page
-            table_result = page_guide.extract_table(
+            # Extract table from this element
+            table_result = element_guide.extract_table(
                 method=method,
                 table_settings=table_settings,
                 use_ocr=use_ocr,
@@ -3719,7 +3771,7 @@ class Guides:
             rows = list(table_result)
 
             # Handle headers based on strategy
-            if i == 0:  # First page
+            if i == 0:  # First element
                 if header == "first" or header == "all":
                     # Use first row as header
                     if rows:
@@ -3728,7 +3780,7 @@ class Guides:
                 elif isinstance(header, list):
                     # Custom headers provided
                     header_row = header
-            else:  # Subsequent pages
+            else:  # Subsequent elements
                 if header == "all" and skip_repeating_headers and rows:
                     # Expect and remove header row
                     if rows and header_row and rows[0] == header_row:

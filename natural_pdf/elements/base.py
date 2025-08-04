@@ -180,7 +180,14 @@ class DirectionalMixin:
         # 3. Handle 'until' selector if provided
         target = None
         if until:
-            all_matches = self.page.find_all(until, **kwargs)
+            from natural_pdf.elements.element_collection import ElementCollection
+
+            # If until is an elementcollection, just use it
+            if isinstance(until, ElementCollection):
+                # Only take ones on the same page
+                all_matches = [m for m in until if m.page == self.page]
+            else:
+                all_matches = self.page.find_all(until, **kwargs)
             matches_in_direction = []
 
             # Filter and sort matches based on direction
@@ -1193,7 +1200,7 @@ class Element(
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
-        crop: Union[bool, Literal["content"]] = False,
+        crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         label: Optional[str] = None,
         **kwargs,
@@ -1204,7 +1211,12 @@ class Element(
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
             color: Color for highlighting this element in show mode
             highlights: Additional highlight groups to show, or False to disable all highlights
-            crop: Whether to crop to element bounds
+            crop: Cropping mode:
+                - False: No cropping (default)
+                - True: Tight crop to element bounds
+                - int: Padding in pixels around element
+                - 'wide': Full page width, cropped vertically to element
+                - Region: Crop to the bounds of another region
             crop_bbox: Explicit crop bounds
             label: Optional label for this element
             **kwargs: Additional parameters
@@ -1220,17 +1232,37 @@ class Element(
         # Handle cropping
         if crop_bbox:
             spec.crop_bbox = crop_bbox
-        elif crop == "content" or crop is True:
-            # Crop to element bounds
+        elif crop:
+            # Get element bounds as starting point
             if hasattr(self, "bbox") and self.bbox:
-                spec.crop_bbox = self.bbox
+                x0, y0, x1, y1 = self.bbox
+
+                if crop is True:
+                    # Tight crop to element bounds
+                    spec.crop_bbox = self.bbox
+                elif isinstance(crop, (int, float)):
+                    # Add padding around element
+                    padding = float(crop)
+                    spec.crop_bbox = (
+                        max(0, x0 - padding),
+                        max(0, y0 - padding),
+                        min(self.page.width, x1 + padding),
+                        min(self.page.height, y1 + padding),
+                    )
+                elif crop == "wide":
+                    # Full page width, cropped vertically to element
+                    spec.crop_bbox = (0, y0, self.page.width, y1)
+                elif hasattr(crop, "bbox"):
+                    # Crop to another region's bounds
+                    spec.crop_bbox = crop.bbox
 
         # Add highlight in show mode (unless explicitly disabled with highlights=False)
         if mode == "show" and highlights is not False:
             # Only highlight this element if:
             # 1. We're not cropping, OR
-            # 2. We're cropping but color was explicitly specified
-            if not crop or color is not None:
+            # 2. We're cropping but color was explicitly specified, OR
+            # 3. We're cropping to another region (not tight crop)
+            if not crop or color is not None or (crop and not isinstance(crop, bool)):
                 # Use provided label or generate one
                 element_label = label if label is not None else self.__class__.__name__
 
@@ -1288,6 +1320,50 @@ class Element(
         return self
 
     # Note: save_image method removed in favor of save()
+
+    def __add__(self, other: Union["Element", "ElementCollection"]) -> "ElementCollection":
+        """Add elements together to create an ElementCollection.
+
+        This allows intuitive combination of elements using the + operator:
+        ```python
+        complainant = section.find("text:contains(Complainant)").right(until='text')
+        dob = section.find("text:contains(DOB)").right(until='text')
+        combined = complainant + dob  # Creates ElementCollection with both regions
+        ```
+
+        Args:
+            other: Another Element or ElementCollection to combine with this element
+
+        Returns:
+            ElementCollection containing all elements
+        """
+        from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.elements.region import Region
+
+        # Create a list starting with self
+        elements = [self]
+
+        # Add the other element(s)
+        if isinstance(other, (Element, Region)):
+            elements.append(other)
+        elif isinstance(other, ElementCollection):
+            elements.extend(other)
+        elif hasattr(other, "__iter__") and not isinstance(other, (str, bytes)):
+            # Handle other iterables but exclude strings
+            elements.extend(other)
+        else:
+            raise TypeError(f"Cannot add Element with {type(other)}")
+
+        return ElementCollection(elements)
+
+    def __radd__(self, other: Union["Element", "ElementCollection"]) -> "ElementCollection":
+        """Right-hand addition to support ElementCollection + Element."""
+        if other == 0:
+            # This handles sum() which starts with 0
+            from natural_pdf.elements.element_collection import ElementCollection
+
+            return ElementCollection([self])
+        return self.__add__(other)
 
     def __repr__(self) -> str:
         """String representation of the element."""

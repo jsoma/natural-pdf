@@ -222,7 +222,9 @@ class Region(
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
-        crop: Union[bool, Literal["content"]] = True,  # Default to True for regions
+        crop: Union[
+            bool, int, str, "Region", Literal["wide"]
+        ] = True,  # Default to True for regions
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> List[RenderSpec]:
@@ -232,7 +234,12 @@ class Region(
             mode: Rendering mode - 'show' includes highlights, 'render' is clean
             color: Color for highlighting this region in show mode
             highlights: Additional highlight groups to show, or False to disable all highlights
-            crop: Whether to crop to this region
+            crop: Cropping mode:
+                - False: No cropping
+                - True: Crop to region bounds (default for regions)
+                - int: Padding in pixels around region
+                - 'wide': Full page width, cropped vertically to region
+                - Region: Crop to the bounds of another region
             crop_bbox: Explicit crop bounds (overrides region bounds)
             **kwargs: Additional parameters
 
@@ -247,15 +254,34 @@ class Region(
         if crop_bbox:
             spec.crop_bbox = crop_bbox
         elif crop:
-            # Crop to this region's bounds
-            spec.crop_bbox = self.bbox
+            x0, y0, x1, y1 = self.bbox
+
+            if crop is True:
+                # Crop to region bounds
+                spec.crop_bbox = self.bbox
+            elif isinstance(crop, (int, float)):
+                # Add padding around region
+                padding = float(crop)
+                spec.crop_bbox = (
+                    max(0, x0 - padding),
+                    max(0, y0 - padding),
+                    min(self.page.width, x1 + padding),
+                    min(self.page.height, y1 + padding),
+                )
+            elif crop == "wide":
+                # Full page width, cropped vertically to region
+                spec.crop_bbox = (0, y0, self.page.width, y1)
+            elif hasattr(crop, "bbox"):
+                # Crop to another region's bounds
+                spec.crop_bbox = crop.bbox
 
         # Add highlights in show mode (unless explicitly disabled with highlights=False)
         if mode == "show" and highlights is not False:
             # Only highlight this region if:
             # 1. We're not cropping, OR
-            # 2. We're cropping but color was explicitly specified
-            if not crop or color is not None:
+            # 2. We're cropping but color was explicitly specified, OR
+            # 3. We're cropping to another region (not tight crop)
+            if not crop or color is not None or (crop and not isinstance(crop, bool)):
                 spec.add_highlight(
                     bbox=self.bbox,
                     polygon=self.polygon if self.has_polygon else None,
@@ -1237,6 +1263,8 @@ class Region(
             Union[str, Callable[[str], bool], List[str]]
         ] = None,  # NEW: Content filtering
         apply_exclusions: bool = True,  # Whether to apply exclusion regions during extraction
+        verticals: Optional[List] = None,  # Explicit vertical lines
+        horizontals: Optional[List] = None,  # Explicit horizontal lines
     ) -> TableResult:  # Return type allows Optional[str] for cells
         """
         Extract a table from this region.
@@ -1263,6 +1291,10 @@ class Region(
                 Works with all extraction methods by filtering cell content.
             apply_exclusions: Whether to apply exclusion regions during text extraction (default: True).
                 When True, text within excluded regions (e.g., headers/footers) will not be extracted.
+            verticals: Optional list of explicit vertical lines for table extraction. When provided,
+                       automatically sets vertical_strategy='explicit' and explicit_vertical_lines.
+            horizontals: Optional list of explicit horizontal lines for table extraction. When provided,
+                         automatically sets horizontal_strategy='explicit' and explicit_horizontal_lines.
 
         Returns:
             Table data as a list of rows, where each row is a list of cell values (str or None).
@@ -1272,6 +1304,14 @@ class Region(
             table_settings = {}
         if text_options is None:
             text_options = {}  # Initialize empty dict
+
+        # Handle explicit vertical and horizontal lines
+        if verticals is not None:
+            table_settings["vertical_strategy"] = "explicit"
+            table_settings["explicit_vertical_lines"] = verticals
+        if horizontals is not None:
+            table_settings["horizontal_strategy"] = "explicit"
+            table_settings["explicit_horizontal_lines"] = horizontals
 
         # Auto-detect method if not specified
         if method is None:
@@ -2547,7 +2587,13 @@ class Region(
 
         return self
 
-    def get_section_between(self, start_element=None, end_element=None, include_boundaries="both"):
+    def get_section_between(
+        self,
+        start_element=None,
+        end_element=None,
+        include_boundaries="both",
+        orientation="vertical",
+    ):
         """
         Get a section between two elements within this region.
 
@@ -2555,6 +2601,7 @@ class Region(
             start_element: Element marking the start of the section
             end_element: Element marking the end of the section
             include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
 
         Returns:
             Region representing the section
@@ -2599,41 +2646,67 @@ class Region(
         else:
             end_element = elements[-1]  # Default end is last element
 
-        # Adjust indexes based on boundary inclusion
-        start_element_for_bbox = start_element
-        end_element_for_bbox = end_element
+        # Validate orientation parameter
+        if orientation not in ["vertical", "horizontal"]:
+            raise ValueError(f"orientation must be 'vertical' or 'horizontal', got '{orientation}'")
 
-        if include_boundaries == "none":
-            start_idx += 1
-            end_idx -= 1
-            start_element_for_bbox = elements[start_idx] if start_idx <= end_idx else None
-            end_element_for_bbox = elements[end_idx] if start_idx <= end_idx else None
-        elif include_boundaries == "start":
-            end_idx -= 1
-            end_element_for_bbox = elements[end_idx] if start_idx <= end_idx else None
-        elif include_boundaries == "end":
-            start_idx += 1
-            start_element_for_bbox = elements[start_idx] if start_idx <= end_idx else None
+        # Calculate the section boundaries based on orientation and include_boundaries
+        if orientation == "vertical":
+            # Use full width of the parent region for vertical sections
+            x0 = self.x0  # Use parent region's left boundary
+            x1 = self.x1  # Use parent region's right boundary
 
-        # Ensure valid indexes
-        start_idx = max(0, start_idx)
-        end_idx = min(len(elements) - 1, end_idx)
+            # Determine vertical boundaries based on include_boundaries
+            if include_boundaries == "both":
+                # Include both boundary elements
+                top = start_element.top
+                bottom = end_element.bottom
+            elif include_boundaries == "start":
+                # Include start element, exclude end element
+                top = start_element.top
+                bottom = end_element.top  # Stop at the top of end element
+            elif include_boundaries == "end":
+                # Exclude start element, include end element
+                top = start_element.bottom  # Start at the bottom of start element
+                bottom = end_element.bottom
+            else:  # "none"
+                # Exclude both boundary elements
+                top = start_element.bottom  # Start at the bottom of start element
+                bottom = end_element.top  # Stop at the top of end element
 
-        # If no valid elements in range, return empty region
-        if start_idx > end_idx or start_element_for_bbox is None or end_element_for_bbox is None:
-            logger.debug("No valid elements in range for get_section_between.")
-            # Return an empty region positioned at the start element boundary
-            anchor = start_element if start_element else self
-            return Region(self.page, (anchor.x0, anchor.top, anchor.x0, anchor.top))
+            # Ensure valid boundaries
+            if top >= bottom:
+                logger.debug(f"Invalid section boundaries: top={top} >= bottom={bottom}")
+                # Return an empty region
+                return Region(self.page, (x0, top, x0, top))
+        else:  # horizontal
+            # Use full height of the parent region for horizontal sections
+            top = self.top  # Use parent region's top boundary
+            bottom = self.bottom  # Use parent region's bottom boundary
 
-        # Get elements in range based on adjusted indices
-        section_elements = elements[start_idx : end_idx + 1]
+            # Determine horizontal boundaries based on include_boundaries
+            if include_boundaries == "both":
+                # Include both boundary elements
+                x0 = start_element.x0
+                x1 = end_element.x1
+            elif include_boundaries == "start":
+                # Include start element, exclude end element
+                x0 = start_element.x0
+                x1 = end_element.x0  # Stop at the left of end element
+            elif include_boundaries == "end":
+                # Exclude start element, include end element
+                x0 = start_element.x1  # Start at the right of start element
+                x1 = end_element.x1
+            else:  # "none"
+                # Exclude both boundary elements
+                x0 = start_element.x1  # Start at the right of start element
+                x1 = end_element.x0  # Stop at the left of end element
 
-        # Create bounding box around the ELEMENTS included based on indices
-        x0 = min(e.x0 for e in section_elements)
-        top = min(e.top for e in section_elements)
-        x1 = max(e.x1 for e in section_elements)
-        bottom = max(e.bottom for e in section_elements)
+            # Ensure valid boundaries
+            if x0 >= x1:
+                logger.debug(f"Invalid section boundaries: x0={x0} >= x1={x1}")
+                # Return an empty region
+                return Region(self.page, (x0, top, x0, top))
 
         # Create new region
         section = Region(self.page, (x0, top, x1, bottom))
@@ -2644,7 +2717,11 @@ class Region(
         return section
 
     def get_sections(
-        self, start_elements=None, end_elements=None, include_boundaries="both"
+        self,
+        start_elements=None,
+        end_elements=None,
+        include_boundaries="both",
+        orientation="vertical",
     ) -> "ElementCollection[Region]":
         """
         Get sections within this region based on start/end elements.
@@ -2653,6 +2730,7 @@ class Region(
             start_elements: Elements or selector string that mark the start of sections
             end_elements: Elements or selector string that mark the end of sections
             include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
 
         Returns:
             List of Region objects representing the extracted sections
@@ -2687,9 +2765,12 @@ class Region(
         if not start_elements:
             return []
 
-        # Sort all elements within the region in reading order
+        # Sort all elements within the region based on orientation
         all_elements_in_region = self.get_elements()
-        all_elements_in_region.sort(key=lambda e: (e.top, e.x0))
+        if orientation == "vertical":
+            all_elements_in_region.sort(key=lambda e: (e.top, e.x0))
+        else:  # horizontal
+            all_elements_in_region.sort(key=lambda e: (e.x0, e.top))
 
         if not all_elements_in_region:
             return []  # Cannot create sections if region is empty
@@ -2731,7 +2812,9 @@ class Region(
                 start_element = current_start_boundary["element"]
                 end_element = boundary["element"]
                 # Use the helper, ensuring elements are from within the region
-                section = self.get_section_between(start_element, end_element, include_boundaries)
+                section = self.get_section_between(
+                    start_element, end_element, include_boundaries, orientation
+                )
                 sections.append(section)
                 current_start_boundary = None  # Reset
 
@@ -2748,7 +2831,7 @@ class Region(
                 if end_idx >= 0 and end_idx >= current_start_boundary["index"]:
                     end_element = all_elements_in_region[end_idx]
                     section = self.get_section_between(
-                        start_element, end_element, include_boundaries
+                        start_element, end_element, include_boundaries, orientation
                     )
                     sections.append(section)
                 # Else: Section started and ended by consecutive start elements? Create empty?
@@ -2762,7 +2845,9 @@ class Region(
             start_element = current_start_boundary["element"]
             # End at the last element within the region
             end_element = all_elements_in_region[-1]
-            section = self.get_section_between(start_element, end_element, include_boundaries)
+            section = self.get_section_between(
+                start_element, end_element, include_boundaries, orientation
+            )
             sections.append(section)
 
         return ElementCollection(sections)
@@ -3015,6 +3100,54 @@ class Region(
                 return []  # Return empty list on error
 
         return all_descendants
+
+    def __add__(
+        self, other: Union["Element", "Region", "ElementCollection"]
+    ) -> "ElementCollection":
+        """Add regions/elements together to create an ElementCollection.
+
+        This allows intuitive combination of regions using the + operator:
+        ```python
+        complainant = section.find("text:contains(Complainant)").right(until='text')
+        dob = section.find("text:contains(DOB)").right(until='text')
+        combined = complainant + dob  # Creates ElementCollection with both regions
+        ```
+
+        Args:
+            other: Another Region, Element or ElementCollection to combine
+
+        Returns:
+            ElementCollection containing all elements
+        """
+        from natural_pdf.elements.base import Element
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        # Create a list starting with self
+        elements = [self]
+
+        # Add the other element(s)
+        if isinstance(other, (Element, Region)):
+            elements.append(other)
+        elif isinstance(other, ElementCollection):
+            elements.extend(other)
+        elif hasattr(other, "__iter__") and not isinstance(other, (str, bytes)):
+            # Handle other iterables but exclude strings
+            elements.extend(other)
+        else:
+            raise TypeError(f"Cannot add Region with {type(other)}")
+
+        return ElementCollection(elements)
+
+    def __radd__(
+        self, other: Union["Element", "Region", "ElementCollection"]
+    ) -> "ElementCollection":
+        """Right-hand addition to support ElementCollection + Region."""
+        if other == 0:
+            # This handles sum() which starts with 0
+            from natural_pdf.elements.element_collection import ElementCollection
+
+            return ElementCollection([self])
+        return self.__add__(other)
 
     def __repr__(self) -> str:
         """String representation of the region."""

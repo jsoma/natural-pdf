@@ -460,6 +460,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         end_elements=None,
         new_section_on_page_break=False,
         include_boundaries="both",
+        orientation="vertical",
     ) -> "ElementCollection[Region]":
         """
         Extract sections from a page collection based on start/end elements.
@@ -469,6 +470,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
             end_elements: Elements or selector string that mark the end of sections (optional)
             new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
             include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
 
         Returns:
             List of Region objects representing the extracted sections
@@ -511,6 +513,9 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 next_page = self.pages[i + 1]
                 top_region = Region(next_page, (0, 0, next_page.width, 1))
                 top_region.is_page_boundary = True  # Mark it as a special boundary
+                # If start_elements is None, initialize it as an empty list
+                if start_elements is None:
+                    start_elements = []
                 start_elements.append(top_region)
 
         # Get all elements from all pages and sort them in document order
@@ -542,6 +547,9 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                     end_elem.page, (0, end_elem.bottom, end_elem.page.width, end_elem.bottom + 1)
                 )
                 implicit_start.is_implicit_start = True
+                # Track which end element this implicit start was created from
+                # to avoid pairing them together (which would create zero height)
+                implicit_start.created_from_end = end_elem
                 start_elements.append(implicit_start)
 
         # Mark section boundaries
@@ -606,17 +614,20 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
 
         # Sort boundaries by page index, then by actual document position
         def _sort_key(boundary):
-            """Sort boundaries by (page_idx, vertical_top, priority)."""
+            """Sort boundaries by (page_idx, position, priority)."""
             page_idx = boundary["page_idx"]
             element = boundary["element"]
 
-            # Vertical position on the page
-            y_pos = getattr(element, "top", 0.0)
+            # Position on the page based on orientation
+            if orientation == "vertical":
+                pos = getattr(element, "top", 0.0)
+            else:  # horizontal
+                pos = getattr(element, "x0", 0.0)
 
             # Ensure starts come before ends at the same coordinate
             priority = 0 if boundary["type"] == "start" else 1
 
-            return (page_idx, y_pos, priority)
+            return (page_idx, pos, priority)
 
         section_boundaries.sort(key=_sort_key)
 
@@ -624,10 +635,17 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
         sections = []
 
         # --- Helper: build a FlowRegion spanning multiple pages ---
-        def _build_flow_region(start_el, end_el):
-            """Return a FlowRegion that covers from *start_el* to *end_el* (inclusive).
-            If *end_el* is None, the region continues to the bottom of the last
-            page in this PageCollection."""
+        def _build_flow_region(start_el, end_el, include_boundaries="both", orientation="vertical"):
+            """Return a FlowRegion that covers from *start_el* to *end_el*.
+            If *end_el* is None, the region continues to the bottom/right of the last
+            page in this PageCollection.
+
+            Args:
+                start_el: Start element
+                end_el: End element
+                include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+                orientation: 'vertical' or 'horizontal' - determines section direction
+            """
             # Local imports to avoid top-level cycles
             from natural_pdf.elements.region import Region
             from natural_pdf.flows.element import FlowElement
@@ -639,12 +657,24 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
 
             parts: list[Region] = []
 
-            # Use the actual top of the start element (for implicit starts this is
-            # the bottom of the previous end element) instead of forcing to 0.
-            start_top = start_el.top
+            if orientation == "vertical":
+                # Determine the start_top based on include_boundaries
+                start_top = start_el.top
+                if include_boundaries == "none" or include_boundaries == "end":
+                    # Exclude start boundary
+                    start_top = start_el.bottom if hasattr(start_el, "bottom") else start_el.top
 
-            # Slice of first page beginning at *start_top*
-            parts.append(Region(start_pg, (0, start_top, start_pg.width, start_pg.height)))
+                # Slice of first page beginning at *start_top*
+                parts.append(Region(start_pg, (0, start_top, start_pg.width, start_pg.height)))
+            else:  # horizontal
+                # Determine the start_left based on include_boundaries
+                start_left = start_el.x0
+                if include_boundaries == "none" or include_boundaries == "end":
+                    # Exclude start boundary
+                    start_left = start_el.x1 if hasattr(start_el, "x1") else start_el.x0
+
+                # Slice of first page beginning at *start_left*
+                parts.append(Region(start_pg, (start_left, 0, start_pg.width, start_pg.height)))
 
             # Full middle pages
             for pg_idx in range(start_pg.index + 1, end_pg.index):
@@ -653,10 +683,32 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
 
             # Slice of last page (if distinct)
             if end_pg is not start_pg:
-                bottom = end_el.bottom if end_el is not None else end_pg.height
-                parts.append(Region(end_pg, (0, 0, end_pg.width, bottom)))
+                if orientation == "vertical":
+                    # Determine the bottom based on include_boundaries
+                    if end_el is not None:
+                        if include_boundaries == "none" or include_boundaries == "start":
+                            # Exclude end boundary
+                            bottom = end_el.top if hasattr(end_el, "top") else end_el.bottom
+                        else:
+                            # Include end boundary
+                            bottom = end_el.bottom
+                    else:
+                        bottom = end_pg.height
+                    parts.append(Region(end_pg, (0, 0, end_pg.width, bottom)))
+                else:  # horizontal
+                    # Determine the right based on include_boundaries
+                    if end_el is not None:
+                        if include_boundaries == "none" or include_boundaries == "start":
+                            # Exclude end boundary
+                            right = end_el.x0 if hasattr(end_el, "x0") else end_el.x1
+                        else:
+                            # Include end boundary
+                            right = end_el.x1
+                    else:
+                        right = end_pg.width
+                    parts.append(Region(end_pg, (0, 0, right, end_pg.height)))
 
-            flow = Flow(segments=parts, arrangement="vertical")
+            flow = Flow(segments=parts, arrangement=orientation)
             src_fe = FlowElement(physical_object=start_el, flow=flow)
             return FlowRegion(
                 flow=flow,
@@ -680,26 +732,103 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 start_element = current_start["element"]
                 end_element = boundary["element"]
 
+                # Check if this is an implicit start created from this same end element
+                # This would create a zero-height section, so skip this pairing
+                if (
+                    hasattr(start_element, "is_implicit_start")
+                    and hasattr(start_element, "created_from_end")
+                    and start_element.created_from_end is end_element
+                ):
+                    # Skip this pairing - keep current_start for next end element
+                    continue
+
                 # If both elements are on the same page, use the page's get_section_between
                 if start_element.page == end_element.page:
                     # For implicit start elements, create a region from the top of the page
                     if hasattr(start_element, "is_implicit_start"):
                         from natural_pdf.elements.region import Region
 
-                        section = Region(
-                            start_element.page,
-                            (0, start_element.top, start_element.page.width, end_element.bottom),
-                        )
+                        # Adjust boundaries based on include_boundaries parameter and orientation
+                        if orientation == "vertical":
+                            top = start_element.top
+                            bottom = end_element.bottom
+
+                            if include_boundaries == "none":
+                                # Exclude both boundaries - move past them
+                                top = (
+                                    start_element.bottom
+                                    if hasattr(start_element, "bottom")
+                                    else start_element.top
+                                )
+                                bottom = (
+                                    end_element.top
+                                    if hasattr(end_element, "top")
+                                    else end_element.bottom
+                                )
+                            elif include_boundaries == "start":
+                                # Include start, exclude end
+                                bottom = (
+                                    end_element.top
+                                    if hasattr(end_element, "top")
+                                    else end_element.bottom
+                                )
+                            elif include_boundaries == "end":
+                                # Exclude start, include end
+                                top = (
+                                    start_element.bottom
+                                    if hasattr(start_element, "bottom")
+                                    else start_element.top
+                                )
+                            # "both" is default - no adjustment needed
+
+                            section = Region(
+                                start_element.page,
+                                (0, top, start_element.page.width, bottom),
+                            )
+                        else:  # horizontal
+                            left = start_element.x0
+                            right = end_element.x1
+
+                            if include_boundaries == "none":
+                                # Exclude both boundaries - move past them
+                                left = (
+                                    start_element.x1
+                                    if hasattr(start_element, "x1")
+                                    else start_element.x0
+                                )
+                                right = (
+                                    end_element.x0 if hasattr(end_element, "x0") else end_element.x1
+                                )
+                            elif include_boundaries == "start":
+                                # Include start, exclude end
+                                right = (
+                                    end_element.x0 if hasattr(end_element, "x0") else end_element.x1
+                                )
+                            elif include_boundaries == "end":
+                                # Exclude start, include end
+                                left = (
+                                    start_element.x1
+                                    if hasattr(start_element, "x1")
+                                    else start_element.x0
+                                )
+                            # "both" is default - no adjustment needed
+
+                            section = Region(
+                                start_element.page,
+                                (left, 0, right, start_element.page.height),
+                            )
                         section.start_element = start_element
                         section.boundary_element_found = end_element
                     else:
                         section = start_element.page.get_section_between(
-                            start_element, end_element, include_boundaries
+                            start_element, end_element, include_boundaries, orientation
                         )
                     sections.append(section)
                 else:
                     # Create FlowRegion spanning pages
-                    flow_region = _build_flow_region(start_element, end_element)
+                    flow_region = _build_flow_region(
+                        start_element, end_element, include_boundaries, orientation
+                    )
                     sections.append(flow_region)
 
                 current_start = None
@@ -713,8 +842,11 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 if start_element.page == boundary["element"].page:
                     # Find elements on this page
                     page_elements = [e for e in all_elements if e.page == start_element.page]
-                    # Sort by position
-                    page_elements.sort(key=lambda e: (e.top, e.x0))
+                    # Sort by position based on orientation
+                    if orientation == "vertical":
+                        page_elements.sort(key=lambda e: (e.top, e.x0))
+                    else:  # horizontal
+                        page_elements.sort(key=lambda e: (e.x0, e.top))
 
                     # Find the last element before the boundary
                     end_idx = (
@@ -726,7 +858,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
 
                     # Create the section
                     section = start_element.page.get_section_between(
-                        start_element, end_element, include_boundaries
+                        start_element, end_element, include_boundaries, orientation
                     )
                     sections.append(section)
                 else:
@@ -735,9 +867,37 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
 
                     start_page = start_element.page
 
-                    # Handle implicit start elements
-                    start_top = start_element.top
-                    region = Region(start_page, (0, start_top, start_page.width, start_page.height))
+                    # Handle implicit start elements and respect include_boundaries
+                    if orientation == "vertical":
+                        if include_boundaries in ["none", "end"]:
+                            # Exclude start boundary
+                            start_top = (
+                                start_element.bottom
+                                if hasattr(start_element, "bottom")
+                                else start_element.top
+                            )
+                        else:
+                            # Include start boundary
+                            start_top = start_element.top
+
+                        region = Region(
+                            start_page, (0, start_top, start_page.width, start_page.height)
+                        )
+                    else:  # horizontal
+                        if include_boundaries in ["none", "end"]:
+                            # Exclude start boundary
+                            start_left = (
+                                start_element.x1
+                                if hasattr(start_element, "x1")
+                                else start_element.x0
+                            )
+                        else:
+                            # Include start boundary
+                            start_left = start_element.x0
+
+                        region = Region(
+                            start_page, (start_left, 0, start_page.width, start_page.height)
+                        )
                     region.start_element = start_element
                     sections.append(region)
 
@@ -753,19 +913,48 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 # on the last page of the collection
                 last_page = self.pages[-1]
                 last_page_elements = [e for e in all_elements if e.page == last_page]
-                last_page_elements.sort(key=lambda e: (e.top, e.x0))
+                if orientation == "vertical":
+                    last_page_elements.sort(key=lambda e: (e.top, e.x0))
+                else:  # horizontal
+                    last_page_elements.sort(key=lambda e: (e.x0, e.top))
                 end_element = last_page_elements[-1] if last_page_elements else None
 
                 # Create FlowRegion spanning multiple pages using helper
-                flow_region = _build_flow_region(start_element, end_element)
+                flow_region = _build_flow_region(
+                    start_element, end_element, include_boundaries, orientation
+                )
                 sections.append(flow_region)
             else:
                 # With start_elements only, create a section to the end of the current page
                 from natural_pdf.elements.region import Region
 
-                # Handle implicit start elements
-                start_top = start_element.top
-                region = Region(start_page, (0, start_top, start_page.width, start_page.height))
+                # Handle implicit start elements and respect include_boundaries
+                if orientation == "vertical":
+                    if include_boundaries in ["none", "end"]:
+                        # Exclude start boundary
+                        start_top = (
+                            start_element.bottom
+                            if hasattr(start_element, "bottom")
+                            else start_element.top
+                        )
+                    else:
+                        # Include start boundary
+                        start_top = start_element.top
+
+                    region = Region(start_page, (0, start_top, start_page.width, start_page.height))
+                else:  # horizontal
+                    if include_boundaries in ["none", "end"]:
+                        # Exclude start boundary
+                        start_left = (
+                            start_element.x1 if hasattr(start_element, "x1") else start_element.x0
+                        )
+                    else:
+                        # Include start boundary
+                        start_left = start_element.x0
+
+                    region = Region(
+                        start_page, (start_left, 0, start_page.width, start_page.height)
+                    )
                 region.start_element = start_element
                 sections.append(region)
 

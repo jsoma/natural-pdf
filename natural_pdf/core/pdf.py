@@ -1280,6 +1280,7 @@ class PDF(
         end_elements=None,
         new_section_on_page_break=False,
         include_boundaries="both",
+        orientation="vertical",
     ) -> "ElementCollection":
         """
         Extract sections from the entire PDF based on start/end elements.
@@ -1292,6 +1293,7 @@ class PDF(
             end_elements: Elements or selector string that mark the end of sections (optional)
             new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
             include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
 
         Returns:
             ElementCollection of Region objects representing the extracted sections
@@ -1328,6 +1330,7 @@ class PDF(
             end_elements=end_elements,
             new_section_on_page_break=new_section_on_page_break,
             include_boundaries=include_boundaries,
+            orientation=orientation,
         )
 
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Optional,
 
 from tqdm.auto import tqdm
 
+from natural_pdf.utils.color_utils import format_color_value
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
@@ -201,7 +203,15 @@ class PageGroupBy:
         """
         groups = self._compute_groups()
         for key, pages in groups.items():
-            print(f"\n--- Group: {key} ({len(pages)} pages) ---")
+            # Format the key for display, converting colors to hex if needed
+            if isinstance(self.by, str):
+                # If grouped by a string selector, check if it's a color attribute
+                formatted_key = format_color_value(key, attr_name=self.by)
+            else:
+                # For callable grouping, try to format as color
+                formatted_key = format_color_value(key)
+
+            print(f"\n--- Group: {formatted_key} ({len(pages)} pages) ---")
             pages.show(**kwargs)
 
     def __len__(self) -> int:
@@ -220,7 +230,15 @@ class PageGroupBy:
         print("-" * 40)
 
         for i, (key, pages) in enumerate(groups.items()):
-            key_display = f"'{key}'" if key is not None else "None"
+            if key is None:
+                key_display = "None"
+            else:
+                # Format the key for display, converting colors to hex if needed
+                if isinstance(self.by, str):
+                    formatted_key = format_color_value(key, attr_name=self.by)
+                else:
+                    formatted_key = format_color_value(key)
+                key_display = f"'{formatted_key}'"
             print(f"[{i}] {key_display}: {len(pages)} pages")
 
     def __repr__(self) -> str:

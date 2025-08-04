@@ -530,8 +530,8 @@ PSEUDO_CLASS_FUNCTIONS = {
     "italic": lambda el: hasattr(el, "italic") and el.italic,
     "first-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[0] == el,
     "last-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[-1] == el,
-    "empty": lambda el: not el.text,
-    "not-empty": lambda el: el.text,
+    "empty": lambda el: not hasattr(el, "text") or not el.text or not el.text.strip(),
+    "not-empty": lambda el: bool(hasattr(el, "text") and el.text and el.text.strip()),
     "not-bold": lambda el: hasattr(el, "bold") and not el.bold,
     "not-italic": lambda el: hasattr(el, "italic") and not el.italic,
 }

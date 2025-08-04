@@ -1296,6 +1296,7 @@ class Flow(Visualizable):
         end_elements=None,
         new_section_on_page_break: bool = False,
         include_boundaries: str = "both",
+        orientation: str = "vertical",
     ) -> "ElementCollection":
         """
         Extract logical sections from the Flow based on *start* and *end* boundary
@@ -1317,6 +1318,7 @@ class Flow(Visualizable):
                 boundaries (default: False).
             include_boundaries: How to include boundary elements: 'start',
                 'end', 'both', or 'none' (default: 'both').
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction.
 
         Returns:
             ElementCollection of Region/FlowRegion objects representing the
@@ -1408,6 +1410,7 @@ class Flow(Visualizable):
                 start_elements=seg_start_elems,
                 end_elements=seg_end_elems,
                 include_boundaries=include_boundaries,
+                orientation=orientation,
             )
 
             if seg_sections:

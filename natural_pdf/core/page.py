@@ -2525,10 +2525,19 @@ class Page(
         include_boundaries="start",
         y_threshold=5.0,
         bounding_box=None,
+        orientation="vertical",
     ) -> "ElementCollection[Region]":
         """
         Get sections of a page defined by start/end elements.
         Uses the page-level implementation.
+
+        Args:
+            start_elements: Elements or selector string that mark the start of sections
+            end_elements: Elements or selector string that mark the end of sections
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            y_threshold: Threshold for vertical alignment (only used for vertical orientation)
+            bounding_box: Optional bounding box to constrain sections
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
 
         Returns:
             An ElementCollection containing the found Region objects.
@@ -2577,11 +2586,14 @@ class Page(
         for el in end_elements:
             all_boundaries.append((el, "end"))
 
-        # Sort all boundary elements primarily by top, then x0
+        # Sort all boundary elements based on orientation
         try:
-            all_boundaries.sort(key=lambda x: (x[0].top, x[0].x0))
+            if orientation == "vertical":
+                all_boundaries.sort(key=lambda x: (x[0].top, x[0].x0))
+            else:  # horizontal
+                all_boundaries.sort(key=lambda x: (x[0].x0, x[0].top))
         except AttributeError as e:
-            logger.error(f"Error sorting boundaries: Element missing top/x0 attribute? {e}")
+            logger.error(f"Error sorting boundaries: Element missing position attribute? {e}")
             return ElementCollection([])  # Cannot proceed if elements lack position
 
         # Process sorted boundaries to find sections
@@ -2593,25 +2605,45 @@ class Page(
                 # If we have an active section, this start implicitly ends it
                 if active_section_started:
                     end_boundary_el = element  # Use this start as the end boundary
-                    # Determine region boundaries
-                    sec_top = (
-                        current_start_element.top
-                        if include_boundaries in ["start", "both"]
-                        else current_start_element.bottom
-                    )
-                    sec_bottom = (
-                        end_boundary_el.top
-                        if include_boundaries not in ["end", "both"]
-                        else end_boundary_el.bottom
-                    )
+                    # Determine region boundaries based on orientation
+                    if orientation == "vertical":
+                        sec_top = (
+                            current_start_element.top
+                            if include_boundaries in ["start", "both"]
+                            else current_start_element.bottom
+                        )
+                        sec_bottom = (
+                            end_boundary_el.top
+                            if include_boundaries not in ["end", "both"]
+                            else end_boundary_el.bottom
+                        )
 
-                    if sec_top < sec_bottom:  # Ensure valid region
-                        x0, _, x1, _ = get_bounds()
-                        region = self.create_region(x0, sec_top, x1, sec_bottom)
-                        region.start_element = current_start_element
-                        region.end_element = end_boundary_el  # Mark the element that ended it
-                        region.is_end_next_start = True  # Mark how it ended
-                        regions.append(region)
+                        if sec_top < sec_bottom:  # Ensure valid region
+                            x0, _, x1, _ = get_bounds()
+                            region = self.create_region(x0, sec_top, x1, sec_bottom)
+                            region.start_element = current_start_element
+                            region.end_element = end_boundary_el  # Mark the element that ended it
+                            region.is_end_next_start = True  # Mark how it ended
+                            regions.append(region)
+                    else:  # horizontal
+                        sec_left = (
+                            current_start_element.x0
+                            if include_boundaries in ["start", "both"]
+                            else current_start_element.x1
+                        )
+                        sec_right = (
+                            end_boundary_el.x0
+                            if include_boundaries not in ["end", "both"]
+                            else end_boundary_el.x1
+                        )
+
+                        if sec_left < sec_right:  # Ensure valid region
+                            _, y0, _, y1 = get_bounds()
+                            region = self.create_region(sec_left, y0, sec_right, y1)
+                            region.start_element = current_start_element
+                            region.end_element = end_boundary_el  # Mark the element that ended it
+                            region.is_end_next_start = True  # Mark how it ended
+                            regions.append(region)
                     active_section_started = False  # Reset for the new start
 
                 # Set this as the potential start of the next section
@@ -2621,24 +2653,44 @@ class Page(
             elif element_type == "end" and active_section_started:
                 # We found an explicit end for the current section
                 end_boundary_el = element
-                sec_top = (
-                    current_start_element.top
-                    if include_boundaries in ["start", "both"]
-                    else current_start_element.bottom
-                )
-                sec_bottom = (
-                    end_boundary_el.bottom
-                    if include_boundaries in ["end", "both"]
-                    else end_boundary_el.top
-                )
+                if orientation == "vertical":
+                    sec_top = (
+                        current_start_element.top
+                        if include_boundaries in ["start", "both"]
+                        else current_start_element.bottom
+                    )
+                    sec_bottom = (
+                        end_boundary_el.bottom
+                        if include_boundaries in ["end", "both"]
+                        else end_boundary_el.top
+                    )
 
-                if sec_top < sec_bottom:  # Ensure valid region
-                    x0, _, x1, _ = get_bounds()
-                    region = self.create_region(x0, sec_top, x1, sec_bottom)
-                    region.start_element = current_start_element
-                    region.end_element = end_boundary_el
-                    region.is_end_next_start = False
-                    regions.append(region)
+                    if sec_top < sec_bottom:  # Ensure valid region
+                        x0, _, x1, _ = get_bounds()
+                        region = self.create_region(x0, sec_top, x1, sec_bottom)
+                        region.start_element = current_start_element
+                        region.end_element = end_boundary_el
+                        region.is_end_next_start = False
+                        regions.append(region)
+                else:  # horizontal
+                    sec_left = (
+                        current_start_element.x0
+                        if include_boundaries in ["start", "both"]
+                        else current_start_element.x1
+                    )
+                    sec_right = (
+                        end_boundary_el.x1
+                        if include_boundaries in ["end", "both"]
+                        else end_boundary_el.x0
+                    )
+
+                    if sec_left < sec_right:  # Ensure valid region
+                        _, y0, _, y1 = get_bounds()
+                        region = self.create_region(sec_left, y0, sec_right, y1)
+                        region.start_element = current_start_element
+                        region.end_element = end_boundary_el
+                        region.is_end_next_start = False
+                        regions.append(region)
 
                 # Reset: section ended explicitly
                 current_start_element = None
@@ -2646,18 +2698,32 @@ class Page(
 
         # Handle the last section if it was started but never explicitly ended
         if active_section_started:
-            sec_top = (
-                current_start_element.top
-                if include_boundaries in ["start", "both"]
-                else current_start_element.bottom
-            )
-            x0, _, x1, page_bottom = get_bounds()
-            if sec_top < page_bottom:
-                region = self.create_region(x0, sec_top, x1, page_bottom)
-                region.start_element = current_start_element
-                region.end_element = None  # Ended by page end
-                region.is_end_next_start = False
-                regions.append(region)
+            if orientation == "vertical":
+                sec_top = (
+                    current_start_element.top
+                    if include_boundaries in ["start", "both"]
+                    else current_start_element.bottom
+                )
+                x0, _, x1, page_bottom = get_bounds()
+                if sec_top < page_bottom:
+                    region = self.create_region(x0, sec_top, x1, page_bottom)
+                    region.start_element = current_start_element
+                    region.end_element = None  # Ended by page end
+                    region.is_end_next_start = False
+                    regions.append(region)
+            else:  # horizontal
+                sec_left = (
+                    current_start_element.x0
+                    if include_boundaries in ["start", "both"]
+                    else current_start_element.x1
+                )
+                page_left, y0, page_right, y1 = get_bounds()
+                if sec_left < page_right:
+                    region = self.create_region(sec_left, y0, page_right, y1)
+                    region.start_element = current_start_element
+                    region.end_element = None  # Ended by page end
+                    region.is_end_next_start = False
+                    regions.append(region)
 
         return ElementCollection(regions)
 

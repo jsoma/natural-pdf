@@ -196,7 +196,7 @@ class Visualizable:
         columns: Optional[int] = 6,  # For grid layout, defaults to 6 columns
         limit: Optional[int] = 30,  # Max pages to show (default 30)
         # Cropping options
-        crop: Union[bool, Literal["content"]] = False,
+        crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> Optional["PIL_Image"]:
@@ -219,7 +219,12 @@ class Visualizable:
             gap: Pixels between stacked images
             columns: Number of columns for grid layout (defaults to 6)
             limit: Maximum number of pages to display (default 30, None for all)
-            crop: Whether to crop (True, False, or 'content' for bbox of elements)
+            crop: Cropping mode:
+                - False: No cropping (default)
+                - True: Tight crop to element bounds
+                - int: Padding in pixels around element
+                - 'wide': Full page width, cropped vertically to element
+                - Region: Crop to the bounds of another region
             crop_bbox: Explicit crop bounds
             **kwargs: Additional parameters passed to rendering
 
@@ -229,6 +234,11 @@ class Visualizable:
         # Convert string to list if needed
         if isinstance(annotate, str):
             annotate = [annotate]
+
+        # Handle 'cols' as an alias for 'columns' for backward compatibility
+        if "cols" in kwargs and columns == 6:  # Only use cols if columns wasn't explicitly set
+            columns = kwargs.pop("cols")
+            logger.info(f"Using 'cols' parameter as alias for 'columns': {columns}")
 
         # Pass limit as max_pages to _get_render_specs
         if limit is not None:
@@ -283,7 +293,7 @@ class Visualizable:
         gap: int = 5,
         columns: Optional[int] = None,
         # Cropping options
-        crop: Union[bool, Literal["content"]] = False,
+        crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> Optional["PIL_Image"]:
@@ -299,13 +309,18 @@ class Visualizable:
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
             columns: Number of columns for grid layout
-            crop: Whether to crop
+            crop: Cropping mode (False, True, int for padding, 'wide', or Region)
             crop_bbox: Explicit crop bounds
             **kwargs: Additional parameters passed to rendering
 
         Returns:
             PIL Image object or None if nothing to render
         """
+        # Handle 'cols' as an alias for 'columns' for backward compatibility
+        if "cols" in kwargs and columns is None:  # Only use cols if columns wasn't explicitly set
+            columns = kwargs.pop("cols")
+            logger.info(f"Using 'cols' parameter as alias for 'columns': {columns}")
+
         specs = self._get_render_specs(mode="render", crop=crop, crop_bbox=crop_bbox, **kwargs)
 
         if not specs:
@@ -353,7 +368,7 @@ class Visualizable:
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
             columns: Number of columns for grid layout
-            crop: Whether to crop
+            crop: Cropping mode (False, True, int for padding, 'wide', or Region)
             crop_bbox: Explicit crop bounds
             format: Image format (inferred from path if not specified)
             **kwargs: Additional parameters passed to rendering

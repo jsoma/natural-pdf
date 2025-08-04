@@ -306,7 +306,7 @@ def _analyze_typography(elements: List["Element"]) -> Dict[str, Any]:
             styles["strikeout"] += 1
         if getattr(element, "underline", False):
             styles["underline"] += 1
-        if getattr(element, "highlight", False):
+        if getattr(element, "is_highlighted", False):
             styles["highlight"] += 1
 
         # Color - use TextElement's color property
