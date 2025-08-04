@@ -566,5 +566,76 @@ def test_pixel_based_line_detection():
     assert len(pixel_lines) > 0, "Pixel detection should create LineElement objects"
 
 
+def test_property_accessors_with_negative_indexing():
+    """Test property-based accessors with negative indexing."""
+    pdf = PDF("pdfs/01-practice.pdf")
+    page = pdf.pages[0]
+
+    # Create guides with 3x3 grid
+    guides = Guides(page)
+    guides.vertical.divide(3)  # Creates 4 vertical guides
+    guides.horizontal.divide(3)  # Creates 4 horizontal guides
+
+    # Test positive indexing
+    assert len(guides.columns) == 3  # 4 guides = 3 columns
+    assert len(guides.rows) == 3  # 4 guides = 3 rows
+
+    # Test column access with positive index
+    col0 = guides.columns[0]
+    col2 = guides.columns[2]
+    assert col0.x0 < col2.x0  # First column is to the left of last
+
+    # Test column access with negative index
+    last_col = guides.columns[-1]
+    assert last_col.x0 == col2.x0  # -1 should give us the last column
+    assert last_col.x1 == col2.x1
+
+    second_last_col = guides.columns[-2]
+    col1 = guides.columns[1]
+    assert second_last_col.x0 == col1.x0  # -2 should give us the middle column
+
+    # Test row access with negative index
+    last_row = guides.rows[-1]
+    row2 = guides.rows[2]
+    assert last_row.top == row2.top  # -1 should give us the last row
+    assert last_row.bottom == row2.bottom
+
+    first_row = guides.rows[-3]
+    row0 = guides.rows[0]
+    assert first_row.top == row0.top  # -3 should give us the first row (when we have 3 rows)
+
+    # Test cell access with negative indices
+    # Using tuple notation
+    bottom_right = guides.cells[-1, -1]
+    cell_2_2 = guides.cells[2, 2]
+    assert bottom_right.x0 == cell_2_2.x0
+    assert bottom_right.top == cell_2_2.top
+
+    # Using nested notation
+    top_left = guides.cells[-3][-3]
+    cell_0_0 = guides.cells[0][0]
+    assert top_left.x0 == cell_0_0.x0
+    assert top_left.top == cell_0_0.top
+
+    # Mixed positive and negative indices
+    mixed_cell = guides.cells[0, -1]  # First row, last column
+    reference = guides.cells[0][2]
+    assert mixed_cell.x0 == reference.x0
+    assert mixed_cell.top == reference.top
+
+    # Test that out of bounds negative index raises IndexError
+    with pytest.raises(IndexError):
+        _ = guides.columns[-4]  # We only have 3 columns
+
+    with pytest.raises(IndexError):
+        _ = guides.rows[-5]  # We only have 3 rows
+
+    with pytest.raises(IndexError):
+        _ = guides.cells[-4, 0]  # Row index out of bounds
+
+    with pytest.raises(IndexError):
+        _ = guides.cells[0, -4]  # Column index out of bounds
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

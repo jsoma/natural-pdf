@@ -16,7 +16,7 @@ INSTALL_RECIPES: Dict[str, list[str]] = {
     "paddle": ["paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2", "pandas>=2.2.0"],
     "numpy-high": ["numpy>=2.0"],
     "numpy-low": ["numpy<1.27"],
-    "surya": ["surya-ocr>=0.13.0"],
+    "surya": ["surya-ocr<0.15"],
     "yolo": ["doclayout_yolo", "huggingface_hub>=0.29.3"],
     "docling": ["docling"],
     # light helpers

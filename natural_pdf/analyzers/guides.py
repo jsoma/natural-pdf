@@ -134,12 +134,15 @@ class GuidesList(UserList):
         self._axis = axis
 
     def __getitem__(self, i):
-        """Override to handle slicing properly."""
+        """Override to handle slicing and negative indexing properly."""
         if isinstance(i, slice):
             # Return a new GuidesList with the sliced data
             return self.__class__(self._parent, self._axis, self.data[i])
         else:
-            # For single index, return the value directly
+            # For single index, handle negative indices properly
+            if i < 0:
+                # Convert negative index to positive
+                i = len(self.data) + i
             return self.data[i]
 
     def __setitem__(self, i, item):
@@ -4245,6 +4248,9 @@ class _ColumnAccessor:
 
     def __getitem__(self, index: int) -> "Region":
         """Get column at the specified index."""
+        # Handle negative indexing
+        if index < 0:
+            index = len(self) + index
         return self._guides.column(index)
 
 
@@ -4260,6 +4266,9 @@ class _RowAccessor:
 
     def __getitem__(self, index: int) -> "Region":
         """Get row at the specified index."""
+        # Handle negative indexing
+        if index < 0:
+            index = len(self) + index
         return self._guides.row(index)
 
 
@@ -4280,9 +4289,17 @@ class _CellAccessor:
         if isinstance(key, tuple) and len(key) == 2:
             # Direct tuple access: guides.cells[row, col]
             row, col = key
+            # Handle negative indexing for both row and col
+            if row < 0:
+                row = len(self._guides.rows) + row
+            if col < 0:
+                col = len(self._guides.columns) + col
             return self._guides.cell(row, col)
         elif isinstance(key, int):
             # First level of nested access: guides.cells[row]
+            # Handle negative indexing for row
+            if key < 0:
+                key = len(self._guides.rows) + key
             # Return a row accessor that allows [col] indexing
             return _CellRowAccessor(self._guides, key)
         else:
@@ -4300,4 +4317,7 @@ class _CellRowAccessor:
 
     def __getitem__(self, col: int) -> "Region":
         """Get cell at [row][col]."""
+        # Handle negative indexing for column
+        if col < 0:
+            col = len(self._guides.columns) + col
         return self._guides.cell(self._row, col)
