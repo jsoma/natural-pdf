@@ -633,9 +633,7 @@ class ElementCollection(
         pdfplumber's layout engine if layout=True is specified.
 
         Args:
-            separator: String to insert between text from different elements when
-                      using simple joining (layout=False). Default is a single space.
-                      Ignored when layout=True as the layout engine handles spacing.
+            separator: String to join text from elements. Default is a single space.
             preserve_whitespace: Deprecated. Use layout=False for simple joining.
             use_exclusions: Deprecated. Exclusions should be applied *before* creating
                           the collection or by filtering the collection itself.
@@ -652,15 +650,49 @@ class ElementCollection(
         Returns:
             Combined text from elements, potentially with layout-based spacing.
         """
-        # Filter to just TextElements that likely have _char_dicts
-        text_elements = [
+        # Check if we have any elements at all
+        if not self._elements:
+            return ""
+
+        # Check if all elements are TextElements with character data
+        text_elements_with_chars = [
             el
             for el in self._elements
-            if isinstance(el, TextElement) and hasattr(el, "_char_dicts")
+            if isinstance(el, TextElement) and hasattr(el, "_char_dicts") and el._char_dicts
         ]
 
-        if not text_elements:
-            return ""
+        # If we have a mixed collection (Regions, TextElements without chars, etc),
+        # use a simpler approach: call extract_text on each element
+        if len(text_elements_with_chars) < len(self._elements):
+            # Mixed collection - extract text from each element
+            element_texts = []
+
+            # Sort elements by position first
+            sorted_elements = sorted(
+                self._elements,
+                key=lambda el: (
+                    el.page.index if hasattr(el, "page") else 0,
+                    el.top if hasattr(el, "top") else 0,
+                    el.x0 if hasattr(el, "x0") else 0,
+                ),
+            )
+
+            for el in sorted_elements:
+                if hasattr(el, "extract_text"):
+                    # Call extract_text on the element (works for TextElement, Region, etc)
+                    text = el.extract_text(**kwargs)
+                    if text:
+                        element_texts.append(text)
+                elif hasattr(el, "text"):
+                    # Fallback to text property if available
+                    text = getattr(el, "text", "")
+                    if text:
+                        element_texts.append(text)
+
+            return separator.join(element_texts)
+
+        # All elements are TextElements with char data - use the original approach
+        text_elements = text_elements_with_chars
 
         # Collect all character dictionaries
         all_char_dicts = []
@@ -669,11 +701,20 @@ class ElementCollection(
 
         if not all_char_dicts:
             # Handle case where elements exist but have no char dicts
-            logger.warning(
+            logger.debug(
                 "ElementCollection.extract_text: No character dictionaries found in TextElements."
             )
+            # Sort elements by position before joining
+            sorted_text_elements = sorted(
+                text_elements,
+                key=lambda el: (
+                    el.page.index if hasattr(el, "page") else 0,
+                    el.top if hasattr(el, "top") else 0,
+                    el.x0 if hasattr(el, "x0") else 0,
+                ),
+            )
             return separator.join(
-                getattr(el, "text", "") for el in text_elements
+                getattr(el, "text", "") for el in sorted_text_elements
             )  # Fallback to simple join of word text
 
         # Apply content filtering if provided
@@ -737,33 +778,20 @@ class ElementCollection(
                 all_char_dicts.sort(
                     key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0))
                 )
-                result = separator.join(c.get("text", "") for c in all_char_dicts)
+                result = " ".join(c.get("text", "") for c in all_char_dicts)
 
         else:
+            print("JOIN WITHOUT LAYOUT")
             # Default: Simple join without layout
             logger.debug("ElementCollection.extract_text: Using simple join (layout=False).")
+            result = separator.join(el.extract_text() for el in text_elements)
 
-            # Instead of joining all characters individually, we need to:
-            # 1. Extract text from each element
-            # 2. Join the element texts with the separator
-
-            # Sort elements by document order (page, top, x0)
-            sorted_elements = sorted(
-                text_elements,
-                key=lambda el: (
-                    el.page.index if hasattr(el, "page") else 0,
-                    el.top if hasattr(el, "top") else 0,
-                    el.x0 if hasattr(el, "x0") else 0,
-                ),
-            )
-
-            # Extract text from each element
-            element_texts = []
-            for el in sorted_elements:
-                if hasattr(el, "text") and el.text:
-                    element_texts.append(el.text)
-
-            result = separator.join(element_texts)
+            # # Sort chars by document order (page, top, x0)
+            # all_char_dicts.sort(
+            #     key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0))
+            # )
+            # # Simple join of character text
+            # result = "".join(c.get("text", "") for c in all_char_dicts)
 
         # Determine final strip flag – same rule as global helper unless caller overrides
         strip_text = strip if strip is not None else (not use_layout)
