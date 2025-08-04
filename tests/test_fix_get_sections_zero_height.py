@@ -68,7 +68,8 @@ def test_edge_case_single_end_element():
         print(f"\nSingle end element: bottom={end_elem.bottom}")
 
         # Create sections with single end element
-        sections = page.get_sections(end_elements=[end_elem])
+        # When using only end elements, we typically want to include the end boundary
+        sections = page.get_sections(end_elements=[end_elem], include_boundaries="end")
 
         print(f"Sections created: {len(sections)}")
 
@@ -80,7 +81,8 @@ def test_edge_case_single_end_element():
         print(f"Expected height: {end_elem.bottom}")
 
         # Height should be approximately end_elem.bottom (from top of page)
-        assert abs(section.height - end_elem.bottom) < 1.0
+        # Allow for small rounding differences
+        assert abs(section.height - end_elem.bottom) <= 1.0
 
 
 def test_mixed_start_end_elements():

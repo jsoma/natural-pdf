@@ -77,13 +77,13 @@ def test_extract_table_collection_header_options():
 
     # Test header=None
     result2 = guide.extract_table(pages, header=None)
-    df2 = result2.to_df()
+    df2 = result2.to_df(header=None)  # Need to pass header=None to to_df as well
     assert isinstance(df2.columns[0], int)  # Should use numeric indices
 
     # Test custom headers
     custom_headers = ["A", "B", "C", "D", "E", "F", "G", "H"]
     result3 = guide.extract_table(pages, header=custom_headers)
-    df3 = result3.to_df()
+    df3 = result3.to_df(header=custom_headers)  # Pass custom headers to to_df
     assert list(df3.columns) == custom_headers
 
 

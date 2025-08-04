@@ -40,18 +40,19 @@ def test_get_sections_include_boundaries():
     page.pdf = pdf
 
     # Create mock elements on the page
-    # Header at top of page
-    header_element = create_mock_element(page, "Section 1", top=700, bottom=720)
+    # In PDF coordinates, top of page has higher Y value
+    # Header at top of page (high Y value)
+    header_element = create_mock_element(page, "Section 1", top=100, bottom=120)
 
     # Content in middle
     content_elements = [
-        create_mock_element(page, "Content line 1", top=650, bottom=670),
-        create_mock_element(page, "Content line 2", top=620, bottom=640),
-        create_mock_element(page, "Content line 3", top=590, bottom=610),
+        create_mock_element(page, "Content line 1", top=150, bottom=170),
+        create_mock_element(page, "Content line 2", top=200, bottom=220),
+        create_mock_element(page, "Content line 3", top=250, bottom=270),
     ]
 
-    # Next header
-    next_header = create_mock_element(page, "Section 2", top=550, bottom=570)
+    # Next header (lower on page, higher Y value)
+    next_header = create_mock_element(page, "Section 2", top=300, bottom=320)
 
     # Set up the page's element finding
     all_elements = [header_element] + content_elements + [next_header]
@@ -63,24 +64,38 @@ def test_get_sections_include_boundaries():
 
     page.find_all = mock_find_all
 
+    # Mock get_elements to return all elements
+    page.get_elements = Mock(return_value=all_elements)
+
     # Mock get_section_between to return regions with correct boundaries
-    def mock_get_section_between(start, end, include_boundaries="both"):
+    def mock_get_section_between(start, end, include_boundaries="both", orientation="vertical"):
+        # Ensure start and end are in the right order
+        # In this test setup, start should come before end (lower top value)
+        if not end:
+            end_top = page.height
+            end_bottom = page.height
+        else:
+            end_top = end.top
+            end_bottom = end.bottom
+
         if include_boundaries == "both":
             top = start.top
-            bottom = end.bottom if end else page.height
+            bottom = end_bottom
         elif include_boundaries == "start":
             top = start.top
-            bottom = end.top if end else page.height
+            bottom = end_top
         elif include_boundaries == "end":
             top = start.bottom
-            bottom = end.bottom if end else page.height
+            bottom = end_bottom
         else:  # none
             top = start.bottom
-            bottom = end.top if end else page.height
+            bottom = end_top
+
+        # Ensure top < bottom for valid region
+        if top > bottom:
+            top, bottom = bottom, top
 
         region = Region(page, (0, top, page.width, bottom))
-        # Store which elements would be in this region
-        region._included_elements = [e for e in all_elements if e.top >= bottom and e.bottom <= top]
         return region
 
     page.get_section_between = mock_get_section_between
@@ -106,37 +121,33 @@ def test_get_sections_include_boundaries():
     for boundaries in ["both", "start", "end", "none"]:
         sections = collection.get_sections("text:contains(Section)", include_boundaries=boundaries)
 
+        print(f"\ninclude_boundaries='{boundaries}':")
+        print(f"  Number of sections: {len(sections)}")
+
         if len(sections) > 0:
             section = sections[0]
-            print(f"\ninclude_boundaries='{boundaries}':")
             print(f"  Section bbox: {section.bbox}")
             print(f"  Top: {section.bbox[1]}, Bottom: {section.bbox[3]}")
 
-            # Verify boundaries are correct
-            if boundaries == "both":
+            # When we have only start elements, sections go from start to next start
+            # The section always ends at the TOP of the next start element
+            # include_boundaries only affects whether we include the START element
+            if boundaries == "both" or boundaries == "start":
+                # Should include the start element
                 assert (
                     section.bbox[1] == header_element.top
-                ), f"'both' should include start element top"
+                ), f"'{boundaries}' should start at first element top"
                 assert (
-                    section.bbox[3] == next_header.bottom
-                ), f"'both' should include end element bottom"
-            elif boundaries == "start":
-                assert (
-                    section.bbox[1] == header_element.top
-                ), f"'start' should include start element top"
-                assert section.bbox[3] == next_header.top, f"'start' should exclude end element"
-            elif boundaries == "end":
+                    section.bbox[3] == next_header.top
+                ), f"Section should always end at next element top"
+            else:  # "end" or "none"
+                # Should exclude the start element
                 assert (
                     section.bbox[1] == header_element.bottom
-                ), f"'end' should exclude start element"
+                ), f"'{boundaries}' should start after first element"
                 assert (
-                    section.bbox[3] == next_header.bottom
-                ), f"'end' should include end element bottom"
-            else:  # none
-                assert (
-                    section.bbox[1] == header_element.bottom
-                ), f"'none' should exclude start element"
-                assert section.bbox[3] == next_header.top, f"'none' should exclude end element"
+                    section.bbox[3] == next_header.top
+                ), f"Section should always end at next element top"
 
     print("\n✅ All mock tests passed! include_boundaries parameter is working correctly.")
 

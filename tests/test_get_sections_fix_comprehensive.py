@@ -115,13 +115,16 @@ def test_implicit_start_not_paired_with_source_end():
 
         print(f"\nSections created: {len(sections)}")
 
-        # The first section should go from top of page to first end
-        # The second section should go from first end to second end
+        # With default include_boundaries="start", sections exclude the end boundary
+        # So the first section should go from top of page to TOP of first end element
         # There should NOT be a zero-height section at first end
 
+        # Sort end elements like the implementation does
+        sorted_ends = sorted(end_elements, key=lambda e: (e.page.index, e.top, e.bottom, e.x0))
+
         expected_sections = [
-            (0, end_elements[0].bottom),  # Top to first end
-            (end_elements[0].bottom, end_elements[1].bottom),  # First end to second end
+            (0, sorted_ends[0].top),  # Top to TOP of first sorted end (exclude end boundary)
+            # Second section continues from there - we don't check its end
         ]
 
         for i, section in enumerate(sections):

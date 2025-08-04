@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 import natural_pdf as npdf
+from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.elements.region import Region
 
 
 def test_merge_basic():
@@ -64,7 +66,7 @@ def test_merge_scattered_elements():
         pytest.skip("Not enough elements")
 
     # Pick scattered elements (first, middle, last)
-    scattered = npdf.ElementCollection(
+    scattered = ElementCollection(
         [all_elements[0], all_elements[len(all_elements) // 2], all_elements[-1]]
     )
 
@@ -82,7 +84,7 @@ def test_merge_scattered_elements():
 def test_merge_errors():
     """Test error conditions for merge."""
     # Empty collection
-    empty = npdf.ElementCollection([])
+    empty = ElementCollection([])
 
     with pytest.raises(ValueError, match="empty"):
         empty.merge()
@@ -107,17 +109,17 @@ def test_merge_vs_dissolve():
         pytest.skip("Not enough elements")
 
     # Take first and last element (likely not connected)
-    collection = npdf.ElementCollection([elements[0], elements[-1]])
+    collection = ElementCollection([elements[0], elements[-1]])
 
     # Merge should create one region
     merged = collection.merge()
-    assert isinstance(merged, npdf.Region)
+    assert isinstance(merged, Region)
 
     # Dissolve might create multiple regions if not connected
     dissolved = collection.dissolve()
 
     # Merged region should encompass all dissolved regions
-    if isinstance(dissolved, npdf.ElementCollection):
+    if isinstance(dissolved, ElementCollection):
         for region in dissolved:
             assert merged.x0 <= region.x0
             assert merged.x1 >= region.x1
@@ -144,7 +146,7 @@ def test_merge_visual():
         return
 
     # Take every other element to ensure gaps
-    scattered = npdf.ElementCollection([matches[i] for i in range(0, len(matches), 2)])
+    scattered = ElementCollection([matches[i] for i in range(0, len(matches), 2)])
 
     print("\nVisual merge demonstration:")
     print(f"Merging {len(scattered)} scattered elements")

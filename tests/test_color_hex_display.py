@@ -114,8 +114,9 @@ class TestGroupByColorDisplay:
         colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
         for i, color in enumerate(colors):
             page = MagicMock()
-            # Create a closure to capture the correct color
-            page.find.return_value = MagicMock(extract_text=lambda c=color: str(c))
+            # PageGroupBy groups by the text content of the element found
+            # So we need to return the color tuple as the extracted text
+            page.find.return_value = MagicMock(extract_text=lambda c=color: c)
             mock_pages.append(page)
 
         collection = PageCollection(mock_pages)
@@ -141,7 +142,7 @@ class TestGroupByColorDisplay:
         colors = [(255, 0, 0), (0, 255, 0)]
         for color in colors:
             page = MagicMock()
-            page.find.return_value = MagicMock(extract_text=lambda c=color: str(c))
+            page.find.return_value = MagicMock(extract_text=lambda c=color: c)
             mock_pages.append(page)
 
         collection = PageCollection(mock_pages)

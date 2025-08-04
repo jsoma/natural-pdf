@@ -537,10 +537,14 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
             first_page = self.pages[0]
             first_start = Region(first_page, (0, 0, first_page.width, 1))
             first_start.is_implicit_start = True
+            # Don't mark this as created from any end element, so it can pair with any end
             start_elements.append(first_start)
 
             # For each end element (except the last), add an implicit start after it
-            sorted_end_elements = sorted(end_elements, key=lambda e: (e.page.index, e.top, e.x0))
+            # Sort by page, then top, then bottom (for elements with same top), then x0
+            sorted_end_elements = sorted(
+                end_elements, key=lambda e: (e.page.index, e.top, e.bottom, e.x0)
+            )
             for i, end_elem in enumerate(sorted_end_elements[:-1]):  # Exclude last end element
                 # Create implicit start element right after this end element
                 implicit_start = Region(
@@ -838,29 +842,47 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 # Create a section from current_start to just before this boundary
                 start_element = current_start["element"]
 
-                # Find the last element before this boundary on the same page
+                # Create section from current start to just before this new start
                 if start_element.page == boundary["element"].page:
-                    # Find elements on this page
-                    page_elements = [e for e in all_elements if e.page == start_element.page]
-                    # Sort by position based on orientation
+                    from natural_pdf.elements.region import Region
+
+                    next_start = boundary["element"]
+
+                    # Create section based on orientation
                     if orientation == "vertical":
-                        page_elements.sort(key=lambda e: (e.top, e.x0))
+                        # Determine vertical bounds
+                        if include_boundaries in ["start", "both"]:
+                            top = start_element.top
+                        else:
+                            top = start_element.bottom
+
+                        # The section ends just before the next start
+                        bottom = next_start.top
+
+                        # Create the section with full page width
+                        if top < bottom:
+                            section = Region(
+                                start_element.page, (0, top, start_element.page.width, bottom)
+                            )
+                            section.start_element = start_element
+                            sections.append(section)
                     else:  # horizontal
-                        page_elements.sort(key=lambda e: (e.x0, e.top))
+                        # Determine horizontal bounds
+                        if include_boundaries in ["start", "both"]:
+                            left = start_element.x0
+                        else:
+                            left = start_element.x1
 
-                    # Find the last element before the boundary
-                    end_idx = (
-                        page_elements.index(boundary["element"]) - 1
-                        if boundary["element"] in page_elements
-                        else -1
-                    )
-                    end_element = page_elements[end_idx] if end_idx >= 0 else None
+                        # The section ends just before the next start
+                        right = next_start.x0
 
-                    # Create the section
-                    section = start_element.page.get_section_between(
-                        start_element, end_element, include_boundaries, orientation
-                    )
-                    sections.append(section)
+                        # Create the section with full page height
+                        if left < right:
+                            section = Region(
+                                start_element.page, (left, 0, right, start_element.page.height)
+                            )
+                            section.start_element = start_element
+                            sections.append(section)
                 else:
                     # Cross-page section - create from current_start to the end of its page
                     from natural_pdf.elements.region import Region

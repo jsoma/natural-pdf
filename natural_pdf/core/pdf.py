@@ -252,6 +252,16 @@ class _LazyPageList(Sequence):
                         logger.warning(f"Failed to apply region to page {cached.number}: {e}")
 
             self._cache[index] = cached
+
+            # Also cache in the parent PDF's main page list if this is a slice
+            if (
+                hasattr(self._parent_pdf, "_pages")
+                and hasattr(self._parent_pdf._pages, "_cache")
+                and actual_page_index < len(self._parent_pdf._pages._cache)
+                and self._parent_pdf._pages._cache[actual_page_index] is None
+            ):
+                self._parent_pdf._pages._cache[actual_page_index] = cached
+
         return cached
 
     # Sequence protocol ---------------------------------------------------
@@ -720,26 +730,16 @@ class PDF(
             # Store for bookkeeping and lazy application
             self._exclusions.append((exclusion_func, label))
 
-            # Apply only to already-created (cached) pages to avoid forcing page creation
-            for i in range(len(self._pages)):
-                if self._pages._cache[i] is not None:  # Only apply to existing pages
-                    try:
-                        self._pages._cache[i].add_exclusion(exclusion_func, label=label)
-                    except Exception as e:
-                        logger.warning(f"Failed to apply exclusion to existing page {i}: {e}")
+            # Don't modify already-cached pages - they will get PDF-level exclusions
+            # dynamically through _get_exclusion_regions()
             return self
 
         # Fallback to original callable / Region behaviour ------------------
         exclusion_data = (exclusion_func, label)
         self._exclusions.append(exclusion_data)
 
-        # Apply only to already-created (cached) pages to avoid forcing page creation
-        for i in range(len(self._pages)):
-            if self._pages._cache[i] is not None:  # Only apply to existing pages
-                try:
-                    self._pages._cache[i].add_exclusion(exclusion_func, label=label)
-                except Exception as e:
-                    logger.warning(f"Failed to apply exclusion to existing page {i}: {e}")
+        # Don't modify already-cached pages - they will get PDF-level exclusions
+        # dynamically through _get_exclusion_regions()
 
         return self
 

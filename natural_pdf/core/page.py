@@ -717,14 +717,23 @@ class Page(
 
         # Add PDF-level exclusions if we have a parent PDF
         if hasattr(self, "_parent") and self._parent and hasattr(self._parent, "_exclusions"):
+            # Get existing labels to check for duplicates
+            existing_labels = set()
+            for exc in all_exclusions:
+                if len(exc) >= 2 and exc[1]:  # Has a label
+                    existing_labels.add(exc[1])
+
             for pdf_exclusion in self._parent._exclusions:
-                # Check if this exclusion is already in our list (avoid duplicates)
-                if pdf_exclusion not in all_exclusions:
-                    # Ensure consistent format (PDF exclusions might be 2-tuples, need to be 3-tuples)
-                    if len(pdf_exclusion) == 2:
-                        # Convert to 3-tuple format with default method
-                        pdf_exclusion = (pdf_exclusion[0], pdf_exclusion[1], "region")
-                    all_exclusions.append(pdf_exclusion)
+                # Check if this exclusion label is already in our list (avoid duplicates)
+                label = pdf_exclusion[1] if len(pdf_exclusion) >= 2 else None
+                if label and label in existing_labels:
+                    continue  # Skip this exclusion as it's already been applied
+
+                # Ensure consistent format (PDF exclusions might be 2-tuples, need to be 3-tuples)
+                if len(pdf_exclusion) == 2:
+                    # Convert to 3-tuple format with default method
+                    pdf_exclusion = (pdf_exclusion[0], pdf_exclusion[1], "region")
+                all_exclusions.append(pdf_exclusion)
 
         if debug:
             print(
@@ -829,6 +838,36 @@ class Page(
                 regions.append(exclusion_item)  # Label is already on the Region object
                 if debug:
                     print(f"  - Added direct region '{label}': {exclusion_item}")
+
+            # Process string selectors (from PDF-level exclusions)
+            elif isinstance(exclusion_item, str):
+                selector_str = exclusion_item
+                matching_elements = self.find_all(selector_str, apply_exclusions=False)
+
+                if debug:
+                    print(
+                        f"  - Evaluating selector '{exclusion_label}': found {len(matching_elements)} elements"
+                    )
+
+                if method == "region":
+                    # Convert each matching element to a region
+                    for el in matching_elements:
+                        try:
+                            bbox_coords = (
+                                float(el.x0),
+                                float(el.top),
+                                float(el.x1),
+                                float(el.bottom),
+                            )
+                            region = Region(self, bbox_coords, label=label)
+                            regions.append(region)
+                            if debug:
+                                print(f"    ✓ Added region from selector match: {bbox_coords}")
+                        except Exception as e:
+                            if debug:
+                                print(f"    ✗ Failed to create region from element: {e}")
+                # If method is "element", it will be handled in _filter_elements_by_exclusions
+
             # Element-based exclusions are not converted to regions here
             # They will be handled separately in _filter_elements_by_exclusions
 
@@ -852,7 +891,16 @@ class Page(
         Returns:
             A new list containing only the elements not excluded.
         """
-        if not self._exclusions:
+        # Check both page-level and PDF-level exclusions
+        has_page_exclusions = bool(self._exclusions)
+        has_pdf_exclusions = (
+            hasattr(self, "_parent")
+            and self._parent
+            and hasattr(self._parent, "_exclusions")
+            and bool(self._parent._exclusions)
+        )
+
+        if not has_page_exclusions and not has_pdf_exclusions:
             if debug_exclusions:
                 print(
                     f"Page {self.index}: No exclusions defined, returning all {len(elements)} elements."
@@ -865,9 +913,15 @@ class Page(
         )
 
         # Collect element-based exclusions
-        excluded_elements = set()  # Use set for O(1) lookup
+        # Store element bboxes for comparison instead of object ids
+        excluded_element_bboxes = set()  # Use set for O(1) lookup
 
-        for exclusion_data in self._exclusions:
+        # Process both page-level and PDF-level exclusions
+        all_exclusions = list(self._exclusions) if has_page_exclusions else []
+        if has_pdf_exclusions:
+            all_exclusions.extend(self._parent._exclusions)
+
+        for exclusion_data in all_exclusions:
             # Handle both old format (2-tuple) and new format (3-tuple)
             if len(exclusion_data) == 2:
                 exclusion_item, label = exclusion_data
@@ -883,16 +937,31 @@ class Page(
             if isinstance(exclusion_item, Region):
                 continue
 
+            # Handle string selectors for element-based exclusions
+            if isinstance(exclusion_item, str) and method == "element":
+                selector_str = exclusion_item
+                matching_elements = self.find_all(selector_str, apply_exclusions=False)
+                for el in matching_elements:
+                    if hasattr(el, "bbox"):
+                        bbox = tuple(el.bbox)
+                        excluded_element_bboxes.add(bbox)
+                        if debug_exclusions:
+                            print(
+                                f"  - Added element exclusion from selector '{selector_str}': {bbox}"
+                            )
+
             # Handle element-based exclusions
-            if method == "element" and hasattr(exclusion_item, "bbox"):
-                excluded_elements.add(id(exclusion_item))
+            elif method == "element" and hasattr(exclusion_item, "bbox"):
+                # Store bbox tuple for comparison
+                bbox = tuple(exclusion_item.bbox)
+                excluded_element_bboxes.add(bbox)
                 if debug_exclusions:
-                    print(f"  - Added element exclusion: {exclusion_item}")
+                    print(f"  - Added element exclusion with bbox {bbox}: {exclusion_item}")
 
         if debug_exclusions:
             print(
                 f"Page {self.index}: Applying {len(exclusion_regions)} region exclusions "
-                f"and {len(excluded_elements)} element exclusions to {len(elements)} elements."
+                f"and {len(excluded_element_bboxes)} element exclusions to {len(elements)} elements."
             )
 
         filtered_elements = []
@@ -903,7 +972,7 @@ class Page(
             exclude = False
 
             # Check element-based exclusions first (faster)
-            if id(element) in excluded_elements:
+            if hasattr(element, "bbox") and tuple(element.bbox) in excluded_element_bboxes:
                 exclude = True
                 element_excluded_count += 1
                 if debug_exclusions:
@@ -2487,10 +2556,23 @@ class Page(
         return self
 
     def get_section_between(
-        self, start_element=None, end_element=None, include_boundaries="both"
+        self,
+        start_element=None,
+        end_element=None,
+        include_boundaries="both",
+        orientation="vertical",
     ) -> Optional["Region"]:  # Return Optional
         """
         Get a section between two elements on this page.
+
+        Args:
+            start_element: Element marking the start of the section
+            end_element: Element marking the end of the section
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
+
+        Returns:
+            Region representing the section
         """
         # Create a full-page region to operate within
         page_region = self.create_region(0, 0, self.width, self.height)
@@ -2501,6 +2583,7 @@ class Page(
                 start_element=start_element,
                 end_element=end_element,
                 include_boundaries=include_boundaries,
+                orientation=orientation,
             )
         except Exception as e:
             logger.error(
@@ -2575,9 +2658,22 @@ class Page(
         if include_boundaries not in valid_inclusions:
             raise ValueError(f"include_boundaries must be one of {valid_inclusions}")
 
-        if not start_elements:
-            # Return an empty ElementCollection if no start elements
+        if not start_elements and not end_elements:
+            # Return an empty ElementCollection if no boundary elements at all
             return ElementCollection([])
+
+        # If we only have end elements, create implicit start elements
+        if not start_elements and end_elements:
+            # Delegate to PageCollection implementation for consistency
+            from natural_pdf.core.page_collection import PageCollection
+
+            pages = PageCollection([self])
+            return pages.get_sections(
+                start_elements=start_elements,
+                end_elements=end_elements,
+                include_boundaries=include_boundaries,
+                orientation=orientation,
+            )
 
         # Combine start and end elements with their type
         all_boundaries = []

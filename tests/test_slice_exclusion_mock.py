@@ -14,6 +14,7 @@ def test_lazy_page_list_reuses_cached_pages():
     mock_pdf = Mock()
     mock_pdf._exclusions = [("test_exclusion", "test_label")]
     mock_pdf._regions = []
+    mock_pdf._pages = None  # Will be set later
 
     # Create a mock plumber PDF
     mock_plumber_pdf = Mock()
@@ -24,8 +25,11 @@ def test_lazy_page_list_reuses_cached_pages():
         parent_pdf=mock_pdf, plumber_pdf=mock_plumber_pdf, font_attrs=None, load_text=True
     )
 
+    # Set up the reference so slices can find the main page list
+    mock_pdf._pages = main_pages
+
     # Mock the Page class
-    with patch("natural_pdf.core.pdf.Page") as MockPage:
+    with patch("natural_pdf.core.page.Page") as MockPage:
         # Create mock page instances
         mock_page_0 = Mock()
         mock_page_0.number = 1
@@ -50,9 +54,6 @@ def test_lazy_page_list_reuses_cached_pages():
 
         # Now create a slice (simulating pdf.pages[:2])
         sliced_pages = main_pages[:2]
-
-        # Set up the parent PDF reference so the slice can find cached pages
-        mock_pdf._pages = main_pages
 
         # Access pages from the slice
         slice_page0 = sliced_pages[0]
@@ -81,7 +82,10 @@ def test_exclusions_persist_across_slices():
         parent_pdf=mock_pdf, plumber_pdf=mock_plumber_pdf, font_attrs=None, load_text=True
     )
 
-    with patch("natural_pdf.core.pdf.Page") as MockPage:
+    # Set up the reference so pages can check parent cache
+    mock_pdf._pages = main_pages
+
+    with patch("natural_pdf.core.page.Page") as MockPage:
         # Create a mock page with exclusion tracking
         mock_page = Mock()
         mock_page.number = 1
@@ -99,9 +103,6 @@ def test_exclusions_persist_across_slices():
 
         # Add exclusion to PDF
         mock_pdf._exclusions.append(("new_exclusion", "new_label"))
-
-        # Configure so slice can find cached pages
-        mock_pdf._pages = main_pages
 
         # Create slice and access page
         slice_pages = main_pages[:1]
@@ -130,11 +131,10 @@ def test_new_pages_get_all_exclusions():
         parent_pdf=mock_pdf, plumber_pdf=mock_plumber_pdf, font_attrs=None, load_text=True
     )
 
-    # Configure so slice won't find cached pages
-    mock_pdf._pages = Mock()
-    mock_pdf._pages._cache = []
+    # Set up reference
+    mock_pdf._pages = main_pages
 
-    with patch("natural_pdf.core.pdf.Page") as MockPage:
+    with patch("natural_pdf.core.page.Page") as MockPage:
         mock_page = Mock()
         mock_page.number = 1
         mock_page.index = 0

@@ -96,6 +96,7 @@ def test_guides_extract_table_with_parameters():
             cell_extraction_func=None,
             show_progress=False,
             content_filter=None,
+            apply_exclusions=True,
         )
 
 
