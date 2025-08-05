@@ -637,5 +637,69 @@ def test_property_accessors_with_negative_indexing():
         _ = guides.cells[0, -4]  # Column index out of bounds
 
 
+def test_property_accessors_with_slicing():
+    """Test property-based accessors with slice notation."""
+    pdf = PDF("pdfs/01-practice.pdf")
+    page = pdf.pages[0]
+
+    # Create guides with 3x3 grid
+    guides = Guides(page)
+    guides.vertical.divide(3)  # Creates 4 vertical guides = 3 columns
+    guides.horizontal.divide(3)  # Creates 4 horizontal guides = 3 rows
+
+    # Test getting all cells in a row
+    row_cells = guides.cells[0][:]
+    assert hasattr(row_cells, "__len__")  # Should be an ElementCollection
+    assert len(row_cells) == 3  # 3 cells in a row
+
+    # Test getting all cells in a row with tuple notation
+    row_cells_tuple = guides.cells[0, :]
+    assert len(row_cells_tuple) == 3
+    # Should contain same cells
+    assert all(c1.x0 == c2.x0 and c1.top == c2.top for c1, c2 in zip(row_cells, row_cells_tuple))
+
+    # Test getting all cells in a column
+    col_cells = guides.cells[:, 0]
+    assert len(col_cells) == 3  # 3 cells in a column
+
+    # Test getting all cells
+    all_cells = guides.cells[:, :]
+    assert len(all_cells) == 9  # 3x3 = 9 cells
+
+    # Test getting all rows
+    all_rows = guides.rows[:]
+    assert len(all_rows) == 3
+
+    # Test getting all columns
+    all_cols = guides.columns[:]
+    assert len(all_cols) == 3
+
+    # Test slice with step
+    every_other_col = guides.columns[::2]
+    assert len(every_other_col) == 2  # columns 0 and 2
+
+    # Test negative indices in slices
+    last_row_cells = guides.cells[-1, :]
+    assert len(last_row_cells) == 3
+
+    # Test partial slices
+    first_two_rows = guides.rows[:2]
+    assert len(first_two_rows) == 2
+
+    last_two_cols = guides.columns[-2:]
+    assert len(last_two_cols) == 2
+
+    # Test that cells are in correct order
+    # First row cells should be ordered left to right
+    first_row = guides.cells[0, :]
+    for i in range(len(first_row) - 1):
+        assert first_row[i].x0 < first_row[i + 1].x0
+
+    # First column cells should be ordered top to bottom
+    first_col = guides.cells[:, 0]
+    for i in range(len(first_col) - 1):
+        assert first_col[i].top < first_col[i + 1].top
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

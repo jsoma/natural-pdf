@@ -4246,12 +4246,26 @@ class _ColumnAccessor:
         """Return number of columns (vertical guides - 1)."""
         return max(0, len(self._guides.vertical) - 1)
 
-    def __getitem__(self, index: int) -> "Region":
-        """Get column at the specified index."""
-        # Handle negative indexing
-        if index < 0:
-            index = len(self) + index
-        return self._guides.column(index)
+    def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
+        """Get column at the specified index or slice."""
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        if isinstance(index, slice):
+            # Handle slice notation - return multiple columns
+            columns = []
+            num_cols = len(self)
+
+            # Convert slice to range of indices
+            start, stop, step = index.indices(num_cols)
+            for i in range(start, stop, step):
+                columns.append(self._guides.column(i))
+
+            return ElementCollection(columns)
+        else:
+            # Handle negative indexing
+            if index < 0:
+                index = len(self) + index
+            return self._guides.column(index)
 
 
 class _RowAccessor:
@@ -4264,12 +4278,26 @@ class _RowAccessor:
         """Return number of rows (horizontal guides - 1)."""
         return max(0, len(self._guides.horizontal) - 1)
 
-    def __getitem__(self, index: int) -> "Region":
-        """Get row at the specified index."""
-        # Handle negative indexing
-        if index < 0:
-            index = len(self) + index
-        return self._guides.row(index)
+    def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
+        """Get row at the specified index or slice."""
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        if isinstance(index, slice):
+            # Handle slice notation - return multiple rows
+            rows = []
+            num_rows = len(self)
+
+            # Convert slice to range of indices
+            start, stop, step = index.indices(num_rows)
+            for i in range(start, stop, step):
+                rows.append(self._guides.row(i))
+
+            return ElementCollection(rows)
+        else:
+            # Handle negative indexing
+            if index < 0:
+                index = len(self) + index
+            return self._guides.row(index)
 
 
 class _CellAccessor:
@@ -4278,33 +4306,82 @@ class _CellAccessor:
     def __init__(self, guides: "Guides"):
         self._guides = guides
 
-    def __getitem__(self, key) -> Union["Region", "_CellRowAccessor"]:
+    def __getitem__(self, key) -> Union["Region", "_CellRowAccessor", "ElementCollection"]:
         """
         Get cell(s) at the specified position.
 
         Supports:
-        - guides.cells[row, col] - tuple indexing
-        - guides.cells[row][col] - nested indexing
+        - guides.cells[row, col] - single cell
+        - guides.cells[row][col] - single cell (nested)
+        - guides.cells[row, :] - all cells in a row
+        - guides.cells[:, col] - all cells in a column
+        - guides.cells[:, :] - all cells
+        - guides.cells[row][:] - all cells in a row (nested)
         """
+        from natural_pdf.elements.element_collection import ElementCollection
+
         if isinstance(key, tuple) and len(key) == 2:
-            # Direct tuple access: guides.cells[row, col]
             row, col = key
-            # Handle negative indexing for both row and col
-            if row < 0:
-                row = len(self._guides.rows) + row
-            if col < 0:
-                col = len(self._guides.columns) + col
-            return self._guides.cell(row, col)
+
+            # Handle slices for row and/or column
+            if isinstance(row, slice) or isinstance(col, slice):
+                cells = []
+                num_rows = len(self._guides.rows)
+                num_cols = len(self._guides.columns)
+
+                # Convert slices to ranges
+                if isinstance(row, slice):
+                    row_indices = range(*row.indices(num_rows))
+                else:
+                    # Single row index
+                    if row < 0:
+                        row = num_rows + row
+                    row_indices = [row]
+
+                if isinstance(col, slice):
+                    col_indices = range(*col.indices(num_cols))
+                else:
+                    # Single column index
+                    if col < 0:
+                        col = num_cols + col
+                    col_indices = [col]
+
+                # Collect all cells in the specified ranges
+                for r in row_indices:
+                    for c in col_indices:
+                        cells.append(self._guides.cell(r, c))
+
+                return ElementCollection(cells)
+            else:
+                # Both are integers - single cell access
+                # Handle negative indexing for both row and col
+                if row < 0:
+                    row = len(self._guides.rows) + row
+                if col < 0:
+                    col = len(self._guides.columns) + col
+                return self._guides.cell(row, col)
+        elif isinstance(key, slice):
+            # First level slice: guides.cells[:] - return all rows as accessors
+            # For now, let's return all cells flattened
+            cells = []
+            num_rows = len(self._guides.rows)
+            row_indices = range(*key.indices(num_rows))
+
+            for r in row_indices:
+                for c in range(len(self._guides.columns)):
+                    cells.append(self._guides.cell(r, c))
+
+            return ElementCollection(cells)
         elif isinstance(key, int):
             # First level of nested access: guides.cells[row]
             # Handle negative indexing for row
             if key < 0:
                 key = len(self._guides.rows) + key
-            # Return a row accessor that allows [col] indexing
+            # Return a row accessor that allows [col] or [:] indexing
             return _CellRowAccessor(self._guides, key)
         else:
             raise TypeError(
-                f"Cell indices must be integers or tuple of two integers, got {type(key)}"
+                f"Cell indices must be integers, slices, or tuple of two integers/slices, got {type(key)}"
             )
 
 
@@ -4315,9 +4392,24 @@ class _CellRowAccessor:
         self._guides = guides
         self._row = row
 
-    def __getitem__(self, col: int) -> "Region":
-        """Get cell at [row][col]."""
-        # Handle negative indexing for column
-        if col < 0:
-            col = len(self._guides.columns) + col
-        return self._guides.cell(self._row, col)
+    def __getitem__(self, col: Union[int, slice]) -> Union["Region", "ElementCollection"]:
+        """Get cell at [row][col] or all cells in row with [row][:]."""
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        if isinstance(col, slice):
+            # Handle slice notation - return all cells in this row
+            cells = []
+            num_cols = len(self._guides.columns)
+
+            # Convert slice to range of indices
+            start, stop, step = col.indices(num_cols)
+            for c in range(start, stop, step):
+                cells.append(self._guides.cell(self._row, c))
+
+            return ElementCollection(cells)
+        else:
+            # Handle single column index
+            # Handle negative indexing for column
+            if col < 0:
+                col = len(self._guides.columns) + col
+            return self._guides.cell(self._row, col)
