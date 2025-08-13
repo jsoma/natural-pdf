@@ -815,11 +815,38 @@ class Page(
                             if debug:
                                 print(f"    ✗ Empty iterable returned from callable '{label}'")
                     elif region_result:
-                        logger.warning(
-                            f"Callable exclusion '{exclusion_label}' returned non-Region object: {type(region_result)}. Skipping."
-                        )
-                        if debug:
-                            print(f"    ✗ Callable returned non-Region/None: {type(region_result)}")
+                        # Check if it's a single Element that can be converted to a Region
+                        from natural_pdf.elements.base import Element
+
+                        if isinstance(region_result, Element) or (
+                            hasattr(region_result, "bbox") and hasattr(region_result, "expand")
+                        ):
+                            try:
+                                # Convert Element to Region using expand()
+                                expanded_region = region_result.expand()
+                                if isinstance(expanded_region, Region):
+                                    expanded_region.label = label
+                                    regions.append(expanded_region)
+                                    if debug:
+                                        print(
+                                            f"    ✓ Converted Element to Region from callable '{label}': {expanded_region}"
+                                        )
+                                else:
+                                    if debug:
+                                        print(
+                                            f"    ✗ Element.expand() did not return a Region: {type(expanded_region)}"
+                                        )
+                            except Exception as e:
+                                if debug:
+                                    print(f"    ✗ Failed to convert Element to Region: {e}")
+                        else:
+                            logger.warning(
+                                f"Callable exclusion '{exclusion_label}' returned non-Region object: {type(region_result)}. Skipping."
+                            )
+                            if debug:
+                                print(
+                                    f"    ✗ Callable returned non-Region/None: {type(region_result)}"
+                                )
                     else:
                         if debug:
                             print(
@@ -838,6 +865,27 @@ class Page(
                 regions.append(exclusion_item)  # Label is already on the Region object
                 if debug:
                     print(f"  - Added direct region '{label}': {exclusion_item}")
+
+            # Process direct Element objects - convert to Region
+            elif hasattr(exclusion_item, "bbox") and hasattr(exclusion_item, "expand"):
+                try:
+                    # Convert Element to Region using expand()
+                    expanded_region = exclusion_item.expand()
+                    if isinstance(expanded_region, Region):
+                        expanded_region.label = label
+                        regions.append(expanded_region)
+                        if debug:
+                            print(
+                                f"  - Converted direct Element to Region '{label}': {expanded_region}"
+                            )
+                    else:
+                        if debug:
+                            print(
+                                f"  - Element.expand() did not return a Region: {type(expanded_region)}"
+                            )
+                except Exception as e:
+                    if debug:
+                        print(f"  - Failed to convert Element to Region: {e}")
 
             # Process string selectors (from PDF-level exclusions)
             elif isinstance(exclusion_item, str):
