@@ -1270,7 +1270,8 @@ class Region(
         # 3. Get Relevant Exclusions (overlapping this region)
         apply_exclusions_flag = kwargs.get("apply_exclusions", apply_exclusions)
         exclusion_regions = []
-        if apply_exclusions_flag and self._page._exclusions:
+        if apply_exclusions_flag:
+            # Always call _get_exclusion_regions to get both page and PDF level exclusions
             all_page_exclusions = self._page._get_exclusion_regions(
                 include_callable=True, debug=debug
             )
@@ -1281,10 +1282,11 @@ class Region(
             exclusion_regions = overlapping_exclusions
             if debug:
                 logger.debug(
-                    f"Region {self.bbox}: Applying {len(exclusion_regions)} overlapping exclusions."
+                    f"Region {self.bbox}: Found {len(all_page_exclusions)} total exclusions, "
+                    f"{len(exclusion_regions)} overlapping this region."
                 )
         elif debug:
-            logger.debug(f"Region {self.bbox}: Not applying exclusions.")
+            logger.debug(f"Region {self.bbox}: Not applying exclusions (apply_exclusions=False).")
 
         # 4. Spatially Filter Characters using Utility
         # Pass self as the target_region for precise polygon checks etc.
