@@ -1129,7 +1129,7 @@ class Page(
         )  # _apply_selector doesn't filter
 
         # Filter the results based on exclusions if requested
-        if apply_exclusions and self._exclusions and results_collection:
+        if apply_exclusions and results_collection:
             filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
             # Return the first element from the filtered list
             return filtered_elements[0] if filtered_elements else None
@@ -1224,7 +1224,7 @@ class Page(
         )  # _apply_selector doesn't filter
 
         # Filter the results based on exclusions if requested
-        if apply_exclusions and self._exclusions and results_collection:
+        if apply_exclusions and results_collection:
             filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
             return ElementCollection(filtered_elements)
         else:
@@ -1596,7 +1596,7 @@ class Page(
         all_elements = self._element_mgr.get_all_elements()
 
         # Apply exclusions if requested
-        if apply_exclusions and self._exclusions:
+        if apply_exclusions:
             return self._filter_elements_by_exclusions(
                 all_elements, debug_exclusions=debug_exclusions
             )
