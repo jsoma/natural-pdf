@@ -185,7 +185,9 @@ class GuidesList(UserList):
         self,
         markers: Union[str, List[str], "ElementCollection", Callable, None],
         obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
-        align: Literal["left", "right", "center", "between"] = "left",
+        align: Union[
+            Literal["left", "right", "center", "between"], Literal["top", "bottom"]
+        ] = "left",
         outer: bool = True,
         tolerance: float = 5,
         *,
@@ -203,7 +205,10 @@ class GuidesList(UserList):
                 - Callable: function that takes a page and returns markers
                 - None: no markers
             obj: Page/Region/FlowRegion to search (uses parent's context if None)
-            align: How to align guides relative to found elements
+            align: How to align guides relative to found elements:
+                - For vertical guides: 'left', 'right', 'center', 'between'
+                - For horizontal guides: 'top', 'bottom', 'center', 'between'
+                - Note: 'left'/'right' also work for horizontal (mapped to top/bottom)
             outer: Whether to add outer boundary guides
             tolerance: Tolerance for snapping to element edges
             apply_exclusions: Whether to apply exclusion zones when searching for text
@@ -224,19 +229,25 @@ class GuidesList(UserList):
             self._callable = None
             actual_markers = markers
 
+        # Normalize alignment for horizontal guides
+        if self._axis == "horizontal":
+            if align == "top":
+                align = "left"
+            elif align == "bottom":
+                align = "right"
+
         # Check if parent is in flow mode
         if self._parent.is_flow_region:
             # Create guides across all constituent regions
             all_guides = []
             for region in self._parent.context.constituent_regions:
-                # Normalize markers for this region
-                marker_texts = _normalize_markers(actual_markers, region)
+                # Pass markers directly - from_content will handle them properly
 
                 # Create guides for this region
                 region_guides = Guides.from_content(
                     obj=region,
                     axis=self._axis,
-                    markers=marker_texts,
+                    markers=actual_markers,  # Pass original markers, not normalized text
                     align=align,
                     outer=outer,
                     tolerance=tolerance,
@@ -312,14 +323,14 @@ class GuidesList(UserList):
             return self._parent
 
         # Original single-region logic
-        # Normalize markers to list of text strings
-        marker_texts = _normalize_markers(actual_markers, target_obj)
+        # Pass markers directly to from_content which will handle them properly
+        # (no need to normalize here since from_content now handles ElementCollection)
 
         # Create guides for this axis
         new_guides = Guides.from_content(
             obj=target_obj,
             axis=self._axis,
-            markers=marker_texts,
+            markers=actual_markers,  # Pass original markers, not normalized text
             align=align,
             outer=outer,
             tolerance=tolerance,
@@ -930,6 +941,82 @@ class GuidesList(UserList):
         self.data.clear()
         return self._parent
 
+    def from_stripes(
+        self,
+        stripes=None,
+        color=None,  # Explicitly specify stripe color
+    ) -> "Guides":
+        """Create guides from striped table rows or columns.
+
+        Creates guides at both edges of stripe elements (e.g., colored table rows).
+        Perfect for zebra-striped tables where you need guides at every row boundary.
+
+        Args:
+            stripes: Elements representing stripes. If None, auto-detects.
+            color: Specific color to look for (e.g., '#00ffff'). If None, finds most common.
+
+        Examples:
+            # Auto-detect zebra stripes
+            guides.horizontal.from_stripes()
+
+            # Specific color
+            guides.horizontal.from_stripes(color='#00ffff')
+
+            # Manual selection
+            stripes = page.find_all('rect[fill=#00ffff]')
+            guides.horizontal.from_stripes(stripes)
+
+            # Vertical stripes
+            guides.vertical.from_stripes(color='#e0e0e0')
+
+        Returns:
+            Parent Guides object for chaining
+        """
+        from collections import defaultdict
+
+        target_obj = self._parent.context
+        if target_obj is None:
+            raise ValueError("No context available for stripe detection")
+
+        if stripes is None:
+            if color:
+                # User specified color
+                stripes = target_obj.find_all(f"rect[fill={color}]")
+            else:
+                # Auto-detect most common non-white fill
+                all_rects = target_obj.find_all("rect[fill]")
+
+                # Group by fill color
+                fill_counts = defaultdict(list)
+                for rect in all_rects:
+                    if rect.fill and rect.fill not in ["#ffffff", "white", "none", "transparent"]:
+                        fill_counts[rect.fill].append(rect)
+
+                if not fill_counts:
+                    return self._parent  # No stripes found
+
+                # Find most common fill color
+                stripes = max(fill_counts.values(), key=len)
+
+        if not stripes:
+            return self._parent
+
+        # Get both edges of each stripe
+        edges = []
+        if self._axis == "horizontal":
+            for stripe in stripes:
+                edges.extend([stripe.top, stripe.bottom])
+        else:
+            for stripe in stripes:
+                edges.extend([stripe.x0, stripe.x1])
+
+        # Remove duplicates and sort
+        edges = sorted(set(edges))
+
+        # Add guides
+        self.extend(edges)
+        return self._parent
+
     def __add__(self, other):
         """Handle addition of GuidesList objects by returning combined data."""
         if isinstance(other, GuidesList):
@@ -1459,7 +1546,9 @@ class Guides:
         obj: Union["Page", "Region", "FlowRegion"],
         axis: Literal["vertical", "horizontal"] = "vertical",
         markers: Union[str, List[str], "ElementCollection", None] = None,
-        align: Literal["left", "right", "center", "between"] = "left",
+        align: Union[
+            Literal["left", "right", "center", "between"], Literal["top", "bottom"]
+        ] = "left",
         outer: bool = True,
         tolerance: float = 5,
         apply_exclusions: bool = True,
@@ -1475,7 +1564,9 @@ class Guides:
                 - List[str]: list of selectors or literal text strings
                 - ElementCollection: collection of elements to extract text from
                 - None: no markers
-            align: Where to place guides relative to found text
+            align: Where to place guides relative to found text:
+                - For vertical guides: 'left', 'right', 'center', 'between'
+                - For horizontal guides: 'top', 'bottom', 'center', 'between'
             outer: Whether to add guides at the boundaries
             tolerance: Maximum distance to search for text
             apply_exclusions: Whether to apply exclusion zones when searching for text
@@ -1483,6 +1574,13 @@ class Guides:
         Returns:
             New Guides object aligned to text content
         """
+        # Normalize alignment for horizontal guides
+        if axis == "horizontal":
+            if align == "top":
+                align = "left"
+            elif align == "bottom":
+                align = "right"
+
         # Handle FlowRegion
         if hasattr(obj, "constituent_regions"):
             guides = cls(context=obj)
@@ -1530,39 +1628,51 @@ class Guides:
         elif hasattr(obj, "width"):
             bounds = (0, 0, obj.width, obj.height)
 
-        # Normalize markers to list of text strings
-        marker_texts = _normalize_markers(markers, obj)
+        # Handle different marker types
+        elements_to_process = []
 
-        # Find each marker and determine guide position
-        for marker in marker_texts:
-            if hasattr(obj, "find"):
-                element = obj.find(f'text:contains("{marker}")', apply_exclusions=apply_exclusions)
-                if element:
-                    if axis == "vertical":
-                        if align == "left":
-                            guides_coords.append(element.x0)
-                        elif align == "right":
-                            guides_coords.append(element.x1)
-                        elif align == "center":
-                            guides_coords.append((element.x0 + element.x1) / 2)
-                        elif align == "between":
-                            # For between, collect left edges for processing later
-                            guides_coords.append(element.x0)
-                    else:  # horizontal
-                        if align == "left":  # top for horizontal
-                            guides_coords.append(element.top)
-                        elif align == "right":  # bottom for horizontal
-                            guides_coords.append(element.bottom)
-                        elif align == "center":
-                            guides_coords.append((element.top + element.bottom) / 2)
-                        elif align == "between":
-                            # For between, collect top edges for processing later
-                            guides_coords.append(element.top)
+        # Check if markers is an ElementCollection or has elements attribute
+        if hasattr(markers, "elements") or hasattr(markers, "_elements"):
+            # It's an ElementCollection - use elements directly
+            elements_to_process = getattr(markers, "elements", getattr(markers, "_elements", []))
+        elif hasattr(markers, "__iter__") and not isinstance(markers, str):
+            # Check if it's an iterable of elements (not strings)
+            try:
+                markers_list = list(markers)
+                if markers_list and hasattr(markers_list[0], "x0"):
+                    # It's a list of elements
+                    elements_to_process = markers_list
+            except:
+                pass
 
-        # Handle 'between' alignment - find midpoints between adjacent markers
-        if align == "between" and len(guides_coords) >= 2:
-            # We need to get the right and left edges of each marker
-            marker_bounds = []
+        if elements_to_process:
+            # Process elements directly without text search
+            for element in elements_to_process:
+                if axis == "vertical":
+                    if align == "left":
+                        guides_coords.append(element.x0)
+                    elif align == "right":
+                        guides_coords.append(element.x1)
+                    elif align == "center":
+                        guides_coords.append((element.x0 + element.x1) / 2)
+                    elif align == "between":
+                        # For between, collect left edges for processing later
+                        guides_coords.append(element.x0)
+                else:  # horizontal
+                    if align == "left":  # top for horizontal
+                        guides_coords.append(element.top)
+                    elif align == "right":  # bottom for horizontal
+                        guides_coords.append(element.bottom)
+                    elif align == "center":
+                        guides_coords.append((element.top + element.bottom) / 2)
+                    elif align == "between":
+                        # For between, collect top edges for processing later
+                        guides_coords.append(element.top)
+        else:
+            # Fall back to text-based search
+            marker_texts = _normalize_markers(markers, obj)
+
+            # Find each marker and determine guide position
             for marker in marker_texts:
                 if hasattr(obj, "find"):
                     element = obj.find(
@@ -1570,9 +1680,52 @@ class Guides:
                     )
                     if element:
                         if axis == "vertical":
-                            marker_bounds.append((element.x0, element.x1))
+                            if align == "left":
+                                guides_coords.append(element.x0)
+                            elif align == "right":
+                                guides_coords.append(element.x1)
+                            elif align == "center":
+                                guides_coords.append((element.x0 + element.x1) / 2)
+                            elif align == "between":
+                                # For between, collect left edges for processing later
+                                guides_coords.append(element.x0)
                         else:  # horizontal
-                            marker_bounds.append((element.top, element.bottom))
+                            if align == "left":  # top for horizontal
+                                guides_coords.append(element.top)
+                            elif align == "right":  # bottom for horizontal
+                                guides_coords.append(element.bottom)
+                            elif align == "center":
+                                guides_coords.append((element.top + element.bottom) / 2)
+                            elif align == "between":
+                                # For between, collect top edges for processing later
+                                guides_coords.append(element.top)
+
+        # Handle 'between' alignment - find midpoints between adjacent markers
+        if align == "between" and len(guides_coords) >= 2:
+            # We need to get the right and left edges of each marker
+            marker_bounds = []
+
+            if elements_to_process:
+                # Use elements directly
+                for element in elements_to_process:
+                    if axis == "vertical":
+                        marker_bounds.append((element.x0, element.x1))
+                    else:  # horizontal
+                        marker_bounds.append((element.top, element.bottom))
+            else:
+                # Fall back to text search
+                if "marker_texts" not in locals():
+                    marker_texts = _normalize_markers(markers, obj)
+                for marker in marker_texts:
+                    if hasattr(obj, "find"):
+                        element = obj.find(
+                            f'text:contains("{marker}")', apply_exclusions=apply_exclusions
+                        )
+                        if element:
+                            if axis == "vertical":
+                                marker_bounds.append((element.x0, element.x1))
+                            else:  # horizontal
+                                marker_bounds.append((element.top, element.bottom))
 
             # Sort markers by their left edge (or top edge for horizontal)
             marker_bounds.sort(key=lambda x: x[0])
