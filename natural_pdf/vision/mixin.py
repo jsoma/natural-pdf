@@ -21,7 +21,8 @@ class VisualSearchMixin:
         sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
         resolution: int = 72,
         hash_size: int = 20,
-        step_factor: float = 0.1,
+        step: Optional[int] = None,
+        method: str = "phash",
         max_per_page: Optional[int] = None,
         show_progress: bool = True,
         **kwargs,
@@ -35,12 +36,13 @@ class VisualSearchMixin:
             confidence: Minimum similarity score (0-1)
             sizes: Size variations to search. Can be:
                    - float: ±percentage (e.g., 0.2 = 80%-120%)
-                   - tuple(min, max): search range with smart logarithmic steps (default: (0.8, 1.0))
+                   - tuple(min, max): search range with smart logarithmic steps (default: (0.8, 1.2))
                    - tuple(min, max, step): explicit step size
                    - list: exact sizes to try (e.g., [0.8, 1.0, 1.2])
             resolution: Resolution for image comparison (DPI) (default: 72)
-            hash_size: Size of perceptual hash grid (default: 12)
-            step_factor: Step size as fraction of template size (default: 0.1)
+            hash_size: Size of perceptual hash grid (default: 20)
+            step: Step size in pixels for sliding window
+            method: Matching algorithm - "phash" (default) or "template"
             max_per_page: Maximum matches to return per page
             show_progress: Show progress bar for multi-page searches (default: True)
             **kwargs: Additional options
@@ -99,11 +101,15 @@ class VisualSearchMixin:
                         scaled_h = int(template_h * scale)
 
                         if scaled_w <= page_w and scaled_h <= page_h:
-                            step_x = max(1, int(scaled_w * step_factor))
-                            step_y = max(1, int(scaled_h * step_factor))
+                            # Determine step size
+                            if step is not None:
+                                actual_step = step
+                            else:
+                                # Default to 10% of template size
+                                actual_step = max(1, int(min(scaled_w, scaled_h) * 0.1))
 
-                            x_windows = len(range(0, page_w - scaled_w + 1, step_x))
-                            y_windows = len(range(0, page_h - scaled_h + 1, step_y))
+                            x_windows = len(range(0, page_w - scaled_w + 1, actual_step))
+                            y_windows = len(range(0, page_h - scaled_h + 1, actual_step))
                             total_operations += x_windows * y_windows
 
         # Search each page
@@ -168,7 +174,8 @@ class VisualSearchMixin:
                     template_hash=template_hash,
                     confidence_threshold=confidence,
                     sizes=sizes,
-                    step_factor=step_factor,
+                    step=step,
+                    method=method,
                     show_progress=False,  # We handle progress ourselves
                     progress_callback=update_progress if progress_bar else None,
                     **kwargs,

@@ -7,6 +7,8 @@ import numpy as np
 from PIL import Image
 from tqdm.auto import tqdm
 
+from .template_matching import TemplateMatcher
+
 
 @dataclass
 class MatchCandidate:
@@ -80,12 +82,13 @@ def hash_similarity(hash1: int, hash2: int, hash_size: int = 64) -> float:
 
 
 class VisualMatcher:
-    """Handles visual similarity matching using perceptual hashing"""
+    """Handles visual similarity matching using perceptual hashing or template matching"""
 
     def __init__(self, hash_size: int = 12):
         self.hash_size = hash_size
         self.hash_bits = hash_size * hash_size
         self._cache = {}
+        self.template_matcher = TemplateMatcher()  # Default zncc
 
     def _get_search_scales(self, sizes: Optional[Union[float, Tuple, List]]) -> List[float]:
         """
@@ -172,20 +175,21 @@ class VisualMatcher:
         target: Image.Image,
         template_hash: Optional[int] = None,
         confidence_threshold: float = 0.6,
-        step_factor: float = 0.1,
+        step: Optional[int] = None,
         sizes: Optional[Union[float, Tuple, List]] = None,
         show_progress: bool = True,
         progress_callback: Optional[Callable[[], None]] = None,
+        method: str = "phash",
     ) -> List[MatchCandidate]:
         """
-        Find all matches of template in target image using sliding window.
+        Find all matches of template in target image.
 
         Args:
             template: Template image to search for
             target: Target image to search in
-            template_hash: Pre-computed hash of template (optional)
+            template_hash: Pre-computed hash of template (optional, only for phash)
             confidence_threshold: Minimum similarity score (0-1)
-            step_factor: Step size as fraction of template size
+            step: Step size in pixels for sliding window
             sizes: Size variations to search. Can be:
                    - float: ±percentage (e.g., 0.2 = 80%-120%)
                    - tuple(min, max): search range with smart logarithmic steps
@@ -193,10 +197,125 @@ class VisualMatcher:
                    - list: exact sizes to try (e.g., [0.8, 1.0, 1.2])
             show_progress: Show progress bar for sliding window search
             progress_callback: Optional callback function to call for each window checked
+            method: "phash" (default) or "template" for template matching
 
         Returns:
             List of MatchCandidate objects
         """
+        if method == "template":
+            # Use template matching
+            return self._template_match(
+                template,
+                target,
+                confidence_threshold,
+                step,
+                sizes,
+                show_progress,
+                progress_callback,
+            )
+        else:
+            # Use existing perceptual hash matching
+            return self._phash_match(
+                template,
+                target,
+                template_hash,
+                confidence_threshold,
+                step,
+                sizes,
+                show_progress,
+                progress_callback,
+            )
+
+    def _template_match(self, template, target, threshold, step, sizes, show_progress, callback):
+        """Template matching implementation"""
+        matches = []
+
+        template_w, template_h = template.size
+        target_w, target_h = target.size
+
+        # Convert to grayscale numpy arrays
+        target_gray = np.array(target.convert("L"), dtype=np.float32) / 255.0
+
+        # Determine scales to search
+        scales = self._get_search_scales(sizes)
+
+        # Default step size if not provided
+        if step is None:
+            step = 1
+
+        # Calculate total operations for progress bar
+        total_operations = 0
+        if show_progress and not callback:
+            for scale in scales:
+                scaled_w = int(template_w * scale)
+                scaled_h = int(template_h * scale)
+
+                if scaled_w <= target_w and scaled_h <= target_h:
+                    # Compute score map size
+                    out_h = (target_h - scaled_h) // step + 1
+                    out_w = (target_w - scaled_w) // step + 1
+                    total_operations += out_h * out_w
+
+        # Setup progress bar
+        progress_bar = None
+        if show_progress and not callback and total_operations > 0:
+            progress_bar = tqdm(
+                total=total_operations, desc="Template matching", unit="position", leave=False
+            )
+
+        # Search at each scale
+        for scale in scales:
+            # Resize template
+            scaled_w = int(template_w * scale)
+            scaled_h = int(template_h * scale)
+
+            if scaled_w > target_w or scaled_h > target_h:
+                continue
+
+            scaled_template = template.resize((scaled_w, scaled_h), Image.Resampling.LANCZOS)
+            template_gray = np.array(scaled_template.convert("L"), dtype=np.float32) / 255.0
+
+            # Run template matching
+            scores = self.template_matcher.match_template(target_gray, template_gray, step)
+
+            # Find peaks above threshold
+            y_indices, x_indices = np.where(scores >= threshold)
+
+            # Update progress
+            if progress_bar:
+                progress_bar.update(scores.size)
+            elif callback:
+                for _ in range(scores.size):
+                    callback()
+
+            for i in range(len(y_indices)):
+                y_idx = y_indices[i]
+                x_idx = x_indices[i]
+                score = scores[y_idx, x_idx]
+
+                # Convert back to image coordinates
+                x = x_idx * step
+                y = y_idx * step
+
+                matches.append(
+                    MatchCandidate(
+                        bbox=(x, y, x + scaled_w, y + scaled_h),
+                        hash_value=0,  # Not used for template matching
+                        confidence=float(score),
+                    )
+                )
+
+        # Close progress bar
+        if progress_bar:
+            progress_bar.close()
+
+        # Remove overlapping matches
+        return self._filter_overlapping_matches(matches)
+
+    def _phash_match(
+        self, template, target, template_hash, threshold, step, sizes, show_progress, callback
+    ):
+        """Original perceptual hash matching"""
         matches = []
 
         # Compute template hash if not provided
@@ -209,22 +328,24 @@ class VisualMatcher:
         # Determine scales to search
         scales = self._get_search_scales(sizes)
 
+        # Default step size if not provided (10% of template size)
+        if step is None:
+            step = max(1, int(min(template_w, template_h) * 0.1))
+
         # Calculate total iterations for progress bar
         total_iterations = 0
-        if show_progress and not progress_callback:
+        if show_progress and not callback:
             for scale in scales:
                 scaled_w = int(template_w * scale)
                 scaled_h = int(template_h * scale)
                 if scaled_w <= target_w and scaled_h <= target_h:
-                    step_x = max(1, int(scaled_w * step_factor))
-                    step_y = max(1, int(scaled_h * step_factor))
-                    x_steps = len(range(0, target_w - scaled_w + 1, step_x))
-                    y_steps = len(range(0, target_h - scaled_h + 1, step_y))
+                    x_steps = len(range(0, target_w - scaled_w + 1, step))
+                    y_steps = len(range(0, target_h - scaled_h + 1, step))
                     total_iterations += x_steps * y_steps
 
         # Setup progress bar if needed (only if no callback provided)
         progress_bar = None
-        if show_progress and not progress_callback and total_iterations > 0:
+        if show_progress and not callback and total_iterations > 0:
             progress_bar = tqdm(total=total_iterations, desc="Scanning", unit="window", leave=False)
 
         # Search at each scale
@@ -236,13 +357,9 @@ class VisualMatcher:
             if scaled_w > target_w or scaled_h > target_h:
                 continue
 
-            # Calculate step size
-            step_x = max(1, int(scaled_w * step_factor))
-            step_y = max(1, int(scaled_h * step_factor))
-
             # Sliding window search
-            for y in range(0, target_h - scaled_h + 1, step_y):
-                for x in range(0, target_w - scaled_w + 1, step_x):
+            for y in range(0, target_h - scaled_h + 1, step):
+                for x in range(0, target_w - scaled_w + 1, step):
                     # Extract window
                     window = target.crop((x, y, x + scaled_w, y + scaled_h))
 
@@ -254,7 +371,7 @@ class VisualMatcher:
                     window_hash = compute_phash(window, self.hash_size)
                     similarity = hash_similarity(template_hash, window_hash, self.hash_bits)
 
-                    if similarity >= confidence_threshold:
+                    if similarity >= threshold:
                         # Convert back to target image coordinates
                         bbox = (x, y, x + scaled_w, y + scaled_h)
                         matches.append(MatchCandidate(bbox, window_hash, similarity))
@@ -262,8 +379,8 @@ class VisualMatcher:
                     # Update progress
                     if progress_bar:
                         progress_bar.update(1)
-                    elif progress_callback:
-                        progress_callback()
+                    elif callback:
+                        callback()
 
         # Close progress bar
         if progress_bar:
