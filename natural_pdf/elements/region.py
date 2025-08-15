@@ -45,6 +45,7 @@ from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
+from natural_pdf.vision.mixin import VisualSearchMixin
 
 # Import viewer widget support
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
@@ -80,6 +81,7 @@ class Region(
     ExtractionMixin,
     ShapeDetectionMixin,
     DescribeMixin,
+    VisualSearchMixin,
     Visualizable,
 ):
     """Represents a rectangular region on a page.

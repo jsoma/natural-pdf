@@ -6,9 +6,6 @@ import numpy as np
 from PIL import Image
 from tqdm.auto import tqdm
 
-from .results import Match, MatchResults
-from .similarity import VisualMatcher, compute_phash
-
 
 class VisualSearchMixin:
     """Add find_similar method to classes that include this mixin"""
@@ -26,7 +23,7 @@ class VisualSearchMixin:
         max_per_page: Optional[int] = None,
         show_progress: bool = True,
         **kwargs,
-    ) -> MatchResults:
+    ) -> "MatchResults":
         """
         Find regions visually similar to the given example(s).
 
@@ -45,7 +42,10 @@ class VisualSearchMixin:
             method: Matching algorithm - "phash" (default) or "template"
             max_per_page: Maximum matches to return per page
             show_progress: Show progress bar for multi-page searches (default: True)
-            **kwargs: Additional options
+            **kwargs: Additional options including:
+                mask_threshold: For both template and phash methods, pixels >= this value are masked.
+                               For template matching: pixels are ignored in matching (e.g., 0.95)
+                               For phash: pixels are replaced with median before hashing (e.g., 0.95)
 
         Returns:
             MatchResults collection
@@ -57,15 +57,25 @@ class VisualSearchMixin:
         if not isinstance(examples, list):
             examples = [examples]
 
+        from .similarity import VisualMatcher, compute_phash
+
         # Initialize matcher with specified hash size
         matcher = VisualMatcher(hash_size=hash_size)
 
         # Prepare templates
         templates = []
+        # Extract mask_threshold from kwargs for phash
+        mask_threshold = kwargs.get("mask_threshold")
+        mask_threshold_255 = (
+            int(mask_threshold * 255) if mask_threshold is not None and method == "phash" else None
+        )
+
         for example in examples:
             # Render the example region/element
             example_image = example.render(resolution=resolution, crop=True)
-            template_hash = compute_phash(example_image, hash_size=hash_size)
+            template_hash = compute_phash(
+                example_image, hash_size=hash_size, mask_threshold=mask_threshold_255
+            )
             templates.append({"image": example_image, "hash": template_hash, "source": example})
 
         # Get pages to search based on the object type
@@ -78,6 +88,8 @@ class VisualSearchMixin:
             pages_to_search = self.pages
         elif hasattr(self, "number"):  # Single page
             pages_to_search = [self]
+        elif hasattr(self, "page") and hasattr(self, "bbox"):  # Region
+            pages_to_search = [self]
         else:
             raise TypeError(f"Cannot search in {type(self)}")
 
@@ -88,10 +100,16 @@ class VisualSearchMixin:
             scales = matcher._get_search_scales(sizes)
 
             # Pre-calculate for all pages and templates
-            for page in pages_to_search:
-                # Estimate page image size
-                page_w = int(page.width * resolution / 72.0)
-                page_h = int(page.height * resolution / 72.0)
+            for search_obj in pages_to_search:
+                # Estimate image size based on object type
+                if hasattr(search_obj, "page") and hasattr(search_obj, "bbox"):
+                    # Region
+                    page_w = int(search_obj.width * resolution / 72.0)
+                    page_h = int(search_obj.height * resolution / 72.0)
+                else:
+                    # Page
+                    page_w = int(search_obj.width * resolution / 72.0)
+                    page_h = int(search_obj.height * resolution / 72.0)
 
                 for template_data in templates:
                     template_w, template_h = template_data["image"].size
@@ -130,9 +148,20 @@ class VisualSearchMixin:
                 mininterval=0.1,  # Minimum time between updates (seconds)
             )
 
-        for page_idx, page in enumerate(pages_to_search):
-            # Render the full page once
-            page_image = page.render(resolution=resolution)
+        for page_idx, search_obj in enumerate(pages_to_search):
+            # Determine if we're searching in a page or a region
+            if hasattr(search_obj, "page") and hasattr(search_obj, "bbox"):
+                # This is a Region - render only the region area
+                region = search_obj
+                page = region.page
+                page_image = region.render(resolution=resolution, crop=True)
+                # Region offset for coordinate conversion
+                region_x0, region_y0 = region.x0, region.top
+            else:
+                # This is a Page - render the full page
+                page = search_obj
+                page_image = page.render(resolution=resolution)
+                region_x0, region_y0 = 0, 0
 
             # Convert page coordinates to image coordinates
             scale = resolution / 72.0  # PDF is 72 DPI
@@ -187,10 +216,12 @@ class VisualSearchMixin:
 
                     # Convert from image pixels to PDF points
                     # No flipping needed! PDF coordinates map directly to PIL coordinates
-                    pdf_x0 = img_x0 / scale
-                    pdf_y0 = img_y0 / scale
-                    pdf_x1 = img_x1 / scale
-                    pdf_y1 = img_y1 / scale
+                    pdf_x0 = img_x0 / scale + region_x0
+                    pdf_y0 = img_y0 / scale + region_y0
+                    pdf_x1 = img_x1 / scale + region_x0
+                    pdf_y1 = img_y1 / scale + region_y0
+
+                    from .results import Match
 
                     # Create Match object
                     match = Match(
@@ -212,5 +243,7 @@ class VisualSearchMixin:
         # Close progress bar
         if progress_bar:
             progress_bar.close()
+
+        from .results import MatchResults
 
         return MatchResults(all_matches)

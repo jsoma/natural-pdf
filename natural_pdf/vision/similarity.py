@@ -19,7 +19,12 @@ class MatchCandidate:
     confidence: float
 
 
-def compute_phash(image: Image.Image, hash_size: int = 8, blur_radius: float = 0) -> int:
+def compute_phash(
+    image: Image.Image,
+    hash_size: int = 8,
+    blur_radius: float = 0,
+    mask_threshold: Optional[float] = None,
+) -> int:
     """
     Compute perceptual hash of an image using DCT.
 
@@ -27,6 +32,8 @@ def compute_phash(image: Image.Image, hash_size: int = 8, blur_radius: float = 0
         image: PIL Image to hash
         hash_size: Size of the hash (8 = 64 bit hash)
         blur_radius: Optional blur to apply before hashing (makes more tolerant)
+        mask_threshold: If provided, pixels >= this value (0-255 scale) are replaced with median
+                       before hashing. Useful for ignoring white backgrounds.
 
     Returns:
         Integer hash value
@@ -40,6 +47,25 @@ def compute_phash(image: Image.Image, hash_size: int = 8, blur_radius: float = 0
         from PIL import ImageFilter
 
         image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    # Apply masking if threshold provided
+    if mask_threshold is not None:
+        # For phash, masking works by normalizing the background
+        # This makes the hash focus on relative differences rather than absolute values
+        img_array = np.array(image, dtype=np.float32)
+
+        # Normalize by subtracting a representative background value
+        # Use the most common bright value as the background
+        bright_pixels = img_array[img_array >= mask_threshold]
+        if len(bright_pixels) > 0:
+            # Use the mode of bright pixels as background
+            background_val = np.median(bright_pixels)
+            # Normalize the image by subtracting background
+            # This makes different backgrounds appear similar
+            img_array = np.clip(img_array - background_val + 128, 0, 255)
+
+        # Convert back to PIL Image
+        image = Image.fromarray(img_array.astype(np.uint8))
 
     # Resize to 32x32 (4x the hash size for DCT)
     highfreq_factor = 4
@@ -180,6 +206,7 @@ class VisualMatcher:
         show_progress: bool = True,
         progress_callback: Optional[Callable[[], None]] = None,
         method: str = "phash",
+        mask_threshold: Optional[float] = None,
     ) -> List[MatchCandidate]:
         """
         Find all matches of template in target image.
@@ -198,6 +225,10 @@ class VisualMatcher:
             show_progress: Show progress bar for sliding window search
             progress_callback: Optional callback function to call for each window checked
             method: "phash" (default) or "template" for template matching
+            mask_threshold: Pixels >= this value (0-1 scale) are treated as background.
+                           - For template matching: pixels are ignored in correlation
+                           - For phash: background is normalized before hashing
+                           Useful for logos/text on varying backgrounds (e.g., 0.95)
 
         Returns:
             List of MatchCandidate objects
@@ -212,6 +243,7 @@ class VisualMatcher:
                 sizes,
                 show_progress,
                 progress_callback,
+                mask_threshold,
             )
         else:
             # Use existing perceptual hash matching
@@ -224,9 +256,12 @@ class VisualMatcher:
                 sizes,
                 show_progress,
                 progress_callback,
+                mask_threshold,
             )
 
-    def _template_match(self, template, target, threshold, step, sizes, show_progress, callback):
+    def _template_match(
+        self, template, target, threshold, step, sizes, show_progress, callback, mask_threshold
+    ):
         """Template matching implementation"""
         matches = []
 
@@ -276,7 +311,9 @@ class VisualMatcher:
             template_gray = np.array(scaled_template.convert("L"), dtype=np.float32) / 255.0
 
             # Run template matching
-            scores = self.template_matcher.match_template(target_gray, template_gray, step)
+            scores = self.template_matcher.match_template(
+                target_gray, template_gray, step, mask_threshold
+            )
 
             # Find peaks above threshold
             y_indices, x_indices = np.where(scores >= threshold)
@@ -313,14 +350,27 @@ class VisualMatcher:
         return self._filter_overlapping_matches(matches)
 
     def _phash_match(
-        self, template, target, template_hash, threshold, step, sizes, show_progress, callback
+        self,
+        template,
+        target,
+        template_hash,
+        threshold,
+        step,
+        sizes,
+        show_progress,
+        callback,
+        mask_threshold=None,
     ):
         """Original perceptual hash matching"""
         matches = []
 
         # Compute template hash if not provided
         if template_hash is None:
-            template_hash = compute_phash(template, self.hash_size)
+            # Convert mask threshold from 0-1 to 0-255 for PIL Image
+            mask_threshold_255 = int(mask_threshold * 255) if mask_threshold is not None else None
+            template_hash = compute_phash(
+                template, self.hash_size, mask_threshold=mask_threshold_255
+            )
 
         template_w, template_h = template.size
         target_w, target_h = target.size
@@ -368,7 +418,12 @@ class VisualMatcher:
                         window = window.resize((template_w, template_h), Image.Resampling.LANCZOS)
 
                     # Compute hash and similarity
-                    window_hash = compute_phash(window, self.hash_size)
+                    mask_threshold_255 = (
+                        int(mask_threshold * 255) if mask_threshold is not None else None
+                    )
+                    window_hash = compute_phash(
+                        window, self.hash_size, mask_threshold=mask_threshold_255
+                    )
                     similarity = hash_similarity(template_hash, window_hash, self.hash_bits)
 
                     if similarity >= threshold:

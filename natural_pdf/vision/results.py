@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Tuple
 
-# Import Region directly as it's a base class
 from natural_pdf.elements.region import Region
 
 if TYPE_CHECKING:
@@ -39,16 +38,41 @@ class Match(Region):
 
 
 class MatchResults:
-    """Collection of Match objects with transformation methods"""
+    """
+    Collection of Match objects with transformation methods.
+
+    Matches are automatically sorted by confidence (highest first), so:
+    - matches[0] is the best match
+    - Iteration yields matches from best to worst
+    - The .top(n) method returns the n best matches
+
+    Example:
+        >>> matches = page.find_similar(logo_region)
+        >>> print(f"Found {len(matches)} matches")
+        >>>
+        >>> # Best match
+        >>> best = matches[0]
+        >>> print(f"Best match confidence: {best.confidence:.3f}")
+        >>>
+        >>> # Top 5 matches
+        >>> for match in matches.top(5):
+        ...     print(f"Confidence: {match.confidence:.3f} at page {match.page.number}")
+        >>>
+        >>> # All matches above 90% confidence
+        >>> high_conf = matches.filter_by_confidence(0.9)
+    """
 
     def __init__(self, matches: List[Match]):
-        """Initialize with list of Match objects"""
+        """Initialize with list of Match objects, automatically sorted by confidence"""
         # Import here to avoid circular import
         from natural_pdf.elements.element_collection import ElementCollection
 
+        # Sort matches by confidence (highest first)
+        sorted_matches = sorted(matches, key=lambda m: m.confidence, reverse=True)
+
         # Create a base ElementCollection
-        self._collection = ElementCollection(matches)
-        self._matches = matches
+        self._collection = ElementCollection(sorted_matches)
+        self._matches = sorted_matches
 
     def __len__(self):
         return len(self._matches)
@@ -67,6 +91,26 @@ class MatchResults:
     def filter_by_confidence(self, min_confidence: float) -> "MatchResults":
         """Filter matches by minimum confidence"""
         return self.filter(lambda m: m.confidence >= min_confidence)
+
+    def top(self, n: int) -> "MatchResults":
+        """
+        Get the top N matches with highest confidence.
+
+        Args:
+            n: Number of top matches to return
+
+        Returns:
+            New MatchResults with only the top N matches
+
+        Example:
+            >>> matches = page.find_similar(logo)
+            >>> best_5 = matches.top(5)
+            >>> for match in best_5:
+            ...     print(f"Confidence: {match.confidence:.3f}")
+        """
+        # Since matches are already sorted by confidence, just take first n
+        top_matches = self._matches[:n]
+        return MatchResults(top_matches)
 
     def pages(self):
         """Get unique pages containing matches"""
