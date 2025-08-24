@@ -5,6 +5,25 @@ import pytest
 from natural_pdf import PDF
 
 
+def test_show_method_highlight_offset():
+    """Test that element.show() correctly handles offset for PDFs with negative bounds."""
+    pdf = PDF("https://www.pak-ks.org/desk/inc/media/EB62887E-EDF3-4CE4-B4D5-DEC69D53A2EF.pdf")
+    page = pdf.pages[0]
+
+    # Find a specific element
+    rect = page.find("rect[fill~=yellow]")
+    assert rect is not None, "Should find yellow rectangle"
+
+    # This should render without offset issues (visual check)
+    # The fix ensures the highlight aligns with the element
+    try:
+        # Using element.show() which goes through _apply_spec_highlights
+        img = rect.show()
+        assert img is not None
+    except Exception as e:
+        pytest.fail(f"Failed to show element: {e}")
+
+
 def test_highlight_offset_with_negative_bounds():
     """Test that highlights are correctly positioned for PDFs with negative bounds.
 

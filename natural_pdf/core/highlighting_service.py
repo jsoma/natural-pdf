@@ -95,10 +95,12 @@ class HighlightRenderer:
         # Get the pdfplumber page offset for coordinate translation
         page_offset_x = 0
         page_offset_y = 0
+
         if hasattr(self.page, "_page") and hasattr(self.page._page, "bbox"):
             # PDFPlumber page bbox might have negative offsets
             page_offset_x = -self.page._page.bbox[0]
             page_offset_y = -self.page._page.bbox[1]
+            logger.debug(f"Applying highlight offset: x={page_offset_x}, y={page_offset_y}")
 
         for highlight in self.highlights:
             # Create a transparent overlay for this single highlight
@@ -134,6 +136,11 @@ class HighlightRenderer:
                     (x1 + page_offset_x) * self.scale_factor,
                     (bottom + page_offset_y) * self.scale_factor,
                 )
+                logger.debug(f"Original bbox: ({x0}, {top}, {x1}, {bottom})")
+                logger.debug(
+                    f"Offset bbox: ({x0 + page_offset_x}, {top + page_offset_y}, {x1 + page_offset_x}, {bottom + page_offset_y})"
+                )
+                logger.debug(f"Scaled bbox: ({x0_s}, {top_s}, {x1_s}, {bottom_s})")
                 scaled_bbox = [x0_s, top_s, x1_s, bottom_s]
                 # Draw rectangle fill and border
                 draw.rectangle(
@@ -1494,11 +1501,22 @@ class HighlightingService:
                 offset_x = crop_offset[0] * scale_factor
                 offset_y = crop_offset[1] * scale_factor
 
+            # Add pdfplumber page offset for coordinate translation
+            page_offset_x = 0
+            page_offset_y = 0
+            if hasattr(page, "_page") and hasattr(page._page, "bbox"):
+                # PDFPlumber page bbox might have negative offsets
+                page_offset_x = -page._page.bbox[0]
+                page_offset_y = -page._page.bbox[1]
+
             # Draw the highlight
             if polygon:
                 # Scale polygon points and apply offset
                 scaled_polygon = [
-                    (p[0] * scale_factor - offset_x, p[1] * scale_factor - offset_y)
+                    (
+                        (p[0] + page_offset_x) * scale_factor - offset_x,
+                        (p[1] + page_offset_y) * scale_factor - offset_y,
+                    )
                     for p in polygon
                 ]
                 draw.polygon(
@@ -1508,10 +1526,10 @@ class HighlightingService:
                 # Scale bbox and apply offset
                 x0, y0, x1, y1 = bbox
                 scaled_bbox = [
-                    x0 * scale_factor - offset_x,
-                    y0 * scale_factor - offset_y,
-                    x1 * scale_factor - offset_x,
-                    y1 * scale_factor - offset_y,
+                    (x0 + page_offset_x) * scale_factor - offset_x,
+                    (y0 + page_offset_y) * scale_factor - offset_y,
+                    (x1 + page_offset_x) * scale_factor - offset_x,
+                    (y1 + page_offset_y) * scale_factor - offset_y,
                 ]
                 draw.rectangle(
                     scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
