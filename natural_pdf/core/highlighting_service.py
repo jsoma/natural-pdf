@@ -92,6 +92,14 @@ class HighlightRenderer:
 
     def _draw_highlights(self):
         """Draws all highlight shapes, borders, vertices, and attributes."""
+        # Get the pdfplumber page offset for coordinate translation
+        page_offset_x = 0
+        page_offset_y = 0
+        if hasattr(self.page, "_page") and hasattr(self.page._page, "bbox"):
+            # PDFPlumber page bbox might have negative offsets
+            page_offset_x = -self.page._page.bbox[0]
+            page_offset_y = -self.page._page.bbox[1]
+
         for highlight in self.highlights:
             # Create a transparent overlay for this single highlight
             overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
@@ -101,7 +109,11 @@ class HighlightRenderer:
 
             if highlight.is_polygon:
                 scaled_polygon = [
-                    (p[0] * self.scale_factor, p[1] * self.scale_factor) for p in highlight.polygon
+                    (
+                        (p[0] + page_offset_x) * self.scale_factor,
+                        (p[1] + page_offset_y) * self.scale_factor,
+                    )
+                    for p in highlight.polygon
                 ]
                 # Draw polygon fill and border
                 draw.polygon(
@@ -117,10 +129,10 @@ class HighlightRenderer:
             else:  # Rectangle
                 x0, top, x1, bottom = highlight.bbox
                 x0_s, top_s, x1_s, bottom_s = (
-                    x0 * self.scale_factor,
-                    top * self.scale_factor,
-                    x1 * self.scale_factor,
-                    bottom * self.scale_factor,
+                    (x0 + page_offset_x) * self.scale_factor,
+                    (top + page_offset_y) * self.scale_factor,
+                    (x1 + page_offset_x) * self.scale_factor,
+                    (bottom + page_offset_y) * self.scale_factor,
                 )
                 scaled_bbox = [x0_s, top_s, x1_s, bottom_s]
                 # Draw rectangle fill and border
