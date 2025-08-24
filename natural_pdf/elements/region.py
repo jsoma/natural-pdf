@@ -1694,7 +1694,21 @@ class Region(
         else:
             filtered_page = base_plumber_page
 
-        cropped = filtered_page.crop(self.bbox)
+        # Ensure bbox is within pdfplumber page bounds
+        page_bbox = filtered_page.bbox
+        clipped_bbox = (
+            max(self.bbox[0], page_bbox[0]),  # x0
+            max(self.bbox[1], page_bbox[1]),  # y0
+            min(self.bbox[2], page_bbox[2]),  # x1
+            min(self.bbox[3], page_bbox[3]),  # y1
+        )
+
+        # Only crop if the clipped bbox is valid (has positive width and height)
+        if clipped_bbox[2] > clipped_bbox[0] and clipped_bbox[3] > clipped_bbox[1]:
+            cropped = filtered_page.crop(clipped_bbox)
+        else:
+            # If the region is completely outside the page bounds, return empty list
+            return []
 
         # Extract all tables from the cropped area
         tables = cropped.extract_tables(table_settings)
@@ -1788,7 +1802,21 @@ class Region(
             filtered_page = base_plumber_page
 
         # Now crop the (possibly filtered) page to the region bbox
-        cropped = filtered_page.crop(self.bbox)
+        # Ensure bbox is within pdfplumber page bounds
+        page_bbox = filtered_page.bbox
+        clipped_bbox = (
+            max(self.bbox[0], page_bbox[0]),  # x0
+            max(self.bbox[1], page_bbox[1]),  # y0
+            min(self.bbox[2], page_bbox[2]),  # x1
+            min(self.bbox[3], page_bbox[3]),  # y1
+        )
+
+        # Only crop if the clipped bbox is valid (has positive width and height)
+        if clipped_bbox[2] > clipped_bbox[0] and clipped_bbox[3] > clipped_bbox[1]:
+            cropped = filtered_page.crop(clipped_bbox)
+        else:
+            # If the region is completely outside the page bounds, return empty table
+            return []
 
         # Extract the single largest table from the cropped area
         table = cropped.extract_table(table_settings)
