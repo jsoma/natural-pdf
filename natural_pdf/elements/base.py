@@ -106,6 +106,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: float = 0.1,
         **kwargs,
     ) -> "Region":
         """
@@ -118,6 +119,7 @@ class DirectionalMixin:
             include_source: Whether to include this element/region's area in the result
             until: Optional selector string to specify a boundary element
             include_endpoint: Whether to include the boundary element found by 'until'
+            offset: Pixel offset when excluding source/endpoint (default: 0.1)
             **kwargs: Additional parameters for the 'until' selector search
 
         Returns:
@@ -127,7 +129,7 @@ class DirectionalMixin:
 
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
-        pixel_offset = 1  # Offset for excluding elements/endpoints
+        pixel_offset = offset  # Use provided offset for excluding elements/endpoints
 
         # 1. Determine initial boundaries based on direction and include_source
         if is_horizontal:
@@ -260,6 +262,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: float = 0.1,
         **kwargs,
     ) -> "Region":
         """
@@ -271,6 +274,7 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: 0.1)
             **kwargs: Additional parameters
 
         Returns:
@@ -295,6 +299,7 @@ class DirectionalMixin:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
@@ -305,6 +310,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: float = 0.1,
         **kwargs,
     ) -> "Region":
         """
@@ -316,6 +322,7 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: 0.1)
             **kwargs: Additional parameters
 
         Returns:
@@ -340,6 +347,7 @@ class DirectionalMixin:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
@@ -350,6 +358,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: float = 0.1,
         **kwargs,
     ) -> "Region":
         """
@@ -361,6 +370,7 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: 0.1)
             **kwargs: Additional parameters
 
         Returns:
@@ -385,6 +395,7 @@ class DirectionalMixin:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
@@ -395,6 +406,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: float = 0.1,
         **kwargs,
     ) -> "Region":
         """
@@ -406,6 +418,7 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: 0.1)
             **kwargs: Additional parameters
 
         Returns:
@@ -430,6 +443,7 @@ class DirectionalMixin:
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
