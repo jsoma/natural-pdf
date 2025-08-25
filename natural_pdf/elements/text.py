@@ -2,7 +2,7 @@
 Text element classes for natural-pdf.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from natural_pdf.elements.base import Element
 
@@ -236,7 +236,13 @@ class TextElement(Element):
         return (0, 0, 0)
 
     def extract_text(
-        self, keep_blank_chars=True, strip: Optional[bool] = True, content_filter=None, **kwargs
+        self,
+        keep_blank_chars: bool = True,
+        strip: Optional[bool] = True,
+        *,
+        newlines: Union[bool, str] = True,
+        content_filter=None,
+        **kwargs,
     ) -> str:
         """
         Extract text from this element.
@@ -291,6 +297,18 @@ class TextElement(Element):
         # element extraction is stripped by default.
         if strip:
             result = result.strip()
+
+        # Flexible newline handling
+        if isinstance(newlines, bool):
+            if newlines is False:
+                replacement = " "  # single space when False
+            else:
+                replacement = None  # keep as-is when True
+        else:
+            replacement = str(newlines)
+
+        if replacement is not None:
+            result = result.replace("\n", replacement).replace("\r", replacement)
 
         return result
 

@@ -423,7 +423,33 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         # Check for other pseudo-class blocks `:name` or `:name(...)`
         pseudo_match = pseudo_pattern.match(selector)
         if pseudo_match:
+            # --- NEW: robustly capture arguments that may contain nested parentheses --- #
             name, args_str = pseudo_match.groups()
+            match_end_idx = pseudo_match.end()
+
+            # If the args_str contains unmatched opening parens, continue scanning the
+            # selector until parentheses are balanced. This allows patterns like
+            # :contains((Tre) Ofertu) or complex regex with grouping.
+            if args_str is not None and args_str.count("(") > args_str.count(")"):
+                balance = args_str.count("(") - args_str.count(")")
+                i = match_end_idx
+                while i < len(selector) and balance > 0:
+                    char = selector[i]
+                    # Append char to args_str as we extend the capture
+                    args_str += char
+                    if char == "(":
+                        balance += 1
+                    elif char == ")":
+                        balance -= 1
+                    i += 1
+                # After loop, ensure parentheses are balanced; otherwise raise error
+                if balance != 0:
+                    raise ValueError(
+                        f"Mismatched parentheses in pseudo-class :{name}(). Full selector: '{original_selector_for_error}'"
+                    )
+                # Update where the selector should be sliced off from
+                match_end_idx = i
+
             name = name.lower()  # Normalize pseudo-class name
             processed_args = args_str  # Keep as string initially, or None
 
@@ -436,7 +462,8 @@ def parse_selector(selector: str) -> Dict[str, Any]:
             # else: args remain None
 
             result["pseudo_classes"].append({"name": name, "args": processed_args})
-            selector = selector[pseudo_match.end() :].strip()
+            # IMPORTANT: use match_end_idx (may have been extended)
+            selector = selector[match_end_idx:].strip()
             processed_chunk = True
             continue
 

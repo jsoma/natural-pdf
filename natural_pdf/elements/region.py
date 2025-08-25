@@ -1229,7 +1229,13 @@ class Region(
             return [e for e in page_elements if self._is_element_in_region(e)]
 
     def extract_text(
-        self, apply_exclusions=True, debug=False, content_filter=None, **kwargs
+        self,
+        apply_exclusions: bool = True,
+        debug: bool = False,
+        *,
+        newlines: Union[bool, str] = True,
+        content_filter=None,
+        **kwargs,
     ) -> str:
         """
         Extract text from this region, respecting page exclusions and using pdfplumber's
@@ -1238,6 +1244,7 @@ class Region(
         Args:
             apply_exclusions: Whether to apply exclusion regions defined on the parent page.
             debug: Enable verbose debugging output for filtering steps.
+            newlines: Whether to strip newline characters from the extracted text.
             content_filter: Optional content filter to exclude specific text patterns. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
@@ -1310,6 +1317,18 @@ class Region(
             layout_context_bbox=self.bbox,  # Use region's bbox for context
             user_kwargs=final_kwargs,  # Pass kwargs including content_filter
         )
+
+        # Flexible newline handling (same logic as TextElement)
+        if isinstance(newlines, bool):
+            if newlines is False:
+                replacement = " "
+            else:
+                replacement = None
+        else:
+            replacement = str(newlines)
+
+        if replacement is not None:
+            result = result.replace("\n", replacement).replace("\r", replacement)
 
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result

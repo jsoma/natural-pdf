@@ -1902,13 +1902,87 @@ class ElementCollection(
 
         return ElementCollection(all_found_elements)
 
-    def extract_each_text(self, **kwargs) -> List[str]:
+    def extract_each_text(
+        self,
+        order: Optional[Union[str, Callable[[T], Any]]] = None,
+        *,
+        newlines: bool = True,
+        **kwargs,
+    ) -> List[str]:
+        """Return a list with the extracted text for every element.
+
+        Parameters
+        ----------
+        order
+            Controls the ordering of elements **before** extraction:
+
+            * ``None`` (default) – keep the collection's current order.
+            * ``callable`` – a function that will be used as ``key`` for :pyfunc:`sorted`.
+            * ``"ltr"`` – left-to-right ordering (x0, then y-top).
+            * ``"rtl"`` – right-to-left ordering (−x0, then y-top).
+            * ``"natural"`` – natural reading order (y-top, then x0).
+
+        Remaining keyword arguments are forwarded to each element's
+        :py:meth:`extract_text` method.
         """
-        Extract text from each element in this region.
-        """
-        return self.apply(
-            lambda element: element.extract_text(**kwargs) if element is not None else None
-        )
+
+        # -- Determine ordering --------------------------------------------------
+        elements: List[T] = list(self._elements)  # make a shallow copy we can sort
+
+        if order is not None and len(elements) > 1:
+            try:
+                if callable(order):
+                    elements.sort(key=order)
+                elif isinstance(order, str):
+                    preset = order.lower()
+                    if preset in {"ltr", "left-to-right"}:
+                        elements.sort(
+                            key=lambda el: (
+                                (
+                                    getattr(el, "page", None).index
+                                    if hasattr(el, "page") and el.page
+                                    else 0
+                                ),
+                                getattr(el, "x0", 0),
+                                getattr(el, "top", 0),
+                            )
+                        )
+                    elif preset in {"rtl", "right-to-left"}:
+                        elements.sort(
+                            key=lambda el: (
+                                (
+                                    getattr(el, "page", None).index
+                                    if hasattr(el, "page") and el.page
+                                    else 0
+                                ),
+                                -getattr(el, "x0", 0),
+                                getattr(el, "top", 0),
+                            )
+                        )
+                    elif preset in {"natural", "tdlr", "top-down"}:
+                        elements.sort(
+                            key=lambda el: (
+                                (
+                                    getattr(el, "page", None).index
+                                    if hasattr(el, "page") and el.page
+                                    else 0
+                                ),
+                                getattr(el, "top", 0),
+                                getattr(el, "x0", 0),
+                            )
+                        )
+                    else:
+                        # Unknown preset – silently ignore to keep original order
+                        pass
+            except Exception:
+                # If anything goes wrong, fall back to original order
+                pass
+
+        # -- Extract ----------------------------------------------------------------
+        return [
+            el.extract_text(newlines=newlines, **kwargs) if el is not None else None  # type: ignore[arg-type]
+            for el in elements
+        ]
 
     def correct_ocr(
         self,
@@ -2673,10 +2747,17 @@ class ElementCollection(
         else:
             v_dist = 0  # Vertically overlapping
 
-        # Use Chebyshev distance (max of horizontal and vertical)
-        # This creates a square proximity zone
-        distance = max(h_dist, v_dist)
+        # ------------------------------------------------------------------
+        # Decide connection logic based on vertical_gap parameter
+        # ------------------------------------------------------------------
+        if vertical_gap is not None:
+            # Consider elements connected when they vertically stack within
+            # the allowed gap **and** have some horizontal overlap
+            horizontal_overlap = not (h_dist > 0)
+            return horizontal_overlap and v_dist <= vertical_gap
 
+        # Fallback to legacy Chebyshev distance using ``threshold``
+        distance = max(h_dist, v_dist)
         return distance <= threshold
 
     def _merge_region_group(
@@ -2752,6 +2833,9 @@ class ElementCollection(
     def dissolve(
         self,
         padding: float = 2.0,
+        *,
+        vertical_gap: Optional[float] = None,
+        vertical: Optional[bool] = False,
         geometry: Literal["rect", "polygon"] = "rect",
         group_by: List[str] = None,
     ) -> "ElementCollection":
@@ -2764,8 +2848,19 @@ class ElementCollection(
         bounding boxes.
 
         Args:
-            padding: Maximum distance in points between elements to consider
-                them connected. Default is 2.0 points.
+            padding: Maximum chebyshev distance (in any direction) between
+                elements to consider them connected **when ``vertical_gap`` is
+                not provided**. Default 2.0 pt.
+
+            vertical_gap: If given, switches to *stack-aware* dissolve:
+                two elements are connected when their horizontal projections
+                overlap (any amount) **and** the vertical distance between them
+                is ≤ ``vertical_gap``.  This lets you combine multi-line labels
+                that share the same column but have blank space between lines.
+
+            vertical: If given, automatically sets vertical_gap to maximum to
+                allow for easy vertical stacking.
+
             geometry: Type of geometry to use for merged regions. Currently only
                 "rect" (bounding box) is supported. "polygon" will raise
                 NotImplementedError.
@@ -2807,6 +2902,9 @@ class ElementCollection(
         if geometry not in ["rect", "polygon"]:
             raise ValueError(f"Invalid geometry type: {geometry}. Must be 'rect' or 'polygon'")
 
+        if vertical:
+            vertical_gap = float("inf")
+
         from natural_pdf.elements.region import Region
 
         # Filter to elements with bbox (all elements that can be dissolved)
@@ -2835,7 +2933,9 @@ class ElementCollection(
             logger.debug(f"Processing group {group_key} with {len(group_elements)} elements")
 
             # Find connected components within this group
-            components = self._find_connected_components_elements(group_elements, padding)
+            components = self._find_connected_components_elements(
+                group_elements, padding, vertical_gap
+            )
 
             # Merge each component
             for component_elements in components:
@@ -2894,7 +2994,7 @@ class ElementCollection(
         return groups
 
     def _find_connected_components_elements(
-        self, elements: List["Element"], padding: float
+        self, elements: List["Element"], padding: float, vertical_gap: Optional[float] = None
     ) -> List[List["Element"]]:
         """Find connected components among elements using union-find."""
         if not elements:
@@ -2919,7 +3019,7 @@ class ElementCollection(
         # Check all pairs of elements for connectivity
         for i in range(len(elements)):
             for j in range(i + 1, len(elements)):
-                if self._are_elements_connected(elements[i], elements[j], padding):
+                if self._are_elements_connected(elements[i], elements[j], padding, vertical_gap):
                     union(i, j)
 
         # Group elements by their connected component
@@ -3004,7 +3104,9 @@ class ElementCollection(
 
         return merged_region
 
-    def _are_elements_connected(self, elem1: "Element", elem2: "Element", threshold: float) -> bool:
+    def _are_elements_connected(
+        self, elem1: "Element", elem2: "Element", threshold: float, vertical_gap: float | None
+    ) -> bool:
         """Check if two elements are connected (adjacent or overlapping)."""
         # Check if elements are on the same page
         # Handle edge cases where elements might not have a page attribute
@@ -3056,6 +3158,12 @@ class ElementCollection(
         # Use Chebyshev distance (max of horizontal and vertical)
         # This creates a square proximity zone
         distance = max(h_dist, v_dist)
+
+        if vertical_gap is not None:
+            # 1. vertical distance ≤ vertical_gap
+            # 2. horizontal ranges overlap OR touch
+            h_overlap = (min(x1_1, x1_2) - max(x0_1, x0_2)) >= 0
+            return h_overlap and v_dist <= vertical_gap
 
         return distance <= threshold
 
@@ -3163,3 +3271,30 @@ class ElementCollection(
         return self
 
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Public alias: combine
+    # ------------------------------------------------------------------
+    def combine(
+        self,
+        padding: float = 2.0,
+        *,
+        vertical_gap: Optional[float] = None,
+        vertical: Optional[bool] = False,
+        geometry: Literal["rect", "polygon"] = "rect",
+        group_by: List[str] = None,
+    ) -> "ElementCollection":
+        """Alias for :py:meth:`dissolve` – retained for discoverability.
+
+        Many users find the verb *combine* more intuitive than *dissolve* when
+        merging nearby or stacked elements into unified Regions.  The parameters
+        are identical; see :py:meth:`dissolve` for full documentation.
+        """
+
+        return self.dissolve(
+            padding=padding,
+            vertical_gap=vertical_gap,
+            vertical=vertical,
+            geometry=geometry,
+            group_by=group_by,
+        )

@@ -106,7 +106,7 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
-        offset: float = 0.1,
+        offset: float = 0.0,
         **kwargs,
     ) -> "Region":
         """
