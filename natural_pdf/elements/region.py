@@ -738,6 +738,9 @@ class Region(
             and self.bottom > element.top
         )
 
+    def exclude(self):
+        self.page.add_exclusion(self)
+
     def highlight(
         self,
         label: Optional[str] = None,

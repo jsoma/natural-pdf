@@ -888,6 +888,9 @@ class ElementCollection(
         self._elements.sort(key=key, reverse=reverse)
         return self
 
+    def exclude(self):
+        self.page.add_exclusion(self)
+
     def highlight(
         self,
         label: Optional[str] = None,

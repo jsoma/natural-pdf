@@ -1209,6 +1209,9 @@ class Element(
 
         return self
 
+    def exclude(self):
+        self.page.add_exclusion(self)
+
     def _get_render_specs(
         self,
         mode: Literal["show", "render"] = "show",
