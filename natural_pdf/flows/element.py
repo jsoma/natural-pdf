@@ -106,6 +106,7 @@ class FlowElement:
         cross_size_absolute: Optional[float] = None,
         cross_alignment: str = "center",  # "start", "center", "end"
         until: Optional[str] = None,
+        include_source: bool = False,
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegion":
@@ -178,13 +179,9 @@ class FlowElement:
             is_forward = False
             segment_iterator = range(start_segment_index, -1, -1)
         elif direction == "right":
-            if is_primary_vertical:
-                raise NotImplementedError("'right' is for horizontal flows.")
             is_forward = True
             segment_iterator = range(start_segment_index, len(self.flow.segments))
         elif direction == "left":
-            if is_primary_vertical:
-                raise NotImplementedError("'left' is for horizontal flows.")
             is_forward = False
             segment_iterator = range(start_segment_index, -1, -1)
         else:
@@ -206,28 +203,34 @@ class FlowElement:
                 "direction": direction,
                 "until": until,
                 "include_endpoint": include_endpoint,
+                "include_source": include_source,
                 **kwargs,
             }
 
-            # --- Cross-size logic: Default to "full" if no specific ratio or absolute is given ---
+            # --- Cross-size logic: Default based on direction ---
             cross_size_for_op: Union[str, float]
             if cross_size_absolute is not None:
                 cross_size_for_op = cross_size_absolute
             elif cross_size_ratio is not None:  # User explicitly provided a ratio
+                # Cross dimension depends on direction, not flow arrangement
                 base_cross_dim = (
                     self.physical_object.width
-                    if is_primary_vertical
+                    if direction in ["above", "below"]
                     else self.physical_object.height
                 )
                 cross_size_for_op = base_cross_dim * cross_size_ratio
-            else:  # Default case: neither absolute nor ratio provided, so use "full"
-                cross_size_for_op = "full"
+            else:  # Default case: neither absolute nor ratio provided
+                # Default to element size for left/right, full for above/below
+                if direction in ["left", "right"]:
+                    cross_size_for_op = self.physical_object.height
+                else:
+                    cross_size_for_op = "full"
             op_direction_params["cross_size"] = cross_size_for_op
 
             if current_segment_idx == start_segment_index:
                 op_source = self.physical_object
                 op_direction_params["size"] = remaining_size if size is not None else None
-                op_direction_params["include_source"] = False
+                op_direction_params["include_source"] = include_source
 
                 source_for_op_call = op_source
                 if not isinstance(source_for_op_call, PhysicalRegion_Class):
@@ -245,7 +248,7 @@ class FlowElement:
                     "size": remaining_size if size is not None else None,
                     "cross_size": cross_size_for_op,
                     "cross_alignment": cross_alignment,  # Pass alignment
-                    "include_source": False,
+                    "include_source": include_source,
                     # Pass other relevant kwargs if Region._direction uses them (e.g. strict_type)
                     **{k: v for k, v in kwargs.items() if k in ["strict_type", "first_match_only"]},
                 }
@@ -283,7 +286,7 @@ class FlowElement:
                         if potential_hit:
                             boundary_element_hit = potential_hit  # Set the overall boundary flag
                             # Adjust segment_contribution to stop at this boundary_element_hit.
-                            if is_primary_vertical:
+                            if direction in ["below", "above"]:
                                 if direction == "below":
                                     edge = (
                                         boundary_element_hit.bottom
@@ -300,7 +303,7 @@ class FlowElement:
                                     bottom=edge if direction == "below" else None,
                                     top=edge if direction == "above" else None,
                                 )
-                            else:
+                            else:  # direction in ["right", "left"]
                                 if direction == "right":
                                     edge = (
                                         boundary_element_hit.x1
@@ -338,7 +341,7 @@ class FlowElement:
 
                         if potential_hit:
                             boundary_element_hit = potential_hit
-                            if is_primary_vertical:
+                            if direction in ["below", "above"]:
                                 if direction == "below":
                                     edge = (
                                         boundary_element_hit.bottom
@@ -355,7 +358,7 @@ class FlowElement:
                                     bottom=edge if direction == "below" else None,
                                     top=edge if direction == "above" else None,
                                 )
-                            else:
+                            else:  # direction in ["right", "left"]
                                 if direction == "right":
                                     edge = (
                                         boundary_element_hit.x1
@@ -381,7 +384,7 @@ class FlowElement:
                 and size is not None
             ):
                 current_part_consumed_size = 0.0
-                if is_primary_vertical:
+                if direction in ["below", "above"]:
                     current_part_consumed_size = segment_contribution.height
                     if current_part_consumed_size > remaining_size:
                         new_edge = (
@@ -394,7 +397,7 @@ class FlowElement:
                             top=new_edge if not is_forward else None,
                         )
                         current_part_consumed_size = remaining_size
-                else:
+                else:  # direction in ["left", "right"]
                     current_part_consumed_size = segment_contribution.width
                     if current_part_consumed_size > remaining_size:
                         new_edge = (
@@ -451,6 +454,7 @@ class FlowElement:
         width_absolute: Optional[float] = None,
         width_alignment: str = "center",
         until: Optional[str] = None,
+        include_source: bool = False,
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegion":  # Stringized
@@ -462,6 +466,7 @@ class FlowElement:
                 cross_size_absolute=width_absolute,
                 cross_alignment=width_alignment,
                 until=until,
+                include_source=include_source,
                 include_endpoint=include_endpoint,
                 **kwargs,
             )
@@ -477,6 +482,7 @@ class FlowElement:
         width_absolute: Optional[float] = None,
         width_alignment: str = "center",
         until: Optional[str] = None,
+        include_source: bool = False,
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegion":  # Stringized
@@ -488,6 +494,7 @@ class FlowElement:
                 cross_size_absolute=width_absolute,
                 cross_alignment=width_alignment,
                 until=until,
+                include_source=include_source,
                 include_endpoint=include_endpoint,
                 **kwargs,
             )
@@ -503,24 +510,21 @@ class FlowElement:
         height_absolute: Optional[float] = None,
         height_alignment: str = "center",
         until: Optional[str] = None,
+        include_source: bool = False,
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegion":  # Stringized
-        if self.flow.arrangement == "horizontal":
-            return self._flow_direction(
-                direction="left",
-                size=width,
-                cross_size_ratio=height_ratio,
-                cross_size_absolute=height_absolute,
-                cross_alignment=height_alignment,
-                until=until,
-                include_endpoint=include_endpoint,
-                **kwargs,
-            )
-        else:
-            raise NotImplementedError(
-                "'left' in a vertical flow is ambiguous with current 1D flow logic and not yet implemented."
-            )
+        return self._flow_direction(
+            direction="left",
+            size=width,
+            cross_size_ratio=height_ratio,
+            cross_size_absolute=height_absolute,
+            cross_alignment=height_alignment,
+            until=until,
+            include_source=include_source,
+            include_endpoint=include_endpoint,
+            **kwargs,
+        )
 
     def right(
         self,
@@ -529,24 +533,21 @@ class FlowElement:
         height_absolute: Optional[float] = None,
         height_alignment: str = "center",
         until: Optional[str] = None,
+        include_source: bool = False,
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegion":  # Stringized
-        if self.flow.arrangement == "horizontal":
-            return self._flow_direction(
-                direction="right",
-                size=width,
-                cross_size_ratio=height_ratio,
-                cross_size_absolute=height_absolute,
-                cross_alignment=height_alignment,
-                until=until,
-                include_endpoint=include_endpoint,
-                **kwargs,
-            )
-        else:
-            raise NotImplementedError(
-                "'right' in a vertical flow is ambiguous with current 1D flow logic and not yet implemented."
-            )
+        return self._flow_direction(
+            direction="right",
+            size=width,
+            cross_size_ratio=height_ratio,
+            cross_size_absolute=height_absolute,
+            cross_alignment=height_alignment,
+            until=until,
+            include_source=include_source,
+            include_endpoint=include_endpoint,
+            **kwargs,
+        )
 
     def __repr__(self) -> str:
         return f"<FlowElement for {self.physical_object.__class__.__name__} {self.bbox} in {self.flow}>"
