@@ -235,3 +235,136 @@ inspection_date_value = (
 ```
 
 Because each call returns an element, **you never lose the spatial context** – you can always add another `.below()` or `.nearest()` later.
+
+## Enhanced Region Expansion with .expand()
+
+The `.expand()` method provides a flexible way to create regions by expanding from an element in multiple directions at once. It supports various expansion modes that can be mixed and matched:
+
+### Expansion Modes
+
+1. **Boolean (True)**: Expand to the page edge
+2. **Number**: Expand by a fixed number of pixels
+3. **String (selector)**: Expand until finding an element (exclude by default)
+4. **String with '+' prefix**: Expand until finding an element and include it
+
+### Basic Examples
+
+```python
+# Find a label element as our starting point
+statute = page.find('text:contains("Statute")')
+
+# Expand to page edges
+full_width = statute.expand(left=True, right=True)
+full_width.show(color="blue", label="Full Width")
+
+# Fixed pixel expansion
+padded = statute.expand(10)  # 10px in all directions
+padded_custom = statute.expand(left=20, right=50, top=5, bottom=5)
+
+# Expand until selectors
+# This expands right until finding "Repeat?" but doesn't include it
+field_region = statute.expand(right='text:contains("Repeat?")')
+field_region.show(color="green", label="Until Repeat (excluded)")
+
+# Use '+' prefix to include the endpoint
+field_with_end = statute.expand(right='+text:contains("Repeat?")')
+field_with_end.show(color="purple", label="Through Repeat (included)")
+```
+
+### Mixed Mode Example
+
+The real power comes from combining different expansion modes:
+
+```python
+# Find a form field label
+label = page.find('text:contains("Site:")')
+
+# Create a complex region using multiple modes
+form_field = label.expand(
+    left='+text:contains("Site:")',     # Include the label itself
+    right='text:contains("Date:")',     # Until next field (exclude)
+    top=5,                              # 5px padding above
+    bottom=True                         # Extend to page bottom
+)
+
+form_field.show(color="orange", label="Complex Region")
+form_field.extract_text()
+```
+
+### Extracting Table Rows
+
+The enhanced expand() is particularly useful for extracting table data:
+
+```python
+# Find table headers
+statute_header = page.find('text:contains("Statute")')
+repeat_header = page.find('text:contains("Repeat?")')
+
+# Extract the entire first row
+first_row = statute_header.expand(
+    left=True,                          # Full table width
+    right=True,
+    bottom=20                           # Approximate row height
+)
+
+# Or extract just the data between columns
+statute_data = statute_header.expand(
+    right='text:contains("Repeat?")',   # Stop at next column
+    bottom=100                          # Cover multiple rows
+)
+
+statute_data.show(color="cyan", label="Statute Column")
+statute_data.extract_text()
+```
+
+### Form Field Extraction Pattern
+
+A common pattern is to extract labeled form fields:
+
+```python
+# Find all field labels (ending with colon)
+labels = page.find_all('text:contains(":")')
+
+# Extract each field with its label and value
+fields = {}
+for label in labels[:5]:  # First 5 fields
+    # Expand to include both label and value
+    field_region = label.expand(
+        left='+text',                    # Include the label
+        right='text:contains(":")',      # Until next label
+        top=2,                          # Small padding
+        bottom=2
+    )
+
+    # Extract and clean the text
+    text = field_region.extract_text().strip()
+    if ':' in text:
+        key, value = text.split(':', 1)
+        fields[key.strip()] = value.strip()
+
+fields
+```
+
+### Comparison with Directional Methods
+
+While `.right()`, `.left()`, etc. are great for navigation (finding regions in a direction), `.expand()` is better when you want to:
+
+1. **Expand in multiple directions at once**
+2. **Mix different expansion types** (pixels, selectors, page edges)
+3. **Create regions that include the source element**
+
+```python
+# Navigation approach (excludes source)
+region = element.right(until='text:contains("End")')
+
+# Expansion approach (includes source)
+region = element.expand(right='text:contains("End")')
+
+# Multi-directional expansion (not possible with navigation methods)
+region = element.expand(
+    left=True,                         # To page edge
+    right='text:contains("End")',      # Until element
+    top=10,                           # Fixed pixels
+    bottom='+text:contains("Footer")'  # Through element
+)
+```

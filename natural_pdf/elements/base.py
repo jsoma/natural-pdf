@@ -459,10 +459,10 @@ class DirectionalMixin:
     def expand(
         self,
         *,
-        left: float = 0,
-        right: float = 0,
-        top: float = 0,
-        bottom: float = 0,
+        left: Union[float, bool, str] = 0,
+        right: Union[float, bool, str] = 0,
+        top: Union[float, bool, str] = 0,
+        bottom: Union[float, bool, str] = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
     ) -> "Region":
@@ -472,10 +472,10 @@ class DirectionalMixin:
     def expand(
         self,
         amount: Optional[float] = None,
-        left: float = 0,
-        right: float = 0,
-        top: float = 0,
-        bottom: float = 0,
+        left: Union[float, bool, str] = 0,
+        right: Union[float, bool, str] = 0,
+        top: Union[float, bool, str] = 0,
+        bottom: Union[float, bool, str] = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
     ) -> "Region":
@@ -484,10 +484,13 @@ class DirectionalMixin:
 
         Args:
             amount: If provided as the first positional argument, expand all edges by this amount
-            left: Amount to expand left edge (positive value expands leftwards)
-            right: Amount to expand right edge (positive value expands rightwards)
-            top: Amount to expand top edge (positive value expands upwards)
-            bottom: Amount to expand bottom edge (positive value expands downwards)
+            left: Amount to expand left edge:
+                - float: Fixed pixel expansion
+                - True: Expand to page edge
+                - str: Selector to expand until (excludes target by default, prefix with '+' to include)
+            right: Amount to expand right edge (same options as left)
+            top: Amount to expand top edge (same options as left)
+            bottom: Amount to expand bottom edge (same options as left)
             width_factor: Factor to multiply width by (applied after absolute expansion)
             height_factor: Factor to multiply height by (applied after absolute expansion)
 
@@ -501,31 +504,115 @@ class DirectionalMixin:
             # Expand by different amounts in each direction
             expanded = element.expand(left=10, right=5, top=3, bottom=7)
 
+            # Expand to page edges
+            expanded = element.expand(left=True, right=True)  # Full width
+
+            # Expand until specific elements
+            statute = page.find('text:contains("Statute")')
+            expanded = statute.expand(right='text:contains("Repeat?")')  # Excludes "Repeat?"
+            expanded = statute.expand(right='+text:contains("Repeat?")')  # Includes "Repeat?"
+
             # Use width/height factors
             expanded = element.expand(width_factor=1.5, height_factor=2.0)
         """
         # If amount is provided as first positional argument, use it for all directions
         if amount is not None:
             left = right = top = bottom = amount
-        # Start with current coordinates
-        new_x0 = self.x0
-        new_x1 = self.x1
-        new_top = self.top
-        new_bottom = self.bottom
 
-        # Apply absolute expansions first
-        new_x0 -= left
-        new_x1 += right
-        new_top -= top  # Expand upward (decrease top coordinate)
-        new_bottom += bottom  # Expand downward (increase bottom coordinate)
+        # Helper function to process expansion values
+        def process_expansion(value, direction):
+            """Process expansion value and return the new coordinate."""
+            is_horizontal = direction in ("left", "right")
+            is_positive = direction in ("right", "bottom")
+
+            # Get current bounds
+            if is_horizontal:
+                current_edge = self.x1 if is_positive else self.x0
+                page_limit = self.page.width if is_positive else 0
+            else:
+                current_edge = self.bottom if is_positive else self.top
+                page_limit = self.page.height if is_positive else 0
+
+            # Handle boolean True - expand to page edge
+            if value is True:
+                return page_limit
+
+            # Handle numeric values - fixed pixel expansion
+            elif isinstance(value, (int, float)):
+                if is_positive:
+                    return current_edge + value
+                else:
+                    return current_edge - value
+
+            # Handle string selectors
+            elif isinstance(value, str):
+                # Check if we should include the endpoint
+                include_endpoint = value.startswith("+")
+                selector = value[1:] if include_endpoint else value
+
+                # Find all matching elements
+                matches = self.page.find_all(selector)
+                if not matches:
+                    # No match found, return current edge
+                    return current_edge
+
+                # Filter matches based on direction
+                if direction == "left":
+                    # Find elements to the left
+                    candidates = [m for m in matches if m.x1 <= self.x0]
+                    if candidates:
+                        # Sort by x1 descending (rightmost edge of candidates)
+                        candidates.sort(key=lambda e: e.x1, reverse=True)
+                        target = candidates[0]
+                        return target.x0 if include_endpoint else target.x1
+
+                elif direction == "right":
+                    # Find elements to the right
+                    candidates = [m for m in matches if m.x0 >= self.x1]
+                    if candidates:
+                        # Sort by x0 ascending (leftmost edge of candidates)
+                        candidates.sort(key=lambda e: e.x0)
+                        target = candidates[0]
+                        return target.x1 if include_endpoint else target.x0
+
+                elif direction == "top":
+                    # Find elements above
+                    candidates = [m for m in matches if m.bottom <= self.top]
+                    if candidates:
+                        # Sort by bottom descending (bottom edge of candidates)
+                        candidates.sort(key=lambda e: e.bottom, reverse=True)
+                        target = candidates[0]
+                        return target.top if include_endpoint else target.bottom
+
+                elif direction == "bottom":
+                    # Find elements below
+                    candidates = [m for m in matches if m.top >= self.bottom]
+                    if candidates:
+                        # Sort by top ascending (top edge of candidates)
+                        candidates.sort(key=lambda e: e.top)
+                        target = candidates[0]
+                        return target.bottom if include_endpoint else target.top
+
+                # No matching element found in the specified direction
+                return current_edge
+
+            else:
+                # Invalid value type, return current edge
+                return current_edge
+
+        # Process each direction
+        new_x0 = process_expansion(left, "left") if left else self.x0
+        new_x1 = process_expansion(right, "right") if right else self.x1
+        new_top = process_expansion(top, "top") if top else self.top
+        new_bottom = process_expansion(bottom, "bottom") if bottom else self.bottom
 
         # Apply percentage factors if provided
         if width_factor != 1.0 or height_factor != 1.0:
-            # Calculate center point *after* absolute expansion
+            # Calculate center point *after* expansion
             center_x = (new_x0 + new_x1) / 2
             center_y = (new_top + new_bottom) / 2
 
-            # Calculate current width and height *after* absolute expansion
+            # Calculate current width and height *after* expansion
             current_width = new_x1 - new_x0
             current_height = new_bottom - new_top
 
