@@ -67,9 +67,10 @@ def test_highlight_detection_comprehensive():
         # Highlighted text might have a color
         color = elem.highlight_color
         if color is not None:
+            # Due to pdfminer.six bug, colors can be float (grayscale) or tuple (RGB)
             assert isinstance(
-                color, (tuple, list)
-            ), f"highlight_color should be tuple/list, got {type(color)}"
+                color, (tuple, list, float)
+            ), f"highlight_color should be tuple/list/float, got {type(color)}"
 
 
 def test_highlight_selector():

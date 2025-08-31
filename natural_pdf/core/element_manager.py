@@ -1286,6 +1286,10 @@ class ElementManager:
 
             fill_col = rc.get("non_stroking_color")
             # We keep colour as metadata but no longer filter on it
+            # Note: pdfminer.six has a bug where it may report incorrect colors
+            # when no explicit color space is set. E.g., '1 1 0 sc' (RGB yellow)
+            # is parsed as 0.0 (grayscale black) because pdfminer defaults to
+            # DeviceGray and only reads 1 component from the stack.
             if fill_col is None:
                 continue
 

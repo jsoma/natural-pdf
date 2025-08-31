@@ -272,17 +272,12 @@ def _get_columns_for_type(element_type: str, show_page_column: bool) -> List[str
                 "font_family",
                 "font_variant",
                 "size",
-                "bold",
-                "italic",
-                "strike",
-                "underline",
-                "highlight",
+                "styles",
                 "source",
                 "confidence",
+                "color",
             ]
         )
-        # Add foreground text colour too
-        columns.append("color")
     elif element_type == "rect":
         columns = base_columns + ["width", "height", "stroke", "fill", "stroke_width"]
     elif element_type == "line":
@@ -357,6 +352,52 @@ def _extract_element_value(element: "Element", column: str) -> Any:
                         return str(col_val)
                 return str(col_val)
             return ""
+
+        elif column == "styles":
+            # Collect all active text decorations
+            styles = []
+
+            if getattr(element, "bold", False):
+                styles.append("bold")
+            if getattr(element, "italic", False):
+                styles.append("italic")
+            if getattr(element, "strike", False):
+                styles.append("strike")
+            if getattr(element, "underline", False):
+                styles.append("underline")
+
+            # Handle highlight specially - include color if not default yellow
+            if getattr(element, "is_highlighted", False):
+                highlight_color = getattr(element, "highlight_color", None)
+                if highlight_color is not None:
+                    # Convert color to hex if needed
+                    if isinstance(highlight_color, (tuple, list)) and len(highlight_color) >= 3:
+                        try:
+                            r, g, b = [
+                                int(v * 255) if v <= 1 else int(v) for v in highlight_color[:3]
+                            ]
+                            hex_color = f"#{r:02x}{g:02x}{b:02x}"
+                            styles.append(f"highlight({hex_color})")
+                        except Exception:
+                            styles.append("highlight")
+                    elif isinstance(highlight_color, (int, float)):
+                        # Grayscale value
+                        try:
+                            gray = (
+                                int(highlight_color * 255)
+                                if highlight_color <= 1
+                                else int(highlight_color)
+                            )
+                            hex_color = f"#{gray:02x}{gray:02x}{gray:02x}"
+                            styles.append(f"highlight({hex_color})")
+                        except Exception:
+                            styles.append("highlight")
+                    else:
+                        styles.append("highlight")
+                else:
+                    styles.append("highlight")
+
+            return ", ".join(styles) if styles else ""
 
         elif column in ["stroke", "fill", "color"]:
             value = getattr(element, column, None)

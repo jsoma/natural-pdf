@@ -459,9 +459,11 @@ class TextElement(Element):
     @property
     def highlight_color(self):
         """Return RGB(A) tuple of highlight colour if stored."""
-        return self._obj.get("highlight_color") or self.metadata.get("decoration", {}).get(
-            "highlight_color"
-        )
+        # Check _obj first, being careful with falsy values like 0.0
+        if "highlight_color" in self._obj:
+            return self._obj["highlight_color"]
+        # Fall back to metadata
+        return self.metadata.get("decoration", {}).get("highlight_color")
 
     def __repr__(self) -> str:
         """String representation of the text element."""

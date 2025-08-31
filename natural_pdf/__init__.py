@@ -70,6 +70,14 @@ options = Options()
 # Version
 __version__ = "0.1.1"
 
+# Apply pdfminer patches for known bugs
+try:
+    from natural_pdf.utils.pdfminer_patches import apply_patches
+
+    apply_patches()
+except Exception as e:
+    logger.warning(f"Failed to apply pdfminer patches: {e}")
+
 from natural_pdf.analyzers.guides import Guides
 from natural_pdf.core.page import Page
 from natural_pdf.core.page_collection import PageCollection
