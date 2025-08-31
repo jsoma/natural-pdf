@@ -30,6 +30,7 @@ This enables powerful document navigation like:
 import ast
 import logging
 import re
+from collections import Counter
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from colormath2.color_conversions import convert_color
@@ -84,6 +85,47 @@ def safe_parse_value(value_str: str) -> Any:
     except (SyntaxError, ValueError):
         # If it's not a valid Python literal, return as is
         return value_str
+
+
+def _parse_aggregate_function(value_str: str) -> Optional[Dict[str, Any]]:
+    """Parse aggregate function syntax like min(), max(), avg(), closest("red").
+
+    Returns:
+        Dict with 'type': 'aggregate', 'func': function name, 'args': optional args
+        or None if not an aggregate function.
+    """
+    value_str = value_str.strip()
+
+    # Pattern for aggregate functions: funcname() or funcname(args)
+    # Supports: min(), max(), avg(), mean(), median(), mode(), most_common(), closest(...)
+    func_pattern = re.match(
+        r"^(min|max|avg|mean|median|mode|most_common|closest)\s*\((.*?)\)$",
+        value_str,
+        re.IGNORECASE,
+    )
+
+    if not func_pattern:
+        return None
+
+    func_name = func_pattern.group(1).lower()
+    args_str = func_pattern.group(2).strip()
+
+    # Normalize function aliases
+    if func_name == "mean":
+        func_name = "avg"
+    elif func_name == "most_common":
+        func_name = "mode"
+
+    # Parse arguments if present
+    args = None
+    if args_str:
+        # For closest(), parse the color argument
+        if func_name == "closest":
+            args = safe_parse_color(args_str)
+        else:
+            args = safe_parse_value(args_str)
+
+    return {"type": "aggregate", "func": func_name, "args": args}
 
 
 def safe_parse_color(value_str: str) -> tuple:
@@ -362,9 +404,14 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                     raise ValueError(
                         f"Invalid selector: Attribute '[{name}{op}]' must have a value. Use '[{name}{op}\"\"]' for empty string or '[{name}]' for presence. Full selector: '{original_selector_for_error}'"
                     )
-                # Parse value
+                # Parse value - check for aggregate functions first
                 parsed_value: Any
-                if name in [
+                aggregate_func = _parse_aggregate_function(value_str)
+
+                if aggregate_func:
+                    # Store aggregate function info
+                    parsed_value = aggregate_func
+                elif name in [
                     "color",
                     "non_stroking_color",
                     "fill",
@@ -564,12 +611,15 @@ PSEUDO_CLASS_FUNCTIONS = {
 }
 
 
-def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+def _build_filter_list(
+    selector: Dict[str, Any], aggregates: Optional[Dict[str, Any]] = None, **kwargs
+) -> List[Dict[str, Any]]:
     """
     Convert a parsed selector to a list of named filter functions.
 
     Args:
         selector: Parsed selector dictionary
+        aggregates: Pre-calculated aggregate values (optional)
         **kwargs: Additional filter parameters including:
                  - regex: Whether to use regex for text search
                  - case: Whether to do case-sensitive text search
@@ -580,6 +630,9 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
     """
     filters: List[Dict[str, Any]] = []
     selector_type = selector["type"]
+
+    if aggregates is None:
+        aggregates = {}
 
     # Filter by element type
     if selector_type != "any":
@@ -610,6 +663,15 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
         op = attr_filter["op"]
         value = attr_filter["value"]
         python_name = name.replace("-", "_")  # Convert CSS-style names
+
+        # Check if value is an aggregate function
+        if isinstance(value, dict) and value.get("type") == "aggregate":
+            # Use pre-calculated aggregate value
+            aggregate_value = aggregates.get(name)
+            if aggregate_value is None:
+                # Skip this filter if aggregate couldn't be calculated
+                continue
+            value = aggregate_value
 
         # --- Define the core value retrieval logic ---
         def get_element_value(
@@ -761,15 +823,15 @@ def _build_filter_list(selector: Dict[str, Any], **kwargs) -> List[Dict[str, Any
                 )
 
             # Recursively get the filter function for the inner selector
-            # Pass kwargs down in case regex/case flags affect the inner selector
-            inner_filter_func = selector_to_filter_func(args, **kwargs)
+            # Pass kwargs and aggregates down in case regex/case flags affect the inner selector
+            inner_filter_func = selector_to_filter_func(args, aggregates=aggregates, **kwargs)
 
             # The filter lambda applies the inner function and inverts the result
             filter_lambda = lambda el, inner_func=inner_filter_func: not inner_func(el)
 
             # Try to create a descriptive name (can be long)
             # Maybe simplify this later if needed
-            inner_filter_list = _build_filter_list(args, **kwargs)
+            inner_filter_list = _build_filter_list(args, aggregates=aggregates, **kwargs)
             inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
             filter_name = f"pseudo-class :not({inner_filter_names})"
 
@@ -929,7 +991,113 @@ def _assemble_filter_func(filters: List[Dict[str, Any]]) -> Callable[[Any], bool
     return combined_filter
 
 
-def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any], bool]:
+def _calculate_aggregates(elements: List[Any], selector: Dict[str, Any]) -> Dict[str, Any]:
+    """Calculate aggregate values for a selector.
+
+    Args:
+        elements: List of elements to calculate aggregates from
+        selector: Parsed selector dictionary
+
+    Returns:
+        Dict mapping attribute names to their aggregate values
+    """
+    aggregates = {}
+
+    # Find all aggregate functions in attributes
+    for attr in selector.get("attributes", []):
+        value = attr.get("value")
+        if isinstance(value, dict) and value.get("type") == "aggregate":
+            attr_name = attr["name"]
+            func_name = value["func"]
+            func_args = value.get("args")
+
+            # Extract attribute values from elements
+            values = []
+            for el in elements:
+                try:
+                    # Handle special bbox attributes
+                    if attr_name in ["x0", "y0", "x1", "y1"]:
+                        bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
+                        bbox = getattr(el, "_bbox", None) or getattr(el, "bbox", None)
+                        if bbox:
+                            val = bbox[bbox_mapping[attr_name]]
+                            values.append(val)
+                    else:
+                        # General attribute access
+                        val = getattr(el, attr_name.replace("-", "_"), None)
+                        if val is not None:
+                            values.append(val)
+                except Exception:
+                    continue
+
+            if not values:
+                # No valid values found, aggregate is None
+                aggregates[attr_name] = None
+                continue
+
+            # Calculate aggregate based on function
+            if func_name == "min":
+                aggregates[attr_name] = min(values)
+            elif func_name == "max":
+                aggregates[attr_name] = max(values)
+            elif func_name == "avg":
+                try:
+                    aggregates[attr_name] = sum(values) / len(values)
+                except TypeError:
+                    # Non-numeric values
+                    aggregates[attr_name] = None
+            elif func_name == "median":
+                try:
+                    sorted_values = sorted(values)
+                    n = len(sorted_values)
+                    if n % 2 == 0:
+                        aggregates[attr_name] = (
+                            sorted_values[n // 2 - 1] + sorted_values[n // 2]
+                        ) / 2
+                    else:
+                        aggregates[attr_name] = sorted_values[n // 2]
+                except TypeError:
+                    # Non-numeric values
+                    aggregates[attr_name] = None
+            elif func_name == "mode":
+                # Works for any type
+                counter = Counter(values)
+                most_common = counter.most_common(1)
+                if most_common:
+                    aggregates[attr_name] = most_common[0][0]
+                else:
+                    aggregates[attr_name] = None
+            elif func_name == "closest" and func_args is not None:
+                # For colors, find the value with minimum distance
+                if attr_name in [
+                    "color",
+                    "non_stroking_color",
+                    "fill",
+                    "stroke",
+                    "strokeColor",
+                    "fillColor",
+                ]:
+                    min_distance = float("inf")
+                    closest_value = None
+                    for val in values:
+                        try:
+                            distance = _color_distance(val, func_args)
+                            if distance < min_distance:
+                                min_distance = distance
+                                closest_value = val
+                        except:
+                            continue
+                    aggregates[attr_name] = closest_value
+                else:
+                    # For non-colors, closest doesn't make sense
+                    aggregates[attr_name] = None
+
+    return aggregates
+
+
+def selector_to_filter_func(
+    selector: Dict[str, Any], aggregates: Optional[Dict[str, Any]] = None, **kwargs
+) -> Callable[[Any], bool]:
     """
     Convert a parsed selector to a single filter function.
 
@@ -938,6 +1106,7 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
 
     Args:
         selector: Parsed selector dictionary (single or compound OR selector)
+        aggregates: Pre-calculated aggregate values (optional)
         **kwargs: Additional filter parameters (e.g., regex, case).
 
     Returns:
@@ -953,7 +1122,9 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
         # Create filter functions for each sub-selector
         sub_filter_funcs = []
         for sub_selector in sub_selectors:
-            sub_filter_funcs.append(selector_to_filter_func(sub_selector, **kwargs))
+            sub_filter_funcs.append(
+                selector_to_filter_func(sub_selector, aggregates=aggregates, **kwargs)
+            )
 
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(f"Creating OR filter with {len(sub_filter_funcs)} sub-selectors")
@@ -973,7 +1144,7 @@ def selector_to_filter_func(selector: Dict[str, Any], **kwargs) -> Callable[[Any
         return or_filter
 
     # Handle single selectors (existing logic)
-    filter_list = _build_filter_list(selector, **kwargs)
+    filter_list = _build_filter_list(selector, aggregates=aggregates, **kwargs)
 
     if logger.isEnabledFor(logging.DEBUG):
         filter_names = [f["name"] for f in filter_list]

@@ -30,6 +30,7 @@ from tqdm.auto import tqdm  # Added tqdm import
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.parser import parse_selector
+from natural_pdf.tables.result import TableResult
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 from natural_pdf.utils.visualization import render_plain_page
 
@@ -1245,15 +1246,46 @@ class Page(
         Returns:
             ElementCollection of matching elements (unfiltered by exclusions)
         """
-        from natural_pdf.selectors.parser import selector_to_filter_func
+        from natural_pdf.selectors.parser import _calculate_aggregates, selector_to_filter_func
 
         # Handle compound OR selectors
         if selector_obj.get("type") == "or":
             # For OR selectors, search all elements and let the filter function decide
             elements_to_search = self._element_mgr.get_all_elements()
 
+            # Check if any sub-selector contains aggregate functions
+            has_aggregates = False
+            for sub_selector in selector_obj.get("selectors", []):
+                for attr in sub_selector.get("attributes", []):
+                    value = attr.get("value")
+                    if isinstance(value, dict) and value.get("type") == "aggregate":
+                        has_aggregates = True
+                        break
+                if has_aggregates:
+                    break
+
+            # Calculate aggregates if needed - for OR selectors we calculate on ALL elements
+            aggregates = {}
+            if has_aggregates:
+                # Need to calculate aggregates for each sub-selector type
+                for sub_selector in selector_obj.get("selectors", []):
+                    sub_type = sub_selector.get("type", "any").lower()
+                    if sub_type == "text":
+                        sub_elements = self._element_mgr.words
+                    elif sub_type == "rect":
+                        sub_elements = self._element_mgr.rects
+                    elif sub_type == "line":
+                        sub_elements = self._element_mgr.lines
+                    elif sub_type == "region":
+                        sub_elements = self._element_mgr.regions
+                    else:
+                        sub_elements = elements_to_search
+
+                    sub_aggregates = _calculate_aggregates(sub_elements, sub_selector)
+                    aggregates.update(sub_aggregates)
+
             # Create filter function from compound selector
-            filter_func = selector_to_filter_func(selector_obj, **kwargs)
+            filter_func = selector_to_filter_func(selector_obj, aggregates=aggregates, **kwargs)
 
             # Apply the filter to all elements
             matching_elements = [element for element in elements_to_search if filter_func(element)]
@@ -1309,8 +1341,23 @@ class Page(
         else:
             elements_to_search = self._element_mgr.get_all_elements()
 
+        # Check if selector contains aggregate functions
+        has_aggregates = False
+        for attr in selector_obj.get("attributes", []):
+            value = attr.get("value")
+            if isinstance(value, dict) and value.get("type") == "aggregate":
+                has_aggregates = True
+                break
+
+        # Calculate aggregates if needed
+        aggregates = {}
+        if has_aggregates:
+            # For aggregates, we need to calculate based on ALL elements of the same type
+            # not just the filtered subset
+            aggregates = _calculate_aggregates(elements_to_search, selector_obj)
+
         # Create filter function from selector, passing any additional parameters
-        filter_func = selector_to_filter_func(selector_obj, **kwargs)
+        filter_func = selector_to_filter_func(selector_obj, aggregates=aggregates, **kwargs)
 
         # Apply the filter to matching elements
         matching_elements = [element for element in elements_to_search if filter_func(element)]
@@ -1857,7 +1904,9 @@ class Page(
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         show_progress: bool = False,
         content_filter=None,
-    ) -> List[List[Optional[str]]]:
+        verticals: Optional[List[float]] = None,
+        horizontals: Optional[List[float]] = None,
+    ) -> TableResult:
         """
         Extract the largest table from this page using enhanced region-based extraction.
 
@@ -1874,9 +1923,11 @@ class Page(
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
+            verticals: Optional list of x-coordinates for explicit vertical table lines.
+            horizontals: Optional list of y-coordinates for explicit horizontal table lines.
 
         Returns:
-            Table data as a list of rows, where each row is a list of cell values (str or None).
+            TableResult: A sequence-like object containing table rows that also provides .to_df() for pandas conversion.
         """
         # Create a full-page region and delegate to its enhanced extract_table method
         page_region = self.create_region(0, 0, self.width, self.height)
@@ -1889,6 +1940,8 @@ class Page(
             cell_extraction_func=cell_extraction_func,
             show_progress=show_progress,
             content_filter=content_filter,
+            verticals=verticals,
+            horizontals=horizontals,
         )
 
     def extract_tables(

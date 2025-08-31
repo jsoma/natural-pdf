@@ -223,6 +223,116 @@ headings.extract_text()
 
 *Note: `.highest()`, `.lowest()`, etc. will complain if your collection spans multiple pages.*
 
+## Finding Elements with Statistical Properties
+
+Sometimes you need to find elements based on their extreme values - the leftmost text, the largest font, or the most common color. Natural PDF's aggregate selectors make this easy using statistical functions like `min()`, `max()`, and `avg()`.
+
+### Position-Based Selection
+
+```python
+# Find the leftmost text element on the page
+leftmost = page.find('text[x0=min()]')
+leftmost.show()
+```
+
+```python
+# Find the rightmost text (useful for page numbers)
+rightmost = page.find('text[x1=max()]')
+rightmost.show()
+```
+
+```python
+# Find text at the top and bottom of the page
+topmost = page.find('text[top=min()]')
+bottommost = page.find('text[bottom=max()]')
+```
+
+### Size and Dimension Selection
+
+```python
+# Find the largest text (often titles or headings)
+largest_text = page.find('text[size=max()]')
+print(f"Largest text: {largest_text.extract_text()} (size: {largest_text.size})")
+```
+
+```python
+# Find elements with average dimensions
+avg_width_text = page.find_all('text[width=avg()]')
+median_height_text = page.find_all('text[height=median()]')
+```
+
+### Finding Most Common Values
+
+The `mode()` function (or its alias `most_common()`) finds elements with the most frequently occurring value for any attribute:
+
+```python
+# Find text with the most common font size (body text)
+body_text = page.find_all('text[size=mode()]')
+print(f"Most common font size: {body_text.first.size if body_text else 'N/A'}")
+```
+
+```python
+# Find elements with the most common font name
+common_font = page.find_all('text[fontname=most_common()]')
+```
+
+### Color Proximity Matching
+
+For color attributes, you can find elements with colors closest to a target:
+
+```python
+# Find text closest to red
+red_text = page.find_all('text[color=closest("red")]')
+
+# Find rectangles with fill color closest to blue
+blue_rects = page.find_all('rect[fill=closest("#0000FF")]')
+
+# Works with any color format
+nearly_black = page.find_all('text[color=closest("rgb(10,10,10)")]')
+```
+
+### Combining Aggregate Conditions
+
+Multiple aggregate conditions create an intersection - elements must satisfy ALL conditions:
+
+```python
+# Find text that is both leftmost AND largest
+special_text = page.find('text[x0=min()][size=max()]')
+
+# Find the topmost element among large text
+topmost_large = page.find('text[size>12][top=min()]')
+```
+
+### Using Aggregates in Complex Selectors
+
+Aggregate functions work seamlessly with all Natural PDF features:
+
+```python
+# In OR selectors - find either the leftmost text OR the largest rectangle
+elements = page.find_all('text[x0=min()]|rect[width=max()]')
+
+# With spatial navigation
+element = page.find('text')
+# Navigate right until reaching the leftmost element
+right_region = element.right(until='text[x0=min()]')
+
+# With filters - leftmost among bold text
+leftmost_bold = page.find('text:bold[x0=min()]')
+```
+
+### Available Aggregate Functions
+
+| Function | Alias | Description | Works On |
+|----------|-------|-------------|----------|
+| `min()` | - | Minimum value | Numeric attributes |
+| `max()` | - | Maximum value | Numeric attributes |
+| `avg()` | `mean()` | Average/mean value | Numeric attributes |
+| `median()` | - | Median value | Numeric attributes |
+| `mode()` | `most_common()` | Most frequent value | Any attribute |
+| `closest(value)` | - | Closest match (colors only) | Color attributes |
+
+**Note**: Aggregates are calculated across all elements of the same type. For example, `text[x0=min()]` finds the minimum x0 among ALL text elements, not just those matching other filters.
+
 ## Dealing with Weird Font Names
 
 PDFs sometimes have bizarre font names that don't look like normal fonts. Don't worry - they're usually normal fonts with weird internal names.

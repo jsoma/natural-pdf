@@ -74,6 +74,18 @@ page.find_all('text[source=pdf]')               # Original PDF text
 page.find_all('text[confidence>=0.8]')          # High-confidence OCR
 ```
 
+### Statistical Selectors (Aggregates)
+```py
+page.find('text[x0=min()]')                      # Leftmost text
+page.find('text[x1=max()]')                      # Rightmost text
+page.find('text[size=max()]')                    # Largest text
+page.find('text[width=avg()]')                   # Average width text
+page.find('text[height=median()]')               # Median height text
+page.find('text[fontname=mode()]')               # Most common font
+page.find('text[color=closest("red")]')          # Closest to red
+page.find('text[x0=min()][size=max()]')          # Leftmost AND largest
+```
+
 ## Essential Methods
 
 ### Finding Elements
