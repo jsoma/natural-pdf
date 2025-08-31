@@ -207,22 +207,66 @@ class ElementCollection(
         if not self._elements:
             return []
 
-        # Group elements by page
-        elements_by_page = {}
+        # Check for FlowRegions which need special handling
+        from natural_pdf.flows.region import FlowRegion
+
+        flow_regions = []
+        regular_elements = []
+
         for elem in self._elements:
+            if isinstance(elem, FlowRegion):
+                flow_regions.append(elem)
+            else:
+                regular_elements.append(elem)
+
+        # Start with specs from FlowRegions (they handle their own multi-page rendering)
+        all_specs = []
+        specs_by_page = {}  # Track specs by page for merging
+
+        for flow_region in flow_regions:
+            # FlowRegions have their own _get_render_specs method
+            flow_specs = flow_region._get_render_specs(
+                mode=mode,
+                color=color,
+                highlights=highlights,
+                crop=crop,
+                crop_bbox=crop_bbox,
+                **kwargs,
+            )
+            for spec in flow_specs:
+                all_specs.append(spec)
+                if spec.page not in specs_by_page:
+                    specs_by_page[spec.page] = []
+                specs_by_page[spec.page].append(spec)
+
+        # Group regular elements by page
+        elements_by_page = {}
+        for elem in regular_elements:
             if hasattr(elem, "page"):
                 page = elem.page
                 if page not in elements_by_page:
                     elements_by_page[page] = []
                 elements_by_page[page].append(elem)
 
-        if not elements_by_page:
+        if not elements_by_page and not flow_regions:
             return []
 
-        # Create RenderSpec for each page
-        specs = []
+        # Create or update RenderSpec for each page with regular elements
         for page, page_elements in elements_by_page.items():
-            spec = RenderSpec(page=page)
+            # Check if we already have a spec for this page from FlowRegions
+            existing_spec = None
+            for spec in all_specs:
+                if spec.page == page:
+                    existing_spec = spec
+                    break
+
+            if existing_spec:
+                # We'll add to the existing spec
+                spec = existing_spec
+            else:
+                # Create new spec for this page
+                spec = RenderSpec(page=page)
+                all_specs.append(spec)
 
             # Handle cropping
             if crop_bbox:
@@ -390,9 +434,7 @@ class ElementCollection(
                                     element=elem, color=group_color, label=group_label
                                 )
 
-            specs.append(spec)
-
-        return specs
+        return all_specs
 
     def _get_highlighter(self):
         """Get the highlighting service for rendering.
