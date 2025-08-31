@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Uni
 
 from PIL import Image
 
+# Import global options
+import natural_pdf
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin
@@ -93,6 +95,16 @@ class DirectionalMixin:
     - above(): Create region above
     - below(): Create region below
 
+    Smart defaults:
+    - left() and right() default to element height
+    - above() and below() default to full page width
+    - All methods use a small offset (default 0.01 points) to avoid character overlap
+
+    Global offset configuration:
+    The default offset can be changed globally:
+        import natural_pdf as npdf
+        npdf.options.layout.directional_offset = 0.05  # Change to 0.05 points
+
     Note:
         This mixin requires the implementing class to have 'page', 'x0', 'top',
         'x1', and 'bottom' attributes for coordinate calculations.
@@ -107,6 +119,7 @@ class DirectionalMixin:
         until: Optional[str] = None,
         include_endpoint: bool = True,
         offset: float = 0.0,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> "Region":
         """
@@ -119,7 +132,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region's area in the result
             until: Optional selector string to specify a boundary element
             include_endpoint: Whether to include the boundary element found by 'until'
-            offset: Pixel offset when excluding source/endpoint (default: 0.1)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters for the 'until' selector search
 
         Returns:
@@ -189,21 +203,46 @@ class DirectionalMixin:
                 # Only take ones on the same page
                 all_matches = [m for m in until if m.page == self.page]
             else:
-                all_matches = self.page.find_all(until, **kwargs)
+                all_matches = self.page.find_all(until, apply_exclusions=apply_exclusions, **kwargs)
             matches_in_direction = []
 
             # Filter and sort matches based on direction
+            # Also filter by cross-direction bounds when cross_size='element'
             if direction == "above":
                 matches_in_direction = [m for m in all_matches if m.bottom <= self.top]
+                # Filter by horizontal bounds if cross_size='element'
+                if cross_size == "element":
+                    matches_in_direction = [
+                        m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
+                    ]
                 matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
             elif direction == "below":
                 matches_in_direction = [m for m in all_matches if m.top >= self.bottom]
+                # Filter by horizontal bounds if cross_size='element'
+                if cross_size == "element":
+                    matches_in_direction = [
+                        m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
+                    ]
                 matches_in_direction.sort(key=lambda e: e.top)
             elif direction == "left":
                 matches_in_direction = [m for m in all_matches if m.x1 <= self.x0]
+                # Filter by vertical bounds if cross_size='element'
+                if cross_size == "element":
+                    matches_in_direction = [
+                        m
+                        for m in matches_in_direction
+                        if m.top < self.bottom and m.bottom > self.top
+                    ]
                 matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
             elif direction == "right":
                 matches_in_direction = [m for m in all_matches if m.x0 >= self.x1]
+                # Filter by vertical bounds if cross_size='element'
+                if cross_size == "element":
+                    matches_in_direction = [
+                        m
+                        for m in matches_in_direction
+                        if m.top < self.bottom and m.bottom > self.top
+                    ]
                 matches_in_direction.sort(key=lambda e: e.x0)
 
             if matches_in_direction:
@@ -262,7 +301,8 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
-        offset: float = 0.1,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> "Region":
         """
@@ -274,7 +314,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
-            offset: Pixel offset when excluding source/endpoint (default: 0.1)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters
 
         Returns:
@@ -292,6 +333,10 @@ class DirectionalMixin:
             signature.above(until='text:contains("Date")')  # Region from date to signature
             ```
         """
+        # Use global default if offset not provided
+        if offset is None:
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="above",
             size=height,
@@ -300,6 +345,7 @@ class DirectionalMixin:
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 
@@ -310,7 +356,8 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
-        offset: float = 0.1,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> "Region":
         """
@@ -322,7 +369,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
-            offset: Pixel offset when excluding source/endpoint (default: 0.1)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters
 
         Returns:
@@ -340,6 +388,10 @@ class DirectionalMixin:
             header.below(height=200)  # Gets 200pt tall region below header
             ```
         """
+        # Use global default if offset not provided
+        if offset is None:
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="below",
             size=height,
@@ -348,6 +400,7 @@ class DirectionalMixin:
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 
@@ -358,7 +411,8 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
-        offset: float = 0.1,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> "Region":
         """
@@ -370,7 +424,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
-            offset: Pixel offset when excluding source/endpoint (default: 0.1)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters
 
         Returns:
@@ -388,6 +443,10 @@ class DirectionalMixin:
             table.left(height=100)  # Gets 100pt tall region to the left
             ```
         """
+        # Use global default if offset not provided
+        if offset is None:
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="left",
             size=width,
@@ -396,6 +455,7 @@ class DirectionalMixin:
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 
@@ -406,7 +466,8 @@ class DirectionalMixin:
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
-        offset: float = 0.1,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> "Region":
         """
@@ -418,7 +479,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
-            offset: Pixel offset when excluding source/endpoint (default: 0.1)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters
 
         Returns:
@@ -436,6 +498,10 @@ class DirectionalMixin:
             label.right(height=50)  # Gets 50pt tall region to the right
             ```
         """
+        # Use global default if offset not provided
+        if offset is None:
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="right",
             size=width,
@@ -444,6 +510,7 @@ class DirectionalMixin:
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 
@@ -451,7 +518,7 @@ class DirectionalMixin:
         return self.expand()
 
     @overload
-    def expand(self, amount: float) -> "Region":
+    def expand(self, amount: float, *, apply_exclusions: bool = True) -> "Region":
         """Expand in all directions by the same amount."""
         ...
 
@@ -465,6 +532,7 @@ class DirectionalMixin:
         bottom: Union[float, bool, str] = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
+        apply_exclusions: bool = True,
     ) -> "Region":
         """Expand by different amounts in each direction."""
         ...
@@ -478,6 +546,7 @@ class DirectionalMixin:
         bottom: Union[float, bool, str] = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
+        apply_exclusions: bool = True,
     ) -> "Region":
         """
         Create a new region expanded from this element/region.
@@ -493,6 +562,7 @@ class DirectionalMixin:
             bottom: Amount to expand bottom edge (same options as left)
             width_factor: Factor to multiply width by (applied after absolute expansion)
             height_factor: Factor to multiply height by (applied after absolute expansion)
+            apply_exclusions: Whether to respect exclusions when using selectors (default: True)
 
         Returns:
             New expanded Region object
@@ -544,56 +614,49 @@ class DirectionalMixin:
                 else:
                     return current_edge - value
 
-            # Handle string selectors
+            # Handle string selectors - use directional methods
             elif isinstance(value, str):
                 # Check if we should include the endpoint
                 include_endpoint = value.startswith("+")
                 selector = value[1:] if include_endpoint else value
 
-                # Find all matching elements
-                matches = self.page.find_all(selector)
-                if not matches:
-                    # No match found, return current edge
-                    return current_edge
-
-                # Filter matches based on direction
+                # Use directional methods to get the region
                 if direction == "left":
-                    # Find elements to the left
-                    candidates = [m for m in matches if m.x1 <= self.x0]
-                    if candidates:
-                        # Sort by x1 descending (rightmost edge of candidates)
-                        candidates.sort(key=lambda e: e.x1, reverse=True)
-                        target = candidates[0]
-                        return target.x0 if include_endpoint else target.x1
-
+                    region = self.left(
+                        until=selector,
+                        include_endpoint=include_endpoint,
+                        include_source=True,
+                        apply_exclusions=apply_exclusions,
+                    )
+                    return region.x0
                 elif direction == "right":
-                    # Find elements to the right
-                    candidates = [m for m in matches if m.x0 >= self.x1]
-                    if candidates:
-                        # Sort by x0 ascending (leftmost edge of candidates)
-                        candidates.sort(key=lambda e: e.x0)
-                        target = candidates[0]
-                        return target.x1 if include_endpoint else target.x0
-
+                    region = self.right(
+                        until=selector,
+                        include_endpoint=include_endpoint,
+                        include_source=True,
+                        apply_exclusions=apply_exclusions,
+                    )
+                    return region.x1
                 elif direction == "top":
-                    # Find elements above
-                    candidates = [m for m in matches if m.bottom <= self.top]
-                    if candidates:
-                        # Sort by bottom descending (bottom edge of candidates)
-                        candidates.sort(key=lambda e: e.bottom, reverse=True)
-                        target = candidates[0]
-                        return target.top if include_endpoint else target.bottom
-
+                    region = self.above(
+                        until=selector,
+                        include_endpoint=include_endpoint,
+                        include_source=True,
+                        width="element",
+                        apply_exclusions=apply_exclusions,
+                    )
+                    return region.top
                 elif direction == "bottom":
-                    # Find elements below
-                    candidates = [m for m in matches if m.top >= self.bottom]
-                    if candidates:
-                        # Sort by top ascending (top edge of candidates)
-                        candidates.sort(key=lambda e: e.top)
-                        target = candidates[0]
-                        return target.bottom if include_endpoint else target.top
+                    region = self.below(
+                        until=selector,
+                        include_endpoint=include_endpoint,
+                        include_source=True,
+                        width="element",
+                        apply_exclusions=apply_exclusions,
+                    )
+                    return region.bottom
 
-                # No matching element found in the specified direction
+                # Should not reach here
                 return current_edge
 
             else:
@@ -1297,7 +1360,22 @@ class Element(
         return self
 
     def exclude(self):
-        self.page.add_exclusion(self)
+        """
+        Exclude this element from text extraction and other operations.
+
+        For Region elements, this excludes everything within the region's bounds.
+        For other elements (like TextElement), this excludes only the specific element,
+        not the entire area it occupies.
+        """
+        from natural_pdf.elements.region import Region
+
+        # Use 'region' method for Region objects, 'element' method for everything else
+        if isinstance(self, Region):
+            method = "region"
+        else:
+            method = "element"
+
+        self.page.add_exclusion(self, method=method)
 
     def _get_render_specs(
         self,

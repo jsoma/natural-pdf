@@ -889,7 +889,22 @@ class ElementCollection(
         return self
 
     def exclude(self):
-        self.page.add_exclusion(self)
+        """
+        Excludes all elements in the collection from their respective pages.
+
+        Since a collection can span multiple pages, this method iterates through
+        all elements and calls exclude() on each one individually.
+
+        Each element type is handled appropriately:
+        - Region elements exclude everything within their bounds
+        - Text/other elements exclude only the specific element, not the area
+
+        Returns:
+            Self for method chaining
+        """
+        for element in self._elements:
+            element.exclude()
+        return self
 
     def highlight(
         self,

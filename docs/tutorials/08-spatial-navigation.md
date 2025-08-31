@@ -2,6 +2,14 @@
 
 Spatial navigation lets you work with PDF content based on the physical layout of elements on the page. It's perfect for finding elements relative to each other and extracting information in context.
 
+## Smart Defaults
+
+Natural PDF uses intelligent defaults for spatial navigation:
+- **`.left()` and `.right()`**: Default to `height='element'` (matches source element height)
+- **`.above()` and `.below()`**: Default to `width='full'` (full page width)
+- **Directional offset**: 0.01 points by default (configurable via `natural_pdf.options.layout.directional_offset`)
+- **Exclusions**: Applied by default (disable with `apply_exclusions=False`)
+
 ```python
 #%pip install natural-pdf
 ```
@@ -25,12 +33,19 @@ title.text
 
 ## Finding Elements Above and Below
 
+The `.above()` and `.below()` methods default to full page width, which is ideal for finding content across the entire page width below headings or sections.
+
 ```python
 # Create a region below the title
+# Default: width='full' (full page width)
 region_below = title.below(height=100)
 
-# Visualize the region
-region_below.show(color="blue", label="Below Title")
+# You can restrict to element width if needed
+narrow_region = title.below(height=100, width='element')
+
+# Visualize the regions
+region_below.show(color="blue", label="Below Title (full width)")
+narrow_region.show(color="cyan", label="Below Title (element width)")
 
 # Find and extract text from this region
 text_below = region_below.extract_text()
@@ -60,16 +75,23 @@ between_region.extract_text()
 
 ## Navigating Left and Right
 
+The `.left()` and `.right()` methods now use smart defaults that match common use cases. By default, they maintain the same height as the source element, which is perfect for finding values next to labels.
+
 ```python
 # Find a field label
 site_label = page.find('text:contains("Site:")')
 
 # Get the content to the right (the field value)
+# Default: height='element' (matches source element height)
 value_region = site_label.right(width=200)
+
+# You can still use full page height if needed
+full_height_region = site_label.right(width=200, height='full')
 
 # Visualize the label and value regions
 site_label.show(color="red", label="Label")
-value_region.show(color="blue", label="Value")
+value_region.show(color="blue", label="Value (element height)")
+full_height_region.show(color="green", label="Value (full height)")
 
 # Extract just the value text
 value_region.extract_text()
@@ -189,15 +211,66 @@ field_data
 
 Spatial navigation mimics how humans read documents, letting you navigate content based on physical relationships between elements. It's especially useful for extracting structured data from forms, tables, and formatted documents.
 
+## Configuring Spatial Navigation
+
+Natural PDF provides fine control over spatial navigation behavior through global configuration and method parameters.
+
+### Directional Offset Configuration
+
+By default, directional methods (.above(), .below(), .left(), .right()) include a small offset of 0.01 points to avoid edge cases with touching elements. You can configure this globally:
+
+```python
+from natural_pdf import PDF
+import natural_pdf
+
+# View current offset setting
+print(natural_pdf.options.layout.directional_offset)  # Default: 0.01
+
+# Change the global offset
+natural_pdf.options.layout.directional_offset = 0.1  # Larger gap
+# or
+natural_pdf.options.layout.directional_offset = 0    # No gap (exact boundaries)
+
+# Load PDF and use directional methods with new offset
+pdf = PDF("example.pdf")
+element = pdf.pages[0].find('text:contains("Label")')
+# This will now use the configured offset
+region = element.below(height=50)
+```
+
+### Working with Exclusions
+
+When using spatial navigation with pages that have exclusions (headers, footers, etc.), you can control whether exclusions are applied:
+
+```python
+# Add a header exclusion
+pdf.add_exclusion(lambda page: page.find('text:contains("Header")'))
+
+# Find an element
+element = page.find('text:contains("Content")')
+
+# By default, directional methods respect exclusions
+region_with_exclusions = element.below(height=200)  # apply_exclusions=True by default
+
+# Disable exclusion filtering if needed
+region_all_content = element.below(height=200, apply_exclusions=False)
+
+# The expand() method also supports this parameter
+expanded = element.expand(bottom=100, apply_exclusions=False)
+```
+
+This is particularly useful when:
+- You want to see all content in a region, including normally excluded headers/footers
+- You're debugging and need to verify what content exists before exclusions
+- You're working with documents where exclusions might interfere with spatial relationships
+
 ## TODO
 
 * Add examples for navigating across multiple pages using `pdf.pages` slicing and `below(..., until=...)` that spans pages.
 * Show how to chain selectors, e.g., `page.find('text:bold').below().right()` for complex paths.
 * Include a sidebar on performance when many spatial calls are chained and how to cache intermediate regions.
 * Add examples using `.until()` for one-liner "from here until X" extractions.
-* Show using `width="element"` vs `"full"` in `.below()` and `.above()` to restrict horizontal span.
 * Demonstrate attribute selectors (e.g., `line[width>2]`) and `:not()` pseudo-class for exclusion in spatial chains.
-* Briefly introduce `.expand()` for fine-tuning region size after spatial selection.
 
 ## Chaining Spatial Calls
 
@@ -247,6 +320,8 @@ The `.expand()` method provides a flexible way to create regions by expanding fr
 3. **String (selector)**: Expand until finding an element (exclude by default)
 4. **String with '+' prefix**: Expand until finding an element and include it
 
+Like directional methods, `.expand()` also respects exclusions by default but can be configured to include all content:
+
 ### Basic Examples
 
 ```python
@@ -269,6 +344,10 @@ field_region.show(color="green", label="Until Repeat (excluded)")
 # Use '+' prefix to include the endpoint
 field_with_end = statute.expand(right='+text:contains("Repeat?")')
 field_with_end.show(color="purple", label="Through Repeat (included)")
+
+# Expand without respecting exclusions (e.g., to include headers/footers)
+all_content = statute.expand(bottom=True, apply_exclusions=False)
+all_content.show(color="red", label="All content (including exclusions)")
 ```
 
 ### Mixed Mode Example

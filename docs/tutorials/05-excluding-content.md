@@ -65,6 +65,15 @@ This method is simple but might cut off content if the footer height varies or c
 
 A more robust way is to find specific elements that reliably mark the start of the footer (or end of the header) and exclude everything below (or above) them. In `Examples.md`, the footer was defined as everything below the last horizontal line.
 
+### Smart Exclusion Behavior
+
+Natural PDF uses intelligent exclusion logic depending on what you're excluding:
+
+- **Text elements**: When you exclude a text element directly, only that specific text is excluded from extraction
+- **Regions**: When you exclude a region (created with `.below()`, `.above()`, etc.), everything within that region is excluded
+
+This allows for precise control - you can exclude just specific text elements (like page numbers) or entire areas (like footer regions).
+
 ```python
 from natural_pdf import PDF
 
@@ -100,17 +109,104 @@ page.show()
 
 This element-based approach is usually more reliable as it adapts to the content's position, but it depends on finding consistent boundary elements (like lines or specific text markers).
 
-## TODO
+## Approach 3: Excluding Specific Text Elements
 
-* Show a text-based exclusion: `pdf.add_exclusion(lambda p: p.find('text:contains("Page ")').below())` for dynamic page numbers.
-* Demonstrate stacking multiple exclusions (e.g., header + footer) and the order they are applied.
-* Provide an example disabling exclusions temporarily with `extract_text(use_exclusions=False)`.
-* Include a multi-page preview that outlines exclusions on every page.
+Sometimes you want to exclude only specific text elements (like page numbers) without excluding the entire surrounding area. Natural PDF's smart exclusion logic makes this easy.
+
+```python
+# Exclude only the page number text itself
+pdf.add_exclusion(
+    lambda p: p.find('text:contains("Page ")'),
+    label="Page numbers only"
+)
+
+# This excludes ONLY the "Page X" text, not the entire footer area
+filtered_text = page.extract_text()
+```
+
+Compare this with region-based exclusion:
+
+```python
+# Exclude the entire area below the page number
+pdf.add_exclusion(
+    lambda p: p.find('text:contains("Page ")').below(),
+    label="Everything below page numbers"
+)
+
+# This excludes the page number AND everything below it
+```
+
+## Working with Multiple Exclusions
+
+You can stack multiple exclusions - they are applied in the order they were added:
+
+```python
+# Add header exclusion
+pdf.add_exclusion(
+    lambda p: p.region(bottom=100),  # Top 100px
+    label="Header"
+)
+
+# Add footer exclusion
+pdf.add_exclusion(
+    lambda p: p.find_all('line')[-1].below() if p.find_all('line') else None,
+    label="Footer"
+)
+
+# Add specific text exclusion
+pdf.add_exclusion(
+    lambda p: p.find_all('text:contains("CONFIDENTIAL")'),
+    label="Confidential markers"
+)
+```
+
+## Enhanced Exclusion Support
+
+Exclusions now support returning collections of elements:
+
+```python
+# Exclude all headers on the page
+pdf.add_exclusion(
+    lambda page: page.find_all('text:contains("Header")'),
+    label="All headers"
+)
+
+# Exclude multiple specific elements
+pdf.add_exclusion(
+    lambda page: [
+        page.find('text:contains("Draft")'),
+        page.find('text:contains("Confidential")'),
+        page.find_all('text[color=red]')  # Returns ElementCollection
+    ],
+    label="Multiple exclusions"
+)
+```
+
+## Temporarily Disabling Exclusions
+
+You can disable exclusions for specific operations:
+
+```python
+# Extract with exclusions (default)
+filtered_text = page.extract_text()  # use_exclusions=True by default
+
+# Extract without exclusions
+full_text = page.extract_text(use_exclusions=False)
+
+print(f"With exclusions: {len(filtered_text)} chars")
+print(f"Without exclusions: {len(full_text)} chars")
+```
 
 <div class="admonition note">
 <p class="admonition-title">Applying Exclusions</p>
 
-    *   `pdf.add_exclusion(func)` applies the exclusion function (which takes a page and returns a region) to *all* pages in the PDF.
-    *   `page.add_exclusion(region)` adds an exclusion region only to that specific page.
-    *   `extract_text(use_exclusions=False)` can be used to temporarily disable exclusions.
+    *   `pdf.add_exclusion(func)` applies the exclusion function to *all* pages in the PDF
+    *   `page.add_exclusion(region)` adds an exclusion only to that specific page
+    *   Exclusion functions can return:
+        - A single `Region` to exclude an area
+        - A single `Element` to exclude just that element
+        - An `ElementCollection` or list/iterable of elements
+        - `None` to exclude nothing on that page
+    *   `extract_text(use_exclusions=False)` temporarily disables exclusions
+    *   Smart exclusion: text elements exclude only themselves, regions exclude everything inside
 </div>

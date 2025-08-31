@@ -62,6 +62,11 @@ class Options:
         # Text extraction defaults (empty for now)
         self.text = ConfigSection()
 
+        # Layout and navigation defaults
+        self.layout = ConfigSection(
+            directional_offset=0.01  # Offset in points when using directional methods
+        )
+
 
 # Create global options instance
 options = Options()

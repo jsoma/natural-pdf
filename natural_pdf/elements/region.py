@@ -346,6 +346,7 @@ class Region(
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: Optional[float] = None,
         **kwargs,
     ) -> "Region":
         """
@@ -357,11 +358,18 @@ class Region(
             include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area above
         """
+        # Use global default if offset not provided
+        if offset is None:
+            import natural_pdf
+
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="above",
             size=height,
@@ -369,6 +377,7 @@ class Region(
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
@@ -379,6 +388,7 @@ class Region(
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: Optional[float] = None,
         **kwargs,
     ) -> "Region":
         """
@@ -390,11 +400,18 @@ class Region(
             include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area below
         """
+        # Use global default if offset not provided
+        if offset is None:
+            import natural_pdf
+
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="below",
             size=height,
@@ -402,16 +419,18 @@ class Region(
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
     def left(
         self,
         width: Optional[float] = None,
-        height: str = "full",
+        height: str = "element",
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: Optional[float] = None,
         **kwargs,
     ) -> "Region":
         """
@@ -423,11 +442,18 @@ class Region(
             include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area to the left
         """
+        # Use global default if offset not provided
+        if offset is None:
+            import natural_pdf
+
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="left",
             size=width,
@@ -435,16 +461,18 @@ class Region(
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
     def right(
         self,
         width: Optional[float] = None,
-        height: str = "full",
+        height: str = "element",
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: Optional[float] = None,
         **kwargs,
     ) -> "Region":
         """
@@ -456,11 +484,18 @@ class Region(
             include_source: Whether to include this region in the result (default: False)
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area to the right
         """
+        # Use global default if offset not provided
+        if offset is None:
+            import natural_pdf
+
+            offset = natural_pdf.options.layout.directional_offset
+
         return self._direction(
             direction="right",
             size=width,
@@ -468,6 +503,7 @@ class Region(
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=offset,
             **kwargs,
         )
 
@@ -739,7 +775,12 @@ class Region(
         )
 
     def exclude(self):
-        self.page.add_exclusion(self)
+        """
+        Exclude this region from text extraction and other operations.
+
+        This excludes everything within the region's bounds.
+        """
+        self.page.add_exclusion(self, method="region")
 
     def highlight(
         self,

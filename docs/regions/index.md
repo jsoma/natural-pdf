@@ -43,7 +43,12 @@ mid_region.show(color="blue")
 
 ### Using Element Methods: `above()`, `below()`, `left()`, `right()`
 
-You can create regions relative to existing elements.
+You can create regions relative to existing elements. Natural PDF uses smart defaults for these directional methods:
+
+- **`.left()` and `.right()`**: Default to `height='element'` (matches the element's height)
+- **`.above()` and `.below()`**: Default to `width='full'` (full page width)
+
+These defaults match common use cases - when looking sideways you usually want the same height as your reference element, while looking up/down typically needs the full page width.
 
 ```python
 # Find a heading-like element
@@ -51,12 +56,31 @@ heading = page.find('text[size>=12]:bold')
 
 # Create a region below this heading element
 if heading:
+    # Uses default width='full' - extends across full page width
     region_below = heading.below()
 
     # Highlight the heading and the region below it
     with page.highlights() as h:
         h.add(heading, color="red")
         h.add(region_below, color="blue")
+        h.show()
+```
+
+```python
+# Create regions to the left and right with smart defaults
+if heading:
+    # Default height='element' - matches heading height
+    region_left = heading.left()
+    region_right = heading.right()
+
+    # Or specify custom dimensions
+    region_left_tall = heading.left(height=200)  # 200px tall
+    region_right_full = heading.right(height='full')  # Full page height
+
+    with page.highlights() as h:
+        h.add(heading, color="red")
+        h.add(region_left, color="green", label="Left (element height)")
+        h.add(region_right, color="blue", label="Right (element height)")
         h.show()
 ```
 
@@ -211,6 +235,46 @@ with page.highlights() as h:
     h.add(expanded, color="red", label="Expanded")
     h.show()
 ```
+
+### Global Offset Configuration
+
+You can configure global offsets that will be applied to all regions created with directional methods. This is useful for consistently adding padding or margins:
+
+```python
+from natural_pdf import PDF
+
+# Configure global offsets for all PDFs
+PDF.configure_offsets(
+    below_offset=5,     # Add 5px gap below elements
+    above_offset=5,     # Add 5px gap above elements
+    left_offset=2,      # Add 2px gap to the left
+    right_offset=2      # Add 2px gap to the right
+)
+
+# Now all directional methods will include these offsets
+heading = page.find('text:bold')
+if heading:
+    # This region will start 5px below the heading (not touching)
+    content_below = heading.below()
+
+    # This region will end 5px above the heading
+    content_above = heading.above(height=100)
+```
+
+```python
+# Reset to default offsets (all 0)
+PDF.configure_offsets(
+    below_offset=0,
+    above_offset=0,
+    left_offset=0,
+    right_offset=0
+)
+```
+
+These offsets are particularly useful when:
+- Extracting text that might be too close to headers/footers
+- Creating regions that need consistent spacing
+- Working with documents that have tight layouts
 
 ## Using Exclusion Zones with Regions
 

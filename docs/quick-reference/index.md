@@ -98,10 +98,21 @@ element.previous()                              # Previous element
 
 ### Spatial Navigation
 ```py
-element.above(height=100)                       # Region above element
+# Smart defaults (new in 0.9.0)
+element.left()                                  # Default height='element' (matches element height)
+element.right()                                 # Default height='element' (matches element height)
+element.above()                                 # Default width='full' (full page width)
+element.below()                                 # Default width='full' (full page width)
+
+# Custom dimensions
+element.above(height=100)                       # Fixed height above
 element.below(until='line:horizontal')          # Below until boundary
-element.left(width=200)                         # Region to the left
-element.right()                                 # Region to the right
+element.left(width=200)                         # Fixed width to left
+element.right(height='full')                    # Full page height to right
+
+# Exclusion handling
+element.below(apply_exclusions=True)            # Skip exclusion zones
+element.expand('down', 50, apply_exclusions=True)  # Expand with exclusions
 ```
 
 ### Text Extraction
@@ -206,9 +217,16 @@ page.viewer()                                   # Launch interactive viewer (Jup
 
 ### Page-Level Exclusions
 ```py
-header = page.find('text:contains("CONFIDENTIAL")').above()
-page.add_exclusion(header)                      # Exclude from extraction
-page.clear_exclusions()                         # Remove exclusions
+# Smart exclusion behavior (new in 0.9.0)
+text_element = page.find('text:contains("CONFIDENTIAL")')
+page.add_exclusion(text_element)                # Excludes just the text bounding box
+
+# Traditional region exclusion
+header_region = page.find('text:contains("CONFIDENTIAL")').above()
+page.add_exclusion(header_region)               # Excludes entire region
+
+# Manage exclusions
+page.clear_exclusions()                         # Remove all exclusions
 text = page.extract_text(use_exclusions=False)  # Ignore exclusions
 ```
 
@@ -219,9 +237,26 @@ pdf.add_exclusion(
     lambda p: p.create_region(0, 0, p.width, p.height * 0.1),
     label="Header"
 )
+
+# Exclude specific text elements (new in 0.9.0)
+pdf.add_exclusion(
+    lambda p: p.find_all('text:contains("Header")'),  # Returns ElementCollection
+    label="Headers"
+)
 ```
 
 ## Configuration Options
+
+### Global Layout Settings
+```py
+import natural_pdf
+
+# Configure global directional offset (default: 5)
+natural_pdf.options.layout.directional_offset = 10  # Larger gap for directional methods
+
+# Reset to default
+natural_pdf.options.layout.directional_offset = 5
+```
 
 ### OCR Engines
 ```py
@@ -243,17 +278,17 @@ page.analyze_layout(engine='yolo', options=yolo_opts)
 
 ### Extract Inspection Report Data
 ```py
-# Find violation count
-violations = page.find('text:contains("Violation Count"):right(width=100)')
+# Find violation count (uses smart default height='element')
+violations = page.find('text:contains("Violation Count"):right()')
 
 # Get inspection number from the header box (regex search)
 inspection_num = page.find('text:contains("INS-[A-Z0-9]+")', regex=True)
 
-# Extract inspection date
+# Extract inspection date (custom width for wider field)
 inspection_date = page.find('text:contains("Date:"):right(width=150)')
 
-# Get site name (text to the right of "Site:")
-site_name = page.find('text:contains("Site:"):right(width=300)').extract_text()
+# Get site name (uses smart default height='element')
+site_name = page.find('text:contains("Site:"):right()').extract_text()
 ```
 
 ### Process Forms
@@ -262,9 +297,9 @@ site_name = page.find('text:contains("Site:"):right(width=300)').extract_text()
 page.add_exclusion(page.create_region(0, 0, page.width, 50))
 page.add_exclusion(page.create_region(0, page.height-50, page.width, page.height))
 
-# Extract form fields
+# Extract form fields (smart defaults + exclusion handling)
 fields = page.find_all('text:bold')
-values = [field.right(width=300).extract_text() for field in fields]
+values = [field.right(apply_exclusions=True).extract_text() for field in fields]
 ```
 
 ### Handle Scanned Documents
