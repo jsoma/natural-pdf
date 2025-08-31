@@ -941,6 +941,337 @@ class GuidesList(UserList):
         self.data.clear()
         return self._parent
 
+    def from_headers(
+        self,
+        headers: Union["ElementCollection", List["Element"]],
+        obj: Optional[Union["Page", "Region"]] = None,
+        method: Literal["min_crossings", "seam_carving"] = "min_crossings",
+        min_width: Optional[float] = None,
+        max_width: Optional[float] = None,
+        margin: float = 0.5,
+        row_stabilization: bool = True,
+        num_samples: int = 400,
+        *,
+        append: bool = False,
+    ) -> "Guides":
+        """Create vertical guides for columns based on headers and whitespace valleys.
+
+        This method detects column boundaries by finding optimal vertical separators
+        between headers that minimize text crossings, regardless of text alignment.
+
+        Args:
+            headers: Column header elements (ElementCollection or list of Elements)
+            obj: Page/Region to analyze (uses parent's context if None)
+            method: Detection method:
+                - 'min_crossings': Fast vector-based minimum intersection count
+                - 'seam_carving': Dynamic programming for curved boundaries
+            min_width: Minimum column width constraint (pixels)
+            max_width: Maximum column width constraint (pixels)
+            margin: Buffer space from header edges when searching for separators (default: 0.5)
+            row_stabilization: Whether to use row-wise median for stability
+            num_samples: Number of x-positions to test per gap (for min_crossings)
+            append: Whether to append to existing guides
+
+        Returns:
+            Parent Guides object for chaining
+
+        Examples:
+            # Create column guides from headers
+            headers = page.find_all('text[size=16]')
+            guides.vertical.from_headers(headers)
+
+            # With width constraints
+            guides.vertical.from_headers(headers, min_width=50, max_width=200)
+
+            # Seam carving for complex layouts
+            guides.vertical.from_headers(headers, method='seam_carving')
+        """
+
+        if self._axis != "vertical":
+            raise ValueError("from_headers() only works for vertical guides (columns)")
+
+        target_obj = obj or self._parent.context
+        if target_obj is None:
+            raise ValueError("No object provided and no context available")
+
+        # Convert headers to list if ElementCollection
+        if hasattr(headers, "elements"):
+            header_elements = list(headers.elements)
+        else:
+            header_elements = list(headers)
+
+        # Sort headers by x-position
+        header_elements.sort(key=lambda h: h.x0 if hasattr(h, "x0") else 0)
+
+        # Need at least 2 headers
+        if len(header_elements) < 2:
+            logger.warning("Need at least 2 headers for column detection")
+            return self._parent
+
+        # Get page bounds
+        if hasattr(target_obj, "bbox"):
+            page_bounds = target_obj.bbox
+        elif hasattr(target_obj, "width") and hasattr(target_obj, "height"):
+            # Create bbox from width/height
+            page_bounds = (0, 0, target_obj.width, target_obj.height)
+        else:
+            page_bounds = None
+
+        if not page_bounds:
+            logger.warning("Could not determine page bounds")
+            return self._parent
+
+        # Get text below headers for occupancy analysis
+        header_bottom = max(h.bottom for h in header_elements)
+        all_text = target_obj.find_all("text")
+        body_elements = [elem for elem in all_text if elem.top > header_bottom]
+
+        # Extract bounding boxes
+        bboxes = [(elem.x0, elem.top, elem.x1, elem.bottom) for elem in body_elements]
+
+        # Find separators between each header pair
+        separators = []
+        logger.debug(f"Processing {len(header_elements)} headers for column detection")
+        for i in range(len(header_elements) - 1):
+            h_left = header_elements[i]
+            h_right = header_elements[i + 1]
+
+            # Define search band
+            left_edge = h_left.x1 if hasattr(h_left, "x1") else h_left.right
+            right_edge = h_right.x0 if hasattr(h_right, "x0") else h_right.left
+            gap = right_edge - left_edge
+
+            # If gap is too small, place separator in the middle
+            if gap <= 2 * margin:
+                # Place separator in the middle of the gap
+                separator = (left_edge + right_edge) / 2
+                separators.append(separator)
+                continue
+
+            # Normal case - search within the band
+            x0 = left_edge + margin
+            x1 = right_edge - margin
+
+            # Apply width constraints if provided
+            if min_width and (x1 - x0) < min_width:
+                # Center the separator
+                center = (x0 + x1) / 2
+                separators.append(center)
+                continue
+
+            if method == "min_crossings":
+                separator = self._find_min_crossing_separator(x0, x1, bboxes, num_samples)
+            else:  # seam_carving
+                separator = self._find_seam_carving_separator(
+                    x0, x1, target_obj, header_bottom, page_bounds[3], bboxes
+                )
+
+            # Apply width constraints only if they don't conflict with header positions
+            if separators:
+                if min_width and separator - separators[-1] < min_width:
+                    # Only enforce if it doesn't push into next header
+                    proposed = separators[-1] + min_width
+                    if proposed < right_edge:
+                        separator = proposed
+                if max_width and separator - separators[-1] > max_width:
+                    separator = separators[-1] + max_width
+
+            separators.append(separator)
+
+        # Ensure we have page boundaries
+        if separators:
+            if not any(abs(sep - page_bounds[0]) < 0.1 for sep in separators):
+                separators.insert(0, page_bounds[0])
+            if not any(abs(sep - page_bounds[2]) < 0.1 for sep in separators):
+                separators.append(page_bounds[2])
+
+        # Apply row stabilization if requested
+        if row_stabilization and separators:
+            separators = self._stabilize_with_rows(separators, target_obj, bboxes, header_bottom)
+
+        # Update guides
+        if append:
+            self.extend(separators)
+        else:
+            self.data = separators
+
+        return self._parent
+
+    def _find_min_crossing_separator(
+        self,
+        x0: float,
+        x1: float,
+        bboxes: List[Tuple[float, float, float, float]],
+        num_samples: int,
+    ) -> float:
+        """Find x-coordinate with minimum text crossings in band."""
+        candidates = np.linspace(x0, x1, num_samples)
+
+        best_x = x0
+        min_crossings = float("inf")
+        best_gap = 0
+
+        for x in candidates:
+            # Count how many bboxes this x-line crosses
+            crossings = sum(1 for bbox in bboxes if bbox[0] < x < bbox[2])
+
+            # Calculate minimum gap to any edge (for tie-breaking)
+            if crossings > 0:
+                gaps = []
+                for bbox in bboxes:
+                    if bbox[0] < x < bbox[2]:
+                        gaps.extend([abs(x - bbox[0]), abs(x - bbox[2])])
+                min_gap = min(gaps) if gaps else float("inf")
+            else:
+                min_gap = float("inf")
+
+            # Update best if fewer crossings or same crossings but larger gap
+            if crossings < min_crossings or (crossings == min_crossings and min_gap > best_gap):
+                min_crossings = crossings
+                best_x = x
+                best_gap = min_gap
+
+        return best_x
+
+    def _find_seam_carving_separator(
+        self,
+        x0: float,
+        x1: float,
+        obj,
+        header_y: float,
+        page_bottom: float,
+        bboxes: List[Tuple[float, float, float, float]],
+    ) -> float:
+        """Find optimal separator using seam carving (dynamic programming)."""
+        # Create cost matrix
+        band_width = int(x1 - x0)
+        band_height = int(page_bottom - header_y)
+
+        if band_width <= 0 or band_height <= 0:
+            return (x0 + x1) / 2
+
+        # Resolution for cost matrix (1 pixel = 1 point for now)
+        cost_matrix = np.zeros((band_height, band_width))
+
+        # Fill cost matrix - high cost where text exists
+        for bbox in bboxes:
+            # Check if bbox intersects with our band
+            # bbox format is (x0, top, x1, bottom)
+            if bbox[2] > x0 and bbox[0] < x1 and bbox[3] > header_y:
+                # Convert to band coordinates
+                left = max(0, int(bbox[0] - x0))
+                right = min(band_width, int(bbox[2] - x0))
+                top = max(0, int(bbox[1] - header_y))
+                bottom = min(band_height, int(bbox[3] - header_y))
+
+                # Set high cost for text regions
+                cost_matrix[top:bottom, left:right] = 100
+
+        # Add small gradient cost to prefer straight lines
+        for i in range(band_width):
+            cost_matrix[:, i] += abs(i - band_width // 2) * 0.1
+
+        # Dynamic programming to find minimum cost path
+        dp = np.full_like(cost_matrix, np.inf)
+        dp[0, :] = cost_matrix[0, :]
+
+        # Fill DP table
+        for y in range(1, band_height):
+            for x in range(band_width):
+                # Can come from directly above or diagonally
+                dp[y, x] = cost_matrix[y, x] + dp[y - 1, x]
+                if x > 0:
+                    dp[y, x] = min(dp[y, x], cost_matrix[y, x] + dp[y - 1, x - 1])
+                if x < band_width - 1:
+                    dp[y, x] = min(dp[y, x], cost_matrix[y, x] + dp[y - 1, x + 1])
+
+        # Find minimum cost at bottom
+        min_x = np.argmin(dp[-1, :])
+
+        # Trace back to get path
+        path_x_coords = [min_x]
+        for y in range(band_height - 2, -1, -1):
+            x = path_x_coords[-1]
+
+            # Find which direction we came from
+            candidates = [(x, dp[y, x])]
+            if x > 0:
+                candidates.append((x - 1, dp[y, x - 1]))
+            if x < band_width - 1:
+                candidates.append((x + 1, dp[y, x + 1]))
+
+            next_x = min(candidates, key=lambda c: c[1])[0]
+            path_x_coords.append(next_x)
+
+        # Return median x-coordinate of the path
+        median_x = np.median(path_x_coords)
+        return x0 + median_x
+
+    def _stabilize_with_rows(
+        self,
+        separators: List[float],
+        obj,
+        bboxes: List[Tuple[float, float, float, float]],
+        header_y: float,
+    ) -> List[float]:
+        """Stabilize separators using row-wise analysis."""
+        if not bboxes:
+            return separators
+
+        # Detect rows by finding horizontal gaps
+        # bbox format is (x0, top, x1, bottom)
+        y_coords = sorted(set([bbox[1] for bbox in bboxes] + [bbox[3] for bbox in bboxes]))
+
+        # Find gaps larger than typical line height
+        gaps = []
+        for i in range(len(y_coords) - 1):
+            gap_size = y_coords[i + 1] - y_coords[i]
+            if gap_size > 5:  # Minimum gap to consider a row boundary
+                gaps.append((y_coords[i], y_coords[i + 1]))
+
+        if not gaps:
+            return separators
+
+        # For each separator, collect positions across rows
+        stabilized = []
+        for i, sep in enumerate(separators):
+            row_positions = []
+
+            for gap_start, gap_end in gaps:
+                # Get elements in this row
+                row_elements = [
+                    bbox for bbox in bboxes if bbox[1] >= gap_start and bbox[3] <= gap_end
+                ]
+
+                if row_elements:
+                    # Find best position in this row
+                    if i == 0:
+                        # First separator - look left of content
+                        x0 = 0
+                        x1 = sep + 20
+                    elif i == len(separators) - 1:
+                        # Last separator - look right of content
+                        x0 = sep - 20
+                        x1 = float("inf")
+                    else:
+                        # Middle separator - look around current position
+                        x0 = sep - 20
+                        x1 = sep + 20
+
+                    # Find minimum crossing position in this range
+                    best_x = self._find_min_crossing_separator(
+                        max(x0, sep - 20), min(x1, sep + 20), row_elements, 50
+                    )
+                    row_positions.append(best_x)
+
+            # Use median of row positions if we have enough samples
+            if len(row_positions) >= 3:
+                stabilized.append(np.median(row_positions))
+            else:
+                stabilized.append(sep)
+
+        return stabilized
+
     def from_stripes(
         self,
         stripes=None,
@@ -4143,6 +4474,34 @@ class Guides:
         else:
             raise ValueError(f"Target object {target_obj} is not a Page or Region")
 
+        # Check if we have guides in only one dimension
+        has_verticals = len(self.vertical) > 0
+        has_horizontals = len(self.horizontal) > 0
+
+        # If we have guides in only one dimension, use direct extraction with explicit lines
+        if (has_verticals and not has_horizontals) or (has_horizontals and not has_verticals):
+            logger.debug(
+                f"Partial guides detected - using direct extraction (v={has_verticals}, h={has_horizontals})"
+            )
+
+            # Extract directly from the target using explicit lines
+            if hasattr(target_obj, "extract_table"):
+                return target_obj.extract_table(
+                    method=method,  # Let auto-detection work when None
+                    table_settings=table_settings,
+                    use_ocr=use_ocr,
+                    ocr_config=ocr_config,
+                    text_options=text_options,
+                    cell_extraction_func=cell_extraction_func,
+                    show_progress=show_progress,
+                    content_filter=content_filter,
+                    verticals=list(self.vertical) if has_verticals else None,
+                    horizontals=list(self.horizontal) if has_horizontals else None,
+                )
+            else:
+                raise ValueError(f"Target object {type(target_obj)} does not support extract_table")
+
+        # Both dimensions have guides - use normal grid-based extraction
         try:
             # Step 1: Build grid structure (creates temporary regions)
             grid_result = self.build_grid(

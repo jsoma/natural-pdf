@@ -1510,6 +1510,49 @@ class Region(
 
         logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
 
+        # For stream method with text-based edge detection and explicit vertical lines,
+        # adjust guides to ensure they fall within text bounds for proper intersection
+        if (
+            effective_method == "pdfplumber"
+            and table_settings.get("horizontal_strategy") == "text"
+            and table_settings.get("vertical_strategy") == "explicit"
+            and "explicit_vertical_lines" in table_settings
+        ):
+
+            text_elements = self.find_all("text", apply_exclusions=apply_exclusions)
+            if text_elements:
+                text_bounds = text_elements.merge().bbox
+                text_left = text_bounds[0]
+                text_right = text_bounds[2]
+
+                # Adjust vertical guides to fall within text bounds
+                original_verticals = table_settings["explicit_vertical_lines"]
+                adjusted_verticals = []
+
+                for v in original_verticals:
+                    if v < text_left:
+                        # Guide is left of text bounds, clip to text start
+                        adjusted_verticals.append(text_left)
+                        logger.debug(
+                            f"Region {self.bbox}: Adjusted left guide from {v:.1f} to {text_left:.1f}"
+                        )
+                    elif v > text_right:
+                        # Guide is right of text bounds, clip to text end
+                        adjusted_verticals.append(text_right)
+                        logger.debug(
+                            f"Region {self.bbox}: Adjusted right guide from {v:.1f} to {text_right:.1f}"
+                        )
+                    else:
+                        # Guide is within text bounds, keep as is
+                        adjusted_verticals.append(v)
+
+                # Update table settings with adjusted guides
+                table_settings["explicit_vertical_lines"] = adjusted_verticals
+                logger.debug(
+                    f"Region {self.bbox}: Adjusted {len(original_verticals)} guides for stream extraction. "
+                    f"Text bounds: {text_left:.1f}-{text_right:.1f}"
+                )
+
         # Use the selected method
         if effective_method == "tatr":
             table_rows = self._extract_table_tatr(
