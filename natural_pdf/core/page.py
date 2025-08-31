@@ -2828,6 +2828,7 @@ class Page(
                             region.start_element = current_start_element
                             region.end_element = end_boundary_el  # Mark the element that ended it
                             region.is_end_next_start = True  # Mark how it ended
+                            region._boundary_exclusions = include_boundaries
                             regions.append(region)
                     else:  # horizontal
                         sec_left = (
@@ -2847,6 +2848,7 @@ class Page(
                             region.start_element = current_start_element
                             region.end_element = end_boundary_el  # Mark the element that ended it
                             region.is_end_next_start = True  # Mark how it ended
+                            region._boundary_exclusions = include_boundaries
                             regions.append(region)
                     active_section_started = False  # Reset for the new start
 
@@ -2875,6 +2877,7 @@ class Page(
                         region.start_element = current_start_element
                         region.end_element = end_boundary_el
                         region.is_end_next_start = False
+                        region._boundary_exclusions = include_boundaries
                         regions.append(region)
                 else:  # horizontal
                     sec_left = (
@@ -2894,6 +2897,7 @@ class Page(
                         region.start_element = current_start_element
                         region.end_element = end_boundary_el
                         region.is_end_next_start = False
+                        region._boundary_exclusions = include_boundaries
                         regions.append(region)
 
                 # Reset: section ended explicitly
@@ -2914,6 +2918,7 @@ class Page(
                     region.start_element = current_start_element
                     region.end_element = None  # Ended by page end
                     region.is_end_next_start = False
+                    region._boundary_exclusions = include_boundaries
                     regions.append(region)
             else:  # horizontal
                 sec_left = (
@@ -2927,6 +2932,7 @@ class Page(
                     region.start_element = current_start_element
                     region.end_element = None  # Ended by page end
                     region.is_end_next_start = False
+                    region._boundary_exclusions = include_boundaries
                     regions.append(region)
 
         return ElementCollection(regions)

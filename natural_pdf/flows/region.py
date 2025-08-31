@@ -1191,6 +1191,82 @@ class FlowRegion(Visualizable):
 
         return all_tables
 
+    def get_sections(
+        self,
+        start_elements=None,
+        end_elements=None,
+        new_section_on_page_break: bool = False,
+        include_boundaries: str = "both",
+        orientation: str = "vertical",
+    ) -> "ElementCollection":
+        """
+        Extract logical sections from this FlowRegion based on start/end boundary elements.
+
+        This delegates to the parent Flow's get_sections() method, but only operates
+        on the segments that are part of this FlowRegion.
+
+        Args:
+            start_elements: Elements or selector string that mark the start of sections
+            end_elements: Elements or selector string that mark the end of sections
+            new_section_on_page_break: Whether to start a new section at page boundaries
+            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
+            orientation: 'vertical' (default) or 'horizontal' - determines section direction
+
+        Returns:
+            ElementCollection of FlowRegion objects representing the extracted sections
+
+        Example:
+            # Split a multi-page table region by headers
+            table_region = flow.find("text:contains('Table 4')").below(until="text:contains('Table 5')")
+            sections = table_region.get_sections(start_elements="text:bold")
+        """
+        # Create a temporary Flow with just our constituent regions as segments
+        from natural_pdf.flows.flow import Flow
+
+        temp_flow = Flow(
+            segments=self.constituent_regions,
+            arrangement=self.flow.arrangement,
+            alignment=self.flow.alignment,
+            segment_gap=self.flow.segment_gap,
+        )
+
+        # Delegate to Flow's get_sections implementation
+        return temp_flow.get_sections(
+            start_elements=start_elements,
+            end_elements=end_elements,
+            new_section_on_page_break=new_section_on_page_break,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+        )
+
+    def split(
+        self, by: Optional[str] = None, page_breaks: bool = True, **kwargs
+    ) -> "ElementCollection":
+        """
+        Split this FlowRegion into sections.
+
+        This is a convenience method that wraps get_sections() with common splitting patterns.
+
+        Args:
+            by: Selector string for elements that mark section boundaries (e.g., "text:bold")
+            page_breaks: Whether to also split at page boundaries (default: True)
+            **kwargs: Additional arguments passed to get_sections()
+
+        Returns:
+            ElementCollection of FlowRegion objects representing the sections
+
+        Example:
+            # Split by bold headers
+            sections = flow_region.split(by="text:bold")
+
+            # Split only by specific text pattern, ignoring page breaks
+            sections = flow_region.split(
+                by="text:contains('Section')",
+                page_breaks=False
+            )
+        """
+        return self.get_sections(start_elements=by, new_section_on_page_break=page_breaks, **kwargs)
+
     @property
     def normalized_type(self) -> Optional[str]:
         """

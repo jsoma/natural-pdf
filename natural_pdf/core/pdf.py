@@ -1333,6 +1333,39 @@ class PDF(
             orientation=orientation,
         )
 
+    def split(self, divider, **kwargs) -> "ElementCollection":
+        """
+        Divide the PDF into sections based on the provided divider elements.
+
+        Args:
+            divider: Elements or selector string that mark section boundaries
+            **kwargs: Additional parameters passed to get_sections()
+                - include_boundaries: How to include boundary elements (default: 'start')
+                - orientation: 'vertical' or 'horizontal' (default: 'vertical')
+                - new_section_on_page_break: Whether to split at page boundaries (default: False)
+
+        Returns:
+            ElementCollection of Region objects representing the sections
+
+        Example:
+            # Split a PDF by chapter titles
+            chapters = pdf.split("text[size>20]:contains('Chapter')")
+
+            # Export each chapter to a separate file
+            for i, chapter in enumerate(chapters):
+                chapter_text = chapter.extract_text()
+                with open(f"chapter_{i+1}.txt", "w") as f:
+                    f.write(chapter_text)
+
+            # Split by horizontal rules/lines
+            sections = pdf.split("line[orientation=horizontal]")
+
+            # Split only by page breaks (no divider elements)
+            pages = pdf.split(None, new_section_on_page_break=True)
+        """
+        # Delegate to pages collection
+        return self.pages.split(divider, **kwargs)
+
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
         """
         DEPRECATED: Use save_pdf(..., ocr=True) instead.

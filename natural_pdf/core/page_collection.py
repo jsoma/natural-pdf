@@ -789,6 +789,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                                 start_element.page,
                                 (0, top, start_element.page.width, bottom),
                             )
+                            section._boundary_exclusions = include_boundaries
                         else:  # horizontal
                             left = start_element.x0
                             right = end_element.x1
@@ -821,6 +822,7 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                                 start_element.page,
                                 (left, 0, right, start_element.page.height),
                             )
+                            section._boundary_exclusions = include_boundaries
                         section.start_element = start_element
                         section.boundary_element_found = end_element
                     else:
@@ -865,6 +867,10 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                                 start_element.page, (0, top, start_element.page.width, bottom)
                             )
                             section.start_element = start_element
+                            section.end_element = (
+                                next_start  # The next start is the end of this section
+                            )
+                            section._boundary_exclusions = include_boundaries
                             sections.append(section)
                     else:  # horizontal
                         # Determine horizontal bounds
@@ -882,6 +888,10 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                                 start_element.page, (left, 0, right, start_element.page.height)
                             )
                             section.start_element = start_element
+                            section.end_element = (
+                                next_start  # The next start is the end of this section
+                            )
+                            section._boundary_exclusions = include_boundaries
                             sections.append(section)
                 else:
                     # Cross-page section - create from current_start to the end of its page
@@ -981,6 +991,71 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 sections.append(region)
 
         return ElementCollection(sections)
+
+    def split(self, divider, **kwargs) -> "ElementCollection[Region]":
+        """
+        Divide this page collection into sections based on the provided divider elements.
+
+        Args:
+            divider: Elements or selector string that mark section boundaries
+            **kwargs: Additional parameters passed to get_sections()
+                - include_boundaries: How to include boundary elements (default: 'start')
+                - orientation: 'vertical' or 'horizontal' (default: 'vertical')
+                - new_section_on_page_break: Whether to split at page boundaries (default: False)
+
+        Returns:
+            ElementCollection of Region objects representing the sections
+
+        Example:
+            # Split a PDF by chapter titles
+            chapters = pdf.pages.split("text[size>20]:contains('CHAPTER')")
+
+            # Split by page breaks
+            page_sections = pdf.pages.split(None, new_section_on_page_break=True)
+
+            # Split multi-page document by section headers
+            sections = pdf.pages[10:20].split("text:bold:contains('Section')")
+        """
+        # Default to 'start' boundaries for split (include divider at start of each section)
+        if "include_boundaries" not in kwargs:
+            kwargs["include_boundaries"] = "start"
+
+        sections = self.get_sections(start_elements=divider, **kwargs)
+
+        # Add initial section if there's content before the first divider
+        if sections and divider is not None:
+            # Get all elements across all pages
+            all_elements = []
+            for page in self.pages:
+                all_elements.extend(page.get_elements())
+
+            if all_elements:
+                # Find first divider
+                if isinstance(divider, str):
+                    # Search for first matching element
+                    first_divider = None
+                    for page in self.pages:
+                        match = page.find(divider)
+                        if match:
+                            first_divider = match
+                            break
+                else:
+                    # divider is already elements
+                    first_divider = divider[0] if hasattr(divider, "__getitem__") else divider
+
+                if first_divider and all_elements[0] != first_divider:
+                    # There's content before the first divider
+                    # Get section from start to first divider
+                    initial_sections = self.get_sections(
+                        start_elements=None,
+                        end_elements=[first_divider],
+                        include_boundaries="none",
+                        orientation=kwargs.get("orientation", "vertical"),
+                    )
+                    if initial_sections:
+                        sections = ElementCollection([initial_sections[0]] + list(sections))
+
+        return sections
 
     def _gather_analysis_data(
         self,

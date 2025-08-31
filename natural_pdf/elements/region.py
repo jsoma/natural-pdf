@@ -7,6 +7,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Set,
     Tuple,
     Union,
     overload,
@@ -674,12 +675,10 @@ class Region(
         Returns:
             True if the element is in the region, False otherwise
         """
-        # Check if element is on the same page
-        if not hasattr(element, "page") or element.page != self._page:
-            return False
+        # Use centralized spatial utility for consistency
+        from natural_pdf.utils.spatial import is_element_in_region
 
-        return self.is_element_center_inside(element)
-        # return self.intersects(element)
+        return is_element_in_region(element, self, strategy="center", check_page=True)
 
     def contains(self, element: "Element") -> bool:
         """
@@ -1265,12 +1264,36 @@ class Region(
                 selector, apply_exclusions=apply_exclusions, **kwargs
             )
             # Filter those elements to only include ones within this region
-            return [e for e in page_elements if self._is_element_in_region(e)]
+            elements = [e for e in page_elements if self._is_element_in_region(e)]
         else:
             # Get all elements from the page
             page_elements = self.page.get_elements(apply_exclusions=apply_exclusions)
             # Filter to elements in this region
-            return [e for e in page_elements if self._is_element_in_region(e)]
+            elements = [e for e in page_elements if self._is_element_in_region(e)]
+
+        # Apply boundary exclusions if this is a section with boundary settings
+        if hasattr(self, "_boundary_exclusions") and self._boundary_exclusions != "both":
+            excluded_ids = set()
+
+            if self._boundary_exclusions == "none":
+                # Exclude both start and end elements
+                if hasattr(self, "start_element") and self.start_element:
+                    excluded_ids.add(id(self.start_element))
+                if hasattr(self, "end_element") and self.end_element:
+                    excluded_ids.add(id(self.end_element))
+            elif self._boundary_exclusions == "start":
+                # Exclude only end element
+                if hasattr(self, "end_element") and self.end_element:
+                    excluded_ids.add(id(self.end_element))
+            elif self._boundary_exclusions == "end":
+                # Exclude only start element
+                if hasattr(self, "start_element") and self.start_element:
+                    excluded_ids.add(id(self.start_element))
+
+            if excluded_ids:
+                elements = [e for e in elements if id(e) not in excluded_ids]
+
+        return elements
 
     def extract_text(
         self,
@@ -1340,6 +1363,34 @@ class Region(
                 )
         elif debug:
             logger.debug(f"Region {self.bbox}: Not applying exclusions (apply_exclusions=False).")
+
+        # Add boundary element exclusions if this is a section with boundary settings
+        if hasattr(self, "_boundary_exclusions") and self._boundary_exclusions != "both":
+            boundary_exclusions = []
+
+            if self._boundary_exclusions == "none":
+                # Exclude both start and end elements
+                if hasattr(self, "start_element") and self.start_element:
+                    boundary_exclusions.append(self.start_element)
+                if hasattr(self, "end_element") and self.end_element:
+                    boundary_exclusions.append(self.end_element)
+            elif self._boundary_exclusions == "start":
+                # Exclude only end element
+                if hasattr(self, "end_element") and self.end_element:
+                    boundary_exclusions.append(self.end_element)
+            elif self._boundary_exclusions == "end":
+                # Exclude only start element
+                if hasattr(self, "start_element") and self.start_element:
+                    boundary_exclusions.append(self.start_element)
+
+            # Add boundary elements as exclusion regions
+            for elem in boundary_exclusions:
+                if hasattr(elem, "bbox"):
+                    exclusion_regions.append(elem)
+                    if debug:
+                        logger.debug(
+                            f"Adding boundary exclusion: {elem.extract_text().strip()} at {elem.bbox}"
+                        )
 
         # 4. Spatially Filter Characters using Utility
         # Pass self as the target_region for precise polygon checks etc.
@@ -2849,69 +2900,31 @@ class Region(
         if orientation not in ["vertical", "horizontal"]:
             raise ValueError(f"orientation must be 'vertical' or 'horizontal', got '{orientation}'")
 
-        # Calculate the section boundaries based on orientation and include_boundaries
-        if orientation == "vertical":
-            # Use full width of the parent region for vertical sections
-            x0 = self.x0  # Use parent region's left boundary
-            x1 = self.x1  # Use parent region's right boundary
+        # Use centralized section utilities
+        from natural_pdf.utils.sections import calculate_section_bounds, validate_section_bounds
 
-            # Determine vertical boundaries based on include_boundaries
-            if include_boundaries == "both":
-                # Include both boundary elements
-                top = start_element.top
-                bottom = end_element.bottom
-            elif include_boundaries == "start":
-                # Include start element, exclude end element
-                top = start_element.top
-                bottom = end_element.top  # Stop at the top of end element
-            elif include_boundaries == "end":
-                # Exclude start element, include end element
-                top = start_element.bottom  # Start at the bottom of start element
-                bottom = end_element.bottom
-            else:  # "none"
-                # Exclude both boundary elements
-                top = start_element.bottom  # Start at the bottom of start element
-                bottom = end_element.top  # Stop at the top of end element
+        # Calculate section boundaries
+        bounds = calculate_section_bounds(
+            start_element=start_element,
+            end_element=end_element,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            parent_bounds=self.bbox,
+        )
 
-            # Ensure valid boundaries
-            if top >= bottom:
-                logger.debug(f"Invalid section boundaries: top={top} >= bottom={bottom}")
-                # Return an empty region
-                return Region(self.page, (x0, top, x0, top))
-        else:  # horizontal
-            # Use full height of the parent region for horizontal sections
-            top = self.top  # Use parent region's top boundary
-            bottom = self.bottom  # Use parent region's bottom boundary
-
-            # Determine horizontal boundaries based on include_boundaries
-            if include_boundaries == "both":
-                # Include both boundary elements
-                x0 = start_element.x0
-                x1 = end_element.x1
-            elif include_boundaries == "start":
-                # Include start element, exclude end element
-                x0 = start_element.x0
-                x1 = end_element.x0  # Stop at the left of end element
-            elif include_boundaries == "end":
-                # Exclude start element, include end element
-                x0 = start_element.x1  # Start at the right of start element
-                x1 = end_element.x1
-            else:  # "none"
-                # Exclude both boundary elements
-                x0 = start_element.x1  # Start at the right of start element
-                x1 = end_element.x0  # Stop at the left of end element
-
-            # Ensure valid boundaries
-            if x0 >= x1:
-                logger.debug(f"Invalid section boundaries: x0={x0} >= x1={x1}")
-                # Return an empty region
-                return Region(self.page, (x0, top, x0, top))
+        # Validate boundaries
+        if not validate_section_bounds(bounds, orientation):
+            # Return an empty region at the start position
+            x0, top, _, _ = bounds
+            return Region(self.page, (x0, top, x0, top))
 
         # Create new region
-        section = Region(self.page, (x0, top, x1, bottom))
-        # Store the original boundary elements for reference
+        section = Region(self.page, bounds)
+
+        # Store the original boundary elements and exclusion info
         section.start_element = start_element
         section.end_element = end_element
+        section._boundary_exclusions = include_boundaries
 
         return section
 
@@ -2935,121 +2948,63 @@ class Region(
             List of Region objects representing the extracted sections
         """
         from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.utils.sections import extract_sections_from_region
 
-        # Process string selectors to find elements WITHIN THIS REGION
-        if isinstance(start_elements, str):
-            start_elements = self.find_all(start_elements)  # Use region's find_all
-            if hasattr(start_elements, "elements"):
-                start_elements = start_elements.elements
-
-        if isinstance(end_elements, str):
-            end_elements = self.find_all(end_elements)  # Use region's find_all
-            if hasattr(end_elements, "elements"):
-                end_elements = end_elements.elements
-
-        # Ensure start_elements is a list (or similar iterable)
-        if start_elements is None or not hasattr(start_elements, "__iter__"):
-            logger.warning(
-                "get_sections requires valid start_elements (selector or list). Returning empty."
-            )
-            return []
-        # Ensure end_elements is a list if provided
-        if end_elements is not None and not hasattr(end_elements, "__iter__"):
-            logger.warning("end_elements must be iterable if provided. Ignoring.")
-            end_elements = []
-        elif end_elements is None:
-            end_elements = []
-
-        # If no start elements found within the region, return empty list
-        if not start_elements:
-            return []
-
-        # Sort all elements within the region based on orientation
-        all_elements_in_region = self.get_elements()
-        if orientation == "vertical":
-            all_elements_in_region.sort(key=lambda e: (e.top, e.x0))
-        else:  # horizontal
-            all_elements_in_region.sort(key=lambda e: (e.x0, e.top))
-
-        if not all_elements_in_region:
-            return []  # Cannot create sections if region is empty
-
-        # Map elements to their indices in the sorted list
-        element_to_index = {el: i for i, el in enumerate(all_elements_in_region)}
-
-        # Mark section boundaries using indices from the sorted list
-        section_boundaries = []
-
-        # Add start element indexes
-        for element in start_elements:
-            idx = element_to_index.get(element)
-            if idx is not None:
-                section_boundaries.append({"index": idx, "element": element, "type": "start"})
-            # else: Element found by selector might not be geometrically in region? Log warning?
-
-        # Add end element indexes if provided
-        for element in end_elements:
-            idx = element_to_index.get(element)
-            if idx is not None:
-                section_boundaries.append({"index": idx, "element": element, "type": "end"})
-
-        # Sort boundaries by index (document order within the region)
-        section_boundaries.sort(key=lambda x: x["index"])
-
-        # Generate sections
-        sections = []
-        current_start_boundary = None
-
-        for i, boundary in enumerate(section_boundaries):
-            # If it's a start boundary and we don't have a current start
-            if boundary["type"] == "start" and current_start_boundary is None:
-                current_start_boundary = boundary
-
-            # If it's an end boundary and we have a current start
-            elif boundary["type"] == "end" and current_start_boundary is not None:
-                # Create a section from current_start to this boundary
-                start_element = current_start_boundary["element"]
-                end_element = boundary["element"]
-                # Use the helper, ensuring elements are from within the region
-                section = self.get_section_between(
-                    start_element, end_element, include_boundaries, orientation
-                )
-                sections.append(section)
-                current_start_boundary = None  # Reset
-
-            # If it's another start boundary and we have a current start (split by starts only)
-            elif (
-                boundary["type"] == "start"
-                and current_start_boundary is not None
-                and not end_elements
-            ):
-                # End the previous section just before this start boundary
-                start_element = current_start_boundary["element"]
-                # Find the element immediately preceding this start in the sorted list
-                end_idx = boundary["index"] - 1
-                if end_idx >= 0 and end_idx >= current_start_boundary["index"]:
-                    end_element = all_elements_in_region[end_idx]
-                    section = self.get_section_between(
-                        start_element, end_element, include_boundaries, orientation
-                    )
-                    sections.append(section)
-                # Else: Section started and ended by consecutive start elements? Create empty?
-                # For now, just reset and start new section
-
-                # Start the new section
-                current_start_boundary = boundary
-
-        # Handle the last section if we have a current start
-        if current_start_boundary is not None:
-            start_element = current_start_boundary["element"]
-            # End at the last element within the region
-            end_element = all_elements_in_region[-1]
-            section = self.get_section_between(
-                start_element, end_element, include_boundaries, orientation
-            )
-            sections.append(section)
+        # Use centralized section extraction logic
+        sections = extract_sections_from_region(
+            region=self,
+            start_elements=start_elements,
+            end_elements=end_elements,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+        )
 
         return ElementCollection(sections)
+
+    def split(self, divider, **kwargs) -> "ElementCollection[Region]":
+        """
+        Divide this region into sections based on the provided divider elements.
+
+        Args:
+            divider: Elements or selector string that mark section boundaries
+            **kwargs: Additional parameters passed to get_sections()
+                - include_boundaries: How to include boundary elements (default: 'start')
+                - orientation: 'vertical' or 'horizontal' (default: 'vertical')
+
+        Returns:
+            ElementCollection of Region objects representing the sections
+
+        Example:
+            # Split a region by bold text
+            sections = region.split("text:bold")
+
+            # Split horizontally by vertical lines
+            sections = region.split("line[orientation=vertical]", orientation="horizontal")
+        """
+        # Default to 'start' boundaries for split (include divider at start of each section)
+        if "include_boundaries" not in kwargs:
+            kwargs["include_boundaries"] = "start"
+
+        sections = self.get_sections(start_elements=divider, **kwargs)
+
+        # Add section before first divider if there's content
+        if sections and hasattr(sections[0], "start_element"):
+            first_divider = sections[0].start_element
+            if first_divider:
+                # Get all elements before the first divider
+                all_elements = self.get_elements()
+                if all_elements and all_elements[0] != first_divider:
+                    # Create section from start to just before first divider
+                    initial_section = self.get_section_between(
+                        start_element=None,
+                        end_element=first_divider,
+                        include_boundaries="none",
+                        orientation=kwargs.get("orientation", "vertical"),
+                    )
+                    if initial_section and initial_section.get_elements():
+                        sections.insert(0, initial_section)
+
+        return sections
 
     def create_cells(self):
         """
