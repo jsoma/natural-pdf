@@ -239,6 +239,9 @@ class DirectionalMixin:
             # Get constraint region (from parameter or global options)
             constraint_region = within or natural_pdf.options.layout.directional_within
 
+            # Check if until uses :closest selector (preserve ordering)
+            preserve_order = isinstance(until, str) and ":closest" in until
+
             # If until is an elementcollection, just use it
             if isinstance(until, ElementCollection):
                 # Only take ones on the same page
@@ -280,7 +283,9 @@ class DirectionalMixin:
                     matches_in_direction = [
                         m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
                     ]
-                matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
+                # Only sort by position if not using :closest (which is already sorted by quality)
+                if not preserve_order:
+                    matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
 
             elif direction == "below":
                 if normalized_anchor == "top":
@@ -296,7 +301,9 @@ class DirectionalMixin:
                     matches_in_direction = [
                         m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
                     ]
-                matches_in_direction.sort(key=lambda e: e.top)
+                # Only sort by position if not using :closest (which is already sorted by quality)
+                if not preserve_order:
+                    matches_in_direction.sort(key=lambda e: e.top)
 
             elif direction == "left":
                 if normalized_anchor == "left":
@@ -314,7 +321,9 @@ class DirectionalMixin:
                         for m in matches_in_direction
                         if m.top < self.bottom and m.bottom > self.top
                     ]
-                matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
+                # Only sort by position if not using :closest (which is already sorted by quality)
+                if not preserve_order:
+                    matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
 
             elif direction == "right":
                 if normalized_anchor == "left":
@@ -332,7 +341,9 @@ class DirectionalMixin:
                         for m in matches_in_direction
                         if m.top < self.bottom and m.bottom > self.top
                     ]
-                matches_in_direction.sort(key=lambda e: e.x0)
+                # Only sort by position if not using :closest (which is already sorted by quality)
+                if not preserve_order:
+                    matches_in_direction.sort(key=lambda e: e.x0)
 
             if matches_in_direction:
                 target = matches_in_direction[0]

@@ -1518,9 +1518,8 @@ class Page(
                 # Determine case sensitivity
                 ignore_case = not kwargs.get("case", False)
 
-                # First, try exact contains match
-                contains_matches = []
-                other_elements = []
+                # Calculate similarity scores for all elements
+                scored_elements = []
 
                 for el in matching_elements:
                     if hasattr(el, "text") and el.text:
@@ -1531,34 +1530,24 @@ class Page(
                             el_text = el_text.lower()
                             search_term = search_term.lower()
 
-                        if search_term in el_text:
-                            contains_matches.append(el)
-                        else:
-                            other_elements.append(el)
-
-                # Calculate similarity scores for non-contains matches
-                scored_elements = []
-                for el in other_elements:
-                    if hasattr(el, "text") and el.text:
-                        el_text = el.text.strip()
-                        compare_text = search_text
-
-                        if ignore_case:
-                            el_text = el_text.lower()
-                            compare_text = compare_text.lower()
-
                         # Calculate similarity ratio
-                        ratio = difflib.SequenceMatcher(None, compare_text, el_text).ratio()
+                        ratio = difflib.SequenceMatcher(None, search_term, el_text).ratio()
 
+                        # Check if element contains the search term as substring
+                        contains_match = search_term in el_text
+
+                        # Store element with its similarity score and contains flag
                         if ratio >= threshold:
-                            scored_elements.append((ratio, el))
+                            scored_elements.append((ratio, contains_match, el))
 
-                # Sort by score (highest first) and extract elements
-                scored_elements.sort(key=lambda x: x[0], reverse=True)
-                sorted_other = [el for _, el in scored_elements]
+                # Sort by:
+                # 1. Contains match (True before False)
+                # 2. Similarity score (highest first)
+                # This ensures substring matches come first but are sorted by similarity
+                scored_elements.sort(key=lambda x: (x[1], x[0]), reverse=True)
 
-                # Combine: exact contains matches first, then sorted by similarity
-                matching_elements = contains_matches + sorted_other
+                # Extract just the elements
+                matching_elements = [el for _, _, el in scored_elements]
                 break  # Only process the first :closest pseudo-class
 
         # Handle collection-level pseudo-classes (:first, :last)
