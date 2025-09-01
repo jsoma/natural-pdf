@@ -234,10 +234,26 @@ class ElementCollection(
                 **kwargs,
             )
             for spec in flow_specs:
-                all_specs.append(spec)
-                if spec.page not in specs_by_page:
-                    specs_by_page[spec.page] = []
-                specs_by_page[spec.page].append(spec)
+                # Check if we already have a spec for this page
+                if spec.page in specs_by_page:
+                    # Merge highlights into existing spec
+                    existing_spec = specs_by_page[spec.page]
+                    # Add all highlights from this spec to the existing one
+                    existing_spec.highlights.extend(spec.highlights)
+                    # Merge crop bbox if needed
+                    if spec.crop_bbox and not existing_spec.crop_bbox:
+                        existing_spec.crop_bbox = spec.crop_bbox
+                    elif spec.crop_bbox and existing_spec.crop_bbox:
+                        # Expand crop bbox to include both
+                        x0 = min(spec.crop_bbox[0], existing_spec.crop_bbox[0])
+                        y0 = min(spec.crop_bbox[1], existing_spec.crop_bbox[1])
+                        x1 = max(spec.crop_bbox[2], existing_spec.crop_bbox[2])
+                        y1 = max(spec.crop_bbox[3], existing_spec.crop_bbox[3])
+                        existing_spec.crop_bbox = (x0, y0, x1, y1)
+                else:
+                    # First spec for this page
+                    all_specs.append(spec)
+                    specs_by_page[spec.page] = spec
 
         # Group regular elements by page
         elements_by_page = {}

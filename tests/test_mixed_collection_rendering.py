@@ -31,7 +31,9 @@ def test_mixed_region_flowregion_rendering():
     # Test that _get_render_specs works correctly
     specs = sections._get_render_specs(mode="show")
 
-    # Should have specs for both pages
+    # Should have exactly 2 specs (one per page, even with overlapping FlowRegions)
+    assert len(specs) == 2, f"Expected 2 specs total, got {len(specs)}"
+
     pages_in_specs = set(spec.page for spec in specs)
     assert len(pages_in_specs) == 2, f"Expected specs for 2 pages, got {len(pages_in_specs)}"
 
