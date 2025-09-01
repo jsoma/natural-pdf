@@ -66,6 +66,7 @@ class Options:
         self.layout = ConfigSection(
             directional_offset=0.01,  # Offset in points when using directional methods
             auto_multipage=False,  # Whether directional methods span pages by default
+            directional_within=None,  # Region to constrain directional operations to
         )
 
 

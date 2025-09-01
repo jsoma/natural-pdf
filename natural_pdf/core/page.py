@@ -1491,6 +1491,76 @@ class Page(
                     "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                 )
 
+        # Handle :closest pseudo-class for fuzzy text matching
+        for pseudo in selector_obj.get("pseudo_classes", []):
+            name = pseudo.get("name")
+            if name == "closest" and pseudo.get("args") is not None:
+                import difflib
+
+                # Parse search text and threshold
+                search_text = str(pseudo["args"]).strip()
+                threshold = 0.0  # Default threshold
+
+                # Handle empty search text
+                if not search_text:
+                    matching_elements = []
+                    break
+
+                # Check if threshold is specified with @ separator
+                if "@" in search_text and search_text.count("@") == 1:
+                    text_part, threshold_part = search_text.rsplit("@", 1)
+                    try:
+                        threshold = float(threshold_part)
+                        search_text = text_part.strip()
+                    except (ValueError, TypeError):
+                        pass  # Keep original search_text and default threshold
+
+                # Determine case sensitivity
+                ignore_case = not kwargs.get("case", False)
+
+                # First, try exact contains match
+                contains_matches = []
+                other_elements = []
+
+                for el in matching_elements:
+                    if hasattr(el, "text") and el.text:
+                        el_text = el.text.strip()
+                        search_term = search_text
+
+                        if ignore_case:
+                            el_text = el_text.lower()
+                            search_term = search_term.lower()
+
+                        if search_term in el_text:
+                            contains_matches.append(el)
+                        else:
+                            other_elements.append(el)
+
+                # Calculate similarity scores for non-contains matches
+                scored_elements = []
+                for el in other_elements:
+                    if hasattr(el, "text") and el.text:
+                        el_text = el.text.strip()
+                        compare_text = search_text
+
+                        if ignore_case:
+                            el_text = el_text.lower()
+                            compare_text = compare_text.lower()
+
+                        # Calculate similarity ratio
+                        ratio = difflib.SequenceMatcher(None, compare_text, el_text).ratio()
+
+                        if ratio >= threshold:
+                            scored_elements.append((ratio, el))
+
+                # Sort by score (highest first) and extract elements
+                scored_elements.sort(key=lambda x: x[0], reverse=True)
+                sorted_other = [el for _, el in scored_elements]
+
+                # Combine: exact contains matches first, then sorted by similarity
+                matching_elements = contains_matches + sorted_other
+                break  # Only process the first :closest pseudo-class
+
         # Handle collection-level pseudo-classes (:first, :last)
         for pseudo in selector_obj.get("pseudo_classes", []):
             name = pseudo.get("name")

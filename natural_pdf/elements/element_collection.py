@@ -839,7 +839,6 @@ class ElementCollection(
                 result = " ".join(c.get("text", "") for c in all_char_dicts)
 
         else:
-            print("JOIN WITHOUT LAYOUT")
             # Default: Simple join without layout
             logger.debug("ElementCollection.extract_text: Using simple join (layout=False).")
             result = separator.join(el.extract_text() for el in text_elements)

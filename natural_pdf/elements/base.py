@@ -122,6 +122,8 @@ class DirectionalMixin:
         offset: float = 0.0,
         apply_exclusions: bool = True,
         multipage: bool = False,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ) -> Union["Region", "FlowRegion"]:
         """
@@ -136,6 +138,9 @@ class DirectionalMixin:
             include_endpoint: Whether to include the boundary element found by 'until'
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
+            multipage: If True, allows the region to span multiple pages
+            within: Optional region to constrain the result to (default: None)
+            anchor: Reference point - 'start', 'center', 'end', or explicit edges like 'top', 'bottom', 'left', 'right'
             **kwargs: Additional parameters for the 'until' selector search
 
         Returns:
@@ -146,6 +151,37 @@ class DirectionalMixin:
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
         pixel_offset = offset  # Use provided offset for excluding elements/endpoints
+
+        # Normalize anchor parameter
+        def normalize_anchor(anchor_value: str, dir: str) -> str:
+            """Convert start/end/center to explicit edges based on direction."""
+            if anchor_value == "center":
+                return "center"
+            elif anchor_value == "start":
+                # Start means the edge we're moving away from
+                if dir == "below":
+                    return "top"
+                elif dir == "above":
+                    return "bottom"
+                elif dir == "right":
+                    return "left"
+                elif dir == "left":
+                    return "right"
+            elif anchor_value == "end":
+                # End means the edge we're moving towards
+                if dir == "below":
+                    return "bottom"
+                elif dir == "above":
+                    return "top"
+                elif dir == "right":
+                    return "right"
+                elif dir == "left":
+                    return "left"
+            else:
+                # Already explicit (top/bottom/left/right)
+                return anchor_value
+
+        normalized_anchor = normalize_anchor(anchor, direction)
 
         # 1. Determine initial boundaries based on direction and include_source
         if is_horizontal:
@@ -200,34 +236,77 @@ class DirectionalMixin:
         if until:
             from natural_pdf.elements.element_collection import ElementCollection
 
+            # Get constraint region (from parameter or global options)
+            constraint_region = within or natural_pdf.options.layout.directional_within
+
             # If until is an elementcollection, just use it
             if isinstance(until, ElementCollection):
                 # Only take ones on the same page
                 all_matches = [m for m in until if m.page == self.page]
             else:
-                all_matches = self.page.find_all(until, apply_exclusions=apply_exclusions, **kwargs)
+                # If we have a constraint region, search within it instead of the whole page
+                if (
+                    constraint_region
+                    and hasattr(constraint_region, "page")
+                    and constraint_region.page == self.page
+                ):
+                    all_matches = constraint_region.find_all(
+                        until, apply_exclusions=apply_exclusions, **kwargs
+                    )
+                else:
+                    all_matches = self.page.find_all(
+                        until, apply_exclusions=apply_exclusions, **kwargs
+                    )
             matches_in_direction = []
 
-            # Filter and sort matches based on direction
+            # Filter and sort matches based on direction and anchor parameter
             # Also filter by cross-direction bounds when cross_size='element'
+
+            # IMPORTANT: Exclude self from matches to prevent finding ourselves
+            all_matches = [m for m in all_matches if m is not self]
+
+            # Determine reference point based on normalized_anchor
             if direction == "above":
-                matches_in_direction = [m for m in all_matches if m.bottom <= self.top]
+                if normalized_anchor == "top":
+                    ref_y = self.top
+                elif normalized_anchor == "center":
+                    ref_y = (self.top + self.bottom) / 2
+                else:  # 'bottom'
+                    ref_y = self.bottom
+
+                matches_in_direction = [m for m in all_matches if m.bottom <= ref_y]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
                         m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
                     ]
                 matches_in_direction.sort(key=lambda e: e.bottom, reverse=True)
+
             elif direction == "below":
-                matches_in_direction = [m for m in all_matches if m.top >= self.bottom]
+                if normalized_anchor == "top":
+                    ref_y = self.top
+                elif normalized_anchor == "center":
+                    ref_y = (self.top + self.bottom) / 2
+                else:  # 'bottom'
+                    ref_y = self.bottom
+
+                matches_in_direction = [m for m in all_matches if m.top >= ref_y]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
                         m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
                     ]
                 matches_in_direction.sort(key=lambda e: e.top)
+
             elif direction == "left":
-                matches_in_direction = [m for m in all_matches if m.x1 <= self.x0]
+                if normalized_anchor == "left":
+                    ref_x = self.x0
+                elif normalized_anchor == "center":
+                    ref_x = (self.x0 + self.x1) / 2
+                else:  # 'right'
+                    ref_x = self.x1
+
+                matches_in_direction = [m for m in all_matches if m.x1 <= ref_x]
                 # Filter by vertical bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -236,8 +315,16 @@ class DirectionalMixin:
                         if m.top < self.bottom and m.bottom > self.top
                     ]
                 matches_in_direction.sort(key=lambda e: e.x1, reverse=True)
+
             elif direction == "right":
-                matches_in_direction = [m for m in all_matches if m.x0 >= self.x1]
+                if normalized_anchor == "left":
+                    ref_x = self.x0
+                elif normalized_anchor == "center":
+                    ref_x = (self.x0 + self.x1) / 2
+                else:  # 'right'
+                    ref_x = self.x1
+
+                matches_in_direction = [m for m in all_matches if m.x0 >= ref_x]
                 # Filter by vertical bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -284,12 +371,32 @@ class DirectionalMixin:
         final_y1 = max(bbox[1], bbox[3])
         final_bbox = (final_x0, final_y0, final_x1, final_y1)
 
+        # 4.5. Apply within constraint if provided (or from global options)
+        constraint_region = within or natural_pdf.options.layout.directional_within
+        if constraint_region:
+            # Ensure constraint is on same page
+            if hasattr(constraint_region, "page") and constraint_region.page != self.page:
+                raise ValueError("within constraint must be on the same page as the source element")
+
+            # Apply constraint by intersecting with the constraint region's bounds
+            final_x0 = max(final_x0, constraint_region.x0)
+            final_y0 = max(final_y0, constraint_region.top)
+            final_x1 = min(final_x1, constraint_region.x1)
+            final_y1 = min(final_y1, constraint_region.bottom)
+
+            # Update final_bbox with constrained values
+            final_bbox = (final_x0, final_y0, final_x1, final_y1)
+
         # 5. Check if multipage is needed
         # Use global default if not explicitly set
         use_multipage = multipage
         # If multipage is False but auto_multipage is True, use True
         if not multipage and natural_pdf.options.layout.auto_multipage:
             use_multipage = True
+
+        # Multipage is not supported with within constraint
+        if use_multipage and constraint_region:
+            raise ValueError("multipage navigation is not supported with within constraint")
 
         # Prevent recursion: if called with internal flag, don't use multipage
         if kwargs.get("_from_flow", False):
@@ -488,6 +595,8 @@ class DirectionalMixin:
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
         multipage: bool = False,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ) -> Union["Region", "FlowRegion"]:
         """
@@ -503,6 +612,8 @@ class DirectionalMixin:
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
                      if the result spans multiple pages, Region otherwise (default: False)
+            within: Optional region to constrain the result to (default: None)
+            anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'top', 'bottom'
             **kwargs: Additional parameters
 
         Returns:
@@ -534,6 +645,8 @@ class DirectionalMixin:
             offset=offset,
             apply_exclusions=apply_exclusions,
             multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -547,6 +660,8 @@ class DirectionalMixin:
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
         multipage: bool = False,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ) -> Union["Region", "FlowRegion"]:
         """
@@ -562,6 +677,8 @@ class DirectionalMixin:
                      if the result spans multiple pages, Region otherwise (default: False)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
+            within: Optional region to constrain the result to (default: None)
+            anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'top', 'bottom'
             **kwargs: Additional parameters
 
         Returns:
@@ -593,6 +710,8 @@ class DirectionalMixin:
             offset=offset,
             apply_exclusions=apply_exclusions,
             multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -606,6 +725,8 @@ class DirectionalMixin:
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
         multipage: bool = False,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ) -> Union["Region", "FlowRegion"]:
         """
@@ -621,6 +742,8 @@ class DirectionalMixin:
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
                      if the result spans multiple pages, Region otherwise (default: False)
+            within: Optional region to constrain the result to (default: None)
+            anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'left', 'right'
             **kwargs: Additional parameters
 
         Returns:
@@ -652,6 +775,8 @@ class DirectionalMixin:
             offset=offset,
             apply_exclusions=apply_exclusions,
             multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -665,6 +790,8 @@ class DirectionalMixin:
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
         multipage: bool = False,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ) -> Union["Region", "FlowRegion"]:
         """
@@ -680,6 +807,8 @@ class DirectionalMixin:
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
                      if the result spans multiple pages, Region otherwise (default: False)
+            within: Optional region to constrain the result to (default: None)
+            anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'left', 'right'
             **kwargs: Additional parameters
 
         Returns:
@@ -711,6 +840,8 @@ class DirectionalMixin:
             offset=offset,
             apply_exclusions=apply_exclusions,
             multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 

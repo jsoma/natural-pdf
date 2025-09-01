@@ -117,6 +117,7 @@ These are powerful filters that let you find elements based on their content or 
 | Pseudo-Class          | Example                           | What It Finds |
 |-----------------------|-----------------------------------|---------------|
 | `:contains('text')` | `text:contains('Report')`       | Elements containing specific text |
+| `:closest('text')`  | `text:closest('Invoice Date')`    | Fuzzy text matching (great for OCR errors) |
 | `:bold`               | `text:bold`                       | Bold text (detected automatically) |
 | `:italic`             | `text:italic`                     | Italic text |
 | `:strike`             | `text:strike`                     | Struck-through text |
@@ -185,6 +186,34 @@ page.find_all('text:contains("INS-\\w+")', regex=True)
 ```python
 # Combine regex with case-insensitivity
 page.find_all('text:contains("jungle health")', regex=True, case=False)
+```
+
+### Fuzzy Text Matching for OCR Errors
+
+When working with OCR'd PDFs, text recognition isn't always perfect. The `:closest()` pseudo-class helps you find text even when it contains errors:
+
+```python
+# Find "Invoice Date" even if OCR read it as "Invice Date" or "Invoice Dat"
+page.find('text:closest("Invoice Date")')
+
+# Specify a similarity threshold (0.0 to 1.0)
+# 0.8 = 80% similar
+page.find_all('text:closest("Date of Review@0.8")')
+
+# Default threshold is 0.0 - returns all text sorted by similarity
+# Exact substring matches always come first
+all_sorted = page.find_all('text:closest("Durham")')
+```
+
+The `:closest()` selector is particularly useful for:
+- OCR errors like "rn" read as "m" (Durharn → Durham)
+- Missing punctuation (Date: → Date)
+- Character confusion (l/I, 0/O)
+- Partial matches when you're not sure of the exact text
+
+```python
+# Combine with other selectors for more precision
+page.find('text:closest("Total Amount@0.7")[size>12]')
 ```
 
 ## Working with Groups of Elements

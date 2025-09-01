@@ -96,3 +96,4 @@ Natural PDF is a Python library for intelligent PDF document processing that com
 ### Environment and Tooling
 - Always use the virtual environment in .venv
 - Use uv when possible for efficient package management
+- Don't create new PDFs for testing, just use pdfs/01-practice.pdf.

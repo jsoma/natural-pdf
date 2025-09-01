@@ -40,6 +40,8 @@ data = table_region.extract_table()
 page.find('text:contains("Invoice")')           # Contains text
 page.find('text:contains("total")', case=False) # Case insensitive
 page.find('text:contains("\\d+")', regex=True)  # Regex pattern
+page.find('text:closest("Invoice Date")')       # Fuzzy match (OCR errors)
+page.find('text:closest("Total@0.8")')          # 80% similarity threshold
 ```
 
 ### Text Formatting

@@ -75,6 +75,34 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class RegionContext:
+    """Context manager for constraining directional operations to a region."""
+
+    def __init__(self, region: "Region"):
+        """Initialize the context manager with a region.
+
+        Args:
+            region: The Region to use as a constraint for directional operations
+        """
+        self.region = region
+        self.previous_within = None
+
+    def __enter__(self):
+        """Enter the context, setting the global directional_within option."""
+        import natural_pdf
+
+        self.previous_within = natural_pdf.options.layout.directional_within
+        natural_pdf.options.layout.directional_within = self.region
+        return self.region
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context, restoring the previous directional_within option."""
+        import natural_pdf
+
+        natural_pdf.options.layout.directional_within = self.previous_within
+        return False  # Don't suppress exceptions
+
+
 class Region(
     TextMixin,
     DirectionalMixin,
@@ -1307,9 +1335,11 @@ class Region(
 
     def extract_text(
         self,
+        granularity: str = "chars",
         apply_exclusions: bool = True,
         debug: bool = False,
         *,
+        overlap: str = "center",
         newlines: Union[bool, str] = True,
         content_filter=None,
         **kwargs,
@@ -1319,8 +1349,15 @@ class Region(
         layout engine (chars_to_textmap).
 
         Args:
+            granularity: Level of text extraction - 'chars' (default) or 'words'.
+                - 'chars': Character-by-character extraction (current behavior)
+                - 'words': Word-level extraction with configurable overlap
             apply_exclusions: Whether to apply exclusion regions defined on the parent page.
             debug: Enable verbose debugging output for filtering steps.
+            overlap: How to determine if words overlap with the region (only used when granularity='words'):
+                - 'center': Word center point must be inside (default)
+                - 'full': Word must be fully inside the region
+                - 'partial': Any overlap includes the word
             newlines: Whether to strip newline characters from the extracted text.
             content_filter: Optional content filter to exclude specific text patterns. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
@@ -1333,10 +1370,41 @@ class Region(
         Returns:
             Extracted text as string, potentially with layout-based spacing.
         """
+        # Validate granularity parameter
+        if granularity not in ("chars", "words"):
+            raise ValueError(f"granularity must be 'chars' or 'words', got '{granularity}'")
+
         # Allow 'debug_exclusions' for backward compatibility
         debug = kwargs.get("debug", debug or kwargs.get("debug_exclusions", False))
-        logger.debug(f"Region {self.bbox}: extract_text called with kwargs: {kwargs}")
+        logger.debug(
+            f"Region {self.bbox}: extract_text called with granularity='{granularity}', overlap='{overlap}', kwargs: {kwargs}"
+        )
 
+        # Handle word-level extraction
+        if granularity == "words":
+            # Use find_all to get words with proper overlap and exclusion handling
+            word_elements = self.find_all(
+                "text", overlap=overlap, apply_exclusions=apply_exclusions
+            )
+
+            # Join the text from all matching words
+            text_parts = []
+            for word in word_elements:
+                word_text = word.extract_text()
+                if word_text:  # Skip empty strings
+                    text_parts.append(word_text)
+
+            result = " ".join(text_parts)
+
+            # Apply newlines processing if requested
+            if newlines is False:
+                result = result.replace("\n", " ").replace("\r", " ")
+            elif isinstance(newlines, str):
+                result = result.replace("\n", newlines).replace("\r", newlines)
+
+            return result
+
+        # Original character-level extraction logic follows...
         # 1. Get Word Elements potentially within this region (initial broad phase)
         # Optimization: Could use spatial query if page elements were indexed
         page_words = self.page.words  # Get all words from the page
@@ -4048,3 +4116,29 @@ class Region(
         except Exception as e:
             logger.error(f"Error creating viewer for region {self.bbox}: {e}", exc_info=True)
             return None
+
+    def within(self):
+        """Context manager that constrains directional operations to this region.
+
+        When used as a context manager, all directional navigation operations
+        (above, below, left, right) will be constrained to the bounds of this region.
+
+        Returns:
+            RegionContext: A context manager that yields this region
+
+        Examples:
+            ```python
+            # Create a column region
+            left_col = page.region(right=page.width/2)
+
+            # All directional operations are constrained to left_col
+            with left_col.within() as col:
+                header = col.find("text[size>14]")
+                content = header.below(until="text[size>14]")
+                # content will only include elements within left_col
+
+            # Operations outside the context are not constrained
+            full_page_below = header.below()  # Searches full page
+            ```
+        """
+        return RegionContext(self)

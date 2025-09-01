@@ -7,11 +7,12 @@ selectors with extensions for PDF-specific attributes and spatial relationships.
 The parser handles:
 - Basic element selectors (text, rect, line, image)
 - Attribute selectors with comparisons ([size>12], [color="red"])
-- Pseudo-selectors for text content (:contains(), :regex())
+- Pseudo-selectors for text content (:contains(), :regex(), :closest())
 - Spatial relationship selectors (:above(), :below(), :near())
 - Color matching with Delta E distance calculations
 - Logical operators (AND, OR) and grouping
 - Complex nested expressions with proper precedence
+- Fuzzy text matching for OCR errors (:closest())
 
 Key features:
 - Safe value parsing without eval() for security
@@ -25,9 +26,12 @@ This enables powerful document navigation like:
 - page.find_all('rect[color~="red"]:above(text:contains("Total"))')
 - page.find('text:regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")')
 - page.find('text:regex("[\u2500-\u257f]")')  # Box drawing characters
+- page.find('text:closest("Date(s) of Review")')  # Fuzzy match for OCR errors
+- page.find('text:closest("Invoice Date@0.9")')   # 90% similarity threshold
 """
 
 import ast
+import difflib
 import logging
 import re
 from collections import Counter
@@ -893,6 +897,13 @@ def _build_filter_list(
                     return False
 
             filter_lambda = regex_check
+
+        # --- Handle :closest pseudo-class for fuzzy text matching --- #
+        elif name == "closest" and args is not None:
+            # Note: :closest is handled specially in the page._apply_selector method
+            # It doesn't filter elements here, but marks them for special processing
+            # This allows us to first check :contains matches, then sort by similarity
+            filter_lambda = lambda el: True  # Accept all elements for now
 
         # --- Handle :startswith and :starts-with (alias) --- #
         elif name in ("starts-with", "startswith") and args is not None:
