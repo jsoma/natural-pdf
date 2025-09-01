@@ -249,6 +249,7 @@ class FlowElement:
                     "cross_size": cross_size_for_op,
                     "cross_alignment": cross_alignment,  # Pass alignment
                     "include_source": include_source,
+                    "_from_flow": True,  # Prevent multipage recursion
                     # Pass other relevant kwargs if Region._direction uses them (e.g. strict_type)
                     **{k: v for k, v in kwargs.items() if k in ["strict_type", "first_match_only"]},
                 }

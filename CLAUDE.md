@@ -61,6 +61,19 @@ Natural PDF is a Python library for intelligent PDF document processing that com
 - **Automatic conversion**: Elements from iterables are automatically converted to exclusion regions
 - **Backward compatibility**: Existing Region and callable exclusions continue to work unchanged
 
+### 6b. Multi-page Directional Navigation
+- **multipage parameter**: Directional methods now accept `multipage=True` to span pages
+  - `element.below(until="text:contains('End')", multipage=True)` searches across pages
+  - Returns `FlowRegion` when spanning multiple pages, `Region` when on single page
+  - Works with all directional methods: `.below()`, `.above()`, `.left()`, `.right()`
+- **Global auto_multipage option**: Set default behavior for all directional navigation
+  - `npdf.set_option('layout.auto_multipage', True)` enables multipage by default
+  - Individual calls can override with `multipage=False`
+- **Use cases**:
+  - Extract content between headers on different pages
+  - Find tables that span page boundaries
+  - Navigate document structure without manual page handling
+
 ### 7. Page Grouping with groupby()
 - **Simple grouping by selector text**: `pages.groupby('text[size=16]')` groups by header text
 - **Callable functions for complex logic**: `pages.groupby(lambda p: p.find('text:contains("CITY")').extract_text())`

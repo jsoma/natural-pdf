@@ -64,12 +64,44 @@ class Options:
 
         # Layout and navigation defaults
         self.layout = ConfigSection(
-            directional_offset=0.01  # Offset in points when using directional methods
+            directional_offset=0.01,  # Offset in points when using directional methods
+            auto_multipage=False,  # Whether directional methods span pages by default
         )
 
 
 # Create global options instance
 options = Options()
+
+
+def set_option(name: str, value):
+    """
+    Set a global Natural PDF option.
+
+    Args:
+        name: Option name in dot notation (e.g., 'layout.auto_multipage')
+        value: New value for the option
+
+    Example:
+        import natural_pdf as npdf
+        npdf.set_option('layout.auto_multipage', True)
+        npdf.set_option('ocr.engine', 'surya')
+    """
+    parts = name.split(".")
+    obj = options
+
+    # Navigate to the right section
+    for part in parts[:-1]:
+        if hasattr(obj, part):
+            obj = getattr(obj, part)
+        else:
+            raise KeyError(f"Unknown option section: {part}")
+
+    # Set the final value
+    final_key = parts[-1]
+    if hasattr(obj, final_key):
+        setattr(obj, final_key, value)
+    else:
+        raise KeyError(f"Unknown option: {name}")
 
 
 # Version

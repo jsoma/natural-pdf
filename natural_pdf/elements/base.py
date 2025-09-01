@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
+    from natural_pdf.flows.region import FlowRegion
 
 
 def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
@@ -120,8 +121,9 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: float = 0.0,
         apply_exclusions: bool = True,
+        multipage: bool = False,
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Protected helper method to create a region in a specified direction relative to this element/region.
 
@@ -282,7 +284,51 @@ class DirectionalMixin:
         final_y1 = max(bbox[1], bbox[3])
         final_bbox = (final_x0, final_y0, final_x1, final_y1)
 
-        # 5. Create and return appropriate object based on self type
+        # 5. Check if multipage is needed
+        # Use global default if not explicitly set
+        use_multipage = multipage
+        # If multipage is False but auto_multipage is True, use True
+        if not multipage and natural_pdf.options.layout.auto_multipage:
+            use_multipage = True
+
+        # Prevent recursion: if called with internal flag, don't use multipage
+        if kwargs.get("_from_flow", False):
+            use_multipage = False
+
+        if use_multipage:
+            # Check if we need to cross page boundaries
+            needs_multipage = False
+
+            # Case 1: until was specified but target not found on current page
+            if until and not target:
+                needs_multipage = True
+
+            # Case 2: size extends beyond page boundaries
+            if not until:
+                if direction == "below" and final_bbox[3] >= self.page.height:
+                    needs_multipage = True
+                elif direction == "above" and final_bbox[1] <= 0:
+                    needs_multipage = True
+                elif direction == "right" and final_bbox[2] >= self.page.width:
+                    needs_multipage = True
+                elif direction == "left" and final_bbox[0] <= 0:
+                    needs_multipage = True
+
+            if needs_multipage:
+                # Use multipage implementation
+                return self._direction_multipage(
+                    direction=direction,
+                    size=size,
+                    cross_size=cross_size,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    offset=offset,
+                    apply_exclusions=apply_exclusions,
+                    **kwargs,
+                )
+
+        # 6. Create and return appropriate object based on self type
         from natural_pdf.elements.region import Region
 
         result = Region(self.page, final_bbox)
@@ -291,6 +337,144 @@ class DirectionalMixin:
         # Optionally store the boundary element if found
         if target:
             result.boundary_element = target
+
+        return result
+
+    def _direction_multipage(
+        self,
+        direction: str,
+        size: Optional[float] = None,
+        cross_size: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: float = 0.0,
+        apply_exclusions: bool = True,
+        **kwargs,
+    ) -> Union["Region", "FlowRegion"]:
+        """
+        Handle multipage directional navigation by creating a Flow.
+
+        Returns FlowRegion if result spans multiple pages, Region if on single page.
+        """
+        # Get access to the PDF to create a Flow
+        pdf = self.page.pdf
+        # Find the index of the current page
+        current_page_idx = None
+        for idx, page in enumerate(pdf.pages):
+            if page == self.page:
+                current_page_idx = idx
+                break
+
+        if current_page_idx is None:
+            # Fallback - just use current page
+            from natural_pdf.flows.flow import Flow
+
+            flow = Flow(segments=[self.page], arrangement="vertical")
+            from natural_pdf.flows.element import FlowElement
+
+            flow_element = FlowElement(physical_object=self, flow=flow)
+            return getattr(flow_element, direction)(**kwargs)
+
+        # Determine which pages to include in the Flow based on direction
+        if direction in ("below", "right"):
+            # Include current page and all following pages
+            flow_pages = pdf.pages[current_page_idx:]
+        else:  # above, left
+            # Include all pages up to and including current page
+            flow_pages = pdf.pages[: current_page_idx + 1]
+
+        # Create a temporary Flow
+        from natural_pdf.flows.flow import Flow
+
+        flow = Flow(segments=list(flow_pages), arrangement="vertical")
+
+        # Find the element in the flow
+        # We need to create a FlowElement that corresponds to self
+        from natural_pdf.flows.element import FlowElement
+
+        flow_element = FlowElement(physical_object=self, flow=flow)
+
+        # Call the directional method on the FlowElement
+        # Remove parameters that FlowElement methods don't expect
+        flow_kwargs = kwargs.copy()
+        flow_kwargs.pop("multipage", None)  # Remove multipage parameter
+        flow_kwargs.pop("apply_exclusions", None)  # FlowElement might not have this
+        flow_kwargs.pop("offset", None)  # FlowElement doesn't have offset
+        flow_kwargs.pop("cross_alignment", None)  # Remove to avoid duplicate
+
+        # Map cross_size to appropriate FlowElement parameter
+        if direction in ["below", "above"]:
+            # For vertical directions, cross_size maps to width parameters
+            if cross_size == "full":
+                width_absolute = None  # Let FlowElement use its defaults
+            elif cross_size == "element":
+                width_absolute = self.width
+            elif isinstance(cross_size, (int, float)):
+                width_absolute = cross_size
+            else:
+                width_absolute = None
+
+            result = (
+                flow_element.below(
+                    height=size,
+                    width_absolute=width_absolute,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **flow_kwargs,
+                )
+                if direction == "below"
+                else flow_element.above(
+                    height=size,
+                    width_absolute=width_absolute,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **flow_kwargs,
+                )
+            )
+        else:  # left, right
+            # For horizontal directions, cross_size maps to height parameters
+            if cross_size == "full":
+                height_absolute = None  # Let FlowElement use its defaults
+            elif cross_size == "element":
+                height_absolute = self.height
+            elif isinstance(cross_size, (int, float)):
+                height_absolute = cross_size
+            else:
+                height_absolute = None
+
+            result = (
+                flow_element.left(
+                    width=size,
+                    height_absolute=height_absolute,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **flow_kwargs,
+                )
+                if direction == "left"
+                else flow_element.right(
+                    width=size,
+                    height_absolute=height_absolute,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    **flow_kwargs,
+                )
+            )
+
+        # If the result is a FlowRegion with only one constituent region,
+        # return that Region instead
+        from natural_pdf.flows.region import FlowRegion
+
+        if isinstance(result, FlowRegion) and len(result.constituent_regions) == 1:
+            single_region = result.constituent_regions[0]
+            # Copy over any metadata
+            if hasattr(result, "boundary_element_found"):
+                single_region.boundary_element = result.boundary_element_found
+            return single_region
 
         return result
 
@@ -303,8 +487,9 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
+        multipage: bool = False,
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region above this element/region.
 
@@ -316,6 +501,8 @@ class DirectionalMixin:
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
+            multipage: If True, allows the region to span multiple pages. Returns FlowRegion
+                     if the result spans multiple pages, Region otherwise (default: False)
             **kwargs: Additional parameters
 
         Returns:
@@ -346,6 +533,7 @@ class DirectionalMixin:
             include_endpoint=include_endpoint,
             offset=offset,
             apply_exclusions=apply_exclusions,
+            multipage=multipage,
             **kwargs,
         )
 
@@ -358,8 +546,9 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
+        multipage: bool = False,
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region below this element/region.
 
@@ -369,6 +558,8 @@ class DirectionalMixin:
             include_source: Whether to include this element/region in the result (default: False)
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
+            multipage: If True, allows the region to span multiple pages. Returns FlowRegion
+                     if the result spans multiple pages, Region otherwise (default: False)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             **kwargs: Additional parameters
@@ -401,6 +592,7 @@ class DirectionalMixin:
             include_endpoint=include_endpoint,
             offset=offset,
             apply_exclusions=apply_exclusions,
+            multipage=multipage,
             **kwargs,
         )
 
@@ -413,8 +605,9 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
+        multipage: bool = False,
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region to the left of this element/region.
 
@@ -426,6 +619,8 @@ class DirectionalMixin:
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
+            multipage: If True, allows the region to span multiple pages. Returns FlowRegion
+                     if the result spans multiple pages, Region otherwise (default: False)
             **kwargs: Additional parameters
 
         Returns:
@@ -456,6 +651,7 @@ class DirectionalMixin:
             include_endpoint=include_endpoint,
             offset=offset,
             apply_exclusions=apply_exclusions,
+            multipage=multipage,
             **kwargs,
         )
 
@@ -468,8 +664,9 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
+        multipage: bool = False,
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region to the right of this element/region.
 
@@ -481,6 +678,8 @@ class DirectionalMixin:
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
+            multipage: If True, allows the region to span multiple pages. Returns FlowRegion
+                     if the result spans multiple pages, Region otherwise (default: False)
             **kwargs: Additional parameters
 
         Returns:
@@ -511,6 +710,7 @@ class DirectionalMixin:
             include_endpoint=include_endpoint,
             offset=offset,
             apply_exclusions=apply_exclusions,
+            multipage=multipage,
             **kwargs,
         )
 
