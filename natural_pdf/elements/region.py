@@ -574,6 +574,16 @@ class Region(
                 (self.x0, self.bottom),  # bottom-left
             ]
 
+    @property
+    def origin(self) -> Optional[Union["Element", "Region"]]:
+        """The element/region that created this region (if it was created via directional method)."""
+        return getattr(self, "source_element", None)
+
+    @property
+    def endpoint(self) -> Optional["Element"]:
+        """The element where this region stopped (if created with 'until' parameter)."""
+        return getattr(self, "boundary_element", None)
+
     def _is_point_in_polygon(self, x: float, y: float) -> bool:
         """
         Check if a point is inside the polygon using ray casting algorithm.
