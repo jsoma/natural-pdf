@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
@@ -503,6 +503,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#statistical-selectors-aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Statistical Selectors (Aggregates)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -679,6 +688,15 @@
   
     <nav class="md-nav" aria-label="Configuration Options">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-layout-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Layout Settings
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ocr-engines" class="md-nav__link">
@@ -2010,6 +2028,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#statistical-selectors-aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Statistical Selectors (Aggregates)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2186,6 +2213,15 @@
   
     <nav class="md-nav" aria-label="Configuration Options">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-layout-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Layout Settings
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#ocr-engines" class="md-nav__link">
@@ -2368,6 +2404,16 @@
 <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=pdf]&#39;</span><span class="p">)</span>               <span class="c1"># Original PDF text</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[confidence&gt;=0.8]&#39;</span><span class="p">)</span>          <span class="c1"># High-confidence OCR</span>
 </code></pre></div>
+<h3 id="statistical-selectors-aggregates">Statistical Selectors (Aggregates)</h3>
+<div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[x0=min()]&#39;</span><span class="p">)</span>                      <span class="c1"># Leftmost text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[x1=max()]&#39;</span><span class="p">)</span>                      <span class="c1"># Rightmost text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[size=max()]&#39;</span><span class="p">)</span>                    <span class="c1"># Largest text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[width=avg()]&#39;</span><span class="p">)</span>                   <span class="c1"># Average width text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[height=median()]&#39;</span><span class="p">)</span>               <span class="c1"># Median height text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[fontname=mode()]&#39;</span><span class="p">)</span>               <span class="c1"># Most common font</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[color=closest(&quot;red&quot;)]&#39;</span><span class="p">)</span>          <span class="c1"># Closest to red</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[x0=min()][size=max()]&#39;</span><span class="p">)</span>          <span class="c1"># Leftmost AND largest</span>
+</code></pre></div>
 <h2 id="essential-methods">Essential Methods</h2>
 <h3 id="finding-elements">Finding Elements</h3>
 <div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span>                             <span class="c1"># First match</span>
@@ -2376,10 +2422,21 @@
 <span class="n">element</span><span class="o">.</span><span class="n">previous</span><span class="p">()</span>                              <span class="c1"># Previous element</span>
 </code></pre></div>
 <h3 id="spatial-navigation">Spatial Navigation</h3>
-<div class="highlight"><pre><span></span><code><span class="n">element</span><span class="o">.</span><span class="n">above</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>                       <span class="c1"># Region above element</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Smart defaults (new in 0.9.0)</span>
+<span class="n">element</span><span class="o">.</span><span class="n">left</span><span class="p">()</span>                                  <span class="c1"># Default height=&#39;element&#39; (matches element height)</span>
+<span class="n">element</span><span class="o">.</span><span class="n">right</span><span class="p">()</span>                                 <span class="c1"># Default height=&#39;element&#39; (matches element height)</span>
+<span class="n">element</span><span class="o">.</span><span class="n">above</span><span class="p">()</span>                                 <span class="c1"># Default width=&#39;full&#39; (full page width)</span>
+<span class="n">element</span><span class="o">.</span><span class="n">below</span><span class="p">()</span>                                 <span class="c1"># Default width=&#39;full&#39; (full page width)</span>
+
+<span class="c1"># Custom dimensions</span>
+<span class="n">element</span><span class="o">.</span><span class="n">above</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>                       <span class="c1"># Fixed height above</span>
 <span class="n">element</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="s1">&#39;line:horizontal&#39;</span><span class="p">)</span>          <span class="c1"># Below until boundary</span>
-<span class="n">element</span><span class="o">.</span><span class="n">left</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>                         <span class="c1"># Region to the left</span>
-<span class="n">element</span><span class="o">.</span><span class="n">right</span><span class="p">()</span>                                 <span class="c1"># Region to the right</span>
+<span class="n">element</span><span class="o">.</span><span class="n">left</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>                         <span class="c1"># Fixed width to left</span>
+<span class="n">element</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">)</span>                    <span class="c1"># Full page height to right</span>
+
+<span class="c1"># Exclusion handling</span>
+<span class="n">element</span><span class="o">.</span><span class="n">below</span><span class="p">(</span><span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>            <span class="c1"># Skip exclusion zones</span>
+<span class="n">element</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Expand with exclusions</span>
 </code></pre></div>
 <h3 id="text-extraction">Text Extraction</h3>
 <div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>                             <span class="c1"># All text from page</span>
@@ -2462,9 +2519,16 @@
 </code></pre></div>
 <h2 id="exclusion-zones">Exclusion Zones</h2>
 <h3 id="page-level-exclusions">Page-Level Exclusions</h3>
-<div class="highlight"><pre><span></span><code><span class="n">header</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CONFIDENTIAL&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">above</span><span class="p">()</span>
-<span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>                      <span class="c1"># Exclude from extraction</span>
-<span class="n">page</span><span class="o">.</span><span class="n">clear_exclusions</span><span class="p">()</span>                         <span class="c1"># Remove exclusions</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Smart exclusion behavior (new in 0.9.0)</span>
+<span class="n">text_element</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CONFIDENTIAL&quot;)&#39;</span><span class="p">)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">text_element</span><span class="p">)</span>                <span class="c1"># Excludes just the text bounding box</span>
+
+<span class="c1"># Traditional region exclusion</span>
+<span class="n">header_region</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;CONFIDENTIAL&quot;)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">above</span><span class="p">()</span>
+<span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">header_region</span><span class="p">)</span>               <span class="c1"># Excludes entire region</span>
+
+<span class="c1"># Manage exclusions</span>
+<span class="n">page</span><span class="o">.</span><span class="n">clear_exclusions</span><span class="p">()</span>                         <span class="c1"># Remove all exclusions</span>
 <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(</span><span class="n">use_exclusions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># Ignore exclusions</span>
 </code></pre></div>
 <h3 id="pdf-level-exclusions">PDF-Level Exclusions</h3>
@@ -2473,8 +2537,23 @@
     <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">),</span>
     <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Header&quot;</span>
 <span class="p">)</span>
+
+<span class="c1"># Exclude specific text elements (new in 0.9.0)</span>
+<span class="n">pdf</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Header&quot;)&#39;</span><span class="p">),</span>  <span class="c1"># Returns ElementCollection</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Headers&quot;</span>
+<span class="p">)</span>
 </code></pre></div>
 <h2 id="configuration-options">Configuration Options</h2>
+<h3 id="global-layout-settings">Global Layout Settings</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">natural_pdf</span>
+
+<span class="c1"># Configure global directional offset (default: 5)</span>
+<span class="n">natural_pdf</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">directional_offset</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Larger gap for directional methods</span>
+
+<span class="c1"># Reset to default</span>
+<span class="n">natural_pdf</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">directional_offset</span> <span class="o">=</span> <span class="mi">5</span>
+</code></pre></div>
 <h3 id="ocr-engines">OCR Engines</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf.ocr</span><span class="w"> </span><span class="kn">import</span> <span class="n">EasyOCROptions</span><span class="p">,</span> <span class="n">PaddleOCROptions</span>
 
@@ -2489,26 +2568,26 @@
 </code></pre></div>
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="extract-inspection-report-data">Extract Inspection Report Data</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find violation count</span>
-<span class="n">violations</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Violation Count&quot;):right(width=100)&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find violation count (uses smart default height=&#39;element&#39;)</span>
+<span class="n">violations</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Violation Count&quot;):right()&#39;</span><span class="p">)</span>
 
 <span class="c1"># Get inspection number from the header box (regex search)</span>
 <span class="n">inspection_num</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;INS-[A-Z0-9]+&quot;)&#39;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-<span class="c1"># Extract inspection date</span>
+<span class="c1"># Extract inspection date (custom width for wider field)</span>
 <span class="n">inspection_date</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Date:&quot;):right(width=150)&#39;</span><span class="p">)</span>
 
-<span class="c1"># Get site name (text to the right of &quot;Site:&quot;)</span>
-<span class="n">site_name</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Site:&quot;):right(width=300)&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
+<span class="c1"># Get site name (uses smart default height=&#39;element&#39;)</span>
+<span class="n">site_name</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text:contains(&quot;Site:&quot;):right()&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 </code></pre></div>
 <h3 id="process-forms">Process Forms</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Exclude header/footer</span>
 <span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="mi">50</span><span class="p">))</span>
 <span class="n">page</span><span class="o">.</span><span class="n">add_exclusion</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">create_region</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span><span class="o">-</span><span class="mi">50</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span><span class="p">))</span>
 
-<span class="c1"># Extract form fields</span>
+<span class="c1"># Extract form fields (smart defaults + exclusion handling)</span>
 <span class="n">fields</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text:bold&#39;</span><span class="p">)</span>
-<span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">]</span>
+<span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">right</span><span class="p">(</span><span class="n">apply_exclusions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">]</span>
 </code></pre></div>
 <h3 id="handle-scanned-documents">Handle Scanned Documents</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Apply OCR with high accuracy</span>
@@ -2623,7 +2702,8 @@
   
 </div>
       
-        <div class="md-social">
+        
+<div class="md-social">
   
     
     
@@ -2661,10 +2741,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.tracking", "navigation.instant", "navigation.indexes", "search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotate", "toc.follow"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "navigation.tracking", "navigation.instant", "navigation.indexes", "search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotate", "toc.follow"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      <script src="../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>
