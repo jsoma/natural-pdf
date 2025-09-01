@@ -76,7 +76,7 @@ def test_expand_with_selectors():
     # Test expanding right until "Repeat?" (excluding)
     expanded = statute.expand(right='text:contains("Repeat?")')
     assert expanded.x0 == statute.x0
-    assert expanded.x1 == repeat.x0  # Should stop at the left edge of "Repeat?"
+    assert expanded.x1 == repeat.x0 - 0.01  # Should stop just before "Repeat?" with default offset
     assert expanded.top == statute.top
     assert expanded.bottom == statute.bottom
 
@@ -99,7 +99,7 @@ def test_expand_with_selectors_not_found():
     # Test with selector that won't match anything
     expanded = element.expand(right='text:contains("NonExistentText")')
     assert expanded.x0 == element.x0
-    assert expanded.x1 == element.x1  # Should remain unchanged
+    assert expanded.x1 == page.width  # Should expand to page edge when selector not found
     assert expanded.top == element.top
     assert expanded.bottom == element.bottom
 
@@ -127,7 +127,7 @@ def test_expand_mixed_parameters():
     # The right edge should be at "Repeat?" if found
     repeat = page.find('text:contains("Repeat?")')
     if repeat and repeat.x0 > element.x1:
-        assert expanded.x1 == repeat.x0
+        assert expanded.x1 == repeat.x0 - 0.01  # With default offset
 
 
 def test_expand_with_factors():

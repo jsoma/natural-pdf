@@ -17,6 +17,15 @@ def test_callable_exclusion_returning_element():
     mock_page._exclusions = []
     mock_page._parent = None
 
+    # Add context manager support to mock
+    from contextlib import contextmanager
+
+    @contextmanager
+    def mock_without_exclusions():
+        yield mock_page
+
+    mock_page.without_exclusions = mock_without_exclusions
+
     # Create mock element with expand() method
     mock_element = Mock()
     mock_element.bbox = (100, 200, 300, 400)
@@ -113,6 +122,15 @@ def test_pdf_level_element_exclusions():
     mock_page.index = 0
     mock_page._exclusions = []
     mock_page._parent = mock_pdf
+
+    # Add context manager support to mock
+    from contextlib import contextmanager
+
+    @contextmanager
+    def mock_without_exclusions():
+        yield mock_page
+
+    mock_page.without_exclusions = mock_without_exclusions
 
     # Call _get_exclusion_regions
     from natural_pdf.core.page import Page

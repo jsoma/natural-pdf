@@ -1,5 +1,6 @@
 import base64
 import concurrent.futures  # Added import
+import contextlib
 import hashlib
 import io
 import json
@@ -275,6 +276,9 @@ class Page(
         self._load_elements()
         self._to_image_cache: Dict[tuple, Optional["Image.Image"]] = {}
 
+        # Flag to prevent infinite recursion when computing exclusions
+        self._computing_exclusions = False
+
     def _get_render_specs(
         self,
         mode: Literal["show", "render"] = "show",
@@ -411,6 +415,35 @@ class Page(
         """
         self._exclusions = []
         return self
+
+    @contextlib.contextmanager
+    def without_exclusions(self):
+        """
+        Context manager that temporarily disables exclusion processing.
+
+        This prevents infinite recursion when exclusion callables themselves
+        use find() operations. While in this context, all find operations
+        will skip exclusion filtering.
+
+        Example:
+            ```python
+            # This exclusion would normally cause infinite recursion:
+            page.add_exclusion(lambda p: p.find("text:contains('Header')").expand())
+
+            # But internally, it's safe because we use:
+            with page.without_exclusions():
+                region = exclusion_callable(page)
+            ```
+
+        Yields:
+            The page object with exclusions temporarily disabled.
+        """
+        old_value = self._computing_exclusions
+        self._computing_exclusions = True
+        try:
+            yield self
+        finally:
+            self._computing_exclusions = old_value
 
     def add_exclusion(
         self,
@@ -759,15 +792,10 @@ class Page(
                     if debug:
                         print(f"  - Evaluating callable '{exclusion_label}'...")
 
-                    # Temporarily clear exclusions (consider if really needed)
-                    temp_original_exclusions = self._exclusions
-                    self._exclusions = []
-
-                    # Call the function - Expects it to return a Region or None
-                    region_result = exclusion_item(self)
-
-                    # Restore exclusions
-                    self._exclusions = temp_original_exclusions
+                    # Use context manager to prevent infinite recursion
+                    with self.without_exclusions():
+                        # Call the function - Expects it to return a Region or None
+                        region_result = exclusion_item(self)
 
                     if isinstance(region_result, Region):
                         # Assign the label to the returned region
@@ -947,6 +975,11 @@ class Page(
         Returns:
             A new list containing only the elements not excluded.
         """
+        # Skip exclusion filtering if we're currently computing exclusions
+        # This prevents infinite recursion when exclusion callables use find operations
+        if self._computing_exclusions:
+            return elements
+
         # Check both page-level and PDF-level exclusions
         has_page_exclusions = bool(self._exclusions)
         has_pdf_exclusions = (

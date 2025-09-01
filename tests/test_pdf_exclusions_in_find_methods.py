@@ -59,10 +59,12 @@ def test_find_with_pdf_exclusions():
 
     # Create a real page instance but with our mocked attributes
     page = Page.__new__(Page)
-    page.index = 0
+    page._index = 0  # Set the internal _index attribute
     page._exclusions = []
     page._parent = mock_pdf
     page._page_obj = Mock()
+    page._computing_exclusions = False  # Add the new flag
+    page._computing_exclusions = False  # Add the new flag
 
     # Mock the internal methods we need
     page._get_exclusion_regions = Mock(return_value=[mock_region])
@@ -113,10 +115,11 @@ def test_find_all_with_pdf_exclusions():
 
     # Create a real page instance
     page = Page.__new__(Page)
-    page.index = 0
+    page._index = 0  # Set the internal _index attribute
     page._exclusions = []
     page._parent = mock_pdf
     page._page_obj = Mock()
+    page._computing_exclusions = False  # Add the new flag
 
     # Mock the methods
     mock_collection = Mock(spec=ElementCollection)
@@ -142,17 +145,22 @@ def test_get_elements_with_pdf_exclusions():
 
     # Create a real page instance
     page = Page.__new__(Page)
-    page.index = 0
+    page._index = 0  # Set the internal _index attribute
     page._exclusions = []  # Empty page exclusions
     page._parent = mock_pdf
     page._page_obj = Mock()
+    page._computing_exclusions = False  # Add the new flag
 
     # Mock elements
     all_elements = [Mock(), Mock(), Mock()]
     filtered_elements = [all_elements[0], all_elements[2]]  # Exclude middle one
 
-    # Mock the methods
-    page._get_all_elements = Mock(return_value=all_elements)
+    # Mock the element manager
+    mock_element_mgr = Mock()
+    mock_element_mgr.get_all_elements = Mock(return_value=all_elements)
+    page._element_mgr = mock_element_mgr
+
+    # Mock the filter method
     page._filter_elements_by_exclusions = Mock(return_value=filtered_elements)
 
     # Test get_elements() with apply_exclusions=True

@@ -2,7 +2,7 @@
 
 import pytest
 
-from natural_pdf import NaturalPDF
+from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 
 
@@ -13,7 +13,7 @@ class TestAggregateSelectors:
     def sample_pdf(self):
         """Create a sample PDF for testing."""
         # This assumes we have a test PDF with various text sizes and positions
-        pdf = NaturalPDF("tests/fixtures/sample.pdf")
+        pdf = PDF("tests/fixtures/sample.pdf")
         return pdf
 
     def test_min_max_coordinates(self, sample_pdf):
