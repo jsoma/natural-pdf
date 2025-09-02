@@ -207,6 +207,64 @@ regions = page.analyze_layout(engine="gemini", options=options)
 - The client must be compatible with the OpenAI API (see the `openai` Python package).
 - This feature is intended for advanced users who need LLM-based layout analysis.
 
+## Using Judge for Visual Classification
+
+Natural PDF includes a `Judge` class that can learn to classify visual elements like checkboxes. This is particularly useful after layout detection when you need to determine the state of detected elements.
+
+### Example: Checkbox Classification
+
+```python
+from natural_pdf import Judge
+
+# Create a judge for checkbox classification
+judge = Judge("form_checkboxes", labels=["checked", "unchecked"])
+
+# Train with examples
+checked_region = page.find("text=Acceptable").left(width=20)
+unchecked_region = page.find("text=Deficient").left(width=20)
+
+judge.add(checked_region, "checked")
+judge.add(unchecked_region, "unchecked")
+
+# Classify new checkboxes
+new_checkbox = page.find("text=At-Risk").left(width=20)
+result = judge.decide(new_checkbox)
+print(f"Checkbox is: {result.label} (confidence: {result.score:.2f})")
+
+# Find which checkbox is selected among multiple options
+checkboxes = [
+    page.find("text=Option A").left(width=20),
+    page.find("text=Option B").left(width=20),
+    page.find("text=Option C").left(width=20)
+]
+selected = judge.pick("checked", checkboxes, labels=["Option A", "Option B", "Option C"])
+print(f"Selected: {selected.label}")
+```
+
+### Key Features of Judge
+
+1. **Simple Training**: Requires minimal examples (even just one per class)
+2. **Robust to Imbalance**: Uses Youden's J weights and prior correction
+3. **Interactive Teaching**: Use `judge.teach()` in Jupyter for labeling
+4. **Visual Inspection**: Use `judge.inspect()` to see predictions on training data
+5. **Persistence**: Save/load trained judges with `judge.save()` and `Judge.load()`
+
+### Advanced Usage
+
+```python
+# Adjust prior if you expect more checked boxes
+judge = Judge("checkboxes", labels=["checked", "unchecked"], target_prior=0.7)
+
+# Interactive teaching in Jupyter
+judge.teach()  # Use arrow keys to label examples
+
+# Visual inspection with previews
+judge.inspect(preview=True)  # Shows HTML table with images
+
+# Count checkboxes by type
+checked_count = judge.count("checked", checkbox_regions)
+```
+
 ## Next Steps
 
 Layout analysis provides regions that you can use for:
@@ -214,3 +272,4 @@ Layout analysis provides regions that you can use for:
 - [Table Extraction](../tables/index.ipynb): Especially powerful with TATR regions.
 - [Text Extraction](../text-extraction/index.ipynb): Extract text only from specific region types (e.g., paragraphs).
 - [Document QA](../document-qa/index.ipynb): Focus question answering on specific detected regions.
+- Visual Classification: Use Judge to classify detected elements (checkboxes, signatures, etc.)

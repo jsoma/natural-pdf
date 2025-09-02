@@ -127,6 +127,9 @@ from natural_pdf.elements.region import Region
 from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
 
+# Judge for visual classification
+from natural_pdf.judge import Decision, Judge, JudgeError, PickResult
+
 # Search options (if extras installed)
 try:
     from natural_pdf.search.search_options import (
@@ -166,6 +169,10 @@ __all__ = [
     "Flow",
     "FlowRegion",
     "Guides",
+    "Judge",
+    "Decision",
+    "PickResult",
+    "JudgeError",
     "TextSearchOptions",
     "MultiModalSearchOptions",
     "BaseSearchOptions",
