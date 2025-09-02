@@ -27,6 +27,7 @@ from typing import (
 import pdfplumber
 from tqdm.auto import tqdm
 
+from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.mixin import ClassificationMixin
@@ -303,7 +304,13 @@ class _LazyPageList(Sequence):
 
 
 class PDF(
-    TextMixin, ExtractionMixin, ExportMixin, ClassificationMixin, VisualSearchMixin, Visualizable
+    TextMixin,
+    ExtractionMixin,
+    ExportMixin,
+    ClassificationMixin,
+    CheckboxDetectionMixin,
+    VisualSearchMixin,
+    Visualizable,
 ):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
@@ -2551,6 +2558,22 @@ class PDF(
             An ElementCollection of all detected Region objects.
         """
         return self.pages.analyze_layout(*args, **kwargs)
+
+    def detect_checkboxes(self, *args, **kwargs) -> "ElementCollection[Region]":
+        """
+        Detects checkboxes on all pages in the PDF.
+
+        This is a convenience method that calls detect_checkboxes on the PDF's
+        page collection.
+
+        Args:
+            *args: Positional arguments passed to pages.detect_checkboxes().
+            **kwargs: Keyword arguments passed to pages.detect_checkboxes().
+
+        Returns:
+            An ElementCollection of all detected checkbox Region objects.
+        """
+        return self.pages.detect_checkboxes(*args, **kwargs)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """

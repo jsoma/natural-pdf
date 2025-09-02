@@ -28,6 +28,7 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
 
+from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
@@ -83,6 +84,7 @@ class ElementCollection(
     ApplyMixin,
     ExportMixin,
     ClassificationMixin,
+    CheckboxDetectionMixin,
     DirectionalCollectionMixin,
     DescribeMixin,
     InspectMixin,
@@ -3343,7 +3345,45 @@ class ElementCollection(
 
         # Use collection's apply helper for optional progress bar
         self.apply(_process, show_progress=show_progress)
-        return self
+
+    def detect_checkboxes(
+        self, *args, show_progress: bool = False, **kwargs
+    ) -> "ElementCollection":
+        """
+        Detect checkboxes on all applicable elements in the collection.
+
+        This method iterates through elements and calls detect_checkboxes on those
+        that support it (Pages and Regions).
+
+        Args:
+            *args: Positional arguments to pass to detect_checkboxes.
+            show_progress: Whether to show a progress bar during processing.
+            **kwargs: Keyword arguments to pass to detect_checkboxes.
+
+        Returns:
+            A new ElementCollection containing all detected checkbox regions.
+        """
+        all_checkboxes = []
+
+        def _process(el):
+            if hasattr(el, "detect_checkboxes"):
+                # Element supports checkbox detection
+                result = el.detect_checkboxes(*args, **kwargs)
+                if hasattr(result, "elements"):
+                    # Result is a collection
+                    all_checkboxes.extend(result.elements)
+                elif isinstance(result, list):
+                    # Result is a list
+                    all_checkboxes.extend(result)
+                elif result:
+                    # Single result
+                    all_checkboxes.append(result)
+            return el
+
+        # Use collection's apply helper for optional progress bar
+        self.apply(_process, show_progress=show_progress, desc="Detecting checkboxes")
+
+        return ElementCollection(all_checkboxes)
 
     # ------------------------------------------------------------------
 

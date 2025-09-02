@@ -233,6 +233,17 @@ def inspect_collection(collection: "ElementCollection", limit: int = 30) -> Insp
         # Get appropriate columns for this type
         columns = _get_columns_for_type(element_type, show_page_column)
 
+        # Add checkbox state column if we have checkbox regions
+        if element_type == "region" and any(
+            getattr(e, "region_type", "") == "checkbox" for e in display_elements
+        ):
+            # Insert state column after type column
+            if "type" in columns:
+                type_idx = columns.index("type")
+                columns.insert(type_idx + 1, "state")
+            else:
+                columns.append("state")
+
         # Extract data for each element
         element_data = []
         for element in display_elements:
@@ -422,6 +433,15 @@ def _extract_element_value(element: "Element", column: str) -> Any:
         elif column in ["is_horizontal", "is_vertical"]:
             value = getattr(element, column, False)
             return value if isinstance(value, bool) else False
+
+        elif column == "state":
+            # For checkbox regions, show checked/unchecked state
+            if getattr(element, "region_type", "") == "checkbox":
+                if hasattr(element, "is_checked"):
+                    return "checked" if element.is_checked else "unchecked"
+                elif hasattr(element, "checkbox_state"):
+                    return element.checkbox_state
+            return ""
 
         else:
             # Generic attribute access

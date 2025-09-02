@@ -250,6 +250,22 @@ service_headings = headings.filter(lambda heading: 'Service' in heading.extract_
 headings.extract_text()
 ```
 
+### Applying Functions to Collections
+
+The `.apply()` method lets you transform each element in a collection. It preserves the collection type even when results are empty:
+
+```python
+# Apply a function to each element
+uppercase_texts = texts.apply(lambda t: t.extract_text().upper())
+
+# Navigate from each element - returns an ElementCollection
+regions_below = headings.apply(lambda h: h.below())
+
+# Even empty results maintain the collection type
+empty_collection = page.find_all('nonexistent').apply(lambda x: x.expand(10))
+# Returns ElementCollection([]) not []
+```
+
 *Note: `.highest()`, `.lowest()`, etc. will complain if your collection spans multiple pages.*
 
 ## Finding Elements with Statistical Properties

@@ -50,6 +50,7 @@ import numpy as np
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
+from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
@@ -103,6 +104,7 @@ class Page(
     ClassificationMixin,
     ExtractionMixin,
     ShapeDetectionMixin,
+    CheckboxDetectionMixin,
     DescribeMixin,
     VisualSearchMixin,
     Visualizable,

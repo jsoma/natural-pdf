@@ -584,13 +584,17 @@ class ElementManager:
 
         # Add regions if they exist
         if hasattr(self._page, "_regions") and (
-            "detected" in self._page._regions or "named" in self._page._regions
+            "detected" in self._page._regions
+            or "named" in self._page._regions
+            or "checkbox" in self._page._regions
         ):
             regions = []
             if "detected" in self._page._regions:
                 regions.extend(self._page._regions["detected"])
             if "named" in self._page._regions:
                 regions.extend(self._page._regions["named"].values())
+            if "checkbox" in self._page._regions:
+                regions.extend(self._page._regions["checkbox"])
             self._elements["regions"] = regions
             logger.debug(f"Page {self._page.number}: Added {len(regions)} regions.")
         else:

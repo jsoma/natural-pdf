@@ -99,10 +99,6 @@ class ApplyMixin:
 
         results = [func(item, *args, **kwargs) for item in items_iterable]
 
-        # If results is empty, return an empty list
-        if not results:
-            return []
-
         # Import here to avoid circular imports
         from natural_pdf import PDF, Page
         from natural_pdf.core.page_collection import PageCollection
@@ -111,11 +107,24 @@ class ApplyMixin:
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
 
+        # Determine the return type based on the input collection type
+        # This handles empty results correctly
+        if self.__class__.__name__ == "ElementCollection":
+            return ElementCollection(results)
+        elif self.__class__.__name__ == "PageCollection":
+            return PageCollection(results)
+        elif self.__class__.__name__ == "PDFCollection":
+            return PDFCollection(results)
+
+        # If not a known collection type, try to infer from results
+        if not results:
+            return []
+
         first_non_none = next((r for r in results if r is not None), None)
         first_type = type(first_non_none) if first_non_none is not None else None
 
         # Return the appropriate collection based on result type (...generally)
-        if issubclass(first_type, Element) or issubclass(first_type, Region):
+        if first_type and (issubclass(first_type, Element) or issubclass(first_type, Region)):
             return ElementCollection(results)
         elif first_type == PDF:
             return PDFCollection(results)

@@ -19,6 +19,7 @@ from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 from tqdm.auto import tqdm
 
+from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
 
 # --- Shape Detection Mixin --- #
@@ -109,6 +110,7 @@ class Region(
     ClassificationMixin,
     ExtractionMixin,
     ShapeDetectionMixin,
+    CheckboxDetectionMixin,
     DescribeMixin,
     VisualSearchMixin,
     Visualizable,
@@ -3387,7 +3389,14 @@ class Region(
         name_info = f" name='{self.name}'" if self.name else ""
         type_info = f" type='{self.region_type}'" if self.region_type else ""
         source_info = f" source='{self.source}'" if self.source else ""
-        return f"<Region{name_info}{type_info}{source_info} bbox={self.bbox}{poly_info}>"
+
+        # Add checkbox state if this is a checkbox
+        checkbox_info = ""
+        if self.region_type == "checkbox" and hasattr(self, "is_checked"):
+            state = "checked" if self.is_checked else "unchecked"
+            checkbox_info = f" [{state}]"
+
+        return f"<Region{name_info}{type_info}{source_info}{checkbox_info} bbox={self.bbox}{poly_info}>"
 
     def update_text(
         self,

@@ -28,6 +28,7 @@ from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_t
 from PIL import Image, ImageDraw, ImageFont
 from tqdm.auto import tqdm
 
+from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
@@ -76,7 +77,9 @@ T = TypeVar("T")
 P = TypeVar("P", bound="Page")
 
 
-class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Visualizable):
+class PageCollection(
+    TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, CheckboxDetectionMixin, Visualizable
+):
     """
     Represents a collection of Page objects, often from a single PDF document.
     Provides methods for batch operations on these pages.
@@ -1505,6 +1508,43 @@ class PageCollection(TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, Vis
                 all_regions.extend(regions_collection.elements)
 
         return ElementCollection(all_regions)
+
+    def detect_checkboxes(self, *args, **kwargs) -> "ElementCollection[Region]":
+        """
+        Detects checkboxes on each page in the collection.
+
+        This method iterates through each page, calls its detect_checkboxes method,
+        and returns a single ElementCollection containing all detected checkbox
+        regions from all pages.
+
+        Args:
+            *args: Positional arguments to pass to each page's detect_checkboxes method.
+            **kwargs: Keyword arguments to pass to each page's detect_checkboxes method.
+                      A 'show_progress' kwarg can be included to show a progress bar.
+
+        Returns:
+            An ElementCollection of all detected checkbox Region objects.
+        """
+        all_checkboxes = []
+
+        show_progress = kwargs.pop("show_progress", True)
+
+        iterator = self.pages
+        if show_progress:
+            try:
+                from tqdm.auto import tqdm
+
+                iterator = tqdm(self.pages, desc="Detecting checkboxes")
+            except ImportError:
+                pass  # tqdm not installed
+
+        for page in iterator:
+            # Each page's detect_checkboxes method returns an ElementCollection
+            checkbox_collection = page.detect_checkboxes(*args, **kwargs)
+            if checkbox_collection:
+                all_checkboxes.extend(checkbox_collection.elements)
+
+        return ElementCollection(all_checkboxes)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """

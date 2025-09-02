@@ -695,6 +695,9 @@ def _build_filter_list(
                         return getattr(element, "region_type", "").lower().replace(" ", "_")
                 elif name == "model":
                     return getattr(element, "model", None)
+                elif name == "checked":
+                    # Map 'checked' attribute to is_checked for checkboxes
+                    return getattr(element, "is_checked", None)
                 else:
                     return getattr(element, python_name, None)
             else:
@@ -728,6 +731,29 @@ def _build_filter_list(
                 ]:
                     op_desc = f"= {value!r} (exact color)"
                     compare_func = lambda el_val, sel_val: _is_exact_color_match(el_val, sel_val)
+                # For boolean attributes, handle string/bool comparison
+                elif name in ["checked", "is_checked", "bold", "italic"]:
+
+                    def bool_compare(el_val, sel_val):
+                        # Convert both to boolean for comparison
+                        if isinstance(el_val, bool):
+                            el_bool = el_val
+                        else:
+                            el_bool = str(el_val).lower() in ("true", "1", "yes")
+
+                        if isinstance(sel_val, bool):
+                            sel_bool = sel_val
+                        else:
+                            sel_bool = str(sel_val).lower() in ("true", "1", "yes")
+
+                        # Debug logging
+                        logger.debug(
+                            f"Boolean comparison: el_val={el_val} ({type(el_val)}) -> {el_bool}, sel_val={sel_val} ({type(sel_val)}) -> {sel_bool}"
+                        )
+
+                        return el_bool == sel_bool
+
+                    compare_func = bool_compare
                 else:
                     compare_func = lambda el_val, sel_val: el_val == sel_val
             elif op == "!=":
@@ -947,6 +973,10 @@ def _build_filter_list(
             filter_lambda = lambda el: hasattr(el, "is_horizontal") and el.is_horizontal
         elif name == "vertical":
             filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
+        elif name == "checked":
+            filter_lambda = lambda el: hasattr(el, "is_checked") and el.is_checked
+        elif name == "unchecked":
+            filter_lambda = lambda el: hasattr(el, "is_checked") and not el.is_checked
 
         # --- New: :strike / :strikethrough / :strikeout pseudo-classes --- #
         elif name in ("strike", "strikethrough", "strikeout"):
