@@ -765,6 +765,7 @@ class Judge:
             all_correct = 0
             all_total = 0
 
+            # First show labeled examples
             for true_label in self.labels:
                 label_dir = self.root_dir / true_label
                 examples = list(label_dir.glob("*.png"))
@@ -838,6 +839,56 @@ class Judge:
                     f"<h3>Overall accuracy: {overall_accuracy:.1%} ({all_correct}/{all_total})</h3>"
                 )
 
+            # Now show unlabeled examples with predictions
+            unlabeled_dir = self.root_dir / "unlabeled"
+            unlabeled_examples = list(unlabeled_dir.glob("*.png"))
+
+            if unlabeled_examples:
+                html_parts.append(
+                    f"<h3>Predictions: UNLABELED ({len(unlabeled_examples)} total)</h3>"
+                )
+                html_parts.append("<table>")
+                html_parts.append(
+                    "<tr><th>Image</th><th>Predicted</th><th>Score</th><th>Key Metrics</th></tr>"
+                )
+
+                for img_path in sorted(unlabeled_examples)[:20]:  # Show max 20
+                    # Load image
+                    img = Image.open(img_path)
+                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+
+                    # Get prediction
+                    decision = self.decide(mock_region)
+
+                    # Extract metrics
+                    metrics = self._extract_metrics(mock_region)
+
+                    # Convert image to base64
+                    buffered = io.BytesIO()
+                    img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                    # Format key metrics
+                    metric_strs = []
+                    for metric, value in sorted(metrics.items()):
+                        if metric in self.thresholds:
+                            metric_strs.append(f"{metric}={value:.1f}")
+                    metrics_html = "<br>".join(metric_strs[:3])
+
+                    html_parts.append("<tr>")
+                    html_parts.append(f'<td><img src="data:image/png;base64,{img_str}" /></td>')
+                    html_parts.append(f"<td>{decision.label}</td>")
+                    html_parts.append(f"<td>{decision.score:.3f}</td>")
+                    html_parts.append(f'<td class="metrics">{metrics_html}</td>')
+                    html_parts.append("</tr>")
+
+                html_parts.append("</table>")
+
+                if len(unlabeled_examples) > 20:
+                    html_parts.append(
+                        f"<p><em>... and {len(unlabeled_examples) - 20} more</em></p>"
+                    )
+
             # Display HTML
             display(HTML("".join(html_parts)))
 
@@ -899,6 +950,39 @@ class Judge:
             if all_total > 0:
                 overall_accuracy = all_correct / all_total
                 print(f"\nOverall accuracy: {overall_accuracy:.1%} ({all_correct}/{all_total})")
+
+            # Show unlabeled examples with predictions
+            unlabeled_dir = self.root_dir / "unlabeled"
+            unlabeled_examples = list(unlabeled_dir.glob("*.png"))
+
+            if unlabeled_examples:
+                print(f"\nUNLABELED examples ({len(unlabeled_examples)} total) - predictions:")
+
+                for img_path in sorted(unlabeled_examples)[:10]:  # Show max 10
+                    # Load image and create mock region
+                    img = Image.open(img_path)
+                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+
+                    # Get prediction
+                    decision = self.decide(mock_region)
+
+                    # Extract metrics
+                    metrics = self._extract_metrics(mock_region)
+
+                    print(
+                        f"  {img_path.name}: predicted={decision.label} (score={decision.score:.3f})"
+                    )
+
+                    # Show key metric values
+                    metric_strs = []
+                    for metric, value in sorted(metrics.items()):
+                        if metric in self.thresholds:
+                            metric_strs.append(f"{metric}={value:.2f}")
+                    if metric_strs:
+                        print(f"     Metrics: {', '.join(metric_strs[:3])}")
+
+                if len(unlabeled_examples) > 10:
+                    print(f"  ... and {len(unlabeled_examples) - 10} more")
 
     def lookup(self, region) -> Optional[Tuple[str, Image.Image]]:
         """
