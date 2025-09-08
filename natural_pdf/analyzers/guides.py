@@ -943,7 +943,7 @@ class GuidesList(UserList):
 
     def from_headers(
         self,
-        headers: Union["ElementCollection", List["Element"]],
+        headers: Union["ElementCollection", List["Element"], List[str]],
         obj: Optional[Union["Page", "Region"]] = None,
         method: Literal["min_crossings", "seam_carving"] = "min_crossings",
         min_width: Optional[float] = None,
@@ -960,7 +960,10 @@ class GuidesList(UserList):
         between headers that minimize text crossings, regardless of text alignment.
 
         Args:
-            headers: Column header elements (ElementCollection or list of Elements)
+            headers: Column header elements. Can be:
+                - ElementCollection: collection of header elements
+                - List[Element]: list of header elements
+                - List[str]: list of header text to search for
             obj: Page/Region to analyze (uses parent's context if None)
             method: Detection method:
                 - 'min_crossings': Fast vector-based minimum intersection count
@@ -980,6 +983,9 @@ class GuidesList(UserList):
             headers = page.find_all('text[size=16]')
             guides.vertical.from_headers(headers)
 
+            # From header text strings
+            guides.vertical.from_headers(["Statute", "Description", "Level", "Repeat"])
+
             # With width constraints
             guides.vertical.from_headers(headers, min_width=50, max_width=200)
 
@@ -997,6 +1003,24 @@ class GuidesList(UserList):
         # Convert headers to list if ElementCollection
         if hasattr(headers, "elements"):
             header_elements = list(headers.elements)
+        # Check if headers is a list of strings
+        elif isinstance(headers, list) and headers and isinstance(headers[0], str):
+            # Find elements for each header text with exact matching
+            header_elements = []
+            for header_text in headers:
+                # Find all text elements and filter for exact match
+                all_text = target_obj.find_all("text")
+                exact_matches = [elem for elem in all_text if elem.extract_text() == header_text]
+
+                if exact_matches:
+                    # Use the first exact match
+                    header_elements.append(exact_matches[0])
+                else:
+                    logger.warning(f"Could not find header text: {header_text}")
+
+            if not header_elements:
+                logger.warning("No header elements found from provided text strings")
+                return self._parent
         else:
             header_elements = list(headers)
 
