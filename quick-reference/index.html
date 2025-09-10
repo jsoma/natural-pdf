@@ -2354,7 +2354,14 @@
 <h3 id="basic-text-extraction">Basic Text Extraction</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">natural_pdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PDF</span>
 
+<span class="c1"># Open a PDF from file, URL, or stream</span>
 <span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="p">(</span><span class="s2">&quot;https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf&quot;</span><span class="p">)</span>
+
+<span class="c1"># Create a PDF from images (with OCR by default)</span>
+<span class="n">pdf</span> <span class="o">=</span> <span class="n">PDF</span><span class="o">.</span><span class="n">from_images</span><span class="p">([</span><span class="s1">&#39;scan1.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;scan2.jpg&#39;</span><span class="p">])</span>
+<span class="c1"># Or without OCR: PDF.from_images(images, apply_ocr=False)</span>
+<span class="c1"># Or custom settings: PDF.from_images(images, resolution=150, ocr_engine=&#39;surya&#39;)</span>
+
 <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 <span class="n">text</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">extract_text</span><span class="p">()</span>
 </code></pre></div>
