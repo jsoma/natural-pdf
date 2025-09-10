@@ -2102,7 +2102,7 @@ class ElementCollection(
         )
         return self  # Return self for chaining
 
-    def remove(self) -> int:
+    def remove_from_pages(self) -> int:
         """
         Remove all elements in this collection from their respective pages.
 

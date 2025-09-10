@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any, Callable, Iterable, Optional, TypeVar
 
 from tqdm.auto import tqdm
 
@@ -107,14 +107,32 @@ class ApplyMixin:
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
 
-        # Determine the return type based on the input collection type
-        # This handles empty results correctly
+        # Determine the return type based on BOTH input collection type AND result type
+        # For ElementCollection, check if results are actually elements/regions
         if self.__class__.__name__ == "ElementCollection":
-            return ElementCollection(results)
+            # Check if all non-None results are elements/regions
+            non_none = [r for r in results if r is not None]
+            if non_none and all(isinstance(r, (Element, Region)) for r in non_none):
+                return ElementCollection(results)
+            else:
+                # Results are not elements (e.g., strings from extract_text), return plain list
+                return results
+
         elif self.__class__.__name__ == "PageCollection":
-            return PageCollection(results)
+            # Check if results are actually pages
+            non_none = [r for r in results if r is not None]
+            if non_none and all(isinstance(r, Page) for r in non_none):
+                return PageCollection(results)
+            else:
+                return results
+
         elif self.__class__.__name__ == "PDFCollection":
-            return PDFCollection(results)
+            # Check if results are actually PDFs
+            non_none = [r for r in results if r is not None]
+            if non_none and all(isinstance(r, PDF) for r in non_none):
+                return PDFCollection(results)
+            else:
+                return results
 
         # If not a known collection type, try to infer from results
         if not results:
@@ -132,6 +150,109 @@ class ApplyMixin:
             return PageCollection(results)
 
         return results
+
+    def map(self: Any, func: Callable, *args, skip_empty: bool = False, **kwargs) -> Any:
+        """
+        Transform each item in the collection using the provided function.
+
+        Args:
+            func: Transformation function to apply to each item
+            *args: Additional positional arguments to pass to func
+            skip_empty: If True, removes None and empty values from results (default: False)
+            **kwargs: Additional keyword arguments to pass to func
+
+        Returns:
+            The transformed results. Type depends on what the function returns:
+            - If func returns elements/regions, returns appropriate collection type
+            - If func returns other values (e.g., strings), returns a list
+
+        Examples:
+            # Extract text from all elements (including None for elements without text)
+            texts = elements.map(lambda e: e.extract_text())
+
+            # Extract text, skipping None and empty strings
+            texts = elements.map(lambda e: e.extract_text(), skip_empty=True)
+
+            # Transform elements (returns ElementCollection)
+            expanded = elements.map(lambda e: e.expand(10))
+
+            # With additional arguments
+            results = elements.map(process_element, normalize=True, skip_empty=True)
+        """
+        # Use apply to get results with proper type handling
+        results = self.apply(func, *args, **kwargs)
+
+        if skip_empty:
+            # Import collection types
+            from natural_pdf.core.page_collection import PageCollection
+            from natural_pdf.core.pdf_collection import PDFCollection
+            from natural_pdf.elements.element_collection import ElementCollection
+
+            # Filter out empty values
+            filtered = [r for r in results if r]
+
+            # Preserve the collection type if it's a collection
+            if isinstance(results, ElementCollection):
+                return ElementCollection(filtered)
+            elif isinstance(results, PageCollection):
+                return PageCollection(filtered)
+            elif isinstance(results, PDFCollection):
+                return PDFCollection(filtered)
+            else:
+                # It's a raw list
+                return filtered
+
+        return results
+
+    def unique(self: Any, key: Optional[Callable] = None) -> Any:
+        """
+        Remove duplicate items from the collection.
+
+        Args:
+            key: Optional function to compute a comparison key from each element.
+                 If not provided, elements are compared directly.
+
+        Returns:
+            A new collection of the same type with duplicates removed.
+            Order is preserved (first occurrence of each unique item is kept).
+
+        Examples:
+            # Remove duplicate elements
+            unique_elements = elements.unique()
+
+            # Remove duplicates based on text content
+            unique_by_text = elements.unique(key=lambda e: e.extract_text())
+
+            # Remove duplicates based on position
+            unique_by_pos = elements.unique(key=lambda e: (e.x, e.y))
+        """
+        items_iterable = self._get_items_for_apply()
+        seen = set()
+        unique_items = []
+
+        for item in items_iterable:
+            # Compute the comparison key
+            if key is not None:
+                comparison_key = key(item)
+            else:
+                comparison_key = item
+
+            # For unhashable types, convert to a hashable representation
+            try:
+                hashable_key = comparison_key
+                if hashable_key not in seen:
+                    seen.add(hashable_key)
+                    unique_items.append(item)
+            except TypeError:
+                # Handle unhashable types (like lists, dicts, or custom objects)
+                # For elements/regions, use their string representation
+                str_key = str(comparison_key)
+                if str_key not in seen:
+                    seen.add(str_key)
+                    unique_items.append(item)
+
+        # Return the appropriate collection type
+        return type(self)(unique_items)
 
     def filter(self: Any, predicate: Callable[[Any], bool]) -> Any:
         """
