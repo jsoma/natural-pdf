@@ -1132,6 +1132,7 @@ class ShapeDetectionMixin:
         replace: bool = True,
         source_label: str = "detected",
         overlap_threshold: float = 0.5,
+        skip_black_blobs: bool = False,
     ) -> "ShapeDetectionMixin":
         """Detect colour blobs on a page/region and convert them to Region objects.
 
@@ -1152,6 +1153,9 @@ class ShapeDetectionMixin:
                 area overlaps vector elements (rects/words/lines/curves) by
                 more than this fraction (0‒1).  Use this instead of pixel
                 masking so large painted areas are not cut by text boxes.
+            skip_black_blobs: If *True*, skip near-black grayscale regions
+                (brightness < 0.2). Default is *False* to detect all blobs
+                including black ones.
         """
         import numpy as np
         from scipy.ndimage import find_objects
@@ -1286,11 +1290,16 @@ class ShapeDetectionMixin:
                 # Compute mean colour of the component
                 comp_pixels = cv_image[y0:y1, x0:x1]
                 avg_rgb = comp_pixels.mean(axis=(0, 1)) / 255.0  # 0-1 range
-                # Skip almost-white / almost-black near-grayscale areas (likely background or text)
+                # Skip near-white/near-black grayscale areas based on settings
                 brightness = float(np.mean(avg_rgb))
                 color_std = float(np.std(avg_rgb))
-                if color_std < 0.05 and (brightness < 0.2 or brightness > 0.95):
-                    continue
+                if color_std < 0.05:
+                    # Always skip near-white areas (likely background)
+                    if brightness > 0.95:
+                        continue
+                    # Optionally skip near-black areas (might be text)
+                    if skip_black_blobs and brightness < 0.2:
+                        continue
 
                 # ----------------------------------------------------------------
                 # Check overlap with characters BEFORE creating the Region.
