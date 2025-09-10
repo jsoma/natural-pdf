@@ -6,7 +6,14 @@
 ```py
 from natural_pdf import PDF
 
+# Open a PDF from file, URL, or stream
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+
+# Create a PDF from images (with OCR by default)
+pdf = PDF.from_images(['scan1.jpg', 'scan2.jpg'])
+# Or without OCR: PDF.from_images(images, apply_ocr=False)
+# Or custom settings: PDF.from_images(images, resolution=150, ocr_engine='surya')
+
 page = pdf.pages[0]
 text = page.extract_text()
 ```

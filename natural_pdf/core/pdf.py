@@ -347,6 +347,103 @@ class PDF(
         ```
     """
 
+    @classmethod
+    def from_images(
+        cls,
+        images: Union["Image.Image", List["Image.Image"], str, List[str], Path, List[Path]],
+        resolution: int = 300,
+        apply_ocr: bool = True,
+        ocr_engine: Optional[str] = None,
+        **pdf_options,
+    ) -> "PDF":
+        """Create a PDF from image(s).
+
+        Args:
+            images: Single image, list of images, or path(s) to image files
+            resolution: DPI for the PDF (default: 300, good for OCR and viewing)
+            apply_ocr: Apply OCR to make searchable (default: True)
+            ocr_engine: OCR engine to use (default: auto-detect)
+            **pdf_options: Options passed to PDF constructor
+
+        Returns:
+            PDF object containing the images as pages
+
+        Example:
+            ```python
+            # Simple scan to searchable PDF
+            pdf = PDF.from_images("scan.jpg")
+
+            # Multiple pages
+            pdf = PDF.from_images(["page1.png", "page2.png"])
+
+            # Without OCR
+            pdf = PDF.from_images(images, apply_ocr=False)
+
+            # With specific engine
+            pdf = PDF.from_images(images, ocr_engine='surya')
+            ```
+        """
+        from PIL import ImageOps
+
+        # Normalize inputs to list of PIL Images
+        if isinstance(images, (str, Path)):
+            images = [Image.open(images)]
+        elif isinstance(images, Image.Image):
+            images = [images]
+        elif isinstance(images, list):
+            processed = []
+            for img in images:
+                if isinstance(img, (str, Path)):
+                    processed.append(Image.open(img))
+                else:
+                    processed.append(img)
+            images = processed
+
+        # Process images
+        processed_images = []
+        for img in images:
+            # Fix EXIF rotation
+            img = ImageOps.exif_transpose(img) or img
+
+            # Convert RGBA to RGB (PDF doesn't handle transparency well)
+            if img.mode == "RGBA":
+                bg = Image.new("RGB", img.size, "white")
+                bg.paste(img, mask=img.split()[3])
+                img = bg
+            elif img.mode not in ["RGB", "L", "1", "CMYK"]:
+                img = img.convert("RGB")
+
+            processed_images.append(img)
+
+        # Create PDF at specified resolution
+        # Use BytesIO to keep in memory
+        pdf_buffer = io.BytesIO()
+        processed_images[0].save(
+            pdf_buffer,
+            "PDF",
+            save_all=True,
+            append_images=processed_images[1:] if len(processed_images) > 1 else [],
+            resolution=resolution,
+        )
+        pdf_buffer.seek(0)
+
+        # Create PDF object
+        pdf = cls(pdf_buffer, **pdf_options)
+
+        # Store metadata about source
+        pdf._from_images = True
+        pdf._source_metadata = {
+            "type": "images",
+            "count": len(processed_images),
+            "resolution": resolution,
+        }
+
+        # Apply OCR if requested
+        if apply_ocr:
+            pdf.apply_ocr(engine=ocr_engine, resolution=resolution)
+
+        return pdf
+
     def __init__(
         self,
         path_or_url_or_stream,
