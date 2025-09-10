@@ -647,6 +647,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#collection-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Collection Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Collection Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transforming-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transforming Collections
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering Collections
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removing-elements-from-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removing Elements from Pages
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#exclusion-zones" class="md-nav__link">
     <span class="md-ellipsis">
       Exclusion Zones
@@ -2172,6 +2214,48 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#collection-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Collection Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Collection Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transforming-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transforming Collections
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering Collections
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removing-elements-from-pages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removing Elements from Pages
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#exclusion-zones" class="md-nav__link">
     <span class="md-ellipsis">
       Exclusion Zones
@@ -2422,6 +2506,12 @@
 <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[fontname=mode()]&#39;</span><span class="p">)</span>               <span class="c1"># Most common font</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[color=closest(&quot;red&quot;)]&#39;</span><span class="p">)</span>          <span class="c1"># Closest to red</span>
 <span class="n">page</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;text[x0=min()][size=max()]&#39;</span><span class="p">)</span>          <span class="c1"># Leftmost AND largest</span>
+
+<span class="c1"># With arithmetic expressions (new)</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&gt;max()*0.9]&#39;</span><span class="p">)</span>            <span class="c1"># Top 10% largest text</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;rect[width&gt;avg()+10]&#39;</span><span class="p">)</span>            <span class="c1"># Wider than average + 10</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[size&lt;median()/2]&#39;</span><span class="p">)</span>           <span class="c1"># Less than half median size</span>
+<span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;line[length&gt;min()*1.5]&#39;</span><span class="p">)</span>          <span class="c1"># 50% longer than shortest</span>
 </code></pre></div>
 <h2 id="essential-methods">Essential Methods</h2>
 <h3 id="finding-elements">Finding Elements</h3>
@@ -2525,6 +2615,36 @@
 </code></pre></div>
 <h3 id="interactive-viewer">Interactive Viewer</h3>
 <div class="highlight"><pre><span></span><code><span class="n">page</span><span class="o">.</span><span class="n">viewer</span><span class="p">()</span>                                   <span class="c1"># Launch interactive viewer (Jupyter)</span>
+</code></pre></div>
+<h2 id="collection-methods">Collection Methods</h2>
+<h3 id="transforming-collections">Transforming Collections</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Apply function to each item</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># Map with optional empty filtering (alias for apply)</span>
+<span class="n">texts</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">extract_text</span><span class="p">())</span>
+<span class="n">texts</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">extract_text</span><span class="p">(),</span> <span class="n">skip_empty</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Extract attribute values</span>
+<span class="n">widths</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">attr</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">)</span>                 <span class="c1"># [100, 150, 542, ...]</span>
+<span class="n">sizes</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">attr</span><span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="n">skip_empty</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># Include None values</span>
+
+<span class="c1"># Note: .attr() also works on single elements for consistency</span>
+<span class="n">width</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">attr</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">)</span>                   <span class="c1"># Same as element.width</span>
+</code></pre></div>
+<h3 id="filtering-collections">Filtering Collections</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Filter with predicate</span>
+<span class="n">large</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">12</span><span class="p">)</span>
+
+<span class="c1"># Remove duplicates</span>
+<span class="n">unique</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+<span class="n">unique_by_text</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">extract_text</span><span class="p">())</span>
+<span class="n">unique_by_pos</span> <span class="o">=</span> <span class="n">elements</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">e</span><span class="o">.</span><span class="n">bbox</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</code></pre></div>
+<h3 id="removing-elements-from-pages">Removing Elements from Pages</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Remove elements from their PDF pages (destructive operation)</span>
+<span class="n">ocr_elements</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;text[source=ocr]&#39;</span><span class="p">)</span>
+<span class="n">ocr_elements</span><span class="o">.</span><span class="n">remove_from_pages</span><span class="p">()</span>  <span class="c1"># Removes from PDF, not just collection</span>
 </code></pre></div>
 <h2 id="exclusion-zones">Exclusion Zones</h2>
 <h3 id="page-level-exclusions">Page-Level Exclusions</h3>
