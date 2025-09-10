@@ -359,7 +359,7 @@ class PDF(
         """Create a PDF from image(s).
 
         Args:
-            images: Single image, list of images, or path(s) to image files
+            images: Single image, list of images, or path(s)/URL(s) to image files
             resolution: DPI for the PDF (default: 300, good for OCR and viewing)
             apply_ocr: Apply OCR to make searchable (default: True)
             ocr_engine: OCR engine to use (default: auto-detect)
@@ -373,8 +373,11 @@ class PDF(
             # Simple scan to searchable PDF
             pdf = PDF.from_images("scan.jpg")
 
-            # Multiple pages
-            pdf = PDF.from_images(["page1.png", "page2.png"])
+            # From URL
+            pdf = PDF.from_images("https://example.com/image.png")
+
+            # Multiple pages (mix of local and URLs)
+            pdf = PDF.from_images(["page1.png", "https://example.com/page2.jpg"])
 
             # Without OCR
             pdf = PDF.from_images(images, apply_ocr=False)
@@ -383,20 +386,34 @@ class PDF(
             pdf = PDF.from_images(images, ocr_engine='surya')
             ```
         """
+        import urllib.request
+
         from PIL import ImageOps
+
+        def _open_image(source):
+            """Open an image from file path, URL, or return PIL Image as-is."""
+            if isinstance(source, Image.Image):
+                return source
+
+            source_str = str(source)
+            if source_str.startswith(("http://", "https://")):
+                # Download from URL
+                with urllib.request.urlopen(source_str) as response:
+                    img_data = response.read()
+                return Image.open(io.BytesIO(img_data))
+            else:
+                # Local file path
+                return Image.open(source)
 
         # Normalize inputs to list of PIL Images
         if isinstance(images, (str, Path)):
-            images = [Image.open(images)]
+            images = [_open_image(images)]
         elif isinstance(images, Image.Image):
             images = [images]
         elif isinstance(images, list):
             processed = []
             for img in images:
-                if isinstance(img, (str, Path)):
-                    processed.append(Image.open(img))
-                else:
-                    processed.append(img)
+                processed.append(_open_image(img))
             images = processed
 
         # Process images

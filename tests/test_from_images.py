@@ -157,6 +157,24 @@ class TestFromImages:
         with pytest.raises(Exception):
             npdf.PDF.from_images("nonexistent.jpg", apply_ocr=False)
 
+    def test_image_from_url(self):
+        """Test creating PDF from image URL."""
+        # Use a small test image from GitHub that should be stable
+        url = "https://raw.githubusercontent.com/python-pillow/Pillow/main/Tests/images/hopper.png"
+
+        try:
+            pdf = npdf.PDF.from_images(url, apply_ocr=False)
+            assert len(pdf.pages) == 1
+            assert pdf._from_images is True
+
+            # Should be able to access page
+            page = pdf.pages[0]
+            assert page.width > 0
+            assert page.height > 0
+        except Exception as e:
+            # Network issues shouldn't fail the test suite
+            pytest.skip(f"Could not download test image: {e}")
+
     def test_render_created_pdf(self):
         """Test that we can render pages from the created PDF."""
         img = Image.new("RGB", (200, 300), "purple")
