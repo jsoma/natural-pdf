@@ -1335,6 +1335,32 @@ class Region(
 
         return elements
 
+    def attr(self, name: str) -> Any:
+        """
+        Get an attribute value from this region.
+
+        This method provides a consistent interface for attribute access that works
+        on both individual regions/elements and collections. When called on a single
+        region, it simply returns the attribute value. When called on collections,
+        it extracts the attribute from all items.
+
+        Args:
+            name: The attribute name to retrieve (e.g., 'text', 'width', 'height')
+
+        Returns:
+            The attribute value, or None if the attribute doesn't exist
+
+        Examples:
+            # On a single region
+            region = page.find('text:contains("Title")').expand(10)
+            width = region.attr('width')  # Same as region.width
+
+            # Consistent API across elements and regions
+            obj = page.find('*:contains("Title")')  # Could be element or region
+            text = obj.attr('text')  # Works for both
+        """
+        return getattr(self, name, None)
+
     def extract_text(
         self,
         granularity: str = "chars",

@@ -94,25 +94,33 @@ def safe_parse_value(value_str: str) -> Any:
 def _parse_aggregate_function(value_str: str) -> Optional[Dict[str, Any]]:
     """Parse aggregate function syntax like min(), max(), avg(), closest("red").
 
+    Also supports arithmetic expressions like:
+    - max()*0.9  (90% of maximum)
+    - avg()+10   (average plus 10)
+    - min()-5    (minimum minus 5)
+
     Returns:
-        Dict with 'type': 'aggregate', 'func': function name, 'args': optional args
-        or None if not an aggregate function.
+        Dict with 'type': 'aggregate', 'func': function name, 'args': optional args,
+        and optionally 'operator' and 'operand' for arithmetic expressions.
+        Returns None if not an aggregate function.
     """
     value_str = value_str.strip()
 
-    # Pattern for aggregate functions: funcname() or funcname(args)
-    # Supports: min(), max(), avg(), mean(), median(), mode(), most_common(), closest(...)
-    func_pattern = re.match(
-        r"^(min|max|avg|mean|median|mode|most_common|closest)\s*\((.*?)\)$",
+    # First try to match aggregate function with optional arithmetic expression
+    # Pattern: funcname() or funcname(args) optionally followed by operator and number
+    full_pattern = re.match(
+        r"^(min|max|avg|mean|median|mode|most_common|closest)\s*\((.*?)\)\s*([\+\-\*/])?\s*([0-9.]+)?$",
         value_str,
         re.IGNORECASE,
     )
 
-    if not func_pattern:
+    if not full_pattern:
         return None
 
-    func_name = func_pattern.group(1).lower()
-    args_str = func_pattern.group(2).strip()
+    func_name = full_pattern.group(1).lower()
+    args_str = full_pattern.group(2).strip()
+    operator = full_pattern.group(3)  # May be None
+    operand_str = full_pattern.group(4)  # May be None
 
     # Normalize function aliases
     if func_name == "mean":
@@ -129,7 +137,19 @@ def _parse_aggregate_function(value_str: str) -> Optional[Dict[str, Any]]:
         else:
             args = safe_parse_value(args_str)
 
-    return {"type": "aggregate", "func": func_name, "args": args}
+    result = {"type": "aggregate", "func": func_name, "args": args}
+
+    # Add arithmetic operation if present
+    if operator and operand_str:
+        try:
+            operand = float(operand_str)
+            result["operator"] = operator
+            result["operand"] = operand
+        except ValueError:
+            # If we can't parse the operand as a number, ignore the arithmetic part
+            pass
+
+    return result
 
 
 def safe_parse_color(value_str: str) -> tuple:
@@ -675,6 +695,34 @@ def _build_filter_list(
             if aggregate_value is None:
                 # Skip this filter if aggregate couldn't be calculated
                 continue
+
+            # Apply arithmetic operation if specified
+            if "operator" in value and "operand" in value:
+                operator = value["operator"]
+                operand = value["operand"]
+
+                try:
+                    if operator == "+":
+                        aggregate_value = aggregate_value + operand
+                    elif operator == "-":
+                        aggregate_value = aggregate_value - operand
+                    elif operator == "*":
+                        aggregate_value = aggregate_value * operand
+                    elif operator == "/":
+                        if operand != 0:
+                            aggregate_value = aggregate_value / operand
+                        else:
+                            # Division by zero, skip this filter
+                            logger.warning(
+                                f"Division by zero in aggregate expression for attribute '{name}'"
+                            )
+                            continue
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        f"Could not apply arithmetic operation to aggregate value for '{name}': {e}"
+                    )
+                    continue
+
             value = aggregate_value
 
         # --- Define the core value retrieval logic ---

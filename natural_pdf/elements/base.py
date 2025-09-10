@@ -1647,6 +1647,35 @@ class Element(
 
     # Note: select_until method removed in favor of until()
 
+    def attr(self, name: str) -> Any:
+        """
+        Get an attribute value from this element.
+
+        This method provides a consistent interface for attribute access that works
+        on both individual elements and collections. When called on a single element,
+        it simply returns the attribute value. When called on collections, it extracts
+        the attribute from all elements.
+
+        Args:
+            name: The attribute name to retrieve (e.g., 'text', 'size', 'width')
+
+        Returns:
+            The attribute value, or None if the attribute doesn't exist
+
+        Examples:
+            # On a single element
+            element = page.find('text:contains("Title")')
+            size = element.attr('size')  # Same as element.size
+
+            # On a collection (defined in ApplyMixin)
+            elements = page.find_all('text')
+            sizes = elements.attr('size')  # [12, 10, 14, ...]
+
+            # Consistent API for both
+            result = obj.attr('text')  # Works whether obj is element or collection
+        """
+        return getattr(self, name, None)
+
     def extract_text(self, preserve_whitespace=True, use_exclusions=True, **kwargs) -> str:
         """
         Extract text from this element.

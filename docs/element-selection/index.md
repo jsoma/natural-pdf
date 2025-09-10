@@ -378,6 +378,26 @@ leftmost_bold = page.find('text:bold[x0=min()]')
 
 **Note**: Aggregates are calculated across all elements of the same type. For example, `text[x0=min()]` finds the minimum x0 among ALL text elements, not just those matching other filters.
 
+### Using Arithmetic with Aggregates
+
+You can now use arithmetic expressions with aggregate functions to find elements relative to statistical values:
+
+```python
+# Find text larger than 90% of the maximum size
+large_text = page.find_all('text[size>max()*0.9]')
+
+# Find rectangles wider than average plus 10 units
+wide_rects = page.find_all('rect[width>avg()+10]')
+
+# Find text smaller than half the median size
+small_text = page.find_all('text[size<median()/2]')
+
+# Find lines at least 50% longer than the shortest
+long_lines = page.find_all('line[length>min()*1.5]')
+```
+
+Supported operators are `+`, `-`, `*`, and `/`. This makes it easy to find elements in the top percentile, outliers, or those within a certain range of the average without calculating the statistics separately.
+
 ## Dealing with Weird Font Names
 
 PDFs sometimes have bizarre font names that don't look like normal fonts. Don't worry - they're usually normal fonts with weird internal names.

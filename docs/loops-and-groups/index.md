@@ -63,7 +63,15 @@ titles.apply(lambda title: {
 })
 ```
 
-I think `.map` also works on that front?
+You can also use `.map()` which is an alias for `.apply()` with a `skip_empty` parameter to filter out None values:
+
+```python
+# Extract text, keeping None values for elements without text
+texts = titles.map(lambda e: e.extract_text())
+
+# Skip None and empty strings
+texts = titles.map(lambda e: e.extract_text(), skip_empty=True)
+```
 
 ## Filtering
 

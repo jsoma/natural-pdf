@@ -93,6 +93,12 @@ page.find('text[height=median()]')               # Median height text
 page.find('text[fontname=mode()]')               # Most common font
 page.find('text[color=closest("red")]')          # Closest to red
 page.find('text[x0=min()][size=max()]')          # Leftmost AND largest
+
+# With arithmetic expressions (new)
+page.find_all('text[size>max()*0.9]')            # Top 10% largest text
+page.find_all('rect[width>avg()+10]')            # Wider than average + 10
+page.find_all('text[size<median()/2]')           # Less than half median size
+page.find_all('line[length>min()*1.5]')          # 50% longer than shortest
 ```
 
 ## Essential Methods
@@ -220,6 +226,43 @@ region.show(crop=True)                 # Crop to region only
 ### Interactive Viewer
 ```py
 page.viewer()                                   # Launch interactive viewer (Jupyter)
+```
+
+## Collection Methods
+
+### Transforming Collections
+```py
+# Apply function to each item
+results = elements.apply(lambda e: e.expand(10))
+
+# Map with optional empty filtering (alias for apply)
+texts = elements.map(lambda e: e.extract_text())
+texts = elements.map(lambda e: e.extract_text(), skip_empty=True)
+
+# Extract attribute values
+widths = elements.attr('width')                 # [100, 150, 542, ...]
+sizes = elements.attr('size', skip_empty=False) # Include None values
+
+# Note: .attr() also works on single elements for consistency
+width = element.attr('width')                   # Same as element.width
+```
+
+### Filtering Collections
+```py
+# Filter with predicate
+large = elements.filter(lambda e: e.size > 12)
+
+# Remove duplicates
+unique = elements.unique()
+unique_by_text = elements.unique(key=lambda e: e.extract_text())
+unique_by_pos = elements.unique(key=lambda e: (e.bbox[0], e.bbox[1]))
+```
+
+### Removing Elements from Pages
+```py
+# Remove elements from their PDF pages (destructive operation)
+ocr_elements = page.find_all('text[source=ocr]')
+ocr_elements.remove_from_pages()  # Removes from PDF, not just collection
 ```
 
 ## Exclusion Zones

@@ -204,6 +204,35 @@ class ApplyMixin:
 
         return results
 
+    def attr(self: Any, name: str, skip_empty: bool = True) -> list:
+        """
+        Extract a specific attribute value from all items in the collection.
+
+        Args:
+            name: The attribute name to extract (e.g., 'width', 'size', 'text')
+            skip_empty: If True, skip None values in the result (default: True)
+
+        Returns:
+            List of attribute values from all items
+
+        Examples:
+            # Get all widths from rectangles
+            widths = rects.attr('width')  # [100, 150, 542, ...]
+
+            # Get text content from all elements
+            texts = elements.attr('text')  # ["Hello", "World", ...]
+
+            # Keep None values to maintain index alignment
+            sizes = elements.attr('size', skip_empty=False)  # [12, None, 10, ...]
+
+            # Use with standard library functions
+            import statistics
+            avg_width = statistics.mean(rects.attr('width'))
+            max_size = max(elements.attr('size'))
+        """
+        # Use map to extract the attribute
+        return self.map(lambda item: getattr(item, name, None), skip_empty=skip_empty)
+
     def unique(self: Any, key: Optional[Callable] = None) -> Any:
         """
         Remove duplicate items from the collection.
