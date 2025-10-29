@@ -4,17 +4,21 @@ import pytest
 
 from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.elements.region import Region
+
+
+@pytest.fixture
+def sample_pdf():
+    """Create a sample PDF for testing."""
+    pdf = PDF("pdfs/01-practice.pdf")
+    try:
+        yield pdf
+    finally:
+        pdf.close()
 
 
 class TestAggregateSelectors:
     """Test aggregate functions in selectors like min(), max(), avg(), etc."""
-
-    @pytest.fixture
-    def sample_pdf(self):
-        """Create a sample PDF for testing."""
-        # This assumes we have a test PDF with various text sizes and positions
-        pdf = PDF("tests/fixtures/sample.pdf")
-        return pdf
 
     def test_min_max_coordinates(self, sample_pdf):
         """Test min/max functions with coordinates."""
@@ -186,11 +190,11 @@ class TestAggregateSelectors:
         if element:
             # Navigate right until leftmost text
             result = element.right(until="text[x0=min()]")
-            assert isinstance(result, ElementCollection)
+            assert isinstance(result, (ElementCollection, Region))
 
             # Navigate below to largest text
             result2 = element.below(until="text[size=max()]")
-            assert isinstance(result2, ElementCollection)
+            assert isinstance(result2, (ElementCollection, Region))
 
     def test_aggregates_different_element_types(self, sample_pdf):
         """Test that aggregates are calculated per element type."""

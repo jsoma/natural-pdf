@@ -2793,6 +2793,7 @@ class ElementCollection(
         """Check if two regions are connected (adjacent or overlapping)."""
         bbox1 = region1.bbox
         bbox2 = region2.bbox
+        vertical_gap: Optional[float] = None  # Reserved for future vertical-gap-aware merge logic
 
         # Check for overlap first
         overlap = get_bbox_overlap(bbox1, bbox2)

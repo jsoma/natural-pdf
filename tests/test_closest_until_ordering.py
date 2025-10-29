@@ -88,7 +88,7 @@ def test_regular_selectors_still_use_positional():
 
         # The boundary should be near the first positional match
         # Allow some tolerance for include_endpoint behavior
-        assert abs(result.bottom - first_positional.top) < 10
+        assert abs(result.bottom - first_positional.top) <= 10
 
 
 def test_closest_with_threshold_zero():

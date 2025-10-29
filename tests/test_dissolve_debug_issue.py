@@ -48,10 +48,10 @@ def test_dissolve_detailed_debug():
     collection = ElementCollection([region1, region2])
 
     # Test connectivity check
-    connected = collection._are_elements_connected(region1, region2, 0)
+    connected = collection._are_elements_connected(region1, region2, 0, None)
     print(f"\nAre elements connected (padding=0)? {connected}")
 
-    connected_with_padding = collection._are_elements_connected(region1, region2, 10)
+    connected_with_padding = collection._are_elements_connected(region1, region2, 10, None)
     print(f"Are elements connected (padding=10)? {connected_with_padding}")
 
     # Perform dissolve
@@ -97,7 +97,7 @@ def test_specific_problematic_case():
     print("\nConnectivity check (padding=2):")
     for i in range(len(elements)):
         for j in range(i + 1, len(elements)):
-            connected = collection._are_elements_connected(elements[i], elements[j], 2)
+            connected = collection._are_elements_connected(elements[i], elements[j], 2, None)
             print(f"  {elements[i]._obj['text']} <-> {elements[j]._obj['text']}: {connected}")
 
     # Dissolve

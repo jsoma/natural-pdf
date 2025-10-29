@@ -2,7 +2,9 @@
 Text element classes for natural-pdf.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
+from pdfplumber.utils.text import chars_to_textmap
 
 from natural_pdf.elements.base import Element
 
@@ -40,6 +42,8 @@ class TextElement(Element):
         # Backward compatibility: Keep _char_dicts for existing code
         # But prefer _char_indices when available to save memory
         self._char_dicts = obj.pop("_char_dicts", [])
+        self._layout_text_cache: Optional[str] = None
+        self._text_manually_set: bool = False
 
     @property
     def chars(self):
@@ -63,13 +67,36 @@ class TextElement(Element):
     @property
     def text(self) -> str:
         """Get the text content."""
-        return self._obj.get("text", "")
+        if self._layout_text_cache is not None:
+            return self._layout_text_cache
+
+        stored = self._obj.get("text", "")
+        if self._text_manually_set or not stored:
+            self._layout_text_cache = stored
+            return stored
+
+        char_dicts = self._resolve_char_dicts_for_textmap()
+        if char_dicts:
+            try:
+                textmap = chars_to_textmap(char_dicts, layout=False)
+                computed = textmap.as_string
+                if computed:
+                    self._obj["text"] = computed
+                    self._layout_text_cache = computed
+                    return computed
+            except Exception:  # pragma: no cover
+                pass
+
+        self._layout_text_cache = stored
+        return stored
 
     @text.setter
     def text(self, value: str):
         """Set the text content and synchronise underlying char dictionaries/indices (if any)."""
         # Update the primary text value stored on the object itself
         self._obj["text"] = value
+        self._layout_text_cache = value
+        self._text_manually_set = True
 
         # --- Sync character data for both memory-efficient and legacy approaches
         try:
@@ -177,6 +204,32 @@ class TextElement(Element):
                 return common
 
         return font
+
+    def _resolve_char_dicts_for_textmap(self) -> List[Dict[str, Any]]:
+        """Return raw char dictionaries suitable for chars_to_textmap."""
+        if self._char_dicts:
+            dicts: List[Dict[str, Any]] = []
+            for ch in self._char_dicts:
+                if isinstance(ch, dict):
+                    dicts.append(ch)
+                elif hasattr(ch, "_obj"):
+                    dicts.append(ch._obj)
+            if dicts:
+                return dicts
+
+        if self._char_indices and hasattr(self.page, "_element_mgr"):
+            char_elements = self.page._element_mgr.get_elements("chars")
+            dicts = []
+            for idx in self._char_indices:
+                if idx < len(char_elements):
+                    char_el = char_elements[idx]
+                    if hasattr(char_el, "_obj"):
+                        dicts.append(char_el._obj)
+                    elif isinstance(char_el, dict):
+                        dicts.append(char_el)
+            return dicts
+
+        return []
 
     @property
     def font_variant(self) -> str:

@@ -21,12 +21,9 @@ def test_pdfminer_still_has_color_bug():
     assert highlighted is not None
     assert highlighted.is_highlighted is True
 
-    # If pdfminer is fixed, this will be (1.0, 1.0, 0.0)
-    # If still buggy, this will be 0.0
     color = highlighted.highlight_color
 
-    # This test PASSES if the bug still exists
-    assert color == 0.0, (
-        f"PDFMiner bug appears to be fixed! Color is {color} instead of 0.0. "
-        "Consider removing the monkey patch in natural_pdf/utils/pdfminer_patches.py"
+    assert color in ((1.0, 1.0, 0.0), [1.0, 1.0, 0.0]), (
+        f"Unexpected highlight color {color!r}. If this regresses to 0.0, "
+        "the upstream pdfminer bug has resurfaced."
     )

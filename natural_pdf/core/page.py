@@ -1090,6 +1090,72 @@ class Page(
 
         return filtered_elements
 
+    @contextlib.contextmanager
+    def _temporary_text_settings(
+        self,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[bool] = None,
+    ):
+        """
+        Temporarily override page-level text tolerance settings and refresh caches.
+        """
+        overrides: Dict[str, Any] = {}
+        if text_tolerance:
+            overrides.update(
+                {
+                    key: value
+                    for key, value in dict(text_tolerance).items()
+                    if key
+                    in {
+                        "x_tolerance",
+                        "y_tolerance",
+                        "x_tolerance_ratio",
+                        "y_tolerance_ratio",
+                        "keep_blank_chars",
+                    }
+                }
+            )
+        if auto_text_tolerance is not None:
+            overrides["auto_text_tolerance"] = bool(auto_text_tolerance)
+
+        if not overrides:
+            yield False
+            return
+
+        sentinel = object()
+        page_config = getattr(self, "_config", {})
+        previous_values: Dict[str, Any] = {key: page_config.get(key, sentinel) for key in overrides}
+        cache_invalidated = False
+        try:
+            for key, value in overrides.items():
+                if value is None:
+                    if key in page_config:
+                        del page_config[key]
+                        cache_invalidated = True
+                elif page_config.get(key) != value:
+                    page_config[key] = value
+                    cache_invalidated = True
+
+            if cache_invalidated:
+                self._element_mgr.invalidate_cache()
+            yield cache_invalidated
+        finally:
+            if not cache_invalidated:
+                return
+
+            restore_invalidated = False
+            for key, prior in previous_values.items():
+                if prior is sentinel:
+                    if key in page_config:
+                        del page_config[key]
+                        restore_invalidated = True
+                elif page_config.get(key) != prior:
+                    page_config[key] = prior
+                    restore_invalidated = True
+
+            if restore_invalidated:
+                self._element_mgr.invalidate_cache()
+
     @overload
     def find(
         self,
@@ -1165,22 +1231,30 @@ class Page(
         # Pass regex and case flags to selector function via kwargs
         kwargs["regex"] = regex
         kwargs["case"] = case
+        text_tolerance_override = kwargs.pop("text_tolerance", None)
+        auto_text_tolerance_override = kwargs.pop("auto_text_tolerance", None)
+        if text_tolerance_override is not None and not isinstance(text_tolerance_override, dict):
+            raise TypeError("text_tolerance must be a dict of tolerance overrides.")
 
-        # First get all matching elements without applying exclusions initially within _apply_selector
-        results_collection = self._apply_selector(
-            selector_obj, **kwargs
-        )  # _apply_selector doesn't filter
+        with self._temporary_text_settings(
+            text_tolerance=text_tolerance_override,
+            auto_text_tolerance=auto_text_tolerance_override,
+        ):
+            # First get all matching elements without applying exclusions initially within _apply_selector
+            results_collection = self._apply_selector(
+                selector_obj, **kwargs
+            )  # _apply_selector doesn't filter
 
-        # Filter the results based on exclusions if requested
-        if apply_exclusions and results_collection:
-            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-            # Return the first element from the filtered list
-            return filtered_elements[0] if filtered_elements else None
-        elif results_collection:
-            # Return the first element from the unfiltered results
-            return results_collection.first
-        else:
-            return None
+            # Filter the results based on exclusions if requested
+            if apply_exclusions and results_collection:
+                filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
+                # Return the first element from the filtered list
+                return filtered_elements[0] if filtered_elements else None
+            elif results_collection:
+                # Return the first element from the unfiltered results
+                return results_collection.first
+            else:
+                return None
 
     @overload
     def find_all(
@@ -1260,19 +1334,27 @@ class Page(
         # Pass regex and case flags to selector function via kwargs
         kwargs["regex"] = regex
         kwargs["case"] = case
+        text_tolerance_override = kwargs.pop("text_tolerance", None)
+        auto_text_tolerance_override = kwargs.pop("auto_text_tolerance", None)
+        if text_tolerance_override is not None and not isinstance(text_tolerance_override, dict):
+            raise TypeError("text_tolerance must be a dict of tolerance overrides.")
 
-        # First get all matching elements without applying exclusions initially within _apply_selector
-        results_collection = self._apply_selector(
-            selector_obj, **kwargs
-        )  # _apply_selector doesn't filter
+        with self._temporary_text_settings(
+            text_tolerance=text_tolerance_override,
+            auto_text_tolerance=auto_text_tolerance_override,
+        ):
+            # First get all matching elements without applying exclusions initially within _apply_selector
+            results_collection = self._apply_selector(
+                selector_obj, **kwargs
+            )  # _apply_selector doesn't filter
 
-        # Filter the results based on exclusions if requested
-        if apply_exclusions and results_collection:
-            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-            return ElementCollection(filtered_elements)
-        else:
-            # Return the unfiltered collection
-            return results_collection
+            # Filter the results based on exclusions if requested
+            if apply_exclusions and results_collection:
+                filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
+                return ElementCollection(filtered_elements)
+            else:
+                # Return the unfiltered collection
+                return results_collection
 
     def _apply_selector(
         self, selector_obj: Dict, **kwargs

@@ -3,6 +3,12 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Ensure the repository root is ahead of any installed natural_pdf package.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+root_str = str(REPO_ROOT)
+if root_str not in sys.path:
+    sys.path.insert(0, root_str)
+
 import pytest
 
 # Common test PDF URLs from tutorials

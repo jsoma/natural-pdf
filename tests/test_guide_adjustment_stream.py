@@ -1,9 +1,26 @@
 """Test guide adjustment for stream extraction method"""
 
+from pathlib import Path
+
 import pytest
 
 from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
+
+RESOURCES_DIR = Path(__file__).resolve().parent / "resources"
+
+
+def _require_resource(filename: str) -> str:
+    path = RESOURCES_DIR / filename
+    if not path.exists():
+        pytest.skip(f"Test resource not available: {path}")
+    return str(path)
+
+
+try:
+    from natural_pdf.utils.testing import create_test_pdf
+except ImportError:  # pragma: no cover - helper absent in lightweight installs
+    create_test_pdf = None
 
 
 class TestGuideAdjustmentStream:
@@ -11,7 +28,7 @@ class TestGuideAdjustmentStream:
 
     def test_guides_adjusted_for_stream_method(self):
         """Test that guides outside text bounds are adjusted for stream extraction."""
-        pdf = PDF("tests/resources/table_narrow_text.pdf")
+        pdf = PDF(_require_resource("table_narrow_text.pdf"))
         page = pdf[0]
 
         # Create guides that extend beyond text bounds
@@ -28,7 +45,7 @@ class TestGuideAdjustmentStream:
 
     def test_from_headers_works_with_stream(self):
         """Test that from_headers() generated guides work with stream extraction."""
-        pdf = PDF("tests/resources/table_headers.pdf")
+        pdf = PDF(_require_resource("table_headers.pdf"))
         page = pdf[0]
 
         # Find headers
@@ -50,7 +67,7 @@ class TestGuideAdjustmentStream:
 
     def test_no_adjustment_for_lattice_method(self):
         """Test that guides are NOT adjusted when using lattice method."""
-        pdf = PDF("tests/resources/table_with_lines.pdf")
+        pdf = PDF(_require_resource("table_with_lines.pdf"))
         page = pdf[0]
 
         # Create guides at specific positions
@@ -74,7 +91,7 @@ class TestGuideAdjustmentStream:
 
     def test_guide_adjustment_with_explicit_settings(self):
         """Test guide adjustment works with explicit table settings."""
-        pdf = PDF("tests/resources/table_narrow_text.pdf")
+        pdf = PDF(_require_resource("table_narrow_text.pdf"))
         page = pdf[0]
 
         # Get text bounds
@@ -105,7 +122,8 @@ class TestGuideAdjustmentStream:
     def test_empty_text_no_adjustment(self):
         """Test behavior when no text elements exist."""
         # Create a minimal PDF with guides but no text
-        from natural_pdf.utils.testing import create_test_pdf
+        if create_test_pdf is None:
+            pytest.skip("create_test_pdf helper not available")
 
         pdf = create_test_pdf()
         page = pdf[0]

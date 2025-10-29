@@ -88,7 +88,10 @@ def disable_text_sync():
     # Create a fast setter that skips sync
     def fast_setter(self, value):
         self._obj["text"] = value
-        # Skip character synchronization for performance
+        if hasattr(self, "_layout_text_cache"):
+            self._layout_text_cache = value
+        if hasattr(self, "_text_manually_set"):
+            self._text_manually_set = True
 
     # Apply fast setter
     TextElement.text = property(TextElement.text.fget, fast_setter)
@@ -301,6 +304,22 @@ class ElementManager:
         page_config = getattr(self._page, "_config", {})
         pdf_config = getattr(self._page._parent, "_config", {})
 
+        auto_text_tolerance = page_config.get("auto_text_tolerance")
+        if auto_text_tolerance is None:
+            auto_text_tolerance = pdf_config.get("auto_text_tolerance", True)
+
+        keep_blank_chars = page_config.get("keep_blank_chars")
+        if keep_blank_chars is None:
+            keep_blank_chars = pdf_config.get("keep_blank_chars", True)
+
+        x_tolerance_ratio = page_config.get("x_tolerance_ratio")
+        if x_tolerance_ratio is None:
+            x_tolerance_ratio = pdf_config.get("x_tolerance_ratio")
+
+        y_tolerance_ratio = page_config.get("y_tolerance_ratio")
+        if y_tolerance_ratio is None:
+            y_tolerance_ratio = pdf_config.get("y_tolerance_ratio")
+
         # Initialize tolerance variables
         xt = None
         yt = None
@@ -315,7 +334,7 @@ class ElementManager:
         # Auto-adaptive tolerance: scale based on median character size when
         # requested and explicit values are absent.
         # ------------------------------------------------------------------
-        if self._load_text and pdf_config.get("auto_text_tolerance", True):
+        if self._load_text and auto_text_tolerance:
             import statistics
 
             sizes = [c.get("size", 0) for c in prepared_char_dicts if c.get("size")]
@@ -421,7 +440,9 @@ class ElementManager:
                 extra_attrs=attributes_to_preserve,
                 x_tolerance=xt,
                 y_tolerance=yt,
-                keep_blank_chars=True,
+                x_tolerance_ratio=x_tolerance_ratio,
+                y_tolerance_ratio=y_tolerance_ratio,
+                keep_blank_chars=keep_blank_chars,
                 use_text_flow=use_flow,
                 line_dir=line_dir,
                 char_dir=char_dir,

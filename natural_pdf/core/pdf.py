@@ -632,6 +632,7 @@ class PDF(
                 "x_tolerance",
                 "x_tolerance_ratio",
                 "y_tolerance",
+                "y_tolerance_ratio",
                 "keep_blank_chars",  # passthrough convenience
             }
             for k, v in text_tolerance.items():

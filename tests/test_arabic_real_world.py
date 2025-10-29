@@ -33,7 +33,7 @@ class TestArabicPDF(unittest.TestCase):
         for term, _ in search_terms:
             print("term", term, "translation", _)
             with self.subTest(term=term):
-                matches = self.page.find_all(f"text:contains({term})")
+                matches = self.page.find_all(f'text:contains("{term}")')
                 self.assertGreater(len(matches), 0, f"No matches found for term: {term}")
 
     def test_spatial_navigation(self):

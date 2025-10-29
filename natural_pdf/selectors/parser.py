@@ -693,7 +693,13 @@ def _build_filter_list(
             # Use pre-calculated aggregate value
             aggregate_value = aggregates.get(name)
             if aggregate_value is None:
-                # Skip this filter if aggregate couldn't be calculated
+                # Aggregate couldn't be calculated; ensure no elements match this filter
+                filters.append(
+                    {
+                        "name": f"aggregate {value['func']} for '{name}' unavailable",
+                        "func": lambda _el: False,
+                    }
+                )
                 continue
 
             # Apply arithmetic operation if specified
