@@ -1,6 +1,6 @@
 import logging
 from collections.abc import MutableSequence
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from PIL import Image  # Single import for PIL.Image module
 
@@ -421,7 +421,11 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         ]
 
     def find(
-        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        **kwargs,
     ) -> Optional["PhysicalElement"]:
         from natural_pdf.elements.base import Element as PhysicalElement  # Runtime import
 
@@ -432,7 +436,11 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         return None
 
     def find_all(
-        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        **kwargs,
     ) -> "ElementCollection":
         from natural_pdf.elements.collections import (
             ElementCollection as RuntimeElementCollection,  # Runtime import

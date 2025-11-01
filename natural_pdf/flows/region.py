@@ -1,6 +1,17 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
@@ -360,7 +371,11 @@ class FlowRegion(Visualizable):
         return result_collection
 
     def find(
-        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        **kwargs,
     ) -> Optional["PhysicalElement"]:  # Stringized
         """
         Find the first element in flow order that matches the selector or text.
@@ -389,7 +404,11 @@ class FlowRegion(Visualizable):
         return None  # No match found
 
     def find_all(
-        self, selector: Optional[str] = None, *, text: Optional[str] = None, **kwargs
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        **kwargs,
     ) -> "ElementCollection":  # Stringized
         """
         Find **all** elements across the constituent regions that match the given

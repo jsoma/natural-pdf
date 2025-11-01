@@ -7,6 +7,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Union,
@@ -36,7 +37,11 @@ from natural_pdf.elements.base import DirectionalMixin
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
-from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.selectors.parser import (
+    build_text_contains_selector,
+    parse_selector,
+    selector_to_filter_func,
+)
 
 # ------------------------------------------------------------------
 # Table utilities
@@ -2396,7 +2401,7 @@ class Region(
     def find(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -2420,7 +2425,7 @@ class Region(
         self,
         selector: Optional[str] = None,  # Now optional
         *,
-        text: Optional[str] = None,  # New text parameter
+        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
         overlap: str = "full",  # How elements overlap with the region
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -2434,7 +2439,8 @@ class Region(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             overlap: How to determine if elements overlap with the region: 'full' (fully inside),
                      'partial' (any overlap), or 'center' (center point inside).
                      (default: "full")
@@ -2462,7 +2468,7 @@ class Region(
     def find_all(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -2486,7 +2492,7 @@ class Region(
         self,
         selector: Optional[str] = None,  # Now optional
         *,
-        text: Optional[str] = None,  # New text parameter
+        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
         overlap: str = "full",  # How elements overlap with the region
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -2500,7 +2506,8 @@ class Region(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             overlap: How to determine if elements overlap with the region: 'full' (fully inside),
                      'partial' (any overlap), or 'center' (center point inside).
                      (default: "full")
@@ -2528,10 +2535,9 @@ class Region(
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            effective_selector = f'text:contains("{escaped_text}")'
+            effective_selector = build_text_contains_selector(text)
             logger.debug(
-                f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')"
+                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
             )
         elif selector is not None:
             effective_selector = selector

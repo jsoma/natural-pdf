@@ -35,6 +35,7 @@ import difflib
 import logging
 import re
 from collections import Counter
+from collections.abc import Iterable
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from colormath2.color_conversions import convert_color
@@ -43,6 +44,42 @@ from colormath2.color_objects import LabColor, sRGBColor
 from colour import Color
 
 logger = logging.getLogger(__name__)
+
+
+def build_text_contains_selector(text_input: Union[str, Iterable[str]]) -> str:
+    """
+    Build a selector string that matches one or more literal text values.
+
+    Args:
+        text_input: A single string or an iterable of strings to match.
+
+    Returns:
+        Selector string using OR logic to match any of the provided texts.
+
+    Raises:
+        TypeError: If any value is not a string or text_input is not iterable.
+        ValueError: If an iterable is provided but is empty.
+    """
+    if isinstance(text_input, str):
+        texts = [text_input]
+    else:
+        if not isinstance(text_input, Iterable):
+            raise TypeError("text must be a string or an iterable of strings.")
+        texts = list(text_input)
+        if not texts:
+            raise ValueError("text iterable must contain at least one string.")
+        for idx, value in enumerate(texts):
+            if not isinstance(value, str):
+                raise TypeError(
+                    f"text iterable entries must be strings. "
+                    f"Received {type(value).__name__} at index {idx}."
+                )
+
+    selectors = []
+    for value in texts:
+        escaped_text = value.replace('"', '\\"').replace("'", "\\'")
+        selectors.append(f'text:contains("{escaped_text}")')
+    return "|".join(selectors)
 
 
 def safe_parse_value(value_str: str) -> Any:

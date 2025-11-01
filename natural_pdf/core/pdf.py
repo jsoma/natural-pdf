@@ -18,6 +18,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Sequence,
     Tuple,
     Type,
     Union,
@@ -40,7 +41,7 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager, OCROptions
-from natural_pdf.selectors.parser import parse_selector
+from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.locks import pdf_render_lock
 from natural_pdf.vision.mixin import VisualSearchMixin
@@ -1136,7 +1137,7 @@ class PDF(
     def find(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1158,7 +1159,7 @@ class PDF(
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1171,7 +1172,8 @@ class PDF(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1191,10 +1193,9 @@ class PDF(
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            effective_selector = f'text:contains("{escaped_text}")'
+            effective_selector = build_text_contains_selector(text)
             logger.debug(
-                f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')"
+                f"Using text shortcut: find(text={text!r}) -> find('{effective_selector}')"
             )
         elif selector is not None:
             effective_selector = selector
@@ -1222,7 +1223,7 @@ class PDF(
     def find_all(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1244,7 +1245,7 @@ class PDF(
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1257,7 +1258,8 @@ class PDF(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1277,10 +1279,9 @@ class PDF(
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            effective_selector = f'text:contains("{escaped_text}")'
+            effective_selector = build_text_contains_selector(text)
             logger.debug(
-                f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')"
+                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
             )
         elif selector is not None:
             effective_selector = selector

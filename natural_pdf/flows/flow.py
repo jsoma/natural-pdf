@@ -8,6 +8,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Sequence,
     Tuple,
     Union,
     overload,
@@ -295,7 +296,7 @@ class Flow(Visualizable):
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -308,7 +309,8 @@ class Flow(Visualizable):
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for.
+            text: Text content to search for. Accepts a single string or an iterable of
+                strings (matches any value).
             apply_exclusions: Whether to respect exclusion zones on the original pages/regions.
             regex: Whether the text search uses regex.
             case: Whether the text search is case-sensitive.
@@ -331,7 +333,7 @@ class Flow(Visualizable):
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,

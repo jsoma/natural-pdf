@@ -261,7 +261,7 @@ class PageCollection(
     def find(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -285,7 +285,7 @@ class PageCollection(
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -299,7 +299,8 @@ class PageCollection(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             overlap: How to determine if elements overlap: 'full' (fully inside),
                      'partial' (any overlap), or 'center' (center point inside).
                      (default: "full")
@@ -330,7 +331,7 @@ class PageCollection(
     def find_all(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -354,7 +355,7 @@ class PageCollection(
         self,
         selector: Optional[str] = None,
         *,
-        text: Optional[str] = None,
+        text: Optional[Union[str, Sequence[str]]] = None,
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
@@ -368,7 +369,8 @@ class PageCollection(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             overlap: How to determine if elements overlap: 'full' (fully inside),
                      'partial' (any overlap), or 'center' (center point inside).
                      (default: "full")

@@ -19,6 +19,7 @@ from typing import (  # Added overload
     List,
     Literal,
     Optional,
+    Sequence,
     Tuple,
     Union,
     overload,
@@ -30,7 +31,7 @@ from tqdm.auto import tqdm  # Added tqdm import
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.parser import parse_selector
+from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.tables.result import TableResult
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 from natural_pdf.utils.visualization import render_plain_page
@@ -1160,7 +1161,7 @@ class Page(
     def find(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1182,7 +1183,7 @@ class Page(
         self,
         selector: Optional[str] = None,  # Now optional
         *,  # Force subsequent args to be keyword-only
-        text: Optional[str] = None,  # New text parameter
+        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1195,7 +1196,8 @@ class Page(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1212,13 +1214,9 @@ class Page(
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-            # Escape quotes within the text for the selector string
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            # Default to 'text:contains(...)'
-            effective_selector = f'text:contains("{escaped_text}")'
-            # Note: regex/case handled by kwargs passed down
+            effective_selector = build_text_contains_selector(text)
             logger.debug(
-                f"Using text shortcut: find(text='{text}') -> find('{effective_selector}')"
+                f"Using text shortcut: find(text={text!r}) -> find('{effective_selector}')"
             )
         elif selector is not None:
             effective_selector = selector
@@ -1260,7 +1258,7 @@ class Page(
     def find_all(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1282,7 +1280,7 @@ class Page(
         self,
         selector: Optional[str] = None,  # Now optional
         *,  # Force subsequent args to be keyword-only
-        text: Optional[str] = None,  # New text parameter
+        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1295,7 +1293,8 @@ class Page(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
@@ -1316,12 +1315,9 @@ class Page(
         # Construct selector if 'text' is provided
         effective_selector = ""
         if text is not None:
-            # Escape quotes within the text for the selector string
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            # Default to 'text:contains(...)'
-            effective_selector = f'text:contains("{escaped_text}")'
+            effective_selector = build_text_contains_selector(text)
             logger.debug(
-                f"Using text shortcut: find_all(text='{text}') -> find_all('{effective_selector}')"
+                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
             )
         elif selector is not None:
             effective_selector = selector

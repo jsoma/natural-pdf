@@ -36,6 +36,47 @@ def test_find_text_with_content(practice_pdf):
         assert "Jungle" in element.text, "Element text should contain 'Jungle'"
 
 
+def test_page_find_accepts_text_list(practice_pdf):
+    """Ensure Page.find accepts a list for text matching."""
+    page = practice_pdf.pages[0]
+
+    result = page.find(text=["Not present anywhere", "Jungle"])
+
+    assert result is not None, "Should find an element matching one of the provided texts"
+    assert "Jungle" in result.text
+
+
+def test_page_find_all_accepts_text_list(practice_pdf):
+    """Ensure Page.find_all accepts a list for text matching."""
+    page = practice_pdf.pages[0]
+
+    results = page.find_all(text=["Jungle", "Nonexistent phrase"])
+
+    assert len(results) > 0, "Should find elements for at least one provided text value"
+    assert all("Jungle" in element.text for element in results)
+
+
+def test_region_find_accepts_text_list(practice_pdf):
+    """Ensure Region.find accepts a list for text matching."""
+    page = practice_pdf.pages[0]
+    seed_element = page.find(text="Jungle")
+    assert seed_element is not None, "Seed element for region search should exist"
+
+    region = seed_element.expand(amount=2)
+    match = region.find(text=["No match here", "Jungle"])
+
+    assert match is not None, "Region.find should match one of the provided texts"
+    assert "Jungle" in match.text
+
+
+def test_pdf_find_accepts_text_list(practice_pdf):
+    """Ensure PDF.find accepts a list for text matching."""
+    match = practice_pdf.find(text=["Completely missing", "Jungle"])
+
+    assert match is not None, "PDF.find should locate text from any provided option"
+    assert "Jungle" in match.text
+
+
 def test_find_all_lines(practice_pdf):
     """Tests finding line elements on a page."""
     page = practice_pdf.pages[0]

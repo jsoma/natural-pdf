@@ -17,6 +17,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     Set,
     Type,
     TypeVar,
@@ -398,7 +399,7 @@ class PDFCollection(
     def find_all(
         self,
         *,
-        text: str,
+        text: Union[str, Sequence[str]],
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -420,7 +421,7 @@ class PDFCollection(
         self,
         selector: Optional[str] = None,  # Now optional
         *,
-        text: Optional[str] = None,  # New text parameter
+        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -436,7 +437,8 @@ class PDFCollection(
 
         Args:
             selector: CSS-like selector string to query elements.
-            text: Text content to search for (equivalent to 'text:contains(...)').
+            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
+                  single string or an iterable of strings (matches any value).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
