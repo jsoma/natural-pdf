@@ -66,7 +66,12 @@ def test_annotate_with_ocr():
     page = pdf[0]
 
     # Run OCR - this adds OCR elements to the page
-    page.apply_ocr(engine="paddle")  # Use paddle as it's fast
+    try:
+        page.apply_ocr(engine="paddle")  # Use paddle as it's fast
+    except RuntimeError as exc:
+        if "Engine 'paddle' is not available" in str(exc):
+            pytest.skip("Paddle OCR engine not installed")
+        raise
 
     # Find OCR elements
     ocr_elements = page.find_all("text[source=ocr]")
