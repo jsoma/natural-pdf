@@ -1,5 +1,6 @@
 """Mixin to add visual similarity search to Page/PDF/PDFCollection"""
 
+import warnings
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
@@ -50,6 +51,12 @@ class VisualSearchMixin:
         Returns:
             MatchResults collection
         """
+        warnings.warn(
+            "natural-pdf's visual similarity search (find_similar) is under review and may change "
+            "or be removed; results can be unreliable in the current release.",
+            UserWarning,
+            stacklevel=2,
+        )
         if using != "vision":
             raise NotImplementedError(f"using='{using}' not yet supported")
 
