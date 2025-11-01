@@ -22,13 +22,13 @@ import nox
 
 # Ensure nox uses the same Python version you are developing with or whichever is appropriate
 # Make sure this Python version has nox installed (`pip install nox`)
-# You can specify multiple Python versions to test against, e.g., ["3.9", "3.10", "3.11"]
+# You can specify multiple Python versions to test against, e.g., ["3.10", "3.11", "3.12"]
 nox.options.sessions = ["lint", "test_minimal", "test_full"]
 nox.options.reuse_existing_virtualenvs = True  # Faster runs by reusing environments
 nox.options.default_venv_backend = "uv"  # Use uv for faster venv creation and package installation
 
 PYTHON_VERSIONS = (
-    ["3.9", "3.10", "3.11"] if sys.platform != "darwin" else ["3.9", "3.10", "3.11"]
+    ["3.10", "3.11", "3.12"] if sys.platform != "darwin" else ["3.10", "3.11", "3.12"]
 )  # Add more as needed
 
 # Packages that are not part of the core install but are needed for full functionality
