@@ -54,10 +54,19 @@ jobs:
         run: |
           uv pip install --system nox nox-uv
 
-      - name: Run Nox sessions
+      - name: Run Nox sessions (full)
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.11'
+        env:
+          NOTEBOOK_WORKERS: 1
+          PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
+          PYTEST_ADDOPTS: "--durations=25"
+        run: |
+          nox --non-interactive -s lint test_full
+
+      - name: Run Nox sessions (minimal)
+        if: matrix.os != 'ubuntu-latest' || matrix.python != '3.11'
         env:
           NOTEBOOK_WORKERS: 1
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
         run: |
-          # Run linting and the full test suite
-          nox --non-interactive -s lint test_full
+          nox --non-interactive -s test_minimal
