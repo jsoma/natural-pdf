@@ -1,15 +1,9 @@
-import base64
 import concurrent.futures  # Added import
 import contextlib
 import hashlib
-import io
-import json
 import logging
 import os
 import re
-import tempfile
-import threading
-import time  # Import time
 from pathlib import Path
 from typing import (  # Added overload
     TYPE_CHECKING,
@@ -22,11 +16,10 @@ from typing import (  # Added overload
     Sequence,
     Tuple,
     Union,
-    overload,
 )
 
 import pdfplumber
-from PIL import Image, ImageDraw
+from PIL import Image
 from tqdm.auto import tqdm  # Added tqdm import
 
 from natural_pdf.elements.element_collection import ElementCollection
@@ -34,22 +27,19 @@ from natural_pdf.elements.region import Region
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.tables.result import TableResult
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
-from natural_pdf.utils.visualization import render_plain_page
 
 if TYPE_CHECKING:
     import pdfplumber
 
-    from natural_pdf.core.highlighting_service import HighlightingService
+    from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
     from natural_pdf.core.pdf import PDF
+    from natural_pdf.describe.summary import InspectionSummary
     from natural_pdf.elements.base import Element
 
 # # New Imports
-import itertools
 
 # # Deskew Imports (Conditional)
 import numpy as np
-from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
-from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
@@ -73,14 +63,12 @@ from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr import OCRManager, OCROptions
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.qa import DocumentQA, get_qa_engine
 
 # --- Text update mixin import --- #
 from natural_pdf.text_mixin import TextMixin
-from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # # Import new utils
+from natural_pdf.utils.sections import sanitize_sections
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.vision.mixin import VisualSearchMixin
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
@@ -1226,37 +1214,17 @@ class Page(
             if restore_invalidated:
                 self._element_mgr.invalidate_cache()
 
-    @overload
     def find(
         self,
+        selector: Optional[str] = None,
         *,
-        text: Union[str, Sequence[str]],
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> Optional[Any]: ...
-
-    @overload
-    def find(
-        self,
-        selector: str,
-        *,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional[Any]: ...
-
-    def find(
-        self,
-        selector: Optional[str] = None,  # Now optional
-        *,  # Force subsequent args to be keyword-only
-        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional[Any]:
         """
         Find first element on this page matching selector OR text content.
@@ -1265,12 +1233,13 @@ class Page(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
+            text: Optional text shortcut (equivalent to ``text:contains(...)``).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
+            text_tolerance: Optional dict of tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
+            reading_order: Whether to sort matches in reading order when applicable (default: True).
 
         Returns:
             Element object or None if not found.
@@ -1293,67 +1262,40 @@ class Page(
             # Should be unreachable due to checks above
             raise ValueError("Internal error: No selector or text provided.")
 
-        selector_obj = parse_selector(effective_selector)
+        selector_obj = parse_selector(effective_selector)  # type: ignore[arg-type]
 
-        # Pass regex and case flags to selector function via kwargs
-        kwargs["regex"] = regex
-        kwargs["case"] = case
-        text_tolerance_override = kwargs.pop("text_tolerance", None)
-        auto_text_tolerance_override = kwargs.pop("auto_text_tolerance", None)
-        if text_tolerance_override is not None and not isinstance(text_tolerance_override, dict):
+        if text_tolerance is not None and not isinstance(text_tolerance, dict):
             raise TypeError("text_tolerance must be a dict of tolerance overrides.")
 
         with self._temporary_text_settings(
-            text_tolerance=text_tolerance_override,
-            auto_text_tolerance=auto_text_tolerance_override,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
         ):
-            # First get all matching elements without applying exclusions initially within _apply_selector
-            results_collection = self._apply_selector(
-                selector_obj, **kwargs
-            )  # _apply_selector doesn't filter
+            selector_kwargs = {
+                "regex": regex,
+                "case": case,
+                "reading_order": reading_order,
+            }
+
+            results_collection = self._apply_selector(selector_obj, **selector_kwargs)
 
             # Filter the results based on exclusions if requested
             if apply_exclusions and results_collection:
                 filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-                # Return the first element from the filtered list
                 return filtered_elements[0] if filtered_elements else None
-            elif results_collection:
-                # Return the first element from the unfiltered results
-                return results_collection.first
-            else:
-                return None
+            return results_collection.first if results_collection else None
 
-    @overload
     def find_all(
         self,
+        selector: Optional[str] = None,
         *,
-        text: Union[str, Sequence[str]],
+        text: Optional[Union[str, Sequence[str]]] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    @overload
-    def find_all(
-        self,
-        selector: str,
-        *,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,  # Now optional
-        *,  # Force subsequent args to be keyword-only
-        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
         """
         Find all elements on this page matching selector OR text content.
@@ -1367,7 +1309,9 @@ class Page(
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
+            text_tolerance: Optional dict of tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides controlling automatic tolerance calculation.
+            reading_order: Whether to sort matches in reading order (default: True).
 
         Returns:
             ElementCollection with matching elements.
@@ -1394,32 +1338,27 @@ class Page(
             # Should be unreachable due to checks above
             raise ValueError("Internal error: No selector or text provided.")
 
-        selector_obj = parse_selector(effective_selector)
+        selector_obj = parse_selector(effective_selector)  # type: ignore[arg-type]
 
-        # Pass regex and case flags to selector function via kwargs
-        kwargs["regex"] = regex
-        kwargs["case"] = case
-        text_tolerance_override = kwargs.pop("text_tolerance", None)
-        auto_text_tolerance_override = kwargs.pop("auto_text_tolerance", None)
-        if text_tolerance_override is not None and not isinstance(text_tolerance_override, dict):
+        if text_tolerance is not None and not isinstance(text_tolerance, dict):
             raise TypeError("text_tolerance must be a dict of tolerance overrides.")
 
         with self._temporary_text_settings(
-            text_tolerance=text_tolerance_override,
-            auto_text_tolerance=auto_text_tolerance_override,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
         ):
-            # First get all matching elements without applying exclusions initially within _apply_selector
-            results_collection = self._apply_selector(
-                selector_obj, **kwargs
-            )  # _apply_selector doesn't filter
+            selector_kwargs = {
+                "regex": regex,
+                "case": case,
+                "reading_order": reading_order,
+            }
+            results_collection = self._apply_selector(selector_obj, **selector_kwargs)
 
             # Filter the results based on exclusions if requested
             if apply_exclusions and results_collection:
                 filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
                 return ElementCollection(filtered_elements)
-            else:
-                # Return the unfiltered collection
-                return results_collection
+            return results_collection
 
     def _apply_selector(
         self, selector_obj: Dict, **kwargs
@@ -1677,25 +1616,19 @@ class Page(
                             el_text = el_text.lower()
                             search_term = search_term.lower()
 
-                        # Calculate similarity ratio using Jaro-Winkler similarity
                         ratio = _jaro_winkler_similarity(search_term, el_text)
-
-                        # Check if element contains the search term as substring
                         contains_match = search_term in el_text
 
-                        # Keep substring matches even if ratio falls below the threshold so that
-                        # short search terms like prefixes still surface expected hits.
-                        if contains_match or ratio >= threshold:
-                            scored_elements.append((ratio, contains_match, el))
+                        if ratio >= threshold:
+                            scored_elements.append((contains_match, ratio, el))
 
                 # Sort by:
                 # 1. Contains match (True before False)
                 # 2. Similarity score (highest first)
-                # This ensures substring matches come first but are sorted by similarity
-                scored_elements.sort(key=lambda x: (x[1], x[0]), reverse=True)
+                scored_elements.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
                 # Extract just the elements
-                matching_elements = [el for _, _, el in scored_elements]
+                matching_elements = [entry[2] for entry in scored_elements]
                 break  # Only process the first :closest pseudo-class
 
         # Handle collection-level pseudo-classes (:first, :last)
@@ -1937,7 +1870,19 @@ class Page(
 
         return matching_elements
 
-    def until(self, selector: str, include_endpoint: bool = True, **kwargs) -> Any:
+    def until(
+        self,
+        selector: str,
+        include_endpoint: bool = True,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
+    ) -> Any:
         """
         Select content from the top of the page until matching selector.
 
@@ -1954,7 +1899,16 @@ class Page(
             >>> page.until('line[width>=2]', include_endpoint=False)  # Select up to thick line
         """
         # Find the target element
-        target = self.find(selector, **kwargs)
+        target = self.find(
+            selector,
+            text=text,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+        )
         if not target:
             # If target not found, return a default region (full page)
             from natural_pdf.elements.region import Region
@@ -1996,17 +1950,29 @@ class Page(
 
     def extract_text(
         self,
-        preserve_whitespace=True,
-        use_exclusions=True,
-        debug_exclusions=False,
+        preserve_whitespace: bool = True,
+        preserve_line_breaks: bool = True,
+        use_exclusions: bool = True,
+        debug_exclusions: bool = False,
         content_filter=None,
-        **kwargs,
+        *,
+        layout: bool = True,
+        x_density: Optional[float] = None,
+        y_density: Optional[float] = None,
+        x_tolerance: Optional[float] = None,
+        y_tolerance: Optional[float] = None,
+        line_dir: Optional[str] = None,
+        char_dir: Optional[str] = None,
+        strip_final: bool = False,
+        strip_empty: bool = False,
+        bidi: bool = True,
     ) -> str:
         """
         Extract text from this page, respecting exclusions and using pdfplumber's
         layout engine (chars_to_textmap) if layout arguments are provided or default.
 
         Args:
+            preserve_line_breaks: When False, collapse newlines into spaces for a flattened string.
             use_exclusions: Whether to apply exclusion regions (default: True).
                           Note: Filtering logic is now always applied if exclusions exist.
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
@@ -2014,22 +1980,28 @@ class Page(
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            **kwargs: Additional layout parameters passed directly to pdfplumber's
-                      `chars_to_textmap` function. Common parameters include:
-                      - layout (bool): If True (default), inserts spaces/newlines.
-                      - x_density (float): Pixels per character horizontally.
-                      - y_density (float): Pixels per line vertically.
-                      - x_tolerance (float): Tolerance for horizontal character grouping.
-                      - y_tolerance (float): Tolerance for vertical character grouping.
-                      - line_dir (str): 'ttb', 'btt', 'ltr', 'rtl'
-                      - char_dir (str): 'ttb', 'btt', 'ltr', 'rtl'
-                      See pdfplumber documentation for more.
+            layout: Whether to enable layout-aware spacing (default: True).
+            x_density: Horizontal character density override.
+            y_density: Vertical line density override.
+            x_tolerance: Horizontal clustering tolerance.
+            y_tolerance: Vertical clustering tolerance.
+            line_dir: Line reading direction override.
+            char_dir: Character reading direction override.
+            strip_final: When True, strip trailing whitespace from the combined text.
+            strip_empty: When True, drop entirely blank lines from the output.
+            bidi: Whether to apply bidi reordering when RTL text is detected (default: True).
 
         Returns:
             Extracted text as string, potentially with layout-based spacing.
         """
-        logger.debug(f"Page {self.number}: extract_text called with kwargs: {kwargs}")
-        debug = kwargs.get("debug", debug_exclusions)  # Allow 'debug' kwarg
+        logger.debug(
+            "Page %s: extract_text called with layout=%s, x_density=%s, y_density=%s",
+            self.number,
+            layout,
+            x_density,
+            y_density,
+        )
+        debug = debug_exclusions
 
         # 1. Get Word Elements (triggers load_elements if needed)
         word_elements = self.words
@@ -2057,8 +2029,8 @@ class Page(
                 )
 
         # 3. Get region-based exclusions for spatial filtering
-        apply_exclusions_flag = kwargs.get("use_exclusions", use_exclusions)
         exclusion_regions = []
+        apply_exclusions_flag = use_exclusions
         if apply_exclusions_flag and has_exclusions:
             exclusion_regions = self._get_exclusion_regions(include_callable=True, debug=debug)
             if debug:
@@ -2085,7 +2057,20 @@ class Page(
         # Pass page bbox as layout context
         page_bbox = (0, 0, self.width, self.height)
         # Merge PDF-level default tolerances if caller did not override
-        merged_kwargs = dict(kwargs)
+        merged_kwargs = {
+            "layout": layout,
+            "x_density": x_density,
+            "y_density": y_density,
+            "x_tolerance": x_tolerance,
+            "y_tolerance": y_tolerance,
+            "line_dir": line_dir,
+            "char_dir": char_dir,
+        }
+        merged_kwargs = {
+            key: value
+            for key, value in merged_kwargs.items()
+            if value is not None or key == "layout"
+        }
         tol_keys = ["x_tolerance", "x_tolerance_ratio", "y_tolerance"]
         for k in tol_keys:
             if k not in merged_kwargs:
@@ -2105,8 +2090,7 @@ class Page(
         )
 
         # --- Optional: apply Unicode BiDi algorithm for mixed RTL/LTR correctness ---
-        apply_bidi = kwargs.get("bidi", True)
-        if apply_bidi and result:
+        if bidi and result:
             # Quick check for any RTL character
             import unicodedata
 
@@ -2137,6 +2121,19 @@ class Page(
                     )
                 except ModuleNotFoundError:
                     pass  # silently skip if python-bidi not available
+
+        if strip_empty and result:
+            result = "\n".join(line for line in result.splitlines() if line.strip())
+
+        if strip_final and result:
+            result = "\n".join(line.rstrip() for line in result.splitlines()).strip()
+
+        if result and not preserve_line_breaks:
+            normalized = result.replace("\r\n", "\n").replace("\r", "\n")
+            if preserve_whitespace:
+                result = re.sub(r"\s*\n\s*", " ", normalized)
+            else:
+                result = " ".join(normalized.split())
 
         logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
         return result
@@ -2767,7 +2764,7 @@ class Page(
             return []
 
         # Convert results but DO NOT add to ElementManager
-        logger.debug(f"  Converting OCR results to TextElements (extract only)...")
+        logger.debug("  Converting OCR results to TextElements (extract only)...")
         temp_elements = []
         scale_x = self.width / image.width if image.width else 1
         scale_y = self.height / image.height if image.height else 1
@@ -3012,7 +3009,38 @@ class Page(
 
         # If we only have end elements, create implicit start elements
         if not start_elements and end_elements:
-            # Delegate to PageCollection implementation for consistency
+            x0, top_bound, x1, bottom_bound = get_bounds()
+            sorted_ends = sorted(end_elements, key=lambda el: (el.top, getattr(el, "x0", 0)))
+            regions = []
+            current_top = top_bound
+
+            for end_el in sorted_ends:
+                if current_top >= bottom_bound:
+                    break
+
+                section_top = current_top
+                section_bottom = (
+                    end_el.bottom if include_boundaries in ["end", "both"] else end_el.top
+                )
+
+                # Clamp to the bounding box limits
+                section_top = max(section_top, top_bound)
+                section_bottom = min(section_bottom, bottom_bound)
+
+                if section_top < section_bottom:
+                    region = self.create_region(x0, section_top, x1, section_bottom)
+                    region.start_element = None
+                    region.end_element = end_el
+                    region._boundary_exclusions = include_boundaries
+                    regions.append(region)
+
+                current_top = end_el.bottom if include_boundaries in ["end", "both"] else end_el.top
+
+            if regions:
+                cleaned = sanitize_sections(regions, orientation=orientation)
+                return ElementCollection(cleaned)
+
+            # Fallback to PageCollection implementation if manual extraction produced nothing
             from natural_pdf.core.page_collection import PageCollection
 
             pages = PageCollection([self])
@@ -3175,7 +3203,8 @@ class Page(
                     region._boundary_exclusions = include_boundaries
                     regions.append(region)
 
-        return ElementCollection(regions)
+        cleaned_regions = sanitize_sections(regions, orientation=orientation)
+        return ElementCollection(cleaned_regions)
 
     def __repr__(self) -> str:
         """String representation of the page."""
@@ -3185,7 +3214,7 @@ class Page(
         self,
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
-        model: str = None,
+        model: Optional[str] = None,
         debug: bool = False,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
@@ -3258,7 +3287,7 @@ class Page(
                 render_ocr=render_ocr,
             )
         except AttributeError:
-            logger.error(f"HighlightingService does not have the required 'render_preview' method.")
+            logger.error("HighlightingService does not have the required 'render_preview' method.")
             return None
         except Exception as e:
             logger.error(
@@ -3374,7 +3403,7 @@ class Page(
         return hashlib.sha256(text_content.encode("utf-8")).hexdigest()
 
     # --- New Method: save_searchable ---
-    def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
+    def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300):
         """
         Saves the PDF page with an OCR text layer, making content searchable.
 
@@ -3386,7 +3415,6 @@ class Page(
         Args:
             output_path: Path to save the searchable PDF.
             dpi: Resolution for rendering and OCR overlay (default 300).
-            **kwargs: Additional keyword arguments passed to the exporter.
         """
         # Import moved here, assuming it's always available now
         from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
@@ -3394,14 +3422,16 @@ class Page(
         # Convert pathlib.Path to string if necessary
         output_path_str = str(output_path)
 
-        create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
+        create_searchable_pdf(self, output_path_str, dpi=dpi)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
 
     # --- Added correct_ocr method ---
     def update_text(
         self,
         transform: Callable[[Any], Optional[str]],
+        *,
         selector: str = "text",
+        apply_exclusions: bool = False,
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
     ) -> "Page":  # Return self for chaining
@@ -3417,6 +3447,8 @@ class Page(
             transform: A function accepting an element and returning
                        `Optional[str]` (new text or None).
             selector: CSS-like selector string to match text elements.
+            apply_exclusions: Whether exclusion regions should be honoured (default: False to
+                maintain backward compatibility with the base mixin behaviour).
             max_workers: The maximum number of threads to use for parallel execution.
                          If None or 0 or 1, runs sequentially.
             progress_callback: Optional callback function to call after processing each element.
@@ -3428,7 +3460,9 @@ class Page(
             f"Page {self.number}: Starting text update with callback '{transform.__name__}' (max_workers={max_workers}) and selector='{selector}'"
         )
 
-        target_elements_collection = self.find_all(selector=selector, apply_exclusions=False)
+        target_elements_collection = self.find_all(
+            selector=selector, apply_exclusions=apply_exclusions
+        )
         target_elements = target_elements_collection.elements  # Get the list
 
         if not target_elements:
@@ -3451,7 +3485,6 @@ class Page(
             # Define the task to be run by the worker thread or sequentially
             def _process_element_task(element):
                 try:
-                    current_text = getattr(element, "text", None)
                     # Call the user-provided callback
                     corrected_text = transform(element)
 
@@ -3490,7 +3523,6 @@ class Page(
                 logger.info(
                     f"Page {self.number}: Running text update in parallel with {max_workers} workers."
                 )
-                futures = []
                 with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                     # Submit all tasks
                     future_to_element = {
@@ -3847,6 +3879,11 @@ class Page(
                     # Determine base direction for this line
                     base_dir = "R" if _contains_rtl(line) else "L"
                     logical_line = get_display(line, base_dir=base_dir)
+                    if isinstance(logical_line, bytes):
+                        try:
+                            logical_line = logical_line.decode("utf-8")
+                        except UnicodeDecodeError:
+                            logical_line = logical_line.decode("utf-8", "ignore")
                     # Apply bracket mirroring for correct logical order
                     processed_lines.append(mirror_brackets(logical_line))
                 else:
@@ -3857,15 +3894,6 @@ class Page(
         except (ImportError, Exception):
             # If bidi library is not available or fails, return original text
             return text
-
-    @property
-    def lines(self) -> List[Any]:
-        """Get all line elements on this page."""
-        return self._element_mgr.lines
-
-    # ------------------------------------------------------------------
-    # Image elements
-    # ------------------------------------------------------------------
 
     @property
     def images(self) -> List[Any]:

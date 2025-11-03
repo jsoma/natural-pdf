@@ -1,6 +1,9 @@
-import pytest
-
 from natural_pdf import PDF
+from natural_pdf.core.page import _jaro_winkler_similarity
+
+
+def jw_ratio(a: str, b: str) -> float:
+    return _jaro_winkler_similarity(a, b)
 
 
 def test_closest_preserves_quality_ordering():
@@ -20,13 +23,10 @@ def test_closest_preserves_quality_ordering():
     all_matches = page.find_all(f"text:closest({search_term}@0.3)")
     print(f"\n=== All matches for '{search_term}' with threshold 0.3 ===")
 
-    # Calculate actual similarities
-    from difflib import SequenceMatcher
-
     matches_with_scores = []
     for match in all_matches:
         text = match.extract_text()
-        similarity = SequenceMatcher(None, search_term.lower(), text.lower()).ratio()
+        similarity = jw_ratio(search_term, text)
         matches_with_scores.append((match, text, similarity))
 
     # Sort by similarity to show quality ordering
@@ -52,12 +52,12 @@ def test_closest_preserves_quality_ordering():
     boundary_elems = page.find_all("text").filter(lambda e: abs(e.top - result.bottom) < 1)
     if boundary_elems:
         boundary_text = boundary_elems[0].extract_text()
-        boundary_sim = SequenceMatcher(None, search_term.lower(), boundary_text.lower()).ratio()
+        boundary_sim = jw_ratio(search_term, boundary_text)
         print(f"Boundary element: '{boundary_text}' (similarity: {boundary_sim:.3f})")
 
         # Check if this is the best match
         if below_matches and abs(best_below[0].top - result.bottom) > 1:
-            print(f"\nWARNING: Not using best match!")
+            print("\nWARNING: Not using best match!")
             print(f"  Best match: '{best_below[1]}' at y={best_below[0].top}")
             print(f"  Used: '{boundary_text}' at y={boundary_elems[0].top}")
 
@@ -73,7 +73,7 @@ def test_specific_use_case():
         print("Could not find 'Name' element")
         return
 
-    print(f"\n=== Testing specific use case ===")
+    print("\n=== Testing specific use case ===")
     print(f"Starting from: '{name_elem.extract_text()}' at y={name_elem.top}")
 
     # Look for ICE Information or similar
@@ -89,11 +89,7 @@ def test_specific_use_case():
             # Show matches below our starting point
             below = [m for m in matches if m.top > name_elem.bottom]
             for i, match in enumerate(below[:5]):
-                from difflib import SequenceMatcher
-
-                sim = SequenceMatcher(
-                    None, search_term.lower(), match.extract_text().lower()
-                ).ratio()
+                sim = jw_ratio(search_term, match.extract_text())
                 print(f"  {i}: '{match.extract_text()}' at y={match.top} (sim: {sim:.3f})")
 
             if below:

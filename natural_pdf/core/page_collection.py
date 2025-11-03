@@ -1,6 +1,5 @@
-import hashlib
 import logging
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -8,43 +7,28 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterable,
     Iterator,
     List,
     Literal,
     Optional,
-    Sequence,
     Tuple,
-    Type,
     TypeVar,
     Union,
     overload,
 )
 
-from pdfplumber.utils.geometry import objects_to_bbox
-
-# New Imports
-from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
-from PIL import Image, ImageDraw, ImageFont
-from tqdm.auto import tqdm
-
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from natural_pdf.classification.manager import ClassificationManager
-from natural_pdf.classification.mixin import ClassificationMixin
-from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
+from natural_pdf.collections.mixins import ApplyMixin
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
-from natural_pdf.elements.base import Element
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.elements.text import TextElement
-from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.ocr import OCROptions
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.text_mixin import TextMixin
+from natural_pdf.utils.sections import sanitize_sections
+
+# New Imports
+
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
@@ -67,10 +51,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from natural_pdf.core.highlighting_service import HighlightContext
     from natural_pdf.core.page import Page
+    from natural_pdf.core.page_groupby import PageGroupBy
     from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
-    from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
     from natural_pdf.flows.flow import Flow
 
 T = TypeVar("T")
@@ -260,753 +245,92 @@ class PageCollection(
     @overload
     def find(
         self,
-        *,
-        text: Union[str, Sequence[str]],
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional[T]: ...
-
-    @overload
-    def find(
-        self,
-        selector: str,
-        *,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional[T]: ...
-
-    def find(
-        self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional[T]:
-        """
-        Find the first element matching the selector OR text across all pages in the collection.
+        """Find the first matching element across pages."""
 
-        Provide EITHER `selector` OR `text`, but not both.
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+            raise ValueError("Provide either 'selector' or 'text'.")
 
-        Args:
-            selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
-
-        Returns:
-            First matching element or None.
-        """
-        # Input validation happens within page.find
         for page in self.pages:
             element = page.find(
                 selector=selector,
                 text=text,
-                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
             )
-            if element:
+            if element is not None:
                 return element
         return None
-
-    @overload
-    def find_all(
-        self,
-        *,
-        text: Union[str, Sequence[str]],
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    @overload
-    def find_all(
-        self,
-        selector: str,
-        *,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
-        """
-        Find all elements matching the selector OR text across all pages in the collection.
+        """Find matching elements across all pages and flatten the results."""
 
-        Provide EITHER `selector` OR `text`, but not both.
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+            raise ValueError("Provide either 'selector' or 'text'.")
 
-        Args:
-            selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
-
-        Returns:
-            ElementCollection with matching elements from all pages.
-        """
-        all_elements = []
-        # Input validation happens within page.find_all
+        all_elements: List = []
         for page in self.pages:
-            elements = page.find_all(
+            page_elements = page.find_all(
                 selector=selector,
                 text=text,
-                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
             )
-            if elements:
-                all_elements.extend(elements.elements)
+            if page_elements:
+                all_elements.extend(page_elements.elements)
+
+        from natural_pdf.elements.element_collection import ElementCollection
 
         return ElementCollection(all_elements)
 
-    def update_text(
+    def split(
         self,
-        transform: Callable[[Any], Optional[str]],
-        selector: str = "text",
-        max_workers: Optional[int] = None,
-    ) -> "PageCollection[P]":
-        """
-        Applies corrections to text elements across all pages
-        in this collection using a user-provided callback function, executed
-        in parallel if `max_workers` is specified.
-
-        This method delegates to the parent PDF's `update_text` method,
-        targeting all pages within this collection.
-
-        Args:
-            transform: A function that accepts a single argument (an element
-                       object) and returns `Optional[str]` (new text or None).
-            selector: The attribute name to update. Default is 'text'.
-            max_workers: The maximum number of worker threads to use for parallel
-                         correction on each page. If None, defaults are used.
-
-        Returns:
-            Self for method chaining.
-
-        Raises:
-            RuntimeError: If the collection is empty, pages lack a parent PDF reference,
-                          or the parent PDF lacks the `update_text` method.
-        """
-        if not self.pages:
-            logger.warning("Cannot update text for an empty PageCollection.")
-            # Return self even if empty to maintain chaining consistency
-            return self
-
-        # Assume all pages share the same parent PDF object
-        parent_pdf = self.pages[0]._parent
-        if (
-            not parent_pdf
-            or not hasattr(parent_pdf, "update_text")
-            or not callable(parent_pdf.update_text)
-        ):
-            raise RuntimeError(
-                "Parent PDF reference not found or parent PDF lacks the required 'update_text' method."
-            )
-
-        page_indices = self._get_page_indices()
-        logger.info(
-            f"PageCollection: Delegating text update to parent PDF for page indices: {page_indices} with max_workers={max_workers} and selector='{selector}'."
-        )
-
-        # Delegate the call to the parent PDF object for the relevant pages
-        # Pass the max_workers parameter down
-        parent_pdf.update_text(
-            transform=transform,
-            pages=page_indices,
-            selector=selector,
-            max_workers=max_workers,
-        )
-
-        return self
-
-    def get_sections(
-        self,
-        start_elements=None,
-        end_elements=None,
-        new_section_on_page_break=False,
-        include_boundaries="both",
-        orientation="vertical",
+        divider,
+        *,
+        include_boundaries: str = "start",
+        orientation: str = "vertical",
+        new_section_on_page_break: bool = False,
     ) -> "ElementCollection[Region]":
-        """
-        Extract sections from a page collection based on start/end elements.
-
-        Args:
-            start_elements: Elements or selector string that mark the start of sections (optional)
-            end_elements: Elements or selector string that mark the end of sections (optional)
-            new_section_on_page_break: Whether to start a new section at page boundaries (default: False)
-            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none' (default: 'both')
-            orientation: 'vertical' (default) or 'horizontal' - determines section direction
-
-        Returns:
-            List of Region objects representing the extracted sections
-
-        Note:
-            You can provide only start_elements, only end_elements, or both.
-            - With only start_elements: sections go from each start to the next start (or end of page)
-            - With only end_elements: sections go from beginning of document/page to each end
-            - With both: sections go from each start to the corresponding end
-        """
-        # Find start and end elements across all pages
-        if isinstance(start_elements, str):
-            start_elements = self.find_all(start_elements).elements
-
-        if isinstance(end_elements, str):
-            end_elements = self.find_all(end_elements).elements
-
-        # If no start elements and no end elements, return empty list
-        if not start_elements and not end_elements:
-            return []
-
-        # If there are page break boundaries, we'll need to add them
-        if new_section_on_page_break:
-            # For each page boundary, create virtual "end" and "start" elements
-            for i in range(len(self.pages) - 1):
-                # Add a virtual "end" element at the bottom of the current page
-                page = self.pages[i]
-                # If end_elements is None, initialize it as an empty list
-                if end_elements is None:
-                    end_elements = []
-
-                # Create a region at the bottom of the page as an artificial end marker
-                from natural_pdf.elements.region import Region
-
-                bottom_region = Region(page, (0, page.height - 1, page.width, page.height))
-                bottom_region.is_page_boundary = True  # Mark it as a special boundary
-                end_elements.append(bottom_region)
-
-                # Add a virtual "start" element at the top of the next page
-                next_page = self.pages[i + 1]
-                top_region = Region(next_page, (0, 0, next_page.width, 1))
-                top_region.is_page_boundary = True  # Mark it as a special boundary
-                # If start_elements is None, initialize it as an empty list
-                if start_elements is None:
-                    start_elements = []
-                start_elements.append(top_region)
-
-        # Get all elements from all pages and sort them in document order
-        all_elements = []
-        for page in self.pages:
-            elements = page.get_elements()
-            all_elements.extend(elements)
-
-        # Sort by page index, then vertical position, then horizontal position
-        all_elements.sort(key=lambda e: (e.page.index, e.top, e.x0))
-
-        # If we only have end_elements (no start_elements), create implicit start elements
-        if not start_elements and end_elements:
-            from natural_pdf.elements.region import Region
-
-            start_elements = []
-
-            # Add implicit start at the beginning of the first page
-            first_page = self.pages[0]
-            first_start = Region(first_page, (0, 0, first_page.width, 1))
-            first_start.is_implicit_start = True
-            # Don't mark this as created from any end element, so it can pair with any end
-            start_elements.append(first_start)
-
-            # For each end element (except the last), add an implicit start after it
-            # Sort by page, then top, then bottom (for elements with same top), then x0
-            sorted_end_elements = sorted(
-                end_elements, key=lambda e: (e.page.index, e.top, e.bottom, e.x0)
-            )
-            for i, end_elem in enumerate(sorted_end_elements[:-1]):  # Exclude last end element
-                # Create implicit start element right after this end element
-                implicit_start = Region(
-                    end_elem.page, (0, end_elem.bottom, end_elem.page.width, end_elem.bottom + 1)
-                )
-                implicit_start.is_implicit_start = True
-                # Track which end element this implicit start was created from
-                # to avoid pairing them together (which would create zero height)
-                implicit_start.created_from_end = end_elem
-                start_elements.append(implicit_start)
-
-        # Mark section boundaries
-        section_boundaries = []
-
-        # Add start element boundaries
-        for element in start_elements:
-            if element in all_elements:
-                idx = all_elements.index(element)
-                section_boundaries.append(
-                    {
-                        "index": idx,
-                        "element": element,
-                        "type": "start",
-                        "page_idx": element.page.index,
-                    }
-                )
-            elif hasattr(element, "is_page_boundary") and element.is_page_boundary:
-                # This is a virtual page boundary element
-                section_boundaries.append(
-                    {
-                        "index": -1,  # Special index for page boundaries
-                        "element": element,
-                        "type": "start",
-                        "page_idx": element.page.index,
-                    }
-                )
-            elif hasattr(element, "is_implicit_start") and element.is_implicit_start:
-                # This is an implicit start element
-                section_boundaries.append(
-                    {
-                        "index": -2,  # Special index for implicit starts
-                        "element": element,
-                        "type": "start",
-                        "page_idx": element.page.index,
-                    }
-                )
-
-        # Add end element boundaries if provided
-        if end_elements:
-            for element in end_elements:
-                if element in all_elements:
-                    idx = all_elements.index(element)
-                    section_boundaries.append(
-                        {
-                            "index": idx,
-                            "element": element,
-                            "type": "end",
-                            "page_idx": element.page.index,
-                        }
-                    )
-                elif hasattr(element, "is_page_boundary") and element.is_page_boundary:
-                    # This is a virtual page boundary element
-                    section_boundaries.append(
-                        {
-                            "index": -1,  # Special index for page boundaries
-                            "element": element,
-                            "type": "end",
-                            "page_idx": element.page.index,
-                        }
-                    )
-
-        # Sort boundaries by page index, then by actual document position
-        def _sort_key(boundary):
-            """Sort boundaries by (page_idx, position, priority)."""
-            page_idx = boundary["page_idx"]
-            element = boundary["element"]
-
-            # Position on the page based on orientation
-            if orientation == "vertical":
-                pos = getattr(element, "top", 0.0)
-            else:  # horizontal
-                pos = getattr(element, "x0", 0.0)
-
-            # Ensure starts come before ends at the same coordinate
-            priority = 0 if boundary["type"] == "start" else 1
-
-            return (page_idx, pos, priority)
-
-        section_boundaries.sort(key=_sort_key)
-
-        # Generate sections
-        sections = []
-
-        # --- Helper: build a FlowRegion spanning multiple pages ---
-        def _build_flow_region(start_el, end_el, include_boundaries="both", orientation="vertical"):
-            """Return a FlowRegion that covers from *start_el* to *end_el*.
-            If *end_el* is None, the region continues to the bottom/right of the last
-            page in this PageCollection.
-
-            Args:
-                start_el: Start element
-                end_el: End element
-                include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
-                orientation: 'vertical' or 'horizontal' - determines section direction
-            """
-            # Local imports to avoid top-level cycles
-            from natural_pdf.elements.region import Region
-            from natural_pdf.flows.element import FlowElement
-            from natural_pdf.flows.flow import Flow
-            from natural_pdf.flows.region import FlowRegion
-
-            start_pg = start_el.page
-            end_pg = end_el.page if end_el is not None else self.pages[-1]
-
-            parts: list[Region] = []
-
-            if orientation == "vertical":
-                # Determine the start_top based on include_boundaries
-                start_top = start_el.top
-                if include_boundaries == "none" or include_boundaries == "end":
-                    # Exclude start boundary
-                    start_top = start_el.bottom if hasattr(start_el, "bottom") else start_el.top
-
-                # Slice of first page beginning at *start_top*
-                parts.append(Region(start_pg, (0, start_top, start_pg.width, start_pg.height)))
-            else:  # horizontal
-                # Determine the start_left based on include_boundaries
-                start_left = start_el.x0
-                if include_boundaries == "none" or include_boundaries == "end":
-                    # Exclude start boundary
-                    start_left = start_el.x1 if hasattr(start_el, "x1") else start_el.x0
-
-                # Slice of first page beginning at *start_left*
-                parts.append(Region(start_pg, (start_left, 0, start_pg.width, start_pg.height)))
-
-            # Full middle pages
-            for pg_idx in range(start_pg.index + 1, end_pg.index):
-                mid_pg = self.pages[pg_idx]
-                parts.append(Region(mid_pg, (0, 0, mid_pg.width, mid_pg.height)))
-
-            # Slice of last page (if distinct)
-            if end_pg is not start_pg:
-                if orientation == "vertical":
-                    # Determine the bottom based on include_boundaries
-                    if end_el is not None:
-                        if include_boundaries == "none" or include_boundaries == "start":
-                            # Exclude end boundary
-                            bottom = end_el.top if hasattr(end_el, "top") else end_el.bottom
-                        else:
-                            # Include end boundary
-                            bottom = end_el.bottom
-                    else:
-                        bottom = end_pg.height
-                    parts.append(Region(end_pg, (0, 0, end_pg.width, bottom)))
-                else:  # horizontal
-                    # Determine the right based on include_boundaries
-                    if end_el is not None:
-                        if include_boundaries == "none" or include_boundaries == "start":
-                            # Exclude end boundary
-                            right = end_el.x0 if hasattr(end_el, "x0") else end_el.x1
-                        else:
-                            # Include end boundary
-                            right = end_el.x1
-                    else:
-                        right = end_pg.width
-                    parts.append(Region(end_pg, (0, 0, right, end_pg.height)))
-
-            flow = Flow(segments=parts, arrangement=orientation)
-            src_fe = FlowElement(physical_object=start_el, flow=flow)
-            return FlowRegion(
-                flow=flow,
-                constituent_regions=parts,
-                source_flow_element=src_fe,
-                boundary_element_found=end_el,
-            )
-
-        # ------------------------------------------------------------------
-
-        current_start = None
-
-        for i, boundary in enumerate(section_boundaries):
-            # If it's a start boundary and we don't have a current start
-            if boundary["type"] == "start" and current_start is None:
-                current_start = boundary
-
-            # If it's an end boundary and we have a current start
-            elif boundary["type"] == "end" and current_start is not None:
-                # Create a section from current_start to this boundary
-                start_element = current_start["element"]
-                end_element = boundary["element"]
-
-                # Check if this is an implicit start created from this same end element
-                # This would create a zero-height section, so skip this pairing
-                if (
-                    hasattr(start_element, "is_implicit_start")
-                    and hasattr(start_element, "created_from_end")
-                    and start_element.created_from_end is end_element
-                ):
-                    # Skip this pairing - keep current_start for next end element
-                    continue
-
-                # If both elements are on the same page, use the page's get_section_between
-                if start_element.page == end_element.page:
-                    # For implicit start elements, create a region from the top of the page
-                    if hasattr(start_element, "is_implicit_start"):
-                        from natural_pdf.elements.region import Region
-
-                        # Adjust boundaries based on include_boundaries parameter and orientation
-                        if orientation == "vertical":
-                            top = start_element.top
-                            bottom = end_element.bottom
-
-                            if include_boundaries == "none":
-                                # Exclude both boundaries - move past them
-                                top = (
-                                    start_element.bottom
-                                    if hasattr(start_element, "bottom")
-                                    else start_element.top
-                                )
-                                bottom = (
-                                    end_element.top
-                                    if hasattr(end_element, "top")
-                                    else end_element.bottom
-                                )
-                            elif include_boundaries == "start":
-                                # Include start, exclude end
-                                bottom = (
-                                    end_element.top
-                                    if hasattr(end_element, "top")
-                                    else end_element.bottom
-                                )
-                            elif include_boundaries == "end":
-                                # Exclude start, include end
-                                top = (
-                                    start_element.bottom
-                                    if hasattr(start_element, "bottom")
-                                    else start_element.top
-                                )
-                            # "both" is default - no adjustment needed
-
-                            section = Region(
-                                start_element.page,
-                                (0, top, start_element.page.width, bottom),
-                            )
-                            section._boundary_exclusions = include_boundaries
-                        else:  # horizontal
-                            left = start_element.x0
-                            right = end_element.x1
-
-                            if include_boundaries == "none":
-                                # Exclude both boundaries - move past them
-                                left = (
-                                    start_element.x1
-                                    if hasattr(start_element, "x1")
-                                    else start_element.x0
-                                )
-                                right = (
-                                    end_element.x0 if hasattr(end_element, "x0") else end_element.x1
-                                )
-                            elif include_boundaries == "start":
-                                # Include start, exclude end
-                                right = (
-                                    end_element.x0 if hasattr(end_element, "x0") else end_element.x1
-                                )
-                            elif include_boundaries == "end":
-                                # Exclude start, include end
-                                left = (
-                                    start_element.x1
-                                    if hasattr(start_element, "x1")
-                                    else start_element.x0
-                                )
-                            # "both" is default - no adjustment needed
-
-                            section = Region(
-                                start_element.page,
-                                (left, 0, right, start_element.page.height),
-                            )
-                            section._boundary_exclusions = include_boundaries
-                        section.start_element = start_element
-                        section.boundary_element_found = end_element
-                    else:
-                        section = start_element.page.get_section_between(
-                            start_element, end_element, include_boundaries, orientation
-                        )
-                    sections.append(section)
-                else:
-                    # Create FlowRegion spanning pages
-                    flow_region = _build_flow_region(
-                        start_element, end_element, include_boundaries, orientation
-                    )
-                    sections.append(flow_region)
-
-                current_start = None
-
-            # If it's another start boundary and we have a current start (for splitting by starts only)
-            elif boundary["type"] == "start" and current_start is not None and not end_elements:
-                # Create a section from current_start to just before this boundary
-                start_element = current_start["element"]
-
-                # Create section from current start to just before this new start
-                if start_element.page == boundary["element"].page:
-                    from natural_pdf.elements.region import Region
-
-                    next_start = boundary["element"]
-
-                    # Create section based on orientation
-                    if orientation == "vertical":
-                        # Determine vertical bounds
-                        if include_boundaries in ["start", "both"]:
-                            top = start_element.top
-                        else:
-                            top = start_element.bottom
-
-                        # The section ends just before the next start
-                        bottom = next_start.top
-
-                        # Create the section with full page width
-                        if top < bottom:
-                            section = Region(
-                                start_element.page, (0, top, start_element.page.width, bottom)
-                            )
-                            section.start_element = start_element
-                            section.end_element = (
-                                next_start  # The next start is the end of this section
-                            )
-                            section._boundary_exclusions = include_boundaries
-                            sections.append(section)
-                    else:  # horizontal
-                        # Determine horizontal bounds
-                        if include_boundaries in ["start", "both"]:
-                            left = start_element.x0
-                        else:
-                            left = start_element.x1
-
-                        # The section ends just before the next start
-                        right = next_start.x0
-
-                        # Create the section with full page height
-                        if left < right:
-                            section = Region(
-                                start_element.page, (left, 0, right, start_element.page.height)
-                            )
-                            section.start_element = start_element
-                            section.end_element = (
-                                next_start  # The next start is the end of this section
-                            )
-                            section._boundary_exclusions = include_boundaries
-                            sections.append(section)
-                else:
-                    # Cross-page section - create from current_start to the end of its page
-                    from natural_pdf.elements.region import Region
-
-                    start_page = start_element.page
-
-                    # Handle implicit start elements and respect include_boundaries
-                    if orientation == "vertical":
-                        if include_boundaries in ["none", "end"]:
-                            # Exclude start boundary
-                            start_top = (
-                                start_element.bottom
-                                if hasattr(start_element, "bottom")
-                                else start_element.top
-                            )
-                        else:
-                            # Include start boundary
-                            start_top = start_element.top
-
-                        region = Region(
-                            start_page, (0, start_top, start_page.width, start_page.height)
-                        )
-                    else:  # horizontal
-                        if include_boundaries in ["none", "end"]:
-                            # Exclude start boundary
-                            start_left = (
-                                start_element.x1
-                                if hasattr(start_element, "x1")
-                                else start_element.x0
-                            )
-                        else:
-                            # Include start boundary
-                            start_left = start_element.x0
-
-                        region = Region(
-                            start_page, (start_left, 0, start_page.width, start_page.height)
-                        )
-                    region.start_element = start_element
-                    sections.append(region)
-
-                current_start = boundary
-
-        # Handle the last section if we have a current start
-        if current_start is not None:
-            start_element = current_start["element"]
-            start_page = start_element.page
-
-            if end_elements:
-                # With end_elements, we need an explicit end - use the last element
-                # on the last page of the collection
-                last_page = self.pages[-1]
-                last_page_elements = [e for e in all_elements if e.page == last_page]
-                if orientation == "vertical":
-                    last_page_elements.sort(key=lambda e: (e.top, e.x0))
-                else:  # horizontal
-                    last_page_elements.sort(key=lambda e: (e.x0, e.top))
-                end_element = last_page_elements[-1] if last_page_elements else None
-
-                # Create FlowRegion spanning multiple pages using helper
-                flow_region = _build_flow_region(
-                    start_element, end_element, include_boundaries, orientation
-                )
-                sections.append(flow_region)
-            else:
-                # With start_elements only, create a section to the end of the current page
-                from natural_pdf.elements.region import Region
-
-                # Handle implicit start elements and respect include_boundaries
-                if orientation == "vertical":
-                    if include_boundaries in ["none", "end"]:
-                        # Exclude start boundary
-                        start_top = (
-                            start_element.bottom
-                            if hasattr(start_element, "bottom")
-                            else start_element.top
-                        )
-                    else:
-                        # Include start boundary
-                        start_top = start_element.top
-
-                    region = Region(start_page, (0, start_top, start_page.width, start_page.height))
-                else:  # horizontal
-                    if include_boundaries in ["none", "end"]:
-                        # Exclude start boundary
-                        start_left = (
-                            start_element.x1 if hasattr(start_element, "x1") else start_element.x0
-                        )
-                    else:
-                        # Include start boundary
-                        start_left = start_element.x0
-
-                    region = Region(
-                        start_page, (start_left, 0, start_page.width, start_page.height)
-                    )
-                region.start_element = start_element
-                sections.append(region)
-
-        return ElementCollection(sections)
-
-    def split(self, divider, **kwargs) -> "ElementCollection[Region]":
         """
         Divide this page collection into sections based on the provided divider elements.
 
         Args:
             divider: Elements or selector string that mark section boundaries
-            **kwargs: Additional parameters passed to get_sections()
-                - include_boundaries: How to include boundary elements (default: 'start')
-                - orientation: 'vertical' or 'horizontal' (default: 'vertical')
-                - new_section_on_page_break: Whether to split at page boundaries (default: False)
+            include_boundaries: How to include boundary elements (default: 'start').
+            orientation: 'vertical' or 'horizontal' (default: 'vertical').
+            new_section_on_page_break: Whether to split at page boundaries (default: False).
 
         Returns:
             ElementCollection of Region objects representing the sections
@@ -1021,11 +345,12 @@ class PageCollection(
             # Split multi-page document by section headers
             sections = pdf.pages[10:20].split("text:bold:contains('Section')")
         """
-        # Default to 'start' boundaries for split (include divider at start of each section)
-        if "include_boundaries" not in kwargs:
-            kwargs["include_boundaries"] = "start"
-
-        sections = self.get_sections(start_elements=divider, **kwargs)
+        sections = self.get_sections(
+            start_elements=divider,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            new_section_on_page_break=new_section_on_page_break,
+        )
 
         # Add initial section if there's content before the first divider
         if sections and divider is not None:
@@ -1055,12 +380,164 @@ class PageCollection(
                         start_elements=None,
                         end_elements=[first_divider],
                         include_boundaries="none",
-                        orientation=kwargs.get("orientation", "vertical"),
+                        orientation=orientation,
                     )
                     if initial_sections:
                         sections = ElementCollection([initial_sections[0]] + list(sections))
 
         return sections
+
+    def get_sections(
+        self,
+        start_elements=None,
+        end_elements=None,
+        new_section_on_page_break: bool = False,
+        include_boundaries: str = "both",
+        orientation: str = "vertical",
+    ) -> "ElementCollection":
+        """Extract logical sections across this collection of pages.
+
+        This delegates to :class:`natural_pdf.flows.flow.Flow`, which already
+        implements the heavy lifting for cross-segment section extraction and
+        returns either :class:`Region` or :class:`FlowRegion` objects as
+        appropriate.  The arrangement is chosen based on the requested
+        orientation so that horizontal sections continue to work for rotated
+        content.
+        """
+
+        from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.flows.flow import Flow
+
+        if len(self) == 0:
+            return ElementCollection([])
+
+        try:
+            from natural_pdf.core.page import Page as CorePage
+            from natural_pdf.elements.region import Region as ElementsRegion
+        except ImportError:  # pragma: no cover - defensive
+            CorePage = ElementsRegion = object  # type: ignore[assignment]
+
+        def _is_physical_segment(segment: Any) -> bool:
+            object_type = getattr(segment, "object_type", None)
+            if isinstance(segment, (CorePage, ElementsRegion)):
+                return True
+            if object_type in {"page", "region"}:
+                return isinstance(segment, (CorePage, ElementsRegion))
+            return False
+
+        if not all(_is_physical_segment(page) for page in self.pages):
+            # Fallback for mocked objects lacking full Page/Region interfaces.
+            aggregated_sections: List[Any] = []
+            for page in self.pages:
+                if hasattr(page, "get_sections"):
+                    result = page.get_sections(
+                        start_elements=start_elements,
+                        end_elements=end_elements,
+                        include_boundaries=include_boundaries,
+                        orientation=orientation,
+                    )
+                    if result is None:
+                        continue
+                    if hasattr(result, "elements"):
+                        try:
+                            aggregated_sections.extend(result.elements)  # type: ignore[arg-type]
+                        except TypeError:
+                            pass
+                    elif isinstance(result, list):
+                        aggregated_sections.extend(result)
+                    elif hasattr(result, "__iter__"):
+                        try:
+                            aggregated_sections.extend(list(result))
+                        except TypeError:
+                            pass
+
+            if not aggregated_sections and start_elements is not None:
+                for page in self.pages:
+                    if not (hasattr(page, "find_all") and hasattr(page, "get_section_between")):
+                        continue
+
+                    if isinstance(start_elements, str):
+                        start_result = page.find_all(start_elements)
+                        if hasattr(start_result, "elements"):
+                            starts = list(start_result.elements)
+                        elif isinstance(start_result, list):
+                            starts = start_result
+                        else:
+                            starts = list(start_result) if hasattr(start_result, "__iter__") else []
+                    elif hasattr(start_elements, "elements"):
+                        starts = [
+                            el
+                            for el in start_elements.elements
+                            if getattr(el, "page", None) == page
+                        ]
+                    elif isinstance(start_elements, (list, tuple, set)):
+                        starts = [el for el in start_elements if getattr(el, "page", None) == page]
+                    else:
+                        starts = []
+
+                    if not starts:
+                        continue
+
+                    starts.sort(key=lambda el: (getattr(el, "top", 0), getattr(el, "x0", 0)))
+
+                    page_width = getattr(page, "width", 0)
+                    page_height = getattr(page, "height", 0)
+
+                    for idx, start_el in enumerate(starts):
+                        next_el = starts[idx + 1] if idx + 1 < len(starts) else None
+
+                        start_top = getattr(start_el, "top", 0.0)
+                        start_bottom = getattr(start_el, "bottom", start_top)
+                        section_top = (
+                            start_top if include_boundaries in ["both", "start"] else start_bottom
+                        )
+
+                        if next_el:
+                            section_bottom = getattr(next_el, "top", page_height)
+                        else:
+                            section_bottom = page_height
+
+                        if section_bottom <= section_top:
+                            continue
+
+                        region_width = (
+                            page_width
+                            if page_width
+                            else getattr(getattr(start_el, "page", None), "width", 0)
+                        )
+
+                        region = Region(
+                            page,
+                            (
+                                0,
+                                section_top,
+                                region_width,
+                                section_bottom,
+                            ),
+                        )
+                        region.start_element = start_el
+                        region.end_element = next_el
+                        region._boundary_exclusions = include_boundaries
+                        aggregated_sections.append(region)
+
+            cleaned = sanitize_sections(aggregated_sections, orientation=orientation)
+            return ElementCollection(cleaned)
+
+        arrangement = "vertical" if orientation == "vertical" else "horizontal"
+
+        flow = Flow(self, arrangement=arrangement)
+        sections = flow.get_sections(
+            start_elements=start_elements,
+            end_elements=end_elements,
+            new_section_on_page_break=new_section_on_page_break,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+        )
+        section_list = sections.elements if hasattr(sections, "elements") else list(sections)
+        cleaned = sanitize_sections(section_list, orientation=orientation)
+        if len(cleaned) == len(section_list):
+            return sections
+        return ElementCollection(cleaned)
 
     def _gather_analysis_data(
         self,
@@ -1208,7 +685,7 @@ class PageCollection(
         # Assume all pages share the same parent PDF object
         # Need to hint the type of _parent for type checkers
         if TYPE_CHECKING:
-            parent_pdf: "natural_pdf.core.pdf.PDF" = self.pages[0]._parent
+            parent_pdf: "PDF" = self.pages[0]._parent
         else:
             parent_pdf = self.pages[0]._parent
 

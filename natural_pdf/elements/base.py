@@ -15,8 +15,6 @@ from typing import (
     overload,
 )
 
-from PIL import Image
-
 # Import global options
 import natural_pdf
 from natural_pdf.classification.mixin import ClassificationMixin
@@ -157,7 +155,6 @@ class DirectionalMixin:
         Returns:
             Region object
         """
-        import math  # Use math.inf for infinity
 
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
@@ -283,12 +280,15 @@ class DirectionalMixin:
             if direction == "above":
                 if normalized_anchor == "top":
                     ref_y = self.top
+                    comparator = lambda m: m.bottom < ref_y
                 elif normalized_anchor == "center":
                     ref_y = (self.top + self.bottom) / 2
+                    comparator = lambda m: m.bottom <= ref_y
                 else:  # 'bottom'
                     ref_y = self.bottom
+                    comparator = lambda m: m.bottom <= ref_y
 
-                matches_in_direction = [m for m in all_matches if m.bottom <= ref_y]
+                matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -301,12 +301,15 @@ class DirectionalMixin:
             elif direction == "below":
                 if normalized_anchor == "top":
                     ref_y = self.top
+                    comparator = lambda m: m.top > ref_y
                 elif normalized_anchor == "center":
                     ref_y = (self.top + self.bottom) / 2
+                    comparator = lambda m: m.top >= ref_y
                 else:  # 'bottom'
                     ref_y = self.bottom
+                    comparator = lambda m: m.top >= ref_y
 
-                matches_in_direction = [m for m in all_matches if m.top >= ref_y]
+                matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -319,12 +322,15 @@ class DirectionalMixin:
             elif direction == "left":
                 if normalized_anchor == "left":
                     ref_x = self.x0
+                    comparator = lambda m: m.x1 < ref_x
                 elif normalized_anchor == "center":
                     ref_x = (self.x0 + self.x1) / 2
+                    comparator = lambda m: m.x1 <= ref_x
                 else:  # 'right'
                     ref_x = self.x1
+                    comparator = lambda m: m.x1 <= ref_x
 
-                matches_in_direction = [m for m in all_matches if m.x1 <= ref_x]
+                matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by vertical bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -339,12 +345,15 @@ class DirectionalMixin:
             elif direction == "right":
                 if normalized_anchor == "left":
                     ref_x = self.x0
+                    comparator = lambda m: m.x0 >= ref_x
                 elif normalized_anchor == "center":
                     ref_x = (self.x0 + self.x1) / 2
+                    comparator = lambda m: m.x0 >= ref_x
                 else:  # 'right'
                     ref_x = self.x1
+                    comparator = lambda m: m.x0 > ref_x
 
-                matches_in_direction = [m for m in all_matches if m.x0 >= ref_x]
+                matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by vertical bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
@@ -367,9 +376,15 @@ class DirectionalMixin:
                         x0_final = target.x0 if include_endpoint else target.x1 + pixel_offset
                 else:  # Vertical
                     if is_positive:  # below
-                        y1_final = target.bottom if include_endpoint else target.top - pixel_offset
+                        if include_endpoint:
+                            y1_final = target.bottom if not preserve_order else target.top
+                        else:
+                            y1_final = target.top - pixel_offset
                     else:  # above
-                        y0_final = target.top if include_endpoint else target.bottom + pixel_offset
+                        if include_endpoint:
+                            y0_final = target.top if not preserve_order else target.bottom
+                        else:
+                            y0_final = target.bottom + pixel_offset
 
                 # Adjust cross boundaries if cross_size is 'element'
                 if cross_size == "element":
@@ -1582,7 +1597,18 @@ class Element(
         return None
 
     def until(
-        self, selector: str, include_endpoint: bool = True, width: str = "element", **kwargs
+        self,
+        selector: str,
+        include_endpoint: bool = True,
+        width: str = "element",
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "Region":
         """
         Select content from this element until matching selector.
@@ -1591,7 +1617,13 @@ class Element(
             selector: CSS-like selector string
             include_endpoint: Whether to include the endpoint element in the region (default: True)
             width: Width mode - "element" to use element widths or "full" for full page width
-            **kwargs: Additional selection parameters
+            text: Optional text shortcut passed to ``page.find``.
+            apply_exclusions: Whether to honour exclusion zones during the lookup.
+            regex: Whether text matching should use regular expressions.
+            case: Whether text matching should be case-sensitive.
+            text_tolerance: Optional tolerance overrides for text matching.
+            auto_text_tolerance: Optional overrides for automatic tolerance.
+            reading_order: Whether matches should be sorted in reading order when relevant.
 
         Returns:
             Region object representing the selected content
@@ -1599,7 +1631,16 @@ class Element(
         from natural_pdf.elements.region import Region
 
         # Find the target element
-        target = self.page.find(selector, **kwargs)
+        target = self.page.find(
+            selector,
+            text=text,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+        )
         if not target:
             # If target not found, return a region with just this element
             return Region(self.page, self.bbox)
@@ -2105,7 +2146,6 @@ class Element(
         elif model_type == "vision":
             # Delegate to Region implementation via a temporary expand()
             resolution = kwargs.get("resolution", 150)
-            from natural_pdf.elements.region import Region  # Local import to avoid cycles
 
             # Use render() for clean image without highlights
             return self.expand().render(

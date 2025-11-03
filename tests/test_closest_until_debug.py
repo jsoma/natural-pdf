@@ -1,6 +1,9 @@
-import pytest
-
 from natural_pdf import PDF
+from natural_pdf.core.page import _jaro_winkler_similarity
+
+
+def jw_ratio(a: str, b: str) -> float:
+    return _jaro_winkler_similarity(a, b)
 
 
 def test_closest_until_debug():
@@ -27,7 +30,7 @@ def test_closest_until_debug():
     # Now let's manually check what happens in the below() method
     # First, let's see which elements are considered "below" our starting point
     below_elements = [m for m in all_matches if m.top < start.top]  # PDF coords
-    print(f"\n=== Elements below starting point ===")
+    print("\n=== Elements below starting point ===")
     for i, elem in enumerate(below_elements):
         print(f"{i}: '{elem.extract_text()}' at y={elem.top}")
 
@@ -69,10 +72,7 @@ def test_closest_sorting():
         print(f"\nThreshold {threshold}: {len(matches)} matches")
         for i, match in enumerate(matches[:5]):
             text = match.extract_text()
-            # Calculate actual similarity to verify ordering
-            from difflib import SequenceMatcher
-
-            similarity = SequenceMatcher(None, search_term.lower(), text.lower()).ratio()
+            similarity = jw_ratio(search_term, text)
             print(f"  {i}: '{text}' (similarity: {similarity:.3f})")
 
 

@@ -1,6 +1,9 @@
-import pytest
-
 from natural_pdf import PDF
+from natural_pdf.core.page import _jaro_winkler_similarity
+
+
+def jw_ratio(a: str, b: str) -> float:
+    return _jaro_winkler_similarity(a, b)
 
 
 def test_closest_sorts_substring_matches_by_similarity():
@@ -13,12 +16,10 @@ def test_closest_sorts_substring_matches_by_similarity():
 
     if matches:
         # Check that results are sorted by similarity within substring matches
-        from difflib import SequenceMatcher
-
         print("\n=== Matches for 'Information' ===")
         for i, match in enumerate(matches[:10]):
             text = match.extract_text()
-            sim = SequenceMatcher(None, "information", text.lower()).ratio()
+            sim = jw_ratio("information", text)
             contains = "information" in text.lower()
             print(f"{i}: '{text}' (sim: {sim:.3f}, contains: {contains})")
 
@@ -48,12 +49,10 @@ def test_closest_with_until_uses_best_match():
     all_matches = page.find_all(f"text:closest({search_term}@0.5)")
 
     # Show the ordering
-    from difflib import SequenceMatcher
-
     print(f"\n=== All matches for '{search_term}' ===")
     for i, match in enumerate(all_matches[:5]):
         text = match.extract_text()
-        sim = SequenceMatcher(None, search_term.lower(), text.lower()).ratio()
+        sim = jw_ratio(search_term, text)
         print(f"{i}: '{text}' at y={match.top} (similarity: {sim:.3f})")
 
     # Now test with .below()
@@ -63,7 +62,7 @@ def test_closest_with_until_uses_best_match():
     boundary = page.find_all("text").filter(lambda e: abs(e.top - result.bottom) < 1)
     if boundary:
         boundary_text = boundary[0].extract_text()
-        boundary_sim = SequenceMatcher(None, search_term.lower(), boundary_text.lower()).ratio()
+        boundary_sim = jw_ratio(search_term, boundary_text)
         print(f"\nBoundary element: '{boundary_text}' (similarity: {boundary_sim:.3f})")
 
         # The boundary should be the best similarity match among substring matches
@@ -72,7 +71,7 @@ def test_closest_with_until_uses_best_match():
         if below_matches:
             best_match = below_matches[0]  # Should be sorted by similarity now
             best_text = best_match.extract_text()
-            best_sim = SequenceMatcher(None, search_term.lower(), best_text.lower()).ratio()
+            best_sim = jw_ratio(search_term, best_text)
             print(f"Best match below: '{best_text}' (similarity: {best_sim:.3f})")
 
 
@@ -88,13 +87,11 @@ def test_exact_match_comes_before_partial():
     matches = page.find_all(f"text:closest({search_term}@0.3)")
 
     if len(matches) >= 2:
-        from difflib import SequenceMatcher
-
         print(f"\n=== Matches for '{search_term}' ===")
         # Show first few matches with their similarity
         for i, match in enumerate(matches[:5]):
             text = match.extract_text()
-            sim = SequenceMatcher(None, search_term.lower(), text.lower()).ratio()
+            sim = jw_ratio(search_term, text)
             # Check if it's an exact match (ignoring punctuation)
             clean_text = "".join(c for c in text if c.isalnum())
             is_exact = clean_text.lower() == search_term.lower()
@@ -117,11 +114,9 @@ def test_threshold_still_works():
 
         if matches:
             # All matches should have similarity >= threshold
-            from difflib import SequenceMatcher
-
             for match in matches:
                 text = match.extract_text()
-                sim = SequenceMatcher(None, search_term.lower(), text.lower()).ratio()
+                sim = jw_ratio(search_term, text)
                 assert (
                     sim >= threshold - 0.01
                 ), f"Match '{text}' has similarity {sim:.3f} < threshold {threshold}"

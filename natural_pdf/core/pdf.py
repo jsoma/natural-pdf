@@ -1,13 +1,14 @@
 import copy
 import io
+import json
 import logging
 import os
-import re
-import tempfile
+import ssl
 import threading
 import time
 import urllib.request
 import weakref
+from collections.abc import Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -18,36 +19,41 @@ from typing import (
     List,
     Literal,
     Optional,
-    Sequence,
     Tuple,
-    Type,
     Union,
-    overload,
 )
 
 import pdfplumber
+from PIL import Image
+from pydantic import Field, create_model
 from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.mixin import ClassificationMixin
-from natural_pdf.classification.results import ClassificationResult
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
-from natural_pdf.ocr import OCRManager, OCROptions
+from natural_pdf.ocr import OCRManager
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.text_mixin import TextMixin
-from natural_pdf.utils.locks import pdf_render_lock
 from natural_pdf.vision.mixin import VisualSearchMixin
 
 if TYPE_CHECKING:
+    from natural_pdf.classification.manager import ClassificationManager
+    from natural_pdf.core.highlighting_service import HighlightContext
+    from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.elements.element_collection import ElementCollection
+
+try:
+    import certifi  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - optional dependency
+    certifi = None  # type: ignore[assignment]
 
 try:
     from typing import Any as TypingAny
@@ -94,13 +100,15 @@ DEFAULT_MANAGERS = {
     "structured_data": StructuredDataManager,
 }
 
-# Deskew Imports (Conditional)
-import numpy as np
-from PIL import Image
+DEFAULT_GENERATIVE_QA_PROMPT = (
+    "You answer questions about the supplied document content. "
+    "Respond using JSON matching the schema. Populate the 'answer' field with a concise reply; "
+    "if the answer cannot be determined, set 'answer' to an empty string."
+)
 
+# Deskew Imports (Conditional)
 try:
     import img2pdf
-    from deskew import determine_skew
 
     DESKEW_AVAILABLE = True
 except ImportError:
@@ -109,7 +117,6 @@ except ImportError:
 # End Deskew Imports
 
 # --- Lazy Page List Helper --- #
-from collections.abc import Sequence
 
 
 class _LazyPageList(Sequence):
@@ -546,7 +553,16 @@ class PDF(
             if is_url:
                 logger.info(f"Downloading PDF from URL: {path_or_url}")
                 try:
-                    with urllib.request.urlopen(path_or_url) as response:
+                    ssl_context = None
+                    try:
+                        if certifi is not None:
+                            ssl_context = ssl.create_default_context(cafile=certifi.where())
+                        else:
+                            ssl_context = ssl.create_default_context()
+                    except Exception:
+                        ssl_context = ssl.create_default_context()
+
+                    with urllib.request.urlopen(path_or_url, context=ssl_context) as response:
                         data = response.read()
                     # Load directly into an in-memory buffer — no temp file needed
                     buffer = io.BytesIO(data)
@@ -798,7 +814,7 @@ class PDF(
                     logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
-    def add_exclusion(self, exclusion_func, label: str = None) -> "PDF":
+    def add_exclusion(self, exclusion_func, label: Optional[str] = None) -> "PDF":
         """Add an exclusion function to the PDF.
 
         Exclusion functions define regions of each page that should be ignored during
@@ -1005,11 +1021,6 @@ class PDF(
             for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
                 failed_page_num = page.number
                 logger.debug(f"  Rendering page {page.number} (index {page.index})...")
-                to_image_kwargs = {
-                    "resolution": final_resolution,
-                    "include_highlights": False,
-                    "exclusions": "mask" if apply_exclusions else None,
-                }
                 # Use render() for clean image without highlights
                 img = page.render(resolution=final_resolution)
                 if img is None:
@@ -1039,7 +1050,6 @@ class PDF(
             "engine": engine,
             "languages": languages,
             "min_confidence": min_confidence,
-            "min_confidence": min_confidence,
             "device": device,
             "options": options,
             "detect_only": detect_only,
@@ -1054,7 +1064,7 @@ class PDF(
         batch_results = self._ocr_manager.apply_ocr(**manager_args)
 
         if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
-            logger.error(f"OCR Manager returned unexpected result format or length.")
+            logger.error("OCR Manager returned unexpected result format or length.")
             return self
 
         logger.info("OCR Manager batch processing complete.")
@@ -1098,7 +1108,7 @@ class PDF(
         return self
 
     def add_region(
-        self, region_func: Callable[["Page"], Optional["Region"]], name: str = None
+        self, region_func: Callable[["Page"], Optional["Region"]], name: Optional[str] = None
     ) -> "PDF":
         """
         Add a region function to the PDF.
@@ -1133,28 +1143,6 @@ class PDF(
 
         return self
 
-    @overload
-    def find(
-        self,
-        *,
-        text: Union[str, Sequence[str]],
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional[Any]: ...
-
-    @overload
-    def find(
-        self,
-        selector: str,
-        *,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional[Any]: ...
-
     def find(
         self,
         selector: Optional[str] = None,
@@ -1163,7 +1151,9 @@ class PDF(
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional[Any]:
         """
         Find the first element matching the selector OR text content across all pages.
@@ -1172,12 +1162,13 @@ class PDF(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
+            text: Optional text shortcut (equivalent to ``text:contains(...)``).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
+            text_tolerance: Optional dict of tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
+            reading_order: Whether to sort matches in reading order when applicable (default: True).
 
         Returns:
             Element object or None if not found.
@@ -1202,44 +1193,23 @@ class PDF(
         else:
             raise ValueError("Internal error: No selector or text provided.")
 
-        selector_obj = parse_selector(effective_selector)
+        _ = parse_selector(effective_selector)  # Parse once to fail fast on invalid selectors
 
-        # Search page by page
+        selector_kwargs = {
+            "apply_exclusions": apply_exclusions,
+            "regex": regex,
+            "case": case,
+            "text_tolerance": text_tolerance,
+            "auto_text_tolerance": auto_text_tolerance,
+            "reading_order": reading_order,
+        }
+
         for page in self.pages:
-            # Note: _apply_selector is on Page, so we call find directly here
-            # We pass the constructed/validated effective_selector
-            element = page.find(
-                selector=effective_selector,  # Use the processed selector
-                apply_exclusions=apply_exclusions,
-                regex=regex,  # Pass down flags
-                case=case,
-                **kwargs,
-            )
-            if element:
+            element = page.find(selector=effective_selector, **selector_kwargs)
+            if element is not None:
                 return element
-        return None  # Not found on any page
 
-    @overload
-    def find_all(
-        self,
-        *,
-        text: Union[str, Sequence[str]],
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    @overload
-    def find_all(
-        self,
-        selector: str,
-        *,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
+        return None
 
     def find_all(
         self,
@@ -1249,7 +1219,9 @@ class PDF(
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
         """
         Find all elements matching the selector OR text content across all pages.
@@ -1258,12 +1230,13 @@ class PDF(
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
+            text: Optional text shortcut (equivalent to ``text:contains(...)``).
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional filter parameters.
+            text_tolerance: Optional dict of tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
+            reading_order: Whether to sort matches in reading order when applicable (default: True).
 
         Returns:
             ElementCollection with matching elements.
@@ -1288,23 +1261,20 @@ class PDF(
         else:
             raise ValueError("Internal error: No selector or text provided.")
 
-        # Instead of parsing here, let each page parse and apply
-        # This avoids parsing the same selector multiple times if not needed
-        # selector_obj = parse_selector(effective_selector)
+        _ = parse_selector(effective_selector)  # Validate selector once
 
-        # kwargs["regex"] = regex # Removed: Already passed explicitly
-        # kwargs["case"] = case   # Removed: Already passed explicitly
+        selector_kwargs = {
+            "apply_exclusions": apply_exclusions,
+            "regex": regex,
+            "case": case,
+            "text_tolerance": text_tolerance,
+            "auto_text_tolerance": auto_text_tolerance,
+            "reading_order": reading_order,
+        }
 
-        all_elements = []
+        all_elements: List = []
         for page in self.pages:
-            # Call page.find_all with the effective selector and flags
-            page_elements = page.find_all(
-                selector=effective_selector,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                **kwargs,
-            )
+            page_elements = page.find_all(selector=effective_selector, **selector_kwargs)
             if page_elements:
                 all_elements.extend(page_elements.elements)
 
@@ -1315,10 +1285,21 @@ class PDF(
     def extract_text(
         self,
         selector: Optional[str] = None,
-        preserve_whitespace=True,
-        use_exclusions=True,
-        debug_exclusions=False,
-        **kwargs,
+        preserve_whitespace: bool = True,
+        preserve_line_breaks: bool = True,
+        page_separator: Optional[str] = "\n",
+        use_exclusions: bool = True,
+        debug_exclusions: bool = False,
+        *,
+        layout: bool = True,
+        x_density: Optional[float] = None,
+        y_density: Optional[float] = None,
+        x_tolerance: Optional[float] = None,
+        y_tolerance: Optional[float] = None,
+        line_dir: Optional[str] = None,
+        char_dir: Optional[str] = None,
+        strip_final: bool = False,
+        strip_empty: bool = False,
     ) -> str:
         """
         Extract text from the entire document or matching elements.
@@ -1326,12 +1307,22 @@ class PDF(
         Args:
             selector: Optional selector to filter elements
             preserve_whitespace: Whether to keep blank characters
+            preserve_line_breaks: When False, collapse newlines in each page's text.
+            page_separator: String inserted between page texts when combining results.
             use_exclusions: Whether to apply exclusion regions
             debug_exclusions: Whether to output detailed debugging for exclusions
             preserve_whitespace: Whether to keep blank characters
             use_exclusions: Whether to apply exclusion regions
             debug_exclusions: Whether to output detailed debugging for exclusions
-            **kwargs: Additional extraction parameters
+            layout: Whether to enable layout-aware spacing (default: True).
+            x_density: Horizontal character density override.
+            y_density: Vertical line density override.
+            x_tolerance: Horizontal clustering tolerance.
+            y_tolerance: Vertical clustering tolerance.
+            line_dir: Line reading direction override.
+            char_dir: Character reading direction override.
+            strip_final: When True, strip trailing whitespace from the combined text.
+            strip_empty: When True, drop empty lines from the output.
 
         Returns:
             Extracted text as string
@@ -1340,8 +1331,32 @@ class PDF(
             raise AttributeError("PDF pages not yet initialized.")
 
         if selector:
-            elements = self.find_all(selector, apply_exclusions=use_exclusions, **kwargs)
-            return elements.extract_text(preserve_whitespace=preserve_whitespace, **kwargs)
+            elements = self.find_all(
+                selector,
+                apply_exclusions=use_exclusions,
+                layout=layout,
+                x_density=x_density,
+                y_density=y_density,
+                x_tolerance=x_tolerance,
+                y_tolerance=y_tolerance,
+                line_dir=line_dir,
+                char_dir=char_dir,
+                strip_final=strip_final,
+                strip_empty=strip_empty,
+            )
+            return elements.extract_text(
+                preserve_whitespace=preserve_whitespace,
+                preserve_line_breaks=preserve_line_breaks,
+                layout=layout,
+                x_density=x_density,
+                y_density=y_density,
+                x_tolerance=x_tolerance,
+                y_tolerance=y_tolerance,
+                line_dir=line_dir,
+                char_dir=char_dir,
+                strip_final=strip_final,
+                strip_empty=strip_empty,
+            )
 
         if debug_exclusions:
             print(f"PDF: Extracting text with exclusions from {len(self.pages)} pages")
@@ -1352,27 +1367,44 @@ class PDF(
             texts.append(
                 page.extract_text(
                     preserve_whitespace=preserve_whitespace,
+                    preserve_line_breaks=preserve_line_breaks,
                     use_exclusions=use_exclusions,
                     debug_exclusions=debug_exclusions,
-                    **kwargs,
+                    layout=layout,
+                    x_density=x_density,
+                    y_density=y_density,
+                    x_tolerance=x_tolerance,
+                    y_tolerance=y_tolerance,
+                    line_dir=line_dir,
+                    char_dir=char_dir,
+                    strip_final=strip_final,
+                    strip_empty=strip_empty,
                 )
             )
 
         if debug_exclusions:
             print(f"PDF: Combined {len(texts)} pages of text")
 
-        return "\n".join(texts)
+        separator = "" if page_separator is None else page_separator
+        return separator.join(texts)
 
     def extract_tables(
-        self, selector: Optional[str] = None, merge_across_pages: bool = False, **kwargs
+        self,
+        selector: Optional[str] = None,
+        merge_across_pages: bool = False,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        check_tatr: bool = True,
     ) -> List[Any]:
         """
         Extract tables from the document or matching elements.
 
         Args:
-            selector: Optional selector to filter tables
-            merge_across_pages: Whether to merge tables that span across pages
-            **kwargs: Additional extraction parameters
+            selector: Optional selector to filter tables (not yet implemented).
+            merge_across_pages: Whether to merge tables that span across pages (not yet implemented).
+            method: Extraction strategy to prefer. Mirrors ``Page.extract_tables``.
+            table_settings: Per-method configuration forwarded to ``Page.extract_tables``.
+            check_tatr: When True, visit TATR table regions before falling back to page extraction.
 
         Returns:
             List of extracted tables
@@ -1385,7 +1417,13 @@ class PDF(
 
         for page in self.pages:
             if hasattr(page, "extract_tables"):
-                all_tables.extend(page.extract_tables(**kwargs))
+                all_tables.extend(
+                    page.extract_tables(
+                        method=method,
+                        table_settings=table_settings,
+                        check_tatr=check_tatr,
+                    )
+                )
             else:
                 logger.debug(f"Page {page.number} does not have extract_tables method.")
 
@@ -1456,16 +1494,22 @@ class PDF(
             orientation=orientation,
         )
 
-    def split(self, divider, **kwargs) -> "ElementCollection":
+    def split(
+        self,
+        divider,
+        *,
+        include_boundaries: str = "start",
+        orientation: str = "vertical",
+        new_section_on_page_break: bool = False,
+    ) -> "ElementCollection":
         """
         Divide the PDF into sections based on the provided divider elements.
 
         Args:
             divider: Elements or selector string that mark section boundaries
-            **kwargs: Additional parameters passed to get_sections()
-                - include_boundaries: How to include boundary elements (default: 'start')
-                - orientation: 'vertical' or 'horizontal' (default: 'vertical')
-                - new_section_on_page_break: Whether to split at page boundaries (default: False)
+            include_boundaries: How to include boundary elements (default: 'start').
+            orientation: 'vertical' or 'horizontal' (default: 'vertical').
+            new_section_on_page_break: Whether to split at page boundaries (default: False).
 
         Returns:
             ElementCollection of Region objects representing the sections
@@ -1487,9 +1531,14 @@ class PDF(
             pages = pdf.split(None, new_section_on_page_break=True)
         """
         # Delegate to pages collection
-        return self.pages.split(divider, **kwargs)
+        return self.pages.split(
+            divider,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            new_section_on_page_break=new_section_on_page_break,
+        )
 
-    def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300, **kwargs):
+    def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300):
         """
         DEPRECATED: Use save_pdf(..., ocr=True) instead.
         Saves the PDF with an OCR text layer, making content searchable.
@@ -1498,8 +1547,7 @@ class PDF(
 
         Args:
             output_path: Path to save the searchable PDF
-            dpi: Resolution for rendering and OCR overlay
-            **kwargs: Additional keyword arguments passed to the exporter
+            dpi: Resolution for rendering and OCR overlay.
         """
         logger.warning(
             "PDF.save_searchable() is deprecated. Use PDF.save_pdf(..., ocr=True) instead."
@@ -1511,7 +1559,7 @@ class PDF(
             )
         output_path_str = str(output_path)
         # Call the exporter directly, passing self (the PDF instance)
-        create_searchable_pdf(self, output_path_str, dpi=dpi, **kwargs)
+        create_searchable_pdf(self, output_path_str, dpi=dpi)
         # Logger info is handled within the exporter now
         # logger.info(f"Searchable PDF saved to: {output_path_str}")
 
@@ -1653,14 +1701,49 @@ class PDF(
             mode=mode, color=color, highlights=highlights, crop=crop, crop_bbox=crop_bbox, **kwargs
         )
 
+    def _resolve_qa_pages(self, pages: Optional[Union[int, Iterable[int], range]]) -> List["Page"]:
+        """
+        Normalize the ``pages`` argument for QA operations into a list of Page objects.
+
+        Args:
+            pages: None for all pages, an integer page index, or an iterable of indices.
+
+        Returns:
+            List of resolved Page objects (may be empty if no valid indices were supplied).
+        """
+        if pages is None:
+            return list(self.pages)
+
+        total_pages = len(self.pages)
+
+        if isinstance(pages, int):
+            if 0 <= pages < total_pages:
+                return [self.pages[pages]]
+            raise IndexError(f"Page index {pages} out of range (0-{total_pages-1})")
+
+        if isinstance(pages, range) or isinstance(pages, list) or isinstance(pages, tuple):
+            resolved: List["Page"] = []
+            for page_idx in pages:
+                if isinstance(page_idx, int) and 0 <= page_idx < total_pages:
+                    resolved.append(self.pages[page_idx])
+                else:
+                    logger.warning(f"Page index {page_idx} out of range, skipping")
+            return resolved
+
+        raise ValueError(f"Invalid pages parameter: {pages}")
+
     def ask(
         self,
         question: str,
-        mode: str = "extractive",
-        pages: Union[int, List[int], range] = None,
+        *,
+        mode: Literal["extractive", "generative"] = "extractive",
+        pages: Optional[Union[int, Iterable[int], range]] = None,
         min_confidence: float = 0.1,
-        model: str = None,
-        **kwargs,
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        llm_client: Optional[Any] = None,
+        prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Ask a single question about the document content.
@@ -1669,16 +1752,28 @@ class PDF(
             question: Question string to ask about the document
             mode: "extractive" to extract answer from document, "generative" to generate
             pages: Specific pages to query (default: all pages)
-            min_confidence: Minimum confidence threshold for answers
-            model: Optional model name for question answering
-            **kwargs: Additional parameters passed to the QA engine
+            min_confidence: Minimum confidence threshold for answers (extractive mode).
+            model: Optional model name for the QA engine or LLM.
+            temperature: Optional sampling temperature for LLM-backed QA.
+            top_p: Optional nucleus sampling parameter for LLM-backed QA.
+            llm_client: Client instance to use when ``mode="generative"``.
+            prompt: Optional system prompt override for generative QA.
 
         Returns:
-            Dict containing: answer, confidence, found, page_num, source_elements, etc.
+            Dict containing: answer, confidence (may be None in generative mode), found, page_num,
+            source_elements, etc.
         """
         # Delegate to ask_batch and return the first result
         results = self.ask_batch(
-            [question], mode=mode, pages=pages, min_confidence=min_confidence, model=model, **kwargs
+            [question],
+            mode=mode,
+            pages=pages,
+            min_confidence=min_confidence,
+            model=model,
+            temperature=temperature,
+            top_p=top_p,
+            llm_client=llm_client,
+            prompt=prompt,
         )
         return (
             results[0]
@@ -1695,11 +1790,15 @@ class PDF(
     def ask_batch(
         self,
         questions: List[str],
-        mode: str = "extractive",
-        pages: Union[int, List[int], range] = None,
+        *,
+        mode: Literal["extractive", "generative"] = "extractive",
+        pages: Optional[Union[int, Iterable[int], range]] = None,
         min_confidence: float = 0.1,
-        model: str = None,
-        **kwargs,
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        llm_client: Optional[Any] = None,
+        prompt: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Ask multiple questions about the document content using batch processing.
@@ -1712,53 +1811,67 @@ class PDF(
             questions: List of question strings to ask about the document
             mode: "extractive" to extract answer from document, "generative" to generate
             pages: Specific pages to query (default: all pages)
-            min_confidence: Minimum confidence threshold for answers
-            model: Optional model name for question answering
-            **kwargs: Additional parameters passed to the QA engine
+            min_confidence: Minimum confidence threshold for extractive answers.
+            model: Optional model name for the QA engine or LLM.
+            temperature: Optional sampling temperature for LLM-backed QA.
+            top_p: Optional nucleus sampling parameter for LLM-backed QA.
+            llm_client: Client instance to use when ``mode="generative"``.
+            prompt: Optional system prompt override for generative QA.
 
         Returns:
-            List of Dicts, each containing: answer, confidence, found, page_num, source_elements, etc.
+            List of Dicts, each containing: answer, confidence (may be None in generative mode),
+            found, page_num, source_elements, etc.
         """
-        from natural_pdf.qa import get_qa_engine
-
         if not questions:
             return []
+
+        if mode not in ("extractive", "generative"):
+            raise ValueError("mode must be either 'extractive' or 'generative'")
 
         if not isinstance(questions, list) or not all(isinstance(q, str) for q in questions):
             raise TypeError("'questions' must be a list of strings")
 
-        qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
+        target_pages = self._resolve_qa_pages(pages)
 
-        # Resolve target pages
-        if pages is None:
-            target_pages = self.pages
-        elif isinstance(pages, int):
-            if 0 <= pages < len(self.pages):
-                target_pages = [self.pages[pages]]
-            else:
-                raise IndexError(f"Page index {pages} out of range (0-{len(self.pages)-1})")
-        elif isinstance(pages, (list, range)):
-            target_pages = []
-            for page_idx in pages:
-                if 0 <= page_idx < len(self.pages):
-                    target_pages.append(self.pages[page_idx])
-                else:
-                    logger.warning(f"Page index {page_idx} out of range, skipping")
-        else:
-            raise ValueError(f"Invalid pages parameter: {pages}")
+        def _empty_result() -> Dict[str, Any]:
+            return {
+                "answer": None,
+                "confidence": 0.0,
+                "found": False,
+                "page_num": None,
+                "source_elements": [],
+            }
 
         if not target_pages:
             logger.warning("No valid pages found for QA processing.")
-            return [
-                {
-                    "answer": None,
-                    "confidence": 0.0,
-                    "found": False,
-                    "page_num": None,
-                    "source_elements": [],
-                }
-                for _ in questions
-            ]
+            return [_empty_result() for _ in questions]
+
+        if mode == "generative":
+            return self._ask_batch_generative(
+                questions,
+                target_pages=target_pages,
+                llm_client=llm_client,
+                prompt=prompt,
+                model=model,
+                temperature=temperature,
+                top_p=top_p,
+            )
+
+        from natural_pdf.qa import get_qa_engine
+
+        qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
+
+        if temperature is not None:
+            try:
+                qa_engine.set_temperature(temperature)
+            except AttributeError:
+                logger.debug("QA engine does not support temperature override; ignoring.")
+
+        if top_p is not None:
+            try:
+                qa_engine.set_top_p(top_p)
+            except AttributeError:
+                logger.debug("QA engine does not support top_p override; ignoring.")
 
         logger.info(
             f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA..."
@@ -1798,16 +1911,7 @@ class PDF(
 
         if not page_images:
             logger.warning("No page images could be processed for QA.")
-            return [
-                {
-                    "answer": None,
-                    "confidence": 0.0,
-                    "found": False,
-                    "page_num": None,
-                    "source_elements": [],
-                }
-                for _ in questions
-            ]
+            return [_empty_result() for _ in questions]
 
         # Process all questions against all pages in batch
         all_results = []
@@ -1826,7 +1930,6 @@ class PDF(
                         question=question_text,
                         word_boxes=word_boxes,
                         min_confidence=min_confidence,
-                        **kwargs,
                     )
 
                     if page_result and page_result.found:
@@ -1855,17 +1958,162 @@ class PDF(
                 all_results.append(question_results[0])
             else:
                 # No results found for this question
-                all_results.append(
-                    {
-                        "answer": None,
-                        "confidence": 0.0,
-                        "found": False,
-                        "page_num": None,
-                        "source_elements": [],
-                    }
-                )
+                all_results.append(_empty_result())
 
         return all_results
+
+    def _ask_batch_generative(
+        self,
+        questions: List[str],
+        *,
+        target_pages: List["Page"],
+        llm_client: Optional[Any],
+        prompt: Optional[str],
+        model: Optional[str],
+        temperature: Optional[float],
+        top_p: Optional[float],
+    ) -> List[Dict[str, Any]]:
+        """Handle the ``mode='generative'`` logic for :meth:`ask_batch`."""
+
+        def _empty_result() -> Dict[str, Any]:
+            return {
+                "answer": None,
+                "confidence": 0.0,
+                "found": False,
+                "page_num": None,
+                "source_elements": [],
+            }
+
+        if llm_client is None:
+            raise ValueError("Generative QA requires 'llm_client' to be provided.")
+
+        try:
+            manager = self.get_manager("structured_data")
+        except (KeyError, RuntimeError) as exc:
+            raise RuntimeError(
+                "StructuredDataManager is not available; cannot run generative QA."
+            ) from exc
+
+        if manager is None or not manager.is_available():
+            raise RuntimeError("StructuredDataManager is not available for generative QA.")
+
+        # Compile text content from selected pages
+        page_sections: List[str] = []
+        for page in target_pages:
+            page_text = ""
+            try:
+                page_text = page.extract_text(layout=True) or ""
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "Failed to extract layout text from page %s: %s",
+                    getattr(page, "number", "?"),
+                    exc,
+                )
+
+            if not page_text.strip():
+                try:
+                    page_text = page.extract_text(layout=False) or ""
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug(
+                        "Failed to extract text (layout=False) from page %s: %s",
+                        getattr(page, "number", "?"),
+                        exc,
+                    )
+
+            page_text = page_text.strip()
+            if page_text:
+                page_sections.append(f"Page {page.number}:\n{page_text}")
+
+        combined_text = "\n\n".join(page_sections).strip()
+        if not combined_text:
+            logger.warning(
+                "Generative QA could not extract text from the selected pages. "
+                "Consider running apply_ocr() before using mode='generative'."
+            )
+            return [_empty_result() for _ in questions]
+
+        max_chars = 20000
+        if len(combined_text) > max_chars:
+            logger.info(
+                "Truncating combined page text for generative QA from %d to %d characters",
+                len(combined_text),
+                max_chars,
+            )
+            combined_text = combined_text[:max_chars]
+
+        GenerativeQAResponse = create_model(
+            "GenerativeQAResponse",
+            answer=(str, Field("", description="Answer to the question; leave empty if unknown.")),
+        )
+
+        llm_kwargs: Dict[str, Any] = {}
+        if temperature is not None:
+            llm_kwargs["temperature"] = temperature
+        if top_p is not None:
+            llm_kwargs["top_p"] = top_p
+
+        prompt_text = prompt or DEFAULT_GENERATIVE_QA_PROMPT
+        results: List[Dict[str, Any]] = []
+
+        for question_text in questions:
+            question_text = question_text.strip()
+            if not question_text:
+                results.append(_empty_result())
+                continue
+
+            payload = json.dumps(
+                {
+                    "question": question_text,
+                    "document": combined_text,
+                }
+            )
+
+            try:
+                extraction_result = manager.extract(
+                    content=payload,
+                    schema=GenerativeQAResponse,
+                    client=llm_client,
+                    prompt=prompt_text,
+                    using="text",
+                    model=model,
+                    **llm_kwargs,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Generative QA failed for question %r: %s", question_text, exc)
+                results.append(_empty_result())
+                continue
+
+            parsed = getattr(extraction_result, "data", None)
+            if not extraction_result.success or parsed is None:
+                logger.debug(
+                    "Generative QA returned no parsed data for question %r (success=%s, error=%s)",
+                    question_text,
+                    getattr(extraction_result, "success", None),
+                    getattr(extraction_result, "error_message", None),
+                )
+                results.append(_empty_result())
+                continue
+
+            answer = getattr(parsed, "answer", "")
+            normalized_answer = answer.strip() if isinstance(answer, str) else ""
+
+            found = bool(normalized_answer)
+
+            if not found:
+                results.append(_empty_result())
+                continue
+
+            results.append(
+                {
+                    "answer": normalized_answer,
+                    "confidence": None,
+                    "found": True,
+                    "page_num": None,
+                    "source_elements": [],
+                }
+            )
+
+        return results
 
     def search_within_index(
         self,
@@ -1936,7 +2184,7 @@ class PDF(
 
         # Combine with existing filters in options (if any)
         if effective_options.filters:
-            logger.debug(f"Combining PDF scope filter with existing filters")
+            logger.debug("Combining PDF scope filter with existing filters")
             if (
                 isinstance(effective_options.filters, dict)
                 and effective_options.filters.get("operator") == "AND"
@@ -1954,7 +2202,7 @@ class PDF(
                 }
             else:
                 logger.warning(
-                    f"Unsupported format for existing filters. Overwriting with PDF scope filter."
+                    "Unsupported format for existing filters. Overwriting with PDF scope filter."
                 )
                 effective_options.filters = pdf_scope_filter
         else:
@@ -1976,24 +2224,38 @@ class PDF(
             raise
         except Exception as e:
             logger.error(f"SearchService search failed: {e}")
-            raise RuntimeError(f"Search within index failed. See logs for details.") from e
+            raise RuntimeError("Search within index failed. See logs for details.") from e
             logger.error(f"SearchService search failed: {e}")
-            raise RuntimeError(f"Search within index failed. See logs for details.") from e
+            raise RuntimeError("Search within index failed. See logs for details.") from e
 
-    def export_ocr_correction_task(self, output_zip_path: str, **kwargs):
+    def export_ocr_correction_task(
+        self,
+        output_zip_path: str,
+        *,
+        overwrite: bool = False,
+        suggest=None,
+        resolution: int = 300,
+    ):
         """
         Exports OCR results from this PDF into a correction task package.
         Exports OCR results from this PDF into a correction task package.
 
         Args:
-            output_zip_path: The path to save the output zip file
-            output_zip_path: The path to save the output zip file
-            **kwargs: Additional arguments passed to create_correction_task_package
+            output_zip_path: The path to save the output zip file.
+            overwrite: When True, replace any existing archive at ``output_zip_path``.
+            suggest: Optional callable that can provide OCR suggestions per region.
+            resolution: DPI used when rendering page images for the package.
         """
         try:
             from natural_pdf.utils.packaging import create_correction_task_package
 
-            create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
+            create_correction_task_package(
+                source=self,
+                output_zip_path=output_zip_path,
+                overwrite=overwrite,
+                suggest=suggest,
+                resolution=resolution,
+            )
         except ImportError:
             logger.error(
                 "Failed to import 'create_correction_task_package'. Packaging utility might be missing."
@@ -2175,7 +2437,7 @@ class PDF(
             force_overwrite: If False (default), raises a ValueError if any target page
                              already contains processed elements (text, OCR, regions) to
                              prevent accidental data loss. Set to True to proceed anyway.
-            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
+            **deskew_kwargs: Additional keyword arguments forwarded to the deskew engine.
                              during automatic detection (e.g., `max_angle`, `num_peaks`).
 
         Returns:
@@ -2390,7 +2652,7 @@ class PDF(
                     f"Failed to store classification results for page {page.number}: {e}"
                 )
 
-        logger.info(f"Finished classifying PDF pages.")
+        logger.info("Finished classifying PDF pages.")
         return self
 
     # --- End Classification Methods --- #
@@ -2421,8 +2683,8 @@ class PDF(
             logger.info(f"Rendering {len(self.pages)} pages to images...")
 
             resolution = kwargs.pop("resolution", 72)
-            include_highlights = kwargs.pop("include_highlights", False)
-            labels = kwargs.pop("labels", False)
+            kwargs.pop("include_highlights", False)
+            kwargs.pop("labels", False)
 
             try:
                 for page in tqdm(self.pages, desc="Rendering Pages"):

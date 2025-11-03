@@ -8,7 +8,6 @@ import logging
 from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
-    from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
 
@@ -112,6 +111,75 @@ def validate_section_bounds(bounds: Tuple[float, float, float, float], orientati
             return False
 
     return True
+
+
+def sanitize_sections(
+    sections: List[Any],
+    orientation: str = "vertical",
+    min_span: float = 1.0,
+) -> List[Any]:
+    """
+    Remove duplicate or zero-span sections from a sequence.
+
+    Args:
+        sections: Sequence of Region or FlowRegion-like objects.
+        orientation: Orientation of the sections ("vertical" or "horizontal").
+        min_span: Minimum allowable size (height or width) for a section to be kept.
+
+    Returns:
+        List of cleaned section objects preserving original order.
+    """
+    if not sections:
+        return []
+
+    cleaned: List[Any] = []
+    seen: set = set()
+
+    for section in sections:
+        key = ("other", id(section))
+        span = None
+
+        if hasattr(section, "bbox"):
+            bbox = getattr(section, "bbox", None)
+            if bbox:
+                rounded_bbox = tuple(round(coord, 4) for coord in bbox)
+                page_index = getattr(getattr(section, "page", None), "index", None)
+                key = ("region", page_index, rounded_bbox)
+
+            if orientation == "vertical":
+                span = getattr(section, "height", None)
+            else:
+                span = getattr(section, "width", None)
+        elif hasattr(section, "constituent_regions"):
+            constituents = getattr(section, "constituent_regions", []) or []
+            rounded_constituents = tuple(
+                tuple(round(coord, 4) for coord in getattr(region, "bbox", ()))
+                for region in constituents
+            )
+            key = ("flow_region", rounded_constituents)
+
+            spans = []
+            for region in constituents:
+                if orientation == "vertical":
+                    spans.append(getattr(region, "height", None))
+                else:
+                    spans.append(getattr(region, "width", None))
+
+            if spans and all(span is not None and span <= min_span for span in spans):
+                continue
+        else:
+            span = None
+
+        if span is not None and span <= min_span:
+            continue
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        cleaned.append(section)
+
+    return cleaned
 
 
 def pair_boundary_elements(
