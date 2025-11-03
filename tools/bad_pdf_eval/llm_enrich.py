@@ -72,7 +72,7 @@ def build_prompt(page: Dict[str, Any]) -> List[Dict[str, str]]:
     }
 
     sys_msg = textwrap.dedent(
-        f"""
+        """
         You are an expert Natural-PDF engineer. Use the cheat-sheet and workflows to craft bespoke extraction code.
         Return JSON with two keys: thought_process (concise reasoning) and code_suggestion (Python code). Do not add extra keys.
         """

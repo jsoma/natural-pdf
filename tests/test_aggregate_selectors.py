@@ -219,7 +219,7 @@ class TestAggregateEdgeCases:
 
     def test_invalid_aggregate_syntax(self):
         """Test invalid aggregate function syntax."""
-        from natural_pdf.selectors.parser import _parse_aggregate_function, parse_selector
+        from natural_pdf.selectors.parser import _parse_aggregate_function
 
         # These should not be parsed as aggregates
         assert _parse_aggregate_function("minimum()") is None

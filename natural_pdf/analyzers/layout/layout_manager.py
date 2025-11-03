@@ -1,13 +1,11 @@
 # layout_manager.py
-import copy
 import logging
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional
 
 from PIL import Image
 
 from .base import LayoutDetector  # Lightweight base class
 from .layout_options import (
-    BaseLayoutOptions,
     DoclingLayoutOptions,
     GeminiLayoutOptions,
     LayoutOptions,

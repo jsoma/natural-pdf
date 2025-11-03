@@ -3,12 +3,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
-from pdfplumber.utils.geometry import (
-    cluster_objects,
-    get_bbox_overlap,
-    merge_bboxes,
-    objects_to_bbox,
-)
+from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
 if TYPE_CHECKING:

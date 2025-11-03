@@ -91,7 +91,7 @@ def analyze_pdf(
             print(f"📐 Dimensions: {page.width:.1f} x {page.height:.1f}")
 
             # 1. .describe() - Overview of elements
-            print(f"\n🤖 PAGE.DESCRIBE():")
+            print("\n🤖 PAGE.DESCRIBE():")
             try:
                 description = page.describe()
                 print(description)
@@ -106,7 +106,7 @@ def analyze_pdf(
                 page_data["describe"] = f"ERROR: {e}"
 
             # 2. .extract_text() - Raw text extraction
-            print(f"\n📝 PAGE.EXTRACT_TEXT():")
+            print("\n📝 PAGE.EXTRACT_TEXT():")
             try:
                 text = page.extract_text()
                 if text:
@@ -132,7 +132,7 @@ def analyze_pdf(
                 page_data["extract_text"] = f"ERROR: {e}"
 
             # 3. .extract_table() - Table extraction (returns List[List[str]])
-            print(f"\n📊 PAGE.EXTRACT_TABLE():")
+            print("\n📊 PAGE.EXTRACT_TABLE():")
             try:
                 table_data = page.extract_table()  # This returns List[List[Optional[str]]]
                 if table_data and len(table_data) > 0:
@@ -162,7 +162,7 @@ def analyze_pdf(
                 page_data["extract_table"] = f"ERROR: {e}"
 
             # 4. .analyze_layout() - Layout analysis
-            print(f"\n🏗️  PAGE.ANALYZE_LAYOUT():")
+            print("\n🏗️  PAGE.ANALYZE_LAYOUT():")
             try:
                 layout = page.analyze_layout()
                 if layout and len(layout) > 0:
@@ -192,7 +192,7 @@ def analyze_pdf(
                 page_data["analyze_layout"] = f"ERROR: {e}"
 
             # 4b. .analyze_layout('tatr') - Table structure analysis (append to preserve YOLO results)
-            print(f"\n🏗️  PAGE.ANALYZE_LAYOUT('TATR') - Table Structure:")
+            print("\n🏗️  PAGE.ANALYZE_LAYOUT('TATR') - Table Structure:")
             try:
                 tatr_layout = page.analyze_layout("tatr", existing="append")
                 if tatr_layout and len(tatr_layout) > 0:
@@ -257,7 +257,7 @@ def analyze_pdf(
                 page_data["table_structure"] = f"ERROR: {e}"
 
             # 5. Find regions by model and save separate + combined files
-            print(f"\n📍 REGION ANALYSIS - By Model:")
+            print("\n📍 REGION ANALYSIS - By Model:")
             try:
                 all_regions = page.find_all("region")
                 if all_regions and len(all_regions) > 0:
@@ -330,7 +330,7 @@ def analyze_pdf(
                 page_data["regions"] = f"ERROR: {e}"
 
             # 6. General element inspection
-            print(f"\n🔍 GENERAL ELEMENT INSPECTION:")
+            print("\n🔍 GENERAL ELEMENT INSPECTION:")
             try:
                 # Count different element types
                 all_elements = page.find_all("*")
@@ -338,7 +338,7 @@ def analyze_pdf(
                     print(f"Total elements: {len(all_elements)}")
 
                     # Full inspect output - shows complete breakdown
-                    print(f"\nFull element breakdown (.inspect()):")
+                    print("\nFull element breakdown (.inspect()):")
                     # Get string representation of inspect result (increased limit)
                     inspect_result = all_elements.inspect(limit=1000)
                     inspect_text = str(inspect_result)
@@ -346,7 +346,7 @@ def analyze_pdf(
 
                     # Sample some elements for detailed inspection
                     sample_elements = all_elements[:10]  # First 10 elements
-                    print(f"Sample of first 10 elements:")
+                    print("Sample of first 10 elements:")
                     elements_sample = []
                     for i, elem in enumerate(sample_elements):
                         elem_type = getattr(elem, "object_type", "unknown")
@@ -384,7 +384,7 @@ def analyze_pdf(
                 page_data["elements_sample"] = f"ERROR: {e}"
 
             # 7. Render page as image
-            print(f"\n🖼️  RENDERING PAGE AS IMAGE:")
+            print("\n🖼️  RENDERING PAGE AS IMAGE:")
             try:
                 img = page.render(resolution=144)
                 print(f"Image: {img.width}x{img.height} pixels")
@@ -414,7 +414,7 @@ def analyze_pdf(
         with open(summary_file, "w") as f:
             json.dump(analysis_data, f, indent=2)
 
-        print(f"\n✅ ANALYSIS COMPLETE")
+        print("\n✅ ANALYSIS COMPLETE")
         print(f"📊 Summary: Analyzed {pages_to_analyze} page(s) of {pdf_file.name}")
         print(f"📁 All results saved to: {pdf_output_dir}")
         print(f"📋 Summary JSON: {summary_file}")

@@ -142,6 +142,13 @@ filterwarnings = [
 ]
 markers = [
     "tutorial: tests that execute markdown tutorials to populate notebooks",
+    "slow: tests that take significantly longer or exercise heavyweight resources",
+    "ocr: tests that require OCR or vision models",
+    "network: tests that rely on external network resources",
+    "qa: tests that cover document QA functionality",
+    "qa_remote: QA tests that rely on hosted LLM endpoints",
+    "qa_local: QA tests that require large local QA models or embeddings",
+    "optional_deps: tests that require optional or extra dependencies",
 ]
 
 [tool.setuptools]

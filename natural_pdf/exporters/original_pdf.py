@@ -140,7 +140,7 @@ def create_original_pdf(
                     )
 
             if not target_pikepdf_doc.pages:
-                raise RuntimeError(f"No valid pages found to save from source PDF.")
+                raise RuntimeError("No valid pages found to save from source PDF.")
 
             target_pikepdf_doc.save(output_path_str)
             logger.info(

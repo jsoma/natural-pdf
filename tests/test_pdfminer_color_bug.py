@@ -1,7 +1,5 @@
 """Test documenting pdfplumber color parsing bug."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

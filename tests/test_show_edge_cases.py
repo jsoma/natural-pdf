@@ -3,8 +3,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from natural_pdf.core.render_spec import Visualizable
 
 

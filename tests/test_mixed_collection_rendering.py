@@ -1,7 +1,5 @@
 """Test that ElementCollection properly renders mixed Region/FlowRegion collections."""
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.flows.region import FlowRegion

@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 import natural_pdf as npdf
-from natural_pdf.core.pdf import _LazyPageList
 
 
 def create_test_pdf_content():

@@ -168,7 +168,7 @@ def main():
     print("\n=== Natural PDF Evaluation Quality Report ===\n")
     print(f"Total submissions analyzed: {stats['total_submissions']}")
     print(f"With document enrichment: {stats['with_doc_enrichment']}")
-    print(f"\nCode Quality Metrics:")
+    print("\nCode Quality Metrics:")
     print(
         f"  Using Guides API: {stats['using_guides']} ({stats['using_guides']/stats['with_doc_enrichment']*100:.1f}%)"
     )
@@ -180,7 +180,7 @@ def main():
     )
     print(f"  Average quality score: {stats['avg_quality_score']:.1f}/12")
 
-    print(f"\nDifficult Elements Identified:")
+    print("\nDifficult Elements Identified:")
     for elem_type, count in sorted(
         stats["difficult_elements_breakdown"].items(), key=lambda x: x[1], reverse=True
     ):

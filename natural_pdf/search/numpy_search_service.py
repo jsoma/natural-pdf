@@ -1,19 +1,11 @@
-import json
 import logging
-import os
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 
 from .search_options import BaseSearchOptions
-from .search_service_protocol import (
-    Indexable,
-    IndexConfigurationError,
-    SearchResult,
-    SearchServiceProtocol,
-)
+from .search_service_protocol import Indexable, SearchServiceProtocol
 
 # Lazy import for SentenceTransformer to avoid heavy loading at module level
 # from sentence_transformers import SentenceTransformer

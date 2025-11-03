@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
 
 
 class TableResult(Sequence):
@@ -44,8 +44,10 @@ class TableResult(Sequence):
         header: Union[str, int, List[int], List[str], None] = "first",
         index_col=None,
         skip_repeating_headers=None,
+        skiprows: Optional[Union[int, Iterable[int]]] = None,
         keep_blank: bool = False,
-        **kwargs,
+        dtype: Optional[Any] = None,
+        copy: Optional[bool] = None,
     ):
         """Convert to *pandas* DataFrame.
 
@@ -64,12 +66,19 @@ class TableResult(Sequence):
             Whether to remove body rows that exactly match the header row(s).
             Defaults to True when header is truthy, False otherwise.
             Useful for PDFs where headers repeat throughout the table body.
+        skiprows : int | Iterable[int], optional
+            Remove the specified row indices before header resolution. When an integer is
+            provided, the first ``skiprows`` rows are dropped. When an iterable is supplied,
+            those positional indices are dropped.
         keep_blank : bool, default False
             Whether to preserve empty strings ('') as-is in the DataFrame.
             When False (default), empty cells become pd.NA for better pandas integration
             with numerical operations and missing data functions (.dropna(), .fillna(), etc.).
             When True, empty strings are preserved as empty strings.
-        **kwargs  : forwarded to :pyclass:`pandas.DataFrame`.
+        dtype : Any, optional
+            Optional dtype forwarded to :class:`pandas.DataFrame`.
+        copy : bool, optional
+            When provided, forwarded to :class:`pandas.DataFrame`.
         """
         try:
             import pandas as pd  # type: ignore
@@ -78,7 +87,13 @@ class TableResult(Sequence):
                 "pandas is required for TableResult.to_df(); install via `pip install pandas`."
             ) from exc
 
-        rows = self._rows
+        rows = list(self._rows)
+
+        if skiprows is not None:
+            skip_indices = self._normalize_skiprows(skiprows)
+            if skip_indices:
+                rows = [row for idx, row in enumerate(rows) if idx not in skip_indices]
+
         if not rows:
             return pd.DataFrame()
 
@@ -172,12 +187,19 @@ class TableResult(Sequence):
             if header_cols != max_cols:
                 # Column count mismatch - fallback to no header
                 hdr = None
-                body = self._rows  # Use all rows as body
+                body = rows  # Use available rows as body
 
         # Handle empty list case - pandas needs None not empty list
         if isinstance(hdr, list) and len(hdr) == 0:
             hdr = None
-        df = pd.DataFrame(body, columns=hdr)
+
+        df_kwargs: Dict[str, Any] = {}
+        if dtype is not None:
+            df_kwargs["dtype"] = dtype
+        if copy is not None:
+            df_kwargs["copy"] = copy
+
+        df = pd.DataFrame(body, columns=hdr, **df_kwargs)
 
         # Convert empty strings to NaN by default
         if not keep_blank:
@@ -188,8 +210,6 @@ class TableResult(Sequence):
                 df.columns[index_col] if isinstance(index_col, int) else index_col, inplace=True
             )
 
-        if kwargs:
-            df = pd.DataFrame(df, **kwargs)
         return df
 
     # ------------------------------------------------------------------
@@ -204,3 +224,23 @@ class TableResult(Sequence):
     def __repr__(self) -> str:  # noqa: D401 (simple)
         preview = "…" if len(self._rows) > 5 else ""
         return f"TableResult(rows={len(self._rows)}{preview})"
+
+    @staticmethod
+    def _normalize_skiprows(skiprows: Union[int, Iterable[int]]) -> List[int]:
+        """Normalise skiprows to a sorted, unique list of non-negative indices."""
+        if isinstance(skiprows, int):
+            if skiprows < 0:
+                raise ValueError("skiprows must be >= 0 when provided as an integer.")
+            return list(range(skiprows))
+
+        if isinstance(skiprows, Iterable) and not isinstance(skiprows, (str, bytes)):
+            indices = set()
+            for item in skiprows:
+                if not isinstance(item, int):
+                    raise TypeError("skiprows iterable must contain integers only.")
+                if item < 0:
+                    raise ValueError("skiprows iterable cannot contain negative values.")
+                indices.add(item)
+            return sorted(indices)
+
+        raise TypeError("skiprows must be an integer or an iterable of integers.")

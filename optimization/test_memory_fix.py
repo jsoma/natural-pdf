@@ -9,8 +9,6 @@ This test verifies that:
 """
 
 import gc
-import os
-import sys
 from pathlib import Path
 
 import psutil
@@ -91,7 +89,7 @@ class TestCharacterMemoryFix:
         memory_used = memory_after - memory_before
 
         # Log the memory usage for analysis
-        print(f"\nMemory usage analysis:")
+        print("\nMemory usage analysis:")
         print(f"Characters loaded: {len(chars)}")
         print(f"Words loaded: {len(words)}")
         print(f"Memory used: {memory_used:.2f} MB")

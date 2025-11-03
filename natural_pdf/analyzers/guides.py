@@ -1,14 +1,11 @@
 """Guide system for table extraction and layout analysis."""
 
-import json
 import logging
 from collections import UserList
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw
-
-from natural_pdf.utils.layout import merge_bboxes
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page

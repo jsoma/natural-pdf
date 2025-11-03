@@ -2,8 +2,6 @@
 Comprehensive test for the get_sections zero-height fix.
 """
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion
@@ -106,7 +104,7 @@ def test_implicit_start_not_paired_with_source_end():
     end_elements = page.find_all("rect[fill=#f3f1f1]")[:2]
 
     if len(end_elements) >= 2:
-        print(f"\nEnd elements:")
+        print("\nEnd elements:")
         for i, elem in enumerate(end_elements):
             print(f"  End {i}: top={elem.top:.1f}, bottom={elem.bottom:.1f}")
 

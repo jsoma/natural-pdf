@@ -2,15 +2,13 @@
 Utilities for packaging data for external processes, like correction tasks.
 """
 
-import base64
-import io
 import json
 import logging
 import os
 import shutil
 import tempfile
 import zipfile
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from tqdm import tqdm
 

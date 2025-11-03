@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """Test real-world Arabic text use cases with natural-pdf."""
 
-import time
 import unittest
+
+import pytest
 
 from natural_pdf import PDF
 
 
+@pytest.mark.slow
 class TestArabicPDF(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        start = time.time()
         cls.pdf = PDF("pdfs/arabic.pdf")
         cls.page = cls.pdf.pages[0]
-        cls.load_time = time.time() - start
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "pdf"):
+            cls.pdf.close()
 
     def test_text_extraction(self):
         text = self.page.extract_text()
@@ -31,7 +36,6 @@ class TestArabicPDF(unittest.TestCase):
             ("العدد", "issue"),
         ]
         for term, _ in search_terms:
-            print("term", term, "translation", _)
             with self.subTest(term=term):
                 matches = self.page.find_all(f'text:contains("{term}")')
                 self.assertGreater(len(matches), 0, f"No matches found for term: {term}")
@@ -86,11 +90,3 @@ class TestArabicPDF(unittest.TestCase):
         found_2202 = self.page.find_all("text:contains(2202)")
         self.assertGreater(len(found_2022), 0, "Expected to find '2022', but found none")
         self.assertEqual(len(found_2202), 0, "Found reversed '2202', possible BiDi error")
-        for w in found_2022:
-            print(f"  '2022' sample: '{w.text}' at ({w.x0:.1f}, {w.top:.1f})")
-        for w in found_2202:
-            print(f"  '2202' sample: '{w.text}' at ({w.x0:.1f}, {w.top:.1f})")
-
-
-if __name__ == "__main__":
-    unittest.main()

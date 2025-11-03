@@ -108,7 +108,7 @@ def find_local_pdf(submission_id: str, pdf_url: Optional[str] = None) -> Optiona
                         dest_path, "wb"
                     ) as f:
                         f.write(resp.read())
-                except Exception as e:
+                except Exception:
                     # Fallback: try requests if available (venv usually has it)
                     try:
                         import requests

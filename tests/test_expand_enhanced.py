@@ -1,7 +1,5 @@
 """Test enhanced expand() method functionality."""
 
-import pytest
-
 import natural_pdf as npdf
 
 

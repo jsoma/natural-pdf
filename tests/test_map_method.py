@@ -3,8 +3,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 

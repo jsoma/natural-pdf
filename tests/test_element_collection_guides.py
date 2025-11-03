@@ -1,7 +1,5 @@
 """Test that ElementCollection works correctly with guides.from_content."""
 
-from unittest.mock import Mock
-
 import pytest
 
 from natural_pdf.analyzers.guides import Guides

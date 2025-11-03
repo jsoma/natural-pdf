@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test the new guides.extract_table() method."""
 
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 

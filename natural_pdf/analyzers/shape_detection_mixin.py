@@ -1,8 +1,8 @@
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 from scipy.ndimage import binary_closing, binary_opening, find_objects, gaussian_filter1d
 from scipy.ndimage import label as nd_label
 from scipy.signal import find_peaks
@@ -10,13 +10,8 @@ from sklearn.cluster import MiniBatchKMeans
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-    from natural_pdf.core.page_collection import PageCollection
-    from natural_pdf.core.pdf import PDF
-    from natural_pdf.elements.element_collection import ElementCollection
-    from natural_pdf.elements.line import LineElement
 
     # from natural_pdf.elements.rect import RectangleElement # Removed
-    from natural_pdf.elements.region import Region
 
 logger = logging.getLogger(__name__)
 
@@ -1158,8 +1153,6 @@ class ShapeDetectionMixin:
                 including black ones.
         """
         import numpy as np
-        from scipy.ndimage import find_objects
-        from scipy.ndimage import label as nd_label
 
         # Acquire raster image & scale info
         cv_image, scale_factor, origin_offset_pdf, page_obj = self._get_image_for_detection(

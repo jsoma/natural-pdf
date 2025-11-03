@@ -1,5 +1,4 @@
 import argparse
-import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -8,7 +7,7 @@ from rich.console import Console
 
 from .analyser import BadPDFAnalyzer, extract_page_hints
 from .reporter import save_json
-from .utils import find_local_pdf, slugify
+from .utils import find_local_pdf
 
 console = Console()
 

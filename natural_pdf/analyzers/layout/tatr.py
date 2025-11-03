@@ -1,9 +1,7 @@
 # layout_detector_tatr.py
 import importlib.util
 import logging
-import os
-import tempfile
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from PIL import Image, ImageEnhance
 

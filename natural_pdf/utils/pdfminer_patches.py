@@ -6,7 +6,6 @@ natural_pdf is imported.
 """
 
 import logging
-from typing import List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ Main describe functions for pages, collections, and regions.
 
 import logging
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, List
 
 from .elements import (
     describe_line_elements,

@@ -121,7 +121,7 @@ def test_occurrence_example():
         sections_start = pdf.get_sections("text:contains(Occurrence)", include_boundaries="start")
         sections_none = pdf.get_sections("text:contains(Occurrence)", include_boundaries="none")
 
-        print(f"\nSections found:")
+        print("\nSections found:")
         print(f"  'both':  {len(sections_both)}")
         print(f"  'start': {len(sections_start)}")
         print(f"  'none':  {len(sections_none)}")
@@ -137,7 +137,7 @@ def test_occurrence_example():
             has_occurrence_both = "Occurrence" in text_both
             has_occurrence_none = "Occurrence" in text_none
 
-            print(f"\n'Occurrence' in first section:")
+            print("\n'Occurrence' in first section:")
             print(f"  'both':  {has_occurrence_both}")
             print(f"  'none':  {has_occurrence_none}")
 

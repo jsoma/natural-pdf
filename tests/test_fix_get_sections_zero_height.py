@@ -41,7 +41,7 @@ def test_get_sections_with_end_only_fixed():
 
             # Debug info for small sections
             if section.height < 10:
-                print(f"    Small section detected!")
+                print("    Small section detected!")
                 print(f"    BBox: {section.bbox}")
                 if hasattr(section, "start_element"):
                     print(f"    Start element: {section.start_element}")

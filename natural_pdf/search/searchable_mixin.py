@@ -1,7 +1,6 @@
-import hashlib  # For hashing content
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Generator, Iterable, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 
 # Now import the flag from the canonical source - this import should always work
 
@@ -166,7 +165,7 @@ class SearchableMixin(ABC):
 
             # Proceed with indexing if checks passed or not applicable
             logger.info(
-                f"index=True: Proceeding to index collection immediately after search initialization."
+                "index=True: Proceeding to index collection immediately after search initialization."
             )
             self._perform_indexing(force_reindex=force_reindex, embedder_device=embedder_device)
 

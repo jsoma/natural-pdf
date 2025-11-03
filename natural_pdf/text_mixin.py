@@ -26,19 +26,24 @@ class TextMixin:  # pylint: disable=too-few-public-methods
     # ---------------------------------------------------------------------
     # Back-compat shim
     # ---------------------------------------------------------------------
-    def correct_ocr(self, *args, selector: str = "text[source=ocr]", **kwargs):  # type: ignore[override]
-        """Backward-compatibility wrapper that forwards to *update_text*.
+    def correct_ocr(
+        self,
+        transform: Callable[[Any], Optional[str]],
+        *,
+        apply_exclusions: bool = False,
+    ) -> "TextMixin":
+        """Backward-compatibility wrapper that applies the callback to OCR text only.
 
-        Parameters
-        ----------
-        *args, **kwargs
-            Forwarded verbatim to :py:meth:`update_text` (after injecting the
-            ``selector`` default shown above).
+        Args:
+            transform: Callback invoked for each OCR element.
+            apply_exclusions: Whether exclusion regions should be honoured.
         """
 
-        # Delegate – subclasses may have overridden *update_text* with a richer
-        # signature so we pass everything through untouched.
-        return self.update_text(*args, selector=selector, **kwargs)  # type: ignore[arg-type]
+        return self.update_text(
+            transform=transform,
+            selector="text[source=ocr]",
+            apply_exclusions=apply_exclusions,
+        )
 
     # ------------------------------------------------------------------
     # Generic fallback implementation
@@ -49,8 +54,7 @@ class TextMixin:  # pylint: disable=too-few-public-methods
         *,
         selector: str = "text",
         apply_exclusions: bool = False,
-        **_,
-    ):
+    ) -> "TextMixin":
         """Generic implementation that works for any object exposing *find_all*.
 
         Classes that require more sophisticated behaviour (parallelism, page

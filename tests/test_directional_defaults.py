@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test the new default height/width values for directional methods."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

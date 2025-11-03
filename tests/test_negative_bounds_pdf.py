@@ -1,11 +1,22 @@
 """Test handling of PDFs with negative bounds in pdfplumber."""
 
+from pathlib import Path
+
 import pytest
 
 from natural_pdf import PDF
 
+PDF_PATH = Path("pdfs/pak-ks-expenses.pdf")
 
-def test_extract_table_with_negative_bounds():
+
+@pytest.fixture(scope="module")
+def expenses_pdf_path():
+    if not PDF_PATH.exists():
+        pytest.skip("Local copy of pak-ks expenses PDF is missing")
+    return str(PDF_PATH)
+
+
+def test_extract_table_with_negative_bounds(expenses_pdf_path):
     """Test that extract_table works with PDFs that have negative bounds in pdfplumber.
 
     Some PDFs have page bounds that start with negative coordinates in pdfplumber,
@@ -13,7 +24,7 @@ def test_extract_table_with_negative_bounds():
     """
     # This specific PDF has pdfplumber bounds of approximately:
     # (-14.4, -14.4, 827.28, 580.8) instead of (0, 0, 841.68, 595.2)
-    pdf = PDF("https://www.pak-ks.org/desk/inc/media/EB62887E-EDF3-4CE4-B4D5-DEC69D53A2EF.pdf")
+    pdf = PDF(expenses_pdf_path)
     page = pdf.pages[0]
 
     # This should not raise a ValueError about bounding box not being within parent
@@ -35,19 +46,24 @@ def test_extract_table_with_negative_bounds():
     # Should either extract a table or return None, but not raise an error
     assert region_table is None or len(region_table) >= 0
 
+    pdf.close()
 
-def test_region_crop_with_out_of_bounds():
+
+def test_region_crop_with_out_of_bounds(expenses_pdf_path):
     """Test that regions handle out-of-bounds cropping gracefully."""
-    pdf = PDF("https://www.pak-ks.org/desk/inc/media/EB62887E-EDF3-4CE4-B4D5-DEC69D53A2EF.pdf")
-    page = pdf.pages[0]
+    pdf = PDF(expenses_pdf_path)
+    try:
+        page = pdf.pages[0]
 
-    # Create a region that definitely extends beyond any reasonable page bounds
-    huge_region = page.create_region(-100, -100, 2000, 2000)
+        # Create a region that definitely extends beyond any reasonable page bounds
+        huge_region = page.create_region(-100, -100, 2000, 2000)
 
-    # Should handle gracefully without errors
-    table = huge_region.extract_table()
-    assert table is None or len(table) >= 0
+        # Should handle gracefully without errors
+        table = huge_region.extract_table()
+        assert table is None or len(table) >= 0
 
-    # Test with method='lattice' as well (uses different code path)
-    table_lattice = huge_region.extract_table(method="lattice")
-    assert table_lattice is None or len(table_lattice) >= 0
+        # Test with method='lattice' as well (uses different code path)
+        table_lattice = huge_region.extract_table(method="lattice")
+        assert table_lattice is None or len(table_lattice) >= 0
+    finally:
+        pdf.close()

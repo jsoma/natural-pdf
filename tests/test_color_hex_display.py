@@ -7,12 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from natural_pdf.utils.color_utils import (
-    COLOR_ATTRIBUTES,
-    format_color_value,
-    is_color_attribute,
-    rgb_to_hex,
-)
+from natural_pdf.utils.color_utils import format_color_value, is_color_attribute, rgb_to_hex
 
 
 class TestColorUtils:

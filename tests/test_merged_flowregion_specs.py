@@ -1,7 +1,5 @@
 """Test that overlapping FlowRegions are properly merged in render specs."""
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region

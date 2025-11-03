@@ -2,11 +2,9 @@
 Visualization utilities for natural-pdf.
 """
 
-import io
 import itertools  # Added for cycling
-import math
 import random
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pypdfium2
 from PIL import Image, ImageDraw, ImageFont
@@ -36,7 +34,6 @@ DEFAULT_FILL_ALPHA = 100
 
 # Add quantitative color mapping functionality
 import matplotlib.cm as cm
-import matplotlib.pyplot as plt
 
 
 class ColorManager:
@@ -202,7 +199,6 @@ def create_colorbar(
     Returns:
         PIL Image with the color bar
     """
-    import numpy as np
 
     # Get value range
     vmin = min(values)

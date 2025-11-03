@@ -1,5 +1,4 @@
 import importlib
-import os
 import sys
 
 import pytest
@@ -11,13 +10,13 @@ if sys.platform.startswith("win"):
         allow_module_level=True,
     )
 
+pytestmark = [pytest.mark.optional_deps, pytest.mark.ocr, pytest.mark.slow]
+
 from natural_pdf import PDF, PDFCollection  # Import PDFCollection
-from natural_pdf.core.page import Page
 
 # --- Fixtures --- #
 
 # Define PDF paths relative to the project root (where pytest is usually run)
-TEST_PDF_URL = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf"
 NEEDS_OCR_PDF_PATH = "pdfs/tiny-ocr.pdf"
 STANDARD_PDF_PATH = "pdfs/01-practice.pdf"
 

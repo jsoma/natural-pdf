@@ -45,7 +45,7 @@ def test_merge_basic():
         assert merged.top <= elem.top, "Merged region should encompass element's top"
         assert merged.bottom >= elem.bottom, "Merged region should encompass element's bottom"
 
-    print(f"✓ Basic merge test passed")
+    print("✓ Basic merge test passed")
 
 
 def test_merge_scattered_elements():
@@ -78,7 +78,7 @@ def test_merge_scattered_elements():
     assert merged.top <= min(e.top for e in scattered)
     assert merged.bottom >= max(e.bottom for e in scattered)
 
-    print(f"✓ Scattered elements merge test passed")
+    print("✓ Scattered elements merge test passed")
 
 
 def test_merge_errors():
@@ -89,7 +89,7 @@ def test_merge_errors():
     with pytest.raises(ValueError, match="empty"):
         empty.merge()
 
-    print(f"✓ Error handling test passed")
+    print("✓ Error handling test passed")
 
 
 def test_merge_vs_dissolve():
@@ -126,7 +126,7 @@ def test_merge_vs_dissolve():
             assert merged.top <= region.top
             assert merged.bottom >= region.bottom
 
-    print(f"✓ Merge vs dissolve comparison passed")
+    print("✓ Merge vs dissolve comparison passed")
 
 
 def test_merge_visual():
@@ -170,13 +170,13 @@ def test_merge_visual():
     img1 = scattered.show(color="red")
     if img1:
         img1.save(output_dir / "merge_before.png")
-        print(f"✓ Saved scattered elements: temp/merge_before.png")
+        print("✓ Saved scattered elements: temp/merge_before.png")
 
     # Show merged region
     img2 = merged.show(color="blue")
     if img2:
         img2.save(output_dir / "merge_after.png")
-        print(f"✓ Saved merged region: temp/merge_after.png")
+        print("✓ Saved merged region: temp/merge_after.png")
 
 
 if __name__ == "__main__":

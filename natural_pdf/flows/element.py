@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page as PhysicalPage  # For type checking physical_object.page
@@ -112,10 +112,6 @@ class FlowElement:
     ) -> "FlowRegion":
         # Ensure correct import for creating new PhysicalRegion instances if needed
         from natural_pdf.elements.region import Region as PhysicalRegion_Class  # Runtime import
-
-        from .region import (  # Runtime import for return if not stringized, but stringizing is safer
-            FlowRegion,
-        )
 
         collected_constituent_regions: List[PhysicalRegion_Class] = (
             []

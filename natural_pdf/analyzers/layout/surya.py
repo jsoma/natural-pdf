@@ -1,10 +1,7 @@
 # layout_detector_surya.py
-import copy
 import importlib.util
 import logging
-import os
-import tempfile
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from PIL import Image
 

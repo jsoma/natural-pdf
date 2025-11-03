@@ -1,8 +1,6 @@
 import copy
 import logging
-from typing import Any, Dict, List, Optional, Union
-
-from PIL import Image
+from typing import List, Optional
 
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import (
@@ -208,7 +206,7 @@ class LayoutAnalyzer:
         )
 
         # --- Call Layout Manager (ALWAYS with options object) ---
-        logger.debug(f"Calling Layout Manager with final options object.")
+        logger.debug("Calling Layout Manager with final options object.")
         try:
             # ALWAYS pass the constructed/modified options object
             detections = self._layout_manager.analyze_layout(
@@ -306,9 +304,7 @@ class LayoutAnalyzer:
 
         # --- Auto-create cells if requested by TATR options ---
         if isinstance(final_options, TATRLayoutOptions) and final_options.create_cells:
-            logger.info(
-                f"  Option create_cells=True detected for TATR. Attempting cell creation..."
-            )
+            logger.info("  Option create_cells=True detected for TATR. Attempting cell creation...")
             created_cell_count = 0
             for region in layout_regions:
                 # Only attempt on regions identified as tables by the TATR model
@@ -322,6 +318,6 @@ class LayoutAnalyzer:
                         logger.warning(
                             f"    Error calling create_cells for table region {region.bbox}: {cell_error}"
                         )
-            logger.info(f"  Finished cell creation process triggered by options.")
+            logger.info("  Finished cell creation process triggered by options.")
 
         return layout_regions

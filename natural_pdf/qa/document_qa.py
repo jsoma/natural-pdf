@@ -3,7 +3,7 @@ import logging
 import os
 import tempfile
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -49,7 +49,11 @@ class DocumentQA:
     leveraging the spatial layout information from PDF pages.
     """
 
-    def __init__(self, model_name: str = "impira/layoutlm-document-qa", device: str = None):
+    def __init__(
+        self,
+        model_name: str = "impira/layoutlm-document-qa",
+        device: Optional[str] = None,
+    ):
         """
         Initialize the Document QA engine.
 

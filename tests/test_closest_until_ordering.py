@@ -1,5 +1,3 @@
-import pytest
-
 from natural_pdf import PDF
 
 
@@ -42,7 +40,7 @@ def test_closest_ordering_demonstration():
 
     # Search for "Durham" which has exact matches
     matches = page.find_all("text:closest(Durham@0.3)")
-    print(f"\nAll Durham matches:")
+    print("\nAll Durham matches:")
     for i, m in enumerate(matches[:5]):
         print(f"  {i}: '{m.extract_text()}' at y={m.top}")
 

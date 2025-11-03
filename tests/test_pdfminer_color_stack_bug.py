@@ -1,7 +1,5 @@
 """Test demonstrating the exact pdfminer.six color stack bug."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

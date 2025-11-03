@@ -6,7 +6,7 @@ import logging
 import os
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, List, Union
 from xml.etree.ElementTree import Element as ETElement
 from xml.etree.ElementTree import SubElement
 
@@ -352,14 +352,14 @@ def create_searchable_pdf(
                 logger.debug(f"  Image saved to {img_path} ({img_width}x{img_height})")
 
                 # 2. Generate hOCR
-                logger.debug(f"  Generating hOCR...")
+                logger.debug("  Generating hOCR...")
                 hocr_content = _generate_hocr_for_page(page, img_width, img_height)
                 with open(hocr_path, "w", encoding="utf-8") as f:
                     f.write(hocr_content)
                 logger.debug(f"  hOCR saved to {hocr_path}")
 
                 # 3. Use HocrTransform to create searchable PDF page
-                logger.debug(f"  Running HocrTransform...")
+                logger.debug("  Running HocrTransform...")
                 hocr_transform = HocrTransform(hocr_filename=hocr_path, dpi=dpi)
                 # Pass image_filename explicitly
                 hocr_transform.to_pdf(out_filename=pdf_page_path, image_filename=img_path)

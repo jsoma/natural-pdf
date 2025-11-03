@@ -1,16 +1,18 @@
-import os
 from pathlib import Path
 
 import pytest
 
 from natural_pdf import PDF
 
+PRACTICE_PATH = Path("pdfs/01-practice.pdf")
 
-def test_pdf_loading_from_url():
-    """Tests if a PDF can be loaded successfully from a URL."""
-    url = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf"
 
-    pdf = PDF(url)
+def test_pdf_loading_from_path():
+    """Tests if a PDF can be loaded successfully from a local path."""
+    if not PRACTICE_PATH.exists():
+        pytest.skip("Local practice PDF is missing")
+
+    pdf = PDF(str(PRACTICE_PATH))
     try:
         assert pdf is not None
         assert len(pdf.pages) > 0, "PDF should have at least one page"
@@ -57,9 +59,7 @@ def test_pdf_pages_access(practice_pdf):
 
 def test_pdf_close():
     """Tests if PDF can be closed properly."""
-    url = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf"
-
-    pdf = PDF(url)
+    pdf = PDF(str(PRACTICE_PATH))
     pdf.close()
 
     # Additional checks could be added if the PDF class exposes a way
@@ -68,9 +68,7 @@ def test_pdf_close():
 
 def test_pdf_context_manager():
     """Tests if PDF works with context manager."""
-    url = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf"
-
-    with PDF(url) as pdf:
+    with PDF(str(PRACTICE_PATH)) as pdf:
         assert pdf is not None
         assert len(pdf.pages) > 0
 

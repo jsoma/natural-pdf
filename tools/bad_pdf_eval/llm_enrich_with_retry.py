@@ -23,17 +23,7 @@ from pydantic import BaseModel, Field
 from tools.bad_pdf_eval.evaluate_quality import analyze_code_quality
 
 # Import existing functions and classes
-from tools.bad_pdf_eval.llm_enrich import (
-    CHEATSHEET_PATH,
-    DECISION_TREE_PATH,
-    EVAL_DIR,
-    WORKFLOWS_PATH,
-    DocOutput,
-    build_pdf_prompt,
-    build_prompt,
-    img_to_b64_jpeg,
-    read_md,
-)
+from tools.bad_pdf_eval.llm_enrich import EVAL_DIR, DocOutput, build_pdf_prompt
 
 # Global variable
 FORCE = False

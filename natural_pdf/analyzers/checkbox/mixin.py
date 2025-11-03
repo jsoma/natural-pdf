@@ -1,7 +1,7 @@
 """Checkbox detection mixin for Page and Region classes."""
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 if TYPE_CHECKING:
     from natural_pdf.analyzers.checkbox.checkbox_options import CheckboxOptions

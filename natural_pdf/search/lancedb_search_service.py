@@ -1,15 +1,13 @@
 import logging
-import os
-import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional
 
 import lancedb
 import pyarrow as pa
 
 from .search_options import BaseSearchOptions
-from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+from .search_service_protocol import Indexable, SearchServiceProtocol
 
 # Lazy import for SentenceTransformer to avoid heavy loading at module level
 # from sentence_transformers import SentenceTransformer

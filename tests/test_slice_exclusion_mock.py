@@ -1,10 +1,9 @@
 """Test exclusion handling with slices using mocks."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-import natural_pdf as npdf
 from natural_pdf.core.pdf import _LazyPageList
 
 

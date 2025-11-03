@@ -1,12 +1,12 @@
-"""Test visual similarity search functionality"""
+"""Test visual template matching functionality"""
 
 import pytest
 
 from natural_pdf import PDF
 
 
-class TestFindSimilar:
-    """Test the find_similar method for visual pattern matching"""
+class TestMatchTemplate:
+    """Test the match_template method for visual pattern matching"""
 
     def test_find_similar_exact_match(self):
         """Test finding exact matches of the same image"""
@@ -17,7 +17,7 @@ class TestFindSimilar:
         template = images[0]
 
         # Find similar images
-        matches = pdf.find_similar(template)
+        matches = pdf.match_template(template)
 
         # Should find at least 2 matches (itself and image[4])
         assert len(matches) >= 2
@@ -35,7 +35,7 @@ class TestFindSimilar:
         template = images[0]
 
         # Find similar images - with low resolution, may need lower confidence
-        matches = pdf.find_similar(template, confidence=0.6)
+        matches = pdf.match_template(template, confidence=0.6)
 
         # Should find at least the original and one duplicate
         assert len(matches) >= 2
@@ -49,7 +49,7 @@ class TestFindSimilar:
         template = images[0]
 
         # Find similar images - at low resolution, grayscale may not match perfectly
-        matches = pdf.find_similar(template, confidence=0.6)
+        matches = pdf.match_template(template, confidence=0.6)
 
         # Should find at least 2 matches
         assert len(matches) >= 2
@@ -67,7 +67,7 @@ class TestFindSimilar:
         template = images[2]
 
         # Find similar images - use higher confidence for different image
-        matches = pdf.find_similar(template, confidence=0.85)
+        matches = pdf.match_template(template, confidence=0.85)
 
         # Should find few matches (may include itself and some false positives at low res)
         assert len(matches) <= 2  # At most itself and maybe one false positive
@@ -77,7 +77,7 @@ class TestFindSimilar:
         pdf = PDF("pdfs/classified.pdf")
         template = pdf.find("image")
 
-        matches = pdf.find_similar(template)
+        matches = pdf.match_template(template)
 
         # Test collection behavior
         assert len(matches) > 0
@@ -106,7 +106,7 @@ class TestFindSimilar:
         template_region = img.expand(10)  # Slightly larger region
 
         # Should still find matches - use old defaults for compatibility
-        matches = pdf.find_similar(template_region, confidence=0.75, hash_size=6, sizes=0.2)
+        matches = pdf.match_template(template_region, confidence=0.75, hash_size=6, sizes=0.2)
         assert len(matches) >= 2
 
     def test_find_similar_multiple_examples(self):
@@ -118,7 +118,7 @@ class TestFindSimilar:
         templates = [images[0], images[1]]
 
         # Find similar to any of the templates - use old defaults for compatibility
-        matches = pdf.find_similar(templates, confidence=0.8, hash_size=6, sizes=0.2)
+        matches = pdf.match_template(templates, confidence=0.8, hash_size=6, sizes=0.2)
 
         # Should find all variations
         assert len(matches) >= 4  # Both templates plus their matches
@@ -128,7 +128,7 @@ class TestFindSimilar:
         pdf = PDF("pdfs/classified.pdf")
         template = pdf.find("image")
 
-        matches = pdf.find_similar(template, confidence=0.7)
+        matches = pdf.match_template(template, confidence=0.7)
         assert len(matches) > 0
 
         # Test regions() returns ElementCollection
@@ -145,3 +145,13 @@ class TestFindSimilar:
 
         # Test show() method exists
         assert hasattr(matches, "show")
+
+    def test_find_similar_deprecated(self):
+        """Ensure the deprecated wrapper still functions."""
+        pdf = PDF("pdfs/classified.pdf")
+        template = pdf.find("image")
+
+        with pytest.deprecated_call():
+            matches = pdf.find_similar(template, show_progress=False)
+
+        assert len(matches) > 0

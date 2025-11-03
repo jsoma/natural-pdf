@@ -54,7 +54,7 @@ def test_zero_height_sections_with_end_only():
                         "page": section.page.index,
                     }
                 )
-                print(f"  ⚠️  ISSUE: Very small height detected!")
+                print("  ⚠️  ISSUE: Very small height detected!")
 
                 # Debug info
                 if hasattr(section, "start_element"):
@@ -80,7 +80,7 @@ def test_zero_height_sections_with_end_only():
                 f"  Section {issue['index']}: height={issue['height']:.6f} on page {issue['page']}"
             )
     else:
-        print(f"\n✅ All sections have reasonable height")
+        print("\n✅ All sections have reasonable height")
 
     # Test should fail if we find any very small sections
     assert len(issues) == 0, f"Found {len(issues)} sections with height <= 1.0"

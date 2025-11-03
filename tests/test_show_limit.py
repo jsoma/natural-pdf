@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Test the limit parameter for show() method on PDFs and page collections."""
 
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from natural_pdf import PDF
 from natural_pdf.core.page_collection import PageCollection

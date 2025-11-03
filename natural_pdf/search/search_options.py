@@ -1,6 +1,6 @@
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Union
 
 # Use object placeholders for external types to avoid direct dependency
 BaseRanker = object

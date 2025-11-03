@@ -1,7 +1,5 @@
 """Test that markers in from_content are processed in spatial order."""
 
-from unittest.mock import Mock
-
 import pytest
 
 from natural_pdf.analyzers.guides import Guides

@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 # Import required classes for the new methods
 # For runtime image manipulation
-from PIL import Image as PIL_Image_Runtime
 
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
@@ -300,7 +299,9 @@ class Flow(Visualizable):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional["FlowElement"]:
         """
         Finds the first element within the flow that matches the given selector or text criteria.
@@ -309,12 +310,13 @@ class Flow(Visualizable):
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for. Accepts a single string or an iterable of
-                strings (matches any value).
+            text: Optional text shortcut (equivalent to ``text:contains(...)``).
             apply_exclusions: Whether to respect exclusion zones on the original pages/regions.
             regex: Whether the text search uses regex.
             case: Whether the text search is case-sensitive.
-            **kwargs: Additional filter parameters for the underlying find operation.
+            text_tolerance: Optional dict of text tolerance overrides.
+            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
+            reading_order: Whether to sort matches in reading order when applicable (default: True).
 
         Returns:
             A FlowElement if a match is found, otherwise None.
@@ -325,7 +327,9 @@ class Flow(Visualizable):
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
         )
         return results.first if results else None
 
@@ -337,7 +341,9 @@ class Flow(Visualizable):
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "FlowElementCollection":
         """
         Finds all elements within the flow that match the given selector or text criteria.
@@ -393,7 +399,9 @@ class Flow(Visualizable):
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
             )
 
             if not page_matches:
@@ -1299,7 +1307,7 @@ class Flow(Visualizable):
         new_section_on_page_break: bool = False,
         include_boundaries: str = "both",
         orientation: str = "vertical",
-    ) -> "ElementCollection":
+    ) -> "PhysicalElementCollection":
         """
         Extract logical sections from the Flow based on *start* and *end* boundary
         elements, mirroring the behaviour of PDF/PageCollection.get_sections().
@@ -1373,7 +1381,6 @@ class Flow(Visualizable):
         # ------------------------------------------------------------------
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
-        from natural_pdf.flows.element import FlowElement
         from natural_pdf.flows.region import FlowRegion
 
         # Helper to check if element is in segment
@@ -1419,6 +1426,71 @@ class Flow(Visualizable):
         # Sort by segment index, then position
         all_starts.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
         all_ends.sort(key=lambda x: (x[1], x[0].top, x[0].x0))
+
+        # When only end elements are supplied we synthesise implicit start
+        # markers so we can reuse the "start-only" logic below.  This mirrors
+        # the historical behaviour of PageCollection.get_sections which
+        # created implicit starts at the top of the document and immediately
+        # after each end boundary.
+        if not all_starts and all_ends:
+
+            def _create_implicit(segment, position):
+                thickness = 0.1
+                if orientation == "vertical":
+                    top = max(segment.top, min(position, segment.bottom))
+                    bottom = min(segment.bottom, top + thickness)
+                    if bottom <= top:
+                        bottom = min(segment.bottom, top + thickness)
+                        if bottom <= top:
+                            bottom = top
+                    implicit_region = Region(segment.page, (segment.x0, top, segment.x1, bottom))
+                else:
+                    left = max(segment.x0, min(position, segment.x1))
+                    right = min(segment.x1, left + thickness)
+                    if right <= left:
+                        right = min(segment.x1, left + thickness)
+                        if right <= left:
+                            right = left
+                    implicit_region = Region(
+                        segment.page, (left, segment.top, right, segment.bottom)
+                    )
+
+                implicit_region.is_implicit_start = True
+                return implicit_region
+
+            synthetic_starts: List[Tuple[Region, int, Region]] = []
+
+            first_segment = self.segments[0]
+            initial_position = first_segment.top if orientation == "vertical" else first_segment.x0
+            synthetic_starts.append(
+                (
+                    _create_implicit(first_segment, initial_position),
+                    0,
+                    first_segment,
+                )
+            )
+
+            seen_end_ids = set()
+            for end_elem, end_seg_idx, _ in all_ends:
+                if id(end_elem) in seen_end_ids:
+                    continue
+                seen_end_ids.add(id(end_elem))
+
+                position = end_elem.bottom if orientation == "vertical" else end_elem.x1
+                if include_boundaries in ["start", "none"]:
+                    position = end_elem.top if orientation == "vertical" else end_elem.x0
+
+                segment = self.segments[end_seg_idx]
+                synthetic_starts.append(
+                    (
+                        _create_implicit(segment, position),
+                        end_seg_idx,
+                        segment,
+                    )
+                )
+
+            all_starts = synthetic_starts
+            all_ends = []
 
         # If no boundary elements found, return empty collection
         if not all_starts and not all_ends:
@@ -1595,9 +1667,8 @@ class Flow(Visualizable):
                         flow_region._boundary_exclusions = include_boundaries
                         sections.append(flow_region)
 
-        # Case 3: Only end elements (sections from beginning to each end)
+        # Case 3 is handled by synthesising implicit start elements above.
         elif not all_starts and all_ends:
-            # TODO: Handle this case if needed
             pass
 
         return ElementCollection(sections)

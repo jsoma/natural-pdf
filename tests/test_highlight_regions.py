@@ -5,6 +5,7 @@ properly handles multiple regions as elements, not as color parameters.
 """
 
 import logging
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -18,8 +19,15 @@ class TestHighlightRegions:
     @pytest.fixture
     def sample_pdf(self):
         """Load a sample PDF for testing."""
-        pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/multicolumn.pdf")
-        return pdf
+        source = Path("pdfs/multicolumn.pdf")
+        if not source.exists():
+            pytest.skip("Test requires pdfs/multicolumn.pdf fixture")
+
+        pdf = PDF(str(source))
+        try:
+            yield pdf
+        finally:
+            pdf.close()
 
     def test_highlight_multiple_regions(self, sample_pdf, caplog):
         """Test that page.highlight() works with multiple regions."""

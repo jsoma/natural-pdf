@@ -1,6 +1,4 @@
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.text import TextElement

@@ -4,11 +4,12 @@ This test ensures that when crop=True is specified on a region's show() method,
 highlights are automatically disabled (unless explicitly enabled).
 """
 
+from pathlib import Path
+
 import pytest
 from PIL import Image
 
 from natural_pdf import PDF
-from natural_pdf.core.render_spec import RenderSpec
 
 
 class TestRegionShowCropHighlights:
@@ -17,8 +18,15 @@ class TestRegionShowCropHighlights:
     @pytest.fixture
     def sample_pdf(self):
         """Load a sample PDF for testing."""
-        pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/multicolumn.pdf")
-        return pdf
+        source = Path("pdfs/multicolumn.pdf")
+        if not source.exists():
+            pytest.skip("Test requires pdfs/multicolumn.pdf fixture")
+
+        pdf = PDF(str(source))
+        try:
+            yield pdf
+        finally:
+            pdf.close()
 
     def test_show_default_behavior_no_highlights(self, sample_pdf):
         """Test that region.show() default behavior (crop=True) has no highlights."""

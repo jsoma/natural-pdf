@@ -1,9 +1,8 @@
 import argparse
 import subprocess
 import sys
-from importlib.metadata import PackageNotFoundError, distribution
+from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as get_version
-from pathlib import Path
 from typing import Dict
 
 from packaging.requirements import Requirement

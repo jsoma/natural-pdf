@@ -2,13 +2,10 @@
 Centralized service for managing and rendering highlights in a PDF document.
 """
 
-import io
 import logging  # Added
-import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from colour import Color
 from PIL import Image, ImageDraw, ImageFont
 
 # Attempt to import Page for type hinting safely
@@ -1281,7 +1278,7 @@ class HighlightingService:
                 images, columns=columns, gap=gap, background_color=background_color
             )
         else:  # "single" - just return first image
-            logger.warning(f"Multiple specs with layout='single', returning first image only")
+            logger.warning("Multiple specs with layout='single', returning first image only")
             return images[0]
 
     def _render_spec(

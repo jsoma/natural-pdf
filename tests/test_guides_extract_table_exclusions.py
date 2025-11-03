@@ -37,15 +37,15 @@ def test_extract_table_apply_exclusions_parameter():
     try:
         # Default (apply_exclusions=True)
         table1 = guides.extract_table(method="text")
-        print(f"✅ extract_table works with default apply_exclusions")
+        print("✅ extract_table works with default apply_exclusions")
 
         # Explicit True
         table2 = guides.extract_table(method="text", apply_exclusions=True)
-        print(f"✅ extract_table accepts apply_exclusions=True")
+        print("✅ extract_table accepts apply_exclusions=True")
 
         # Explicit False
         table3 = guides.extract_table(method="text", apply_exclusions=False)
-        print(f"✅ extract_table accepts apply_exclusions=False")
+        print("✅ extract_table accepts apply_exclusions=False")
 
     except TypeError as e:
         pytest.fail(f"Parameter not accepted: {e}")

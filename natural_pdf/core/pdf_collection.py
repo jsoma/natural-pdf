@@ -1,26 +1,19 @@
 import concurrent.futures  # Import concurrent.futures
-import copy  # Added for copying options
 import glob as py_glob
 import logging
-import os
-import re  # Added for safe path generation
 import threading  # Import threading for logging thread information
 import time  # Import time for logging timestamps
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
-    Generic,
     Iterable,
-    Iterator,
     List,
     Optional,
     Sequence,
     Set,
     Type,
-    TypeVar,
     Union,
     overload,
 )
@@ -28,10 +21,7 @@ from typing import (
 from PIL import Image
 from tqdm.auto import tqdm
 
-from natural_pdf.exporters.base import FinetuneExporter
-
 # Need to import this utility
-from natural_pdf.utils.identifiers import generate_short_path_hash
 
 # Set up logger early
 # Configure logging to include thread information
@@ -39,7 +29,6 @@ from natural_pdf.utils.identifiers import generate_short_path_hash
 logger = logging.getLogger(__name__)
 
 from natural_pdf.core.pdf import PDF
-from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.vision.mixin import VisualSearchMixin
 
@@ -51,10 +40,10 @@ try:
         SearchServiceProtocol,
     )
     from natural_pdf.search.searchable_mixin import SearchableMixin
-except ImportError as e:
+except ImportError:
     logger_init = logging.getLogger(__name__)
     logger_init.warning(
-        f"Failed to import Haystack components. Semantic search functionality disabled.",
+        "Failed to import Haystack components. Semantic search functionality disabled.",
     )
 
     # Dummy definitions
@@ -288,8 +277,7 @@ class PDFCollection(
             return None
 
         # Import here to avoid circular imports
-        import numpy as np
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import ImageDraw, ImageFont
 
         # Calculate pages per PDF if total limit is set
         if limit and not per_pdf_limit:

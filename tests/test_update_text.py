@@ -1,5 +1,3 @@
-import pytest
-
 from natural_pdf import PDF
 
 

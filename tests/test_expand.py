@@ -1,7 +1,5 @@
 """Test the expand() method with single positional argument support."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

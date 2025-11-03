@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -181,4 +180,4 @@ def pytest_runtest_makereport(item, call):
                 # Convert failure to skip
                 report.outcome = "skipped"
                 report.wasxfail = False
-                report.longrepr = f"Skipped due to Windows torch DLL issue"
+                report.longrepr = "Skipped due to Windows torch DLL issue"

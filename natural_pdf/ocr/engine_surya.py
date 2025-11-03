@@ -1,9 +1,7 @@
 # ocr_engine_surya.py
 import importlib.util
-import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Optional
 
-import numpy as np
 from PIL import Image
 
 from .engine import OCREngine, TextRegion

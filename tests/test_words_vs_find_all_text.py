@@ -1,7 +1,5 @@
 """Test to understand the difference between page.words and page.find_all('text')"""
 
-import pytest
-
 from natural_pdf import PDF
 
 
@@ -79,7 +77,7 @@ def test_words_vs_find_all_text():
     find_all_with_exclusions = page.find_all("text")  # Uses apply_exclusions=True by default
     find_all_no_exclusions = page.find_all("text", apply_exclusions=False)
 
-    print(f"\nWith exclusion for 'Section 1':")
+    print("\nWith exclusion for 'Section 1':")
     print(f"page.words count: {len(words_with_exclusions)}")
     print(f"page.find_all('text') count: {len(find_all_with_exclusions)}")
     print(f"page.find_all('text', apply_exclusions=False) count: {len(find_all_no_exclusions)}")

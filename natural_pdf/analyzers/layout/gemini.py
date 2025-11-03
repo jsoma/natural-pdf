@@ -1,10 +1,8 @@
 # layout_detector_gemini.py
 import base64
-import importlib.util
 import io
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -183,7 +181,7 @@ class GeminiLayoutDetector(LayoutDetector):
             **completion_kwargs,
         )
 
-        logger.debug(f"Gemini response received via OpenAI lib.")
+        logger.debug("Gemini response received via OpenAI lib.")
 
         # --- 4. Process Parsed Response ---
         if not completion.choices:

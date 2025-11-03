@@ -14,10 +14,8 @@ The module includes:
 """
 
 import logging
-import re
 from contextlib import contextmanager
-from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 from pdfplumber.utils.text import WordExtractor
 

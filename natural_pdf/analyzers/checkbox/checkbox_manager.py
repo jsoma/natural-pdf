@@ -1,7 +1,7 @@
 """Manager for checkbox detection engines."""
 
 import logging
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Union
 
 from PIL import Image
 

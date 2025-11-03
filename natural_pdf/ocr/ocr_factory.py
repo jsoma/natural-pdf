@@ -1,6 +1,6 @@
 import importlib.util
 import logging
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict
 
 from .engine import OCREngine
 

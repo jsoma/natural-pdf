@@ -1,12 +1,10 @@
 """Test that Elements can be used directly as exclusions."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
-from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.elements.text import TextElement
 
 
 def test_callable_exclusion_returning_element():

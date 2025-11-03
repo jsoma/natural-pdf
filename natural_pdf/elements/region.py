@@ -8,16 +8,13 @@ from typing import (
     Literal,
     Optional,
     Sequence,
-    Set,
     Tuple,
     Union,
-    overload,
 )
 
-from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes, objects_to_bbox
+from pdfplumber.utils.geometry import get_bbox_overlap
 
 # New Imports
-from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
@@ -36,7 +33,6 @@ from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.elements.base import DirectionalMixin
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
-from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements  # Import utility
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -48,7 +44,6 @@ from natural_pdf.selectors.parser import (
 # ------------------------------------------------------------------
 from natural_pdf.tables import TableResult
 from natural_pdf.text_mixin import TextMixin
-from natural_pdf.utils.locks import pdf_render_lock  # Import the lock
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
@@ -70,13 +65,6 @@ if TYPE_CHECKING:
     from natural_pdf.elements.base import Element  # Added for type hint
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.text import TextElement
-
-# Import OCRManager conditionally to avoid circular imports
-try:
-    from natural_pdf.ocr import OCRManager
-except ImportError:
-    # OCRManager will be imported directly in methods that use it
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +272,6 @@ class Region(
         Returns:
             List containing a single RenderSpec for this region's page
         """
-        from typing import Literal
 
         spec = RenderSpec(page=self.page)
 
@@ -2129,9 +2116,9 @@ class Region(
             Table data as a list of rows, where each row is a list of cell values
         """
         # Find all rows and headers in this table
-        rows = self.page.find_all(f"region[type=table-row][model=tatr]")
-        headers = self.page.find_all(f"region[type=table-column-header][model=tatr]")
-        columns = self.page.find_all(f"region[type=table-column][model=tatr]")
+        rows = self.page.find_all("region[type=table-row][model=tatr]")
+        headers = self.page.find_all("region[type=table-column-header][model=tatr]")
+        columns = self.page.find_all("region[type=table-column][model=tatr]")
 
         # Filter to only include rows/headers/columns that overlap with this table region
         def is_in_table(region):
@@ -2397,40 +2384,18 @@ class Region(
 
     # --- END MODIFIED METHOD --- #
 
-    @overload
     def find(
         self,
+        selector: Optional[str] = None,
         *,
-        text: Union[str, Sequence[str]],
+        text: Optional[Union[str, Sequence[str]]] = None,
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> Optional["Element"]: ...
-
-    @overload
-    def find(
-        self,
-        selector: str,
-        *,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> Optional["Element"]: ...
-
-    def find(
-        self,
-        selector: Optional[str] = None,  # Now optional
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
-        overlap: str = "full",  # How elements overlap with the region
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional["Element"]:
         """
         Find the first element in this region matching the selector OR text content.
@@ -2447,8 +2412,11 @@ class Region(
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional parameters for element filtering.
-
+            text_tolerance: Optional mapping of pdfplumber-style tolerance overrides applied
+                temporarily while evaluating the selector.
+            auto_text_tolerance: Optional overrides for automatic tolerance calculation.
+            reading_order: Whether to return the first match according to natural reading order
+                (default: True). When False the raw selector ordering is preserved.
         Returns:
             First matching element or None.
         """
@@ -2460,44 +2428,24 @@ class Region(
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
         )
         return elements.first if elements else None
 
-    @overload
     def find_all(
         self,
+        selector: Optional[str] = None,
         *,
-        text: Union[str, Sequence[str]],
+        text: Optional[Union[str, Sequence[str]]] = None,
         overlap: str = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    @overload
-    def find_all(
-        self,
-        selector: str,
-        *,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,  # Now optional
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
-        overlap: str = "full",  # How elements overlap with the region
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
         """
         Find all elements in this region matching the selector OR text content.
@@ -2514,8 +2462,10 @@ class Region(
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional parameters for element filtering.
-
+            text_tolerance: Optional mapping of pdfplumber-style tolerance overrides applied
+                temporarily while evaluating the selector.
+            auto_text_tolerance: Optional overrides for automatic tolerance calculation.
+            reading_order: Whether to sort matches according to natural reading order (default: True).
         Returns:
             ElementCollection with matching elements.
         """
@@ -2546,9 +2496,6 @@ class Region(
 
         # Normal case: Region is on a single page
         try:
-            # Parse the final selector string
-            selector_obj = parse_selector(effective_selector)
-
             # Get all potentially relevant elements from the page
             # Let the page handle its exclusion logic if needed
             potential_elements = self.page.find_all(
@@ -2556,7 +2503,9 @@ class Region(
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
-                **kwargs,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
             )
 
             # Filter these elements based on the specified containment method
@@ -2933,7 +2882,7 @@ class Region(
         # Create text element if we got text
         if ocr_text is not None:
             # Use the to_text_element method to create the element
-            text_element = self.to_text_element(
+            self.to_text_element(
                 text_content=ocr_text,
                 source_label=source_label,
                 confidence=confidence,
@@ -2982,31 +2931,17 @@ class Region(
         # Sort elements in reading order
         elements.sort(key=lambda e: (e.top, e.x0))
 
-        # Find start index
-        start_idx = 0
-        if start_element:
-            try:
-                start_idx = elements.index(start_element)
-            except ValueError:
-                # Start element not in region, use first element
-                logger.debug("Start element not found in region, using first element.")
-                start_element = elements[0]  # Use the actual first element
-                start_idx = 0
-        else:
-            start_element = elements[0]  # Default start is first element
+        if start_element and start_element not in elements:
+            logger.debug("Start element not found in region, using first element.")
+            start_element = elements[0]
+        elif start_element is None:
+            start_element = elements[0]
 
-        # Find end index
-        end_idx = len(elements) - 1
-        if end_element:
-            try:
-                end_idx = elements.index(end_element)
-            except ValueError:
-                # End element not in region, use last element
-                logger.debug("End element not found in region, using last element.")
-                end_element = elements[-1]  # Use the actual last element
-                end_idx = len(elements) - 1
-        else:
-            end_element = elements[-1]  # Default end is last element
+        if end_element and end_element not in elements:
+            logger.debug("End element not found in region, using last element.")
+            end_element = elements[-1]
+        elif end_element is None:
+            end_element = elements[-1]
 
         # Validate orientation parameter
         if orientation not in ["vertical", "horizontal"]:
@@ -3209,7 +3144,7 @@ class Region(
         self,
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
-        model: str = None,
+        model: Optional[str] = None,
         debug: bool = False,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:

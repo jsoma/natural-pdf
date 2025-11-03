@@ -1,6 +1,6 @@
 """Test that PDF-level exclusions work correctly in find, find_all, and get_elements methods."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 

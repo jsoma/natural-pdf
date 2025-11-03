@@ -56,7 +56,7 @@ def test_include_boundaries_comprehensive():
         assert not has_occurrence_none, "'none' should NOT include any boundary"
 
         # Compare text lengths
-        print(f"\nText lengths:")
+        print("\nText lengths:")
         print(f"  'both': {len(text_both)} chars")
         print(f"  'start': {len(text_start)} chars")
         print(f"  'end': {len(text_end)} chars")
@@ -69,7 +69,7 @@ def test_include_boundaries_comprehensive():
         ), "'start' should have more text than 'end' (includes start boundary)"
 
         # Check bounding boxes
-        print(f"\nBounding boxes:")
+        print("\nBounding boxes:")
         print(f"  'both': {section_both.bbox}")
         print(f"  'start': {section_start.bbox}")
         print(f"  'end': {section_end.bbox}")

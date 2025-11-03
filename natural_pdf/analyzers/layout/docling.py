@@ -3,7 +3,7 @@ import importlib.util
 import logging
 import os
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PIL import Image
 
@@ -154,7 +154,7 @@ class DoclingLayoutDetector(LayoutDetector):
                 # Docling convert returns a Result object with a 'document' attribute
                 result = converter.convert(temp_image_path)
                 docling_doc = result.document  # Store the DoclingDocument
-                self.logger.info(f"Docling conversion complete.")
+                self.logger.info("Docling conversion complete.")
 
                 # Convert Docling document to our detection format
                 detections = self._convert_docling_to_detections(docling_doc, options)

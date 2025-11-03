@@ -10,7 +10,6 @@ from tqdm.auto import tqdm
 from natural_pdf.utils.color_utils import format_color_value
 
 if TYPE_CHECKING:
-    from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
 
 

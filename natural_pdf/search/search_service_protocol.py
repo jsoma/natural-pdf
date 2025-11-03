@@ -1,13 +1,10 @@
 """Defines the protocol for a search service."""
 
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Protocol, Union
-
-from PIL import Image
+from typing import Any, Dict, Iterable, List, Optional, Protocol
 
 # Forward declare SearchOptions to avoid circular import if needed,
 # or import if structure allows (assuming it's safe here)
-from natural_pdf.search.search_options import BaseSearchOptions, SearchOptions
+from natural_pdf.search.search_options import BaseSearchOptions
 
 # Use typing_extensions for Python < 3.8 compatibility if needed,
 # otherwise, typing.Protocol is fine for >= 3.8

@@ -101,14 +101,14 @@ def export_markdown(rows: List[dict]):
             lines.append("\n### Document-level enrichment")
         if r.get("doc_thought"):
             lines.append("**Doc thought process:**")
-            lines.append(f"```")
+            lines.append("```")
             lines.append(r["doc_thought"])
-            lines.append(f"```")
+            lines.append("```")
         if r.get("doc_code"):
             lines.append("**Doc code suggestion:**")
-            lines.append(f"```python")
+            lines.append("```python")
             lines.append(r["doc_code"])
-            lines.append(f"```")
+            lines.append("```")
         if r.get("doc_difficult"):
             lines.append("*Difficult elements*: " + ", ".join(r["doc_difficult"]))
         if r.get("doc_test"):

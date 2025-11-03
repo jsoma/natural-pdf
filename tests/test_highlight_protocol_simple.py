@@ -2,10 +2,6 @@
 Simple tests to verify current behavior and test the highlighting protocol implementation.
 """
 
-from pathlib import Path
-
-import pytest
-
 import natural_pdf as npdf
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.flows.element import FlowElement
@@ -115,7 +111,7 @@ def test_flow_region_structure():
             )
 
         # Check what we need for the protocol
-        print(f"\nFlowRegion attributes:")
+        print("\nFlowRegion attributes:")
         print(f"  has 'page': {hasattr(flow_region, 'page')}")
         print(f"  has 'constituent_regions': {hasattr(flow_region, 'constituent_regions')}")
         print(f"  has 'bbox': {hasattr(flow_region, 'bbox')}")

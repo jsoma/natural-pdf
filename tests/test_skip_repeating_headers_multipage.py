@@ -6,7 +6,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.tables import TableResult
 

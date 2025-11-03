@@ -3,7 +3,7 @@ import copy  # For deep copying options
 import logging
 import threading  # Import threading for lock
 import time  # Import time for timing
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Union
 
 from PIL import Image
 
@@ -19,7 +19,6 @@ from .ocr_options import (
     BaseOCROptions,
     DoctrOCROptions,
     EasyOCROptions,
-    OCROptions,
     PaddleOCROptions,
     SuryaOCROptions,
 )

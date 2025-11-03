@@ -1,14 +1,12 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from PIL import Image
 
 from .results import ClassificationResult
 
 if TYPE_CHECKING:
-    from natural_pdf.core.page import Page
-    from natural_pdf.elements.region import Region
 
     from .manager import ClassificationManager
 

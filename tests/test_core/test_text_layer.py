@@ -76,6 +76,7 @@ def test_remove_text_layer_method():
     pdf.close()
 
 
+@pytest.mark.ocr
 def test_text_layer_false_then_ocr():
     """Test that we can apply OCR to a PDF loaded with text_layer=False."""
     # Skip if OCR dependencies are not available

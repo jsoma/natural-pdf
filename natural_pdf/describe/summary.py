@@ -2,7 +2,7 @@
 Summary objects for describe functionality.
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 
 class ElementSummary:

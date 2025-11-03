@@ -584,7 +584,7 @@ class Judge:
 
         # Get training counts
         counts = self._get_training_counts()
-        print(f"\nTraining examples:")
+        print("\nTraining examples:")
         for label in self.labels:
             count = counts.get(label, 0)
             print(f"  {label}: {count}")
@@ -1152,7 +1152,7 @@ class Judge:
                     break
 
             if not moved:
-                print(f"Region not found in training data")
+                print("Region not found in training data")
             return
 
         # Handle delete or clear training

@@ -2,9 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pdfplumber
-import pytest
-
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
@@ -62,7 +59,7 @@ def test_dissolve_text_elements_with_overlap():
     collection = ElementCollection(elements)
     dissolved = collection.dissolve(padding=5)
 
-    print(f"Original elements:")
+    print("Original elements:")
     for elem in elements:
         print(f"  {elem._obj['text']}: bbox={elem.bbox}")
 
@@ -168,7 +165,7 @@ def test_dissolve_edge_case_thin_overlaps():
     collection = ElementCollection(regions)
     dissolved = collection.dissolve(padding=2)
 
-    print(f"Original regions:")
+    print("Original regions:")
     for r in regions:
         print(f"  {r.label}: {r.bbox}, height={r.bbox[3]-r.bbox[1]}")
 

@@ -4,6 +4,8 @@ import pytest
 
 from natural_pdf import PDF
 
+pytestmark = [pytest.mark.ocr]
+
 
 def test_annotate_basic():
     """Test basic annotate functionality with single attribute."""

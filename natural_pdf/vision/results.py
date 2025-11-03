@@ -1,12 +1,11 @@
-"""Match results for visual similarity search"""
+"""Match results for visual template matching"""
 
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterator, List, Tuple
 
 from natural_pdf.elements.region import Region
 
 if TYPE_CHECKING:
-    from natural_pdf.core.page_collection import PageCollection
-    from natural_pdf.elements.element_collection import ElementCollection
+    pass
 
 
 class Match(Region):
@@ -47,7 +46,7 @@ class MatchResults:
     - The .top(n) method returns the n best matches
 
     Example:
-        >>> matches = page.find_similar(logo_region)
+        >>> matches = page.match_template(logo_region)
         >>> print(f"Found {len(matches)} matches")
         >>>
         >>> # Best match
@@ -103,7 +102,7 @@ class MatchResults:
             New MatchResults with only the top N matches
 
         Example:
-            >>> matches = page.find_similar(logo)
+            >>> matches = page.match_template(logo)
             >>> best_5 = matches.top(5)
             >>> for match in best_5:
             ...     print(f"Confidence: {match.confidence:.3f}")
@@ -182,7 +181,7 @@ class MatchResults:
         if len(self) == 0:
             return "<MatchResults: empty>"
         elif len(self) == 1:
-            return f"<MatchResults: 1 match>"
+            return "<MatchResults: 1 match>"
         else:
             conf_range = (
                 f"{min(m.confidence for m in self):.2f}-{max(m.confidence for m in self):.2f}"

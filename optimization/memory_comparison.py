@@ -9,8 +9,6 @@ This script compares memory usage before and after the optimization by:
 """
 
 import gc
-import os
-import sys
 from pathlib import Path
 
 import psutil
@@ -124,7 +122,7 @@ def test_memory_optimization():
         storage_analysis["memory_efficient_words"] / max(storage_analysis["total_words"], 1) * 100
     )
 
-    print(f"\nOptimization metrics:")
+    print("\nOptimization metrics:")
     print(f"- Duplication ratio: {duplication_ratio:.2f}x")
     print(f"- Words using optimization: {optimization_percentage:.1f}%")
 
@@ -162,7 +160,7 @@ def test_memory_optimization():
             print(
                 f"  - Uses character indices: {len(element._char_indices)} indices -> {len(chars)} chars"
             )
-            print(f"  - Memory optimization: ACTIVE")
+            print("  - Memory optimization: ACTIVE")
 
             # Verify character access works
             if chars:
@@ -173,10 +171,10 @@ def test_memory_optimization():
 
         elif hasattr(element, "_char_dicts") and element._char_dicts:
             print(f"  - Uses character dicts: {len(element._char_dicts)} dicts")
-            print(f"  - Memory optimization: LEGACY MODE")
+            print("  - Memory optimization: LEGACY MODE")
 
         else:
-            print(f"  - No character data available")
+            print("  - No character data available")
 
     print("\n" + "=" * 60)
     print("✅ MEMORY OPTIMIZATION ANALYSIS COMPLETE")

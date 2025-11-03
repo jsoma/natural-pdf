@@ -2,7 +2,7 @@
 Test include_boundaries with a mock setup to verify the fix works.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import natural_pdf as npdf
 from natural_pdf.elements.element_collection import ElementCollection
@@ -139,7 +139,7 @@ def test_get_sections_include_boundaries():
                 ), f"'{boundaries}' should start at first element top"
                 assert (
                     section.bbox[3] == next_header.top
-                ), f"Section should always end at next element top"
+                ), "Section should always end at next element top"
             else:  # "end" or "none"
                 # Should exclude the start element
                 assert (
@@ -147,7 +147,7 @@ def test_get_sections_include_boundaries():
                 ), f"'{boundaries}' should start after first element"
                 assert (
                     section.bbox[3] == next_header.top
-                ), f"Section should always end at next element top"
+                ), "Section should always end at next element top"
 
     print("\n✅ All mock tests passed! include_boundaries parameter is working correctly.")
 

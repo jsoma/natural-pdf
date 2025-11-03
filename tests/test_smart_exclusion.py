@@ -1,8 +1,6 @@
 """Test smart exclusion that uses appropriate method based on element type"""
 
-from unittest.mock import Mock, call, patch
-
-import pytest
+from unittest.mock import Mock
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region

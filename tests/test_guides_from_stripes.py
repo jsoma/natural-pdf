@@ -1,7 +1,5 @@
 """Test guides.from_stripes() functionality."""
 
-from unittest.mock import Mock
-
 import pytest
 
 from natural_pdf.analyzers.guides import Guides

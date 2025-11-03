@@ -1,6 +1,5 @@
 """Test perceptual hash with white masking"""
 
-import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 

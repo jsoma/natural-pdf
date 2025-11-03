@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Test that ElementCollection.show() respects the columns parameter for multi-page collections."""
 
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.text import TextElement

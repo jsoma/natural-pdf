@@ -144,7 +144,7 @@ def process_notebook(
     if not worker_logger.handlers:
         # Log to stderr from workers to potentially separate from main stdout
         handler = logging.StreamHandler(sys.stderr)
-        formatter = logging.Formatter(f"%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         worker_logger.addHandler(handler)
         # Add file handler if specified globally (needs path passed or global access)
@@ -453,7 +453,7 @@ def main():
             full_error = cache_entry.get("error") if cache_entry else "Error details not in cache."
             # Limit printing very long errors to console summary
             if full_error and len(full_error) > 200:
-                print(f"    (Full error details in notebook output or log file if enabled)")
+                print("    (Full error details in notebook output or log file if enabled)")
             elif full_error and error != full_error:  # Print if different from short error shown
                 print(f"    Details: {full_error}")
 
@@ -476,6 +476,6 @@ if __name__ == "__main__":
     try:
         exit_code = main()
         exit(exit_code)
-    except Exception as e:
+    except Exception:
         logger.exception("Unhandled exception during script execution.")
         exit(1)

@@ -1,20 +1,24 @@
-"""Mixin to add visual similarity search to Page/PDF/PDFCollection"""
+"""Mixin to add visual template matching to Page/PDF/PDFCollection"""
+
+from __future__ import annotations
 
 import warnings
-from typing import List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Union
 
-import numpy as np
-from PIL import Image
 from tqdm.auto import tqdm
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.base import Element
+    from natural_pdf.elements.region import Region
+    from natural_pdf.vision.results import MatchResults
 
 
 class VisualSearchMixin:
-    """Add find_similar method to classes that include this mixin"""
+    """Add visual template matching helpers to classes that include this mixin"""
 
-    def find_similar(
+    def match_template(
         self,
         examples: Union["Element", "Region", List[Union["Element", "Region"]]],
-        using: str = "vision",
         confidence: float = 0.6,
         sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
         resolution: int = 72,
@@ -23,46 +27,42 @@ class VisualSearchMixin:
         method: str = "phash",
         max_per_page: Optional[int] = None,
         show_progress: bool = True,
-        **kwargs,
+        mask_threshold: Optional[float] = None,
     ) -> "MatchResults":
         """
-        Find regions visually similar to the given example(s).
+        Match rendered templates against the rendered page/region.
 
         Args:
-            examples: Single element/region or list of examples to search for
-            using: Search method - currently only 'vision' is supported
-            confidence: Minimum similarity score (0-1)
-            sizes: Size variations to search. Can be:
-                   - float: ±percentage (e.g., 0.2 = 80%-120%)
-                   - tuple(min, max): search range with smart logarithmic steps (default: (0.8, 1.2))
-                   - tuple(min, max, step): explicit step size
-                   - list: exact sizes to try (e.g., [0.8, 1.0, 1.2])
-            resolution: Resolution for image comparison (DPI) (default: 72)
-            hash_size: Size of perceptual hash grid (default: 20)
-            step: Step size in pixels for sliding window
-            method: Matching algorithm - "phash" (default) or "template"
-            max_per_page: Maximum matches to return per page
-            show_progress: Show progress bar for multi-page searches (default: True)
-            **kwargs: Additional options including:
-                mask_threshold: For both template and phash methods, pixels >= this value are masked.
-                               For template matching: pixels are ignored in matching (e.g., 0.95)
-                               For phash: pixels are replaced with median before hashing (e.g., 0.95)
+            examples: Single element/region or list of examples whose appearance should be matched.
+            confidence: Minimum similarity score (0-1).
+            sizes: Size variations to search. Accepts a float (±percentage), tuple range, tuple with
+                explicit step, or a list of exact multipliers.
+            resolution: DPI used to render both templates and target pages/regions.
+            hash_size: Perceptual hash grid size (only used when ``method="phash"``).
+            step: Explicit sliding window step in pixels (defaults to 10% of template size).
+            method: Matching algorithm – ``"phash"`` (default) or ``"template"`` for direct correlation.
+            max_per_page: Optional cap on matches returned per page/region.
+            show_progress: Whether to emit a tqdm progress bar while scanning.
+            mask_threshold: Optional threshold (0-1) to treat bright pixels as background in the
+                rendered template; helpful for logos/stamps on white paper.
 
         Returns:
             MatchResults collection
         """
+        from natural_pdf.vision.results import MatchResults  # Local import to avoid circular
+
         warnings.warn(
-            "natural-pdf's visual similarity search (find_similar) is under review and may change "
-            "or be removed; results can be unreliable in the current release.",
+            "natural-pdf's visual template matching remains experimental and currently relies on "
+            "perceptual hash / template matching only; behaviour may change in future releases.",
             UserWarning,
             stacklevel=2,
         )
-        if using != "vision":
-            raise NotImplementedError(f"using='{using}' not yet supported")
 
         # Ensure examples is a list
-        if not isinstance(examples, list):
-            examples = [examples]
+        if isinstance(examples, (tuple, list)):
+            example_list: Sequence[Union["Element", "Region"]] = list(examples)
+        else:
+            example_list = [examples]
 
         from .similarity import VisualMatcher, compute_phash
 
@@ -72,12 +72,11 @@ class VisualSearchMixin:
         # Prepare templates
         templates = []
         # Extract mask_threshold from kwargs for phash
-        mask_threshold = kwargs.get("mask_threshold")
         mask_threshold_255 = (
             int(mask_threshold * 255) if mask_threshold is not None and method == "phash" else None
         )
 
-        for example in examples:
+        for example in example_list:
             # Render the example region/element
             example_image = example.render(resolution=resolution, crop=True)
             template_hash = compute_phash(
@@ -214,7 +213,7 @@ class VisualSearchMixin:
                     method=method,
                     show_progress=False,  # We handle progress ourselves
                     progress_callback=update_progress if progress_bar else None,
-                    **kwargs,
+                    mask_threshold=mask_threshold,
                 )
 
                 # Convert image coordinates back to PDF coordinates
@@ -251,6 +250,52 @@ class VisualSearchMixin:
         if progress_bar:
             progress_bar.close()
 
-        from .results import MatchResults
-
         return MatchResults(all_matches)
+
+    def find_similar(
+        self,
+        examples: Union["Element", "Region", List[Union["Element", "Region"]]],
+        using: str = "vision",
+        confidence: float = 0.6,
+        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
+        resolution: int = 72,
+        hash_size: int = 20,
+        step: Optional[int] = None,
+        method: str = "phash",
+        max_per_page: Optional[int] = None,
+        show_progress: bool = True,
+        **kwargs,
+    ) -> "MatchResults":
+        """
+        Backwards-compatible wrapper for the old visual search entry point.
+
+        This method is deprecated; use :meth:`match_template` instead.
+        """
+
+        warnings.warn(
+            "VisualSearchMixin.find_similar() is deprecated and will be removed in a future "
+            "release. Use match_template(...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        if using != "vision":
+            raise NotImplementedError(f"using='{using}' is no longer supported.")
+
+        mask_threshold = kwargs.pop("mask_threshold", None)
+        if kwargs:
+            unexpected = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"find_similar() got unexpected keyword arguments: {unexpected}")
+
+        return self.match_template(
+            examples=examples,
+            confidence=confidence,
+            sizes=sizes,
+            resolution=resolution,
+            hash_size=hash_size,
+            step=step,
+            method=method,
+            max_per_page=max_per_page,
+            show_progress=show_progress,
+            mask_threshold=mask_threshold,
+        )

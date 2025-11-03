@@ -1,7 +1,5 @@
 """Test to demonstrate the dissolve() cross-page merging bug."""
 
-import pytest
-
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 

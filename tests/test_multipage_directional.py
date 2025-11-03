@@ -1,7 +1,5 @@
 """Test multipage parameter for directional methods (.below(), .above(), etc.)"""
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion

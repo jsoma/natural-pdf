@@ -3,7 +3,7 @@ import importlib.util
 import logging
 import os
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PIL import Image
 

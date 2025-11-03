@@ -2,8 +2,7 @@ import collections
 import logging
 import os
 import random
-import shutil
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from tqdm.auto import tqdm
 
@@ -15,7 +14,6 @@ from natural_pdf.utils.identifiers import generate_short_path_hash
 if TYPE_CHECKING:
     from natural_pdf.core.pdf import PDF
     from natural_pdf.core.pdf_collection import PDFCollection
-    from natural_pdf.elements.text import TextElement
 
 logger = logging.getLogger(__name__)
 

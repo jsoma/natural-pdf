@@ -86,7 +86,7 @@ class ApplyMixin:
         try:
             total_items = len(self)
         except TypeError:  # Handle cases where __len__ might not be defined on self
-            logger.warning(f"Could not determine collection length for progress bar.")
+            logger.warning("Could not determine collection length for progress bar.")
 
         if show_progress and total_items > 0:
             items_iterable = tqdm(

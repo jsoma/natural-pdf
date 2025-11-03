@@ -1,14 +1,12 @@
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from pydantic import BaseModel, Field, create_model
 
 # Avoid circular import
 if TYPE_CHECKING:
-    from natural_pdf.core.page import Page
-    from natural_pdf.elements.base import Element
-    from natural_pdf.extraction.result import StructuredDataResult
+    pass
 
 logger = logging.getLogger(__name__)
 

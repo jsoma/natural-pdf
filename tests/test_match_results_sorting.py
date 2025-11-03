@@ -54,7 +54,7 @@ def test_match_results_automatic_sorting(tmp_path):
     template = page.region(100, 100, 150, 150)
 
     # Find all similar logos
-    matches = page.find_similar(
+    matches = page.match_template(
         template,
         confidence=0.5,  # Low threshold to get multiple matches
         method="template",
@@ -89,7 +89,7 @@ def test_top_method(tmp_path):
     page = pdf.pages[0]
 
     template = page.region(100, 100, 150, 150)
-    matches = page.find_similar(template, confidence=0.5, method="template", show_progress=False)
+    matches = page.match_template(template, confidence=0.5, method="template", show_progress=False)
 
     # Get top 3
     top_3 = matches.top(3)
@@ -124,7 +124,7 @@ def test_iteration_order(tmp_path):
     page = pdf.pages[0]
 
     template = page.region(100, 100, 150, 150)
-    matches = page.find_similar(template, confidence=0.5, method="template", show_progress=False)
+    matches = page.match_template(template, confidence=0.5, method="template", show_progress=False)
 
     # Iterate and check order
     prev_confidence = 1.0
@@ -147,7 +147,7 @@ def test_filter_preserves_order(tmp_path):
     page = pdf.pages[0]
 
     template = page.region(100, 100, 150, 150)
-    matches = page.find_similar(template, confidence=0.5, method="template", show_progress=False)
+    matches = page.match_template(template, confidence=0.5, method="template", show_progress=False)
 
     # Filter by confidence
     high_conf = matches.filter_by_confidence(0.8)
@@ -172,7 +172,7 @@ def test_combining_top_and_filter(tmp_path):
     page = pdf.pages[0]
 
     template = page.region(100, 100, 150, 150)
-    matches = page.find_similar(template, confidence=0.5, method="template", show_progress=False)
+    matches = page.match_template(template, confidence=0.5, method="template", show_progress=False)
 
     # Get top 5, then filter
     top_5_high_conf = matches.top(5).filter_by_confidence(0.8)

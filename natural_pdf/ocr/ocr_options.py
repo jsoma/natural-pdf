@@ -1,6 +1,6 @@
 # ocr_options.py
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 
 # --- Base Options ---

@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes
 
 from natural_pdf.elements.element_collection import ElementCollection

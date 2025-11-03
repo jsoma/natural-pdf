@@ -77,6 +77,7 @@ def test_text_extraction_with_line_breaks(practice_pdf):
     assert text_with_breaks.count("\n") >= text_without_breaks.count("\n")
 
 
+@pytest.mark.ocr
 def test_ocr_text_extraction(needs_ocr_pdf):
     """Tests text extraction before and after OCR."""
     page = needs_ocr_pdf.pages[0]

@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_containment_geometry_on_page_and_element(geometry_pdf):
     """
     Tests the behavior of find_all with different `overlap`

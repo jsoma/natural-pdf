@@ -1,8 +1,5 @@
 """Test from_headers() with string headers."""
 
-import pytest
-
-from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 
 

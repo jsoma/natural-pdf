@@ -48,7 +48,7 @@ def test_with_real_text():
             # For 'both' and 'start', should have "Normal"
             expected = boundaries in ["both", "start"]
             if has_normal == expected:
-                print(f"  ✅ Correct!")
+                print("  ✅ Correct!")
             else:
                 print(f"  ❌ Expected {'to include' if expected else 'NOT to include'} 'Normal'")
 
@@ -67,7 +67,7 @@ def test_with_real_text():
         highlighted_text = [t for t in non_empty if "Highlighted" in t.extract_text()]
 
         if bold_text and highlighted_text:
-            print(f"\nUsing 'Bold' as start and 'Highlighted' as end")
+            print("\nUsing 'Bold' as start and 'Highlighted' as end")
 
             for boundaries in ["both", "none"]:
                 sections = pdf.get_sections(

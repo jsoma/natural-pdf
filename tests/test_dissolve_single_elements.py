@@ -1,7 +1,5 @@
 """Test to verify that dissolve() preserves single elements as regions."""
 
-import pytest
-
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement

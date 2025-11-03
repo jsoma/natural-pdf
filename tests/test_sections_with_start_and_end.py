@@ -3,8 +3,6 @@ Test get_sections with both start and end elements to ensure the fix
 doesn't break normal functionality.
 """
 
-import pytest
-
 from natural_pdf import PDF
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion

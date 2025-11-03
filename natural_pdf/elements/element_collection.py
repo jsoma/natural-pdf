@@ -1,4 +1,3 @@
-import hashlib
 import logging
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
@@ -8,14 +7,10 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterable,
-    Iterator,
     List,
     Literal,
     Optional,
-    Sequence,
     Tuple,
-    Type,
     TypeVar,
     Union,
     overload,
@@ -25,15 +20,11 @@ from pdfplumber.utils.geometry import get_bbox_overlap, objects_to_bbox
 
 # New Imports
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
-from PIL import Image, ImageDraw, ImageFont
-from tqdm.auto import tqdm
+from PIL import Image
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
-from natural_pdf.core.pdf import PDF
 
 # Add Visualizable import
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -42,10 +33,7 @@ from natural_pdf.elements.base import Element
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.text_mixin import TextMixin
 from natural_pdf.utils.color_utils import format_color_value
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
@@ -69,11 +57,14 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from ipywidgets import DOMWidget
+
+    from natural_pdf.classification.results import ClassificationResult
     from natural_pdf.core.page import Page
-    from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.region import Region
     from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
-    from natural_pdf.flows.flow import Flow
+else:  # pragma: no cover - fallback when ipywidgets is unavailable at runtime
+    DOMWidget = Any  # type: ignore[assignment]
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Page")
@@ -1534,7 +1525,7 @@ class ElementCollection(
                         )
                         element_color = None  # Let service assign color by group
                         use_color_cycling = True
-                    except:
+                    except Exception:
                         element_label = f"Element_{element_idx + 1}"
                         element_color = color
                         use_color_cycling = color is None
@@ -1562,7 +1553,7 @@ class ElementCollection(
                             attr_value = getattr(element, attr_name, None)
                             if attr_value is not None:
                                 highlight_item["attributes_to_draw"][attr_name] = attr_value
-                        except:
+                        except Exception:
                             pass
 
                 highlight_data_list.append(highlight_item)
@@ -1837,7 +1828,7 @@ class ElementCollection(
 
         return base_data
 
-    def viewer(self, title: Optional[str] = None) -> Optional["widgets.DOMWidget"]:
+    def viewer(self, title: Optional[str] = None) -> Optional["DOMWidget"]:
         """
         Creates and returns an interactive ipywidget showing ONLY the elements
         in this collection on their page background.
@@ -1883,18 +1874,91 @@ class ElementCollection(
             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
             return None
 
-    def find(self, selector: str, **kwargs) -> "ElementCollection":
+    def find(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
+    ) -> "ElementCollection":
         """
-        Find elements in this collection matching the selector.
+        Find the first matching element below each item in the collection.
 
         Args:
-            selector: CSS-like selector string
-            overlap: How to determine if elements overlap: 'full' (fully inside),
-                      'partial' (any overlap), or 'center' (center point inside).
-                      (default: "full")
-            apply_exclusions: Whether to exclude elements in exclusion regions
+            selector: CSS-like selector string understood by descendant find methods.
+            text: Text shortcut equivalent to ``selector='text:contains(...)'``. Accepts a single
+                string or an iterable of strings.
+            overlap: Optional overlap handling forwarded to region/page ``find`` helpers. When the
+                downstream implementation does not accept the argument the call will retry without it.
+            apply_exclusions: Whether exclusion regions should be honoured (default: True).
+            regex: Whether to interpret text filters as regular expressions (default: False).
+            case: Whether text comparisons should be case-sensitive (default: True).
+            text_tolerance: Optional mapping of pdfplumber-style tolerance overrides applied while
+                resolving matches.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches are resolved in natural reading order (default: True).
+
+        Returns:
+            An ElementCollection built from the first match (if any) discovered beneath each element.
         """
-        return self.apply(lambda element: element.find(selector, **kwargs))
+
+        if selector is not None and text is not None:
+            raise ValueError("Provide either 'selector' or 'text', not both.")
+        if selector is None and text is None:
+            raise ValueError("Provide either 'selector' or 'text'.")
+
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        matches: List[Element] = []
+        for element in self._elements:
+            if not hasattr(element, "find"):
+                continue
+
+            call_kwargs: Dict[str, Any] = {
+                "selector": selector,
+                "text": text,
+                "apply_exclusions": apply_exclusions,
+                "regex": regex,
+                "case": case,
+                "text_tolerance": text_tolerance,
+                "auto_text_tolerance": auto_text_tolerance,
+                "reading_order": reading_order,
+            }
+
+            if overlap is not None:
+                call_kwargs["overlap"] = overlap
+
+            # Remove keys with None values that downstream signatures may not accept
+            filtered_kwargs = {
+                key: value
+                for key, value in call_kwargs.items()
+                if value is not None
+                or key in {"apply_exclusions", "regex", "case", "reading_order"}
+            }
+
+            try:
+                found = element.find(**filtered_kwargs)  # type: ignore[misc]
+            except TypeError:
+                # Retry without overlap if the element does not accept it
+                if "overlap" in filtered_kwargs:
+                    filtered_kwargs.pop("overlap")
+                    found = element.find(**filtered_kwargs)  # type: ignore[misc]
+                else:
+                    raise
+
+            if found:
+                if isinstance(found, ElementCollection):
+                    matches.extend(found.elements)
+                else:
+                    matches.append(found)
+
+        return ElementCollection(matches)
 
     @overload
     def find_all(
@@ -1905,7 +1969,9 @@ class ElementCollection(
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection": ...
 
     @overload
@@ -1917,7 +1983,9 @@ class ElementCollection(
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection": ...
 
     def find_all(
@@ -1929,11 +1997,12 @@ class ElementCollection(
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
         """
-        Find all elements within each element of this collection matching the selector OR text,
-        and return a flattened collection of all found sub-elements.
+        Find all matching elements for every item in the collection and flatten the results.
 
         Provide EITHER `selector` OR `text`, but not both.
 
@@ -1947,7 +2016,9 @@ class ElementCollection(
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional parameters for element filtering.
+            text_tolerance: Optional mapping of tolerance overrides applied during selection.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether to order results according to natural reading order (default: True).
 
         Returns:
             A new ElementCollection containing all matching sub-elements from all elements
@@ -1960,19 +2031,40 @@ class ElementCollection(
 
         all_found_elements: List[Element] = []
         for element in self._elements:
-            if hasattr(element, "find_all") and callable(element.find_all):
-                # Element.find_all returns an ElementCollection
-                found_in_element: "ElementCollection" = element.find_all(
-                    selector=selector,
-                    text=text,
-                    overlap=overlap,
-                    apply_exclusions=apply_exclusions,
-                    regex=regex,
-                    case=case,
-                    **kwargs,
-                )
-                if found_in_element and found_in_element.elements:
-                    all_found_elements.extend(found_in_element.elements)
+            if not hasattr(element, "find_all"):
+                continue
+
+            call_kwargs: Dict[str, Any] = {
+                "selector": selector,
+                "text": text,
+                "overlap": overlap,
+                "apply_exclusions": apply_exclusions,
+                "regex": regex,
+                "case": case,
+                "text_tolerance": text_tolerance,
+                "auto_text_tolerance": auto_text_tolerance,
+                "reading_order": reading_order,
+            }
+
+            # Remove optional entries that are None to satisfy varying signatures
+            filtered_kwargs = {
+                key: value
+                for key, value in call_kwargs.items()
+                if value is not None
+                or key in {"apply_exclusions", "regex", "case", "overlap", "reading_order"}
+            }
+
+            try:
+                found_in_element: "ElementCollection" = element.find_all(**filtered_kwargs)  # type: ignore[misc]
+            except TypeError:
+                if "overlap" in filtered_kwargs:
+                    filtered_kwargs.pop("overlap")
+                    found_in_element = element.find_all(**filtered_kwargs)  # type: ignore[misc]
+                else:
+                    raise
+
+            if found_in_element and found_in_element.elements:
+                all_found_elements.extend(found_in_element.elements)
             # else:
             # Elements in the collection are expected to support find_all.
             # If an element type doesn't, an AttributeError will naturally occur,
@@ -2412,9 +2504,6 @@ class ElementCollection(
         """
         from natural_pdf.elements.region import (  # Local import for type checking if needed or to resolve circularity
             Region,
-        )
-        from natural_pdf.elements.text import (  # Ensure TextElement is imported for type hint if not in TYPE_CHECKING
-            TextElement,
         )
 
         new_text_elements: List["TextElement"] = []
@@ -2875,7 +2964,7 @@ class ElementCollection(
                 text = region.extract_text()
                 if text:
                     text_parts.append(text)
-            except:
+            except Exception:
                 # Region might not have text extraction capability
                 pass
 

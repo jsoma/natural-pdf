@@ -1,7 +1,5 @@
 """Test horizontal guides alignment with top/bottom options."""
 
-from unittest.mock import Mock
-
 import pytest
 
 from natural_pdf.analyzers.guides import Guides

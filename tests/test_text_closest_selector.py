@@ -1,7 +1,5 @@
 """Test the text:closest() selector for fuzzy text matching."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

@@ -8,15 +8,12 @@ operations using real large PDFs to inform memory management decisions.
 
 import gc
 import json
-import os
-import sys
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import psutil
 
@@ -390,7 +387,7 @@ def main():
             print(f"  Peak Objects: {df['python_objects'].max():,}")
             print(f"  Duration: {df['timestamp'].iloc[-1]:.1f}s")
 
-        print(f"\nResults saved to performance_results/ directory")
+        print("\nResults saved to performance_results/ directory")
         print("Use the CSV files for detailed analysis")
 
 

@@ -21,7 +21,7 @@ Example:
 """
 
 import logging
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element

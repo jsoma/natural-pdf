@@ -6,13 +6,6 @@ The main highlighting logic is now centralized in `natural_pdf.core.highlighting
 """
 
 # Re-export necessary functions from visualization
-from .visualization import (
-    create_colorbar,
-    create_legend,
-    get_next_highlight_color,
-    merge_images_with_legend,
-    reset_highlight_colors,
-)
 
 # --- The Highlight class and HighlightManager class previously defined here have been removed ---
 # --- The functionality is now handled by natural_pdf.core.highlighting_service.HighlightingService ---

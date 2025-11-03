@@ -31,12 +31,11 @@ This enables powerful document navigation like:
 """
 
 import ast
-import difflib
 import logging
 import re
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from colormath2.color_conversions import convert_color
 from colormath2.color_diff import delta_e_cie2000
@@ -486,8 +485,8 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                     # If using ~= with a numeric value, warn once during parsing
                     if op == "~=" and isinstance(parsed_value, (int, float)):
                         logger.warning(
-                            f"Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
-                            f"Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
+                            "Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
+                            "Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
                         )
                 result["attributes"].append({"name": name, "op": op, "value": parsed_value})
 

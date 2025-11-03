@@ -2,7 +2,7 @@
 Rectangle element class for natural-pdf.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 from natural_pdf.elements.base import Element
 

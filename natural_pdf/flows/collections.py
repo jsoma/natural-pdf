@@ -1,6 +1,18 @@
 import logging
 from collections.abc import MutableSequence
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from PIL import Image  # Single import for PIL.Image module
 
@@ -11,7 +23,6 @@ if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
 
     from .element import FlowElement
-    from .flow import Flow  # Though not directly used in __init__, FlowRegion needs it.
     from .region import FlowRegion
 
 
@@ -425,12 +436,27 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        **kwargs,
+        overlap: str = "full",
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> Optional["PhysicalElement"]:
-        from natural_pdf.elements.base import Element as PhysicalElement  # Runtime import
 
         for fr in self._flow_regions:
-            found = fr.find(selector=selector, text=text, **kwargs)
+            found = fr.find(
+                selector=selector,
+                text=text,
+                overlap=overlap,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
+            )
             if found:
                 return found
         return None
@@ -440,26 +466,35 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        **kwargs,
+        overlap: str = "full",
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
     ) -> "ElementCollection":
-        from natural_pdf.elements.collections import (
-            ElementCollection as RuntimeElementCollection,  # Runtime import
-        )
+        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection
 
         all_physical_elements: List["PhysicalElement"] = []
         for fr in self._flow_regions:
-            # FlowRegion.find_all returns an ElementCollection
-            elements_in_fr: "RuntimeElementCollection" = fr.find_all(
-                selector=selector, text=text, **kwargs
+            elements_in_fr: RuntimeElementCollection = fr.find_all(
+                selector=selector,
+                text=text,
+                overlap=overlap,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
             )
-            if elements_in_fr:  # ElementCollection has boolean True if not empty
-                all_physical_elements.extend(
-                    elements_in_fr.elements
-                )  # Access .elements to get list
+            if elements_in_fr and elements_in_fr.elements:
+                all_physical_elements.extend(elements_in_fr.elements)
 
-        # Deduplicate while preserving order as much as possible (simple set doesn't preserve order)
-        seen = set()
-        unique_elements = []
+        # Deduplicate while preserving order
+        seen: Set["PhysicalElement"] = set()
+        unique_elements: List["PhysicalElement"] = []
         for el in all_physical_elements:
             if el not in seen:
                 unique_elements.append(el)

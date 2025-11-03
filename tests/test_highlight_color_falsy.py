@@ -1,7 +1,5 @@
 """Test that highlight_color property handles falsy values correctly."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

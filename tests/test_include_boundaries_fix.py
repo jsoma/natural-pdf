@@ -1,7 +1,5 @@
 """Test include_boundaries parameter in get_sections across all implementations."""
 
-import pytest
-
 from natural_pdf import PDF
 
 

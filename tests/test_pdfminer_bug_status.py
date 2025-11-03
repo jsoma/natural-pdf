@@ -2,8 +2,6 @@
 
 import os
 
-import pytest
-
 # Disable patches for this test
 os.environ["NATURAL_PDF_DISABLE_PDFMINER_PATCHES"] = "1"
 

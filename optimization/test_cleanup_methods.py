@@ -8,14 +8,9 @@ This test verifies that:
 3. They actually clean up loaded models/engines
 """
 
-import gc
-import os
-import sys
-from pathlib import Path
 
 import pytest
 
-import natural_pdf as npdf
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.classification.manager import ClassificationManager
 from natural_pdf.ocr.ocr_manager import OCRManager

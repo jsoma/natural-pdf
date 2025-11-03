@@ -3,15 +3,8 @@ OCR debug utilities for natural-pdf.
 """
 
 import base64
-import importlib.resources
-import importlib.util
 import io
-import json
-import os
-import webbrowser
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-from PIL import Image
+from typing import Any
 
 # Assuming Page type hint is available or define a placeholder
 try:

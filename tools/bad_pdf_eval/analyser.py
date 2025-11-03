@@ -3,16 +3,14 @@ from __future__ import annotations
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PIL import Image
 from rich.console import Console
-from rich.table import Table
 
 import natural_pdf as npdf
 
-from .reporter import log_section, save_json
-from .utils import slugify
+from .reporter import save_json
 
 console = Console()
 

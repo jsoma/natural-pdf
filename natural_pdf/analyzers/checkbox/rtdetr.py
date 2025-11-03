@@ -1,7 +1,7 @@
 """RT-DETR based checkbox detector implementation."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from PIL import Image
 

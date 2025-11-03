@@ -1,8 +1,5 @@
 """Test partial guides functionality (only vertical or only horizontal guides)."""
 
-import pytest
-
-from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 
 

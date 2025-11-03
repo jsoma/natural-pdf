@@ -3,8 +3,6 @@ Tests for the highlighting protocol that enables ElementCollection.show()
 to work with mixed content including FlowRegions and elements from multiple pages.
 """
 
-from pathlib import Path
-from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 import pytest

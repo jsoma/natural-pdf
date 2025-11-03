@@ -1,45 +1,62 @@
 #!/usr/bin/env python3
 """Test to reproduce extraction error when content appears empty."""
 
-from unittest.mock import MagicMock, Mock
+from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 from natural_pdf import PDF
-from natural_pdf.extraction.result import StructuredDataResult
+
+pytestmark = [pytest.mark.qa]
 
 
 def test_extraction_with_apparently_empty_content():
     """Test that extraction returns None when content is empty."""
     # Load a PDF that needs OCR (has no text layer)
-    pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/needs-ocr.pdf")
-    page = pdf.pages[0]
+    source = Path("pdfs/needs-ocr.pdf")
+    if not source.exists():
+        pytest.skip("Test requires pdfs/needs-ocr.pdf fixture")
 
-    # Verify that extract_text() returns empty content
-    text = page.extract_text()
-    assert not text or not text.strip(), f"Expected empty text but got: {repr(text[:100])}"
+    pdf = PDF(str(source))
+    try:
+        page = pdf.pages[0]
 
-    # Create a mock client that would fail if actually called
-    mock_client = Mock()
-    mock_client.beta = Mock()
-    mock_client.beta.chat = Mock()
-    mock_client.beta.chat.completions = Mock()
-    mock_client.beta.chat.completions.parse = Mock(
-        side_effect=Exception("Should not reach API call")
-    )
+        # Verify that extract_text() returns empty content
+        text = page.extract_text()
+        assert not text or not text.strip(), f"Expected empty text but got: {repr(text[:100])}"
 
-    # Try the extraction - it should fail before reaching the API
-    fields = ["site", "date", "violation count", "inspection service", "summary", "city", "state"]
-    page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
+        # Create a mock client that would fail if actually called
+        mock_client = Mock()
+        mock_client.beta = Mock()
+        mock_client.beta.chat = Mock()
+        mock_client.beta.chat.completions = Mock()
+        mock_client.beta.chat.completions.parse = Mock(
+            side_effect=Exception("Should not reach API call")
+        )
 
-    # The mock client should not have been called since there's no content
-    assert (
-        not mock_client.beta.chat.completions.parse.called
-    ), "API should not be called when content is empty"
+        # Try the extraction - it should fail before reaching the API
+        fields = [
+            "site",
+            "date",
+            "violation count",
+            "inspection service",
+            "summary",
+            "city",
+            "state",
+        ]
+        page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
 
-    # Check that we get None instead of raising an error
-    result = page.extracted()
-    assert result is None, "Should return None for failed extraction instead of raising"
+        # The mock client should not have been called since there's no content
+        assert (
+            not mock_client.beta.chat.completions.parse.called
+        ), "API should not be called when content is empty"
+
+        # Check that we get None instead of raising an error
+        result = page.extracted()
+        assert result is None, "Should return None for failed extraction instead of raising"
+    finally:
+        pdf.close()
 
 
 def test_extraction_content_method():

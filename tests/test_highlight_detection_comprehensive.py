@@ -1,5 +1,3 @@
-import pytest
-
 from natural_pdf import PDF
 
 
@@ -84,7 +82,7 @@ def test_highlight_selector():
 
     # Verify all found elements are actually highlighted
     for elem in highlighted:
-        assert elem.is_highlighted, f"Element found with :highlighted should be highlighted"
+        assert elem.is_highlighted, "Element found with :highlighted should be highlighted"
 
     # Verify we can combine selectors
     highlighted_with_text = page.find_all('text:highlighted:contains("text")')

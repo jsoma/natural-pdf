@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 """Test extraction with both text and vision modes."""
 
-import base64
-import io
 from typing import Optional
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from PIL import Image
 from pydantic import BaseModel
-
-from natural_pdf import PDF
-from natural_pdf.extraction.result import StructuredDataResult
 
 
 class InspectionData(BaseModel):
@@ -35,10 +30,12 @@ def create_mock_client(parsed_data):
     return mock_client
 
 
-def test_text_extraction():
+pytestmark = [pytest.mark.qa]
+
+
+def test_text_extraction(practice_pdf):
     """Test extraction using text mode."""
-    pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Verify text extraction works
     text = page.extract_text()
@@ -71,10 +68,9 @@ def test_text_extraction():
     assert result.violation_count == "7"
 
 
-def test_vision_extraction():
+def test_vision_extraction(practice_pdf):
     """Test extraction using vision mode."""
-    pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Verify render works
     image = page.render()
@@ -119,10 +115,9 @@ def test_vision_extraction():
     assert result.violation_count == "Vision: 7"
 
 
-def test_vision_extraction_with_custom_resolution():
+def test_vision_extraction_with_custom_resolution(practice_pdf):
     """Test vision extraction with custom resolution."""
-    pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     mock_data = InspectionData(site="Test")
     mock_client = create_mock_client(mock_data)
@@ -186,10 +181,9 @@ def test_extraction_without_render_method_fails_for_vision():
     assert content is None
 
 
-def test_api_error_propagates():
+def test_api_error_propagates(practice_pdf):
     """Test that API errors are properly propagated."""
-    pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create client that raises API error
     mock_client = Mock()
@@ -204,47 +198,3 @@ def test_api_error_propagates():
         )
 
     assert "Invalid API key" in str(exc_info.value)
-
-
-if __name__ == "__main__":
-    # Run tests manually
-    print("=== Testing text extraction ===")
-    try:
-        test_text_extraction()
-        print("✓ Text extraction test passed")
-    except Exception as e:
-        print(f"✗ Text extraction test failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-    print("\n=== Testing vision extraction ===")
-    try:
-        test_vision_extraction()
-        print("✓ Vision extraction test passed")
-    except Exception as e:
-        print(f"✗ Vision extraction test failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-    print("\n=== Testing custom resolution ===")
-    try:
-        test_vision_extraction_with_custom_resolution()
-        print("✓ Custom resolution test passed")
-    except Exception as e:
-        print(f"✗ Custom resolution test failed: {e}")
-
-    print("\n=== Testing without render method ===")
-    try:
-        test_extraction_without_render_method_fails_for_vision()
-        print("✓ No render method test passed")
-    except Exception as e:
-        print(f"✗ No render method test failed: {e}")
-
-    print("\n=== Testing API error propagation ===")
-    try:
-        test_api_error_propagates()
-        print("✓ API error test passed")
-    except Exception as e:
-        print(f"✗ API error test failed: {e}")

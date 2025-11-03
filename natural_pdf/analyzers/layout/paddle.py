@@ -1,9 +1,7 @@
 # layout_detector_paddle.py
 import importlib.util
 import logging
-import os
-import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import numpy as np
 from PIL import Image
