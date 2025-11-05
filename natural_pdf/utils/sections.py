@@ -139,7 +139,29 @@ def sanitize_sections(
         key = ("other", id(section))
         span = None
 
-        if hasattr(section, "bbox"):
+        if hasattr(section, "constituent_regions"):
+            constituents = getattr(section, "constituent_regions", []) or []
+            rounded_constituents = tuple(
+                tuple(round(coord, 4) for coord in getattr(region, "bbox", ()))
+                for region in constituents
+            )
+            key = ("flow_region", rounded_constituents)
+
+            spans = [
+                (
+                    getattr(region, "height", None)
+                    if orientation == "vertical"
+                    else getattr(region, "width", None)
+                )
+                for region in constituents
+            ]
+            valid_spans = [s for s in spans if s is not None]
+
+            if valid_spans:
+                span = sum(valid_spans)
+                if all(s <= min_span for s in valid_spans):
+                    continue
+        else:
             bbox = getattr(section, "bbox", None)
             if bbox:
                 rounded_bbox = tuple(round(coord, 4) for coord in bbox)
@@ -150,25 +172,6 @@ def sanitize_sections(
                 span = getattr(section, "height", None)
             else:
                 span = getattr(section, "width", None)
-        elif hasattr(section, "constituent_regions"):
-            constituents = getattr(section, "constituent_regions", []) or []
-            rounded_constituents = tuple(
-                tuple(round(coord, 4) for coord in getattr(region, "bbox", ()))
-                for region in constituents
-            )
-            key = ("flow_region", rounded_constituents)
-
-            spans = []
-            for region in constituents:
-                if orientation == "vertical":
-                    spans.append(getattr(region, "height", None))
-                else:
-                    spans.append(getattr(region, "width", None))
-
-            if spans and all(span is not None and span <= min_span for span in spans):
-                continue
-        else:
-            span = None
 
         if span is not None and span <= min_span:
             continue

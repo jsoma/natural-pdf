@@ -2,37 +2,13 @@
 import base64
 import io
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from PIL import Image
 from pydantic import BaseModel, Field
 
-try:
-    from .base import LayoutDetector
-    from .layout_options import BaseLayoutOptions, GeminiLayoutOptions
-except ImportError:
-    # Placeholders if run standalone or imports fail
-    class BaseLayoutOptions:
-        pass
-
-    class GeminiLayoutOptions(BaseLayoutOptions):
-        pass
-
-    class LayoutDetector:
-        def __init__(self):
-            self.logger = logging.getLogger()
-            self.supported_classes = set()  # Will be dynamic based on user request
-
-        def _get_model(self, options):
-            raise NotImplementedError
-
-        def _normalize_class_name(self, n):
-            return n.lower().replace("_", "-").replace(" ", "-")
-
-        def validate_classes(self, c):
-            pass  # Less strict validation needed for LLM
-
-    logging.basicConfig()
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, GeminiLayoutOptions
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +46,7 @@ class GeminiLayoutDetector(LayoutDetector):
         """
         return True
 
-    def _get_cache_key(self, options: GeminiLayoutOptions) -> str:
+    def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model name."""
         if not isinstance(options, GeminiLayoutOptions):
             options = GeminiLayoutOptions()  # Use defaults
@@ -79,7 +55,7 @@ class GeminiLayoutDetector(LayoutDetector):
         # Prompt is built dynamically, so not part of cache key based on options
         return f"{self.__class__.__name__}_{model_key}"
 
-    def _load_model_from_options(self, options: GeminiLayoutOptions) -> Any:
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
         """Validate options and return the model name."""
         if not isinstance(options, GeminiLayoutOptions):
             raise TypeError("Incorrect options type provided for Gemini model loading.")
@@ -174,7 +150,7 @@ class GeminiLayoutDetector(LayoutDetector):
         class ImageContents(BaseModel):
             regions: List[DetectedRegion]
 
-        completion: "ChatCompletion" = client.beta.chat.completions.parse(
+        completion: Any = client.beta.chat.completions.parse(
             model=model_name,
             messages=messages,
             response_format=ImageContents,

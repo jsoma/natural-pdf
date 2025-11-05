@@ -1,7 +1,7 @@
 # ocr_engine_easyocr.py
 import importlib.util
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from PIL import Image
@@ -30,7 +30,7 @@ class EasyOCREngine(OCREngine):
         """Initialize the EasyOCR model."""
         # Import directly here
         try:
-            import easyocr
+            import easyocr  # type: ignore[import-untyped]
 
             self.logger.info("EasyOCR module imported successfully.")
         except ImportError as e:
@@ -97,17 +97,20 @@ class EasyOCREngine(OCREngine):
         return np.array(image)
 
     def _process_single_image(
-        self, image: np.ndarray, detect_only: bool, options: Optional[EasyOCROptions]
+        self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
     ) -> Any:
         """Process a single image with EasyOCR."""
         if self._model is None:
             raise RuntimeError("EasyOCR model not initialized")
 
+        if not isinstance(image, np.ndarray):
+            raise TypeError("EasyOCREngine expects preprocessed numpy arrays")
+
         # Cast options to proper type if provided
         easy_options = options if isinstance(options, EasyOCROptions) else EasyOCROptions()
 
         # Prepare readtext arguments (only needed if not detect_only)
-        readtext_args = {}
+        readtext_args: Dict[str, Any] = {}
         if not detect_only:
             for param in [
                 "detail",
@@ -160,7 +163,7 @@ class EasyOCREngine(OCREngine):
         self, raw_results: Any, min_confidence: float, detect_only: bool
     ) -> List[TextRegion]:
         """Convert EasyOCR results to standardized TextRegion objects."""
-        standardized_regions = []
+        standardized_regions: List[TextRegion] = []
 
         if detect_only:
             results = raw_results[0]
@@ -175,9 +178,7 @@ class EasyOCREngine(OCREngine):
                             # Convert to standardized (x0, y0, x1, y1) format
                             try:
                                 bbox = (float(x_min), float(y_min), float(x_max), float(y_max))
-                                standardized_regions.append(
-                                    TextRegion(bbox, text=None, confidence=None)
-                                )
+                                standardized_regions.append(TextRegion(bbox, "", 0.0))
                             except (ValueError, TypeError) as e:
                                 raise ValueError(
                                     f"Invalid number format in EasyOCR detect bbox: {detection}"

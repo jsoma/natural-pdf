@@ -1,7 +1,7 @@
 # natural_pdf/ocr/engine_doctr.py
 import importlib.util
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from PIL import Image
@@ -17,9 +17,9 @@ class DoctrOCREngine(OCREngine):
 
     def __init__(self):
         super().__init__()
-        self._model = None  # Will hold the doctr ocr_predictor
-        self._detection_model = None  # Will hold detection_predictor if detect_only is used
-        self._orientation_model = None  # Will hold page_orientation_predictor if enabled
+        self._model: Optional[Any] = None
+        self._detection_model: Optional[Any] = None
+        self._orientation_model: Optional[Any] = None
 
     def is_available(self) -> bool:
         """Check if doctr is installed."""
@@ -163,11 +163,14 @@ class DoctrOCREngine(OCREngine):
         return np.array(image)
 
     def _process_single_image(
-        self, image: np.ndarray, detect_only: bool, options: Optional[DoctrOCROptions]
+        self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
     ) -> Any:
         """Process a single image with doctr."""
         if self._model is None:
             raise RuntimeError("Doctr model not initialized")
+
+        if not isinstance(image, np.ndarray):
+            raise TypeError("DoctrOCREngine expects numpy arrays after preprocessing")
 
         # Capture image dimensions for denormalization
         height, width = image.shape[:2]

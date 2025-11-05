@@ -1,0 +1,2329 @@
+F841 Local variable `relative_path` is assigned to but never used
+   --> 01-execute_notebooks.py:100:5
+    |
+ 98 | def is_excluded(file_path: Path, base_dir: Path, exclude_patterns: List[str]) -> bool:
+ 99 |     """Checks if a file path matches any exclude patterns."""
+100 |     relative_path = file_path.relative_to(base_dir)
+    |     ^^^^^^^^^^^^^
+101 |     # Only exclude index.md if it's in the root directory
+102 |     if str(file_path) == "docs/index.md":
+    |
+help: Remove assignment to unused variable `relative_path`
+
+F841 Local variable `elapsed` is assigned to but never used
+   --> 01-execute_notebooks.py:396:21
+    |
+394 |                     new_hash = result["new_hash"]
+395 |                     error_message = result.get("error_message")
+396 |                     elapsed = result.get("elapsed", 0)
+    |                     ^^^^^^^
+397 |
+398 |                     processed_files += 1
+    |
+help: Remove assignment to unused variable `elapsed`
+
+E402 Module level import not at top of cell
+  --> docs/process-forms-and-invoices/index.ipynb:cell 8:37:1
+   |
+36 | # Save results to CSV
+37 | import pandas as pd
+   | ^^^^^^^^^^^^^^^^^^^
+38 | df = pd.DataFrame(form_results)
+39 | df.to_csv("extracted_form_data.csv", index=False)
+   |
+
+E402 Module level import not at top of cell
+  --> docs/tutorials/09-section-extraction.ipynb:cell 9:41:1
+   |
+40 | # Display the structured book entries
+41 | import pandas as pd
+   | ^^^^^^^^^^^^^^^^^^^
+42 | pd.DataFrame(book_entries)
+   |
+
+E402 Module level import not at top of cell
+  --> docs/tutorials/09-section-extraction.ipynb:cell 22:44:1
+   |
+43 | # Display sample entries (first 3)
+44 | import pandas as pd
+   | ^^^^^^^^^^^^^^^^^^^
+45 |
+46 | df = pd.json_normalize(book_database)
+   |
+
+E402 Module level import not at top of file
+  --> example_checkbox_usage.py:46:1
+   |
+44 | # Advanced: Using custom options
+45 | print("\n=== Advanced Options ===")
+46 | from natural_pdf.analyzers.checkbox import CheckboxOptions
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 |
+48 | # Higher confidence threshold
+   |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:119:1
+    |
+117 |     logger.warning(f"Failed to apply pdfminer patches: {e}")
+118 |
+119 | from natural_pdf.analyzers.guides import Guides
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+120 | from natural_pdf.core.page import Page
+121 | from natural_pdf.core.page_collection import PageCollection
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:120:1
+    |
+119 | from natural_pdf.analyzers.guides import Guides
+120 | from natural_pdf.core.page import Page
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+121 | from natural_pdf.core.page_collection import PageCollection
+122 | from natural_pdf.core.pdf import PDF
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:121:1
+    |
+119 | from natural_pdf.analyzers.guides import Guides
+120 | from natural_pdf.core.page import Page
+121 | from natural_pdf.core.page_collection import PageCollection
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+122 | from natural_pdf.core.pdf import PDF
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:122:1
+    |
+120 | from natural_pdf.core.page import Page
+121 | from natural_pdf.core.page_collection import PageCollection
+122 | from natural_pdf.core.pdf import PDF
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+123 |
+124 | # Core imports
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:125:1
+    |
+124 | # Core imports
+125 | from natural_pdf.core.pdf_collection import PDFCollection
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+126 | from natural_pdf.elements.region import Region
+127 | from natural_pdf.flows.flow import Flow
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:126:1
+    |
+124 | # Core imports
+125 | from natural_pdf.core.pdf_collection import PDFCollection
+126 | from natural_pdf.elements.region import Region
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+127 | from natural_pdf.flows.flow import Flow
+128 | from natural_pdf.flows.region import FlowRegion
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:127:1
+    |
+125 | from natural_pdf.core.pdf_collection import PDFCollection
+126 | from natural_pdf.elements.region import Region
+127 | from natural_pdf.flows.flow import Flow
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+128 | from natural_pdf.flows.region import FlowRegion
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:128:1
+    |
+126 | from natural_pdf.elements.region import Region
+127 | from natural_pdf.flows.flow import Flow
+128 | from natural_pdf.flows.region import FlowRegion
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+129 |
+130 | # Judge for visual classification
+    |
+
+E402 Module level import not at top of file
+   --> natural_pdf/__init__.py:131:1
+    |
+130 | # Judge for visual classification
+131 | from natural_pdf.judge import Decision, Judge, JudgeError, PickResult
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+132 |
+133 | # Search options (if extras installed)
+    |
+
+F401 `natural_pdf.qa.DocumentQA` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> natural_pdf/__init__.py:157:32
+    |
+155 | # Import QA module if available
+156 | try:
+157 |     from natural_pdf.qa import DocumentQA, get_qa_engine
+    |                                ^^^^^^^^^^
+158 |
+159 |     HAS_QA = True
+    |
+help: Remove unused import
+
+F401 `natural_pdf.qa.get_qa_engine` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> natural_pdf/__init__.py:157:44
+    |
+155 | # Import QA module if available
+156 | try:
+157 |     from natural_pdf.qa import DocumentQA, get_qa_engine
+    |                                            ^^^^^^^^^^^^^
+158 |
+159 |     HAS_QA = True
+    |
+help: Remove unused import
+
+F841 Local variable `original_guides` is assigned to but never used
+   --> natural_pdf/analyzers/guides.py:729:9
+    |
+728 |         # Use the parent's snap_to_whitespace but only for this axis
+729 |         original_guides = self.data.copy()
+    |         ^^^^^^^^^^^^^^^
+730 |
+731 |         # Temporarily set the parent's guides to only this axis
+    |
+help: Remove assignment to unused variable `original_guides`
+
+E741 Ambiguous variable name: `l`
+    --> natural_pdf/analyzers/guides.py:1803:23
+     |
+1802 |             lines = [
+1803 |                 l for l in lines if getattr(l, "source", None) == detect_params["source_label"]
+     |                       ^
+1804 |             ]
+     |
+
+E741 Ambiguous variable name: `l`
+    --> natural_pdf/analyzers/guides.py:1818:32
+     |
+1816 |             # Filter by source if specified
+1817 |             if source_label:
+1818 |                 lines = [l for l in lines if getattr(l, "source", None) == source_label]
+     |                                ^
+1819 |
+1820 |         # Process lines (same logic for both methods)
+     |
+
+E722 Do not use bare `except`
+    --> natural_pdf/analyzers/guides.py:1997:13
+     |
+1995 |                     # It's a list of elements
+1996 |                     elements_to_process = markers_list
+1997 |             except:
+     |             ^^^^^^
+1998 |                 pass
+     |
+
+E712 Avoid equality comparisons to `True`; use `outer:` for truth checks
+    --> natural_pdf/analyzers/guides.py:2099:20
+     |
+2097 |         if outer and bounds:
+2098 |             if axis == "vertical":
+2099 |                 if outer == True or outer == "first":
+     |                    ^^^^^^^^^^^^^
+2100 |                     guides_coords.insert(0, bounds[0])  # x0
+2101 |                 if outer == True or outer == "last":
+     |
+help: Replace with `outer`
+
+E712 Avoid equality comparisons to `True`; use `outer:` for truth checks
+    --> natural_pdf/analyzers/guides.py:2101:20
+     |
+2099 |                 if outer == True or outer == "first":
+2100 |                     guides_coords.insert(0, bounds[0])  # x0
+2101 |                 if outer == True or outer == "last":
+     |                    ^^^^^^^^^^^^^
+2102 |                     guides_coords.append(bounds[2])  # x1
+2103 |             else:
+     |
+help: Replace with `outer`
+
+E712 Avoid equality comparisons to `True`; use `outer:` for truth checks
+    --> natural_pdf/analyzers/guides.py:2104:20
+     |
+2102 |                     guides_coords.append(bounds[2])  # x1
+2103 |             else:
+2104 |                 if outer == True or outer == "first":
+     |                    ^^^^^^^^^^^^^
+2105 |                     guides_coords.insert(0, bounds[1])  # y0
+2106 |                 if outer == True or outer == "last":
+     |
+help: Replace with `outer`
+
+E712 Avoid equality comparisons to `True`; use `outer:` for truth checks
+    --> natural_pdf/analyzers/guides.py:2106:20
+     |
+2104 |                 if outer == True or outer == "first":
+2105 |                     guides_coords.insert(0, bounds[1])  # y0
+2106 |                 if outer == True or outer == "last":
+     |                    ^^^^^^^^^^^^^
+2107 |                     guides_coords.append(bounds[3])  # y1
+     |
+help: Replace with `outer`
+
+F821 Undefined name `PageCollection`
+    --> natural_pdf/analyzers/guides.py:4378:18
+     |
+4376 |                 "Page",
+4377 |                 "Region",
+4378 |                 "PageCollection",
+     |                  ^^^^^^^^^^^^^^
+4379 |                 "ElementCollection",
+4380 |                 List[Union["Page", "Region"]],
+     |
+
+F821 Undefined name `PageCollection`
+    --> natural_pdf/analyzers/guides.py:4588:26
+     |
+4586 |     def _extract_table_from_collection(
+4587 |         self,
+4588 |         elements: Union["PageCollection", "ElementCollection", List[Union["Page", "Region"]]],
+     |                          ^^^^^^^^^^^^^^
+4589 |         header: Union[str, List[str], None] = "first",
+4590 |         skip_repeating_headers: Optional[bool] = None,
+     |
+
+F401 `.base.LayoutDetector` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/analyzers/layout/__init__.py:1:19
+  |
+1 | from .base import LayoutDetector
+  |                   ^^^^^^^^^^^^^^
+  |
+help: Use an explicit re-export: `LayoutDetector as LayoutDetector`
+
+F841 Local variable `id_to_detection_index` is assigned to but never used
+   --> natural_pdf/analyzers/layout/docling.py:188:9
+    |
+187 |         detections = []
+188 |         id_to_detection_index = {}  # Map Docling ID to index in detections list
+    |         ^^^^^^^^^^^^^^^^^^^^^
+189 |
+190 |         # Prepare normalized class filters once
+    |
+help: Remove assignment to unused variable `id_to_detection_index`
+
+F841 Local variable `page_width` is assigned to but never used
+   --> natural_pdf/analyzers/layout/docling.py:229:17
+    |
+227 |                     continue
+228 |                 page_height = doc.pages[page_no].size.height
+229 |                 page_width = doc.pages[page_no].size.width  # Needed? Bbox seems absolute
+    |                 ^^^^^^^^^^
+230 |
+231 |                 # Convert coordinates from Docling's system (often bottom-left origin)
+    |
+help: Remove assignment to unused variable `page_width`
+
+F821 Undefined name `ChatCompletion`
+   --> natural_pdf/analyzers/layout/gemini.py:177:22
+    |
+175 |             regions: List[DetectedRegion]
+176 |
+177 |         completion: "ChatCompletion" = client.beta.chat.completions.parse(
+    |                      ^^^^^^^^^^^^^^
+178 |             model=model_name,
+179 |             messages=messages,
+    |
+
+F841 Local variable `created_cell_count` is assigned to but never used
+   --> natural_pdf/analyzers/layout/layout_analyzer.py:308:13
+    |
+306 |         if isinstance(final_options, TATRLayoutOptions) and final_options.create_cells:
+307 |             logger.info("  Option create_cells=True detected for TATR. Attempting cell creation...")
+308 |             created_cell_count = 0
+    |             ^^^^^^^^^^^^^^^^^^
+309 |             for region in layout_regions:
+310 |                 # Only attempt on regions identified as tables by the TATR model
+    |
+help: Remove assignment to unused variable `created_cell_count`
+
+E402 Module level import not at top of file
+  --> natural_pdf/analyzers/layout/paddle.py:62:1
+   |
+60 |     )
+61 |
+62 | from .table_structure_utils import group_cells_into_rows_and_columns
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F401 `cv2` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   --> natural_pdf/analyzers/shape_detection_mixin.py:772:20
+    |
+770 |         """Internal method for LSD line detection."""
+771 |         try:
+772 |             import cv2
+    |                    ^^^
+773 |         except ImportError:
+774 |             raise ImportError(
+    |
+help: Remove unused import: `cv2`
+
+F841 Local variable `bucket_index` is assigned to but never used
+   --> natural_pdf/analyzers/text_structure.py:274:13
+    |
+272 |             # Find which bucket the size falls into
+273 |             # bisect_left finds insertion point, which corresponds to bucket index
+274 |             bucket_index = 0
+    |             ^^^^^^^^^^^^
+275 |             for i, break_val in enumerate(final_breaks):
+276 |                 if size <= break_val:
+    |
+help: Remove assignment to unused variable `bucket_index`
+
+F821 Undefined name `Region`
+ --> natural_pdf/analyzers/utils.py:7:12
+  |
+5 | def convert_to_regions(
+6 |     page: Any, detections: List[Dict[str, Any]], scale_factor: float = 1.0
+7 | ) -> List["Region"]:
+  |            ^^^^^^
+8 |     """
+9 |     Convert layout detections to Region objects.
+  |
+
+F401 `torch` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/classification/manager.py:19:20
+   |
+17 |     if _CLASSIFICATION_AVAILABLE is None:
+18 |         try:
+19 |             import torch
+   |                    ^^^^^
+20 |             import transformers
+   |
+help: Remove unused import: `torch`
+
+F401 `transformers` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/classification/manager.py:20:20
+   |
+18 |         try:
+19 |             import torch
+20 |             import transformers
+   |                    ^^^^^^^^^^^^
+21 |
+22 |             _CLASSIFICATION_AVAILABLE = True
+   |
+help: Remove unused import: `transformers`
+
+E402 Module level import not at top of file
+  --> natural_pdf/classification/manager.py:52:1
+   |
+52 | from tqdm.auto import tqdm
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+53 |
+54 | # Import result classes
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/classification/manager.py:55:1
+   |
+54 | # Import result classes
+55 | from .results import CategoryScore, ClassificationResult
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+56 |
+57 | if TYPE_CHECKING:
+   |
+
+F841 Local variable `top_category` is assigned to but never used
+   --> natural_pdf/classification/manager.py:432:17
+    |
+430 |                 # --- Determine top category and score ---
+431 |                 scores_list.sort(key=lambda s: s.score, reverse=True)
+432 |                 top_category = scores_list[0].label
+    |                 ^^^^^^^^^^^^
+433 |                 top_score = scores_list[0].score
+434 |                 # --- End Determine top category ---
+    |
+help: Remove assignment to unused variable `top_category`
+
+F841 Local variable `top_score` is assigned to but never used
+   --> natural_pdf/classification/manager.py:433:17
+    |
+431 |                 scores_list.sort(key=lambda s: s.score, reverse=True)
+432 |                 top_category = scores_list[0].label
+433 |                 top_score = scores_list[0].score
+    |                 ^^^^^^^^^
+434 |                 # --- End Determine top category ---
+    |
+help: Remove assignment to unused variable `top_score`
+
+F821 Undefined name `ElementCollection`
+  --> natural_pdf/collections/mixins.py:16:35
+   |
+14 |     """
+15 |
+16 |     def below(self, **kwargs) -> "ElementCollection":
+   |                                   ^^^^^^^^^^^^^^^^^
+17 |         """Find regions below all elements in this collection."""
+18 |         return self.apply(lambda element: element.below(**kwargs))
+   |
+
+F821 Undefined name `ElementCollection`
+  --> natural_pdf/collections/mixins.py:20:35
+   |
+18 |         return self.apply(lambda element: element.below(**kwargs))
+19 |
+20 |     def above(self, **kwargs) -> "ElementCollection":
+   |                                   ^^^^^^^^^^^^^^^^^
+21 |         """Find regions above all elements in this collection."""
+22 |         return self.apply(lambda element: element.above(**kwargs))
+   |
+
+F821 Undefined name `ElementCollection`
+  --> natural_pdf/collections/mixins.py:24:34
+   |
+22 |         return self.apply(lambda element: element.above(**kwargs))
+23 |
+24 |     def left(self, **kwargs) -> "ElementCollection":
+   |                                  ^^^^^^^^^^^^^^^^^
+25 |         """Find regions to the left of all elements in this collection."""
+26 |         return self.apply(lambda element: element.left(**kwargs))
+   |
+
+F821 Undefined name `ElementCollection`
+  --> natural_pdf/collections/mixins.py:28:35
+   |
+26 |         return self.apply(lambda element: element.left(**kwargs))
+27 |
+28 |     def right(self, **kwargs) -> "ElementCollection":
+   |                                   ^^^^^^^^^^^^^^^^^
+29 |         """Find regions to the right of all elements in this collection."""
+30 |         return self.apply(lambda element: element.right(**kwargs))
+   |
+
+F821 Undefined name `ElementCollection`
+  --> natural_pdf/collections/mixins.py:32:43
+   |
+30 |         return self.apply(lambda element: element.right(**kwargs))
+31 |
+32 |     def expand(self, *args, **kwargs) -> "ElementCollection":
+   |                                           ^^^^^^^^^^^^^^^^^
+33 |         """Expand all elements in this collection.
+   |
+
+E741 Ambiguous variable name: `l`
+   --> natural_pdf/core/element_manager.py:587:57
+    |
+585 |         # 4. Load other elements (rects, lines)
+586 |         rect_elements = [RectangleElement(r, self._page) for r in self._page._page.rects]
+587 |         line_elements = [LineElement(l, self._page) for l in self._page._page.lines]
+    |                                                         ^
+588 |         image_elements = [ImageElement(i, self._page) for i in self._page._page.images]
+589 |         logger.debug(
+    |
+
+F841 Local variable `height_img` is assigned to but never used
+   --> natural_pdf/core/element_manager.py:780:17
+    |
+778 |             try:
+779 |                 x0_img, top_img, x1_img, bottom_img = map(float, result["bbox"])
+780 |                 height_img = bottom_img - top_img
+    |                 ^^^^^^^^^^
+781 |                 pdf_x0 = x0_img * scale_x
+782 |                 pdf_top = top_img * scale_y
+    |
+help: Remove assignment to unused variable `height_img`
+
+F841 Local variable `pg_height` is assigned to but never used
+    --> natural_pdf/core/element_manager.py:1300:9
+     |
+1299 |         raw_rects = list(getattr(self._page._page, "rects", []))
+1300 |         pg_height = self._page.height
+     |         ^^^^^^^^^
+1301 |
+1302 |         # Build list of candidate highlight rectangles (convert to top-based coords)
+     |
+help: Remove assignment to unused variable `pg_height`
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:31:1
+   |
+29 | logger = logging.getLogger(__name__)
+30 |
+31 | from natural_pdf.core.pdf import PDF
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 | from natural_pdf.export.mixin import ExportMixin
+33 | from natural_pdf.vision.mixin import VisualSearchMixin
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:32:1
+   |
+31 | from natural_pdf.core.pdf import PDF
+32 | from natural_pdf.export.mixin import ExportMixin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 | from natural_pdf.vision.mixin import VisualSearchMixin
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:33:1
+   |
+31 | from natural_pdf.core.pdf import PDF
+32 | from natural_pdf.export.mixin import ExportMixin
+33 | from natural_pdf.vision.mixin import VisualSearchMixin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 |
+35 | # --- Search Imports ---
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:55:1
+   |
+53 |     SearchServiceProtocol, SearchOptions, Indexable = object, object, object
+54 |
+55 | from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+56 |
+57 | # Import the ApplyMixin
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:58:1
+   |
+57 | # Import the ApplyMixin
+58 | from natural_pdf.collections.mixins import ApplyMixin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+59 | from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/core/pdf_collection.py:59:1
+   |
+57 | # Import the ApplyMixin
+58 | from natural_pdf.collections.mixins import ApplyMixin
+59 | from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+F841 Local variable `PDF` is assigned to but never used
+   --> natural_pdf/core/pdf_collection.py:230:9
+    |
+228 |     def __getitem__(self, key) -> Union["PDF", "PDFCollection"]:
+229 |         # Use dynamic import here as well
+230 |         PDF = self._get_pdf_class()
+    |         ^^^
+231 |         if isinstance(key, slice):
+232 |             # Create a new collection with the sliced PDFs and original options
+    |
+help: Remove assignment to unused variable `PDF`
+
+E722 Do not use bare `except`
+   --> natural_pdf/core/pdf_collection.py:342:21
+    |
+340 |                         # Try to use a nice font if available
+341 |                         font = ImageFont.truetype("Arial", 20)
+342 |                     except:
+    |                     ^^^^^^
+343 |                         # Fallback to default font
+344 |                         font = ImageFont.load_default()
+    |
+
+F821 Undefined name `ElementCollection`
+   --> natural_pdf/core/pdf_collection.py:395:11
+    |
+393 |         case: bool = True,
+394 |         **kwargs,
+395 |     ) -> "ElementCollection": ...
+    |           ^^^^^^^^^^^^^^^^^
+396 |
+397 |     @overload
+    |
+
+F821 Undefined name `ElementCollection`
+   --> natural_pdf/core/pdf_collection.py:406:11
+    |
+404 |         case: bool = True,
+405 |         **kwargs,
+406 |     ) -> "ElementCollection": ...
+    |           ^^^^^^^^^^^^^^^^^
+407 |
+408 |     def find_all(
+    |
+
+F821 Undefined name `ElementCollection`
+   --> natural_pdf/core/pdf_collection.py:417:11
+    |
+415 |         case: bool = True,
+416 |         **kwargs,
+417 |     ) -> "ElementCollection":
+    |           ^^^^^^^^^^^^^^^^^
+418 |         """
+419 |         Find all elements matching the selector OR text across all PDFs in the collection.
+    |
+
+F821 Undefined name `ElementCollection`
+   --> natural_pdf/core/pdf_collection.py:457:16
+    |
+455 |                 logger.error(f"Error finding elements in {pdf.path}: {e}", exc_info=True)
+456 |
+457 |         return ElementCollection(all_elements)
+    |                ^^^^^^^^^^^^^^^^^
+458 |
+459 |     def apply_ocr(
+    |
+
+F841 Local variable `PDF` is assigned to but never used
+   --> natural_pdf/core/pdf_collection.py:579:9
+    |
+577 |             Self for method chaining.
+578 |         """
+579 |         PDF = self._get_pdf_class()  # Ensure PDF class is available
+    |         ^^^
+580 |         if not callable(correction_callback):
+581 |             raise TypeError("`correction_callback` must be a callable function.")
+    |
+help: Remove assignment to unused variable `PDF`
+
+F821 Undefined name `Region`
+   --> natural_pdf/core/render_spec.py:199:38
+    |
+197 |         limit: Optional[int] = 30,  # Max pages to show (default 30)
+198 |         # Cropping options
+199 |         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
+    |                                      ^^^^^^
+200 |         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+201 |         **kwargs,
+    |
+
+F821 Undefined name `Region`
+   --> natural_pdf/core/render_spec.py:296:38
+    |
+294 |         columns: Optional[int] = None,
+295 |         # Cropping options
+296 |         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
+    |                                      ^^^^^^
+297 |         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+298 |         **kwargs,
+    |
+
+F841 Local variable `type_display` is assigned to but never used
+  --> natural_pdf/describe/base.py:55:9
+   |
+53 |     element_summary = {}
+54 |     for element_type, count in type_counts.most_common():
+55 |         type_display = element_type.replace("_", " ").title()
+   |         ^^^^^^^^^^^^
+56 |         if element_type == "word":
+57 |             # Add source breakdown for text
+   |
+help: Remove assignment to unused variable `type_display`
+
+E722 Do not use bare `except`
+   --> natural_pdf/describe/base.py:538:21
+    |
+536 |                         else:
+537 |                             color_info[prop] = str(value)
+538 |                     except:
+    |                     ^^^^^^
+539 |                         color_info[prop] = str(value)
+540 |                 else:
+    |
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:283:21
+    |
+281 |                 if normalized_anchor == "top":
+282 |                     ref_y = self.top
+283 |                     comparator = lambda m: m.bottom < ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+284 |                 elif normalized_anchor == "center":
+285 |                     ref_y = (self.top + self.bottom) / 2
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:286:21
+    |
+284 |                 elif normalized_anchor == "center":
+285 |                     ref_y = (self.top + self.bottom) / 2
+286 |                     comparator = lambda m: m.bottom <= ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+287 |                 else:  # 'bottom'
+288 |                     ref_y = self.bottom
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:289:21
+    |
+287 |                 else:  # 'bottom'
+288 |                     ref_y = self.bottom
+289 |                     comparator = lambda m: m.bottom <= ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+290 |
+291 |                 matches_in_direction = [m for m in all_matches if comparator(m)]
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:304:21
+    |
+302 |                 if normalized_anchor == "top":
+303 |                     ref_y = self.top
+304 |                     comparator = lambda m: m.top > ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+305 |                 elif normalized_anchor == "center":
+306 |                     ref_y = (self.top + self.bottom) / 2
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:307:21
+    |
+305 |                 elif normalized_anchor == "center":
+306 |                     ref_y = (self.top + self.bottom) / 2
+307 |                     comparator = lambda m: m.top >= ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+308 |                 else:  # 'bottom'
+309 |                     ref_y = self.bottom
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:310:21
+    |
+308 |                 else:  # 'bottom'
+309 |                     ref_y = self.bottom
+310 |                     comparator = lambda m: m.top >= ref_y
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+311 |
+312 |                 matches_in_direction = [m for m in all_matches if comparator(m)]
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:325:21
+    |
+323 |                 if normalized_anchor == "left":
+324 |                     ref_x = self.x0
+325 |                     comparator = lambda m: m.x1 < ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+326 |                 elif normalized_anchor == "center":
+327 |                     ref_x = (self.x0 + self.x1) / 2
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:328:21
+    |
+326 |                 elif normalized_anchor == "center":
+327 |                     ref_x = (self.x0 + self.x1) / 2
+328 |                     comparator = lambda m: m.x1 <= ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+329 |                 else:  # 'right'
+330 |                     ref_x = self.x1
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:331:21
+    |
+329 |                 else:  # 'right'
+330 |                     ref_x = self.x1
+331 |                     comparator = lambda m: m.x1 <= ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+332 |
+333 |                 matches_in_direction = [m for m in all_matches if comparator(m)]
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:348:21
+    |
+346 |                 if normalized_anchor == "left":
+347 |                     ref_x = self.x0
+348 |                     comparator = lambda m: m.x0 >= ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+349 |                 elif normalized_anchor == "center":
+350 |                     ref_x = (self.x0 + self.x1) / 2
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:351:21
+    |
+349 |                 elif normalized_anchor == "center":
+350 |                     ref_x = (self.x0 + self.x1) / 2
+351 |                     comparator = lambda m: m.x0 >= ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+352 |                 else:  # 'right'
+353 |                     ref_x = self.x1
+    |
+help: Rewrite `comparator` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/elements/base.py:354:21
+    |
+352 |                 else:  # 'right'
+353 |                     ref_x = self.x1
+354 |                     comparator = lambda m: m.x0 > ref_x
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+355 |
+356 |                 matches_in_direction = [m for m in all_matches if comparator(m)]
+    |
+help: Rewrite `comparator` as a `def`
+
+F841 Local variable `threshold` is assigned to but never used
+   --> natural_pdf/exporters/searchable_pdf.py:121:13
+    |
+119 |                 avg_height = 1
+120 |             tolerance_factor = 0.7
+121 |             threshold = avg_height * tolerance_factor
+    |             ^^^^^^^^^
+122 |             delta_y = abs(current_word_center_y - last_word_center_y)
+123 |             # if delta_y < threshold:
+    |
+help: Remove assignment to unused variable `threshold`
+
+F841 Local variable `delta_y` is assigned to but never used
+   --> natural_pdf/exporters/searchable_pdf.py:122:13
+    |
+120 |             tolerance_factor = 0.7
+121 |             threshold = avg_height * tolerance_factor
+122 |             delta_y = abs(current_word_center_y - last_word_center_y)
+    |             ^^^^^^^
+123 |             # if delta_y < threshold:
+124 |             #     current_line.append(current_word)
+    |
+help: Remove assignment to unused variable `delta_y`
+
+F401 `pydantic` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/extraction/manager.py:32:20
+   |
+30 |         """Checks if necessary dependencies are available."""
+31 |         try:
+32 |             import pydantic
+   |                    ^^^^^^^^
+33 |
+34 |             return True
+   |
+help: Remove unused import: `pydantic`
+
+F841 Local variable `include_highlights` is assigned to but never used
+  --> natural_pdf/extraction/mixin.py:92:17
+   |
+90 |                     return None
+91 |                 resolution = kwargs.pop("resolution", 72)
+92 |                 include_highlights = kwargs.pop("include_highlights", False)
+   |                 ^^^^^^^^^^^^^^^^^^
+93 |                 labels = kwargs.pop("labels", False)
+94 |                 return self.render(
+   |
+help: Remove assignment to unused variable `include_highlights`
+
+F841 Local variable `labels` is assigned to but never used
+  --> natural_pdf/extraction/mixin.py:93:17
+   |
+91 |                 resolution = kwargs.pop("resolution", 72)
+92 |                 include_highlights = kwargs.pop("include_highlights", False)
+93 |                 labels = kwargs.pop("labels", False)
+   |                 ^^^^^^
+94 |                 return self.render(
+95 |                     resolution=resolution,
+   |
+help: Remove assignment to unused variable `labels`
+
+E722 Do not use bare `except`
+   --> natural_pdf/judge.py:385:9
+    |
+383 |             event_handler = Event(source=output, watched_events=["keydown"])
+384 |             event_handler.on_dom_event(on_key)
+385 |         except:
+    |         ^^^^^^
+386 |             # If ipyevents not available, just use buttons
+387 |             print("Note: Install ipyevents for keyboard shortcuts: pip install ipyevents")
+    |
+
+F821 Undefined name `Region`
+   --> natural_pdf/judge.py:389:38
+    |
+387 |             print("Note: Install ipyevents for keyboard shortcuts: pip install ipyevents")
+388 |
+389 |     def decide(self, regions: Union["Region", List["Region"]]) -> Union[Decision, List[Decision]]:
+    |                                      ^^^^^^
+390 |         """
+391 |         Classify one or more regions.
+    |
+
+F821 Undefined name `Region`
+   --> natural_pdf/judge.py:389:53
+    |
+387 |             print("Note: Install ipyevents for keyboard shortcuts: pip install ipyevents")
+388 |
+389 |     def decide(self, regions: Union["Region", List["Region"]]) -> Union[Decision, List[Decision]]:
+    |                                                     ^^^^^^
+390 |         """
+391 |         Classify one or more regions.
+    |
+
+F821 Undefined name `Region`
+   --> natural_pdf/judge.py:517:49
+    |
+516 |     def pick(
+517 |         self, target_label: str, regions: List["Region"], labels: Optional[List[str]] = None
+    |                                                 ^^^^^^
+518 |     ) -> PickResult:
+519 |         """
+    |
+
+F821 Undefined name `Region`
+   --> natural_pdf/judge.py:558:55
+    |
+556 |         return PickResult(region=region, index=best_index, label=label, score=best_score)
+557 |
+558 |     def count(self, target_label: str, regions: List["Region"]) -> int:
+    |                                                       ^^^^^^
+559 |         """
+560 |         Count how many regions match the target label.
+    |
+
+F821 Undefined name `Region`
+    --> natural_pdf/judge.py:1120:40
+     |
+1118 |         display(widgets.VBox(rows))
+1119 |
+1120 |     def forget(self, region: Optional["Region"] = None, delete: bool = False) -> None:
+     |                                        ^^^^^^
+1121 |         """
+1122 |         Clear training data, delete all files, or move a specific region to unlabeled.
+     |
+
+F841 Local variable `fn` is assigned to but never used
+    --> natural_pdf/judge.py:1424:21
+     |
+1422 |                 else:
+1423 |                     tp = sum(1 for v in vals1 if v < best_threshold)
+1424 |                     fn = len(vals1) - tp
+     |                     ^^
+1425 |                     tn = sum(1 for v in vals2 if v >= best_threshold)
+1426 |                     fp = len(vals2) - tn
+     |
+help: Remove assignment to unused variable `fn`
+
+E402 Module level import not at top of file
+  --> natural_pdf/ocr/__init__.py:13:1
+   |
+12 | # Import the base classes that are always available
+13 | from .engine import OCREngine
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 | from .ocr_factory import OCRFactory
+15 | from .ocr_manager import OCRManager
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/ocr/__init__.py:14:1
+   |
+12 | # Import the base classes that are always available
+13 | from .engine import OCREngine
+14 | from .ocr_factory import OCRFactory
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 | from .ocr_manager import OCRManager
+16 | from .ocr_options import (
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/ocr/__init__.py:15:1
+   |
+13 | from .engine import OCREngine
+14 | from .ocr_factory import OCRFactory
+15 | from .ocr_manager import OCRManager
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 | from .ocr_options import (
+17 |     BaseOCROptions,
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/ocr/__init__.py:16:1
+   |
+14 |   from .ocr_factory import OCRFactory
+15 |   from .ocr_manager import OCRManager
+16 | / from .ocr_options import (
+17 | |     BaseOCROptions,
+18 | |     EasyOCROptions,
+19 | |     OCROptions,
+20 | |     PaddleOCROptions,
+21 | |     SuryaOCROptions,
+22 | | )
+   | |_^
+23 |
+24 |   # Add all public symbols that should be available when importing this module
+   |
+
+F401 `.search_options.BaseSearchOptions` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:8:5
+   |
+ 6 | # Import constants
+ 7 | from .search_options import (
+ 8 |     BaseSearchOptions,
+   |     ^^^^^^^^^^^^^^^^^
+ 9 |     MultiModalSearchOptions,
+10 |     SearchOptions,
+   |
+help: Use an explicit re-export: `BaseSearchOptions as BaseSearchOptions`
+
+F401 `.search_options.MultiModalSearchOptions` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:9:5
+   |
+ 7 | from .search_options import (
+ 8 |     BaseSearchOptions,
+ 9 |     MultiModalSearchOptions,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+10 |     SearchOptions,
+11 |     TextSearchOptions,
+   |
+help: Use an explicit re-export: `MultiModalSearchOptions as MultiModalSearchOptions`
+
+F401 `.search_options.SearchOptions` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:10:5
+   |
+ 8 |     BaseSearchOptions,
+ 9 |     MultiModalSearchOptions,
+10 |     SearchOptions,
+   |     ^^^^^^^^^^^^^
+11 |     TextSearchOptions,
+12 | )
+   |
+help: Use an explicit re-export: `SearchOptions as SearchOptions`
+
+F401 `.search_options.TextSearchOptions` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:11:5
+   |
+ 9 |     MultiModalSearchOptions,
+10 |     SearchOptions,
+11 |     TextSearchOptions,
+   |     ^^^^^^^^^^^^^^^^^
+12 | )
+13 | from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+   |
+help: Use an explicit re-export: `TextSearchOptions as TextSearchOptions`
+
+F401 `.search_service_protocol.Indexable` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:13:38
+   |
+11 |     TextSearchOptions,
+12 | )
+13 | from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+   |                                      ^^^^^^^^^
+14 |
+15 | # Check search extras availability
+   |
+help: Use an explicit re-export: `Indexable as Indexable`
+
+F401 `.search_service_protocol.IndexConfigurationError` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+  --> natural_pdf/search/__init__.py:13:49
+   |
+11 |     TextSearchOptions,
+12 | )
+13 | from .search_service_protocol import Indexable, IndexConfigurationError, SearchServiceProtocol
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+14 |
+15 | # Check search extras availability
+   |
+help: Use an explicit re-export: `IndexConfigurationError as IndexConfigurationError`
+
+F401 `numpy` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:20:21
+   |
+19 | try:
+20 |     import numpy as np
+   |                     ^^
+21 |
+22 |     # Lazy import for sentence_transformers to avoid heavy loading at module level
+   |
+help: Remove unused import: `numpy`
+
+F401 `lancedb` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:29:16
+   |
+27 |     # Check if LanceDB is available
+28 |     try:
+29 |         import lancedb
+   |                ^^^^^^^
+30 |         import pyarrow
+   |
+help: Remove unused import: `lancedb`
+
+F401 `pyarrow` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:30:16
+   |
+28 |     try:
+29 |         import lancedb
+30 |         import pyarrow
+   |                ^^^^^^^
+31 |
+32 |         LANCEDB_AVAILABLE = True
+   |
+help: Remove unused import: `pyarrow`
+
+F401 `.lancedb_search_service.DEFAULT_LANCEDB_PERSIST_PATH` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:35:13
+   |
+33 |         from .lancedb_search_service import (
+34 |             DEFAULT_EMBEDDING_MODEL,
+35 |             DEFAULT_LANCEDB_PERSIST_PATH,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+36 |             LanceDBSearchService,
+37 |         )
+   |
+help: Remove unused import: `.lancedb_search_service.DEFAULT_LANCEDB_PERSIST_PATH`
+
+F401 `.numpy_search_service.DEFAULT_EMBEDDING_MODEL` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:41:43
+   |
+39 |         # LanceDB not available, we'll use NumPy fallback
+40 |         LANCEDB_AVAILABLE = False
+41 |         from .numpy_search_service import DEFAULT_EMBEDDING_MODEL, NumpySearchService
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^
+42 | except ImportError:
+43 |     # Basic dependencies missing
+   |
+help: Remove unused import: `.numpy_search_service.DEFAULT_EMBEDDING_MODEL`
+
+F401 `sentence_transformers` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/search/__init__.py:53:16
+   |
+51 |     """Lazy check for sentence_transformers availability."""
+52 |     try:
+53 |         import sentence_transformers
+   |                ^^^^^^^^^^^^^^^^^^^^^
+54 |
+55 |         return True
+   |
+help: Remove unused import: `sentence_transformers`
+
+E722 Do not use bare `except`
+   --> natural_pdf/search/lancedb_search_service.py:163:17
+    |
+161 |                 try:
+162 |                     doc_id = f"auto_{item.get_content_hash() if hasattr(item, 'get_content_hash') else hash(content_text)}"
+163 |                 except:
+    |                 ^^^^^^
+164 |                     doc_id = f"auto_{len(texts_to_embed)}"
+    |
+
+F401 `natural_pdf.selectors.parser.build_text_contains_selector` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/selectors/__init__.py:6:5
+  |
+5 | from natural_pdf.selectors.parser import (
+6 |     build_text_contains_selector,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+7 |     parse_selector,
+8 |     selector_to_filter_func,
+  |
+help: Use an explicit re-export: `build_text_contains_selector as build_text_contains_selector`
+
+F401 `natural_pdf.selectors.parser.parse_selector` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/selectors/__init__.py:7:5
+  |
+5 | from natural_pdf.selectors.parser import (
+6 |     build_text_contains_selector,
+7 |     parse_selector,
+  |     ^^^^^^^^^^^^^^
+8 |     selector_to_filter_func,
+9 | )
+  |
+help: Use an explicit re-export: `parse_selector as parse_selector`
+
+F401 `natural_pdf.selectors.parser.selector_to_filter_func` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/selectors/__init__.py:8:5
+  |
+6 |     build_text_contains_selector,
+7 |     parse_selector,
+8 |     selector_to_filter_func,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+9 | )
+  |
+help: Use an explicit re-export: `selector_to_filter_func as selector_to_filter_func`
+
+E722 Do not use bare `except`
+   --> natural_pdf/selectors/parser.py:597:5
+    |
+595 |         Color(value)
+596 |         return True
+597 |     except:
+    |     ^^^^^^
+598 |         return False
+    |
+
+E722 Do not use bare `except`
+   --> natural_pdf/selectors/parser.py:624:5
+    |
+622 |         lab2 = convert_color(rgb2, LabColor)
+623 |         return delta_e_cie2000(lab1, lab2)
+624 |     except:
+    |     ^^^^^^
+625 |         return float("inf")
+    |
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:702:13
+    |
+700 |         if selector_type == "text":
+701 |             filter_name = "type is 'text', 'char', or 'word'"
+702 |             func = lambda el: hasattr(el, "type") and el.type in ["text", "char", "word"]
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+703 |         elif selector_type == "region":
+704 |             filter_name = "type is 'region' (has region_type)"
+    |
+help: Rewrite `func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:706:13
+    |
+704 |             filter_name = "type is 'region' (has region_type)"
+705 |             # Note: Specific region type attribute (e.g., [type=table]) is checked below
+706 |             func = lambda el: hasattr(el, "region_type")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+707 |         else:
+708 |             # Check against normalized_type first, then element.type
+    |
+help: Rewrite `func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:709:13
+    |
+707 |           else:
+708 |               # Check against normalized_type first, then element.type
+709 | /             func = lambda el: (
+710 | |                 hasattr(el, "normalized_type") and el.normalized_type == selector_type
+711 | |             ) or (
+712 | |                 not hasattr(
+713 | |                     el, "normalized_type"
+714 | |                 )  # Only check element.type if normalized_type doesn't exist/match
+715 | |                 and hasattr(el, "type")
+716 | |                 and el.type == selector_type
+717 | |             )
+    | |_____________^
+718 |           filters.append({"name": filter_name, "func": func})
+    |
+help: Rewrite `func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:805:13
+    |
+803 |             filter_name = f"attribute [{name} exists]"
+804 |             # Lambda checks that the retrieved value is not None
+805 |             filter_lambda = lambda el, get_val=get_element_value: get_val(el) is not None
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+806 |         else:
+807 |             # Handle operators with values (e.g., =, !=, *=, etc.)
+    |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:823:21
+    |
+821 |                 ]:
+822 |                     op_desc = f"= {value!r} (exact color)"
+823 |                     compare_func = lambda el_val, sel_val: _is_exact_color_match(el_val, sel_val)
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+824 |                 # For boolean attributes, handle string/bool comparison
+825 |                 elif name in ["checked", "is_checked", "bold", "italic"]:
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:848:21
+    |
+846 |                     compare_func = bool_compare
+847 |                 else:
+848 |                     compare_func = lambda el_val, sel_val: el_val == sel_val
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+849 |             elif op == "!=":
+850 |                 compare_func = lambda el_val, sel_val: el_val != sel_val
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:850:17
+    |
+848 |                     compare_func = lambda el_val, sel_val: el_val == sel_val
+849 |             elif op == "!=":
+850 |                 compare_func = lambda el_val, sel_val: el_val != sel_val
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+851 |             elif op == "~=":
+852 |                 op_desc = f"~= {value!r} (approx)"
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:853:17
+    |
+851 |             elif op == "~=":
+852 |                 op_desc = f"~= {value!r} (approx)"
+853 |                 compare_func = lambda el_val, sel_val: _is_approximate_match(el_val, sel_val)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+854 |             elif op == "^=":
+855 |                 compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:855:17
+    |
+853 |                   compare_func = lambda el_val, sel_val: _is_approximate_match(el_val, sel_val)
+854 |               elif op == "^=":
+855 | /                 compare_func = (
+856 | |                     lambda el_val, sel_val: isinstance(el_val, str)
+857 | |                     and isinstance(sel_val, str)
+858 | |                     and el_val.startswith(sel_val)
+859 | |                 )
+    | |_________________^
+860 |               elif op == "$=":
+861 |                   compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:861:17
+    |
+859 |                   )
+860 |               elif op == "$=":
+861 | /                 compare_func = (
+862 | |                     lambda el_val, sel_val: isinstance(el_val, str)
+863 | |                     and isinstance(sel_val, str)
+864 | |                     and el_val.endswith(sel_val)
+865 | |                 )
+    | |_________________^
+866 |               elif op == "*=":
+867 |                   if name == "fontname":
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:869:21
+    |
+867 |                   if name == "fontname":
+868 |                       op_desc = f"*= {value!r} (contains, case-insensitive)"
+869 | /                     compare_func = (
+870 | |                         lambda el_val, sel_val: isinstance(el_val, str)
+871 | |                         and isinstance(sel_val, str)
+872 | |                         and sel_val.lower() in el_val.lower()
+873 | |                     )
+    | |_____________________^
+874 |                   else:
+875 |                       op_desc = f"*= {value!r} (contains)"
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:876:21
+    |
+874 |                   else:
+875 |                       op_desc = f"*= {value!r} (contains)"
+876 | /                     compare_func = (
+877 | |                         lambda el_val, sel_val: isinstance(el_val, str)
+878 | |                         and isinstance(sel_val, str)
+879 | |                         and sel_val in el_val
+880 | |                     )
+    | |_____________________^
+881 |               elif op == ">=":
+882 |                   compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:882:17
+    |
+880 |                       )
+881 |               elif op == ">=":
+882 | /                 compare_func = (
+883 | |                     lambda el_val, sel_val: isinstance(el_val, (int, float))
+884 | |                     and isinstance(sel_val, (int, float))
+885 | |                     and el_val >= sel_val
+886 | |                 )
+    | |_________________^
+887 |               elif op == "<=":
+888 |                   compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:888:17
+    |
+886 |                   )
+887 |               elif op == "<=":
+888 | /                 compare_func = (
+889 | |                     lambda el_val, sel_val: isinstance(el_val, (int, float))
+890 | |                     and isinstance(sel_val, (int, float))
+891 | |                     and el_val <= sel_val
+892 | |                 )
+    | |_________________^
+893 |               elif op == ">":
+894 |                   compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:894:17
+    |
+892 |                   )
+893 |               elif op == ">":
+894 | /                 compare_func = (
+895 | |                     lambda el_val, sel_val: isinstance(el_val, (int, float))
+896 | |                     and isinstance(sel_val, (int, float))
+897 | |                     and el_val > sel_val
+898 | |                 )
+    | |_________________^
+899 |               elif op == "<":
+900 |                   compare_func = (
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:900:17
+    |
+898 |                   )
+899 |               elif op == "<":
+900 | /                 compare_func = (
+901 | |                     lambda el_val, sel_val: isinstance(el_val, (int, float))
+902 | |                     and isinstance(sel_val, (int, float))
+903 | |                     and el_val < sel_val
+904 | |                 )
+    | |_________________^
+905 |               else:
+906 |                   # Should not happen with current parsing logic
+    |
+help: Rewrite `compare_func` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:915:13
+    |
+913 |               filter_name = f"attribute [{name}{op_desc}]"
+914 |               # Capture loop variables correctly in the lambda
+915 | /             filter_lambda = (
+916 | |                 lambda el, get_val=get_element_value, compare=compare_func, expected_val=value: (
+917 | |                     element_value := get_val(el)
+918 | |                 )
+919 | |                 is not None
+920 | |                 and compare(element_value, expected_val)
+921 | |             )
+    | |_____________^
+922 |
+923 |           filters.append({"name": filter_name, "func": filter_lambda})
+    |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> natural_pdf/selectors/parser.py:950:13
+    |
+949 |             # The filter lambda applies the inner function and inverts the result
+950 |             filter_lambda = lambda el, inner_func=inner_filter_func: not inner_func(el)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+951 |
+952 |             # Try to create a descriptive name (can be long)
+    |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1022:13
+     |
+1020 |             # It doesn't filter elements here, but marks them for special processing
+1021 |             # This allows us to first check :contains matches, then sort by similarity
+1022 |             filter_lambda = lambda el: True  # Accept all elements for now
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1023 |
+1024 |         # --- Handle :startswith and :starts-with (alias) --- #
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1047:13
+     |
+1046 |           elif name == "starts-with" and args is not None:
+1047 | /             filter_lambda = (
+1048 | |                 lambda el, arg=args: hasattr(el, "text")
+1049 | |                 and el.text
+1050 | |                 and el.text.startswith(str(arg))
+1051 | |             )
+     | |_____________^
+1052 |           elif name == "ends-with" and args is not None:
+1053 |               filter_lambda = (
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1053:13
+     |
+1051 |               )
+1052 |           elif name == "ends-with" and args is not None:
+1053 | /             filter_lambda = (
+1054 | |                 lambda el, arg=args: hasattr(el, "text") and el.text and el.text.endswith(str(arg))
+1055 | |             )
+     | |_____________^
+1056 |
+1057 |           # Boolean attribute pseudo-classes
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1059:13
+     |
+1057 |         # Boolean attribute pseudo-classes
+1058 |         elif name == "bold":
+1059 |             filter_lambda = lambda el: hasattr(el, "bold") and el.bold
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1060 |         elif name == "italic":
+1061 |             filter_lambda = lambda el: hasattr(el, "italic") and el.italic
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1061:13
+     |
+1059 |             filter_lambda = lambda el: hasattr(el, "bold") and el.bold
+1060 |         elif name == "italic":
+1061 |             filter_lambda = lambda el: hasattr(el, "italic") and el.italic
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1062 |         elif name == "horizontal":
+1063 |             filter_lambda = lambda el: hasattr(el, "is_horizontal") and el.is_horizontal
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1063:13
+     |
+1061 |             filter_lambda = lambda el: hasattr(el, "italic") and el.italic
+1062 |         elif name == "horizontal":
+1063 |             filter_lambda = lambda el: hasattr(el, "is_horizontal") and el.is_horizontal
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1064 |         elif name == "vertical":
+1065 |             filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1065:13
+     |
+1063 |             filter_lambda = lambda el: hasattr(el, "is_horizontal") and el.is_horizontal
+1064 |         elif name == "vertical":
+1065 |             filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1066 |         elif name == "checked":
+1067 |             filter_lambda = lambda el: hasattr(el, "is_checked") and el.is_checked
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1067:13
+     |
+1065 |             filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
+1066 |         elif name == "checked":
+1067 |             filter_lambda = lambda el: hasattr(el, "is_checked") and el.is_checked
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1068 |         elif name == "unchecked":
+1069 |             filter_lambda = lambda el: hasattr(el, "is_checked") and not el.is_checked
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1069:13
+     |
+1067 |             filter_lambda = lambda el: hasattr(el, "is_checked") and el.is_checked
+1068 |         elif name == "unchecked":
+1069 |             filter_lambda = lambda el: hasattr(el, "is_checked") and not el.is_checked
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1070 |
+1071 |         # --- New: :strike / :strikethrough / :strikeout pseudo-classes --- #
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1073:13
+     |
+1071 |         # --- New: :strike / :strikethrough / :strikeout pseudo-classes --- #
+1072 |         elif name in ("strike", "strikethrough", "strikeout"):
+1073 |             filter_lambda = lambda el: hasattr(el, "strike") and bool(getattr(el, "strike"))
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1074 |             filter_name = f"pseudo-class :{name}"
+1075 |         elif name in ("underline", "underlined"):
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1076:13
+     |
+1074 |             filter_name = f"pseudo-class :{name}"
+1075 |         elif name in ("underline", "underlined"):
+1076 |             filter_lambda = lambda el: hasattr(el, "underline") and bool(getattr(el, "underline"))
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1077 |             filter_name = f"pseudo-class :{name}"
+1078 |         elif name in ("highlight", "highlighted"):
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+    --> natural_pdf/selectors/parser.py:1083:13
+     |
+1081 |             # Element, because it is a callable present on every element and would
+1082 |             # incorrectly mark everything as highlighted.
+1083 |             filter_lambda = lambda el: bool(getattr(el, "is_highlighted", False))
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1084 |             filter_name = f"pseudo-class :{name}"
+     |
+help: Rewrite `filter_lambda` as a `def`
+
+E722 Do not use bare `except`
+    --> natural_pdf/selectors/parser.py:1219:25
+     |
+1217 |                                 min_distance = distance
+1218 |                                 closest_value = val
+1219 |                         except:
+     |                         ^^^^^^
+1220 |                             continue
+1221 |                     aggregates[attr_name] = closest_value
+     |
+
+F841 Local variable `pdf_has_ocr_regions` is assigned to but never used
+   --> natural_pdf/utils/packaging.py:235:21
+    |
+233 |                 else:
+234 |                     # If, after checks, no valid regions remain, ensure flag is correct
+235 |                     pdf_has_ocr_regions = False
+    |                     ^^^^^^^^^^^^^^^^^^^
+236 |
+237 |         # --- Final Checks and Zipping ---
+    |
+help: Remove assignment to unused variable `pdf_has_ocr_regions`
+
+E722 Do not use bare `except`
+   --> natural_pdf/utils/packaging.py:298:17
+    |
+296 |                 try:
+297 |                     os.remove(output_zip_path)
+298 |                 except:
+    |                 ^^^^^^
+299 |                     pass
+300 |             raise  # Re-raise error
+    |
+
+E402 Module level import not at top of file
+  --> natural_pdf/utils/pdfminer_patches.py:16:1
+   |
+15 | # Allow disabling patches via environment variable
+16 | import os
+   | ^^^^^^^^^
+17 |
+18 | DISABLE_PATCHES = os.environ.get("NATURAL_PDF_DISABLE_PDFMINER_PATCHES", "").lower() in (
+   |
+
+E402 Module level import not at top of file
+  --> natural_pdf/utils/visualization.py:36:1
+   |
+35 | # Add quantitative color mapping functionality
+36 | import matplotlib.cm as cm
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E722 Do not use bare `except`
+   --> natural_pdf/utils/visualization.py:237:13
+    |
+235 |             try:
+236 |                 font = ImageFont.load_default(size=16)
+237 |             except:
+    |             ^^^^^^
+238 |                 font = ImageFont.load_default()
+    |
+
+F841 Local variable `block_start` is assigned to but never used
+   --> natural_pdf/utils/visualization.py:248:13
+    |
+246 |         for i in range(num_blocks):
+247 |             # Calculate value for this block (center of block)
+248 |             block_start = i / num_blocks
+    |             ^^^^^^^^^^^
+249 |             block_center = (i + 0.5) / num_blocks
+250 |             value = vmin + block_center * (vmax - vmin)
+    |
+help: Remove assignment to unused variable `block_start`
+
+F401 `.viewer.InteractiveViewerWidget` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/widgets/__init__.py:2:21
+  |
+1 | # Also provide the original implementation for reference
+2 | from .viewer import InteractiveViewerWidget
+  |                     ^^^^^^^^^^^^^^^^^^^^^^^
+3 | from .viewer import InteractiveViewerWidget as _OriginalInteractiveViewerWidget
+  |
+help: Use an explicit re-export: `InteractiveViewerWidget as InteractiveViewerWidget`
+
+F401 `.viewer.InteractiveViewerWidget` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> natural_pdf/widgets/__init__.py:3:48
+  |
+1 | # Also provide the original implementation for reference
+2 | from .viewer import InteractiveViewerWidget
+3 | from .viewer import InteractiveViewerWidget as _OriginalInteractiveViewerWidget
+  |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: Use an explicit re-export: `InteractiveViewerWidget as InteractiveViewerWidget`
+
+F401 `PIL.Image` imported but unused; consider using `importlib.util.find_spec` to test for availability
+  --> natural_pdf/widgets/viewer.py:29:21
+   |
+28 |     from IPython.display import HTML, Javascript, display
+29 |     from PIL import Image
+   |                     ^^^^^
+30 |
+31 |     # --- Define Widget Class ---
+   |
+help: Remove unused import: `PIL.Image`
+
+F821 Undefined name `traceback`
+   --> optimization/performance_analysis.py:373:17
+    |
+371 |             except Exception as e:
+372 |                 print(f"Error testing {test_name}: {e}")
+373 |                 traceback.print_exc()
+    |                 ^^^^^^^^^
+374 |         else:
+375 |             print(f"Warning: {pdf_path} not found, skipping {test_name} test")
+    |
+
+F841 Local variable `engine_instance` is assigned to but never used
+  --> optimization/test_cleanup_methods.py:76:13
+   |
+74 |         # Load an engine by accessing it
+75 |         try:
+76 |             engine_instance = manager._get_engine_instance(engine_name)
+   |             ^^^^^^^^^^^^^^^
+77 |             assert engine_name in manager._engine_instances, "Engine should be cached"
+   |
+help: Remove assignment to unused variable `engine_instance`
+
+F841 Local variable `detector_instance` is assigned to but never used
+   --> optimization/test_cleanup_methods.py:103:13
+    |
+101 |         # Load a detector by accessing it
+102 |         try:
+103 |             detector_instance = manager._get_engine_instance(engine_name)
+    |             ^^^^^^^^^^^^^^^^^
+104 |             assert engine_name in manager._detector_instances, "Detector should be cached"
+    |
+help: Remove assignment to unused variable `detector_instance`
+
+E402 Module level import not at top of file
+  --> tests/conftest.py:11:1
+   |
+ 9 |     sys.path.insert(0, root_str)
+10 |
+11 | import pytest
+   | ^^^^^^^^^^^^^
+12 |
+13 | # Common test PDF URLs from tutorials
+   |
+
+E722 Do not use bare `except`
+   --> tests/conftest.py:145:17
+    |
+143 |                 try:
+144 |                     pdf.close()
+145 |                 except:
+    |                 ^^^^^^
+146 |                     pass
+    |
+
+F841 Local variable `median_size` is assigned to but never used
+   --> tests/test_attr_method.py:117:9
+    |
+115 |         # Calculate statistics
+116 |         mean_size = statistics.mean(sizes)
+117 |         median_size = statistics.median(sizes)
+    |         ^^^^^^^^^^^
+118 |
+119 |         # Filter elements larger than average
+    |
+help: Remove assignment to unused variable `median_size`
+
+E712 Avoid equality comparisons to `False`; use `not npdf.options.layout.auto_multipage:` for false checks
+  --> tests/test_auto_multipage_option.py:19:16
+   |
+17 |     try:
+18 |         # Default should be False
+19 |         assert npdf.options.layout.auto_multipage == False
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+20 |
+21 |         # Find Section 1 on page 1
+   |
+help: Replace with `not npdf.options.layout.auto_multipage`
+
+E712 Avoid equality comparisons to `True`; use `npdf.options.layout.auto_multipage:` for truth checks
+  --> tests/test_auto_multipage_option.py:30:16
+   |
+28 |         # Enable auto_multipage
+29 |         npdf.set_option("layout.auto_multipage", True)
+30 |         assert npdf.options.layout.auto_multipage == True
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 |
+32 |         # Now it should cross pages automatically
+   |
+help: Replace with `npdf.options.layout.auto_multipage`
+
+E722 Do not use bare `except`
+   --> tests/test_color_conversion.py:159:9
+    |
+157 |                 r, g, b = [int(v * 255) if v <= 1 else int(v) for v in rgb_tuple[:3]]
+158 |                 return f"#{r:02x}{g:02x}{b:02x}"
+159 |         except:
+    |         ^^^^^^
+160 |             pass
+161 |     return str(rgb_tuple)
+    |
+
+F841 Local variable `result` is assigned to but never used
+  --> tests/test_directional_defaults.py:44:5
+   |
+43 |     # Call left() without specifying height
+44 |     result = element.left()
+   |     ^^^^^^
+45 |
+46 |     # Verify height='element' was used
+   |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `result` is assigned to but never used
+  --> tests/test_directional_defaults.py:81:5
+   |
+80 |     # Call right() without specifying height
+81 |     result = element.right()
+   |     ^^^^^^
+82 |
+83 |     # Verify height='element' was used
+   |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_directional_defaults.py:115:5
+    |
+114 |     # Call above() without specifying width
+115 |     result = element.above()
+    |     ^^^^^^
+116 |
+117 |     # Verify width='full' was used
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_directional_defaults.py:149:5
+    |
+148 |     # Call below() without specifying width
+149 |     result = element.below()
+    |     ^^^^^^
+150 |
+151 |     # Verify width='full' was used
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `sizes` is assigned to but never used
+   --> tests/test_dissolve.py:155:5
+    |
+154 |     # Check the groups
+155 |     sizes = sorted(
+    |     ^^^^^
+156 |         [
+157 |             getattr(r, "font_size", None)
+    |
+help: Remove assignment to unused variable `sizes`
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_element_addition.py:145:13
+    |
+144 |         with pytest.raises(TypeError, match="Cannot add Element with"):
+145 |             result = elem + None
+    |             ^^^^^^
+146 |
+147 |     def test_real_world_example(self):
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `section` is assigned to but never used
+   --> tests/test_element_addition.py:150:9
+    |
+148 |         """Test a real-world-like example with regions."""
+149 |         # Mock a section
+150 |         section = MagicMock()
+    |         ^^^^^^^
+151 |
+152 |         # Create mock regions as if they came from find operations
+    |
+help: Remove assignment to unused variable `section`
+
+E731 Do not assign a `lambda` expression, use a `def`
+  --> tests/test_element_exclusions.py:34:5
+   |
+33 |     # Add callable exclusion that returns an Element
+34 |     callable_exc = lambda page: mock_element
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |     mock_page._exclusions = [(callable_exc, "test_exclusion", "region")]
+   |
+help: Rewrite `callable_exc` as a `def`
+
+E731 Do not assign a `lambda` expression, use a `def`
+   --> tests/test_element_exclusions.py:115:5
+    |
+114 |     # PDF-level exclusion that returns Element
+115 |     pdf_callable = lambda page: mock_element
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+116 |     mock_pdf._exclusions = [(pdf_callable, "pdf_element_exclusion")]
+    |
+help: Rewrite `pdf_callable` as a `def`
+
+F841 Local variable `all_text_elements` is assigned to but never used
+   --> tests/test_expand_enhanced.py:163:5
+    |
+162 |     # Find all elements containing certain text
+163 |     all_text_elements = page.find_all("text")
+    |     ^^^^^^^^^^^^^^^^^
+164 |
+165 |     # Expand in different directions and verify it doesn't pick up elements from wrong direction
+    |
+help: Remove assignment to unused variable `all_text_elements`
+
+F841 Local variable `region_center` is assigned to but never used
+  --> tests/test_from_parameter.py:58:5
+   |
+56 |     region_start = text_elem.above(height=50, until="text", anchor="start")
+57 |     region_end = text_elem.above(height=50, until="text", anchor="end")
+58 |     region_center = text_elem.above(height=50, until="text", anchor="center")
+   |     ^^^^^^^^^^^^^
+59 |
+60 |     # Test explicit edge names
+   |
+help: Remove assignment to unused variable `region_center`
+
+E741 Ambiguous variable name: `l`
+   --> tests/test_guides.py:565:26
+    |
+563 |     # Test 5: Ensure pixel detection creates actual LineElements
+564 |     # Check that the lines were added to the page
+565 |     pixel_lines = [l for l in page.lines if getattr(l, "source", None) == "guides_detection"]
+    |                          ^
+566 |     assert len(pixel_lines) > 0, "Pixel detection should create LineElement objects"
+    |
+
+F841 Local variable `result` is assigned to but never used
+  --> tests/test_guides_extract_table.py:76:9
+   |
+74 |     with patch.object(guides, "build_grid", return_value=mock_grid_result):
+75 |         # Call with custom parameters
+76 |         result = guides.extract_table(
+   |         ^^^^^^
+77 |             method="tatr", use_ocr=True, cell_padding=1.0, include_outer_boundaries=True
+78 |         )
+   |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_guides_extract_table.py:144:9
+    |
+143 |     with patch.object(guides, "build_grid", return_value=mock_grid_result):
+144 |         result = guides.extract_table()
+    |         ^^^^^^
+145 |
+146 |         # Verify cleanup was called for temp regions only
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `expected_calls` is assigned to but never used
+   --> tests/test_guides_extract_table.py:147:9
+    |
+146 |         # Verify cleanup was called for temp regions only
+147 |         expected_calls = [mock_element_manager.remove_element.call_args_list]
+    |         ^^^^^^^^^^^^^^
+148 |
+149 |         # Should have called remove_element twice (for the two temp regions)
+    |
+help: Remove assignment to unused variable `expected_calls`
+
+F841 Local variable `table1` is assigned to but never used
+  --> tests/test_guides_extract_table_exclusions.py:39:9
+   |
+37 |     try:
+38 |         # Default (apply_exclusions=True)
+39 |         table1 = guides.extract_table(method="text")
+   |         ^^^^^^
+40 |         print("✅ extract_table works with default apply_exclusions")
+   |
+help: Remove assignment to unused variable `table1`
+
+F841 Local variable `table2` is assigned to but never used
+  --> tests/test_guides_extract_table_exclusions.py:43:9
+   |
+42 |         # Explicit True
+43 |         table2 = guides.extract_table(method="text", apply_exclusions=True)
+   |         ^^^^^^
+44 |         print("✅ extract_table accepts apply_exclusions=True")
+   |
+help: Remove assignment to unused variable `table2`
+
+F841 Local variable `table3` is assigned to but never used
+  --> tests/test_guides_extract_table_exclusions.py:47:9
+   |
+46 |         # Explicit False
+47 |         table3 = guides.extract_table(method="text", apply_exclusions=False)
+   |         ^^^^^^
+48 |         print("✅ extract_table accepts apply_exclusions=False")
+   |
+help: Remove assignment to unused variable `table3`
+
+F841 Local variable `table_with` is assigned to but never used
+   --> tests/test_guides_extract_table_exclusions.py:121:13
+    |
+119 |         try:
+120 |             # With exclusions
+121 |             table_with = guides.extract_table(method=method, apply_exclusions=True)
+    |             ^^^^^^^^^^
+122 |
+123 |             # Without exclusions
+    |
+help: Remove assignment to unused variable `table_with`
+
+F841 Local variable `table_without` is assigned to but never used
+   --> tests/test_guides_extract_table_exclusions.py:124:13
+    |
+123 |             # Without exclusions
+124 |             table_without = guides.extract_table(method=method, apply_exclusions=False)
+    |             ^^^^^^^^^^^^^
+125 |
+126 |             print(f"✅ Method '{method}' supports apply_exclusions parameter")
+    |
+help: Remove assignment to unused variable `table_without`
+
+F841 Local variable `table_result` is assigned to but never used
+   --> tests/test_guides_extract_table_real.py:141:13
+    |
+139 |         # Test that method accepts all parameters without error
+140 |         try:
+141 |             table_result = guides.extract_table(
+    |             ^^^^^^^^^^^^
+142 |                 target=page,
+143 |                 source="test_source",
+    |
+help: Remove assignment to unused variable `table_result`
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_highlight_protocol.py:185:13
+    |
+184 |             # This should now work!
+185 |             result = mixed_collection.show()
+    |             ^^^^^^
+186 |
+187 |             # Verify the mock was called
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `img` is assigned to but never used
+  --> tests/test_highlight_protocol_simple.py:76:13
+   |
+74 |         # This should fail
+75 |         try:
+76 |             img = mixed.show()
+   |             ^^^
+77 |             print("ERROR: show() succeeded when it should have failed!")
+78 |         except Exception as e:
+   |
+help: Remove assignment to unused variable `img`
+
+F841 Local variable `sections` is assigned to but never used
+   --> tests/test_include_boundaries_simple.py:107:13
+    |
+105 |     for option in boundary_options:
+106 |         try:
+107 |             sections = pdf.get_sections("text", include_boundaries=option)
+    |             ^^^^^^^^
+108 |             print(f"  ✅ include_boundaries='{option}' accepted")
+109 |         except Exception as e:
+    |
+help: Remove assignment to unused variable `sections`
+
+F841 Local variable `results` is assigned to but never used
+   --> tests/test_multi_page_table_discovery.py:186:9
+    |
+185 |         # Build the multi-page grid
+186 |         results = guides.build_grid(multi_page=True)
+    |         ^^^^^^^
+187 |
+188 |         # Get any constituent page
+    |
+help: Remove assignment to unused variable `results`
+
+E402 Module level import not at top of file
+  --> tests/test_optional_deps.py:15:1
+   |
+13 | pytestmark = [pytest.mark.optional_deps, pytest.mark.ocr, pytest.mark.slow]
+14 |
+15 | from natural_pdf import PDF, PDFCollection  # Import PDFCollection
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 |
+17 | # --- Fixtures --- #
+   |
+
+F841 Local variable `result` is assigned to but never used
+   --> tests/test_show_limit.py:152:5
+    |
+151 |     # Test that limit is passed but doesn't break single pages
+152 |     result = page.show(limit=5)
+    |     ^^^^^^
+153 |
+154 |     # Should render successfully
+    |
+help: Remove assignment to unused variable `result`
+
+F841 Local variable `first_page` is assigned to but never used
+  --> tests/test_slice_exclusion_fix.py:37:5
+   |
+35 |     # Access some pages to cache them BEFORE adding exclusion
+36 |     pages_slice = pdf.pages[:2]  # This creates and caches pages 0-1
+37 |     first_page = pages_slice[0]  # Access to ensure it's cached
+   |     ^^^^^^^^^^
+38 |
+39 |     # Add an exclusion that should affect all pages
+   |
+help: Remove assignment to unused variable `first_page`
+
+F841 Local variable `text3` is assigned to but never used
+  --> tests/test_slice_exclusion_issue.py:63:5
+   |
+61 |     # Test 4: Check what happens with debug
+62 |     print("\n\nTest 4: Debug exclusion evaluation")
+63 |     text3 = pages[-1].extract_text(debug_exclusions=True)
+   |     ^^^^^
+64 |
+65 |     # Test 5: Check exclusion regions
+   |
+help: Remove assignment to unused variable `text3`
+
+F841 Local variable `page0` is assigned to but never used
+  --> tests/test_slice_exclusion_mock.py:47:9
+   |
+46 |         # Access pages to cache them
+47 |         page0 = main_pages[0]
+   |         ^^^^^
+48 |         page1 = main_pages[1]
+   |
+help: Remove assignment to unused variable `page0`
+
+F841 Local variable `page1` is assigned to but never used
+  --> tests/test_slice_exclusion_mock.py:48:9
+   |
+46 |         # Access pages to cache them
+47 |         page0 = main_pages[0]
+48 |         page1 = main_pages[1]
+   |         ^^^^^
+49 |
+50 |         # Verify pages are cached
+   |
+help: Remove assignment to unused variable `page1`
+
+F841 Local variable `page` is assigned to but never used
+   --> tests/test_slice_exclusion_mock.py:149:9
+    |
+148 |         # Access page (will be created with exclusions)
+149 |         page = main_pages[0]
+    |         ^^^^
+150 |
+151 |         # Verify all exclusions were applied
+    |
+help: Remove assignment to unused variable `page`
+
+F841 Local variable `regular_text` is assigned to but never used
+   --> tests/test_smart_exclusion.py:100:5
+    |
+ 99 |     # Create regular text that overlaps with watermark
+100 |     regular_text = TextElement(
+    |     ^^^^^^^^^^^^
+101 |         {
+102 |             "text": "Important document content",
+    |
+help: Remove assignment to unused variable `regular_text`
+
+F841 Local variable `result_auto` is assigned to but never used
+  --> tests/test_text_tolerance.py:94:9
+   |
+92 |         # This is a weaker test since we don't know exact expected behavior
+93 |         # But at least verifies the parameter is being used
+94 |         result_auto = page_auto.find('text:contains("Public Financial Disclosure")')
+   |         ^^^^^^^^^^^
+95 |         result_no_auto = page_no_auto.find('text:contains("Public Financial Disclosure")')
+   |
+help: Remove assignment to unused variable `result_auto`
+
+F841 Local variable `result_no_auto` is assigned to but never used
+  --> tests/test_text_tolerance.py:95:9
+   |
+93 |         # But at least verifies the parameter is being used
+94 |         result_auto = page_auto.find('text:contains("Public Financial Disclosure")')
+95 |         result_no_auto = page_no_auto.find('text:contains("Public Financial Disclosure")')
+   |         ^^^^^^^^^^^^^^
+96 |
+97 |         # At least one should work or they should differ
+   |
+help: Remove assignment to unused variable `result_no_auto`
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/export_enrichment_csv.py:10:1
+   |
+ 8 | """
+ 9 |
+10 | import argparse
+   | ^^^^^^^^^^^^^^^
+11 | import csv
+12 | import json
+   |
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/export_enrichment_csv.py:11:1
+   |
+10 | import argparse
+11 | import csv
+   | ^^^^^^^^^^
+12 | import json
+13 | from pathlib import Path
+   |
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/export_enrichment_csv.py:12:1
+   |
+10 | import argparse
+11 | import csv
+12 | import json
+   | ^^^^^^^^^^^
+13 | from pathlib import Path
+14 | from typing import Dict, List
+   |
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/export_enrichment_csv.py:13:1
+   |
+11 | import csv
+12 | import json
+13 | from pathlib import Path
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+14 | from typing import Dict, List
+   |
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/export_enrichment_csv.py:14:1
+   |
+12 | import json
+13 | from pathlib import Path
+14 | from typing import Dict, List
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 |
+16 | ROOT = Path(__file__).resolve().parent.parent.parent  # repo root
+   |
+
+E402 Module level import not at top of file
+  --> tools/bad_pdf_eval/llm_enrich.py:46:1
+   |
+46 | from io import BytesIO
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+Found 203 errors.
+No fixes available (78 hidden fixes can be enabled with the `--unsafe-fixes` option).

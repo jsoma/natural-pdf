@@ -1,0 +1,70 @@
+Args/kwargs Cleanup Plan
+========================
+
+Context
+-------
+- Many public APIs (`PDF`, `Page`, `Region`, collections) lean on `*args/**kwargs`, making usage opaque and error-prone.
+- Callers routinely pass unknown params; mistakes surface late and are hard to trace.
+- Lack of explicit signatures blocks static checks, schema docs, and IDE support.
+
+Goals
+-----
+- Document and codify the supported parameters for each high-level entry point.
+- Replace free-form kwargs with explicit, discoverable keyword parameters as quickly as feasible.
+- Introduce light-weight option helpers only where parameter sets are genuinely shared or complex, and centralize their definitions so Page/Region/PDF can share them.
+- Guard against accidental parameter drift and keep users informed via clear documentation rather than long-lived compatibility shims.
+
+Guiding Principles
+------------------
+- Split kwargs usage into **internal** (surfaces we own and will harden immediately) versus **external passthroughs** (e.g., pdfplumber, OCR engines) that stay flexible behind adapters.
+- Prefer explicit keyword arguments on public APIs; pack complex sets into reusable option objects that can be passed across Page/Region/PDF without resorting to raw dicts.
+- Avoid introducing new long-lived `**kwargs` shims. If we must accept legacy kwargs temporarily, validate against a registry and raise fast when keys are unknown.
+- Provide a concise one-pager documenting the new argument model before landing the bulk refactor so downstream teams can prepare.
+
+Phase 0 – Discovery & Safety Net
+- [ ] Inventory every `*args/**kwargs` occurrence (start with `rg '\*\*kwargs' natural_pdf`), tagging each as **internal** or **external passthrough**.
+- [ ] For each internal site, estimate the number of explicit parameters we expect to expose (score as small/medium/large) so we can prioritize the “handful of args” wins.
+- [ ] For external passthroughs, document the downstream target (pdfplumber, PaddleOCR, etc.) and expected key set so adapters can validate inputs.
+- [ ] Spot-check key entry points in tests or sampling scripts to understand real-world kwargs before hardening signatures (skip persistent telemetry).
+- [ ] Confirm existing tests that exercise PDF/Page/Region flows; add smoke tests if coverage is thin before refactors begin.
+- [ ] Draft the public one-pager describing the upcoming explicit-argument approach and the internal/external split.
+- [ ] Capture the findings in `/temp/args_kwargs_inventory.md` as a plain Markdown list (we can delete it once the migration is complete).
+
+Phase 1 – Public API Contracts
+- [ ] For each top-level constructor or method exposed to users (`natural_pdf.PDF`, `Page.region`, `Region.extract_*`, etc.), document the intended parameter set in module docstrings or developer docs.
+- [ ] Replace blanket kwargs with explicit keyword parameters wherever the argument surface is modest; surface defaults directly on the signature for discoverability.
+- [ ] When parameters are shared across many call sites or genuinely nested, layer in helpers: prefer `TypedDict` (shape-only) or small dataclasses, and house them in a shared `natural_pdf/options/` module.
+- [ ] Introduce a lightweight registry (per feature area) that maps option names to validators so legacy kwargs can be validated/translated quickly before being removed.
+- [ ] Provide thin adapter constructors (`RenderOptions.from_kwargs(**legacy)` or `TableExtractionArgs(**kwargs)`) only for the largest surfaces, and clearly mark them as transitional in the docs.
+- [ ] Update docstrings and the one-pager concurrently so users have a canonical reference when the new signatures land.
+
+Phase 2 – Internal Propagation
+- [ ] Replace internal pass-through kwargs chains with explicit parameter passing or shared helper types. Focus first on Region→Page→PDF flows, then mixins (Extraction, Visual, QA, Classification).
+- [ ] Introduce clear adapter functions when bridging to third-party APIs that still take kwargs (e.g., pdfplumber); the adapter owns translation, validation, and the allow-list for forwarded keys.
+- [ ] Update call sites across the codebase to use explicit parameters/options. Tackle by bounded feature areas to keep diffs reviewable.
+- [ ] Add regression tests around each refactored surface before ripping out the legacy kwargs path.
+
+Phase 3 – Deprecation & Removal
+- [ ] Remove legacy kwargs paths once adapters and explicit signatures have been in place for a release; raise `TypeError` immediately for unknown keys.
+- [ ] Remove unused option translation code and prune any transitional instrumentation.
+- [ ] Update developer documentation, migration notes, and changelog to reflect the new contracts.
+
+Testing & Tooling
+- [ ] Expand unit/integration tests to cover every new helper type (constructor defaults, validation, serialization) and the updated explicit-parameter APIs.
+- [ ] Add negative tests ensuring unexpected kwargs raise helpful errors.
+- [ ] Run type checking (mypy or pyright) with the new option classes to catch drift; once things settle, optionally tighten with `disallow-any-generics` / `warn-unused-ignores` if the stricter rules feel worthwhile.
+- [ ] Consider property-based tests for options with ranges/constraints (e.g., bbox dimensions).
+- [ ] Keep integration fixtures (sample PDFs) to smoke-test high-traffic flows after each phase.
+
+Future Proofing
+- [ ] Add a lint/mypy plugin (or simple CI guard) that fails PRs introducing new `**kwargs` in `natural_pdf` modules, with exceptions documented for third-party pass-through adapters.
+- [ ] Centralize shared option schemas in `natural_pdf/options/` (or similar) with registry-backed validation to avoid duplication and encourage reuse.
+- [ ] Track compatibility expectations in the one-pager/changelog instead of long-lived kwargs shims so users have a clear timeline.
+
+Open Questions / Follow-ups
+- Helper type decision:
+  - Default to `TypedDict` for shared, optional parameter bundles—keeps signatures lightweight, adds discoverability, and stays dependency-free.
+  - Reach for small `dataclass` helpers only when we need reusable defaults or helper methods (e.g., `TableExtractionArgs.with_defaults()`).
+- Registry design:
+  - Decide whether registries live alongside each feature module or in a central dispatcher; each should expose `validate_kwargs()` to convert or reject inputs quickly.
+  - Confirm how adapters surface third-party flexibility (e.g., passthrough sets, warnings) without reintroducing blanket kwargs.

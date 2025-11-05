@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -11,15 +11,18 @@ from typing import (
     List,
     Literal,
     Optional,
+    Protocol,
     Tuple,
     TypeVar,
     Union,
     overload,
+    runtime_checkable,
 )
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.collections.mixins import ApplyMixin
+from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
@@ -55,11 +58,21 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_groupby import PageGroupBy
     from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
+    from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
     from natural_pdf.flows.flow import Flow
 
 T = TypeVar("T")
-P = TypeVar("P", bound="Page")
+P = TypeVar("P", bound=SupportsSections)
+
+
+@runtime_checkable
+class ElementsProvider(Protocol):
+    @property
+    def elements(self) -> Sequence[SupportsGeometry]: ...
+
+
+BoundarySource = Union[str, ElementsProvider, Iterable["Element"], None]
 
 
 class PageCollection(
@@ -120,12 +133,10 @@ class PageCollection(
             List of page indices for the pages in this collection.
         """
         # Handle different types of page sequences efficiently
-        if hasattr(self.pages, "_indices"):
-            # If it's a _LazyPageList (or slice), get indices directly
-            return list(self.pages._indices)
+        indices = getattr(self.pages, "_indices", None)
+        if indices is not None:
+            return list(indices)
         else:
-            # Fallback: if pages are already materialized, get indices normally
-            # This will force materialization but only if pages aren't lazy
             return [p.index for p in self.pages]
 
     def extract_text(
@@ -243,6 +254,19 @@ class PageCollection(
         return self  # Return self for chaining
 
     @overload
+    def find(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        reading_order: bool = True,
+    ) -> Optional[T]: ...
+
     def find(
         self,
         selector: Optional[str] = None,
@@ -389,8 +413,8 @@ class PageCollection(
 
     def get_sections(
         self,
-        start_elements=None,
-        end_elements=None,
+        start_elements: BoundarySource = None,
+        end_elements: BoundarySource = None,
         new_section_on_page_break: bool = False,
         include_boundaries: str = "both",
         orientation: str = "vertical",
@@ -410,118 +434,6 @@ class PageCollection(
 
         if len(self) == 0:
             return ElementCollection([])
-
-        try:
-            from natural_pdf.core.page import Page as CorePage
-            from natural_pdf.elements.region import Region as ElementsRegion
-        except ImportError:  # pragma: no cover - defensive
-            CorePage = ElementsRegion = object  # type: ignore[assignment]
-
-        def _is_physical_segment(segment: Any) -> bool:
-            object_type = getattr(segment, "object_type", None)
-            if isinstance(segment, (CorePage, ElementsRegion)):
-                return True
-            if object_type in {"page", "region"}:
-                return isinstance(segment, (CorePage, ElementsRegion))
-            return False
-
-        if not all(_is_physical_segment(page) for page in self.pages):
-            # Fallback for mocked objects lacking full Page/Region interfaces.
-            aggregated_sections: List[Any] = []
-            for page in self.pages:
-                if hasattr(page, "get_sections"):
-                    result = page.get_sections(
-                        start_elements=start_elements,
-                        end_elements=end_elements,
-                        include_boundaries=include_boundaries,
-                        orientation=orientation,
-                    )
-                    if result is None:
-                        continue
-                    if hasattr(result, "elements"):
-                        try:
-                            aggregated_sections.extend(result.elements)  # type: ignore[arg-type]
-                        except TypeError:
-                            pass
-                    elif isinstance(result, list):
-                        aggregated_sections.extend(result)
-                    elif hasattr(result, "__iter__"):
-                        try:
-                            aggregated_sections.extend(list(result))
-                        except TypeError:
-                            pass
-
-            if not aggregated_sections and start_elements is not None:
-                for page in self.pages:
-                    if not (hasattr(page, "find_all") and hasattr(page, "get_section_between")):
-                        continue
-
-                    if isinstance(start_elements, str):
-                        start_result = page.find_all(start_elements)
-                        if hasattr(start_result, "elements"):
-                            starts = list(start_result.elements)
-                        elif isinstance(start_result, list):
-                            starts = start_result
-                        else:
-                            starts = list(start_result) if hasattr(start_result, "__iter__") else []
-                    elif hasattr(start_elements, "elements"):
-                        starts = [
-                            el
-                            for el in start_elements.elements
-                            if getattr(el, "page", None) == page
-                        ]
-                    elif isinstance(start_elements, (list, tuple, set)):
-                        starts = [el for el in start_elements if getattr(el, "page", None) == page]
-                    else:
-                        starts = []
-
-                    if not starts:
-                        continue
-
-                    starts.sort(key=lambda el: (getattr(el, "top", 0), getattr(el, "x0", 0)))
-
-                    page_width = getattr(page, "width", 0)
-                    page_height = getattr(page, "height", 0)
-
-                    for idx, start_el in enumerate(starts):
-                        next_el = starts[idx + 1] if idx + 1 < len(starts) else None
-
-                        start_top = getattr(start_el, "top", 0.0)
-                        start_bottom = getattr(start_el, "bottom", start_top)
-                        section_top = (
-                            start_top if include_boundaries in ["both", "start"] else start_bottom
-                        )
-
-                        if next_el:
-                            section_bottom = getattr(next_el, "top", page_height)
-                        else:
-                            section_bottom = page_height
-
-                        if section_bottom <= section_top:
-                            continue
-
-                        region_width = (
-                            page_width
-                            if page_width
-                            else getattr(getattr(start_el, "page", None), "width", 0)
-                        )
-
-                        region = Region(
-                            page,
-                            (
-                                0,
-                                section_top,
-                                region_width,
-                                section_bottom,
-                            ),
-                        )
-                        region.start_element = start_el
-                        region.end_element = next_el
-                        region._boundary_exclusions = include_boundaries
-                        aggregated_sections.append(region)
-
-            cleaned = sanitize_sections(aggregated_sections, orientation=orientation)
-            return ElementCollection(cleaned)
 
         arrangement = "vertical" if orientation == "vertical" else "horizontal"
 

@@ -35,12 +35,12 @@ import logging
 import re
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from colormath2.color_conversions import convert_color
-from colormath2.color_diff import delta_e_cie2000
-from colormath2.color_objects import LabColor, sRGBColor
-from colour import Color
+from colormath2.color_conversions import convert_color  # type: ignore[import-untyped]
+from colormath2.color_diff import delta_e_cie2000  # type: ignore[import-untyped]
+from colormath2.color_objects import LabColor, sRGBColor  # type: ignore[import-untyped]
+from colour import Color  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def build_text_contains_selector(text_input: Union[str, Iterable[str]]) -> str:
                     f"Received {type(value).__name__} at index {idx}."
                 )
 
-    selectors = []
+    selectors: List[str] = []
     for value in texts:
         escaped_text = value.replace('"', '\\"').replace("'", "\\'")
         selectors.append(f'text:contains("{escaped_text}")')
@@ -188,7 +188,7 @@ def _parse_aggregate_function(value_str: str) -> Optional[Dict[str, Any]]:
     return result
 
 
-def safe_parse_color(value_str: str) -> tuple:
+def safe_parse_color(value_str: str) -> tuple[float, float, float]:
     """
     Parse a color value which could be an RGB tuple, color name, hex code, or CSS-style rgb(...)/rgba(...).
 
@@ -215,7 +215,8 @@ def safe_parse_color(value_str: str) -> tuple:
         color_tuple = ast.literal_eval(value_str)
         if isinstance(color_tuple, (list, tuple)) and len(color_tuple) >= 3:
             # Return just the RGB components as a tuple
-            return tuple(color_tuple[:3])
+            r, g, b = color_tuple[:3]
+            return (float(r), float(g), float(b))
     except (SyntaxError, ValueError):
         pass  # Not a valid tuple/list, try other formats
 
@@ -232,7 +233,7 @@ def safe_parse_color(value_str: str) -> tuple:
         r, g, b = map(int, css_rgb_match.groups())
         return (r / 255.0, g / 255.0, b / 255.0)
     elif css_rgba_match:
-        r, g, b, a = css_rgba_match.groups()
+        r, g, b, _a = css_rgba_match.groups()
         r, g, b = int(r), int(g), int(b)
         # alpha is ignored for now, but could be used if needed
         return (r / 255.0, g / 255.0, b / 255.0)
@@ -240,7 +241,7 @@ def safe_parse_color(value_str: str) -> tuple:
     # Try as a color name or hex
     try:
         color = Color(value_str)
-        return (color.red, color.green, color.blue)
+        return (float(color.red), float(color.green), float(color.blue))
     except (ValueError, AttributeError) as e:
         raise ValueError(f"Could not parse color value: {value_str}") from e
 
@@ -273,7 +274,7 @@ def _split_top_level_or(selector: str) -> List[str]:
     if not selector or not isinstance(selector, str):
         return [selector] if selector else []
 
-    parts = []
+    parts: List[str] = []
     current_part = ""
     i = 0
 
@@ -365,11 +366,14 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         (:above, :below, :near, :left-of, :right-of) which require page context.
         Spatial relationships within OR selectors are not currently supported.
     """
+    attributes: List[Dict[str, Any]] = []
+    pseudo_classes: List[Dict[str, Any]] = []
+    filters: List[Dict[str, Any]] = []
     result = {
         "type": "any",
-        "attributes": [],
-        "pseudo_classes": [],
-        "filters": [],  # Keep this for potential future use
+        "attributes": attributes,
+        "pseudo_classes": pseudo_classes,
+        "filters": filters,
     }
 
     original_selector_for_error = selector  # Keep for error messages
@@ -457,7 +461,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
             if op is None:
                 # Presence selector [attr]
-                result["attributes"].append({"name": name, "op": "exists", "value": None})
+                attributes.append({"name": name, "op": "exists", "value": None})
             else:
                 # Operator exists, value must also exist (even if empty via quotes)
                 if value_str is None:  # Catches invalid [attr=]
@@ -488,7 +492,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                             "Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
                             "Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
                         )
-                result["attributes"].append({"name": name, "op": op, "value": parsed_value})
+                attributes.append({"name": name, "op": op, "value": parsed_value})
 
             selector = selector[attr_match.end() :].strip()
             processed_chunk = True
@@ -521,7 +525,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
             # Recursively parse the inner selector
             parsed_inner_selector = parse_selector(inner_selector_str)
-            result["pseudo_classes"].append({"name": "not", "args": parsed_inner_selector})
+            pseudo_classes.append({"name": "not", "args": parsed_inner_selector})
 
             selector = selector[end_index + 1 :].strip()
             processed_chunk = True
@@ -568,7 +572,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                     processed_args = safe_parse_value(args_str)
             # else: args remain None
 
-            result["pseudo_classes"].append({"name": name, "args": processed_args})
+            pseudo_classes.append({"name": name, "args": processed_args})
             # IMPORTANT: use match_end_idx (may have been extended)
             selector = selector[match_end_idx:].strip()
             processed_chunk = True
@@ -598,7 +602,7 @@ def _is_color_value(value) -> bool:
         return False
 
 
-def _color_distance(color1, color2) -> float:
+def _color_distance(color1: Any, color2: Any) -> float:
     """
     Calculate Delta E color difference between two colors.
     Colors can be strings (names/hex) or RGB tuples.
@@ -620,12 +624,12 @@ def _color_distance(color1, color2) -> float:
 
         lab1 = convert_color(rgb1, LabColor)
         lab2 = convert_color(rgb2, LabColor)
-        return delta_e_cie2000(lab1, lab2)
-    except:
+        return float(delta_e_cie2000(lab1, lab2))
+    except Exception:
         return float("inf")
 
 
-def _is_approximate_match(value1, value2) -> bool:
+def _is_approximate_match(value1: Any, value2: Any) -> bool:
     """
     Check if two values approximately match.
 
@@ -634,14 +638,14 @@ def _is_approximate_match(value1, value2) -> bool:
     """
     # First check if both values are colors
     if _is_color_value(value1) and _is_color_value(value2):
-        return _color_distance(value1, value2) <= 20.0
+        return bool(_color_distance(value1, value2) <= 20.0)
 
     # Then check if both are numbers
     if isinstance(value1, (int, float)) and isinstance(value2, (int, float)):
-        return abs(value1 - value2) <= 2.0
+        return bool(abs(value1 - value2) <= 2.0)
 
     # Default to exact match for other types
-    return value1 == value2
+    return bool(value1 == value2)
 
 
 def _is_exact_color_match(value1, value2) -> bool:
@@ -656,7 +660,7 @@ def _is_exact_color_match(value1, value2) -> bool:
         return _color_distance(value1, value2) <= 2.0
 
     # Default to exact match for non-colors
-    return value1 == value2
+    return bool(value1 == value2)
 
 
 PSEUDO_CLASS_FUNCTIONS = {
@@ -690,9 +694,13 @@ def _build_filter_list(
     """
     filters: List[Dict[str, Any]] = []
     selector_type = selector["type"]
+    attribute_filters: List[Dict[str, Any]] = list(selector.get("attributes", []))
+    pseudo_entries: List[Dict[str, Any]] = list(selector.get("pseudo_classes", []))
 
     if aggregates is None:
-        aggregates = {}
+        aggregate_values: Dict[str, Any] = {}
+    else:
+        aggregate_values = dict(aggregates)
 
     # Filter by element type
     if selector_type != "any":
@@ -717,8 +725,34 @@ def _build_filter_list(
             )
         filters.append({"name": filter_name, "func": func})
 
+    def _make_exists_filter(getter: Callable[[Any], Any]) -> Callable[[Any], bool]:
+        def exists_filter(element: Any) -> bool:
+            return getter(element) is not None
+
+        return exists_filter
+
+    def _make_compare_filter(
+        getter: Callable[[Any], Any],
+        comparator: Callable[[Any, Any], bool],
+        expected_value: Any,
+        attr_name: str,
+    ) -> Callable[[Any], bool]:
+        def compare_filter(element: Any) -> bool:
+            value = getter(element)
+            if value is None:
+                return False
+            try:
+                return bool(comparator(value, expected_value))
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.debug(
+                    "Comparison failed for attribute '%s': %s", attr_name, exc, exc_info=True
+                )
+                return False
+
+        return compare_filter
+
     # Filter by attributes
-    for attr_filter in selector["attributes"]:
+    for attr_filter in attribute_filters:
         name = attr_filter["name"]
         op = attr_filter["op"]
         value = attr_filter["value"]
@@ -727,7 +761,7 @@ def _build_filter_list(
         # Check if value is an aggregate function
         if isinstance(value, dict) and value.get("type") == "aggregate":
             # Use pre-calculated aggregate value
-            aggregate_value = aggregates.get(name)
+            aggregate_value = aggregate_values.get(name)
             if aggregate_value is None:
                 # Aggregate couldn't be calculated; ensure no elements match this filter
                 filters.append(
@@ -769,166 +803,203 @@ def _build_filter_list(
 
         # --- Define the core value retrieval logic ---
         def get_element_value(
-            element, name=name, python_name=python_name, selector_type=selector_type
-        ):
+            element: Any, *, attr_name: str = name, py_name: str = python_name
+        ) -> Any:
             bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
-            if name in bbox_mapping:
+            if attr_name in bbox_mapping:
                 bbox = getattr(element, "_bbox", None) or getattr(element, "bbox", None)
-                return bbox[bbox_mapping[name]]
+                if bbox is None:
+                    return None
+                return bbox[bbox_mapping[attr_name]]
 
             # Special case for region attributes
             if selector_type == "region":
-                if name == "type":
+                if attr_name == "type":
                     if hasattr(element, "normalized_type") and element.normalized_type:
                         return element.normalized_type
                     else:
                         return getattr(element, "region_type", "").lower().replace(" ", "_")
-                elif name == "model":
+                elif attr_name == "model":
                     return getattr(element, "model", None)
-                elif name == "checked":
+                elif attr_name == "checked":
                     # Map 'checked' attribute to is_checked for checkboxes
                     return getattr(element, "is_checked", None)
                 else:
-                    return getattr(element, python_name, None)
+                    return getattr(element, py_name, None)
             else:
                 # General case for non-region elements
-                return getattr(element, python_name, None)
-
-        # --- Define the comparison function or direct check ---
-        filter_lambda: Callable[[Any], bool]
-        filter_name: str
+                return getattr(element, py_name, None)
 
         if op == "exists":
-            # Special handling for attribute presence check [attr]
-            filter_name = f"attribute [{name} exists]"
-            # Lambda checks that the retrieved value is not None
-            filter_lambda = lambda el, get_val=get_element_value: get_val(el) is not None
-        else:
-            # Handle operators with values (e.g., =, !=, *=, etc.)
-            compare_func: Callable[[Any, Any], bool]
-            op_desc = f"{op} {value!r}"  # Default description
+            filter_label = f"attribute [{name} exists]"
+            filters.append({"name": filter_label, "func": _make_exists_filter(get_element_value)})
+            continue
 
-            # Determine compare_func based on op (reuse existing logic)
-            if op == "=":
-                # For color attributes, use exact color matching with small tolerance
-                if name in [
-                    "color",
-                    "non_stroking_color",
-                    "fill",
-                    "stroke",
-                    "strokeColor",
-                    "fillColor",
-                ]:
-                    op_desc = f"= {value!r} (exact color)"
-                    compare_func = lambda el_val, sel_val: _is_exact_color_match(el_val, sel_val)
-                # For boolean attributes, handle string/bool comparison
-                elif name in ["checked", "is_checked", "bold", "italic"]:
+        # Handle operators with values (e.g., =, !=, *=, etc.)
+        compare_func: Callable[[Any, Any], bool]
+        op_desc = f"{op} {value!r}"  # Default description
 
-                    def bool_compare(el_val, sel_val):
-                        # Convert both to boolean for comparison
-                        if isinstance(el_val, bool):
-                            el_bool = el_val
-                        else:
-                            el_bool = str(el_val).lower() in ("true", "1", "yes")
+        if op == "=":
+            if name in [
+                "color",
+                "non_stroking_color",
+                "fill",
+                "stroke",
+                "strokeColor",
+                "fillColor",
+            ]:
 
-                        if isinstance(sel_val, bool):
-                            sel_bool = sel_val
-                        else:
-                            sel_bool = str(sel_val).lower() in ("true", "1", "yes")
+                def compare_color(el_val: Any, sel_val: Any) -> bool:
+                    return _is_exact_color_match(el_val, sel_val)
 
-                        # Debug logging
-                        logger.debug(
-                            f"Boolean comparison: el_val={el_val} ({type(el_val)}) -> {el_bool}, sel_val={sel_val} ({type(sel_val)}) -> {sel_bool}"
+                compare_func = compare_color
+                op_desc = f"= {value!r} (exact color)"
+            elif name in ["checked", "is_checked", "bold", "italic"]:
+
+                def compare_bool(el_val: Any, sel_val: Any) -> bool:
+                    el_bool = (
+                        el_val
+                        if isinstance(el_val, bool)
+                        else str(el_val).lower()
+                        in (
+                            "true",
+                            "1",
+                            "yes",
                         )
+                    )
+                    sel_bool = (
+                        sel_val
+                        if isinstance(sel_val, bool)
+                        else str(sel_val).lower()
+                        in (
+                            "true",
+                            "1",
+                            "yes",
+                        )
+                    )
+                    return el_bool == sel_bool
 
-                        return el_bool == sel_bool
+                compare_func = compare_bool
+            else:
 
-                    compare_func = bool_compare
-                else:
-                    compare_func = lambda el_val, sel_val: el_val == sel_val
-            elif op == "!=":
-                compare_func = lambda el_val, sel_val: el_val != sel_val
-            elif op == "~=":
-                op_desc = f"~= {value!r} (approx)"
-                compare_func = lambda el_val, sel_val: _is_approximate_match(el_val, sel_val)
-            elif op == "^=":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, str)
+                def compare_equal(el_val: Any, sel_val: Any) -> bool:
+                    return bool(el_val == sel_val)
+
+                compare_func = compare_equal
+        elif op == "!=":
+
+            def compare_not_equal(el_val: Any, sel_val: Any) -> bool:
+                return bool(el_val != sel_val)
+
+            compare_func = compare_not_equal
+        elif op == "~=":
+            op_desc = f"~= {value!r} (approx)"
+
+            def compare_approx(el_val: Any, sel_val: Any) -> bool:
+                return _is_approximate_match(el_val, sel_val)
+
+            compare_func = compare_approx
+        elif op == "^=":
+
+            def compare_prefix(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, str)
                     and isinstance(sel_val, str)
                     and el_val.startswith(sel_val)
                 )
-            elif op == "$=":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, str)
+
+            compare_func = compare_prefix
+        elif op == "$=":
+
+            def compare_suffix(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, str)
                     and isinstance(sel_val, str)
                     and el_val.endswith(sel_val)
                 )
-            elif op == "*=":
-                if name == "fontname":
-                    op_desc = f"*= {value!r} (contains, case-insensitive)"
-                    compare_func = (
-                        lambda el_val, sel_val: isinstance(el_val, str)
+
+            compare_func = compare_suffix
+        elif op == "*=":
+            if name == "fontname":
+                op_desc = f"*= {value!r} (contains, case-insensitive)"
+
+                def compare_contains_ci(el_val: Any, sel_val: Any) -> bool:
+                    return (
+                        isinstance(el_val, str)
                         and isinstance(sel_val, str)
                         and sel_val.lower() in el_val.lower()
                     )
-                else:
-                    op_desc = f"*= {value!r} (contains)"
-                    compare_func = (
-                        lambda el_val, sel_val: isinstance(el_val, str)
-                        and isinstance(sel_val, str)
-                        and sel_val in el_val
+
+                compare_func = compare_contains_ci
+            else:
+                op_desc = f"*= {value!r} (contains)"
+
+                def compare_contains(el_val: Any, sel_val: Any) -> bool:
+                    return (
+                        isinstance(el_val, str) and isinstance(sel_val, str) and sel_val in el_val
                     )
-            elif op == ">=":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+
+                compare_func = compare_contains
+        elif op == ">=":
+
+            def compare_ge(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, (int, float))
                     and isinstance(sel_val, (int, float))
                     and el_val >= sel_val
                 )
-            elif op == "<=":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+
+            compare_func = compare_ge
+        elif op == "<=":
+
+            def compare_le(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, (int, float))
                     and isinstance(sel_val, (int, float))
                     and el_val <= sel_val
                 )
-            elif op == ">":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+
+            compare_func = compare_le
+        elif op == ">":
+
+            def compare_gt(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, (int, float))
                     and isinstance(sel_val, (int, float))
                     and el_val > sel_val
                 )
-            elif op == "<":
-                compare_func = (
-                    lambda el_val, sel_val: isinstance(el_val, (int, float))
+
+            compare_func = compare_gt
+        elif op == "<":
+
+            def compare_lt(el_val: Any, sel_val: Any) -> bool:
+                return (
+                    isinstance(el_val, (int, float))
                     and isinstance(sel_val, (int, float))
                     and el_val < sel_val
                 )
-            else:
-                # Should not happen with current parsing logic
-                logger.warning(
-                    f"Unsupported operator '{op}' encountered during filter building for attribute '{name}'"
-                )
-                continue  # Skip this attribute filter
 
-            # --- Create the final filter function for operators with values ---
-            filter_name = f"attribute [{name}{op_desc}]"
-            # Capture loop variables correctly in the lambda
-            filter_lambda = (
-                lambda el, get_val=get_element_value, compare=compare_func, expected_val=value: (
-                    element_value := get_val(el)
-                )
-                is not None
-                and compare(element_value, expected_val)
+            compare_func = compare_lt
+        else:
+            logger.warning(
+                "Unsupported operator '%s' encountered during filter building for attribute '%s'",
+                op,
+                name,
             )
+            continue
 
-        filters.append({"name": filter_name, "func": filter_lambda})
+        filter_label = f"attribute [{name}{op_desc}]"
+        filters.append(
+            {
+                "name": filter_label,
+                "func": _make_compare_filter(get_element_value, compare_func, value, name),
+            }
+        )
 
     # Filter by pseudo-classes
-    for pseudo in selector["pseudo_classes"]:
+    for pseudo in pseudo_entries:
         name = pseudo["name"]
         args = pseudo["args"]
-        filter_lambda = None
-        # Start with a base name, modify for specifics like :not
-        filter_name = f"pseudo-class :{name}"
 
         # Relational pseudo-classes and collection-level pseudo-classes are handled separately by the caller
         if name in ("above", "below", "near", "left-of", "right-of", "first", "last"):
@@ -944,16 +1015,20 @@ def _build_filter_list(
 
             # Recursively get the filter function for the inner selector
             # Pass kwargs and aggregates down in case regex/case flags affect the inner selector
-            inner_filter_func = selector_to_filter_func(args, aggregates=aggregates, **kwargs)
+            inner_filter_func = selector_to_filter_func(args, aggregates=aggregate_values, **kwargs)
 
-            # The filter lambda applies the inner function and inverts the result
-            filter_lambda = lambda el, inner_func=inner_filter_func: not inner_func(el)
+            def not_filter(
+                element: Any, inner_func: Callable[[Any], bool] = inner_filter_func
+            ) -> bool:
+                return not inner_func(element)
 
             # Try to create a descriptive name (can be long)
             # Maybe simplify this later if needed
-            inner_filter_list = _build_filter_list(args, aggregates=aggregates, **kwargs)
+            inner_filter_list = _build_filter_list(args, aggregates=aggregate_values, **kwargs)
             inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
             filter_name = f"pseudo-class :not({inner_filter_names})"
+            filters.append({"name": filter_name, "func": not_filter})
+            continue
 
         # --- Handle text-based pseudo-classes ---
         elif name == "contains" and args is not None:
@@ -963,48 +1038,54 @@ def _build_filter_list(
                 f"pseudo-class :contains({args!r}, regex={use_regex}, ignore_case={ignore_case})"
             )
 
-            def contains_check(element, args=args, use_regex=use_regex, ignore_case=ignore_case):
+            def contains_check(
+                element: Any,
+                search=args,
+                regex=use_regex,
+                ignore=ignore_case,
+            ) -> bool:
                 if not hasattr(element, "text") or not element.text:
                     return False  # Element must have non-empty text
 
                 element_text = element.text
-                search_term = str(args)  # Ensure args is string
+                search_term = str(search)  # Ensure args is string
 
-                if use_regex:
+                if regex:
                     try:
-                        pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
+                        pattern = re.compile(search_term, re.IGNORECASE if ignore else 0)
                         return bool(pattern.search(element_text))
                     except re.error as e:
                         logger.warning(
                             f"Invalid regex '{search_term}' in :contains selector: {e}. Falling back to literal search."
                         )
                         # Fallback to literal search on regex error
-                        if ignore_case:
+                        if ignore:
                             return search_term.lower() in element_text.lower()
                         else:
                             return search_term in element_text
                 else:  # Literal search
-                    if ignore_case:
+                    if ignore:
                         return search_term.lower() in element_text.lower()
                     else:
                         return search_term in element_text
 
-            filter_lambda = contains_check
+            filters.append({"name": filter_name, "func": contains_check})
+            continue
 
         # --- Handle :regex pseudo-class (same as :contains with regex=True) ---
         elif name == "regex" and args is not None:
             ignore_case = not kwargs.get("case", True)  # Default case sensitive
             filter_name = f"pseudo-class :regex({args!r}, ignore_case={ignore_case})"
 
-            def regex_check(element, args=args, ignore_case=ignore_case):
+            def regex_check(element: Any, pattern_text=args, ignore=ignore_case) -> bool:
                 if not hasattr(element, "text") or not element.text:
                     return False  # Element must have non-empty text
 
                 element_text = element.text
-                search_term = str(args)  # Ensure args is string
+                search_term = str(pattern_text)  # Ensure args is string
 
                 try:
-                    pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
+                    pattern = re.compile(search_term, re.IGNORECASE if ignore else 0)
                     return bool(pattern.search(element_text))
                 except re.error as e:
                     logger.warning(
@@ -1012,87 +1093,130 @@ def _build_filter_list(
                     )
                     return False
 
-            filter_lambda = regex_check
+            filters.append({"name": filter_name, "func": regex_check})
+            continue
 
         # --- Handle :closest pseudo-class for fuzzy text matching --- #
         elif name == "closest" and args is not None:
             # Note: :closest is handled specially in the page._apply_selector method
             # It doesn't filter elements here, but marks them for special processing
             # This allows us to first check :contains matches, then sort by similarity
-            filter_lambda = lambda el: True  # Accept all elements for now
+            def closest_filter(_element: Any) -> bool:
+                return True
+
+            filters.append({"name": "pseudo-class :closest", "func": closest_filter})
+            continue
 
         # --- Handle :startswith and :starts-with (alias) --- #
         elif name in ("starts-with", "startswith") and args is not None:
             filter_name = f"pseudo-class :{name}({args!r})"
 
-            def startswith_check(element, arg=args):
+            def startswith_check(element: Any, arg=args) -> bool:
                 if not hasattr(element, "text") or not element.text:
                     return False
                 return str(element.text).startswith(str(arg))
 
-            filter_lambda = startswith_check
+            filters.append({"name": filter_name, "func": startswith_check})
+            continue
 
         # --- Handle :endswith and :ends-with (alias) --- #
         elif name in ("ends-with", "endswith") and args is not None:
             filter_name = f"pseudo-class :{name}({args!r})"
 
-            def endswith_check(element, arg=args):
+            def endswith_check(element: Any, arg=args) -> bool:
                 if not hasattr(element, "text") or not element.text:
                     return False
                 return str(element.text).endswith(str(arg))
 
-            filter_lambda = endswith_check
-
-        elif name == "starts-with" and args is not None:
-            filter_lambda = (
-                lambda el, arg=args: hasattr(el, "text")
-                and el.text
-                and el.text.startswith(str(arg))
-            )
-        elif name == "ends-with" and args is not None:
-            filter_lambda = (
-                lambda el, arg=args: hasattr(el, "text") and el.text and el.text.endswith(str(arg))
-            )
+            filters.append({"name": filter_name, "func": endswith_check})
+            continue
 
         # Boolean attribute pseudo-classes
         elif name == "bold":
-            filter_lambda = lambda el: hasattr(el, "bold") and el.bold
+            filters.append(
+                {
+                    "name": "pseudo-class :bold",
+                    "func": lambda element: bool(getattr(element, "bold", False)),
+                }
+            )
+            continue
         elif name == "italic":
-            filter_lambda = lambda el: hasattr(el, "italic") and el.italic
+            filters.append(
+                {
+                    "name": "pseudo-class :italic",
+                    "func": lambda element: bool(getattr(element, "italic", False)),
+                }
+            )
+            continue
         elif name == "horizontal":
-            filter_lambda = lambda el: hasattr(el, "is_horizontal") and el.is_horizontal
+            filters.append(
+                {
+                    "name": "pseudo-class :horizontal",
+                    "func": lambda element: bool(getattr(element, "is_horizontal", False)),
+                }
+            )
+            continue
         elif name == "vertical":
-            filter_lambda = lambda el: hasattr(el, "is_vertical") and el.is_vertical
+            filters.append(
+                {
+                    "name": "pseudo-class :vertical",
+                    "func": lambda element: bool(getattr(element, "is_vertical", False)),
+                }
+            )
+            continue
         elif name == "checked":
-            filter_lambda = lambda el: hasattr(el, "is_checked") and el.is_checked
+            filters.append(
+                {
+                    "name": "pseudo-class :checked",
+                    "func": lambda element: bool(getattr(element, "is_checked", False)),
+                }
+            )
+            continue
         elif name == "unchecked":
-            filter_lambda = lambda el: hasattr(el, "is_checked") and not el.is_checked
+            filters.append(
+                {
+                    "name": "pseudo-class :unchecked",
+                    "func": lambda element: not bool(getattr(element, "is_checked", False)),
+                }
+            )
+            continue
 
         # --- New: :strike / :strikethrough / :strikeout pseudo-classes --- #
         elif name in ("strike", "strikethrough", "strikeout"):
-            filter_lambda = lambda el: hasattr(el, "strike") and bool(getattr(el, "strike"))
-            filter_name = f"pseudo-class :{name}"
+            filters.append(
+                {
+                    "name": f"pseudo-class :{name}",
+                    "func": lambda element: bool(getattr(element, "strike", False)),
+                }
+            )
+            continue
         elif name in ("underline", "underlined"):
-            filter_lambda = lambda el: hasattr(el, "underline") and bool(getattr(el, "underline"))
-            filter_name = f"pseudo-class :{name}"
+            filters.append(
+                {
+                    "name": f"pseudo-class :{name}",
+                    "func": lambda element: bool(getattr(element, "underline", False)),
+                }
+            )
+            continue
         elif name in ("highlight", "highlighted"):
             # Match only if the element exposes an `is_highlighted` boolean flag.
             # We deliberately avoid looking at the generic `.highlight()` method on
             # Element, because it is a callable present on every element and would
             # incorrectly mark everything as highlighted.
-            filter_lambda = lambda el: bool(getattr(el, "is_highlighted", False))
-            filter_name = f"pseudo-class :{name}"
+            filters.append(
+                {
+                    "name": f"pseudo-class :{name}",
+                    "func": lambda element: bool(getattr(element, "is_highlighted", False)),
+                }
+            )
+            continue
 
         # Check predefined lambda functions (e.g., :first-child, :empty)
         elif name in PSEUDO_CLASS_FUNCTIONS:
-            filter_lambda = PSEUDO_CLASS_FUNCTIONS[name]
-            filter_name = f"pseudo-class :{name}"  # Set name for predefined ones
+            filters.append({"name": f"pseudo-class :{name}", "func": PSEUDO_CLASS_FUNCTIONS[name]})
+            continue
         else:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
-
-        if filter_lambda:
-            # Use the potentially updated filter_name
-            filters.append({"name": filter_name, "func": filter_lambda})
 
     return filters
 
@@ -1132,7 +1256,7 @@ def _calculate_aggregates(elements: List[Any], selector: Dict[str, Any]) -> Dict
     Returns:
         Dict mapping attribute names to their aggregate values
     """
-    aggregates = {}
+    aggregates: Dict[str, Any] = {}
 
     # Find all aggregate functions in attributes
     for attr in selector.get("attributes", []):

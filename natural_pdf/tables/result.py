@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Union, overload
 
 
 class TableResult(Sequence):
@@ -22,7 +22,13 @@ class TableResult(Sequence):
     # ---------------------------------------------------------------------
     # Sequence API
     # ---------------------------------------------------------------------
-    def __getitem__(self, index):  # type: ignore[override]
+    @overload
+    def __getitem__(self, index: int) -> List[Any]: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> List[List[Any]]: ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union[List[Any], List[List[Any]]]:
         return self._rows[index]
 
     def __len__(self) -> int:  # type: ignore[override]
@@ -118,8 +124,9 @@ class TableResult(Sequence):
             body = rows[:header] + rows[header + 1 :]
         elif isinstance(header, (list, tuple)) and all(isinstance(i, int) for i in header):
             # List of integers - multi-row header
-            hdr_rows = [rows[i] for i in header]
-            body = [r for idx, r in enumerate(rows) if idx not in header]
+            header_indices = [int(i) for i in header]
+            hdr_rows = [rows[i] for i in header_indices]
+            body = [r for idx, r in enumerate(rows) if idx not in header_indices]
             hdr = hdr_rows
         elif (
             isinstance(header, (list, tuple))

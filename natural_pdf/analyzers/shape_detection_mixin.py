@@ -698,21 +698,16 @@ class ShapeDetectionMixin:
             pil_image_for_dims = pil_image_for_dims.convert("RGB")
 
         if replace:
-            from natural_pdf.elements.line import LineElement
-
-            element_manager = page_object_ctx._element_mgr
-            if hasattr(element_manager, "_elements") and "lines" in element_manager._elements:
-                original_count = len(element_manager._elements["lines"])
-                element_manager._elements["lines"] = [
-                    line
-                    for line in element_manager._elements["lines"]
-                    if getattr(line, "source", None) != source_label
-                ]
-                removed_count = original_count - len(element_manager._elements["lines"])
-                if removed_count > 0:
-                    logger.info(
-                        f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}"
-                    )
+            removed_count = page_object_ctx._element_mgr.remove_elements_by_source(
+                "lines", source_label
+            )
+            if removed_count > 0:
+                logger.info(
+                    "Removed %d existing lines with source '%s' from %s",
+                    removed_count,
+                    source_label,
+                    page_object_ctx,
+                )
         lines_data_img, profile_h_smoothed, profile_v_smoothed = self._find_lines_on_image_data(
             cv_image=cv_image,
             pil_image_rgb=pil_image_for_dims,
@@ -1239,15 +1234,8 @@ class ShapeDetectionMixin:
         labels_img = full_label_flat.reshape(h, w)
 
         # ── optional purge ──
-        if replace and hasattr(page_obj, "_element_mgr"):
-            old_blobs = [
-                r
-                for r in page_obj._element_mgr.regions
-                if getattr(r, "region_type", None) == "blob"
-                and getattr(r, "source", None) == source_label
-            ]
-            for r in old_blobs:
-                page_obj._element_mgr.regions.remove(r)
+        if replace:
+            page_obj.remove_regions(source=source_label, region_type="blob")
 
         # ── iterate clusters ───────────────────────────────────────────────────
         unique_clusters = [cid for cid in np.unique(labels_img) if cid >= 0]
@@ -1353,6 +1341,6 @@ class ShapeDetectionMixin:
                 # Store readable colour for inspection tables
                 region.metadata["color_hex"] = hex_str
 
-                page_obj._element_mgr.add_region(region)
+                page_obj.add_region(region, source=source_label)
 
         return self

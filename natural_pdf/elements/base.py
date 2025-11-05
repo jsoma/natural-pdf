@@ -2,22 +2,28 @@
 Base Element class for natural-pdf.
 """
 
+from collections.abc import Mapping as MappingABC
+from collections.abc import Sequence as SequenceABC
 from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
     List,
     Literal,
+    Mapping,
     Optional,
+    Protocol,
     Sequence,
     Tuple,
     Union,
+    cast,
     overload,
 )
 
 # Import global options
 import natural_pdf
 from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin
 
@@ -32,7 +38,20 @@ if TYPE_CHECKING:
     from natural_pdf.flows.region import FlowRegion
 
 
-def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
+class _DirectionalHost(SupportsGeometry, Protocol):
+    """Structural type for objects that support DirectionalMixin operations."""
+
+    @property
+    def page(self) -> "Page": ...
+
+    @property
+    def width(self) -> float: ...
+
+    @property
+    def height(self) -> float: ...
+
+
+def extract_bbox(obj: SupportsBBox | Mapping[str, Any] | Sequence[float]) -> Optional[Bounds]:
     """Extract bounding box coordinates from any object that has bbox properties.
 
     This utility function provides a standardized way to extract bounding box
@@ -64,25 +83,44 @@ def extract_bbox(obj: Any) -> Optional[Tuple[float, float, float, float]]:
         ```
     """
     # Try bbox property first (most common)
-    if hasattr(obj, "bbox") and obj.bbox is not None:
+    if isinstance(obj, SupportsBBox):
         bbox = obj.bbox
-        if isinstance(bbox, (tuple, list)) and len(bbox) == 4:
-            return tuple(float(coord) for coord in bbox)
+        if isinstance(bbox, SequenceABC) and len(bbox) >= 4:
+            try:
+                bbox_tuple = tuple(float(bbox[i]) for i in range(4))
+                return cast(Bounds, bbox_tuple)
+            except (ValueError, TypeError):
+                pass
+        # Fall back to the geometry path if available
 
     # Try individual coordinate properties
-    if all(hasattr(obj, attr) for attr in ["x0", "top", "x1", "bottom"]):
+    if isinstance(obj, SupportsGeometry):
         try:
-            return (float(obj.x0), float(obj.top), float(obj.x1), float(obj.bottom))
+            return cast(Bounds, (float(obj.x0), float(obj.top), float(obj.x1), float(obj.bottom)))
         except (ValueError, TypeError):
             pass
 
     # If object is a dict with bbox keys
-    if isinstance(obj, dict):
+    if isinstance(obj, MappingABC):
         if all(key in obj for key in ["x0", "top", "x1", "bottom"]):
             try:
-                return (float(obj["x0"]), float(obj["top"]), float(obj["x1"]), float(obj["bottom"]))
+                return cast(
+                    Bounds,
+                    (
+                        float(obj["x0"]),
+                        float(obj["top"]),
+                        float(obj["x1"]),
+                        float(obj["bottom"]),
+                    ),
+                )
             except (ValueError, TypeError):
                 pass
+
+    if isinstance(obj, SequenceABC) and not isinstance(obj, (str, bytes)) and len(obj) == 4:
+        try:
+            return cast(Bounds, tuple(float(coord) for coord in obj))
+        except (ValueError, TypeError):
+            pass
 
     return None
 
@@ -120,8 +158,15 @@ class DirectionalMixin:
         'x1', and 'bottom' attributes for coordinate calculations.
     """
 
+    # Inform static type checkers about required attributes.
+    page: "Page"
+    x0: float
+    top: float
+    x1: float
+    bottom: float
+
     def _direction(
-        self,
+        self: _DirectionalHost,
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
@@ -130,7 +175,7 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: float = 0.0,
         apply_exclusions: bool = True,
-        multipage: bool = False,
+        multipage: Optional[bool] = None,
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
@@ -159,6 +204,16 @@ class DirectionalMixin:
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
         pixel_offset = offset  # Use provided offset for excluding elements/endpoints
+
+        # initialise optional coordinate holders to satisfy static checkers
+        x0_initial = x1_initial = self.x0
+        y0_initial = y1_initial = self.top
+        x0_final = x1_final = self.x0
+        y0_final = y1_final = self.top
+        y0 = self.top
+        y1 = self.bottom
+        x0 = self.x0
+        x1 = self.x1
 
         # Normalize anchor parameter
         def normalize_anchor(anchor_value: str, dir: str) -> str:
@@ -275,6 +330,14 @@ class DirectionalMixin:
 
             # IMPORTANT: Exclude self from matches to prevent finding ourselves
             all_matches = [m for m in all_matches if m is not self]
+
+            # Filter to objects with the required geometric interface
+            geometric_matches: List[SupportsGeometry] = []
+            for candidate in all_matches:
+                if all(hasattr(candidate, attr) for attr in ("x0", "x1", "top", "bottom", "page")):
+                    geometric_matches.append(cast(SupportsGeometry, candidate))
+
+            all_matches = geometric_matches
 
             # Determine reference point based on normalized_anchor
             if direction == "above":
@@ -426,10 +489,10 @@ class DirectionalMixin:
 
         # 5. Check if multipage is needed
         # Use global default if not explicitly set
-        use_multipage = multipage
-        # If multipage is False but auto_multipage is True, use True
-        if not multipage and natural_pdf.options.layout.auto_multipage:
-            use_multipage = True
+        if multipage is None:
+            use_multipage = natural_pdf.options.layout.auto_multipage
+        else:
+            use_multipage = multipage
 
         # Multipage is not supported with within constraint
         if use_multipage and constraint_region:
@@ -485,7 +548,7 @@ class DirectionalMixin:
         return result
 
     def _direction_multipage(
-        self,
+        self: _DirectionalHost,
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
@@ -623,7 +686,7 @@ class DirectionalMixin:
         return result
 
     def above(
-        self,
+        self: _DirectionalHost,
         height: Optional[float] = None,
         width: str = "full",
         include_source: bool = False,
@@ -631,7 +694,7 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
-        multipage: bool = False,
+        multipage: Optional[bool] = None,
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
@@ -648,7 +711,7 @@ class DirectionalMixin:
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
-                     if the result spans multiple pages, Region otherwise (default: False)
+                     if the result spans multiple pages, Region otherwise (default: None uses global option)
             within: Optional region to constrain the result to (default: None)
             anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'top', 'bottom'
             **kwargs: Additional parameters
@@ -688,7 +751,7 @@ class DirectionalMixin:
         )
 
     def below(
-        self,
+        self: _DirectionalHost,
         height: Optional[float] = None,
         width: str = "full",
         include_source: bool = False,
@@ -696,7 +759,7 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
-        multipage: bool = False,
+        multipage: Optional[bool] = None,
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
@@ -711,7 +774,7 @@ class DirectionalMixin:
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
-                     if the result spans multiple pages, Region otherwise (default: False)
+                     if the result spans multiple pages, Region otherwise (default: None uses global option)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             within: Optional region to constrain the result to (default: None)
@@ -753,7 +816,7 @@ class DirectionalMixin:
         )
 
     def left(
-        self,
+        self: _DirectionalHost,
         width: Optional[float] = None,
         height: str = "element",
         include_source: bool = False,
@@ -761,7 +824,7 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
-        multipage: bool = False,
+        multipage: Optional[bool] = None,
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
@@ -778,7 +841,7 @@ class DirectionalMixin:
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
-                     if the result spans multiple pages, Region otherwise (default: False)
+                     if the result spans multiple pages, Region otherwise (default: None uses global option)
             within: Optional region to constrain the result to (default: None)
             anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'left', 'right'
             **kwargs: Additional parameters
@@ -818,7 +881,7 @@ class DirectionalMixin:
         )
 
     def right(
-        self,
+        self: _DirectionalHost,
         width: Optional[float] = None,
         height: str = "element",
         include_source: bool = False,
@@ -826,7 +889,7 @@ class DirectionalMixin:
         include_endpoint: bool = True,
         offset: Optional[float] = None,
         apply_exclusions: bool = True,
-        multipage: bool = False,
+        multipage: Optional[bool] = None,
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
@@ -843,7 +906,7 @@ class DirectionalMixin:
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
             apply_exclusions: Whether to respect exclusions when using 'until' selector (default: True)
             multipage: If True, allows the region to span multiple pages. Returns FlowRegion
-                     if the result spans multiple pages, Region otherwise (default: False)
+                     if the result spans multiple pages, Region otherwise (default: None uses global option)
             within: Optional region to constrain the result to (default: None)
             anchor: Reference point - 'start' (default), 'center', 'end', or explicit edges like 'left', 'right'
             **kwargs: Additional parameters
@@ -906,7 +969,7 @@ class DirectionalMixin:
         ...
 
     def expand(
-        self,
+        self: _DirectionalHost,
         amount: Optional[float] = None,
         left: Union[float, bool, str] = 0,
         right: Union[float, bool, str] = 0,
@@ -1432,6 +1495,15 @@ class Element(
     def page(self) -> "Page":
         """Get the parent page."""
         return self._page
+
+    # ------------------------------------------------------------------
+    # Region creation helpers
+    # ------------------------------------------------------------------
+
+    def create_region(self, x0: float, top: float, x1: float, bottom: float) -> "Region":
+        """Create a region on this element's page using absolute coordinates."""
+
+        return self.page.create_region(x0, top, x1, bottom)
 
     def next(
         self,

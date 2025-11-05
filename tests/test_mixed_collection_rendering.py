@@ -70,7 +70,7 @@ def test_elementcollection_handles_flowregions():
     assert flow_region is not None, "No FlowRegion found"
 
     # Create collection with just the FlowRegion
-    collection = ElementCollection([flow_region])
+    collection = ElementCollection([flow_region])  # type: ignore[arg-type]
 
     # Get render specs
     specs = collection._get_render_specs(mode="show")

@@ -98,13 +98,15 @@ def calculate_hash(file_path: Path) -> str:
 def is_excluded(file_path: Path, base_dir: Path, exclude_patterns: List[str]) -> bool:
     """Checks if a file path matches any exclude patterns."""
     relative_path = file_path.relative_to(base_dir)
+    relative_path_str = str(relative_path)
+    file_path_str = str(file_path)
     # Only exclude index.md if it's in the root directory
-    if str(file_path) == "docs/index.md":
+    if relative_path_str == "index.md":
         return True
-    if "explanations" in str(file_path):
+    if "explanations" in relative_path_str:
         return True
     for pattern in exclude_patterns:
-        if pattern in str(file_path):
+        if pattern in relative_path_str or pattern in file_path_str:
             return True
     return False
 
@@ -393,7 +395,6 @@ def main():
                     status = result["status"]
                     new_hash = result["new_hash"]
                     error_message = result.get("error_message")
-                    elapsed = result.get("elapsed", 0)
 
                     processed_files += 1
                     # Update cache

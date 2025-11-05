@@ -175,8 +175,12 @@ class OCREngine(ABC):
             For a batch: List of lists of text region dictionaries
         """
         # Convert single image to batch format
-        single_image = not isinstance(images, list)
-        image_batch = [images] if single_image else images
+        if isinstance(images, list):
+            image_batch: List[Image.Image] = images
+            single_image = False
+        else:
+            image_batch = [images]
+            single_image = True
 
         # Use default values where parameters are not provided
         effective_languages = languages or self.DEFAULT_LANGUAGES
@@ -275,7 +279,8 @@ class OCREngine(ABC):
             and all(isinstance(n, (int, float)) for n in bbox)
         ):
             try:
-                return tuple(float(c) for c in bbox[:4])
+                x0, y0, x1, y1 = (float(bbox[i]) for i in range(4))
+                return (x0, y0, x1, y1)
             except (ValueError, TypeError) as e:
                 raise ValueError(f"Invalid number format in bbox: {bbox}") from e
 

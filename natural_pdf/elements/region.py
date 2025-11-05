@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import (
     TYPE_CHECKING,
@@ -7,9 +9,11 @@ from typing import (
     List,
     Literal,
     Optional,
+    Protocol,
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 from pdfplumber.utils.geometry import get_bbox_overlap
@@ -28,6 +32,7 @@ from natural_pdf.classification.manager import ClassificationManager  # Keep for
 from natural_pdf.classification.mixin import ClassificationMixin
 
 # Add Visualizable import
+from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.elements.base import DirectionalMixin
@@ -61,12 +66,26 @@ if TYPE_CHECKING:
     # --- NEW: Add Image type hint for classification --- #
     from PIL.Image import Image
 
+    from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element  # Added for type hint
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.text import TextElement
+    from natural_pdf.flows.region import FlowRegion
 
 logger = logging.getLogger(__name__)
+
+
+class LayoutOptionsProtocol(Protocol):
+    directional_offset: float
+    directional_within: Optional["Region"]
+    auto_multipage: bool
+
+
+def _layout_options() -> LayoutOptionsProtocol:
+    import natural_pdf
+
+    return cast(LayoutOptionsProtocol, natural_pdf.options.layout)
 
 
 class RegionContext:
@@ -79,21 +98,21 @@ class RegionContext:
             region: The Region to use as a constraint for directional operations
         """
         self.region = region
-        self.previous_within = None
+        self.previous_within: Optional["Region"] = None
 
     def __enter__(self):
         """Enter the context, setting the global directional_within option."""
-        import natural_pdf
+        layout_options = _layout_options()
 
-        self.previous_within = natural_pdf.options.layout.directional_within
-        natural_pdf.options.layout.directional_within = self.region
+        self.previous_within = layout_options.directional_within
+        layout_options.directional_within = self.region
         return self.region
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the context, restoring the previous directional_within option."""
-        import natural_pdf
+        layout_options = _layout_options()
 
-        natural_pdf.options.layout.directional_within = self.previous_within
+        layout_options.directional_within = self.previous_within
         return False  # Don't suppress exceptions
 
 
@@ -107,6 +126,7 @@ class Region(
     DescribeMixin,
     VisualSearchMixin,
     Visualizable,
+    SupportsSections,
 ):
     """Represents a rectangular region on a page.
 
@@ -175,8 +195,8 @@ class Region(
         self,
         page: "Page",
         bbox: Tuple[float, float, float, float],
-        polygon: List[Tuple[float, float]] = None,
-        parent=None,
+        polygon: Optional[List[Tuple[float, float]]] = None,
+        parent: Optional["Region"] = None,
         label: Optional[str] = None,
     ):
         """Initialize a region.
@@ -216,41 +236,51 @@ class Region(
             spatial navigation methods like element.below(). Direct instantiation is
             used mainly for advanced workflows or layout analysis integration.
         """
-        self._page = page
-        self._bbox = bbox
-        self._polygon = polygon
+        self._page: "Page" = page
+        self._bbox: Tuple[float, float, float, float] = bbox
+        self._polygon: Optional[List[Tuple[float, float]]] = polygon
 
         self.metadata: Dict[str, Any] = {}
         # Analysis results live under self.metadata['analysis'] via property
 
         # Standard attributes for all elements
-        self.object_type = "region"  # For selector compatibility
+        self.object_type: str = "region"  # For selector compatibility
 
         # Layout detection attributes
-        self.region_type = None
-        self.normalized_type = None
-        self.confidence = None
-        self.model = None
+        self.region_type: Optional[str] = None
+        self.normalized_type: Optional[str] = None
+        self.confidence: Optional[float] = None
+        self.model: Optional[str] = None
 
         # Region management attributes
-        self.name = None
+        self.name: Optional[str] = None
         self.label = label
-        self.source = None  # Will be set by creation methods
+        self.source: Optional[str] = None  # Will be set by creation methods
 
         # Hierarchy support for nested document structure
-        self.parent_region = parent
-        self.child_regions = []
-        self.text_content = None  # Direct text content (e.g., from Docling)
-        self.associated_text_elements = []  # Native text elements that overlap with this region
+        self.parent_region: Optional["Region"] = parent
+        self.child_regions: List["Region"] = []
+        self.text_content: Optional[str] = None  # Direct text content (e.g., from Docling)
+        self.associated_text_elements: List[TextElement] = (
+            []
+        )  # Native text elements that overlap with this region
+        self.source_element: Optional[Union["Element", "Region"]] = None
+        self.includes_source: bool = False
+        self.boundary_element: Optional["Element"] = None
+
+        if self.parent_region is not None:
+            self.parent_region.child_regions.append(self)
+
+    def to_region(self) -> "Region":
+        """Regions already satisfy the section surface; return self."""
+        return self
 
     def _get_render_specs(
         self,
         mode: Literal["show", "render"] = "show",
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
-        crop: Union[
-            bool, int, str, "Region", Literal["wide"]
-        ] = True,  # Default to True for regions
+        crop: Union[bool, int, "Region", Literal["wide"]] = True,  # Default to True for regions
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
     ) -> List[RenderSpec]:
@@ -326,6 +356,53 @@ class Region(
 
         return [spec]
 
+    def create_region(
+        self,
+        left: float,
+        top: float,
+        right: float,
+        bottom: float,
+        *,
+        relative: bool = True,
+        label: Optional[str] = None,
+    ) -> "Region":
+        """Create a child region anchored to this region.
+
+        Args:
+            left: Left coordinate. Interpreted relative to this region when ``relative`` is True.
+            top: Top coordinate.
+            right: Right coordinate.
+            bottom: Bottom coordinate.
+            relative: When True (default), coordinates are treated as offsets from this
+                region's bounds. Set to False to provide absolute page coordinates.
+            label: Optional label to assign to the new region.
+
+        Returns:
+            The newly created child region.
+        """
+
+        page = getattr(self, "page", None)
+        if page is None:
+            raise ValueError("Cannot create a sub-region without an associated page")
+
+        if relative:
+            abs_left = self.x0 + left
+            abs_top = self.top + top
+            abs_right = self.x0 + right
+            abs_bottom = self.top + bottom
+        else:
+            abs_left = left
+            abs_top = top
+            abs_right = right
+            abs_bottom = bottom
+
+        child_region = page.region(left=abs_left, top=abs_top, right=abs_right, bottom=abs_bottom)
+        child_region.parent_region = self
+        self.child_regions.append(child_region)
+        if label is not None:
+            child_region.label = label
+        return child_region
+
     def _direction(
         self,
         direction: str,
@@ -334,8 +411,13 @@ class Region(
         include_source: bool = False,
         until: Optional[str] = None,
         include_endpoint: bool = True,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Region-specific wrapper around :py:meth:`DirectionalMixin._direction`.
 
@@ -345,22 +427,32 @@ class Region(
         new :class:`Region` instance.
         """
 
+        effective_offset = offset
+        if effective_offset is None:
+            effective_offset = _layout_options().directional_offset
+
         # Delegate to the shared implementation on DirectionalMixin
-        region = super()._direction(
+        result = super()._direction(
             direction=direction,
             size=size,
             cross_size=cross_size,
             include_source=include_source,
             until=until,
             include_endpoint=include_endpoint,
+            offset=effective_offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
-        # Post-process: make sure callers can trace lineage and flags
-        region.source_element = self
-        region.includes_source = include_source
+        if isinstance(result, Region):
+            # Post-process: make sure callers can trace lineage and flags
+            result.source_element = self
+            result.includes_source = include_source
 
-        return region
+        return result
 
     def above(
         self,
@@ -370,8 +462,12 @@ class Region(
         until: Optional[str] = None,
         include_endpoint: bool = True,
         offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region above this region.
 
@@ -382,17 +478,12 @@ class Region(
             until: Optional selector string to specify an upper boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            multipage: Override global multipage behaviour; defaults to None meaning use global option.
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area above
         """
-        # Use global default if offset not provided
-        if offset is None:
-            import natural_pdf
-
-            offset = natural_pdf.options.layout.directional_offset
-
         return self._direction(
             direction="above",
             size=height,
@@ -401,6 +492,10 @@ class Region(
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -412,8 +507,12 @@ class Region(
         until: Optional[str] = None,
         include_endpoint: bool = True,
         offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region below this region.
 
@@ -424,17 +523,12 @@ class Region(
             until: Optional selector string to specify a lower boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            multipage: Override global multipage behaviour; defaults to None meaning use global option.
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area below
         """
-        # Use global default if offset not provided
-        if offset is None:
-            import natural_pdf
-
-            offset = natural_pdf.options.layout.directional_offset
-
         return self._direction(
             direction="below",
             size=height,
@@ -443,6 +537,10 @@ class Region(
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -454,8 +552,12 @@ class Region(
         until: Optional[str] = None,
         include_endpoint: bool = True,
         offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region to the left of this region.
 
@@ -466,17 +568,12 @@ class Region(
             until: Optional selector string to specify a left boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            multipage: Override global multipage behaviour; defaults to None meaning use global option.
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area to the left
         """
-        # Use global default if offset not provided
-        if offset is None:
-            import natural_pdf
-
-            offset = natural_pdf.options.layout.directional_offset
-
         return self._direction(
             direction="left",
             size=width,
@@ -485,6 +582,10 @@ class Region(
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -496,8 +597,12 @@ class Region(
         until: Optional[str] = None,
         include_endpoint: bool = True,
         offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Select region to the right of this region.
 
@@ -508,17 +613,12 @@ class Region(
             until: Optional selector string to specify a right boundary element
             include_endpoint: Whether to include the boundary element in the region (default: True)
             offset: Pixel offset when excluding source/endpoint (default: None, uses natural_pdf.options.layout.directional_offset)
+            multipage: Override global multipage behaviour; defaults to None meaning use global option.
             **kwargs: Additional parameters
 
         Returns:
             Region object representing the area to the right
         """
-        # Use global default if offset not provided
-        if offset is None:
-            import natural_pdf
-
-            offset = natural_pdf.options.layout.directional_offset
-
         return self._direction(
             direction="right",
             size=width,
@@ -527,6 +627,10 @@ class Region(
             until=until,
             include_endpoint=include_endpoint,
             offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            within=within,
+            anchor=anchor,
             **kwargs,
         )
 
@@ -595,6 +699,45 @@ class Region(
                 (self.x1, self.bottom),  # bottom-right
                 (self.x0, self.bottom),  # bottom-left
             ]
+
+    @property
+    def pages(self) -> Tuple["Page", ...]:
+        """Expose this region's page in iterable form for protocol compatibility."""
+        return (self.page,)
+
+    def get_highlighter(self) -> "HighlightingService":
+        """Provide the highlighting service for this region."""
+        if not hasattr(self.page, "_highlighter"):
+            raise AttributeError("Parent page does not expose a highlighting service")
+        return self.page._highlighter
+
+    def get_config(self, key: str, default: Any = None, *, scope: str = "region") -> Any:
+        """Resolve configuration values with fallbacks across region, page, and PDF scopes."""
+        if scope not in {"region", "page", "pdf"}:
+            raise ValueError(f"Unsupported configuration scope: {scope}")
+
+        if scope in {"region"}:
+            region_cfg = self.metadata.get("config")
+            if isinstance(region_cfg, dict) and key in region_cfg:
+                return region_cfg[key]
+
+        page_cfg = getattr(self.page, "_config", {})
+        if scope in {"region", "page"} and isinstance(page_cfg, dict) and key in page_cfg:
+            return page_cfg[key]
+
+        pdf_obj = getattr(self.page, "pdf", getattr(self.page, "_parent", None))
+        pdf_cfg = getattr(pdf_obj, "_config", {}) if pdf_obj is not None else {}
+        if scope in {"region", "page", "pdf"} and isinstance(pdf_cfg, dict) and key in pdf_cfg:
+            return pdf_cfg[key]
+
+        return default
+
+    def get_manager(self, name: str) -> Any:
+        """Access service managers via the owning PDF."""
+        pdf_obj = getattr(self.page, "pdf", getattr(self.page, "_parent", None))
+        if pdf_obj is None or not hasattr(pdf_obj, "get_manager"):
+            raise AttributeError(f"Cannot resolve manager '{name}' without PDF context")
+        return pdf_obj.get_manager(name)
 
     @property
     def origin(self) -> Optional[Union["Element", "Region"]]:
@@ -696,7 +839,9 @@ class Region(
         # Use the existing is_point_inside check
         return self.is_point_inside(center_x, center_y)
 
-    def _is_element_in_region(self, element: "Element", use_boundary_tolerance=True) -> bool:
+    def _is_element_in_region(
+        self, element: SupportsGeometry, use_boundary_tolerance: bool = True
+    ) -> bool:
         """
         Check if an element intersects or is contained within this region.
 
@@ -712,7 +857,7 @@ class Region(
 
         return is_element_in_region(element, self, strategy="center", check_page=True)
 
-    def contains(self, element: "Element") -> bool:
+    def contains(self, element: SupportsGeometry) -> bool:
         """
         Check if this region completely contains an element.
 
@@ -3126,8 +3271,8 @@ class Region(
                     cell.model = self.model
                     cell.parent_region = self  # Link cell to parent table region
 
-                    # Add the cell region to the page's element manager
-                    self.page._element_mgr.add_region(cell)
+                    # Register the cell region with the page (tracks provenance and manager)
+                    self.page.add_region(cell, source="derived")
                     created_count += 1
 
         # Optional: Add created cells to the table region's children
@@ -3775,8 +3920,13 @@ class Region(
         all_col_idxs = []
         for cell in cell_regions:
             try:
-                r_idx = int(cell.metadata.get("row_index"))
-                c_idx = int(cell.metadata.get("col_index"))
+                row_idx_value = cell.metadata.get("row_index")
+                col_idx_value = cell.metadata.get("col_index")
+                if row_idx_value is None or col_idx_value is None:
+                    raise ValueError("Missing explicit indices")
+
+                r_idx = int(row_idx_value)
+                c_idx = int(col_idx_value)
                 all_row_idxs.append(r_idx)
                 all_col_idxs.append(c_idx)
             except Exception:
@@ -3793,30 +3943,23 @@ class Region(
             table_grid: List[List[Optional[str]]] = [[None] * num_cols for _ in range(num_rows)]
 
             for cell in cell_regions:
-                try:
-                    r_idx = int(cell.metadata.get("row_index"))
-                    c_idx = int(cell.metadata.get("col_index"))
-                    text_val = cell.extract_text(
-                        layout=False,
-                        apply_exclusions=apply_exclusions,
-                        content_filter=content_filter,
-                    ).strip()
-                    table_grid[r_idx][c_idx] = text_val if text_val else None
-                except Exception as _err:
-                    # Skip problematic cell
-                    continue
+                row_idx_value = cell.metadata.get("row_index")
+                col_idx_value = cell.metadata.get("col_index")
+                if row_idx_value is None or col_idx_value is None:
+                    raise ValueError("Missing explicit indices")
+
+                r_idx = int(row_idx_value)
+                c_idx = int(col_idx_value)
+                text_val = cell.extract_text(
+                    layout=False,
+                    apply_exclusions=apply_exclusions,
+                    content_filter=content_filter,
+                ).strip()
+                table_grid[r_idx][c_idx] = text_val if text_val else None
 
             return table_grid
 
-        # ------------------------------------------------------------------
-        # Fallback: derive order purely from geometry if indices are absent
-        # ------------------------------------------------------------------
-        # Sort unique centers to define ordering
-        try:
-            import numpy as np
-        except ImportError:
-            logger.warning("NumPy required for geometric cell ordering; returning empty result.")
-            return []
+        import numpy as np
 
         # Build arrays of centers
         centers = np.array([[(c.x0 + c.x1) / 2.0, (c.top + c.bottom) / 2.0] for c in cell_regions])

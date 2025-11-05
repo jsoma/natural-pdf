@@ -1,7 +1,7 @@
 # ocr_engine_paddleocr.py
 import importlib.util
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from PIL import Image
@@ -122,7 +122,7 @@ class PaddleOCREngine(OCREngine):
     ):
         """Initialize the PaddleOCR model using the >=3.0.0 pipeline API."""
         try:
-            import paddleocr
+            import paddleocr  # type: ignore[import-untyped]
 
             self.logger.info("PaddleOCR module imported successfully.")
         except ImportError as e:
@@ -288,16 +288,20 @@ class PaddleOCREngine(OCREngine):
         return img_array_bgr
 
     def _process_single_image(
-        self, image: np.ndarray, detect_only: bool, options: Optional[PaddleOCROptions]
+        self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
     ) -> Any:
         """Process a single image with PaddleOCR using the .predict() method."""
         if self._model is None:
             raise RuntimeError("PaddleOCR model not initialized")
 
+        if not isinstance(image, np.ndarray):
+            raise TypeError("PaddleOCREngine expects preprocessed numpy arrays")
+
         # Prepare arguments for the .predict() method from PaddleOCROptions.
         # See: https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/pipeline_usage/OCR.html
-        predict_args = {}
-        if options and isinstance(options, PaddleOCROptions):
+        predict_args: Dict[str, Any] = {}
+        paddle_options = options if isinstance(options, PaddleOCROptions) else None
+        if paddle_options is not None:
             valid_predict_args = {
                 "use_doc_orientation_classify",
                 "use_doc_unwarping",
@@ -310,22 +314,24 @@ class PaddleOCREngine(OCREngine):
                 "text_rec_score_thresh",
             }
             for arg in valid_predict_args:
-                if hasattr(options, arg) and getattr(options, arg) is not None:
-                    predict_args[arg] = getattr(options, arg)
+                if hasattr(paddle_options, arg):
+                    value = getattr(paddle_options, arg)
+                    if value is not None:
+                        predict_args[arg] = value
 
         # The `detect_only` flag is handled in `_standardize_results` by ignoring
         # the recognized text and confidence, as the new .predict() API does not
         # have a direct flag to disable only the recognition step.
 
         # Run OCR using the new .predict() method.
-        raw_results = self._model.predict(image)
+        raw_results = self._model.predict(image, **predict_args)
         return raw_results
 
     def _standardize_results(
         self, raw_results: Any, min_confidence: float, detect_only: bool
     ) -> List[TextRegion]:
         """Convert PaddleOCR results to standardized TextRegion objects."""
-        standardized_regions = []
+        standardized_regions: List[TextRegion] = []
 
         if not raw_results or not isinstance(raw_results, list) or len(raw_results) == 0:
             return standardized_regions
@@ -340,8 +346,8 @@ class PaddleOCREngine(OCREngine):
                 if rec_boxes is None or len(rec_boxes) == 0:
                     rec_boxes = page.get("dt_polys", [])
                 for i in range(len(rec_texts)):
-                    text = str(rec_texts[i]) if not detect_only else None
-                    confidence = float(rec_scores[i]) if not detect_only else None
+                    text_value = str(rec_texts[i]) if i < len(rec_texts) else ""
+                    confidence_value = float(rec_scores[i]) if i < len(rec_scores) else 0.0
                     # --- Bounding box format note ---
                     # PaddleOCR 3.x may return bounding boxes in several formats:
                     # - Rectangle: [x1, y1, x2, y2] (list or 1D numpy array of length 4)
@@ -354,18 +360,17 @@ class PaddleOCREngine(OCREngine):
                         box = box.tolist()
                     bbox = self._standardize_bbox(box)
                     if detect_only:
-                        standardized_regions.append(TextRegion(bbox, text=None, confidence=None))
-                    elif confidence is not None and confidence >= min_confidence:
-                        standardized_regions.append(TextRegion(bbox, text, confidence))
+                        standardized_regions.append(TextRegion(bbox, "", 0.0))
+                    elif confidence_value >= min_confidence:
+                        standardized_regions.append(TextRegion(bbox, text_value, confidence_value))
             return standardized_regions
 
         # Old format fallback (list of lists/tuples)
-        page_results = raw_results[0] if raw_results[0] is not None else []
+        page_results = raw_results[0] if raw_results and raw_results[0] is not None else []
         for detection in page_results:
             # Initialize text and confidence
-            text = None
-            confidence = None
-            bbox_raw = None
+            text_value = ""
+            confidence_value = 0.0
 
             # Paddle always seems to return the tuple structure [bbox, (text, conf)]
             # even if rec=False. We need to parse this structure regardless.
@@ -387,8 +392,8 @@ class PaddleOCREngine(OCREngine):
 
             # Extract text/conf only if not detect_only
             if not detect_only:
-                text = str(text_confidence[0])
-                confidence = float(text_confidence[1])
+                text_value = str(text_confidence[0])
+                confidence_value = float(text_confidence[1])
 
             # Standardize the bbox (always needed)
             try:
@@ -400,10 +405,8 @@ class PaddleOCREngine(OCREngine):
 
             # Append based on mode
             if detect_only:
-                # Append regardless of dummy confidence value, set text/conf to None
-                standardized_regions.append(TextRegion(bbox, text=None, confidence=None))
-            elif confidence >= min_confidence:
-                # Only append if confidence meets threshold in full OCR mode
-                standardized_regions.append(TextRegion(bbox, text, confidence))
+                standardized_regions.append(TextRegion(bbox, "", 0.0))
+            elif confidence_value >= min_confidence:
+                standardized_regions.append(TextRegion(bbox, text_value, confidence_value))
 
         return standardized_regions

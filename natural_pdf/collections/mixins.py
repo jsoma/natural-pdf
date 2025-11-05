@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, Iterable, Optional, TypeVar
+from typing import Any, Callable, Iterable, List, Optional, TypeVar, cast
 
 from tqdm.auto import tqdm
 
@@ -64,7 +64,7 @@ class ApplyMixin:
         # Default to standard iteration over the collection itself
         return iter(self)
 
-    def apply(self: Any, func: Callable[[Any, ...], Any], *args, **kwargs) -> Iterable[Any]:
+    def apply(self: Any, func: Callable[..., Any], *args, **kwargs) -> Iterable[Any]:
         """
         Applies a function to each item in the collection.
 
@@ -101,6 +101,7 @@ class ApplyMixin:
 
         # Import here to avoid circular imports
         from natural_pdf import PDF, Page
+        from natural_pdf.core.interfaces import SupportsElement
         from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.core.pdf_collection import PDFCollection
         from natural_pdf.elements.base import Element
@@ -113,7 +114,8 @@ class ApplyMixin:
             # Check if all non-None results are elements/regions
             non_none = [r for r in results if r is not None]
             if non_none and all(isinstance(r, (Element, Region)) for r in non_none):
-                return ElementCollection(results)
+                typed_results = cast(List[SupportsElement], results)
+                return ElementCollection(typed_results)
             else:
                 # Results are not elements (e.g., strings from extract_text), return plain list
                 return results
@@ -143,7 +145,8 @@ class ApplyMixin:
 
         # Return the appropriate collection based on result type (...generally)
         if first_type and (issubclass(first_type, Element) or issubclass(first_type, Region)):
-            return ElementCollection(results)
+            typed_results = cast(List[SupportsElement], results)
+            return ElementCollection(typed_results)
         elif first_type == PDF:
             return PDFCollection(results)
         elif first_type == Page:

@@ -1064,6 +1064,50 @@ class ElementManager:
             logger.error(f"Error removing element from {element_type}: {e}", exc_info=True)
             return False
 
+    def remove_elements_by_source(self, element_type: str, source: str) -> int:
+        """Remove all elements of ``element_type`` whose ``source`` attribute matches ``source``."""
+        self.load_elements()
+
+        if self._elements is None or element_type not in self._elements:
+            return 0
+
+        elements = self._elements[element_type]
+        original_len = len(elements)
+        self._elements[element_type] = [
+            element for element in elements if getattr(element, "source", None) != source
+        ]
+
+        removed = original_len - len(self._elements[element_type])
+        if removed:
+            logger.info(
+                "Page %s: Removed %d '%s' element(s) with source '%s'.",
+                getattr(self._page, "number", "?"),
+                removed,
+                element_type,
+                source,
+            )
+        return removed
+
+    def clear_text_layer(self) -> tuple[int, int]:
+        """Remove all word and character elements tracked by this manager."""
+        self.load_elements()
+
+        removed_words = 0
+        removed_chars = 0
+
+        if self._elements is None:
+            return removed_words, removed_chars
+
+        if "words" in self._elements:
+            removed_words = len(self._elements["words"])
+            self._elements["words"] = []
+
+        if "chars" in self._elements:
+            removed_chars = len(self._elements["chars"])
+            self._elements["chars"] = []
+
+        return removed_words, removed_chars
+
     def has_elements(self) -> bool:
         """
         Check if any significant elements (words, rects, lines, regions)

@@ -1,5 +1,5 @@
 import logging
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -9,10 +9,12 @@ from typing import (
     Generic,
     List,
     Literal,
+    MutableSequence,
     Optional,
     Tuple,
     TypeVar,
     Union,
+    cast,
     overload,
 )
 
@@ -27,6 +29,7 @@ from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 
 # Add Visualizable import
+from natural_pdf.core.interfaces import SupportsBBox, SupportsElement
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
@@ -66,7 +69,7 @@ if TYPE_CHECKING:
 else:  # pragma: no cover - fallback when ipywidgets is unavailable at runtime
     DOMWidget = Any  # type: ignore[assignment]
 
-T = TypeVar("T")
+T = TypeVar("T", bound=SupportsElement)
 P = TypeVar("P", bound="Page")
 
 
@@ -80,7 +83,7 @@ class ElementCollection(
     DescribeMixin,
     InspectMixin,
     Visualizable,
-    MutableSequence,
+    MutableSequence[T],
 ):
     """Collection of PDF elements with batch operations.
 
@@ -167,7 +170,7 @@ class ElementCollection(
             ElementCollection implements MutableSequence, so it behaves like a list
             with additional natural-pdf functionality for document processing.
         """
-        self._elements = elements or []
+        self._elements: List[T] = list(elements)
 
     def _get_render_specs(
         self,
@@ -311,7 +314,8 @@ class ElementCollection(
                         spec.crop_bbox = (0, content_bbox[1], page.width, content_bbox[3])
                     elif hasattr(crop, "bbox"):
                         # Crop to another region's bounds
-                        spec.crop_bbox = crop.bbox
+                        bbox_source = cast(SupportsBBox, crop)
+                        spec.crop_bbox = bbox_source.bbox
 
             # Add highlights in show mode
             if mode == "show":
@@ -455,8 +459,28 @@ class ElementCollection(
 
         # Try to get highlighter from first element's page
         for elem in self._elements:
-            if hasattr(elem, "page") and hasattr(elem.page, "_highlighter"):
-                return elem.page._highlighter
+            if hasattr(elem, "get_highlighter"):
+                try:
+                    return elem.get_highlighter()  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+
+            if hasattr(elem, "page"):
+                try:
+                    page = elem.page  # type: ignore[attr-defined]
+                except Exception:
+                    page = None
+                if page is not None and hasattr(page, "_highlighter"):
+                    return page._highlighter  # type: ignore[attr-defined]
+
+            pages_attr = getattr(elem, "pages", None)
+            if pages_attr:
+                try:
+                    for page in pages_attr:
+                        if hasattr(page, "_highlighter"):
+                            return page._highlighter  # type: ignore[attr-defined]
+                except TypeError:
+                    pass
 
         # If no elements have pages, we can't render
         raise RuntimeError(
@@ -467,7 +491,13 @@ class ElementCollection(
         """Get the number of elements in the collection."""
         return len(self._elements)
 
-    def __getitem__(self, index: Union[int, slice]) -> Union["Element", "ElementCollection"]:
+    @overload
+    def __getitem__(self, index: int) -> T: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> "ElementCollection[T]": ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union[T, "ElementCollection[T]"]:
         """Get an element by index or a collection by slice."""
         if isinstance(index, slice):
             # Return a new ElementCollection for slices
@@ -485,38 +515,39 @@ class ElementCollection(
                 element_type = types.pop()
         return f"<ElementCollection[{element_type}](count={len(self)})>"
 
-    def __add__(self, other: Union["ElementCollection", "Element"]) -> "ElementCollection":
-        from natural_pdf.elements.base import Element
-        from natural_pdf.elements.region import Region
-
+    def __add__(self, other: Union["ElementCollection[T]", T]) -> "ElementCollection[T]":
         if isinstance(other, ElementCollection):
-            return ElementCollection(self._elements + other._elements)
-        elif isinstance(other, (Element, Region)):
-            return ElementCollection(self._elements + [other])
-        else:
-            return NotImplemented
+            merged_elements = list(self._elements) + list(other)
+            return ElementCollection(merged_elements)
+        return ElementCollection(list(self._elements) + [other])
 
-    def __setitem__(self, index, value):
-        self._elements[index] = value
+    @overload
+    def __setitem__(self, index: int, value: T) -> None: ...
 
-    def __delitem__(self, index):
+    @overload
+    def __setitem__(self, index: slice, value: Iterable[T]) -> None: ...
+
+    def __setitem__(self, index: Union[int, slice], value: Union[T, Iterable[T]]) -> None:
+        self._elements[index] = value  # type: ignore[assignment]
+
+    def __delitem__(self, index: Union[int, slice]) -> None:
         del self._elements[index]
 
-    def insert(self, index, value):
+    def insert(self, index: int, value: T) -> None:
         self._elements.insert(index, value)
 
     @property
-    def elements(self) -> List["Element"]:
+    def elements(self) -> List[T]:
         """Get the elements in this collection."""
         return self._elements
 
     @property
-    def first(self) -> Optional["Element"]:
+    def first(self) -> Optional[T]:
         """Get the first element in the collection."""
         return self._elements[0] if self._elements else None
 
     @property
-    def last(self) -> Optional["Element"]:
+    def last(self) -> Optional[T]:
         """Get the last element in the collection."""
         return self._elements[-1] if self._elements else None
 
@@ -561,7 +592,7 @@ class ElementCollection(
             for e in self._elements
         )
 
-    def highest(self) -> Optional["Element"]:
+    def highest(self) -> Optional[T]:
         """
         Get element with the smallest top y-coordinate (highest on page).
 
@@ -582,7 +613,7 @@ class ElementCollection(
 
         return min(self._elements, key=lambda e: e.top)
 
-    def lowest(self) -> Optional["Element"]:
+    def lowest(self) -> Optional[T]:
         """
         Get element with the largest bottom y-coordinate (lowest on page).
 
@@ -603,7 +634,7 @@ class ElementCollection(
 
         return max(self._elements, key=lambda e: e.bottom)
 
-    def leftmost(self) -> Optional["Element"]:
+    def leftmost(self) -> Optional[T]:
         """
         Get element with the smallest x0 coordinate (leftmost on page).
 
@@ -624,7 +655,7 @@ class ElementCollection(
 
         return min(self._elements, key=lambda e: e.x0)
 
-    def rightmost(self) -> Optional["Element"]:
+    def rightmost(self) -> Optional[T]:
         """
         Get element with the largest x1 coordinate (rightmost on page).
 
@@ -645,7 +676,7 @@ class ElementCollection(
 
         return max(self._elements, key=lambda e: e.x1)
 
-    def exclude_regions(self, regions: List["Region"]) -> "ElementCollection":
+    def exclude_regions(self, regions: List["Region"]) -> "ElementCollection[T]":
         """
         Remove elements that are within any of the specified regions.
 
@@ -912,19 +943,9 @@ class ElementCollection(
 
         return Region(page, merged_bbox)
 
-    def filter(self, func: Callable[["Element"], bool]) -> "ElementCollection":
-        """
-        Filter elements using a function.
-
-        Args:
-            func: Function that takes an element and returns True to keep it
-
-        Returns:
-            New ElementCollection with filtered elements
-        """
-        return ElementCollection([e for e in self._elements if func(e)])
-
-    def sort(self, key=None, reverse=False) -> "ElementCollection":
+    def sort(
+        self, key: Optional[Callable[[T], Any]] = None, reverse: bool = False
+    ) -> "ElementCollection[T]":
         """
         Sort elements by the given key function.
 
@@ -935,7 +956,7 @@ class ElementCollection(
         Returns:
             Self for method chaining
         """
-        self._elements.sort(key=key, reverse=reverse)
+        self._elements.sort(key=key, reverse=reverse)  # type: ignore[arg-type]
         return self
 
     def exclude(self):
@@ -953,7 +974,9 @@ class ElementCollection(
             Self for method chaining
         """
         for element in self._elements:
-            element.exclude()
+            exclude_method = getattr(element, "exclude", None)
+            if callable(exclude_method):
+                exclude_method()
         return self
 
     def highlight(
@@ -1120,8 +1143,13 @@ class ElementCollection(
                 highlighter = element.page._highlighter
                 break
             # Try highlighting protocol for FlowRegions and other complex elements
-            elif hasattr(element, "get_highlight_specs"):
-                specs = element.get_highlight_specs()
+            else:
+                get_specs = getattr(element, "get_highlight_specs", None)
+                if not callable(get_specs):
+                    continue
+                specs = get_specs()
+                if not isinstance(specs, Sequence):
+                    continue
                 for spec in specs:
                     if "page" in spec and hasattr(spec["page"], "_highlighter"):
                         highlighter = spec["page"]._highlighter
@@ -1367,6 +1395,7 @@ class ElementCollection(
         grouped_elements: Dict[Any, List[T]] = {}
         # Group elements by the specified attribute value
         for element in self._elements:
+            group_key: Any = None
             try:
                 group_key = getattr(element, group_by, None)
                 if group_key is None:  # Handle elements missing the attribute
@@ -1657,12 +1686,18 @@ class ElementCollection(
         # Apply global options as defaults, but allow explicit parameters to override
         import natural_pdf
 
+        image_options = cast(Any, natural_pdf.options.image)
+
         # Use global options if parameters are not explicitly set
         if width is None:
-            width = natural_pdf.options.image.width
+            width = getattr(image_options, "width", None)
+        if width is None:
+            width = 1024  # Fallback width
+
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
+            image_resolution = getattr(image_options, "resolution", None)
+            if image_resolution is not None:
+                resolution = image_resolution
             else:
                 resolution = 144  # Default resolution when none specified
 
@@ -1683,6 +1718,7 @@ class ElementCollection(
         """Groups elements by the specified attribute."""
         grouped_elements: Dict[Any, List[T]] = {}
         for element in self._elements:
+            group_key: Any = None
             try:
                 group_key = getattr(element, group_by, None)
                 if group_key is None:  # Handle elements missing the attribute
@@ -1744,8 +1780,12 @@ class ElementCollection(
     ) -> Optional[Dict]:
         """Extracts common parameters needed for highlighting a single element."""
         # For FlowRegions and other complex elements, use highlighting protocol
-        if hasattr(element, "get_highlight_specs"):
-            specs = element.get_highlight_specs()
+        get_specs = getattr(element, "get_highlight_specs", None)
+        if callable(get_specs):
+            specs = get_specs()
+            if not isinstance(specs, Sequence):
+                logger.warning(f"Highlight protocol on {element} returned non-sequence specs")
+                return None
             if not specs:
                 logger.warning(f"Element {element} returned no highlight specs")
                 return None
@@ -1851,10 +1891,10 @@ class ElementCollection(
                 final_title = (
                     title or f"Interactive Viewer for Collection ({len(self.elements)} elements)"
                 )
-                # Call the page method, passing this collection's elements
-                return page.viewer(
+                page_viewer = cast(Any, page.viewer)
+                return page_viewer(
                     elements_to_render=self.elements,
-                    title=final_title,  # Pass title if Page method accepts it
+                    title=final_title,
                 )
             else:
                 logger.error("Page object is missing the 'viewer' method.")
@@ -1958,7 +1998,8 @@ class ElementCollection(
                 else:
                     matches.append(found)
 
-        return ElementCollection(matches)
+        typed_matches = cast(List[SupportsElement], matches)
+        return ElementCollection(typed_matches)
 
     @overload
     def find_all(
@@ -2070,7 +2111,8 @@ class ElementCollection(
             # If an element type doesn't, an AttributeError will naturally occur,
             # or a more specific check/handling could be added here if needed.
 
-        return ElementCollection(all_found_elements)
+        typed_elements = cast(List[SupportsElement], all_found_elements)
+        return ElementCollection(typed_elements)
 
     def extract_each_text(
         self,
@@ -2096,6 +2138,10 @@ class ElementCollection(
         :py:meth:`extract_text` method.
         """
 
+        def _page_index(elem: SupportsElement) -> int:
+            page_obj = getattr(elem, "page", None)
+            return getattr(page_obj, "index", 0) if page_obj is not None else 0
+
         # -- Determine ordering --------------------------------------------------
         elements: List[T] = list(self._elements)  # make a shallow copy we can sort
 
@@ -2108,11 +2154,7 @@ class ElementCollection(
                     if preset in {"ltr", "left-to-right"}:
                         elements.sort(
                             key=lambda el: (
-                                (
-                                    getattr(el, "page", None).index
-                                    if hasattr(el, "page") and el.page
-                                    else 0
-                                ),
+                                _page_index(cast(SupportsElement, el)),
                                 getattr(el, "x0", 0),
                                 getattr(el, "top", 0),
                             )
@@ -2120,11 +2162,7 @@ class ElementCollection(
                     elif preset in {"rtl", "right-to-left"}:
                         elements.sort(
                             key=lambda el: (
-                                (
-                                    getattr(el, "page", None).index
-                                    if hasattr(el, "page") and el.page
-                                    else 0
-                                ),
+                                _page_index(cast(SupportsElement, el)),
                                 -getattr(el, "x0", 0),
                                 getattr(el, "top", 0),
                             )
@@ -2132,11 +2170,7 @@ class ElementCollection(
                     elif preset in {"natural", "tdlr", "top-down"}:
                         elements.sort(
                             key=lambda el: (
-                                (
-                                    getattr(el, "page", None).index
-                                    if hasattr(el, "page") and el.page
-                                    else 0
-                                ),
+                                _page_index(cast(SupportsElement, el)),
                                 getattr(el, "top", 0),
                                 getattr(el, "x0", 0),
                             )
@@ -2157,8 +2191,7 @@ class ElementCollection(
     def correct_ocr(
         self,
         transform: Callable[[Any], Optional[str]],
-        max_workers: Optional[int] = None,
-    ) -> "ElementCollection":
+    ) -> "ElementCollection[T]":
         """
         Applies corrections to OCR-generated text elements within this collection
         using a user-provided callback function, executed
@@ -2180,18 +2213,15 @@ class ElementCollection(
         Args:
             transform: A function accepting an element and returning
                        `Optional[str]` (new text or None).
-            max_workers: The maximum number of worker threads to use for parallel
-                         correction on each page. If None, defaults are used.
 
         Returns:
             Self for method chaining.
         """
         # Delegate to the utility function
         _apply_ocr_correction_to_elements(
-            elements=self._elements,
+            elements=cast(Iterable[Element], self._elements),
             correction_callback=transform,
-            caller_info=f"ElementCollection(len={len(self._elements)})",  # Pass caller info
-            max_workers=max_workers,
+            caller_info=f"ElementCollection(len={len(self._elements)})",
         )
         return self  # Return self for chaining
 
@@ -2272,11 +2302,10 @@ class ElementCollection(
 
         # Requires access to the PDF's manager. Assume first element has it.
         first_element = self.elements[0]
-        manager_source = None
-        if hasattr(first_element, "page") and hasattr(first_element.page, "pdf"):
-            manager_source = first_element.page.pdf
-        elif hasattr(first_element, "pdf"):  # Maybe it's a PageCollection?
-            manager_source = first_element.pdf
+        page_obj = getattr(first_element, "page", None)
+        manager_source = getattr(page_obj, "pdf", None)
+        if manager_source is None:
+            manager_source = getattr(first_element, "pdf", None)
 
         if not manager_source or not hasattr(manager_source, "get_manager"):
             raise RuntimeError("Cannot access ClassificationManager via elements.")
@@ -2293,7 +2322,7 @@ class ElementCollection(
         inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
 
         # Gather content from all elements
-        items_to_classify: List[Tuple[Any, Union[str, Image.Image]]] = []
+        items_to_classify: List[Any] = []
         original_elements: List[Any] = []
         logger.info(
             f"Gathering content for {len(self.elements)} elements for batch classification..."
@@ -2419,7 +2448,7 @@ class ElementCollection(
                     element_data["content"] = ""
 
             # Save image if requested
-            if include_images and hasattr(element, "to_image"):
+            if include_images and image_dir and hasattr(element, "to_image"):
                 try:
                     # Create identifier for the element
                     pdf_name = "unknown"
@@ -2436,7 +2465,11 @@ class ElementCollection(
                     image_path = image_dir / image_filename
 
                     # Save image
-                    element.show(path=str(image_path), resolution=image_resolution)
+                    show_method = getattr(element, "show", None)
+                    if callable(show_method):
+                        show_method(path=str(image_path), resolution=image_resolution)
+                    else:
+                        logger.warning(f"Element {i} lacks a show() method; skipping image export.")
 
                     # Add relative path to data
                     element_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
@@ -2444,29 +2477,23 @@ class ElementCollection(
                     logger.error(f"Error saving image for element {i}: {e}")
                     element_data["image_path"] = None
 
-            # Add analyses data
-            if hasattr(element, "analyses"):
+            analyses = getattr(element, "analyses", None)
+            if isinstance(analyses, dict):
                 for key in analysis_keys:
-                    if key not in element.analyses:
-                        # Skip this key if it doesn't exist - elements might have different analyses
+                    if key not in analyses:
                         logger.warning(f"Analysis key '{key}' not found in element {i}")
                         continue
 
-                    # Get the analysis result
-                    analysis_result = element.analyses[key]
+                    analysis_result = analyses[key]
 
-                    # If the result has a to_dict method, use it
                     if hasattr(analysis_result, "to_dict"):
                         analysis_data = analysis_result.to_dict()
                     else:
-                        # Otherwise, use the result directly if it's dict-like
                         try:
                             analysis_data = dict(analysis_result)
                         except (TypeError, ValueError):
-                            # Last resort: convert to string
                             analysis_data = {"raw_result": str(analysis_result)}
 
-                    # Add analysis data to element data with the key as prefix
                     for k, v in analysis_data.items():
                         element_data[f"{key}.{k}"] = v
 
@@ -2506,9 +2533,10 @@ class ElementCollection(
             Region,
         )
 
-        new_text_elements: List["TextElement"] = []
+        new_text_elements: List[TextElement] = []
         if not self.elements:  # Accesses self._elements via property
-            return ElementCollection([])
+            empty_collection = ElementCollection(cast(List[SupportsElement], new_text_elements))
+            return cast(ElementCollection[TextElement], empty_collection)
 
         page_context_for_adding: Optional["Page"] = None
         if add_to_page:
@@ -2608,7 +2636,8 @@ class ElementCollection(
         else:  # add_to_page is False
             logger.info(f"Created {len(new_text_elements)} TextElements (not added to page).")
 
-        return ElementCollection(new_text_elements)
+        typed_collection = ElementCollection(cast(List[SupportsElement], new_text_elements))
+        return cast(ElementCollection[TextElement], typed_collection)
 
     def trim(
         self,
@@ -2635,18 +2664,24 @@ class ElementCollection(
         # Apply global options as defaults
         import natural_pdf
 
+        image_options = cast(Any, natural_pdf.options.image)
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
+            option_resolution = getattr(image_options, "resolution", None)
+            resolution = option_resolution if option_resolution is not None else 144
 
-        return self.apply(
-            lambda element: element.trim(
-                padding=padding, threshold=threshold, resolution=resolution
-            ),
-            show_progress=show_progress,
-        )
+        def _trim_element(element: SupportsElement) -> SupportsElement:
+            trim_method = getattr(element, "trim", None)
+            if callable(trim_method):
+                trimmed_element = trim_method(
+                    padding=padding, threshold=threshold, resolution=resolution
+                )
+                return cast(SupportsElement, trimmed_element)
+            return element
+
+        trimmed = self.apply(_trim_element, show_progress=show_progress)
+        if isinstance(trimmed, ElementCollection):
+            return trimmed
+        return ElementCollection(cast(List[SupportsElement], trimmed))
 
     def clip(
         self,
@@ -2699,22 +2734,34 @@ class ElementCollection(
                     f"elements in collection ({len(self._elements)})."
                 )
 
-            clipped_elements = [
-                el.clip(
-                    obj=clip_obj,
-                    left=left,
-                    top=top,
-                    right=right,
-                    bottom=bottom,
-                )
-                for el, clip_obj in zip(self._elements, clip_objs)
-            ]
+            clipped_elements: List[SupportsElement] = []
+            for el, clip_obj in zip(self._elements, clip_objs):
+                clip_method = getattr(el, "clip", None)
+                if callable(clip_method):
+                    clipped = clip_method(
+                        obj=clip_obj,
+                        left=left,
+                        top=top,
+                        right=right,
+                        bottom=bottom,
+                    )
+                    clipped_elements.append(cast(SupportsElement, clipped))
             return ElementCollection(clipped_elements)
 
         # Fallback to original behaviour: apply same clipping parameters to all elements
-        return self.apply(
-            lambda element: element.clip(obj=obj, left=left, top=top, right=right, bottom=bottom)
-        )
+        def _clip_single(element: SupportsElement) -> SupportsElement:
+            clip_method = getattr(element, "clip", None)
+            if callable(clip_method):
+                clipped_element = clip_method(
+                    obj=obj, left=left, top=top, right=right, bottom=bottom
+                )
+                return cast(SupportsElement, clipped_element)
+            return element
+
+        clipped = self.apply(_clip_single)
+        if isinstance(clipped, ElementCollection):
+            return clipped
+        return ElementCollection(cast(List[SupportsElement], clipped))
 
     def merge_connected(
         self,
@@ -3005,7 +3052,7 @@ class ElementCollection(
         vertical_gap: Optional[float] = None,
         vertical: Optional[bool] = False,
         geometry: Literal["rect", "polygon"] = "rect",
-        group_by: List[str] = None,
+        group_by: Optional[List[str]] = None,
     ) -> "ElementCollection":
         """
         Merge connected elements based on proximity and grouping attributes.
@@ -3076,8 +3123,10 @@ class ElementCollection(
         from natural_pdf.elements.region import Region
 
         # Filter to elements with bbox (all elements that can be dissolved)
-        elements_with_bbox = [
-            elem for elem in self._elements if hasattr(elem, "bbox") and elem.bbox
+        elements_with_bbox: List[SupportsElement] = [
+            cast(SupportsElement, elem)
+            for elem in self._elements
+            if hasattr(elem, "bbox") and elem.bbox
         ]
 
         if not elements_with_bbox:
@@ -3089,7 +3138,7 @@ class ElementCollection(
             grouped_elements = self._group_elements_by_attributes(elements_with_bbox, group_by)
         else:
             # All elements in one group
-            grouped_elements = {None: elements_with_bbox}
+            grouped_elements = {(): elements_with_bbox}
 
         # Process each group and collect dissolved regions
         all_dissolved_regions = []
@@ -3110,8 +3159,11 @@ class ElementCollection(
                 if len(component_elements) == 1:
                     # Single element, convert to Region
                     elem = component_elements[0]
+                    elem_type_label = getattr(elem, "type", type(elem).__name__)
                     region = Region(
-                        page=elem.page, bbox=elem.bbox, label=f"Dissolved (1 {elem.type})"
+                        page=elem.page,
+                        bbox=elem.bbox,
+                        label=f"Dissolved (1 {elem_type_label})",
                     )
                     # Copy relevant attributes from source element
                     self._copy_element_attributes_to_region(elem, region, group_by)
@@ -3125,13 +3177,16 @@ class ElementCollection(
             f"Dissolved {len(elements_with_bbox)} elements into {len(all_dissolved_regions)} regions"
         )
 
-        return ElementCollection(all_dissolved_regions)
+        return ElementCollection(cast(List[SupportsElement], all_dissolved_regions))
 
     def _group_elements_by_attributes(
-        self, elements: List["Element"], group_by: List[str]
-    ) -> Dict[Tuple, List["Element"]]:
+        self, elements: Sequence[SupportsElement], group_by: Optional[List[str]]
+    ) -> Dict[Tuple, List[SupportsElement]]:
         """Group elements by specified attributes."""
-        groups = {}
+        if not group_by:
+            return {(): list(elements)}
+
+        groups: Dict[Tuple, List[SupportsElement]] = {}
 
         for element in elements:
             # Build group key from attribute values
@@ -3139,15 +3194,16 @@ class ElementCollection(
             for attr in group_by:
                 value = None
 
-                # Try to get attribute value from various sources
                 if hasattr(element, attr):
                     value = getattr(element, attr)
-                elif hasattr(element, "_obj") and element._obj and attr in element._obj:
-                    value = element._obj[attr]
-                elif hasattr(element, "metadata") and element.metadata and attr in element.metadata:
-                    value = element.metadata[attr]
+                else:
+                    obj_dict = getattr(element, "_obj", None)
+                    metadata = getattr(element, "metadata", None)
+                    if isinstance(obj_dict, dict) and attr in obj_dict:
+                        value = obj_dict[attr]
+                    elif isinstance(metadata, dict) and attr in metadata:
+                        value = metadata[attr]
 
-                # Round float values to 2 decimal places for grouping
                 if isinstance(value, float):
                     value = round(value, 2)
 
@@ -3162,8 +3218,11 @@ class ElementCollection(
         return groups
 
     def _find_connected_components_elements(
-        self, elements: List["Element"], padding: float, vertical_gap: Optional[float] = None
-    ) -> List[List["Element"]]:
+        self,
+        elements: List[SupportsElement],
+        padding: float,
+        vertical_gap: Optional[float] = None,
+    ) -> List[List[SupportsElement]]:
         """Find connected components among elements using union-find."""
         if not elements:
             return []
@@ -3201,7 +3260,7 @@ class ElementCollection(
         return list(components.values())
 
     def _merge_elements_for_dissolve(
-        self, elements: List["Element"], group_by: List[str] = None
+        self, elements: List[SupportsElement], group_by: Optional[List[str]] = None
     ) -> "Region":
         """Merge a group of elements for dissolve operation."""
         if not elements:
@@ -3211,7 +3270,10 @@ class ElementCollection(
             elem = elements[0]
             from natural_pdf.elements.region import Region
 
-            region = Region(page=elem.page, bbox=elem.bbox, label=f"Dissolved (1 {elem.type})")
+            elem_type_label = getattr(elem, "type", type(elem).__name__)
+            region = Region(
+                page=elem.page, bbox=elem.bbox, label=f"Dissolved (1 {elem_type_label})"
+            )
             self._copy_element_attributes_to_region(elem, region, group_by)
             return region
 
@@ -3228,9 +3290,9 @@ class ElementCollection(
         page = elements[0].page
 
         # Count element types for label
-        type_counts = {}
+        type_counts: Dict[str, int] = {}
         for elem in elements:
-            elem_type = elem.type
+            elem_type = getattr(elem, "type", type(elem).__name__)
             type_counts[elem_type] = type_counts.get(elem_type, 0) + 1
 
         # Create label showing element types
@@ -3252,8 +3314,9 @@ class ElementCollection(
         # Check if all elements have the same region_type
         region_types = set()
         for elem in elements:
-            if hasattr(elem, "region_type") and elem.region_type:
-                region_types.add(elem.region_type)
+            elem_region_type = getattr(elem, "region_type", None)
+            if elem_region_type:
+                region_types.add(elem_region_type)
 
         # Handle region_type based on consistency
         if len(region_types) == 1:
@@ -3273,7 +3336,11 @@ class ElementCollection(
         return merged_region
 
     def _are_elements_connected(
-        self, elem1: "Element", elem2: "Element", threshold: float, vertical_gap: float | None
+        self,
+        elem1: SupportsElement,
+        elem2: SupportsElement,
+        threshold: float,
+        vertical_gap: float | None,
     ) -> bool:
         """Check if two elements are connected (adjacent or overlapping)."""
         # Check if elements are on the same page
@@ -3336,7 +3403,10 @@ class ElementCollection(
         return distance <= threshold
 
     def _copy_element_attributes_to_region(
-        self, element: "Element", region: "Region", group_by: List[str] = None
+        self,
+        element: SupportsElement,
+        region: "Region",
+        group_by: Optional[List[str]] = None,
     ) -> None:
         """Copy relevant attributes from source element to region."""
         # Common text attributes to check
@@ -3362,10 +3432,13 @@ class ElementCollection(
             # Try different ways to get the attribute
             if hasattr(element, attr):
                 value = getattr(element, attr)
-            elif hasattr(element, "_obj") and element._obj and attr in element._obj:
-                value = element._obj[attr]
-            elif hasattr(element, "metadata") and element.metadata and attr in element.metadata:
-                value = element.metadata[attr]
+            else:
+                obj_dict = getattr(element, "_obj", None)
+                metadata = getattr(element, "metadata", None)
+                if isinstance(obj_dict, dict) and attr in obj_dict:
+                    value = obj_dict[attr]
+                elif isinstance(metadata, dict) and attr in metadata:
+                    value = metadata[attr]
 
             # Set the attribute on the region if we found a value
             if value is not None:
@@ -3436,6 +3509,7 @@ class ElementCollection(
 
         # Use collection's apply helper for optional progress bar
         self.apply(_process, show_progress=show_progress)
+        return self
 
     def detect_checkboxes(
         self, *args, show_progress: bool = False, **kwargs
@@ -3488,7 +3562,7 @@ class ElementCollection(
         vertical_gap: Optional[float] = None,
         vertical: Optional[bool] = False,
         geometry: Literal["rect", "polygon"] = "rect",
-        group_by: List[str] = None,
+        group_by: Optional[List[str]] = None,
     ) -> "ElementCollection":
         """Alias for :py:meth:`dissolve` – retained for discoverability.
 

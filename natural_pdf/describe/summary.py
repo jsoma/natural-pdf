@@ -2,7 +2,7 @@
 Summary objects for describe functionality.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 
 class ElementSummary:
@@ -131,11 +131,11 @@ class ElementSummary:
         """
         md_source = self._to_markdown()
         try:
-            import markdown as _markdown  # pylint: disable=import-error
+            import markdown as _markdown  # type: ignore[import-untyped]  # pylint: disable=import-error
 
             # Convert markdown to HTML. We explicitly enable tables so the
             # element and inspection summaries render nicely.
-            return _markdown.markdown(md_source, extensions=["tables"])
+            return cast(str, _markdown.markdown(md_source, extensions=["tables"]))
         except Exception:  # noqa: BLE001, broad-except
             # Fallback: present the Markdown as-is inside a <pre> block.
             escaped = md_source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

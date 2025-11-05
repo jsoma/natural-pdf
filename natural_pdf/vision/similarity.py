@@ -1,11 +1,11 @@
 """Visual similarity matching using perceptual hashing"""
 
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from PIL import Image
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm  # type: ignore[import-untyped]
 
 from .template_matching import TemplateMatcher
 
@@ -76,7 +76,7 @@ def compute_phash(
     pixels = np.array(image, dtype=np.float32)
 
     # Apply DCT
-    from scipy.fftpack import dct
+    from scipy.fftpack import dct  # type: ignore[import-untyped]
 
     dct_coef = dct(dct(pixels, axis=0), axis=1)
 
@@ -113,10 +113,13 @@ class VisualMatcher:
     def __init__(self, hash_size: int = 12):
         self.hash_size = hash_size
         self.hash_bits = hash_size * hash_size
-        self._cache = {}
+        self._cache: Dict[str, int] = {}
         self.template_matcher = TemplateMatcher()  # Default zncc
 
-    def _get_search_scales(self, sizes: Optional[Union[float, Tuple, List]]) -> List[float]:
+    def _get_search_scales(
+        self,
+        sizes: Optional[Union[float, Tuple[float, float], Tuple[float, float, float], List[float]]],
+    ) -> List[float]:
         """
         Convert various size input formats to a list of scales to search.
 
@@ -136,7 +139,7 @@ class VisualMatcher:
 
         # List of exact sizes
         if isinstance(sizes, list):
-            return sorted(sizes)
+            return sorted(float(s) for s in sizes)
 
         # Single float: ±percentage
         if isinstance(sizes, (int, float)):
@@ -170,28 +173,35 @@ class VisualMatcher:
                 log_min = np.log(min_scale)
                 log_max = np.log(max_scale)
                 log_scales = np.linspace(log_min, log_max, num_steps)
-                scales = np.exp(log_scales).tolist()
+                exp_values = np.exp(log_scales)
+                scales_list = [float(s) for s in exp_values.tolist()]
 
                 # Ensure 1.0 is included if in range
-                if min_scale <= 1.0 <= max_scale and 1.0 not in scales:
+                if min_scale <= 1.0 <= max_scale and 1.0 not in scales_list:
                     # Find closest scale and replace with 1.0
-                    closest_idx = np.argmin([abs(s - 1.0) for s in scales])
-                    scales[closest_idx] = 1.0
+                    closest_idx = int(np.argmin([abs(s - 1.0) for s in scales_list]))
+                    scales_list[closest_idx] = 1.0
 
-                return scales
+                return scales_list
 
             elif len(sizes) == 3:
                 # Explicit (min, max, step)
                 min_scale, max_scale, step = sizes
-                scales = []
-                current = min_scale
-                while current <= max_scale:
-                    scales.append(current)
-                    current += step
+                result_scales: List[float] = []
+                current = float(min_scale)
+                step_value = float(step)
+                max_scale_val = float(max_scale)
+                while current <= max_scale_val:
+                    result_scales.append(current)
+                    current += step_value
                 # Ensure max is included if close
-                if scales[-1] < max_scale and (max_scale - scales[-1]) < step * 0.1:
-                    scales[-1] = max_scale
-                return scales
+                if (
+                    result_scales
+                    and result_scales[-1] < max_scale_val
+                    and (max_scale_val - result_scales[-1]) < step_value * 0.1
+                ):
+                    result_scales[-1] = max_scale_val
+                return result_scales
 
         raise ValueError(f"Invalid sizes format: {sizes}")
 
@@ -260,10 +270,18 @@ class VisualMatcher:
             )
 
     def _template_match(
-        self, template, target, threshold, step, sizes, show_progress, callback, mask_threshold
-    ):
+        self,
+        template: Image.Image,
+        target: Image.Image,
+        threshold: float,
+        step: Optional[int],
+        sizes: Optional[Union[float, Tuple[float, float], Tuple[float, float, float], List[float]]],
+        show_progress: bool,
+        callback: Optional[Callable[[], None]],
+        mask_threshold: Optional[float],
+    ) -> List[MatchCandidate]:
         """Template matching implementation"""
-        matches = []
+        matches: List[MatchCandidate] = []
 
         template_w, template_h = template.size
         target_w, target_h = target.size
@@ -275,8 +293,7 @@ class VisualMatcher:
         scales = self._get_search_scales(sizes)
 
         # Default step size if not provided
-        if step is None:
-            step = 1
+        step_value = step if step is not None else 1
 
         # Calculate total operations for progress bar
         total_operations = 0
@@ -287,12 +304,12 @@ class VisualMatcher:
 
                 if scaled_w <= target_w and scaled_h <= target_h:
                     # Compute score map size
-                    out_h = (target_h - scaled_h) // step + 1
-                    out_w = (target_w - scaled_w) // step + 1
+                    out_h = (target_h - scaled_h) // step_value + 1
+                    out_w = (target_w - scaled_w) // step_value + 1
                     total_operations += out_h * out_w
 
         # Setup progress bar
-        progress_bar = None
+        progress_bar: Optional[Any] = None
         if show_progress and not callback and total_operations > 0:
             progress_bar = tqdm(
                 total=total_operations, desc="Template matching", unit="position", leave=False
@@ -312,7 +329,7 @@ class VisualMatcher:
 
             # Run template matching
             scores = self.template_matcher.match_template(
-                target_gray, template_gray, step, mask_threshold
+                target_gray, template_gray, step_value, mask_threshold
             )
 
             # Find peaks above threshold
@@ -320,19 +337,19 @@ class VisualMatcher:
 
             # Update progress
             if progress_bar:
-                progress_bar.update(scores.size)
+                progress_bar.update(int(scores.size))
             elif callback:
-                for _ in range(scores.size):
+                for _ in range(int(scores.size)):
                     callback()
 
             for i in range(len(y_indices)):
-                y_idx = y_indices[i]
-                x_idx = x_indices[i]
-                score = scores[y_idx, x_idx]
+                y_idx = int(y_indices[i])
+                x_idx = int(x_indices[i])
+                score = float(scores[y_idx, x_idx])
 
                 # Convert back to image coordinates
-                x = x_idx * step
-                y = y_idx * step
+                x = x_idx * step_value
+                y = y_idx * step_value
 
                 matches.append(
                     MatchCandidate(
@@ -351,18 +368,18 @@ class VisualMatcher:
 
     def _phash_match(
         self,
-        template,
-        target,
-        template_hash,
-        threshold,
-        step,
-        sizes,
-        show_progress,
-        callback,
-        mask_threshold=None,
-    ):
+        template: Image.Image,
+        target: Image.Image,
+        template_hash: Optional[int],
+        threshold: float,
+        step: Optional[int],
+        sizes: Optional[Union[float, Tuple[float, float], Tuple[float, float, float], List[float]]],
+        show_progress: bool,
+        callback: Optional[Callable[[], None]],
+        mask_threshold: Optional[float] = None,
+    ) -> List[MatchCandidate]:
         """Original perceptual hash matching"""
-        matches = []
+        matches: List[MatchCandidate] = []
 
         # Compute template hash if not provided
         if template_hash is None:
@@ -379,8 +396,7 @@ class VisualMatcher:
         scales = self._get_search_scales(sizes)
 
         # Default step size if not provided (10% of template size)
-        if step is None:
-            step = max(1, int(min(template_w, template_h) * 0.1))
+        step_value = step if step is not None else max(1, int(min(template_w, template_h) * 0.1))
 
         # Calculate total iterations for progress bar
         total_iterations = 0
@@ -389,12 +405,12 @@ class VisualMatcher:
                 scaled_w = int(template_w * scale)
                 scaled_h = int(template_h * scale)
                 if scaled_w <= target_w and scaled_h <= target_h:
-                    x_steps = len(range(0, target_w - scaled_w + 1, step))
-                    y_steps = len(range(0, target_h - scaled_h + 1, step))
+                    x_steps = len(range(0, target_w - scaled_w + 1, step_value))
+                    y_steps = len(range(0, target_h - scaled_h + 1, step_value))
                     total_iterations += x_steps * y_steps
 
         # Setup progress bar if needed (only if no callback provided)
-        progress_bar = None
+        progress_bar: Optional[Any] = None
         if show_progress and not callback and total_iterations > 0:
             progress_bar = tqdm(total=total_iterations, desc="Scanning", unit="window", leave=False)
 
@@ -408,8 +424,8 @@ class VisualMatcher:
                 continue
 
             # Sliding window search
-            for y in range(0, target_h - scaled_h + 1, step):
-                for x in range(0, target_w - scaled_w + 1, step):
+            for y in range(0, target_h - scaled_h + 1, step_value):
+                for x in range(0, target_w - scaled_w + 1, step_value):
                     # Extract window
                     window = target.crop((x, y, x + scaled_w, y + scaled_h))
 
@@ -453,7 +469,7 @@ class VisualMatcher:
 
         # Sort by confidence (highest first)
         sorted_matches = sorted(matches, key=lambda m: m.confidence, reverse=True)
-        filtered = []
+        filtered: List[MatchCandidate] = []
 
         for candidate in sorted_matches:
             # Check if this overlaps significantly with any already selected match
@@ -469,7 +485,9 @@ class VisualMatcher:
 
         return filtered
 
-    def _calculate_overlap(self, bbox1: Tuple, bbox2: Tuple) -> float:
+    def _calculate_overlap(
+        self, bbox1: Tuple[float, float, float, float], bbox2: Tuple[float, float, float, float]
+    ) -> float:
         """Calculate intersection over union (IoU) for two bboxes"""
         x1_min, y1_min, x1_max, y1_max = bbox1
         x2_min, y2_min, x2_max, y2_max = bbox2

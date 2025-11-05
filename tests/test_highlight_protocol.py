@@ -36,7 +36,7 @@ class TestCurrentBehavior:
         )
 
         # Create a collection with the FlowRegion
-        collection = ElementCollection([flow_region])
+        collection = ElementCollection([flow_region])  # type: ignore[arg-type]
 
         # This should now work with the highlighting protocol
         img = collection.show()
@@ -60,7 +60,7 @@ class TestCurrentBehavior:
         page2_text = pdf.pages[1].find_all("text")[:5]
 
         # Combine them
-        mixed_collection = ElementCollection(list(page1_text) + list(page2_text))
+        mixed_collection = ElementCollection(list(page1_text) + list(page2_text))  # type: ignore[arg-type]
 
         # This should now work with the highlighting protocol
         img = mixed_collection.show()
@@ -173,7 +173,9 @@ class TestHighlightProtocol:
         )
 
         # Combine everything
-        mixed_collection = ElementCollection(list(page0_elems) + list(page1_elems) + [flow_region])
+        mixed_collection = ElementCollection(
+            list(page0_elems) + list(page1_elems) + [flow_region]
+        )  # type: ignore[arg-type]
 
         # Mock the rendering to test the logic without actual image generation
         with patch.object(mixed_collection, "_get_highlighter") as mock_get_highlighter:

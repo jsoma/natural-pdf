@@ -8,7 +8,7 @@ import threading
 import time
 import urllib.request
 import weakref
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -21,12 +21,21 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
+    overload,
 )
 
 import pdfplumber
 from PIL import Image
 from pydantic import Field, create_model
-from tqdm.auto import tqdm
+
+if TYPE_CHECKING:
+    from typing import Any as _Any
+
+    def tqdm(*args: _Any, **kwargs: _Any) -> _Any: ...
+
+else:
+    from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
@@ -39,6 +48,13 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager
+from natural_pdf.search import (
+    BaseSearchOptions,
+    SearchOptions,
+    TextSearchOptions,
+    get_search_service,
+)
+from natural_pdf.search.search_service_protocol import SearchServiceProtocol
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.text_mixin import TextMixin
 from natural_pdf.vision.mixin import VisualSearchMixin
@@ -55,35 +71,27 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     certifi = None  # type: ignore[assignment]
 
-try:
-    from typing import Any as TypingAny
+CreateSearchablePdfFn = Callable[..., None]
+CreateOriginalPdfFn = Callable[..., None]
 
-    from natural_pdf.search import (
-        BaseSearchOptions,
-        SearchOptions,
-        SearchServiceProtocol,
-        TextSearchOptions,
-        get_search_service,
+try:
+    from natural_pdf.exporters.searchable_pdf import (
+        create_searchable_pdf as _create_searchable_pdf_impl,
     )
 except ImportError:
-    SearchServiceProtocol = object
-    SearchOptions, TextSearchOptions, BaseSearchOptions = object, object, object
-    TypingAny = object
-
-    def get_search_service(**kwargs) -> SearchServiceProtocol:
-        raise ImportError(
-            "Search dependencies are not installed. Install with: pip install natural-pdf[search]"
-        )
-
+    _create_searchable_pdf_impl = None  # type: ignore[assignment]
 
 try:
-    from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
+    from natural_pdf.exporters.original_pdf import create_original_pdf as _create_original_pdf_impl
 except ImportError:
-    create_searchable_pdf = None
-try:
-    from natural_pdf.exporters.original_pdf import create_original_pdf
-except ImportError:
-    create_original_pdf = None
+    _create_original_pdf_impl = None  # type: ignore[assignment]
+
+create_searchable_pdf: Optional[CreateSearchablePdfFn] = cast(
+    Optional[CreateSearchablePdfFn], _create_searchable_pdf_impl
+)
+create_original_pdf: Optional[CreateOriginalPdfFn] = cast(
+    Optional[CreateOriginalPdfFn], _create_original_pdf_impl
+)
 
 logger = logging.getLogger("natural_pdf.core.pdf")
 
@@ -95,7 +103,14 @@ def _get_classification_manager_class():
     return ClassificationManager
 
 
-DEFAULT_MANAGERS = {
+ManagerFactory = Union[Callable[[], Any], type[Any]]
+ManagerFactories = Dict[str, ManagerFactory]
+ManagerCache = Dict[str, Any]
+ExclusionSpec = Tuple[Any, Optional[str]]
+RegionFactory = Callable[["Page"], Optional["Region"]]
+RegionRegistry = List[Tuple[RegionFactory, Optional[str]]]
+
+DEFAULT_MANAGERS: ManagerFactories = {
     "classification": _get_classification_manager_class,
     "structured_data": StructuredDataManager,
 }
@@ -108,7 +123,7 @@ DEFAULT_GENERATIVE_QA_PROMPT = (
 
 # Deskew Imports (Conditional)
 try:
-    import img2pdf
+    import img2pdf  # type: ignore[import]
 
     DESKEW_AVAILABLE = True
 except ImportError:
@@ -119,7 +134,7 @@ except ImportError:
 # --- Lazy Page List Helper --- #
 
 
-class _LazyPageList(Sequence):
+class _LazyPageList(Sequence["Page"]):
     """A lightweight, list-like object that lazily instantiates natural-pdf Page objects.
 
     This class implements the Sequence protocol to provide list-like access to PDF pages
@@ -159,28 +174,26 @@ class _LazyPageList(Sequence):
         self,
         parent_pdf: "PDF",
         plumber_pdf: "pdfplumber.PDF",
-        font_attrs=None,
-        load_text=True,
+        font_attrs: Optional[List[str]] = None,
+        load_text: bool = True,
         indices: Optional[List[int]] = None,
     ):
-        self._parent_pdf = parent_pdf
-        self._plumber_pdf = plumber_pdf
-        self._font_attrs = font_attrs
-        self._load_text = load_text
+        self._parent_pdf: "PDF" = parent_pdf
+        self._plumber_pdf: "pdfplumber.PDF" = plumber_pdf
+        self._font_attrs: Optional[List[str]] = font_attrs
+        self._load_text: bool = load_text
 
-        # If indices is provided, this is a sliced view
         if indices is not None:
-            self._indices = indices
-            self._cache = [None] * len(indices)
+            self._indices: List[int] = indices
+            self._cache: List[Optional["Page"]] = [None] * len(indices)
         else:
-            # Full PDF - one slot per pdfplumber page
             self._indices = list(range(len(plumber_pdf.pages)))
             self._cache = [None] * len(plumber_pdf.pages)
 
     # Internal helper -----------------------------------------------------
     def _create_page(self, index: int) -> "Page":
         """Create and cache a page at the given index within this list."""
-        cached = self._cache[index]
+        cached: Optional["Page"] = self._cache[index]
         if cached is None:
             # Get the actual page index in the full PDF
             actual_page_index = self._indices[index]
@@ -196,7 +209,7 @@ class _LazyPageList(Sequence):
                 # This ensures we get any exclusions that were already applied
                 cached = self._parent_pdf._pages._cache[actual_page_index]
                 self._cache[index] = cached
-                return cached
+                return cast("Page", cached)
 
             # Import here to avoid circular import problems
             from natural_pdf.core.page import Page
@@ -223,22 +236,14 @@ class _LazyPageList(Sequence):
             # Check if the parent PDF already has a cached page with page-specific exclusions
             if hasattr(self._parent_pdf, "_pages") and hasattr(self._parent_pdf._pages, "_cache"):
                 parent_cache = self._parent_pdf._pages._cache
-                if (
-                    actual_page_index < len(parent_cache)
-                    and parent_cache[actual_page_index] is not None
-                ):
+                if actual_page_index < len(parent_cache):
                     existing_page = parent_cache[actual_page_index]
-                    # Copy over any page-specific exclusions from the existing page
-                    # Only copy non-callable exclusions (regions/elements) to avoid duplicating PDF-level exclusions
-                    if hasattr(existing_page, "_exclusions") and existing_page._exclusions:
+                    if existing_page is not None and getattr(existing_page, "_exclusions", None):
                         for exclusion_data in existing_page._exclusions:
                             exclusion_item = exclusion_data[0]
-                            # Skip callable exclusions as they're PDF-level and already applied above
                             if not callable(exclusion_item):
                                 try:
-                                    cached.add_exclusion(
-                                        *exclusion_data[:2]
-                                    )  # exclusion_item and label
+                                    cached.add_exclusion(*exclusion_data[:2])
                                 except Exception as e:
                                     logger.warning(
                                         f"Failed to copy page-specific exclusion to page {cached.number}: {e}"
@@ -271,13 +276,19 @@ class _LazyPageList(Sequence):
             ):
                 self._parent_pdf._pages._cache[actual_page_index] = cached
 
-        return cached
+        return cast("Page", cached)
 
     # Sequence protocol ---------------------------------------------------
     def __len__(self) -> int:
         return len(self._cache)
 
-    def __getitem__(self, key):
+    @overload
+    def __getitem__(self, key: int) -> "Page": ...
+
+    @overload
+    def __getitem__(self, key: slice) -> "_LazyPageList": ...
+
+    def __getitem__(self, key: Union[int, slice]) -> Union["Page", "_LazyPageList"]:
         if isinstance(key, slice):
             # Get the slice of our current indices
             slice_indices = range(*key.indices(len(self)))
@@ -300,7 +311,7 @@ class _LazyPageList(Sequence):
         else:
             raise TypeError("Page indices must be integers or slices")
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator["Page"]:
         for i in range(len(self)):
             yield self._create_page(i)
 
@@ -398,7 +409,7 @@ class PDF(
 
         from PIL import ImageOps
 
-        def _open_image(source):
+        def _open_image(source: Union[Image.Image, str, Path]) -> Image.Image:
             """Open an image from file path, URL, or return PIL Image as-is."""
             if isinstance(source, Image.Image):
                 return source
@@ -415,18 +426,19 @@ class PDF(
 
         # Normalize inputs to list of PIL Images
         if isinstance(images, (str, Path)):
-            images = [_open_image(images)]
+            image_list = [_open_image(images)]
         elif isinstance(images, Image.Image):
-            images = [images]
+            image_list = [images]
         elif isinstance(images, list):
-            processed = []
-            for img in images:
-                processed.append(_open_image(img))
-            images = processed
+            image_list = [_open_image(item) for item in images]
+        else:
+            raise TypeError(
+                "images must be a path, PIL Image, or a list of paths/PIL Image instances."
+            )
 
         # Process images
-        processed_images = []
-        for img in images:
+        processed_images: List[Image.Image] = []
+        for img in image_list:
             # Fix EXIF rotation
             img = ImageOps.exif_transpose(img) or img
 
@@ -600,20 +612,28 @@ class PDF(
         self._config = {"keep_spaces": keep_spaces}
         self._font_attrs = font_attrs
 
-        self._ocr_manager = OCRManager() if OCRManager else None
-        self._layout_manager = LayoutManager() if LayoutManager else None
-        self.highlighter = HighlightingService(self)
-        # self._classification_manager_instance = ClassificationManager() # Removed this line
-        self._manager_registry = {}
+        self._ocr_manager: Optional[OCRManager] = None
+        if OCRManager is not None:
+            self._ocr_manager = OCRManager()
+
+        self._layout_manager: Optional[LayoutManager] = None
+        if LayoutManager is not None:
+            self._layout_manager = LayoutManager()
+
+        self.highlighter: HighlightingService = HighlightingService(self)
+        self._manager_factories: ManagerFactories = {}
+        self._managers: ManagerCache = {}
 
         # Lazily instantiate pages only when accessed
-        self._pages = _LazyPageList(
+        self._pages: _LazyPageList = _LazyPageList(
             self, self._pdf, font_attrs=font_attrs, load_text=self._text_layer
         )
 
-        self._element_cache = {}
-        self._exclusions = []
-        self._regions = []
+        self._element_cache: Dict[str, Any] = {}
+        self._exclusions: List[ExclusionSpec] = []
+        self._regions: RegionRegistry = []
+        self._from_images: bool = False
+        self._source_metadata: Optional[Dict[str, Any]] = None
 
         logger.info(f"PDF '{self.source_path}' initialized with {len(self._pages)} pages.")
 
@@ -656,11 +676,11 @@ class PDF(
                 if k in allowed:
                     self._config[k] = v
 
-    def _initialize_managers(self):
+    def _initialize_managers(self) -> None:
         """Set up manager factories for lazy instantiation."""
         # Store factories/classes for each manager key
         self._manager_factories = dict(DEFAULT_MANAGERS)
-        self._managers = {}  # Will hold instantiated managers
+        self._managers = {}
 
     def get_manager(self, key: str) -> Any:
         """Retrieve a manager instance by its key, instantiating it lazily if needed.
@@ -807,11 +827,13 @@ class PDF(
 
         # Clear exclusions only from already-created (cached) pages to avoid forcing page creation
         for i in range(len(self._pages)):
-            if self._pages._cache[i] is not None:  # Only clear from existing pages
-                try:
-                    self._pages._cache[i].clear_exclusions()
-                except Exception as e:
-                    logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
+            cached_page = self._pages._cache[i]
+            if cached_page is None:
+                continue
+            try:
+                cached_page.clear_exclusions()
+            except Exception as e:
+                logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
     def add_exclusion(self, exclusion_func, label: Optional[str] = None) -> "PDF":
@@ -984,22 +1006,7 @@ class PDF(
         thread_id = threading.current_thread().name
         logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
 
-        target_pages = []
-
-        target_pages = []
-        if pages is None:
-            target_pages = self._pages
-        elif isinstance(pages, slice):
-            target_pages = self._pages[pages]
-        elif hasattr(pages, "__iter__"):
-            try:
-                target_pages = [self._pages[i] for i in pages]
-            except IndexError:
-                raise ValueError("Invalid page index provided in 'pages' iterable.")
-            except TypeError:
-                raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
-        else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+        target_pages = self._get_target_pages(pages)
 
         if not target_pages:
             logger.warning("No pages selected for OCR processing.")
@@ -1045,23 +1052,24 @@ class PDF(
             logger.error("No images were successfully rendered for batch OCR.")
             return self
 
-        manager_args = {
-            "images": images_pil,
-            "engine": engine,
-            "languages": languages,
-            "min_confidence": min_confidence,
-            "device": device,
-            "options": options,
+        ocr_kwargs: Dict[str, Any] = {
             "detect_only": detect_only,
         }
-        manager_args = {k: v for k, v in manager_args.items() if v is not None}
+        if engine is not None:
+            ocr_kwargs["engine"] = engine
+        if languages is not None:
+            ocr_kwargs["languages"] = languages
+        if min_confidence is not None:
+            ocr_kwargs["min_confidence"] = min_confidence
+        if device is not None:
+            ocr_kwargs["device"] = device
+        if options is not None:
+            ocr_kwargs["options"] = options
 
-        ocr_call_args = {k: v for k, v in manager_args.items() if k != "images"}
-        logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
-        logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_call_args}...")
+        logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_kwargs}...")
         ocr_start_time = time.monotonic()
 
-        batch_results = self._ocr_manager.apply_ocr(**manager_args)
+        batch_results = self._ocr_manager.apply_ocr(images=images_pil, **ocr_kwargs)
 
         if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
             logger.error("OCR Manager returned unexpected result format or length.")
@@ -1087,7 +1095,7 @@ class PDF(
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
             try:
-                if manager_args.get("replace", True) and hasattr(page, "_element_mgr"):
+                if replace and hasattr(page, "_element_mgr"):
                     page._element_mgr.remove_ocr_elements()
 
                 img_scale_x = page.width / img.width if img.width > 0 else 1
@@ -1128,18 +1136,19 @@ class PDF(
 
         # Apply only to already-created (cached) pages to avoid forcing page creation
         for i in range(len(self._pages)):
-            if self._pages._cache[i] is not None:  # Only apply to existing pages
-                page = self._pages._cache[i]
-                try:
-                    region_instance = region_func(page)
-                    if region_instance and isinstance(region_instance, Region):
-                        page.add_region(region_instance, name=name, source="named")
-                    elif region_instance is not None:
-                        logger.warning(
-                            f"Region function did not return a valid Region for page {page.number}"
-                        )
-                except Exception as e:
-                    logger.error(f"Error adding region for page {page.number}: {e}")
+            cached_page = self._pages._cache[i]
+            if cached_page is None:
+                continue
+            try:
+                region_instance = region_func(cached_page)
+                if region_instance and isinstance(region_instance, Region):
+                    cached_page.add_region(region_instance, name=name, source="named")
+                elif region_instance is not None:
+                    logger.warning(
+                        f"Region function did not return a valid Region for page {cached_page.number}"
+                    )
+            except Exception as e:
+                logger.error(f"Error adding region for page {cached_page.number}: {e}")
 
         return self
 
@@ -1154,6 +1163,7 @@ class PDF(
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        **extra_kwargs: Any,
     ) -> Optional[Any]:
         """
         Find the first element matching the selector OR text content across all pages.
@@ -1195,14 +1205,17 @@ class PDF(
 
         _ = parse_selector(effective_selector)  # Parse once to fail fast on invalid selectors
 
-        selector_kwargs = {
-            "apply_exclusions": apply_exclusions,
-            "regex": regex,
-            "case": case,
-            "text_tolerance": text_tolerance,
-            "auto_text_tolerance": auto_text_tolerance,
-            "reading_order": reading_order,
-        }
+        selector_kwargs: Dict[str, Any] = dict(extra_kwargs)
+        selector_kwargs.update(
+            {
+                "apply_exclusions": apply_exclusions,
+                "regex": regex,
+                "case": case,
+                "text_tolerance": text_tolerance,
+                "auto_text_tolerance": auto_text_tolerance,
+                "reading_order": reading_order,
+            }
+        )
 
         for page in self.pages:
             element = page.find(selector=effective_selector, **selector_kwargs)
@@ -1222,6 +1235,7 @@ class PDF(
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        **extra_kwargs: Any,
     ) -> "ElementCollection":
         """
         Find all elements matching the selector OR text content across all pages.
@@ -1263,14 +1277,17 @@ class PDF(
 
         _ = parse_selector(effective_selector)  # Validate selector once
 
-        selector_kwargs = {
-            "apply_exclusions": apply_exclusions,
-            "regex": regex,
-            "case": case,
-            "text_tolerance": text_tolerance,
-            "auto_text_tolerance": auto_text_tolerance,
-            "reading_order": reading_order,
-        }
+        selector_kwargs: Dict[str, Any] = dict(extra_kwargs)
+        selector_kwargs.update(
+            {
+                "apply_exclusions": apply_exclusions,
+                "regex": regex,
+                "case": case,
+                "text_tolerance": text_tolerance,
+                "auto_text_tolerance": auto_text_tolerance,
+                "reading_order": reading_order,
+            }
+        )
 
         all_elements: List = []
         for page in self.pages:
@@ -1604,6 +1621,11 @@ class PDF(
         output_path_str = str(output_path_obj)
 
         if ocr:
+            if create_searchable_pdf is None:
+                raise ImportError(
+                    "Saving with ocr=True requires the OCR export dependencies. "
+                    'Install with: pip install "natural-pdf[ocr-export]"'
+                )
             has_vector_elements = False
             for page in self.pages:
                 if (
@@ -1718,14 +1740,14 @@ class PDF(
 
         if isinstance(pages, int):
             if 0 <= pages < total_pages:
-                return [self.pages[pages]]
+                return [cast("Page", self.pages[pages])]
             raise IndexError(f"Page index {pages} out of range (0-{total_pages-1})")
 
         if isinstance(pages, range) or isinstance(pages, list) or isinstance(pages, tuple):
             resolved: List["Page"] = []
             for page_idx in pages:
                 if isinstance(page_idx, int) and 0 <= page_idx < total_pages:
-                    resolved.append(self.pages[page_idx])
+                    resolved.append(cast("Page", self.pages[page_idx]))
                 else:
                     logger.warning(f"Page index {page_idx} out of range, skipping")
             return resolved
@@ -1878,9 +1900,9 @@ class PDF(
         )
 
         # Collect all page images and metadata for batch processing
-        page_images = []
-        page_word_boxes = []
-        page_metadata = []
+        page_images: List[Image.Image] = []
+        page_word_boxes: List[Any] = []
+        page_metadata: List[Dict[str, Any]] = []
 
         for page in target_pages:
             # Get page image
@@ -2272,8 +2294,10 @@ class PDF(
     def update_text(
         self,
         transform: Callable[[Any], Optional[str]],
-        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        *,
         selector: str = "text",
+        apply_exclusions: bool = False,
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,
     ) -> "PDF":
@@ -2281,51 +2305,37 @@ class PDF(
         Applies corrections to text elements using a callback function.
 
         Args:
-            correction_callback: Function that takes an element and returns corrected text or None
-            pages: Optional page indices/slice to limit the scope of correction
+            transform: Function that takes an element and returns corrected text or None
             selector: Selector to apply corrections to (default: "text")
+            apply_exclusions: Whether to honour exclusion regions while selecting text.
+            pages: Optional page indices/slice to limit the scope of correction
             max_workers: Maximum number of threads to use for parallel execution
             progress_callback: Optional callback function for progress updates
 
         Returns:
             Self for method chaining
         """
-        target_page_indices = []
-        if pages is None:
-            target_page_indices = list(range(len(self._pages)))
-        elif isinstance(pages, slice):
-            target_page_indices = list(range(*pages.indices(len(self._pages))))
-        elif hasattr(pages, "__iter__"):
-            try:
-                target_page_indices = [int(i) for i in pages]
-                for idx in target_page_indices:
-                    if not (0 <= idx < len(self._pages)):
-                        raise IndexError(f"Page index {idx} out of range (0-{len(self._pages)-1}).")
-            except (IndexError, TypeError, ValueError) as e:
-                raise ValueError(f"Invalid page index in 'pages': {pages}. Error: {e}") from e
-        else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+        pages_to_update = self._get_target_pages(pages)
 
-        if not target_page_indices:
+        if not pages_to_update:
             logger.warning("No pages selected for text update.")
             return self
 
-        logger.info(
-            f"Starting text update for pages: {target_page_indices} with selector='{selector}'"
-        )
+        page_identities = [page.index for page in pages_to_update]
+        logger.info(f"Starting text update for pages: {page_identities} with selector='{selector}'")
 
-        for page_idx in target_page_indices:
-            page = self._pages[page_idx]
+        for page in pages_to_update:
             try:
                 page.update_text(
                     transform=transform,
                     selector=selector,
+                    apply_exclusions=apply_exclusions,
                     max_workers=max_workers,
                     progress_callback=progress_callback,
                 )
             except Exception as e:
-                logger.error(f"Error during text update on page {page_idx}: {e}")
-                logger.error(f"Error during text update on page {page_idx}: {e}")
+                logger.error(f"Error during text update on page {page.index}: {e}")
+                logger.error(f"Error during text update on page {page.index}: {e}")
 
         logger.info("Text update process finished.")
         return self
@@ -2577,20 +2587,7 @@ class PDF(
                 )
             raise ClassificationError("ClassificationManager not available.")
 
-        target_pages = []
-        if pages is None:
-            target_pages = self._pages
-        elif isinstance(pages, slice):
-            target_pages = self._pages[pages]
-        elif hasattr(pages, "__iter__"):
-            try:
-                target_pages = [self._pages[i] for i in pages]
-            except IndexError:
-                raise ValueError("Invalid page index provided.")
-            except TypeError:
-                raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
-        else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+        target_pages = self._get_target_pages(pages)
 
         if not target_pages:
             logger.warning("No pages selected for classification.")
@@ -2738,6 +2735,9 @@ class PDF(
             return []
 
         all_data = []
+        image_dir_path = Path(image_dir) if image_dir is not None else None
+        if include_images and image_dir_path is None:
+            raise ValueError("'image_dir' must be provided when include_images=True.")
 
         for page in tqdm(self._pages, desc="Gathering page data", leave=False):
             # Basic page information
@@ -2756,11 +2756,12 @@ class PDF(
                     page_data["content"] = ""
 
             # Save image if requested
-            if include_images:
+            if include_images and image_dir_path is not None:
                 try:
                     # Create image filename
-                    image_filename = f"pdf_{Path(self.path).stem}_page_{page.number}.{image_format}"
-                    image_path = image_dir / image_filename
+                    source_stem = Path(self.path).stem if isinstance(self.path, str) else "pdf"
+                    image_filename = f"pdf_{source_stem}_page_{page.number}.{image_format}"
+                    image_path = image_dir_path / image_filename
 
                     # Save image
                     page.save_image(
@@ -2768,7 +2769,9 @@ class PDF(
                     )
 
                     # Add relative path to data
-                    page_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
+                    page_data["image_path"] = str(
+                        Path(image_path).relative_to(image_dir_path.parent)
+                    )
                 except Exception as e:
                     logger.error(f"Error saving image for page {page.number}: {e}")
                     page_data["image_path"] = None
@@ -2804,39 +2807,65 @@ class PDF(
         return all_data
 
     def _get_target_pages(
-        self, pages: Optional[Union[Iterable[int], range, slice]] = None
+        self, pages: Optional[Union[int, Iterable[int], range, slice]] = None
     ) -> List["Page"]:
         """
         Helper method to get a list of Page objects based on the input pages.
 
         Args:
-            pages: Page indices, slice, or None for all pages
+            pages: Page index/int, iterable of indices, slice, or None for all pages
 
         Returns:
             List of Page objects
         """
         if pages is None:
-            return self._pages
-        elif isinstance(pages, slice):
-            return self._pages[pages]
-        elif hasattr(pages, "__iter__"):
+            return list(self._pages)
+        if isinstance(pages, int):
+            total = len(self._pages)
+            idx = pages if pages >= 0 else pages + total
+            if not (0 <= idx < total):
+                raise IndexError(f"Page index {pages} out of range (0-{total-1}).")
+            return [cast("Page", self._pages[idx])]
+        if isinstance(pages, slice):
+            return list(self._pages[pages])
+        if isinstance(pages, range):
+            indices = list(pages)
+        elif isinstance(pages, Iterable):
             try:
-                return [self._pages[i] for i in pages]
-            except IndexError:
-                raise ValueError("Invalid page index provided in 'pages' iterable.")
-            except TypeError:
-                raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+                indices = [int(i) for i in pages]
+            except (TypeError, ValueError) as exc:
+                raise TypeError("'pages' iterable must contain integer indices.") from exc
         else:
-            raise TypeError("'pages' must be None, a slice, or an iterable of page indices.")
+            raise TypeError(
+                "'pages' must be None, an int, a slice, or an iterable of page indices."
+            )
+
+        resolved: List["Page"] = []
+        total = len(self._pages)
+        for idx in indices:
+            actual_idx = idx if idx >= 0 else idx + total
+            if not (0 <= actual_idx < total):
+                raise IndexError(f"Page index {idx} out of range (0-{total-1}).")
+            resolved.append(cast("Page", self._pages[actual_idx]))
+        return resolved
 
     # --- Classification Mixin Implementation --- #
 
     def _get_classification_manager(self) -> "ClassificationManager":
         """Returns the ClassificationManager instance for this PDF."""
         try:
-            return self.get_manager("classification")
+            manager = self.get_manager("classification")
         except (KeyError, RuntimeError) as e:
             raise AttributeError(f"Could not retrieve ClassificationManager: {e}") from e
+
+        from natural_pdf.classification.manager import (
+            ClassificationManager as _ClassificationManager,
+        )
+
+        if not isinstance(manager, _ClassificationManager):
+            raise AttributeError("Retrieved classification manager does not match expected type.")
+
+        return manager
 
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         """
@@ -2868,7 +2897,8 @@ class PDF(
             if len(self.pages) == 1:
                 # Use the single page's content method
                 try:
-                    return self.pages[0]._get_classification_content(model_type="vision", **kwargs)
+                    single_page = cast("Page", self.pages[0])
+                    return single_page._get_classification_content(model_type="vision", **kwargs)
                 except Exception as e:
                     logger.error(f"Error getting image from single page for classification: {e}")
                     raise ValueError("Failed to get image from single page.") from e
@@ -2890,19 +2920,24 @@ class PDF(
 
     @property
     def analyses(self) -> Dict[str, Any]:
-        if not hasattr(self, "metadata") or self.metadata is None:
-            # For PDF, metadata property returns self._pdf.metadata which may be None
-            self._pdf.metadata = self._pdf.metadata or {}
-        if self.metadata is None:
-            # Fallback safeguard
-            self._pdf.metadata = {}
-        return self.metadata.setdefault("analysis", {})  # type: ignore[attr-defined]
+        metadata = self._pdf.metadata
+        if metadata is None:
+            metadata = {}
+            self._pdf.metadata = metadata
+
+        analysis_entry = metadata.setdefault("analysis", {})
+        if not isinstance(analysis_entry, dict):
+            raise TypeError("PDF metadata 'analysis' entry must be a dictionary")
+
+        return cast(Dict[str, Any], analysis_entry)
 
     @analyses.setter
     def analyses(self, value: Dict[str, Any]):
-        if not hasattr(self, "metadata") or self.metadata is None:
-            self._pdf.metadata = self._pdf.metadata or {}
-        self.metadata["analysis"] = value  # type: ignore[attr-defined]
+        metadata = self._pdf.metadata
+        if metadata is None:
+            metadata = {}
+            self._pdf.metadata = metadata
+        metadata["analysis"] = value
 
     # Static helper for weakref.finalize to avoid capturing 'self'
     @staticmethod

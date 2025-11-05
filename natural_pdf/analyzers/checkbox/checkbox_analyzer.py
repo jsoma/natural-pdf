@@ -291,36 +291,19 @@ class CheckboxAnalyzer:
         # Store results
         logger.debug(f"Storing {len(checkbox_regions)} checkbox regions (mode: {existing})")
 
-        # Initialize storage if needed
-        if not hasattr(self._page, "_regions"):
-            self._page._regions = {}
+        checkbox_store = self._page._regions.setdefault("checkbox", [])
+        if existing.lower() != "append":
+            self._page.remove_regions(source="checkbox", region_type="checkbox")
+            checkbox_store.clear()
 
-        # Handle existing regions
-        if existing.lower() == "append":
-            if "checkbox" not in self._page._regions:
-                self._page._regions["checkbox"] = []
-            self._page._regions["checkbox"].extend(checkbox_regions)
-        else:  # replace
-            # Remove old checkbox regions from element manager
-            if "checkbox" in self._page._regions:
-                old_checkboxes = self._page._regions["checkbox"]
-                if (
-                    hasattr(self._page._element_mgr, "_elements")
-                    and self._page._element_mgr._elements
-                ):
-                    current_regions = self._page._element_mgr._elements.get("regions", [])
-                    # Remove old checkbox regions
-                    self._page._element_mgr._elements["regions"] = [
-                        r for r in current_regions if r not in old_checkboxes
-                    ]
-            self._page._regions["checkbox"] = checkbox_regions
+        checkbox_store.extend(checkbox_regions)
 
-        # Add to element manager
+        # Register regions with the page (ensures element manager + provenance)
         for region in checkbox_regions:
-            self._page._element_mgr.add_region(region)
+            self._page.add_region(region, source="checkbox")
 
         # Store for easy access
-        self._page.detected_checkbox_regions = self._page._regions.get("checkbox", [])
+        self._page.detected_checkbox_regions = list(checkbox_store)
 
         logger.info(f"Checkbox detection complete. Found {len(checkbox_regions)} checkboxes.")
 

@@ -1,50 +1,27 @@
 # layout_detector_paddle.py
 import importlib.util
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 from PIL import Image
 
-# Assuming base class and options are importable
-try:
-    from .base import LayoutDetector
-    from .layout_options import BaseLayoutOptions, PaddleLayoutOptions
-except ImportError:
-    # Placeholders if run standalone or imports fail
-    class BaseLayoutOptions:
-        pass
-
-    class PaddleLayoutOptions(BaseLayoutOptions):
-        pass
-
-    class LayoutDetector:
-        def __init__(self):
-            self.logger = logging.getLogger()
-            self.supported_classes = set()
-
-        def _get_model(self, options):
-            raise NotImplementedError
-
-        def _normalize_class_name(self, n):
-            return n
-
-        def validate_classes(self, c):
-            pass
-
-    logging.basicConfig()
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, PaddleLayoutOptions
 
 logger = logging.getLogger(__name__)
 
 # Check for dependencies
 paddle_spec = importlib.util.find_spec("paddle") or importlib.util.find_spec("paddlepaddle")
 paddleocr_spec = importlib.util.find_spec("paddleocr")
-PPStructureV3 = None
-_paddle_import_error = None  # Store the import error for debugging
+PPStructureV3: Optional[Any] = None
+_paddle_import_error: Optional[str] = None  # Store the import error for debugging
 
 if paddle_spec and paddleocr_spec:
     try:
-        from paddleocr import PPStructureV3
+        from paddleocr import PPStructureV3 as PaddlePPStructureV3  # type: ignore[import-untyped]
+
+        PPStructureV3 = PaddlePPStructureV3
     except ImportError as e:
         _paddle_import_error = str(e)
         logger.warning(f"Could not import Paddle dependencies: {e}")
@@ -207,8 +184,12 @@ class PaddleLayoutDetector(LayoutDetector):
         if getattr(options, "lang", None) == "en":
             init_args["text_recognition_model_name"] = "en_PP-OCRv4_mobile_rec"
 
+        if PPStructureV3 is None:
+            raise RuntimeError("PPStructureV3 class unavailable despite dependency check.")
+
+        model_cls = cast(Any, PPStructureV3)
         try:
-            model_instance = PPStructureV3(**init_args)
+            model_instance = model_cls(**init_args)
             self.logger.info("PP-StructureV3 model loaded.")
             return model_instance
         except Exception as e:

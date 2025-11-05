@@ -4,9 +4,12 @@ Visualization utilities for natural-pdf.
 
 import itertools  # Added for cycling
 import random
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-import pypdfium2
+try:
+    import pypdfium2  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover - optional dependency
+    pypdfium2 = None  # type: ignore[assignment]
 from PIL import Image, ImageDraw, ImageFont
 
 # Define a base list of visually distinct colors for highlighting
@@ -134,12 +137,13 @@ def create_legend(
     draw = ImageDraw.Draw(legend)
 
     # Try to load a font, use default if not available
+    font: ImageFont.ImageFont
     try:
         # Use a commonly available font, adjust size
-        font = ImageFont.truetype("DejaVuSans.ttf", 14)
+        font = cast(ImageFont.ImageFont, ImageFont.truetype("DejaVuSans.ttf", 14))
     except IOError:
         try:
-            font = ImageFont.truetype("Arial.ttf", 14)
+            font = cast(ImageFont.ImageFont, ImageFont.truetype("Arial.ttf", 14))
         except IOError:
             font = ImageFont.load_default()
 
@@ -447,6 +451,11 @@ def render_plain_page(page, resolution):
     Returns:
         PIL Image of the rendered page
     """
+    if pypdfium2 is None:
+        raise RuntimeError(
+            "pypdfium2 is required to render pages. Install with `pip install pypdfium2`."
+        )
+
     doc = pypdfium2.PdfDocument(page._page.pdf.stream)
 
     pdf_page = doc[page.index]

@@ -31,7 +31,7 @@ def test_current_flow_region_show_fails():
 
         # Create a collection with both regular elements and FlowRegion
         regular_elements = pdf.pages[0].find_all("text")[:3]
-        mixed_collection = ElementCollection(list(regular_elements) + [flow_region])
+        mixed_collection = ElementCollection(list(regular_elements) + [flow_region])  # type: ignore[arg-type]
 
         print(f"\nMixed collection has {len(mixed_collection)} elements")
         print(f"Regular elements: {len(regular_elements)}")
@@ -65,7 +65,7 @@ def test_current_multipage_elements_show_fails():
         page2_text = pdf.pages[1].find_all("text")[:3]
 
         # Combine them
-        mixed = ElementCollection(list(page1_text) + list(page2_text))
+        mixed = ElementCollection(list(page1_text) + list(page2_text))  # type: ignore[arg-type]
 
         print(f"\nMixed collection has {len(mixed)} elements")
         print(f"From page 0: {len(page1_text)} elements")

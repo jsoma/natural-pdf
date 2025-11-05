@@ -2,10 +2,31 @@
 
 import logging
 from collections import UserList
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeGuard,
+    Union,
+    cast,
+)
 
 import numpy as np
 from PIL import Image, ImageDraw
+
+from natural_pdf.core.interfaces import HasPages, HasSinglePage
+from natural_pdf.elements.base import extract_bbox
+from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.elements.line import LineElement
+from natural_pdf.elements.region import Region
+from natural_pdf.flows.region import FlowRegion
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -17,171 +38,288 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+Bounds = Tuple[float, float, float, float]
+GuidesContext = Union["Page", "Region", FlowRegion]
+
+
+def _is_flow_region(obj: Any) -> TypeGuard[FlowRegion]:
+    return isinstance(obj, FlowRegion)
+
+
+def _constituent_regions(flow_region: FlowRegion) -> Sequence["Region"]:
+    return flow_region.constituent_regions
+
+
+def _ensure_bounds_tuple(bounds: Tuple[Any, Any, Any, Any]) -> Bounds:
+    """Convert a bbox-like tuple into a strict float tuple."""
+    return (
+        float(bounds[0]),
+        float(bounds[1]),
+        float(bounds[2]),
+        float(bounds[3]),
+    )
+
+
+def _union_bounds(bound_list: Iterable[Bounds]) -> Optional[Bounds]:
+    coords = list(bound_list)
+    if not coords:
+        return None
+    x0 = min(b[0] for b in coords)
+    top = min(b[1] for b in coords)
+    x1 = max(b[2] for b in coords)
+    bottom = max(b[3] for b in coords)
+    return (x0, top, x1, bottom)
+
+
+def _bounds_from_object(obj: Any) -> Optional[Bounds]:
+    """Best-effort extraction of bounds from any supported object."""
+    if obj is None:
+        return None
+
+    if isinstance(obj, tuple) and len(obj) == 4:
+        try:
+            return _ensure_bounds_tuple(obj)
+        except (TypeError, ValueError):
+            return None
+
+    bbox = extract_bbox(obj)
+    if bbox is not None:
+        try:
+            return _ensure_bounds_tuple(bbox)
+        except (TypeError, ValueError):
+            return None
+
+    regions_attr = getattr(obj, "constituent_regions", None)
+    if regions_attr is not None:
+        try:
+            regions = list(regions_attr)
+        except TypeError:
+            regions = None
+
+        if regions is not None:
+            collected: List[Bounds] = []
+            for region in regions:
+                region_bounds = _bounds_from_object(region)
+                if region_bounds is not None:
+                    collected.append(region_bounds)
+            return _union_bounds(collected)
+
+    if hasattr(obj, "width") and hasattr(obj, "height"):
+        try:
+            return (0.0, 0.0, float(obj.width), float(obj.height))
+        except (TypeError, ValueError):
+            return None
+
+    return None
+
+
+def _resolve_single_page(obj: Any) -> "Page":
+    """Return the single page associated with an object, or raise if ambiguous."""
+    if isinstance(obj, HasPages):
+        pages = list(obj.pages)
+        seen: set[int] = set()
+        unique_pages: List["Page"] = []
+        for page in pages:
+            marker = id(page)
+            if marker not in seen:
+                seen.add(marker)
+                unique_pages.append(page)
+        if not unique_pages:
+            raise ValueError("Object does not reference any pages")
+        if len(unique_pages) > 1:
+            raise ValueError("Object spans multiple pages; cannot pick a single page")
+        return unique_pages[0]
+
+    if isinstance(obj, HasSinglePage):
+        page = obj.page  # type: ignore[attr-defined]
+        if page is None:
+            raise ValueError("Object reported no page")
+        return page
+
+    if hasattr(obj, "_page"):
+        return obj._page  # type: ignore[attr-defined]
+
+    raise TypeError(f"Cannot resolve page from {type(obj).__name__}")
+
+
+def _is_guides_context(value: Any) -> TypeGuard[GuidesContext]:
+    """Return True when value quacks like a guides context object."""
+    if value is None:
+        return False
+
+    if isinstance(value, FlowRegion):
+        return True
+
+    if isinstance(value, Region):
+        return True
+
+    cls = value.__class__
+    module_name = getattr(cls, "__module__", "")
+    class_name = getattr(cls, "__name__", "")
+    if class_name == "Page" and module_name.startswith("natural_pdf.core.page"):
+        return True
+
+    # Fallback to duck-typing: if we can extract bounds, treat it as a context.
+    bounds = _bounds_from_object(value)
+    return bounds is not None
+
+
+def _require_bounds(obj: Any, *, context: str = "object") -> Bounds:
+    bounds = _bounds_from_object(obj)
+    if bounds is None:
+        raise ValueError(f"Could not determine bounds for {context}")
+    return bounds
+
+
+def _collect_line_elements(obj: GuidesContext) -> List[LineElement]:
+    if _is_flow_region(obj):
+        lines: List[LineElement] = []
+        for region in obj.constituent_regions:
+            lines.extend(_collect_line_elements(region))
+        return lines
+
+    lines_attr = getattr(obj, "lines", None)
+    if lines_attr is not None:
+        return [cast(LineElement, line) for line in cast(Iterable[Any], lines_attr)]
+
+    if hasattr(obj, "find_all"):
+        found = cast(Any, obj.find_all("line"))  # type: ignore[attr-defined]
+        if isinstance(found, ElementCollection):
+            return [cast(LineElement, line) for line in found.elements]
+        if isinstance(found, Iterable):
+            return [cast(LineElement, line) for line in found]
+    return []
+
 
 def _normalize_markers(
-    markers: Union[str, List[str], "ElementCollection", None],
-    obj: Union["Page", "Region", "FlowRegion"],
+    markers: Union[str, List[str], ElementCollection, None],
+    obj: GuidesContext,
 ) -> List[str]:
-    """
-    Normalize markers parameter to a list of text strings for guide creation.
-
-    Args:
-        markers: Can be:
-            - str: single selector or text string
-            - List[str]: list of selectors or text strings
-            - ElementCollection: collection of elements to extract text from
-            - None: empty list
-        obj: Object to search for elements if markers contains selectors
-
-    Returns:
-        List of text strings to search for
-    """
+    """Normalize various marker inputs into a list of strings."""
     if markers is None:
         return []
 
-    # Handle FlowRegion by collecting markers from all constituent regions
-    if hasattr(obj, "constituent_regions"):
-        all_markers = []
+    if _is_flow_region(obj):
+        aggregated: List[str] = []
         for region in obj.constituent_regions:
-            region_markers = _normalize_markers(markers, region)
-            all_markers.extend(region_markers)
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_markers = []
-        for m in all_markers:
-            if m not in seen:
-                seen.add(m)
-                unique_markers.append(m)
-        return unique_markers
+            aggregated.extend(_normalize_markers(markers, region))
+        seen: set[str] = set()
+        unique: List[str] = []
+        for marker in aggregated:
+            if marker not in seen:
+                seen.add(marker)
+                unique.append(marker)
+        return unique
 
     if isinstance(markers, str):
-        # Single selector or text string
         if markers.startswith(("text", "region", "line", "rect", "blob", "image")):
-            # It's a CSS selector, find elements and extract text
             if hasattr(obj, "find_all"):
                 elements = obj.find_all(markers)
                 return [elem.text if hasattr(elem, "text") else str(elem) for elem in elements]
-            else:
-                logger.warning(f"Object {obj} doesn't support find_all for selector '{markers}'")
-                return [markers]  # Treat as literal text
-        else:
-            # Treat as literal text
-            return [markers]
+            logger.warning(f"Object {obj} doesn't support find_all for selector '{markers}'")
+        return [markers]
 
-    elif hasattr(markers, "__iter__") and not isinstance(markers, str):
-        # It might be an ElementCollection or list
-        if hasattr(markers, "extract_each_text"):
-            # It's an ElementCollection
-            try:
-                return markers.extract_each_text()
-            except Exception as e:
-                logger.warning(f"Failed to extract text from ElementCollection: {e}")
-                # Fallback: try to get text from individual elements
-                texts = []
-                for elem in markers:
-                    if hasattr(elem, "text"):
-                        texts.append(elem.text)
-                    elif hasattr(elem, "extract_text"):
-                        texts.append(elem.extract_text())
+    if isinstance(markers, ElementCollection):
+        try:
+            return [str(value) for value in markers.extract_each_text()]
+        except Exception as exc:
+            logger.warning(f"Failed to extract text from ElementCollection: {exc}")
+            return [
+                (
+                    elem.text
+                    if hasattr(elem, "text")
+                    else elem.extract_text() if hasattr(elem, "extract_text") else str(elem)
+                )
+                for elem in markers
+            ]
+
+    if isinstance(markers, Iterable):
+        normalized: List[str] = []
+        for marker in markers:
+            if isinstance(marker, str):
+                if marker.startswith(("text", "region", "line", "rect", "blob", "image")):
+                    if hasattr(obj, "find_all"):
+                        elements = obj.find_all(marker)
+                        normalized.extend(
+                            [elem.text if hasattr(elem, "text") else str(elem) for elem in elements]
+                        )
                     else:
-                        texts.append(str(elem))
-                return texts
-        else:
-            # It's a regular list - process each item
-            result = []
-            for marker in markers:
-                if isinstance(marker, str):
-                    if marker.startswith(("text", "region", "line", "rect", "blob", "image")):
-                        # It's a selector
-                        if hasattr(obj, "find_all"):
-                            elements = obj.find_all(marker)
-                            result.extend(
-                                [
-                                    elem.text if hasattr(elem, "text") else str(elem)
-                                    for elem in elements
-                                ]
-                            )
-                        else:
-                            result.append(marker)  # Treat as literal
-                    else:
-                        # Literal text
-                        result.append(marker)
-                elif hasattr(marker, "text"):
-                    # It's an element object
-                    result.append(marker.text)
-                elif hasattr(marker, "extract_text"):
-                    # It's an element that can extract text
-                    result.append(marker.extract_text())
+                        normalized.append(marker)
                 else:
-                    result.append(str(marker))
-            return result
+                    normalized.append(marker)
+            elif hasattr(marker, "text"):
+                normalized.append(marker.text)
+            elif hasattr(marker, "extract_text"):
+                normalized.append(marker.extract_text())
+            else:
+                normalized.append(str(marker))
+        return normalized
 
-    else:
-        # Unknown type, try to convert to string
-        return [str(markers)]
+    return [str(markers)]
 
 
-class GuidesList(UserList):
+class GuidesList(UserList[float]):
     """A list of guide coordinates that also provides methods for creating guides."""
 
-    def __init__(self, parent_guides: "Guides", axis: Literal["vertical", "horizontal"], data=None):
+    def __init__(
+        self,
+        parent_guides: "Guides",
+        axis: Literal["vertical", "horizontal"],
+        data: Optional[Iterable[float]] = None,
+    ):
         # Always sort the initial data
-        super().__init__(sorted(data) if data else [])
+        values = [float(value) for value in data] if data else []
+        super().__init__(sorted(values))
         self._parent = parent_guides
-        self._axis = axis
-
-    def __getitem__(self, i):
-        """Override to handle slicing and negative indexing properly."""
-        if isinstance(i, slice):
-            # Return a new GuidesList with the sliced data
-            return self.__class__(self._parent, self._axis, self.data[i])
-        else:
-            # For single index, handle negative indices properly
-            if i < 0:
-                # Convert negative index to positive
-                i = len(self.data) + i
-            return self.data[i]
+        self._axis: Literal["vertical", "horizontal"] = axis
 
     def __setitem__(self, i, item):
         """Override to maintain sorted order."""
-        self.data[i] = item
+        self.data[i] = float(item)
         self.data.sort()
 
     def append(self, item):
         """Override to maintain sorted order."""
-        self.data.append(item)
+        self.data.append(float(item))
         self.data.sort()
 
     def extend(self, other):
         """Override to maintain sorted order."""
-        self.data.extend(other)
+        self.data.extend(float(value) for value in other)
         self.data.sort()
+
+    def __getitem__(self, i):
+        """Return float for indices and plain lists for slices."""
+        if isinstance(i, slice):
+            return list(self.data[i])
+        return self.data[i]
 
     def insert(self, i, item):
         """Override to maintain sorted order."""
-        self.data.append(item)  # Just append and sort
+        self.data.append(float(item))  # Just append and sort
         self.data.sort()
 
     def __iadd__(self, other):
         """Override to maintain sorted order."""
-        self.data.extend(other)
+        self.data.extend(float(value) for value in other)
         self.data.sort()
         return self
 
     @property
-    def data(self):
+    def data(self) -> List[float]:
         """Get the data list."""
         return self._data
 
     @data.setter
-    def data(self, value):
+    def data(self, value: Iterable[float]):
         """Set the data list, always keeping it sorted."""
-        self._data = sorted(value) if value else []
+        values = [float(v) for v in value] if value else []
+        self._data = sorted(values)
 
     def from_content(
         self,
         markers: Union[str, List[str], "ElementCollection", Callable, None],
-        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
+        obj: Optional[GuidesContext] = None,
         align: Union[
             Literal["left", "right", "center", "between"], Literal["top", "bottom"]
         ] = "left",
@@ -237,7 +375,7 @@ class GuidesList(UserList):
         if self._parent.is_flow_region:
             # Create guides across all constituent regions
             all_guides = []
-            for region in self._parent.context.constituent_regions:
+            for region in self._parent._flow_constituent_regions():
                 # Pass markers directly - from_content will handle them properly
 
                 # Create guides for this region
@@ -271,18 +409,19 @@ class GuidesList(UserList):
                 all_guides = existing + all_guides
 
             # Remove duplicates and sort
-            unique_guides = sorted(list(set(all_guides)))
+            unique_guides = sorted({float(coord) for coord in all_guides})
 
             # Clear and rebuild unified view
             if self._axis == "vertical":
                 self._parent._unified_vertical = []
                 for coord in unique_guides:
                     # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
-                        if hasattr(region, "bbox"):
-                            x0, _, x1, _ = region.bbox
+                    for region in self._parent._flow_constituent_regions():
+                        region_bounds = _bounds_from_object(region)
+                        if region_bounds is not None:
+                            x0, _, x1, _ = region_bounds
                             if x0 <= coord <= x1:
-                                self._parent._unified_vertical.append((coord, region))
+                                self._parent._unified_vertical.append((float(coord), region))
                                 break
                 self._parent._vertical_cache = None
                 self.data = unique_guides
@@ -290,17 +429,18 @@ class GuidesList(UserList):
                 self._parent._unified_horizontal = []
                 for coord in unique_guides:
                     # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
-                        if hasattr(region, "bbox"):
-                            _, y0, _, y1 = region.bbox
+                    for region in self._parent._flow_constituent_regions():
+                        region_bounds = _bounds_from_object(region)
+                        if region_bounds is not None:
+                            _, y0, _, y1 = region_bounds
                             if y0 <= coord <= y1:
-                                self._parent._unified_horizontal.append((coord, region))
+                                self._parent._unified_horizontal.append((float(coord), region))
                                 break
                 self._parent._horizontal_cache = None
                 self.data = unique_guides
 
             # Update per-region guides
-            for region in self._parent.context.constituent_regions:
+            for region in self._parent._flow_constituent_regions():
                 region_verticals = []
                 region_horizontals = []
 
@@ -359,7 +499,7 @@ class GuidesList(UserList):
 
     def from_lines(
         self,
-        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
+        obj: Optional[GuidesContext] = None,
         threshold: Union[float, str] = "auto",
         source_label: Optional[str] = None,
         max_lines: Optional[int] = None,
@@ -419,7 +559,7 @@ class GuidesList(UserList):
             # Create guides across all constituent regions
             all_guides = []
 
-            for region in self._parent.context.constituent_regions:
+            for region in self._parent._flow_constituent_regions():
                 # Create guides for this specific region
                 region_guides = Guides.from_lines(
                     obj=region,
@@ -461,7 +601,7 @@ class GuidesList(UserList):
                 self._parent._unified_vertical = []
                 for coord in unique_guides:
                     # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
+                    for region in self._parent._flow_constituent_regions():
                         if hasattr(region, "bbox"):
                             x0, _, x1, _ = region.bbox
                             if x0 <= coord <= x1:
@@ -473,7 +613,7 @@ class GuidesList(UserList):
                 self._parent._unified_horizontal = []
                 for coord in unique_guides:
                     # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
+                    for region in self._parent._flow_constituent_regions():
                         if hasattr(region, "bbox"):
                             _, y0, _, y1 = region.bbox
                             if y0 <= coord <= y1:
@@ -483,7 +623,7 @@ class GuidesList(UserList):
                 self.data = unique_guides
 
             # Update per-region guides
-            for region in self._parent.context.constituent_regions:
+            for region in self._parent._flow_constituent_regions():
                 region_verticals = []
                 region_horizontals = []
 
@@ -542,126 +682,55 @@ class GuidesList(UserList):
 
     def from_whitespace(
         self,
-        obj: Optional[Union["Page", "Region", "FlowRegion"]] = None,
+        obj: Optional[GuidesContext] = None,
         min_gap: float = 10,
         *,
         append: bool = False,
     ) -> "Guides":
-        """
-        Create guides from whitespace gaps.
-
-        Args:
-            obj: Page/Region/FlowRegion to analyze (uses parent's context if None)
-            min_gap: Minimum gap size to consider
-
-        Returns:
-            Parent Guides object for chaining
-        """
+        axis_literal: Literal["vertical", "horizontal"] = self._axis
         target_obj = obj or self._parent.context
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        # Check if parent is in flow mode
-        if self._parent.is_flow_region:
-            # Create guides across all constituent regions
-            all_guides = []
+        generated = Guides.from_whitespace(target_obj, axis=axis_literal, min_gap=min_gap)
 
-            for region in self._parent.context.constituent_regions:
-                # Create guides for this specific region
-                region_guides = Guides.from_whitespace(obj=region, axis=self._axis, min_gap=min_gap)
-
-                # Collect guides from this region
-                if self._axis == "vertical":
-                    all_guides.extend(region_guides.vertical)
-                else:
-                    all_guides.extend(region_guides.horizontal)
-
-            # Update parent's flow guides structure
+        def _merge(existing: List[float], new_values: Iterable[float]) -> List[float]:
+            new_iter = [float(value) for value in new_values]
             if append:
-                # Append to existing
-                existing = [
-                    coord
-                    for coord, _ in (
-                        self._parent._unified_vertical
-                        if self._axis == "vertical"
-                        else self._parent._unified_horizontal
-                    )
-                ]
-                all_guides = existing + all_guides
+                return sorted(set(existing).union(new_iter))
+            return sorted(new_iter)
 
-            # Remove duplicates and sort
-            unique_guides = sorted(list(set(all_guides)))
-
-            # Clear and rebuild unified view
-            if self._axis == "vertical":
-                self._parent._unified_vertical = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
-                        if hasattr(region, "bbox"):
-                            x0, _, x1, _ = region.bbox
-                            if x0 <= coord <= x1:
-                                self._parent._unified_vertical.append((coord, region))
-                                break
-                self._parent._vertical_cache = None
-                self.data = unique_guides
-            else:
-                self._parent._unified_horizontal = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent.context.constituent_regions:
-                        if hasattr(region, "bbox"):
-                            _, y0, _, y1 = region.bbox
-                            if y0 <= coord <= y1:
-                                self._parent._unified_horizontal.append((coord, region))
-                                break
-                self._parent._horizontal_cache = None
-                self.data = unique_guides
-
-            # Update per-region guides
-            for region in self._parent.context.constituent_regions:
-                region_verticals = []
-                region_horizontals = []
-
-                for coord, r in self._parent._unified_vertical:
-                    if r == region:
-                        region_verticals.append(coord)
-
-                for coord, r in self._parent._unified_horizontal:
-                    if r == region:
-                        region_horizontals.append(coord)
-
-                self._parent._flow_guides[region] = (
-                    sorted(region_verticals),
-                    sorted(region_horizontals),
-                )
-
-            return self._parent
-
-        # Original single-region logic
-        # Create guides for this axis
-        new_guides = Guides.from_whitespace(obj=target_obj, axis=self._axis, min_gap=min_gap)
-
-        # Replace or append
-        if append:
-            if self._axis == "vertical":
-                self.extend(new_guides.vertical)
-            else:
-                self.extend(new_guides.horizontal)
+        if self._axis == "vertical":
+            self.data = _merge(self.data, generated.vertical)
         else:
-            if self._axis == "vertical":
-                self.data = list(new_guides.vertical)
-            else:
-                self.data = list(new_guides.horizontal)
+            self.data = _merge(self.data, generated.horizontal)
 
-        # Remove duplicates
-        seen = set()
-        unique = []
-        for x in self.data:
-            if x not in seen:
-                seen.add(x)
-                unique.append(x)
-        self.data = unique
+        if self._parent.is_flow_region:
+            flow_context = self._parent._flow_context()
+            for region in flow_context.constituent_regions:
+                existing_vert, existing_horiz = self._parent._flow_guides.get(region, ([], []))
+                gen_vert, gen_horiz = generated._flow_guides.get(region, ([], []))
+                if self._axis == "vertical":
+                    merged_vert = _merge([float(v) for v in existing_vert], gen_vert)
+                    self._parent._flow_guides[region] = (merged_vert, existing_horiz)
+                else:
+                    merged_horiz = _merge([float(v) for v in existing_horiz], gen_horiz)
+                    self._parent._flow_guides[region] = (existing_vert, merged_horiz)
+
+            if self._axis == "vertical":
+                unified = []
+                for region in flow_context.constituent_regions:
+                    for value in self._parent._flow_guides.get(region, ([], []))[0]:
+                        unified.append((float(value), region))
+                self._parent._unified_vertical = unified
+                self._parent._vertical_cache = None
+            else:
+                unified = []
+                for region in flow_context.constituent_regions:
+                    for value in self._parent._flow_guides.get(region, ([], []))[1]:
+                        unified.append((float(value), region))
+                self._parent._unified_horizontal = unified
+                self._parent._horizontal_cache = None
 
         return self._parent
 
@@ -680,18 +749,62 @@ class GuidesList(UserList):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        # Create guides using divide
-        new_guides = Guides.divide(obj=target_obj, n=n, axis=self._axis)
+        axis_literal: Literal["vertical", "horizontal"] = self._axis
 
-        # Replace existing guides instead of extending (no append option here)
-        if self._axis == "vertical":
-            self.data = list(new_guides.vertical)
+        if _is_flow_region(target_obj):
+            flow_values: List[float] = []
+            for region in target_obj.constituent_regions:
+                region_guides = Guides.divide(obj=region, n=n, axis=axis_literal)
+                axis_values = (
+                    region_guides.vertical
+                    if axis_literal == "vertical"
+                    else region_guides.horizontal
+                )
+                flow_values.extend(float(value) for value in axis_values)
+
+                existing_vert, existing_horiz = self._parent._flow_guides.get(region, ([], []))
+                if axis_literal == "vertical":
+                    self._parent._flow_guides[region] = (
+                        sorted([float(v) for v in axis_values]),
+                        existing_horiz,
+                    )
+                else:
+                    self._parent._flow_guides[region] = (
+                        existing_vert,
+                        sorted([float(v) for v in axis_values]),
+                    )
+
+            self.data = sorted(set(flow_values))
+
+            if axis_literal == "vertical":
+                self._parent._unified_vertical = [
+                    (float(value), region)
+                    for region in target_obj.constituent_regions
+                    for value in self._parent._flow_guides.get(region, ([], []))[0]
+                ]
+                self._parent._vertical_cache = None
+            else:
+                self._parent._unified_horizontal = [
+                    (float(value), region)
+                    for region in target_obj.constituent_regions
+                    for value in self._parent._flow_guides.get(region, ([], []))[1]
+                ]
+                self._parent._horizontal_cache = None
         else:
-            self.data = list(new_guides.horizontal)
+            # Create guides using divide
+            new_guides = Guides.divide(
+                obj=cast(Union["Page", "Region"], target_obj), n=n, axis=axis_literal
+            )
+
+            # Replace existing guides instead of extending (no append option here)
+            axis_values = (
+                new_guides.vertical if axis_literal == "vertical" else new_guides.horizontal
+            )
+            self.data = sorted(float(value) for value in axis_values)
 
         # Remove duplicates
-        seen = set()
-        unique = []
+        seen: set[float] = set()
+        unique: List[float] = []
         for x in self.data:
             if x not in seen:
                 seen.add(x)
@@ -726,8 +839,8 @@ class GuidesList(UserList):
             raise ValueError("No object provided and no context available")
 
         # Use the parent's snap_to_whitespace but only for this axis
-        original_guides = self.data.copy()
-
+        original_horizontal: List[float] = []
+        original_vertical: List[float] = []
         # Temporarily set the parent's guides to only this axis
         if self._axis == "vertical":
             original_horizontal = self._parent.horizontal.data.copy()
@@ -997,69 +1110,75 @@ class GuidesList(UserList):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        # Convert headers to list if ElementCollection
+        # Normalize headers into elements with usable bounds
+        header_candidates: Iterable[Any]
         if hasattr(headers, "elements"):
-            header_elements = list(headers.elements)
-        # Check if headers is a list of strings
+            header_candidates = list(headers.elements)
         elif isinstance(headers, list) and headers and isinstance(headers[0], str):
-            # Find elements for each header text with exact matching
-            header_elements = []
+            resolved: List[Any] = []
             for header_text in headers:
-                # Find all text elements and filter for exact match
                 all_text = target_obj.find_all("text")
                 exact_matches = [elem for elem in all_text if elem.extract_text() == header_text]
-
                 if exact_matches:
-                    # Use the first exact match
-                    header_elements.append(exact_matches[0])
+                    resolved.append(exact_matches[0])
                 else:
                     logger.warning(f"Could not find header text: {header_text}")
-
-            if not header_elements:
+            if not resolved:
                 logger.warning("No header elements found from provided text strings")
                 return self._parent
+            header_candidates = resolved
         else:
-            header_elements = list(headers)
+            header_candidates = list(headers)
 
-        # Sort headers by x-position
-        header_elements.sort(key=lambda h: h.x0 if hasattr(h, "x0") else 0)
+        header_data: List[Tuple[Any, Bounds]] = []
+        skipped = 0
+        for candidate in header_candidates:
+            bounds = _bounds_from_object(candidate)
+            if bounds is None:
+                skipped += 1
+                continue
+            header_data.append((candidate, bounds))
 
-        # Need at least 2 headers
-        if len(header_elements) < 2:
+        if len(header_data) < 2:
+            if skipped:
+                logger.warning(
+                    "Some header inputs were ignored because their bounds could not be determined."
+                )
             logger.warning("Need at least 2 headers for column detection")
             return self._parent
 
-        # Get page bounds
-        if hasattr(target_obj, "bbox"):
-            page_bounds = target_obj.bbox
-        elif hasattr(target_obj, "width") and hasattr(target_obj, "height"):
-            # Create bbox from width/height
-            page_bounds = (0, 0, target_obj.width, target_obj.height)
-        else:
-            page_bounds = None
+        header_data.sort(key=lambda item: item[1][0])
+        header_elements = [item[0] for item in header_data]
+        header_bounds = [item[1] for item in header_data]
 
-        if not page_bounds:
+        page_bounds = _bounds_from_object(target_obj)
+        if page_bounds is None:
             logger.warning("Could not determine page bounds")
             return self._parent
 
         # Get text below headers for occupancy analysis
-        header_bottom = max(h.bottom for h in header_elements)
+        header_bottom = max(bounds[3] for bounds in header_bounds)
         all_text = target_obj.find_all("text")
-        body_elements = [elem for elem in all_text if elem.top > header_bottom]
 
-        # Extract bounding boxes
-        bboxes = [(elem.x0, elem.top, elem.x1, elem.bottom) for elem in body_elements]
+        # Extract bounding boxes below headers
+        bboxes: List[Tuple[float, float, float, float]] = []
+        for element in all_text:
+            elem_bounds = _bounds_from_object(element)
+            if elem_bounds is None:
+                continue
+            if elem_bounds[1] > header_bottom:
+                bboxes.append(elem_bounds)
 
         # Find separators between each header pair
         separators = []
         logger.debug(f"Processing {len(header_elements)} headers for column detection")
-        for i in range(len(header_elements) - 1):
-            h_left = header_elements[i]
-            h_right = header_elements[i + 1]
+        for i in range(len(header_bounds) - 1):
+            left_bounds = header_bounds[i]
+            right_bounds = header_bounds[i + 1]
 
             # Define search band
-            left_edge = h_left.x1 if hasattr(h_left, "x1") else h_left.right
-            right_edge = h_right.x0 if hasattr(h_right, "x0") else h_right.left
+            left_edge = left_bounds[2]
+            right_edge = right_bounds[0]
             gap = right_edge - left_edge
 
             # If gap is too small, place separator in the middle
@@ -1397,9 +1516,9 @@ class Guides:
 
     def __init__(
         self,
-        verticals: Optional[Union[List[float], "Page", "Region", "FlowRegion"]] = None,
-        horizontals: Optional[List[float]] = None,
-        context: Optional[Union["Page", "Region", "FlowRegion"]] = None,
+        verticals: Optional[Union[Iterable[float], GuidesContext]] = None,
+        horizontals: Optional[Iterable[float]] = None,
+        context: Optional[GuidesContext] = None,
         bounds: Optional[Tuple[float, float, float, float]] = None,
         relative: bool = False,
         snap_behavior: Literal["raise", "warn", "ignore"] = "warn",
@@ -1408,31 +1527,35 @@ class Guides:
         Initialize a Guides object.
 
         Args:
-            verticals: List of x-coordinates for vertical guides, or a Page/Region/FlowRegion as context
-            horizontals: List of y-coordinates for horizontal guides
-            context: Page, Region, or FlowRegion object these guides were created from
+            verticals: Iterable of x-coordinates for vertical guides, or a context object shorthand
+            horizontals: Iterable of y-coordinates for horizontal guides
+            context: Object providing spatial context (page, region, flow, etc.)
             bounds: Bounding box (x0, top, x1, bottom) if context not provided
             relative: Whether coordinates are relative (0-1) or absolute
             snap_behavior: How to handle snapping conflicts ('raise', 'warn', or 'ignore')
         """
+        context_obj = context
+        vertical_seed: Iterable[float] = ()
+
         # Handle Guides(page) or Guides(flow_region) shorthand
         if (
             verticals is not None
-            and not isinstance(verticals, (list, tuple))
             and horizontals is None
-            and context is None
+            and context_obj is None
+            and _is_guides_context(verticals)
         ):
-            # First argument is a page/region/flow_region, not coordinates
-            context = verticals
-            verticals = None
+            context_obj = cast(GuidesContext, verticals)
+        elif verticals is not None:
+            vertical_seed = cast(Iterable[float], verticals)
 
-        self.context = context
-        self.bounds = bounds
+        self.context = context_obj
+        coerced_bounds = _bounds_from_object(bounds) if bounds is not None else None
+        self.bounds: Optional[Bounds] = coerced_bounds
         self.relative = relative
         self.snap_behavior = snap_behavior
 
         # Check if we're dealing with a FlowRegion
-        self.is_flow_region = hasattr(context, "constituent_regions")
+        self.is_flow_region = _is_flow_region(context_obj)
 
         # If FlowRegion, we'll store guides per constituent region
         if self.is_flow_region:
@@ -1445,32 +1568,39 @@ class Guides:
             self._horizontal_cache: Optional[List[float]] = None
 
         # Initialize with GuidesList instances
-        self._vertical = GuidesList(self, "vertical", sorted([float(x) for x in (verticals or [])]))
+        horizontal_seed: Iterable[float] = horizontals if horizontals is not None else ()
+        self._vertical = GuidesList(
+            self,
+            "vertical",
+            sorted([float(x) for x in vertical_seed]),
+        )
         self._horizontal = GuidesList(
-            self, "horizontal", sorted([float(y) for y in (horizontals or [])])
+            self,
+            "horizontal",
+            sorted([float(y) for y in horizontal_seed]),
         )
 
         # Determine bounds from context if needed
         if self.bounds is None and self.context is not None:
-            if hasattr(self.context, "bbox"):
-                self.bounds = self.context.bbox
-            elif hasattr(self.context, "x0"):
-                self.bounds = (
-                    self.context.x0,
-                    self.context.top,
-                    self.context.x1,
-                    self.context.bottom,
-                )
+            self.bounds = _bounds_from_object(self.context)
 
         # Convert relative to absolute if needed
-        if self.relative and self.bounds:
+        if self.relative and self.bounds is not None:
             x0, top, x1, bottom = self.bounds
             width = x1 - x0
             height = bottom - top
 
-            self._vertical.data = [x0 + v * width for v in self._vertical]
-            self._horizontal.data = [top + h * height for h in self._horizontal]
+            self._vertical.data = [x0 + float(v) * width for v in self._vertical]
+            self._horizontal.data = [top + float(h) * height for h in self._horizontal]
             self.relative = False
+
+    def _flow_context(self) -> FlowRegion:
+        if not _is_flow_region(self.context):
+            raise AttributeError("Flow context is not available for these guides")
+        return cast(FlowRegion, self.context)
+
+    def _flow_constituent_regions(self) -> Sequence["Region"]:
+        return _constituent_regions(self._flow_context())
 
     @property
     def vertical(self) -> GuidesList:
@@ -1556,18 +1686,11 @@ class Guides:
         else:
             raise TypeError(f"horizontal must be a list, Guides object, or None, got {type(value)}")
 
-    def _get_context_bounds(self) -> Optional[Tuple[float, float, float, float]]:
-        """Get bounds from context if available."""
+    def _get_context_bounds(self) -> Tuple[float, float, float, float]:
+        """Return bounding box for the current context, ensuring it exists."""
         if self.context is None:
-            return None
-
-        if hasattr(self.context, "bbox"):
-            return self.context.bbox
-        elif hasattr(self.context, "x0") and hasattr(self.context, "top"):
-            return (self.context.x0, self.context.top, self.context.x1, self.context.bottom)
-        elif hasattr(self.context, "width") and hasattr(self.context, "height"):
-            return (0, 0, self.context.width, self.context.height)
-        return None
+            raise ValueError("No context available for bounds computation")
+        return _require_bounds(self.context, context="guide context")
 
     # -------------------------------------------------------------------------
     # Factory Methods
@@ -1607,16 +1730,11 @@ class Guides:
         """
         # Extract bounds from object
         if isinstance(obj, tuple) and len(obj) == 4:
-            bounds = obj
+            bounds = _ensure_bounds_tuple(obj)
             context = None
         else:
             context = obj
-            if hasattr(obj, "bbox"):
-                bounds = obj.bbox
-            elif hasattr(obj, "x0"):
-                bounds = (obj.x0, obj.top, obj.x1, obj.bottom)
-            else:
-                bounds = (0, 0, obj.width, obj.height)
+            bounds = _require_bounds(obj, context="object to divide")
 
         x0, y0, x1, y1 = bounds
         verticals = []
@@ -1643,7 +1761,7 @@ class Guides:
     @classmethod
     def from_lines(
         cls,
-        obj: Union["Page", "Region", "FlowRegion"],
+        obj: GuidesContext,
         axis: Literal["vertical", "horizontal", "both"] = "both",
         threshold: Union[float, str] = "auto",
         source_label: Optional[str] = None,
@@ -1679,7 +1797,7 @@ class Guides:
             New Guides object with detected line positions
         """
         # Handle FlowRegion
-        if hasattr(obj, "constituent_regions"):
+        if _is_flow_region(obj):
             guides = cls(context=obj)
 
             # Process each constituent region
@@ -1706,9 +1824,9 @@ class Guides:
 
                 # Add to unified view
                 for v in region_guides.vertical:
-                    guides._unified_vertical.append((v, region))
+                    guides._unified_vertical.append((float(v), region))
                 for h in region_guides.horizontal:
-                    guides._unified_horizontal.append((h, region))
+                    guides._unified_horizontal.append((float(h), region))
 
             # Invalidate caches to force rebuild on next access
             guides._vertical_cache = None
@@ -1717,37 +1835,27 @@ class Guides:
             return guides
 
         # Original single-region logic follows...
-        # Get bounds for potential outer guides
-        if hasattr(obj, "bbox"):
-            bounds = obj.bbox
-        elif hasattr(obj, "x0"):
-            bounds = (obj.x0, obj.top, obj.x1, obj.bottom)
-        elif hasattr(obj, "width"):
-            bounds = (0, 0, obj.width, obj.height)
-        else:
-            bounds = None
+        bounds = _bounds_from_object(obj)
+        if bounds is None:
+            raise ValueError(f"Could not determine bounds for object {obj!r} when detecting lines.")
 
         verticals = []
         horizontals = []
 
         if detection_method == "pixels":
-            # Use pixel-based line detection
             if not hasattr(obj, "detect_lines"):
                 raise ValueError(f"Object {obj} does not support pixel-based line detection")
 
-            # Set up detection parameters
             detect_params = {
                 "resolution": resolution,
                 "source_label": source_label or "guides_detection",
                 "horizontal": axis in ("horizontal", "both"),
                 "vertical": axis in ("vertical", "both"),
-                "replace": True,  # Replace any existing lines with this source
+                "replace": True,
                 "method": detect_kwargs.get("method", "projection"),
             }
 
-            # Handle threshold parameter
             if threshold == "auto" and detection_method == "vector":
-                # Auto mode: use very low thresholds with max_lines constraints
                 detect_params["peak_threshold_h"] = 0.0
                 detect_params["peak_threshold_v"] = 0.0
                 detect_params["max_lines_h"] = max_lines_h
@@ -1758,7 +1866,6 @@ class Guides:
                 detect_params["max_lines_h"] = max_lines_h
                 detect_params["max_lines_v"] = max_lines_v
             else:
-                # Fixed threshold mode
                 detect_params["peak_threshold_h"] = (
                     float(threshold) if axis in ("horizontal", "both") else 1.0
                 )
@@ -1768,7 +1875,6 @@ class Guides:
                 detect_params["max_lines_h"] = max_lines_h
                 detect_params["max_lines_v"] = max_lines_v
 
-            # Add any additional detection parameters
             for key in [
                 "min_gap_h",
                 "min_gap_v",
@@ -1786,36 +1892,21 @@ class Guides:
                 if key in detect_kwargs:
                     detect_params[key] = detect_kwargs[key]
 
-            # Perform the detection
             obj.detect_lines(**detect_params)
 
-            # Now get the detected lines and use them
-            if hasattr(obj, "lines"):
-                lines = obj.lines
-            elif hasattr(obj, "find_all"):
-                lines = obj.find_all("line")
-            else:
-                lines = []
-
-            # Filter by the source we just used
-
             lines = [
-                l for l in lines if getattr(l, "source", None) == detect_params["source_label"]
+                line
+                for line in _collect_line_elements(obj)
+                if getattr(line, "source", None) == detect_params["source_label"]
             ]
 
         else:  # detection_method == 'vector' (default)
-            # Get existing lines from the object
-            if hasattr(obj, "lines"):
-                lines = obj.lines
-            elif hasattr(obj, "find_all"):
-                lines = obj.find_all("line")
-            else:
+            lines = _collect_line_elements(obj)
+            if not lines and not hasattr(obj, "lines") and not hasattr(obj, "find_all"):
                 logger.warning(f"Object {obj} has no lines or find_all method")
-                lines = []
 
-            # Filter by source if specified
             if source_label:
-                lines = [l for l in lines if getattr(l, "source", None) == source_label]
+                lines = [line for line in lines if getattr(line, "source", None) == source_label]
 
         # Process lines (same logic for both methods)
         # Separate lines by orientation and collect with metadata for ranking
@@ -1887,15 +1978,15 @@ class Guides:
                     horizontals.append(bounds[3])  # y1
 
         # Remove duplicates and sort again
-        verticals = sorted(list(set(verticals)))
-        horizontals = sorted(list(set(horizontals)))
+        verticals = sorted({float(v) for v in verticals})
+        horizontals = sorted({float(h) for h in horizontals})
 
         return cls(verticals=verticals, horizontals=horizontals, context=obj, bounds=bounds)
 
     @classmethod
     def from_content(
         cls,
-        obj: Union["Page", "Region", "FlowRegion"],
+        obj: GuidesContext,
         axis: Literal["vertical", "horizontal"] = "vertical",
         markers: Union[str, List[str], "ElementCollection", None] = None,
         align: Union[
@@ -1934,7 +2025,7 @@ class Guides:
                 align = "right"
 
         # Handle FlowRegion
-        if hasattr(obj, "constituent_regions"):
+        if _is_flow_region(obj):
             guides = cls(context=obj)
 
             # Process each constituent region
@@ -1969,16 +2060,8 @@ class Guides:
             return guides
 
         # Original single-region logic follows...
-        guides_coords = []
-        bounds = None
-
-        # Get bounds from object
-        if hasattr(obj, "bbox"):
-            bounds = obj.bbox
-        elif hasattr(obj, "x0"):
-            bounds = (obj.x0, obj.top, obj.x1, obj.bottom)
-        elif hasattr(obj, "width"):
-            bounds = (0, 0, obj.width, obj.height)
+        guides_coords: List[float] = []
+        bounds: Optional[Bounds] = _bounds_from_object(obj)
 
         # Handle different marker types
         elements_to_process = []
@@ -1997,29 +2080,85 @@ class Guides:
             except:
                 pass
 
+        def _coerce_element_bounds(element: Any) -> Optional[Bounds]:
+            """Best-effort conversion of arbitrary objects into bounds."""
+            candidate = _bounds_from_object(element)
+            if candidate is not None:
+                return candidate
+
+            context_bounds = bounds
+            if context_bounds is None:
+                context_bounds = _bounds_from_object(obj)
+
+            if context_bounds is not None:
+                default_x0, default_top, default_x1, default_bottom = context_bounds
+            else:
+                default_x0 = default_top = default_x1 = default_bottom = 0.0
+
+            def _maybe_float(value: Any) -> Optional[float]:
+                try:
+                    if value is None:
+                        return None
+                    return float(value)
+                except (TypeError, ValueError):
+                    return None
+
+            x0_val = _maybe_float(getattr(element, "x0", None))
+            x1_val = _maybe_float(getattr(element, "x1", None))
+            top_val = _maybe_float(getattr(element, "top", None))
+            bottom_val = _maybe_float(getattr(element, "bottom", None))
+
+            if all(value is None for value in (x0_val, x1_val, top_val, bottom_val)):
+                return None
+
+            resolved_x0 = (
+                x0_val if x0_val is not None else (x1_val if x1_val is not None else default_x0)
+            )
+            resolved_x1 = (
+                x1_val if x1_val is not None else (x0_val if x0_val is not None else default_x1)
+            )
+            resolved_top = top_val if top_val is not None else default_top
+            resolved_bottom = (
+                bottom_val
+                if bottom_val is not None
+                else (top_val if top_val is not None else default_bottom)
+            )
+
+            return (
+                float(resolved_x0),
+                float(resolved_top),
+                float(resolved_x1),
+                float(resolved_bottom),
+            )
+
         if elements_to_process:
             # Process elements directly without text search
             for element in elements_to_process:
+                elem_bounds = _coerce_element_bounds(element)
+                if elem_bounds is None:
+                    continue
+                x0, top, x1, bottom = elem_bounds
+
                 if axis == "vertical":
                     if align == "left":
-                        guides_coords.append(element.x0)
+                        guides_coords.append(x0)
                     elif align == "right":
-                        guides_coords.append(element.x1)
+                        guides_coords.append(x1)
                     elif align == "center":
-                        guides_coords.append((element.x0 + element.x1) / 2)
+                        guides_coords.append((x0 + x1) / 2)
                     elif align == "between":
                         # For between, collect left edges for processing later
-                        guides_coords.append(element.x0)
+                        guides_coords.append(x0)
                 else:  # horizontal
                     if align == "left":  # top for horizontal
-                        guides_coords.append(element.top)
+                        guides_coords.append(top)
                     elif align == "right":  # bottom for horizontal
-                        guides_coords.append(element.bottom)
+                        guides_coords.append(bottom)
                     elif align == "center":
-                        guides_coords.append((element.top + element.bottom) / 2)
+                        guides_coords.append((top + bottom) / 2)
                     elif align == "between":
                         # For between, collect top edges for processing later
-                        guides_coords.append(element.top)
+                        guides_coords.append(top)
         else:
             # Fall back to text-based search
             marker_texts = _normalize_markers(markers, obj)
@@ -2031,26 +2170,31 @@ class Guides:
                         f'text:contains("{marker}")', apply_exclusions=apply_exclusions
                     )
                     if element:
+                        elem_bounds = _coerce_element_bounds(element)
+                        if elem_bounds is None:
+                            continue
+                        x0, top, x1, bottom = elem_bounds
+
                         if axis == "vertical":
                             if align == "left":
-                                guides_coords.append(element.x0)
+                                guides_coords.append(x0)
                             elif align == "right":
-                                guides_coords.append(element.x1)
+                                guides_coords.append(x1)
                             elif align == "center":
-                                guides_coords.append((element.x0 + element.x1) / 2)
+                                guides_coords.append((x0 + x1) / 2)
                             elif align == "between":
                                 # For between, collect left edges for processing later
-                                guides_coords.append(element.x0)
+                                guides_coords.append(x0)
                         else:  # horizontal
                             if align == "left":  # top for horizontal
-                                guides_coords.append(element.top)
+                                guides_coords.append(top)
                             elif align == "right":  # bottom for horizontal
-                                guides_coords.append(element.bottom)
+                                guides_coords.append(bottom)
                             elif align == "center":
-                                guides_coords.append((element.top + element.bottom) / 2)
+                                guides_coords.append((top + bottom) / 2)
                             elif align == "between":
                                 # For between, collect top edges for processing later
-                                guides_coords.append(element.top)
+                                guides_coords.append(top)
 
         # Handle 'between' alignment - find midpoints between adjacent markers
         if align == "between" and len(guides_coords) >= 2:
@@ -2060,10 +2204,15 @@ class Guides:
             if elements_to_process:
                 # Use elements directly
                 for element in elements_to_process:
+                    elem_bounds = _coerce_element_bounds(element)
+                    if elem_bounds is None:
+                        continue
+                    left, right = elem_bounds[0], elem_bounds[2]
                     if axis == "vertical":
-                        marker_bounds.append((element.x0, element.x1))
+                        marker_bounds.append((left, right))
                     else:  # horizontal
-                        marker_bounds.append((element.top, element.bottom))
+                        top, bottom = elem_bounds[1], elem_bounds[3]
+                        marker_bounds.append((top, bottom))
             else:
                 # Fall back to text search
                 if "marker_texts" not in locals():
@@ -2074,10 +2223,13 @@ class Guides:
                             f'text:contains("{marker}")', apply_exclusions=apply_exclusions
                         )
                         if element:
+                            elem_bounds = _coerce_element_bounds(element)
+                            if elem_bounds is None:
+                                continue
                             if axis == "vertical":
-                                marker_bounds.append((element.x0, element.x1))
+                                marker_bounds.append((elem_bounds[0], elem_bounds[2]))
                             else:  # horizontal
-                                marker_bounds.append((element.top, element.bottom))
+                                marker_bounds.append((elem_bounds[1], elem_bounds[3]))
 
             # Sort markers by their left edge (or top edge for horizontal)
             marker_bounds.sort(key=lambda x: x[0])
@@ -2094,20 +2246,22 @@ class Guides:
             guides_coords = between_coords
 
         # Add outer guides if requested
-        if outer and bounds:
+        if outer:
+            if bounds is None:
+                bounds = _require_bounds(obj, context="content bounds")
             if axis == "vertical":
-                if outer == True or outer == "first":
+                if outer is True or outer == "first":
                     guides_coords.insert(0, bounds[0])  # x0
-                if outer == True or outer == "last":
+                if outer is True or outer == "last":
                     guides_coords.append(bounds[2])  # x1
             else:
-                if outer == True or outer == "first":
+                if outer is True or outer == "first":
                     guides_coords.insert(0, bounds[1])  # y0
-                if outer == True or outer == "last":
+                if outer is True or outer == "last":
                     guides_coords.append(bounds[3])  # y1
 
         # Remove duplicates and sort
-        guides_coords = sorted(list(set(guides_coords)))
+        guides_coords = sorted({float(coord) for coord in guides_coords})
 
         # Create guides object
         if axis == "vertical":
@@ -2118,24 +2272,54 @@ class Guides:
     @classmethod
     def from_whitespace(
         cls,
-        obj: Union["Page", "Region", "FlowRegion"],
+        obj: GuidesContext,
         axis: Literal["vertical", "horizontal", "both"] = "both",
         min_gap: float = 10,
     ) -> "Guides":
-        """
-        Create guides by detecting whitespace gaps.
+        """Create guides by detecting whitespace gaps (divide + snap placeholder)."""
+        if _is_flow_region(obj):
+            guides = cls(context=obj)
+            for region in obj.constituent_regions:
+                region_guides = cls._build_whitespace_guides(region, axis, min_gap)
+                vert_values = [float(value) for value in region_guides.vertical]
+                horiz_values = [float(value) for value in region_guides.horizontal]
+                guides._flow_guides[region] = (vert_values, horiz_values)
+                if axis in ("vertical", "both"):
+                    guides._unified_vertical.extend((value, region) for value in vert_values)
+                if axis in ("horizontal", "both"):
+                    guides._unified_horizontal.extend((value, region) for value in horiz_values)
 
-        Args:
-            obj: Page or Region to analyze
-            min_gap: Minimum gap size to consider as whitespace
-            axis: Which axes to analyze for gaps
+            if axis in ("vertical", "both"):
+                guides._vertical.data = sorted(
+                    {float(value) for value, _ in guides._unified_vertical}
+                )
+            if axis in ("horizontal", "both"):
+                guides._horizontal.data = sorted(
+                    {float(value) for value, _ in guides._unified_horizontal}
+                )
+            guides._vertical_cache = None
+            guides._horizontal_cache = None
+            return guides
 
-        Returns:
-            New Guides object positioned at whitespace gaps
-        """
-        # This is a placeholder - would need sophisticated gap detection
-        logger.info("Whitespace detection not yet implemented, using divide instead")
-        return cls.divide(obj, n=3, axis=axis)
+        return cls._build_whitespace_guides(cast(Union["Page", "Region"], obj), axis, min_gap)
+
+    @classmethod
+    def _build_whitespace_guides(
+        cls,
+        obj: Union["Page", "Region"],
+        axis: Literal["vertical", "horizontal", "both"],
+        min_gap: float,
+    ) -> "Guides":
+        guides = cls.divide(obj, n=3, axis=axis)
+        if axis in ("vertical", "both"):
+            guides.snap_to_whitespace(
+                axis="vertical", min_gap=min_gap, detection_method="text", on_no_snap="ignore"
+            )
+        if axis in ("horizontal", "both"):
+            guides.snap_to_whitespace(
+                axis="horizontal", min_gap=min_gap, detection_method="text", on_no_snap="ignore"
+            )
+        return guides
 
     @classmethod
     def new(cls, context: Optional[Union["Page", "Region"]] = None) -> "Guides":
@@ -2194,7 +2378,7 @@ class Guides:
             all_text_elements = []
             region_bounds = {}
 
-            for region in self.context.constituent_regions:
+            for region in self._flow_constituent_regions():
                 # Get text elements from this region
                 if hasattr(region, "find_all"):
                     try:
@@ -2207,15 +2391,9 @@ class Guides:
                         all_text_elements.extend(elements)
 
                         # Store bounds for each region
-                        if hasattr(region, "bbox"):
-                            region_bounds[region] = region.bbox
-                        elif hasattr(region, "x0"):
-                            region_bounds[region] = (
-                                region.x0,
-                                region.top,
-                                region.x1,
-                                region.bottom,
-                            )
+                        bounds = _bounds_from_object(region)
+                        if bounds is not None:
+                            region_bounds[region] = bounds
                     except Exception as e:
                         logger.warning(f"Error getting text elements from region: {e}")
 
@@ -2428,31 +2606,31 @@ class Guides:
         if target is None:
             raise ValueError("No context available for region creation")
 
-        if not self.vertical or index < 0 or index >= len(self.vertical) - 1:
+        vertical_guides = list(self.vertical.data)
+        if not vertical_guides or index < 0 or index >= len(vertical_guides) - 1:
             raise IndexError(
-                f"Column index {index} out of range (have {len(self.vertical)-1} columns)"
+                f"Column index {index} out of range (have {len(vertical_guides)-1} columns)"
             )
 
         # Get bounds from context
-        bounds = self._get_context_bounds()
-        if not bounds:
-            raise ValueError("Could not determine bounds")
-        _, y0, _, y1 = bounds
+        _, y0, _, y1 = self._get_context_bounds()
 
         # Get column boundaries
-        x0 = self.vertical[index]
-        x1 = self.vertical[index + 1]
+        x0 = vertical_guides[index]
+        x1 = vertical_guides[index + 1]
 
         # Create region using absolute coordinates
-        if hasattr(target, "region"):
-            # Target has a region method (Page)
-            return target.region(x0, y0, x1, y1)
-        elif hasattr(target, "page"):
-            # Target is a Region, use its parent page
-            # The coordinates from guides are already absolute
-            return target.page.region(x0, y0, x1, y1)
-        else:
-            raise TypeError(f"Cannot create region on {type(target)}")
+        if hasattr(target, "create_region"):
+            if isinstance(target, Region):
+                return target.create_region(x0, y0, x1, y1, relative=False)
+            return target.create_region(x0, y0, x1, y1)
+
+        try:
+            page = _resolve_single_page(target)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f"Cannot create region on {type(target)}") from exc
+
+        return page.create_region(x0, y0, x1, y1)
 
     def row(self, index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
         """
@@ -2472,29 +2650,31 @@ class Guides:
         if target is None:
             raise ValueError("No context available for region creation")
 
-        if not self.horizontal or index < 0 or index >= len(self.horizontal) - 1:
-            raise IndexError(f"Row index {index} out of range (have {len(self.horizontal)-1} rows)")
+        horizontal_guides = list(self.horizontal.data)
+        if not horizontal_guides or index < 0 or index >= len(horizontal_guides) - 1:
+            raise IndexError(
+                f"Row index {index} out of range (have {len(horizontal_guides)-1} rows)"
+            )
 
         # Get bounds from context
-        bounds = self._get_context_bounds()
-        if not bounds:
-            raise ValueError("Could not determine bounds")
-        x0, _, x1, _ = bounds
+        x0, _, x1, _ = self._get_context_bounds()
 
         # Get row boundaries
-        y0 = self.horizontal[index]
-        y1 = self.horizontal[index + 1]
+        y0 = horizontal_guides[index]
+        y1 = horizontal_guides[index + 1]
 
         # Create region using absolute coordinates
-        if hasattr(target, "region"):
-            # Target has a region method (Page)
-            return target.region(x0, y0, x1, y1)
-        elif hasattr(target, "page"):
-            # Target is a Region, use its parent page
-            # The coordinates from guides are already absolute
-            return target.page.region(x0, y0, x1, y1)
-        else:
-            raise TypeError(f"Cannot create region on {type(target)}")
+        if hasattr(target, "create_region"):
+            if isinstance(target, Region):
+                return target.create_region(x0, y0, x1, y1, relative=False)
+            return target.create_region(x0, y0, x1, y1)
+
+        try:
+            page = _resolve_single_page(target)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f"Cannot create region on {type(target)}") from exc
+
+        return page.create_region(x0, y0, x1, y1)
 
     def cell(self, row: int, col: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
         """
@@ -2515,29 +2695,33 @@ class Guides:
         if target is None:
             raise ValueError("No context available for region creation")
 
-        if not self.vertical or col < 0 or col >= len(self.vertical) - 1:
+        vertical_guides = list(self.vertical.data)
+        horizontal_guides = list(self.horizontal.data)
+        if not vertical_guides or col < 0 or col >= len(vertical_guides) - 1:
             raise IndexError(
-                f"Column index {col} out of range (have {len(self.vertical)-1} columns)"
+                f"Column index {col} out of range (have {len(vertical_guides)-1} columns)"
             )
-        if not self.horizontal or row < 0 or row >= len(self.horizontal) - 1:
-            raise IndexError(f"Row index {row} out of range (have {len(self.horizontal)-1} rows)")
+        if not horizontal_guides or row < 0 or row >= len(horizontal_guides) - 1:
+            raise IndexError(f"Row index {row} out of range (have {len(horizontal_guides)-1} rows)")
 
         # Get cell boundaries
-        x0 = self.vertical[col]
-        x1 = self.vertical[col + 1]
-        y0 = self.horizontal[row]
-        y1 = self.horizontal[row + 1]
+        x0 = vertical_guides[col]
+        x1 = vertical_guides[col + 1]
+        y0 = horizontal_guides[row]
+        y1 = horizontal_guides[row + 1]
 
         # Create region using absolute coordinates
-        if hasattr(target, "region"):
-            # Target has a region method (Page)
-            return target.region(x0, y0, x1, y1)
-        elif hasattr(target, "page"):
-            # Target is a Region, use its parent page
-            # The coordinates from guides are already absolute
-            return target.page.region(x0, y0, x1, y1)
-        else:
-            raise TypeError(f"Cannot create region on {type(target)}")
+        if hasattr(target, "create_region"):
+            if isinstance(target, Region):
+                return target.create_region(x0, y0, x1, y1, relative=False)
+            return target.create_region(x0, y0, x1, y1)
+
+        try:
+            page = _resolve_single_page(target)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f"Cannot create region on {type(target)}") from exc
+
+        return page.create_region(x0, y0, x1, y1)
 
     def left_of(self, guide_index: int, obj: Optional[Union["Page", "Region"]] = None) -> "Region":
         """
@@ -2834,7 +3018,7 @@ class Guides:
             base_images = []
             region_infos = []  # Store region info for guide coordinate mapping
 
-            for region in self.context.constituent_regions:
+            for region in self._flow_constituent_regions():
                 try:
                     # Render region without guides using new system
                     if hasattr(region, "render"):
@@ -2956,12 +3140,14 @@ class Guides:
         # Handle string shortcuts
         if isinstance(target, str):
             if target == "page":
-                if hasattr(self.context, "page"):
-                    target = self.context.page
-                elif hasattr(self.context, "_page"):
-                    target = self.context._page
-                else:
-                    raise ValueError("Cannot resolve 'page' - context has no page attribute")
+                if self.context is None:
+                    raise ValueError("Cannot resolve 'page' without a guides context")
+                try:
+                    target = _resolve_single_page(self.context)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "Cannot resolve 'page' from the current guides context"
+                    ) from exc
             else:
                 raise ValueError(f"Unknown string target: {target}. Only 'page' is supported.")
 
@@ -2980,8 +3166,13 @@ class Guides:
             image_kwargs["crop"] = kwargs["crop"]
 
         # If target is a region-like object, crop to just that region
-        if hasattr(target, "bbox") and hasattr(target, "page"):
-            # This is likely a Region
+        try:
+            _resolve_single_page(target)
+            target_is_single_page = True
+        except (TypeError, ValueError):
+            target_is_single_page = False
+
+        if hasattr(target, "bbox") and target_is_single_page:
             image_kwargs["crop"] = True
 
         # Get base image
@@ -3016,7 +3207,7 @@ class Guides:
 
             # If we're showing guides on a region, we need to adjust coordinates
             # to be relative to the region's origin
-            if hasattr(target, "bbox") and hasattr(target, "page"):
+            if hasattr(target, "bbox") and target_is_single_page:
                 # This is a Region - adjust guide coordinates to be relative to region
                 region_x0, region_top = target.x0, target.top
             else:
@@ -3581,7 +3772,7 @@ class Guides:
 
     def build_grid(
         self,
-        target: Optional[Union["Page", "Region"]] = None,
+        target: Optional[GuidesContext] = None,
         source: str = "guides",
         cell_padding: float = 0.5,
         include_outer_boundaries: bool = False,
@@ -3607,7 +3798,7 @@ class Guides:
         # Dispatch to appropriate implementation based on context and flags
         if self.is_flow_region:
             # Check if we should create a unified multi-region grid
-            has_multiple_regions = len(self.context.constituent_regions) > 1
+            has_multiple_regions = len(self._flow_constituent_regions()) > 1
             spans_pages = self._spans_pages()
 
             # Create unified grid if:
@@ -3626,7 +3817,7 @@ class Guides:
                 total_counts = {"table": 0, "rows": 0, "columns": 0, "cells": 0}
                 all_regions = {"table": [], "rows": [], "columns": [], "cells": []}
 
-                for region in self.context.constituent_regions:
+                for region in self._flow_constituent_regions():
                     if region in self._flow_guides:
                         verticals, horizontals = self._flow_guides[region]
 
@@ -3699,7 +3890,7 @@ class Guides:
         unified_verticals = self.vertical.data
         unified_horizontals = self.horizontal.data
 
-        for region in self.context.constituent_regions:
+        for region in self._flow_constituent_regions():
             bounds = region.bbox
             if not bounds:
                 continue
@@ -3731,7 +3922,7 @@ class Guides:
             if grid_parts["counts"]["table"] > 0:
                 # Mark physical regions as fragments by updating their region_type
                 # This happens before stitching into logical FlowRegions
-                if len(self.context.constituent_regions) > 1:
+                if len(self._flow_constituent_regions()) > 1:
                     # Update region types to indicate these are fragments
                     if grid_parts["regions"]["table"]:
                         grid_parts["regions"]["table"].region_type = "table_fragment"
@@ -3758,10 +3949,13 @@ class Guides:
             }
 
         # Phase 2: Stitch physical regions into logical FlowRegions based on orientation
-        flow = self.context.flow
+        flow_region = self._flow_context()
+        flow = flow_region.flow
 
         # The overall table is always a FlowRegion
-        physical_tables = [res["regions"]["table"] for res in results_by_region]
+        physical_tables = [
+            table for res in results_by_region if (table := res["regions"]["table"]) is not None
+        ]
         multi_page_table = FlowRegion(
             flow=flow, constituent_regions=physical_tables, source_flow_element=None
         )
@@ -3787,7 +3981,7 @@ class Guides:
 
                 # Iterate through page breaks to merge split rows/cells
                 for i in range(len(results_by_region) - 1):
-                    region_A = self.context.constituent_regions[i]
+                    region_A = self._flow_constituent_regions()[i]
 
                     # Check if a guide exists at the boundary
                     is_break_bounded = any(
@@ -3888,10 +4082,21 @@ class Guides:
 
         # SMART PAGE-LEVEL REGISTRY: Remove individual tables and replace with multi-page table
         # This ensures that page.find('table') finds the logical multi-page table, not fragments
-        constituent_pages = set()
-        for region in self.context.constituent_regions:
-            if hasattr(region, "page") and hasattr(region.page, "_element_mgr"):
-                constituent_pages.add(region.page)
+        constituent_pages: set["Page"] = set()
+        for region in self._flow_constituent_regions():
+            candidate_pages: Sequence["Page"] = ()
+            if isinstance(region, HasPages):
+                candidate_pages = tuple(region.pages)
+            elif isinstance(region, HasSinglePage):
+                candidate_pages = (region.page,)  # type: ignore[attr-defined]
+            else:
+                page_candidate = getattr(region, "page", None)
+                if page_candidate is not None:
+                    candidate_pages = (page_candidate,)
+
+            for page in candidate_pages:
+                if hasattr(page, "_element_mgr"):
+                    constituent_pages.add(page)
 
         # Register the logical multi-page table with all constituent pages
         # Note: Physical table fragments are already registered with region_type="table_fragment"
@@ -3964,25 +4169,29 @@ class Guides:
         if not target_obj:
             raise ValueError("No target object available. Provide target parameter or context.")
 
-        # Get the page for creating regions
-        if hasattr(target_obj, "x0") and hasattr(
-            target_obj, "top"
-        ):  # Region (has bbox coordinates)
-            page = target_obj._page
-            origin_x, origin_y = target_obj.x0, target_obj.top
-            context_width, context_height = target_obj.width, target_obj.height
-        elif hasattr(target_obj, "_element_mgr") or hasattr(target_obj, "width"):  # Page
-            page = target_obj
-            origin_x, origin_y = 0.0, 0.0
-            context_width, context_height = page.width, page.height
+        bounds = _require_bounds(target_obj, context="grid target")
+        origin_x, origin_y, max_x, max_y = bounds
+        context_width = max_x - origin_x
+        context_height = max_y - origin_y
+
+        if hasattr(target_obj, "_element_mgr") and not hasattr(target_obj, "_page"):
+            page = target_obj  # Already a page-like object with element manager
         else:
-            raise ValueError(f"Target object {target_obj} is not a Page or Region")
+            try:
+                page = _resolve_single_page(target_obj)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Target object {target_obj} does not expose a single page reference"
+                ) from exc
+
+        if not hasattr(page, "_element_mgr"):
+            raise ValueError("Target page does not expose an element manager for grid registration")
 
         element_manager = page._element_mgr
 
         # Setup boundaries
-        row_boundaries = list(self.horizontal)
-        col_boundaries = list(self.vertical)
+        row_boundaries = [float(v) for v in self.horizontal]
+        col_boundaries = [float(v) for v in self.vertical]
 
         # Add outer boundaries if requested and missing
         if include_outer_boundaries:
@@ -4071,7 +4280,7 @@ class Guides:
                     "boundaries": {"rows": row_boundaries, "cols": col_boundaries},
                 }
             )
-            element_manager.add_element(table_region, element_type="regions")
+            page.add_region(table_region, source=source)
             counts["table"] = 1
             created_regions["table"] = table_region
 
@@ -4085,7 +4294,7 @@ class Guides:
                 row_region.region_type = "table_row"
                 row_region.normalized_type = "table_row"
                 row_region.metadata.update({"row_index": i, "source_guides": True})
-                element_manager.add_element(row_region, element_type="regions")
+                page.add_region(row_region, source=source)
                 counts["rows"] += 1
                 created_regions["rows"].append(row_region)
 
@@ -4099,7 +4308,7 @@ class Guides:
                 col_region.region_type = "table_column"
                 col_region.normalized_type = "table_column"
                 col_region.metadata.update({"col_index": j, "source_guides": True})
-                element_manager.add_element(col_region, element_type="regions")
+                page.add_region(col_region, source=source)
                 counts["columns"] += 1
                 created_regions["columns"].append(col_region)
 
@@ -4134,7 +4343,7 @@ class Guides:
                             },
                         }
                     )
-                    element_manager.add_element(cell_region, element_type="regions")
+                    page.add_region(cell_region, source=source)
                     counts["cells"] += 1
                     created_regions["cells"].append(cell_region)
 
@@ -4161,7 +4370,7 @@ class Guides:
         # Handle FlowRegion context
         if self.is_flow_region:
             all_text_elements = []
-            for region in self.context.constituent_regions:
+            for region in self._flow_constituent_regions():
                 if hasattr(region, "find_all"):
                     try:
                         text_elements = region.find_all("text", apply_exclusions=False)
@@ -4662,14 +4871,9 @@ class Guides:
         # Configure progress bar
         iterator = element_list
         if show_progress and len(element_list) > 1:
-            try:
-                from tqdm.auto import tqdm
+            from tqdm.auto import tqdm
 
-                iterator = tqdm(
-                    element_list, desc="Extracting tables from elements", unit="element"
-                )
-            except ImportError:
-                pass
+            iterator = tqdm(element_list, desc="Extracting tables from elements", unit="element")
 
         for i, element in enumerate(iterator):
             # Create a new Guides object for this element
@@ -4744,11 +4948,11 @@ class Guides:
 
     def _get_flow_orientation(self) -> Literal["vertical", "horizontal", "unknown"]:
         """Determines if a FlowRegion's constituent parts are arranged vertically or horizontally."""
-        if not self.is_flow_region or len(self.context.constituent_regions) < 2:
+        if not self.is_flow_region or len(self._flow_constituent_regions()) < 2:
             return "unknown"
 
-        r1 = self.context.constituent_regions[0]
-        r2 = self.context.constituent_regions[1]  # Compare first two regions
+        r1 = self._flow_constituent_regions()[0]
+        r2 = self._flow_constituent_regions()[1]  # Compare first two regions
 
         if not r1.bbox or not r2.bbox:
             return "unknown"

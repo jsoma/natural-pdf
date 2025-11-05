@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 # Import required classes for the new methods
 # For runtime image manipulation
 
+from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
 
@@ -105,7 +106,7 @@ class Flow(Visualizable):
 
     def __init__(
         self,
-        segments: Union[List[Union["Page", "PhysicalRegion"]], "PageCollection"],
+        segments: Union[Sequence[SupportsSections], "PageCollection"],
         arrangement: Literal["vertical", "horizontal"],
         alignment: Literal["start", "center", "end", "top", "left", "bottom", "right"] = "start",
         segment_gap: float = 0.0,
@@ -114,9 +115,8 @@ class Flow(Visualizable):
         Initializes a Flow object.
 
         Args:
-            segments: An ordered list of natural_pdf.core.page.Page or
-                      natural_pdf.elements.region.Region objects that constitute the flow,
-                      or a PageCollection containing pages.
+            segments: An ordered sequence of objects implementing SupportsSections (e.g., Page,
+                      Region) that constitute the flow, or a PageCollection containing pages.
             arrangement: The primary direction of the flow.
                          - "vertical": Segments are stacked top-to-bottom.
                          - "horizontal": Segments are arranged left-to-right.
@@ -134,6 +134,8 @@ class Flow(Visualizable):
         # Handle PageCollection input
         if hasattr(segments, "pages"):  # It's a PageCollection
             segments = list(segments.pages)
+        else:
+            segments = list(segments)
 
         if not segments:
             raise ValueError("Flow segments cannot be empty.")
@@ -151,35 +153,23 @@ class Flow(Visualizable):
 
         # TODO: Pre-calculate segment offsets for faster lookups if needed
 
-    def _normalize_segments(
-        self, segments: List[Union["Page", "PhysicalRegion"]]
-    ) -> List["PhysicalRegion"]:
-        """Converts all Page segments to full-page Region objects for uniform processing."""
-        normalized = []
-        from natural_pdf.core.page import Page as CorePage
+    def _normalize_segments(self, segments: Sequence[SupportsSections]) -> List["PhysicalRegion"]:
+        """Materialize all segments as Region objects for uniform processing."""
+        normalized: List["PhysicalRegion"] = []
         from natural_pdf.elements.region import Region as ElementsRegion
 
-        for i, segment in enumerate(segments):
-            if isinstance(segment, CorePage):
-                normalized.append(segment.region(0, 0, segment.width, segment.height))
-            elif isinstance(segment, ElementsRegion):
-                normalized.append(segment)
-            elif hasattr(segment, "object_type") and segment.object_type == "page":
-                if not isinstance(segment, CorePage):
-                    raise TypeError(
-                        f"Segment {i} has object_type 'page' but is not an instance of natural_pdf.core.page.Page. Got {type(segment)}"
-                    )
-                normalized.append(segment.region(0, 0, segment.width, segment.height))
-            elif hasattr(segment, "object_type") and segment.object_type == "region":
-                if not isinstance(segment, ElementsRegion):
-                    raise TypeError(
-                        f"Segment {i} has object_type 'region' but is not an instance of natural_pdf.elements.region.Region. Got {type(segment)}"
-                    )
-                normalized.append(segment)
-            else:
+        for index, segment in enumerate(segments):
+            if not isinstance(segment, SupportsSections):
                 raise TypeError(
-                    f"Segment {i} is not a valid Page or Region object. Got {type(segment)}."
+                    f"Segment {index} must implement SupportsSections; found {type(segment)}."
                 )
+
+            region_candidate = segment.to_region()
+            if not isinstance(region_candidate, ElementsRegion):
+                raise TypeError(
+                    f"Segment {index} returned unsupported region type {type(region_candidate)}."
+                )
+            normalized.append(region_candidate)
         return normalized
 
     def _validate_alignment(self) -> None:

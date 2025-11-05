@@ -12,12 +12,19 @@ import logging
 import shutil
 from collections import namedtuple
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.region import Region
+
+    RegionType = Region
+else:
+    RegionType = Any
 
 # Return types
 Decision = namedtuple("Decision", ["label", "score"])
@@ -86,11 +93,11 @@ class Judge:
 
         self.name = name
         self.labels = labels
-        self.target_prior = target_prior if target_prior is not None else 0.5
+        self.target_prior = float(target_prior) if target_prior is not None else 0.5
 
         # Set up directory structure
-        self.base_dir = Path(base_dir) if base_dir else Path.cwd()
-        self.root_dir = self.base_dir / name
+        self.base_dir: Path = Path(base_dir) if base_dir else Path.cwd()
+        self.root_dir: Path = self.base_dir / name
         self.root_dir.mkdir(exist_ok=True)
 
         # Create label directories
@@ -100,15 +107,15 @@ class Judge:
         (self.root_dir / "_removed").mkdir(exist_ok=True)
 
         # Config file
-        self.config_path = self.root_dir / "judge.json"
+        self.config_path: Path = self.root_dir / "judge.json"
 
         # Load existing config or initialize
-        self.thresholds = {}
-        self.metrics_info = {}
+        self.thresholds: Dict[str, Dict[str, Any]] = {}
+        self.metrics_info: Dict[str, Dict[str, float]] = {}
         if self.config_path.exists():
             self._load_config()
 
-    def add(self, region, label: Optional[str] = None) -> None:
+    def add(self, region: RegionType, label: Optional[str] = None) -> None:
         """
         Add a region to the judge's dataset.
 
@@ -378,7 +385,7 @@ class Judge:
 
         # Try to set up keyboard handling (may not work in all environments)
         try:
-            from ipyevents import Event
+            from ipyevents import Event  # type: ignore[import-untyped]
 
             event_handler = Event(source=output, watched_events=["keydown"])
             event_handler.on_dom_event(on_key)
@@ -386,7 +393,9 @@ class Judge:
             # If ipyevents not available, just use buttons
             print("Note: Install ipyevents for keyboard shortcuts: pip install ipyevents")
 
-    def decide(self, regions: Union["Region", List["Region"]]) -> Union[Decision, List[Decision]]:
+    def decide(
+        self, regions: Union[RegionType, Sequence[RegionType]]
+    ) -> Union[Decision, List[Decision]]:
         """
         Classify one or more regions.
 
@@ -409,18 +418,21 @@ class Judge:
         if not self.thresholds:
             self._retrain()
 
-        # Handle single region
-        single_input = not isinstance(regions, list)
-        if single_input:
-            regions = [regions]
+        # Normalize to list of regions
+        if isinstance(regions, Sequence) and not isinstance(regions, (str, bytes)):
+            region_list = list(regions)
+            single_input = False
+        else:
+            region_list = [cast(RegionType, regions)]
+            single_input = True
 
-        results = []
-        for region in regions:
+        results: List[Decision] = []
+        for region in region_list:
             # Extract metrics
             metrics = self._extract_metrics(region)
 
             # Apply thresholds with soft voting
-            votes = {label: 0.0 for label in self.labels}
+            votes: Dict[str, float] = {label: 0.0 for label in self.labels}
             total_weight = 0.0
 
             for metric_name, value in metrics.items():
@@ -514,7 +526,10 @@ class Judge:
         return results[0] if single_input else results
 
     def pick(
-        self, target_label: str, regions: List["Region"], labels: Optional[List[str]] = None
+        self,
+        target_label: str,
+        regions: Sequence[RegionType],
+        labels: Optional[Sequence[str]] = None,
     ) -> PickResult:
         """
         Pick which region best matches the target label.
@@ -534,7 +549,9 @@ class Judge:
             raise JudgeError(f"Target label '{target_label}' not in allowed labels: {self.labels}")
 
         # Classify all regions
-        decisions = self.decide(regions)
+        region_list = list(regions)
+        decisions_result = self.decide(region_list)
+        decisions = decisions_result if isinstance(decisions_result, list) else [decisions_result]
 
         # Find best match for target label
         best_index = -1
@@ -550,12 +567,17 @@ class Judge:
             raise JudgeError(f"No region classified as '{target_label}'")
 
         # Build result
-        region = regions[best_index]
-        label = labels[best_index] if labels and best_index < len(labels) else None
+        region = region_list[best_index]
+        label_list = list(labels) if labels is not None else None
+        label = (
+            label_list[best_index]
+            if label_list is not None and best_index < len(label_list)
+            else None
+        )
 
         return PickResult(region=region, index=best_index, label=label, score=best_score)
 
-    def count(self, target_label: str, regions: List["Region"]) -> int:
+    def count(self, target_label: str, regions: Sequence[RegionType]) -> int:
         """
         Count how many regions match the target label.
 
@@ -566,8 +588,9 @@ class Judge:
         Returns:
             Number of regions classified as target_label
         """
-        decisions = self.decide(regions)
-        return sum(1 for d in decisions if d.label == target_label)
+        decisions_result = self.decide(regions)
+        decisions = decisions_result if isinstance(decisions_result, list) else [decisions_result]
+        return sum(1 for decision in decisions if decision.label == target_label)
 
     def info(self) -> None:
         """
@@ -984,7 +1007,7 @@ class Judge:
                 if len(unlabeled_examples) > 10:
                     print(f"  ... and {len(unlabeled_examples) - 10} more")
 
-    def lookup(self, region) -> Optional[Tuple[str, Image.Image]]:
+    def lookup(self, region: RegionType) -> Optional[Tuple[str, Image.Image]]:
         """
         Look up a region and return its hash and image if found in training data.
 
@@ -1033,7 +1056,7 @@ class Judge:
             size: Size of each image in pixels (width, height)
         """
         try:
-            import ipywidgets as widgets
+            import ipywidgets as widgets  # type: ignore[import-untyped]
             from IPython.display import display
             from PIL import Image as PILImage
         except ImportError:
@@ -1117,7 +1140,7 @@ class Judge:
         # Display all categories
         display(widgets.VBox(rows))
 
-    def forget(self, region: Optional["Region"] = None, delete: bool = False) -> None:
+    def forget(self, region: Optional[RegionType] = None, delete: bool = False) -> None:
         """
         Clear training data, delete all files, or move a specific region to unlabeled.
 
@@ -1165,8 +1188,8 @@ class Judge:
                 print(f"No data found for judge '{self.name}'")
 
             # Reset internal state
-            self.thresholds = {}
-            self.metrics_info = {}
+            self.thresholds = {}  # type: Dict[str, Dict[str, Any]]
+            self.metrics_info = {}  # type: Dict[str, Dict[str, float]]
 
             # Recreate directory structure
             self.root_dir.mkdir(exist_ok=True)
@@ -1189,8 +1212,8 @@ class Judge:
                         moved_count += 1
 
             # Clear thresholds
-            self.thresholds = {}
-            self.metrics_info = {}
+            self.thresholds = {}  # type: Dict[str, Dict[str, Any]]
+            self.metrics_info = {}  # type: Dict[str, Dict[str, float]]
 
             # Remove saved config
             if self.config_path.exists():
@@ -1264,14 +1287,14 @@ class Judge:
             base_dir=base_dir,
             target_prior=config.get("target_prior", 0.5),
         )  # Default to 0.5 for old configs
-        judge.thresholds = config["thresholds"]
-        judge.metrics_info = config.get("metrics_info", {})
+        judge.thresholds = cast(Dict[str, Dict[str, Any]], config.get("thresholds", {}))
+        judge.metrics_info = cast(Dict[str, Dict[str, float]], config.get("metrics_info", {}))
 
         return judge
 
     # Private methods
 
-    def _extract_metrics(self, region) -> Dict[str, float]:
+    def _extract_metrics(self, region: RegionType) -> Dict[str, float]:
         """Extract image metrics from a region."""
         try:
             img = region.render(crop=True)
@@ -1333,7 +1356,7 @@ class Judge:
     def _retrain(self) -> None:
         """Retrain thresholds from current examples."""
         # Collect all examples
-        examples = {label: [] for label in self.labels}
+        examples: Dict[str, List[Dict[str, float]]] = {label: [] for label in self.labels}
 
         for label in self.labels:
             label_dir = self.root_dir / label
@@ -1365,9 +1388,9 @@ class Judge:
             logger.info("Using balanced accuracy for threshold selection")
 
         # Find best thresholds for each metric
-        self.thresholds = {}
-        self.metrics_info = {}
-        metric_candidates = []  # Store all metrics with their scores
+        self.thresholds = {}  # type: Dict[str, Dict[str, Any]]
+        self.metrics_info = {}  # type: Dict[str, Dict[str, float]]
+        metric_candidates: List[Dict[str, Any]] = []
 
         all_metrics = set()
         for exs in examples.values():
@@ -1412,6 +1435,9 @@ class Judge:
                             best_accuracy = accuracy
                             best_threshold = threshold
                             best_direction = direction
+
+                if best_threshold is None or best_direction is None:
+                    continue
 
                 # Calculate Youden's J statistic for weight (TPR - FPR)
                 if best_direction == "higher":
@@ -1501,7 +1527,7 @@ class Judge:
 
     def _get_training_counts(self) -> Dict[str, int]:
         """Get count of examples per class."""
-        counts = {}
+        counts: Dict[str, int] = {}
         for label in self.labels:
             label_dir = self.root_dir / label
             counts[label] = len(list(label_dir.glob("*.png")))

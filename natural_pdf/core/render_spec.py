@@ -8,13 +8,16 @@ This module provides the core components for the unified image generation system
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Sequence, Set, Tuple, Union
 
 if TYPE_CHECKING:
     from PIL import Image as PIL_Image
 
+    from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
+
+from natural_pdf.core.interfaces import HasHighlighter, HasPages, HasSinglePage
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,44 @@ class RenderSpec:
         # Remove None values
         highlight = {k: v for k, v in highlight.items() if v is not None}
         self.highlights.append(highlight)
+
+
+def _resolve_highlighter(source: Any) -> "HighlightingService":
+    """Resolve a HighlightingService from a visualizable object hierarchy."""
+
+    visited: Set[int] = set()
+
+    def _inner(obj: Any) -> "HighlightingService":
+        marker = id(obj)
+        if marker in visited:
+            raise RuntimeError("Circular reference encountered during highlighter resolution")
+        visited.add(marker)
+
+        if isinstance(obj, HasHighlighter):
+            return obj.get_highlighter()
+
+        if hasattr(obj, "_highlighter"):
+            return obj._highlighter  # type: ignore[attr-defined]
+
+        if isinstance(obj, HasSinglePage):
+            return _inner(obj.page)
+
+        if isinstance(obj, HasPages):
+            pages = obj.pages
+            for page in pages:
+                return _inner(page)
+            raise RuntimeError("Object reported no pages for highlighter resolution")
+
+        if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+            for candidate in obj:
+                try:
+                    return _inner(candidate)
+                except RuntimeError:
+                    continue
+
+        raise RuntimeError(f"Cannot locate highlighter for object of type {type(obj).__name__}")
+
+    return _inner(source)
 
 
 class Visualizable:
@@ -160,21 +201,13 @@ class Visualizable:
         This method should be overridden by classes that have
         a different way of accessing the highlighter.
         """
-        # Try common patterns
-        if hasattr(self, "_highlighter"):
-            return self._highlighter
-        elif hasattr(self, "page") and hasattr(self.page, "_highlighter"):
-            return self.page._highlighter
-        elif hasattr(self, "pages") and self.pages:
-            # For collections, use first page's highlighter
-            first_page = next(iter(self.pages))
-            if hasattr(first_page, "_highlighter"):
-                return first_page._highlighter
-
-        raise RuntimeError(
-            f"Cannot find HighlightingService for {self.__class__.__name__}. "
-            "Override _get_highlighter() to provide access."
-        )
+        try:
+            return _resolve_highlighter(self)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"Cannot find HighlightingService for {self.__class__.__name__}. "
+                "Override _get_highlighter() to provide access."
+            ) from exc
 
     def show(
         self,

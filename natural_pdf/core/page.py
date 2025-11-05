@@ -57,6 +57,7 @@ from natural_pdf.classification.mixin import ClassificationMixin  # Import class
 from natural_pdf.core.element_manager import ElementManager
 
 # Add new import
+from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
@@ -166,6 +167,7 @@ class Page(
     DescribeMixin,
     VisualSearchMixin,
     Visualizable,
+    SupportsSections,
 ):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
 
@@ -430,6 +432,10 @@ class Page(
 
         return [spec]
 
+    def to_region(self) -> Region:
+        """Return a Region covering the full page."""
+        return self.region(0, 0, self.width, self.height)
+
     @property
     def pdf(self) -> "PDF":
         """Provides public access to the parent PDF object."""
@@ -468,6 +474,36 @@ class Page(
             # This should ideally not happen if PDF.__init__ works correctly
             raise AttributeError("Parent PDF object does not have a 'highlighter' attribute.")
         return self._parent.highlighter
+
+    @property
+    def pages(self) -> Tuple["Page", ...]:
+        """Expose this page as an iterable for protocol compatibility."""
+        return (self,)
+
+    def get_highlighter(self) -> "HighlightingService":
+        """Return the highlighting service for this page."""
+        return self._highlighter
+
+    def get_config(self, key: str, default: Any = None, *, scope: str = "page") -> Any:
+        """Resolve configuration values for this page or its parent PDF."""
+        if scope not in {"region", "page", "pdf"}:
+            raise ValueError(f"Unsupported configuration scope: {scope}")
+
+        page_cfg = getattr(self, "_config", {})
+        if scope in {"region", "page"} and isinstance(page_cfg, dict) and key in page_cfg:
+            return page_cfg[key]
+
+        pdf_cfg = getattr(self.pdf, "_config", {}) if self.pdf is not None else {}
+        if scope in {"region", "page", "pdf"} and isinstance(pdf_cfg, dict) and key in pdf_cfg:
+            return pdf_cfg[key]
+
+        return default
+
+    def get_manager(self, name: str) -> Any:
+        """Delegate manager lookups to the parent PDF."""
+        if self.pdf is None:
+            raise AttributeError(f"Cannot resolve manager '{name}' without PDF context")
+        return self.pdf.get_manager(name)
 
     def clear_exclusions(self) -> "Page":
         """
@@ -738,13 +774,16 @@ class Page(
 
         return self
 
-    def add_region(self, region: "Region", name: Optional[str] = None) -> "Page":
+    def add_region(
+        self, region: "Region", name: Optional[str] = None, *, source: Optional[str] = None
+    ) -> "Page":
         """
         Add a region to the page.
 
         Args:
             region: Region object to add
             name: Optional name for the region
+            source: Optional provenance label; if provided it will be recorded on the region.
 
         Returns:
             Self for method chaining
@@ -753,8 +792,11 @@ class Page(
         if not isinstance(region, Region):
             raise TypeError("region must be a Region object")
 
-        # Set the source and name
-        region.source = "named"
+        # Respect an explicitly provided source, otherwise keep any existing label.
+        if source is not None:
+            region.source = source
+        elif getattr(region, "source", None) is None:
+            region.source = "named"
 
         if name:
             region.name = name
@@ -769,13 +811,20 @@ class Page(
 
         return self
 
-    def add_regions(self, regions: List["Region"], prefix: Optional[str] = None) -> "Page":
+    def add_regions(
+        self,
+        regions: List["Region"],
+        prefix: Optional[str] = None,
+        *,
+        source: Optional[str] = None,
+    ) -> "Page":
         """
         Add multiple regions to the page.
 
         Args:
             regions: List of Region objects to add
             prefix: Optional prefix for automatic naming (regions will be named prefix_1, prefix_2, etc.)
+            source: Optional provenance label applied to each region.
 
         Returns:
             Self for method chaining
@@ -783,13 +832,69 @@ class Page(
         if prefix:
             # Add with automatic sequential naming
             for i, region in enumerate(regions):
-                self.add_region(region, name=f"{prefix}_{i+1}")
+                self.add_region(region, name=f"{prefix}_{i+1}", source=source)
         else:
             # Add without names
             for region in regions:
-                self.add_region(region)
+                self.add_region(region, source=source)
 
         return self
+
+    def remove_regions(
+        self,
+        *,
+        source: Optional[str] = None,
+        region_type: Optional[str] = None,
+        predicate: Optional[Callable[["Region"], bool]] = None,
+    ) -> int:
+        """
+        Remove regions from the page based on optional filters.
+
+        Args:
+            source: Match regions whose ``region.source`` equals this string.
+            region_type: Match regions whose ``region.region_type`` equals this string.
+            predicate: Additional callable that returns True when a region should be removed.
+
+        Returns:
+            The number of regions removed.
+        """
+
+        def _matches(region: "Region") -> bool:
+            if source is not None and getattr(region, "source", None) != source:
+                return False
+            if region_type is not None and getattr(region, "region_type", None) != region_type:
+                return False
+            if predicate is not None and not predicate(region):
+                return False
+            return True
+
+        removed = 0
+
+        # Remove from element manager, if available
+        if hasattr(self, "_element_mgr") and hasattr(self._element_mgr, "regions"):
+            regions_list = getattr(self._element_mgr, "regions")
+            if isinstance(regions_list, list):
+                to_remove = [region for region in regions_list if _matches(region)]
+                for region in to_remove:
+                    regions_list.remove(region)
+                removed += len(to_remove)
+
+        # Remove from detected collection
+        detected = self._regions.get("detected", [])
+        if detected:
+            retained = [region for region in detected if not _matches(region)]
+            removed += len(detected) - len(retained)
+            self._regions["detected"] = retained
+
+        # Remove from named collection
+        named = self._regions.get("named", {})
+        if named:
+            keys_to_delete = [key for key, region in named.items() if _matches(region)]
+            for key in keys_to_delete:
+                del named[key]
+                removed += 1
+
+        return removed
 
     def _get_exclusion_regions(self, include_callable=True, debug=False) -> List["Region"]:
         """
@@ -2875,29 +2980,11 @@ class Page(
         Returns:
             Self for method chaining.
         """
-        if (
-            not hasattr(self._element_mgr, "regions")
-            or not hasattr(self._element_mgr, "_elements")
-            or "regions" not in self._element_mgr._elements
-        ):
-            logger.debug(
-                f"Page {self.index}: No regions found in ElementManager, nothing to clear."
-            )
-            self._regions["detected"] = []  # Ensure page's list is also clear
-            return self
-
-        # Filter ElementManager's list to keep only non-detected regions
-        original_count = len(self._element_mgr.regions)
-        self._element_mgr._elements["regions"] = [
-            r for r in self._element_mgr.regions if getattr(r, "source", None) != "detected"
-        ]
-        new_count = len(self._element_mgr.regions)
-        removed_count = original_count - new_count
-
-        # Clear the page's specific list of detected regions
-        self._regions["detected"] = []
-
-        logger.info(f"Page {self.index}: Cleared {removed_count} detected layout regions.")
+        removed_count = self.remove_regions(source="detected")
+        if removed_count:
+            logger.info(f"Page {self.index}: Cleared {removed_count} detected layout regions.")
+        else:
+            logger.debug(f"Page {self.index}: No detected layout regions to clear.")
         return self
 
     def get_section_between(
@@ -3828,13 +3915,7 @@ class Page(
         """
         logger.info(f"Page {self.number}: Removing all text elements...")
 
-        # Remove all words and chars from the element manager
-        removed_words = len(self._element_mgr.words)
-        removed_chars = len(self._element_mgr.chars)
-
-        # Clear the lists
-        self._element_mgr._elements["words"] = []
-        self._element_mgr._elements["chars"] = []
+        removed_words, removed_chars = self._element_mgr.clear_text_layer()
 
         logger.info(
             f"Page {self.number}: Removed {removed_words} words and {removed_chars} characters"

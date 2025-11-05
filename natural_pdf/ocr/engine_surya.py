@@ -1,6 +1,6 @@
 # ocr_engine_surya.py
 import importlib.util
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Set
 
 from PIL import Image
 
@@ -13,10 +13,11 @@ class SuryaOCREngine(OCREngine):
 
     def __init__(self):
         super().__init__()
-        self._recognition_predictor = None
-        self._detection_predictor = None
-        self._surya_recognition = None
-        self._surya_detection = None
+        self._recognition_predictor: Optional[Any] = None
+        self._detection_predictor: Optional[Any] = None
+        self._surya_recognition: Optional[Any] = None
+        self._surya_detection: Optional[Any] = None
+        self._langs: Sequence[str] = self.DEFAULT_LANGUAGES
 
     def _initialize_model(
         self, languages: List[str], device: str, options: Optional[BaseOCROptions]
@@ -25,18 +26,18 @@ class SuryaOCREngine(OCREngine):
         if not self.is_available():
             raise ImportError("Surya OCR library is not installed or available.")
 
-        self._langs = languages
+        self._langs = languages or self.DEFAULT_LANGUAGES
 
-        from surya.detection import DetectionPredictor
-        from surya.recognition import RecognitionPredictor
+        from surya.detection import DetectionPredictor  # type: ignore[import-untyped]
+        from surya.recognition import RecognitionPredictor  # type: ignore[import-untyped]
 
         self._surya_recognition = RecognitionPredictor
         self._surya_detection = DetectionPredictor
         self.logger.info("Surya modules imported successfully.")
 
-        predictor_args = {}  # Configure if needed
+        predictor_args: Dict[str, Any] = {}
         # Filter only allowed Surya args (currently none, but placeholder for future)
-        allowed_args = set()  # Update if Surya supports constructor args
+        allowed_args: Set[str] = set()
         filtered_args = {k: v for k, v in predictor_args.items() if k in allowed_args}
         dropped = set(predictor_args) - allowed_args
         if dropped:
@@ -54,17 +55,17 @@ class SuryaOCREngine(OCREngine):
         return image
 
     def _process_single_image(
-        self, image: Image.Image, detect_only: bool, options: Optional[SuryaOCROptions]
+        self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
     ) -> Any:
         """Process a single image with Surya OCR."""
         if not self._recognition_predictor or not self._detection_predictor:
             raise RuntimeError("Surya predictors are not initialized.")
 
-        langs = (
-            [self._langs]  # Send all languages together in one list per image
-            if hasattr(self, "_langs")
-            else [[self.DEFAULT_LANGUAGES[0]]]
-        )
+        if not isinstance(image, Image.Image):
+            raise TypeError("SuryaOCREngine expects PIL images after preprocessing")
+
+        langs = [list(self._langs)]
+        surya_options = options if isinstance(options, SuryaOCROptions) else None
 
         # Surya expects lists of images, so we need to wrap our single image
         if detect_only:
@@ -104,7 +105,7 @@ class SuryaOCREngine(OCREngine):
         self, raw_results: Any, min_confidence: float, detect_only: bool
     ) -> List[TextRegion]:
         """Convert Surya results to standardized TextRegion objects."""
-        standardized_regions = []
+        standardized_regions: List[TextRegion] = []
 
         raw_result = raw_results
         if isinstance(raw_results, list) and len(raw_results) > 0:
@@ -130,12 +131,10 @@ class SuryaOCREngine(OCREngine):
                 ) from e
 
             if detect_only:
-                # For detect_only, text and confidence are None
-                standardized_regions.append(TextRegion(bbox, text=None, confidence=None))
+                standardized_regions.append(TextRegion(bbox, "", 0.0))
             else:
-                # For full OCR, extract text and confidence, then filter
-                text = line.text if hasattr(line, "text") else ""
-                confidence = line.confidence
+                text = getattr(line, "text", "")
+                confidence = float(getattr(line, "confidence", 0.0))
                 if confidence >= min_confidence:
                     standardized_regions.append(TextRegion(bbox, text, confidence))
 

@@ -17,12 +17,12 @@ class ExportMixin:
 
     def export_analyses(
         self,
-        output_path: str,
+        output_path: Union[str, Path],
         analysis_keys: Union[str, List[str]],
         format: str = "json",
         include_content: bool = True,
         include_images: bool = False,
-        image_dir: Optional[str] = None,
+        image_dir: Optional[Union[str, Path]] = None,
         image_format: str = "jpg",
         image_resolution: int = 72,
         overwrite: bool = True,
@@ -59,18 +59,22 @@ class ExportMixin:
             raise FileExistsError(f"Output file {output_path} already exists and overwrite=False")
 
         # Prepare image directory if needed
+        image_path: Optional[Path]
         if include_images:
             if image_dir is None:
-                image_dir = output_path.parent / f"{output_path.stem}_images"
-            os.makedirs(image_dir, exist_ok=True)
-            image_dir = Path(image_dir)  # Convert to Path object
+                image_path = output_path.parent / f"{output_path.stem}_images"
+            else:
+                image_path = Path(image_dir)
+            os.makedirs(image_path, exist_ok=True)
+        else:
+            image_path = None
 
         # Gather data from collection
         data = self._gather_analysis_data(
             analysis_keys=analysis_keys,
             include_content=include_content,
             include_images=include_images,
-            image_dir=image_dir,
+            image_dir=image_path,
             image_format=image_format,
             image_resolution=image_resolution,
         )
@@ -111,27 +115,29 @@ class ExportMixin:
     def _export_to_csv(self, data: List[Dict[str, Any]], output_path: Path, **kwargs) -> str:
         """Export data to CSV format."""
         try:
-            import pandas as pd
+            import pandas as pd  # type: ignore[import-untyped]
 
             # Normalize nested data
             df = pd.json_normalize(data)
             df.to_csv(output_path, index=False, **kwargs)
             logger.info(f"Exported analysis data to {output_path}")
             return str(output_path)
-        except ImportError:
-            raise ImportError("Pandas is required for CSV export. Install with: pip install pandas")
+        except ImportError as exc:
+            raise ImportError(
+                "Pandas is required for CSV export. Install with: pip install pandas"
+            ) from exc
 
     def _export_to_excel(self, data: List[Dict[str, Any]], output_path: Path, **kwargs) -> str:
         """Export data to Excel format."""
         try:
-            import pandas as pd
+            import pandas as pd  # type: ignore[import-untyped]
 
             # Normalize nested data
             df = pd.json_normalize(data)
             df.to_excel(output_path, index=False, **kwargs)
             logger.info(f"Exported analysis data to {output_path}")
             return str(output_path)
-        except ImportError:
+        except ImportError as exc:
             raise ImportError(
                 "Pandas and openpyxl are required for Excel export. Install with: pip install pandas openpyxl"
-            )
+            ) from exc

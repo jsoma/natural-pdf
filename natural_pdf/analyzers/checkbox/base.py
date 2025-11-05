@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from PIL import Image
 
@@ -161,14 +161,14 @@ class CheckboxDetector(ABC):
             return detections
 
         # Sort by confidence (descending), then by area (ascending) to prefer smaller boxes
-        def sort_key(det):
+        def sort_key(det: Dict[str, Any]) -> Tuple[float, float]:
             bbox = det["bbox"]
             area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
             return (-det["confidence"], area)
 
         sorted_detections = sorted(detections, key=sort_key)
 
-        keep = []
+        keep: List[Dict[str, Any]] = []
         for i, det in enumerate(sorted_detections):
             should_keep = True
             det_bbox = det["bbox"]
@@ -189,7 +189,9 @@ class CheckboxDetector(ABC):
         logger.info(f"NMS: Reduced {len(detections)} detections to {len(keep)}")
         return keep
 
-    def _boxes_overlap(self, box1: tuple, box2: tuple) -> bool:
+    def _boxes_overlap(
+        self, box1: Tuple[float, float, float, float], box2: Tuple[float, float, float, float]
+    ) -> bool:
         """Check if two boxes have any overlap at all."""
         x1_min, y1_min, x1_max, y1_max = box1
         x2_min, y2_min, x2_max, y2_max = box2
@@ -203,7 +205,9 @@ class CheckboxDetector(ABC):
         # If we get here, boxes overlap
         return True
 
-    def _compute_intersection_ratio(self, box1: tuple, box2: tuple) -> float:
+    def _compute_intersection_ratio(
+        self, box1: Tuple[float, float, float, float], box2: Tuple[float, float, float, float]
+    ) -> float:
         """
         Compute intersection ratio relative to the smaller box.
         This is more aggressive than IoU for checkbox detection.
@@ -233,7 +237,9 @@ class CheckboxDetector(ABC):
 
         return inter_area / smaller_area
 
-    def _compute_iou(self, box1: tuple, box2: tuple) -> float:
+    def _compute_iou(
+        self, box1: Tuple[float, float, float, float], box2: Tuple[float, float, float, float]
+    ) -> float:
         """Compute IoU between two boxes."""
         x1_min, y1_min, x1_max, y1_max = box1
         x2_min, y2_min, x2_max, y2_max = box2

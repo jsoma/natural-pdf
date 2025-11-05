@@ -25,7 +25,8 @@ from natural_pdf.tables import TableResult
 if TYPE_CHECKING:
     from PIL.Image import Image as PIL_Image  # For type hints
 
-    from natural_pdf.core.highlighting_service import HighlightContext
+    from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
+    from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element as PhysicalElement
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region as PhysicalRegion
@@ -50,7 +51,7 @@ class FlowRegion(Visualizable):
         self,
         flow: "Flow",
         constituent_regions: List["PhysicalRegion"],
-        source_flow_element: "FlowElement",
+        source_flow_element: Optional["FlowElement"] = None,
         boundary_element_found: Optional["PhysicalElement"] = None,
     ):
         """
@@ -66,7 +67,7 @@ class FlowRegion(Visualizable):
         """
         self.flow: "Flow" = flow
         self.constituent_regions: List["PhysicalRegion"] = constituent_regions
-        self.source_flow_element: "FlowElement" = source_flow_element
+        self.source_flow_element: Optional["FlowElement"] = source_flow_element
         self.boundary_element_found: Optional["PhysicalElement"] = boundary_element_found
 
         # Add attributes for grid building, similar to Region
@@ -79,22 +80,103 @@ class FlowRegion(Visualizable):
         self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
 
-    def _get_highlighter(self):
-        """Get the highlighting service from constituent regions."""
+    @property
+    def pages(self) -> Tuple["Page", ...]:
+        """Return the distinct pages covered by this flow region."""
+        seen: Set[int] = set()
+        ordered_pages: List["Page"] = []
+        for region in self.constituent_regions:
+            page = getattr(region, "page", None)
+            if page is None:
+                continue
+            marker = id(page)
+            if marker not in seen:
+                seen.add(marker)
+                ordered_pages.append(page)
+        return tuple(ordered_pages)
+
+    @property
+    def page(self) -> "Page":
+        """Return the single page for this region, raising if multi-page."""
+        pages = self.pages
+        if not pages:
+            raise AttributeError("FlowRegion has no associated pages")
+        if len(pages) > 1:
+            raise AttributeError("FlowRegion spans multiple pages; access .pages instead of .page")
+        return pages[0]
+
+    def get_highlighter(self) -> "HighlightingService":
+        """Resolve a highlighting service from the constituent regions."""
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions to get highlighter from")
 
-        # Get highlighter from first constituent region
-        first_region = self.constituent_regions[0]
-        if hasattr(first_region, "_highlighter"):
-            return first_region._highlighter
-        elif hasattr(first_region, "page") and hasattr(first_region.page, "_highlighter"):
-            return first_region.page._highlighter
-        else:
-            raise RuntimeError(
-                f"Cannot find HighlightingService from FlowRegion constituent regions. "
-                f"First region type: {type(first_region).__name__}"
-            )
+        sentinel = object()
+        for region in self.constituent_regions:
+            # Prefer explicit provider methods
+            if hasattr(region, "get_highlighter"):
+                try:
+                    return region.get_highlighter()  # type: ignore[attr-defined]
+                except AttributeError:
+                    pass
+
+            if hasattr(region, "_highlighter"):
+                return region._highlighter  # type: ignore[attr-defined]
+
+            page = getattr(region, "page", None)
+            if page is not None and hasattr(page, "_highlighter"):
+                return page._highlighter  # type: ignore[attr-defined]
+
+        raise RuntimeError("Cannot find HighlightingService from FlowRegion constituent regions.")
+
+    def _get_highlighter(self):
+        """Compatibility hook for Visualizable mixin."""
+        return self.get_highlighter()
+
+    def get_config(self, key: str, default: Any = None, *, scope: str = "region") -> Any:
+        """Delegate configuration lookup across constituent regions and flow."""
+        sentinel = object()
+        for region in self.constituent_regions:
+            if hasattr(region, "get_config"):
+                try:
+                    value = region.get_config(key, sentinel, scope=scope)  # type: ignore[attr-defined]
+                except ValueError:
+                    continue
+                if value is not sentinel:
+                    return value
+
+        flow = getattr(self, "flow", None)
+        if flow is not None and hasattr(flow, "get_config"):
+            value = flow.get_config(key, sentinel, scope=scope)  # type: ignore[attr-defined]
+            if value is not sentinel:
+                return value
+
+        pages = self.pages
+        for page in pages:
+            page_cfg = getattr(page, "_config", {})
+            if isinstance(page_cfg, dict) and key in page_cfg:
+                return page_cfg[key]
+            pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
+            pdf_cfg = getattr(pdf_obj, "_config", {}) if pdf_obj is not None else {}
+            if isinstance(pdf_cfg, dict) and key in pdf_cfg:
+                return pdf_cfg[key]
+
+        return default
+
+    def get_manager(self, name: str) -> Any:
+        """Resolve managers via constituent regions, flow, or parent PDF."""
+        for region in self.constituent_regions:
+            if hasattr(region, "get_manager"):
+                return region.get_manager(name)  # type: ignore[attr-defined]
+            page = getattr(region, "page", None)
+            pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
+            if pdf_obj is not None and hasattr(pdf_obj, "get_manager"):
+                return pdf_obj.get_manager(name)
+
+        flow = getattr(self, "flow", None)
+        if flow is not None and hasattr(flow, "get_manager"):
+            return flow.get_manager(name)  # type: ignore[attr-defined]
+
+        raise AttributeError(f"Cannot resolve manager '{name}' for FlowRegion")
 
     def _get_render_specs(
         self,
@@ -326,15 +408,13 @@ class FlowRegion(Visualizable):
         Returns:
             An ElementCollection containing all unique elements.
         """
-        from natural_pdf.elements.element_collection import (
-            ElementCollection as RuntimeElementCollection,  # Local import
-        )
+        from natural_pdf.elements.element_collection import ElementCollection
 
         if self._cached_elements is not None and apply_exclusions:  # Simple cache check
             return self._cached_elements
 
         if not self.constituent_regions:
-            return RuntimeElementCollection([])
+            return ElementCollection([])
 
         all_physical_elements: List["PhysicalElement"] = []  # Stringized item type
         seen_elements = (
@@ -366,7 +446,7 @@ class FlowRegion(Visualizable):
             )
             sorted_physical_elements = all_physical_elements
 
-        result_collection = RuntimeElementCollection(sorted_physical_elements)
+        result_collection = ElementCollection(sorted_physical_elements)
         if apply_exclusions:
             self._cached_elements = result_collection
         return result_collection
@@ -426,7 +506,7 @@ class FlowRegion(Visualizable):
     ) -> "ElementCollection":
         """Find all matching elements across constituent regions."""
 
-        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         combined: List["PhysicalElement"] = []
         for region in self.constituent_regions:
@@ -457,7 +537,7 @@ class FlowRegion(Visualizable):
                 unique.append(el)
                 seen.add(el)
 
-        return RuntimeElementCollection(unique)
+        return ElementCollection(unique)
 
     def highlight(
         self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs

@@ -286,20 +286,15 @@ class LayoutAnalyzer:
 
         # --- Store Results ---
         logger.debug(f"Storing {len(layout_regions)} processed layout regions (mode: {existing}).")
-        # Handle existing regions based on mode
-        if existing.lower() == "append":
-            if "detected" not in self._page._regions:
-                self._page._regions["detected"] = []
-            self._page._regions["detected"].extend(layout_regions)
-        else:  # Default is 'replace'
-            self._page._regions["detected"] = layout_regions
+        append_mode = existing.lower() == "append"
+        if not append_mode:
+            self._page.clear_detected_layout_regions()
 
-        # Add regions to the element manager
         for region in layout_regions:
-            self._page._element_mgr.add_region(region)
+            self._page.add_region(region, source="detected")
 
         # Store layout regions in a dedicated attribute for easier access
-        self._page.detected_layout_regions = self._page._regions["detected"]
+        self._page.detected_layout_regions = self._page._regions.get("detected", [])
         logger.info(f"Layout analysis complete for page {self._page.number}.")
 
         # --- Auto-create cells if requested by TATR options ---

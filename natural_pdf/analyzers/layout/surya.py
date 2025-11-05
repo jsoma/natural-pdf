@@ -1,7 +1,7 @@
 # layout_detector_surya.py
 import importlib.util
 import logging
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, cast
 
 from PIL import Image
 
@@ -12,14 +12,37 @@ logger = logging.getLogger(__name__)
 
 # Check for dependencies
 surya_spec = importlib.util.find_spec("surya")
-LayoutPredictor = None
-TableRecPredictor = None
+LayoutPredictor: Optional[Any] = None
+TableRecPredictor: Optional[Any] = None
+expand_bbox: Optional[Callable[[List[float]], List[float]]] = None
+rescale_bbox: Optional[Callable[[List[float], Tuple[int, int], Tuple[int, int]], List[float]]] = (
+    None
+)
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.region import Region
+
+    PageRefType = Region
+else:
+    PageRefType = Any
 
 if surya_spec:
     try:
-        from surya.common.util import expand_bbox, rescale_bbox
-        from surya.layout import LayoutPredictor
-        from surya.table_rec import TableRecPredictor
+        from surya.common.util import (
+            expand_bbox as surya_expand_bbox,  # type: ignore[import-untyped]
+        )
+        from surya.common.util import rescale_bbox as surya_rescale_bbox
+        from surya.layout import (
+            LayoutPredictor as SuryaLayoutPredictor,  # type: ignore[import-untyped]
+        )
+        from surya.table_rec import (
+            TableRecPredictor as SuryaTableRecPredictor,  # type: ignore[import-untyped]
+        )
+
+        expand_bbox = surya_expand_bbox
+        rescale_bbox = surya_rescale_bbox
+        LayoutPredictor = SuryaLayoutPredictor
+        TableRecPredictor = SuryaTableRecPredictor
     except ImportError as e:
         logger.warning(f"Could not import Surya dependencies (layout and/or table_rec): {e}")
 else:
@@ -51,7 +74,7 @@ class SuryaLayoutDetector(LayoutDetector):
             "table-row",
             "table-column",
         }
-        self._page_ref = None  # To store page reference from options
+        self._page_ref: Optional[PageRefType] = None  # To store page reference from options
 
     def is_available(self) -> bool:
         return LayoutPredictor is not None and TableRecPredictor is not None
@@ -72,6 +95,8 @@ class SuryaLayoutDetector(LayoutDetector):
             raise TypeError("Incorrect options type provided for Surya model loading.")
         self.logger.info(f"Loading Surya models (device={options.device})...")
         models = {}
+        assert LayoutPredictor is not None
+        assert TableRecPredictor is not None
         models["layout"] = LayoutPredictor()
         models["table_rec"] = TableRecPredictor()
         self.logger.info("Surya LayoutPredictor and TableRecPredictor loaded.")
@@ -96,13 +121,18 @@ class SuryaLayoutDetector(LayoutDetector):
             )
 
         # Extract page reference and scaling factors from extra_args (passed by LayoutAnalyzer)
-        self._page_ref = options.extra_args.get("_page_ref")
+        self._page_ref = cast(Optional[PageRefType], options.extra_args.get("_page_ref"))
 
         # We still need this check, otherwise later steps that need these vars will fail
         can_do_table_rec = options.recognize_table_structure
         if options.recognize_table_structure and not can_do_table_rec:
             logger.warning(
                 "Surya table recognition cannot proceed without page reference. Disabling."
+            )
+            options.recognize_table_structure = False
+        if options.recognize_table_structure and (expand_bbox is None or rescale_bbox is None):
+            logger.warning(
+                "Surya table recognition functions unavailable; disabling table recognition."
             )
             options.recognize_table_structure = False
 
@@ -113,8 +143,8 @@ class SuryaLayoutDetector(LayoutDetector):
             self.validate_classes(options.exclude_classes)
 
         models = self._get_model(options)
-        layout_predictor = models["layout"]
-        table_rec_predictor = models["table_rec"]
+        layout_predictor = cast(Any, models["layout"])
+        table_rec_predictor = cast(Any, models["table_rec"])
 
         input_image = image.convert("RGB")
 
@@ -180,11 +210,18 @@ class SuryaLayoutDetector(LayoutDetector):
         self.logger.info(
             f"Attempting Surya table structure recognition for {len(tables_to_process)} tables..."
         )
-        high_res_crops = []
+        high_res_crops: List[Image.Image] = []
 
-        high_res_dpi = getattr(self._page_ref._parent, "_config", {}).get(
-            "surya_table_rec_dpi", 192
-        )
+        if self._page_ref is None:
+            self.logger.warning(
+                "Page reference not available; skipping Surya table structure recognition."
+            )
+            return initial_layout_detections
+
+        parent_doc = getattr(self._page_ref, "_parent", None)
+        config = getattr(parent_doc, "_config", {}) if parent_doc is not None else {}
+
+        high_res_dpi = config.get("surya_table_rec_dpi", 192)
         # Use render() for clean image without highlights
         high_res_page_image = self._page_ref.render(resolution=high_res_dpi)
 
@@ -195,6 +232,7 @@ class SuryaLayoutDetector(LayoutDetector):
 
         source_tables = []
         for i, table_detection in enumerate(tables_to_process):
+            assert rescale_bbox is not None and expand_bbox is not None
             highres_bbox = rescale_bbox(
                 list(table_detection["bbox"]), image.size, high_res_page_image.size
             )

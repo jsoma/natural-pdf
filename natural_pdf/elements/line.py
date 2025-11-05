@@ -101,19 +101,31 @@ class LineElement(Element):
             return "horizontal"
         elif self.is_vertical:
             return "vertical"
+        else:
+            return "diagonal"
 
-    def extract_text(self, keep_blank_chars=True, apply_exclusions=True, **kwargs) -> str:
+    def extract_text(
+        self,
+        preserve_whitespace: bool = True,
+        use_exclusions: bool = True,
+        **kwargs,
+    ) -> str:
         """
         Lines don't have text, so this returns an empty string.
 
         Args:
-            keep_blank_chars: Whether to keep blank characters (default: True)
-            apply_exclusions: Whether to apply exclusion regions (default: True)
-            **kwargs: Additional extraction parameters
+            preserve_whitespace: Unused, kept for API compatibility with Element.
+            use_exclusions: Unused, kept for API compatibility with Element.
+            **kwargs: Additional extraction parameters (ignored).
 
         Returns:
             Empty string
         """
+        # Backward compatibility: honour legacy keyword names if provided.
+        if "keep_blank_chars" in kwargs:
+            preserve_whitespace = kwargs.pop("keep_blank_chars")  # noqa: F841
+        if "apply_exclusions" in kwargs:
+            use_exclusions = kwargs.pop("apply_exclusions")  # noqa: F841
         return ""
 
     def __repr__(self) -> str:

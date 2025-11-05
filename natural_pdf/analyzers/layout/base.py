@@ -5,14 +5,7 @@ from typing import Any, Dict, List, Set
 
 from PIL import Image
 
-# Assuming layout_options defines BaseLayoutOptions
-try:
-    from .layout_options import BaseLayoutOptions
-except ImportError:
-    # Placeholder if run standalone or options not found
-    class BaseLayoutOptions:
-        pass
-
+from .layout_options import BaseLayoutOptions
 
 logger = logging.getLogger(__name__)
 

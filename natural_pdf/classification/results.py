@@ -76,7 +76,7 @@ class ClassificationResult(Mapping):
         }
 
     @property
-    def top_category(self) -> str:
+    def top_category(self) -> Optional[str]:
         """Returns the category with the highest score."""
         return self.category
 

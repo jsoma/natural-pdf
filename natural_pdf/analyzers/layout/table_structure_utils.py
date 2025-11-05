@@ -1,12 +1,12 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
 
 def group_cells_into_rows_and_columns(
     cell_boxes: List[Tuple[float, float, float, float]],
-    row_tol: float = None,
-    col_tol: float = None,
+    row_tol: Optional[float] = None,
+    col_tol: Optional[float] = None,
 ) -> Tuple[List[Tuple[float, float, float, float]], List[Tuple[float, float, float, float]]]:
     """
     Groups cell bounding boxes into rows and columns using spatial proximity.
@@ -36,7 +36,7 @@ def group_cells_into_rows_and_columns(
     col_tol = col_tol if col_tol is not None else max(2.0, 0.1 * median_width)
 
     # --- Group into rows ---
-    row_groups = []
+    row_groups: List[List[int]] = []
     for i, yc in enumerate(y_centers):
         placed = False
         for group in row_groups:
@@ -49,7 +49,7 @@ def group_cells_into_rows_and_columns(
             row_groups.append([i])
 
     # --- Group into columns ---
-    col_groups = []
+    col_groups: List[List[int]] = []
     for i, xc in enumerate(x_centers):
         placed = False
         for group in col_groups:

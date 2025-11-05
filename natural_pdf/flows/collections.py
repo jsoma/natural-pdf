@@ -5,6 +5,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Optional,
     Sequence,
@@ -12,6 +13,7 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    overload,
 )
 
 from PIL import Image  # Single import for PIL.Image module
@@ -44,13 +46,50 @@ class FlowElementCollection(MutableSequence[T_FEC]):
             flow_elements if flow_elements is not None else []
         )
 
-    def __getitem__(self, index: int) -> "FlowElement":
+    @overload
+    def __getitem__(self, index: int, /) -> "FlowElement": ...
+
+    @overload
+    def __getitem__(self, index: slice) -> "FlowElementCollection": ...
+
+    def __getitem__(
+        self, index: Union[int, slice]
+    ) -> Union["FlowElement", "FlowElementCollection"]:
+        if isinstance(index, slice):
+            return FlowElementCollection(self._flow_elements[index])
         return self._flow_elements[index]
 
-    def __setitem__(self, index: int, value: "FlowElement") -> None:
-        self._flow_elements[index] = value
+    @overload
+    def __setitem__(self, index: int, value: "FlowElement", /) -> None: ...
 
-    def __delitem__(self, index: int) -> None:
+    @overload
+    def __setitem__(self, index: slice, value: Iterable["FlowElement"]) -> None: ...
+
+    def __setitem__(
+        self, index: Union[int, slice], value: Union["FlowElement", Iterable["FlowElement"]]
+    ) -> None:
+        if isinstance(index, slice):
+            if isinstance(value, FlowElementCollection):
+                replacement = list(value._flow_elements)
+            elif isinstance(value, Iterable):
+                replacement = list(value)
+            else:
+                raise TypeError(
+                    "Slice assignment requires a FlowElementCollection or sequence of FlowElement instances."
+                )
+            self._flow_elements[index] = replacement
+        else:
+            if isinstance(value, Iterable):
+                raise TypeError("Single-index assignment requires a FlowElement instance.")
+            self._flow_elements[index] = value  # type: ignore[assignment]
+
+    @overload
+    def __delitem__(self, index: int, /) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    def __delitem__(self, index: Union[int, slice]) -> None:
         del self._flow_elements[index]
 
     def __len__(self) -> int:
@@ -354,13 +393,48 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
     def __init__(self, flow_regions: List["FlowRegion"]):
         self._flow_regions: List["FlowRegion"] = flow_regions if flow_regions is not None else []
 
-    def __getitem__(self, index: int) -> "FlowRegion":
+    @overload
+    def __getitem__(self, index: int, /) -> "FlowRegion": ...
+
+    @overload
+    def __getitem__(self, index: slice) -> "FlowRegionCollection": ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union["FlowRegion", "FlowRegionCollection"]:
+        if isinstance(index, slice):
+            return FlowRegionCollection(self._flow_regions[index])
         return self._flow_regions[index]
 
-    def __setitem__(self, index: int, value: "FlowRegion") -> None:
-        self._flow_regions[index] = value
+    @overload
+    def __setitem__(self, index: int, value: "FlowRegion", /) -> None: ...
 
-    def __delitem__(self, index: int) -> None:
+    @overload
+    def __setitem__(self, index: slice, value: Iterable["FlowRegion"]) -> None: ...
+
+    def __setitem__(
+        self, index: Union[int, slice], value: Union["FlowRegion", Iterable["FlowRegion"]]
+    ) -> None:
+        if isinstance(index, slice):
+            if isinstance(value, FlowRegionCollection):
+                replacement = list(value._flow_regions)
+            elif isinstance(value, Iterable):
+                replacement = list(value)
+            else:
+                raise TypeError(
+                    "Slice assignment requires a FlowRegionCollection or sequence of FlowRegion instances."
+                )
+            self._flow_regions[index] = replacement
+        else:
+            if isinstance(value, Iterable):
+                raise TypeError("Single-index assignment requires a FlowRegion instance.")
+            self._flow_regions[index] = value  # type: ignore[assignment]
+
+    @overload
+    def __delitem__(self, index: int, /) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    def __delitem__(self, index: Union[int, slice]) -> None:
         del self._flow_regions[index]
 
     def __len__(self) -> int:
@@ -474,11 +548,11 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
     ) -> "ElementCollection":
-        from natural_pdf.elements.collections import ElementCollection as RuntimeElementCollection
+        from natural_pdf.elements.element_collection import ElementCollection
 
         all_physical_elements: List["PhysicalElement"] = []
         for fr in self._flow_regions:
-            elements_in_fr: RuntimeElementCollection = fr.find_all(
+            elements_in_fr: ElementCollection = fr.find_all(
                 selector=selector,
                 text=text,
                 overlap=overlap,
@@ -499,7 +573,7 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
             if el not in seen:
                 unique_elements.append(el)
                 seen.add(el)
-        return RuntimeElementCollection(unique_elements)
+        return ElementCollection(unique_elements)
 
     def highlight(
         self,

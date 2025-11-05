@@ -30,7 +30,7 @@ def mirror_brackets(text: str) -> str:  # pragma: no cover
     if not text:
         return text
     # Fast path: only allocate when needed
-    out_chars = []
+    out_chars: list[str] = []
     append = out_chars.append
     for ch in text:
         append(_ASCII_MIRROR.get(ord(ch), ch))

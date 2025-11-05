@@ -34,7 +34,7 @@ def test_overlapping_flowregions_merge_specs():
     )
 
     # Create collection with overlapping FlowRegions
-    collection = ElementCollection([flowregion1, flowregion2])
+    collection = ElementCollection([flowregion1, flowregion2])  # type: ignore[arg-type]
 
     # Get render specs
     specs = collection._get_render_specs(mode="show")
@@ -79,7 +79,7 @@ def test_mixed_flowregions_and_regions():
     regular_region = Region(pdf.pages[1], (0, 200, 612, 300))
 
     # Create collection
-    collection = ElementCollection([flowregion, regular_region])
+    collection = ElementCollection([flowregion, regular_region])  # type: ignore[arg-type]
 
     # Get render specs
     specs = collection._get_render_specs(mode="show")
@@ -125,7 +125,7 @@ def test_crop_bbox_merging():
     )
 
     # Create collection
-    collection = ElementCollection([flowregion1, flowregion2])
+    collection = ElementCollection([flowregion1, flowregion2])  # type: ignore[arg-type]
 
     # Get render specs with cropping
     specs = collection._get_render_specs(mode="show", crop=True)

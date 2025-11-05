@@ -1,6 +1,7 @@
 # natural_pdf/widgets/viewer.py
 
 import logging
+from typing import Any, Optional, Type
 
 from natural_pdf.utils.visualization import render_plain_page
 
@@ -8,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 # Initialize flag and module/class variables to None
 _IPYWIDGETS_AVAILABLE = False
-widgets = None
-InteractiveViewerWidget = None
+widgets: Any = None
+InteractiveViewerWidget: Optional[Type[Any]] = None
 
 try:
     # Attempt to import the core optional dependency
-    import ipywidgets as widgets_imported
+    import ipywidgets as widgets_imported  # type: ignore[import-untyped]
 
     widgets = widgets_imported  # Assign to the global name if import succeeds
     _IPYWIDGETS_AVAILABLE = True
@@ -29,7 +30,7 @@ try:
     from PIL import Image
 
     # --- Define Widget Class ---
-    class InteractiveViewerWidget(widgets.DOMWidget):
+    class _InteractiveViewerWidget(widgets.DOMWidget):
         def __init__(self, pdf_data=None, **kwargs):
             """
             Create an interactive PDF viewer widget.
@@ -81,10 +82,10 @@ try:
                     <button id="{self.widget_id}-reset-zoom" style="margin-right: 5px;">Reset</button>
                 </div>
                 <div style="display: flex; flex-direction: row;">
-                    <div class="pdf-outer-container" style="position: relative; overflow: hidden; border: 1px solid #ccc; flex-grow: 1;"> 
+                    <div class="pdf-outer-container" style="position: relative; overflow: hidden; border: 1px solid #ccc; flex-grow: 1;">
                         <div id="{self.widget_id}-zoom-pan-container" class="zoom-pan-container" style="position: relative; width: fit-content; height: fit-content; transform-origin: top left; cursor: grab;">
                         <!-- The image is rendered at scale, so its dimensions match scaled coordinates -->
-                            <img src="{page_image}" style="display: block; max-width: none; height: auto;" /> 
+                            <img src="{page_image}" style="display: block; max-width: none; height: auto;" />
                         <div id="{self.widget_id}-elements-layer" class="elements-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
             """
 
@@ -143,7 +144,7 @@ try:
 
                 # Add SVG rectangle using scaled coordinates and dimensions
                 container_html += f"""
-                            <rect data-element-id="{i}" x="{x0}" y="{y0}" width="{width}" height="{height}" 
+                            <rect data-element-id="{i}" x="{x0}" y="{y0}" width="{width}" height="{height}"
                                   fill="none" stroke="rgba(255, 165, 0, 0.85)" stroke-width="1.5" />
                 """
 
@@ -153,12 +154,12 @@ try:
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="{self.widget_id}-info-panel" class="info-panel" style="display: block; margin-left: 20px; padding: 10px; width: 300px; max-height: 80vh; overflow-y: auto; border: 1px solid #eee; background-color: #f9f9f9;">
                     <h4 style="margin-top: 0; margin-bottom: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Element Info</h4>
                     <pre id="{self.widget_id}-element-data" style="white-space: pre-wrap; word-break: break-all; font-size: 0.9em;"></pre>
                 </div>
-                
+
             </div>
             """
 
@@ -175,12 +176,12 @@ try:
             (function() {
                 // Store widget ID in a variable to avoid issues with string templates
                 const widgetId = "%s";
-                
+
                 // Initialize PDF viewer registry if it doesn't exist
                 if (!window.pdfViewerRegistry) {
                     window.pdfViewerRegistry = {};
                 }
-                
+
                 // Store PDF data for this widget
                 window.pdfViewerRegistry[widgetId] = {
                     initialData: %s,
@@ -195,7 +196,7 @@ try:
                     startTranslateY: 0, // Translate Y at drag start
                     justDragged: false // Flag to differentiate click from drag completion
                 };
-                
+
                 // Get references to elements
                 const viewerData = window.pdfViewerRegistry[widgetId];
                 const outerContainer = document.querySelector(`#${widgetId} .pdf-outer-container`);
@@ -204,43 +205,43 @@ try:
                 const zoomInButton = document.getElementById(`${widgetId}-zoom-in`);
                 const zoomOutButton = document.getElementById(`${widgetId}-zoom-out`);
                 const resetButton = document.getElementById(`${widgetId}-reset-zoom`);
-                
-                // --- Helper function to apply transform --- 
+
+                // --- Helper function to apply transform ---
                 function applyTransform() {
                     zoomPanContainer.style.transform = `translate(${viewerData.translateX}px, ${viewerData.translateY}px) scale(${viewerData.scale})`;
                 }
-                
-                // --- Zooming Logic --- 
+
+                // --- Zooming Logic ---
                 function handleZoom(event) {
                     event.preventDefault(); // Prevent default scroll
-                    
+
                     const zoomIntensity = 0.1;
                     const wheelDelta = event.deltaY < 0 ? 1 : -1; // +1 for zoom in, -1 for zoom out
                     const zoomFactor = Math.exp(wheelDelta * zoomIntensity);
                     const newScale = Math.max(0.5, Math.min(5, viewerData.scale * zoomFactor)); // Clamp scale
-                    
+
                     // Calculate mouse position relative to the outer container
                     const rect = outerContainer.getBoundingClientRect();
                     const mouseX = event.clientX - rect.left;
                     const mouseY = event.clientY - rect.top;
-                    
+
                     // Calculate the point in the content that the mouse is pointing to
                     const pointX = (mouseX - viewerData.translateX) / viewerData.scale;
                     const pointY = (mouseY - viewerData.translateY) / viewerData.scale;
-                    
+
                     // Update scale
                     viewerData.scale = newScale;
-                    
+
                     // Calculate new translation to keep the pointed-at location fixed
                     viewerData.translateX = mouseX - pointX * viewerData.scale;
                     viewerData.translateY = mouseY - pointY * viewerData.scale;
-                    
+
                     applyTransform();
                 }
-                
+
                 outerContainer.addEventListener('wheel', handleZoom);
-                
-                // --- Panning Logic --- 
+
+                // --- Panning Logic ---
                 const dragThreshold = 5; // Pixels to move before drag starts
 
                 function handleMouseDown(event) {
@@ -248,7 +249,7 @@ try:
                     if (event.target.tagName !== 'BUTTON') {
                         event.preventDefault();
                     }
-                    
+
                     viewerData.isDragging = true;
                     viewerData.startX = event.clientX;
                     viewerData.startY = event.clientY;
@@ -263,7 +264,7 @@ try:
 
                     const dx = event.clientX - viewerData.startX;
                     const dy = event.clientY - viewerData.startY;
-                    
+
                     // If we've moved past the threshold, it's a drag
                     if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
                          viewerData.justDragged = true;
@@ -278,22 +279,22 @@ try:
                     viewerData.isDragging = false;
                     zoomPanContainer.style.cursor = 'grab';
                 }
-                
+
                 zoomPanContainer.addEventListener('mousedown', handleMouseDown);
                 document.addEventListener('mousemove', handleMouseMove);
                 document.addEventListener('mouseup', handleMouseUp);
-                
+
                 // --- Button Controls ---
                 zoomInButton.addEventListener('click', () => {
                      viewerData.scale = Math.min(5, viewerData.scale * 1.2);
                      applyTransform();
                 });
-                
+
                  zoomOutButton.addEventListener('click', () => {
                      viewerData.scale = Math.max(0.5, viewerData.scale / 1.2);
                      applyTransform();
                 });
-                
+
                 resetButton.addEventListener('click', () => {
                     viewerData.scale = 1.0;
                     viewerData.translateX = 0;
@@ -306,10 +307,10 @@ try:
                     // Remove previous highlights on SVG rects
                     const allRects = zoomPanContainer.querySelectorAll('svg rect');
                     allRects.forEach(rect => {
-                        rect.style.stroke = 'rgba(255, 165, 0, 0.85)'; 
+                        rect.style.stroke = 'rgba(255, 165, 0, 0.85)';
                         rect.style.strokeWidth = '1.5';
                     });
-                    
+
                     // Highlight the new one
                     const targetRect = zoomPanContainer.querySelector(`svg rect[data-element-id='${elementId}']`);
                     if (targetRect) {
@@ -317,7 +318,7 @@ try:
                         targetRect.style.strokeWidth = '3';
                     }
                 }
-                
+
                 function updateInfoPanel(element) {
                     const infoPanel = document.getElementById(`${widgetId}-element-data`);
                     if (infoPanel) {
@@ -343,18 +344,18 @@ try:
                             viewerData.justDragged = false;
                             return;
                         }
-                        
+
                         event.stopPropagation(); // Stop click from propagating to the container
                         const elementId = this.getAttribute('data-element-id');
                         const elementData = viewerData.initialData.elements[elementId];
-                        
+
                         console.log('Clicked element:', elementData);
                         viewerData.selectedElement = elementData;
 
                         // Update UI
                         updateInfoPanel(elementData);
                         highlightElement(elementId);
-                        
+
                         // Example of sending data back to Python kernel
                         if (window.IPython && window.IPython.notebook && window.IPython.notebook.kernel) {
                             const command = `import json; from natural_pdf.widgets.viewer import InteractiveViewerWidget; InteractiveViewerWidget._handle_element_click(json.loads('${JSON.stringify(elementData)}'))`;
@@ -507,6 +508,8 @@ try:
                     InteractiveViewerWidget._on_element_click_callback(element_data)
                 except Exception as e:
                     logger.error(f"Error in element click callback: {e}", exc_info=True)
+
+    InteractiveViewerWidget = _InteractiveViewerWidget
 
 except ImportError:
     # This block runs if 'ipywidgets' is not installed
