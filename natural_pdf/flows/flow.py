@@ -747,6 +747,43 @@ class Flow(Visualizable):
         )
         return TableResult(aggregated_rows)
 
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        **kwargs,
+    ) -> List[List[List[Optional[str]]]]:
+        """Extract every table across all segments in reading order.
+
+        Args:
+            method: Optional table engine name. Mirrors :meth:`Flow.extract_table`.
+            table_settings: Base pdfplumber settings (copied per segment).
+            **kwargs: Additional keyword arguments forwarded to each segment's
+                :meth:`extract_tables` implementation (e.g., ``content_filter``).
+
+        Returns:
+            List of tables, where each table is represented as a list of rows.
+            The order matches the order of ``self.segments``.
+        """
+
+        if not self.segments:
+            return []
+
+        base_settings = table_settings.copy() if table_settings else None
+        all_tables: List[List[List[Optional[str]]]] = []
+
+        for segment in self.segments:
+            segment_settings = base_settings.copy() if base_settings else None
+            tables = segment.extract_tables(
+                method=method,
+                table_settings=segment_settings,
+                **kwargs,
+            )
+            if tables:
+                all_tables.extend(tables)
+
+        return all_tables
+
     def analyze_layout(
         self,
         engine: Optional[str] = None,

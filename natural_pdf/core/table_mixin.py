@@ -8,6 +8,11 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 from tqdm.auto import tqdm
 
 from natural_pdf.tables import TableResult
+from natural_pdf.tables.table_provider import (
+    normalize_table_settings,
+    resolve_table_engine_name,
+    run_table_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +69,8 @@ class TableExtractionMixin:
         Returns:
             Table data as a list of rows, where each row is a list of cell values (str or None).
         """
-        # Default settings if none provided
-        if table_settings is None:
-            table_settings = {}
+        # Default settings if none provided (copy to avoid caller mutation)
+        table_settings = table_settings.copy() if table_settings else {}
         if text_options is None:
             text_options = {}  # Initialize empty dict
 
@@ -84,7 +88,6 @@ class TableExtractionMixin:
             if hasattr(self, "model") and self.model == "tatr" and self.region_type == "table":
                 effective_method = "tatr"
             else:
-                # Try lattice first, then fall back to stream if no meaningful results
                 logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
 
                 try:
@@ -95,7 +98,7 @@ class TableExtractionMixin:
                         )
                         if self.intersects(c)
                     ]
-                except Exception as _cells_err:
+                except Exception:
                     cell_regions_in_table = []  # Fallback silently
 
                 if cell_regions_in_table:
@@ -110,42 +113,13 @@ class TableExtractionMixin:
                         )
                     )
 
-                try:
-                    logger.debug(f"Region {self.bbox}: Trying 'lattice' method first...")
-                    lattice_result = self.extract_table(
-                        "lattice", table_settings=table_settings.copy()
-                    )
-
-                    # Check if lattice found meaningful content
-                    if (
-                        lattice_result
-                        and len(lattice_result) > 0
-                        and any(
-                            any(cell and cell.strip() for cell in row if cell)
-                            for row in lattice_result
-                        )
-                    ):
-                        logger.debug(
-                            f"Region {self.bbox}: 'lattice' method found table with {len(lattice_result)} rows"
-                        )
-                        return lattice_result
-                    else:
-                        logger.debug(
-                            f"Region {self.bbox}: 'lattice' method found no meaningful content"
-                        )
-                except Exception as e:
-                    logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-
-                # Fall back to stream
-                logger.debug(f"Region {self.bbox}: Falling back to 'stream' method...")
-                return self.extract_table("stream", table_settings=table_settings.copy())
+                effective_method = None  # Let provider auto-engine decide
         else:
             effective_method = method
 
-        # Handle method aliases for pdfplumber
+        # Handle method aliases for pdfplumber-style engines
         if effective_method == "stream":
             logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
-            effective_method = "pdfplumber"
             # Set default text strategies if not already provided by the user
             table_settings.setdefault("vertical_strategy", "text")
             table_settings.setdefault("horizontal_strategy", "text")
@@ -153,78 +127,17 @@ class TableExtractionMixin:
             logger.debug(
                 "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
             )
-            effective_method = "pdfplumber"
             # Set default line strategies if not already provided by the user
             table_settings.setdefault("vertical_strategy", "lines")
             table_settings.setdefault("horizontal_strategy", "lines")
 
-        # Auto-inject tolerances when text-based strategies are requested.
-        # This must happen AFTER alias handling (so strategies are final)
-        # and BEFORE we delegate to _extract_table_* helpers.
-        if "text" in (
-            table_settings.get("vertical_strategy"),
-            table_settings.get("horizontal_strategy"),
-        ):
-            page_cfg = self.page._config
-            # Ensure text_* tolerances passed to pdfplumber
-            if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
-                if page_cfg.get("x_tolerance") is not None:
-                    table_settings["text_x_tolerance"] = page_cfg["x_tolerance"]
-            if "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
-                if page_cfg.get("y_tolerance") is not None:
-                    table_settings["text_y_tolerance"] = page_cfg["y_tolerance"]
+        logger.debug(
+            "Region %s: Extracting table using method '%s'",
+            getattr(self, "bbox", None),
+            effective_method or "auto",
+        )
 
-            # Snap / join tolerances (~ line spacing)
-            if "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
-                snap = max(1, round((page_cfg.get("y_tolerance", 1)) * 0.9))
-                table_settings["snap_tolerance"] = snap
-            if "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
-                table_settings["join_tolerance"] = table_settings["snap_tolerance"]
-
-        logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
-
-        # For stream method with text-based edge detection and explicit vertical lines,
-        # adjust guides to ensure they fall within text bounds for proper intersection
-        if (
-            effective_method == "pdfplumber"
-            and table_settings.get("horizontal_strategy") == "text"
-            and table_settings.get("vertical_strategy") == "explicit"
-            and "explicit_vertical_lines" in table_settings
-        ):
-
-            text_elements = self.find_all("text", apply_exclusions=apply_exclusions)
-            if text_elements:
-                text_bounds = text_elements.merge().bbox
-                text_left = text_bounds[0]
-                text_right = text_bounds[2]
-
-                # Adjust vertical guides to fall within text bounds
-                original_verticals = table_settings["explicit_vertical_lines"]
-                adjusted_verticals = []
-
-                for v in original_verticals:
-                    if v < text_left:
-                        # Guide is left of text bounds, clip to text start
-                        adjusted_verticals.append(text_left)
-                        logger.debug(
-                            f"Region {self.bbox}: Adjusted left guide from {v:.1f} to {text_left:.1f}"
-                        )
-                    elif v > text_right:
-                        # Guide is right of text bounds, clip to text end
-                        adjusted_verticals.append(text_right)
-                        logger.debug(
-                            f"Region {self.bbox}: Adjusted right guide from {v:.1f} to {text_right:.1f}"
-                        )
-                    else:
-                        # Guide is within text bounds, keep as is
-                        adjusted_verticals.append(v)
-
-                # Update table settings with adjusted guides
-                table_settings["explicit_vertical_lines"] = adjusted_verticals
-                logger.debug(
-                    f"Region {self.bbox}: Adjusted {len(original_verticals)} guides for stream extraction. "
-                    f"Text bounds: {text_left:.1f}-{text_right:.1f}"
-                )
+        provider_managed_methods = {None, "pdfplumber", "stream", "lattice"}
 
         # Use the selected method
         if effective_method == "tatr":
@@ -241,10 +154,20 @@ class TableExtractionMixin:
             current_text_options["content_filter"] = content_filter
             current_text_options["apply_exclusions"] = apply_exclusions
             table_rows = self._extract_table_text(**current_text_options)
-        elif effective_method == "pdfplumber":
-            table_rows = self._extract_table_plumber(
-                table_settings, content_filter=content_filter, apply_exclusions=apply_exclusions
+        elif effective_method in provider_managed_methods:
+            normalized_settings = normalize_table_settings(table_settings)
+            engine_name = resolve_table_engine_name(
+                context=self,
+                requested=effective_method,
+                scope="region",
             )
+            provider_tables = run_table_engine(
+                context=self,
+                region=self,
+                engine_name=engine_name,
+                table_settings=normalized_settings,
+            )
+            table_rows = self._select_primary_table(provider_tables)
         else:
             raise ValueError(
                 f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
@@ -271,76 +194,18 @@ class TableExtractionMixin:
         Returns:
             List of tables, where each table is a list of rows, and each row is a list of cell values.
         """
-        if table_settings is None:
-            table_settings = {}
-
-        # Auto-detect method if not specified (try lattice first, then stream)
-        if method is None:
-            logger.debug(f"Region {self.bbox}: Auto-detecting tables extraction method...")
-
-            # Try lattice first
-            try:
-                lattice_settings = table_settings.copy()
-                lattice_settings.setdefault("vertical_strategy", "lines")
-                lattice_settings.setdefault("horizontal_strategy", "lines")
-
-                logger.debug(f"Region {self.bbox}: Trying 'lattice' method first for tables...")
-                lattice_result = self._extract_tables_plumber(lattice_settings)
-
-                # Check if lattice found meaningful tables
-                if (
-                    lattice_result
-                    and len(lattice_result) > 0
-                    and any(
-                        any(
-                            any(cell and cell.strip() for cell in row if cell)
-                            for row in table
-                            if table
-                        )
-                        for table in lattice_result
-                    )
-                ):
-                    logger.debug(
-                        f"Region {self.bbox}: 'lattice' method found {len(lattice_result)} tables"
-                    )
-                    return lattice_result
-                else:
-                    logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful tables")
-
-            except Exception as e:
-                logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-
-            # Fall back to stream
-            logger.debug(f"Region {self.bbox}: Falling back to 'stream' method for tables...")
-            stream_settings = table_settings.copy()
-            stream_settings.setdefault("vertical_strategy", "text")
-            stream_settings.setdefault("horizontal_strategy", "text")
-
-            return self._extract_tables_plumber(stream_settings)
-
-        effective_method = method
-
-        # Handle method aliases
-        if effective_method == "stream":
-            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "text")
-            table_settings.setdefault("horizontal_strategy", "text")
-        elif effective_method == "lattice":
-            logger.debug(
-                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
-            )
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "lines")
-            table_settings.setdefault("horizontal_strategy", "lines")
-
-        # Use the selected method
-        if effective_method == "pdfplumber":
-            return self._extract_tables_plumber(table_settings)
-        else:
-            raise ValueError(
-                f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
-            )
+        normalized_settings = normalize_table_settings(table_settings)
+        engine_name = resolve_table_engine_name(
+            context=self,
+            requested=method,
+            scope="region",
+        )
+        return run_table_engine(
+            context=self,
+            region=self,
+            engine_name=engine_name,
+            table_settings=normalized_settings,
+        )
 
     def _extract_tables_plumber(self, table_settings: dict) -> List[List[List[str]]]:
         """
@@ -392,6 +257,8 @@ class TableExtractionMixin:
             table_settings.setdefault("join_tolerance", join)
             table_settings.setdefault("join_x_tolerance", join)
             table_settings.setdefault("join_y_tolerance", join)
+
+        self._adjust_explicit_vertical_guides(table_settings, apply_exclusions=True)
 
         # Apply char-level exclusion filtering, if any exclusions are
         # defined on the parent Page.  We create a lightweight
@@ -508,6 +375,25 @@ class TableExtractionMixin:
             y_tol = pdf_cfg.get("y_tolerance")
             if y_tol is not None:
                 table_settings.setdefault("text_y_tolerance", y_tol)
+
+        if (
+            _uses_text
+            and "snap_tolerance" not in table_settings
+            and "snap_x_tolerance" not in table_settings
+        ):
+            snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
+            table_settings.setdefault("snap_tolerance", snap)
+        if (
+            _uses_text
+            and "join_tolerance" not in table_settings
+            and "join_x_tolerance" not in table_settings
+        ):
+            join = table_settings.get("snap_tolerance", 1)
+            table_settings.setdefault("join_tolerance", join)
+            table_settings.setdefault("join_x_tolerance", join)
+            table_settings.setdefault("join_y_tolerance", join)
+
+        self._adjust_explicit_vertical_guides(table_settings, apply_exclusions=apply_exclusions)
 
         # Apply char-level exclusion filtering (chars only) just like in
         # _extract_tables_plumber so header/footer text does not appear
@@ -965,6 +851,67 @@ class TableExtractionMixin:
             table_grid[row_idx][col_idx] = text_val if text_val else None
 
         return table_grid
+
+    def _adjust_explicit_vertical_guides(
+        self, table_settings: dict, *, apply_exclusions: bool = True
+    ) -> None:
+        """Clamp explicit vertical guides to detected text bounds for text strategies."""
+
+        if (
+            table_settings.get("horizontal_strategy") != "text"
+            or table_settings.get("vertical_strategy") != "explicit"
+            or "explicit_vertical_lines" not in table_settings
+        ):
+            return
+
+        text_elements = self.find_all("text", apply_exclusions=apply_exclusions)
+        if not text_elements:
+            return
+
+        text_bounds = text_elements.merge().bbox
+        text_left = text_bounds[0]
+        text_right = text_bounds[2]
+
+        adjusted_verticals: List[float] = []
+        for guide in table_settings["explicit_vertical_lines"]:
+            if guide < text_left:
+                adjusted_verticals.append(text_left)
+                logger.debug(
+                    "Region %s: Adjusted left guide from %.1f to %.1f",
+                    getattr(self, "bbox", None),
+                    guide,
+                    text_left,
+                )
+            elif guide > text_right:
+                adjusted_verticals.append(text_right)
+                logger.debug(
+                    "Region %s: Adjusted right guide from %.1f to %.1f",
+                    getattr(self, "bbox", None),
+                    guide,
+                    text_right,
+                )
+            else:
+                adjusted_verticals.append(guide)
+
+        table_settings["explicit_vertical_lines"] = adjusted_verticals
+
+    def _select_primary_table(
+        self, tables: Sequence[Sequence[Sequence[Optional[str]]]]
+    ) -> List[List[Optional[str]]]:
+        """Pick the largest table (by rows*cols) from a provider response."""
+
+        best_table: List[List[Optional[str]]] = []
+        best_score = -1
+        for table in tables or []:
+            if not table:
+                continue
+            row_count = len(table)
+            col_count = max((len(row) for row in table), default=0)
+            score = row_count * col_count
+            if score > best_score:
+                best_table = [list(row) for row in table]
+                best_score = score
+        return best_table
 
     def _tables_have_content(self, tables: Sequence[Sequence[Sequence[Optional[str]]]]) -> bool:
         return any(

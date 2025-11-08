@@ -23,6 +23,7 @@ from PIL import Image  # Single import for PIL.Image module
 from natural_pdf.collections.mixins import SectionsCollectionMixin
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
@@ -522,6 +523,65 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
         else:
             self._flow_regions.sort(key=key, reverse=reverse)
         return self
+
+    # ------------------------------------------------------------------
+    # Table extraction helpers
+    # ------------------------------------------------------------------
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        **kwargs,
+    ) -> List[TableResult]:
+        """Extract a table from every FlowRegion and return the per-region results.
+
+        Args:
+            method: Table engine name to forward to :meth:`FlowRegion.extract_table`.
+            table_settings: Optional pdfplumber settings applied to every region.
+            **kwargs: Additional keyword arguments forwarded verbatim to each region.
+
+        Returns:
+            List of :class:`TableResult` objects matching the order of this collection.
+        """
+
+        results: List[TableResult] = []
+        for flow_region in self._flow_regions:
+            results.append(
+                flow_region.extract_table(
+                    method=method,
+                    table_settings=table_settings.copy() if table_settings else None,
+                    **kwargs,
+                )
+            )
+        return results
+
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        **kwargs,
+    ) -> List[List[List[Optional[str]]]]:
+        """Extract every table across all FlowRegions in the collection.
+
+        Args:
+            method: Table engine name (forwarded to :meth:`FlowRegion.extract_tables`).
+            table_settings: Optional pdfplumber settings copied before each call.
+            **kwargs: Additional keyword arguments forwarded verbatim.
+
+        Returns:
+            Flattened list of tables (each table is a list of rows) in collection order.
+        """
+
+        aggregated: List[List[List[Optional[str]]]] = []
+        for flow_region in self._flow_regions:
+            region_tables = flow_region.extract_tables(
+                method=method,
+                table_settings=table_settings.copy() if table_settings else None,
+                **kwargs,
+            )
+            if region_tables:
+                aggregated.extend(region_tables)
+        return aggregated
 
     def _iter_sections(self) -> Iterable["FlowRegion"]:
         return iter(self._flow_regions)
