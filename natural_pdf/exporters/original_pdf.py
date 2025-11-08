@@ -51,19 +51,36 @@ def create_original_pdf(
 
     output_path_str = str(output_path)
     pages_to_extract: List["Page"] = []
+    source_supported = False
 
-    # Determine the list of pages and the source PDF path
-    if hasattr(source, "pages") and isinstance(source.pages, list):  # PDF or PageCollection
-        if not source.pages:
-            raise ValueError("Cannot save an empty collection/PDF.")
-        pages_to_extract = source.pages
-    elif hasattr(source, "page") and hasattr(source, "number"):  # Single Page object
-        # Check if it's a natural_pdf.core.page.Page or similar duck-typed object
-        if hasattr(source, "pdf") and source.pdf and hasattr(source.pdf, "path"):
-            pages_to_extract = [source]
-        else:
-            raise ValueError("Input Page object does not have a valid PDF reference with a path.")
-    else:
+    # Determine the list of pages from supported inputs
+    if source is None:
+        raise TypeError("Source cannot be None for create_original_pdf.")
+
+    from collections.abc import Sequence
+
+    from natural_pdf.core.page import Page
+
+    pages_attr = getattr(source, "pages", None)
+    if isinstance(source, Page):
+        pages_to_extract = [source]
+        source_supported = True
+    elif pages_attr is not None:
+        if hasattr(pages_attr, "pages"):
+            # Handle PageCollection where .pages returns a sequence of Page objects
+            pages_seq = getattr(pages_attr, "pages")
+            pages_to_extract = list(pages_seq)
+            source_supported = True
+        elif isinstance(pages_attr, Sequence):
+            pages_to_extract = list(pages_attr)
+            source_supported = True
+    elif isinstance(source, Sequence):
+        filtered_pages = [page for page in source if isinstance(page, Page)]
+        if filtered_pages:
+            pages_to_extract = filtered_pages
+            source_supported = True
+
+    if not source_supported:
         raise TypeError(f"Unsupported source type for create_original_pdf: {type(source)}")
 
     if not pages_to_extract:

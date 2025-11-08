@@ -1,7 +1,7 @@
 import base64
 import io
 import logging
-from typing import Any, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from PIL import Image
 from pydantic import BaseModel
@@ -45,7 +45,7 @@ class StructuredDataManager:
             or f"Extract the information corresponding to the fields in the {schema.__name__} schema. Respond only with the structured data."
         )
 
-        messages = [{"role": "system", "content": system_prompt}]
+        messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
 
         if using == "text":
             messages.append({"role": "user", "content": str(content)})
@@ -125,5 +125,9 @@ class StructuredDataManager:
         )
         parsed_data = completion.choices[0].message.parsed
         return StructuredDataResult(
-            data=parsed_data, success=True, error_message=None, model_used=selected_model
+            data=parsed_data,
+            success=True,
+            error_message=None,
+            raw_output=completion,
+            model_used=selected_model,
         )

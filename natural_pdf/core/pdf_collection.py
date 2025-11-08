@@ -5,6 +5,7 @@ import threading  # Import threading for logging thread information
 import time  # Import time for logging timestamps
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -15,6 +16,7 @@ from typing import (
     Set,
     Type,
     Union,
+    cast,
     overload,
 )
 
@@ -29,39 +31,21 @@ from tqdm.auto import tqdm
 logger = logging.getLogger(__name__)
 
 from natural_pdf.core.pdf import PDF
+from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.vision.mixin import VisualSearchMixin
 
-# --- Search Imports ---
-try:
-    from natural_pdf.search.search_service_protocol import (
-        Indexable,
-        SearchOptions,
-        SearchServiceProtocol,
-    )
-    from natural_pdf.search.searchable_mixin import SearchableMixin
-except ImportError:
-    logger_init = logging.getLogger(__name__)
-    logger_init.warning(
-        "Failed to import Haystack components. Semantic search functionality disabled.",
-    )
-
-    # Dummy definitions
-    class SearchableMixin:
-        pass
-
-    SearchServiceProtocol, SearchOptions, Indexable = object, object, object
+Indexable = Any
+SearchOptions = Any
+SearchServiceProtocol = Any
 
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 
 # Import the ApplyMixin
 from natural_pdf.collections.mixins import ApplyMixin
-from natural_pdf.search.searchable_mixin import SearchableMixin  # Import the new mixin
 
 
-class PDFCollection(
-    SearchableMixin, ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMixin
-):
+class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMixin):
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -93,7 +77,7 @@ class PDFCollection(
                 return  # Empty list source
             if isinstance(source_list[0], PDF):
                 if all(isinstance(item, PDF) for item in source_list):
-                    self._pdfs = source_list  # Direct assignment
+                    self._pdfs = [cast("PDF", item) for item in source_list]
                     # Don't adopt search context anymore
                     return
                 else:
@@ -101,13 +85,15 @@ class PDFCollection(
             # If it's an iterable but not PDFs, fall through to resolve sources
 
         # Resolve string, iterable of strings, or single string source to paths/URLs
-        resolved_paths_or_urls = self._resolve_sources_to_paths(source)
+        resolved_paths_or_urls = self._resolve_sources_to_paths(
+            cast(Union[str, Iterable[str]], source)
+        )
         self._initialize_pdfs(resolved_paths_or_urls, PDF)  # Pass PDF class
 
         self._iter_index = 0
 
-        # Initialize internal search service reference
-        self._search_service: Optional[SearchServiceProtocol] = None
+        # Initialize internal search service reference (available when search extras installed)
+        self._search_service: Optional[Any] = None
 
     @staticmethod
     def _get_pdf_class():
@@ -176,7 +162,7 @@ class PDFCollection(
 
         return sorted(list(final_paths))
 
-    def _initialize_pdfs(self, paths_or_urls: List[str], PDF_cls: Type):
+    def _initialize_pdfs(self, paths_or_urls: List[str], PDF_cls: Type["PDF"]):
         """Initializes PDF objects from a list of paths/URLs."""
         logger.info(f"Initializing {len(paths_or_urls)} PDF objects...")
         failed_count = 0
@@ -297,6 +283,11 @@ class PDFCollection(
                 remaining = limit - total_pages_shown
                 pdf_limit = min(per_pdf_limit or remaining, remaining)
 
+            if pdf_limit is None:
+                pdf_limit_value = len(pdf.pages)
+            else:
+                pdf_limit_value = pdf_limit
+
             # Get PDF identifier
             pdf_name = getattr(pdf, "filename", None) or getattr(pdf, "path", "Unknown")
             if isinstance(pdf_name, Path):
@@ -307,7 +298,9 @@ class PDFCollection(
             # Render this PDF
             try:
                 # Get render specs from the PDF
-                render_specs = pdf._get_render_specs(mode="show", max_pages=pdf_limit, **kwargs)
+                render_specs = pdf._get_render_specs(
+                    mode="show", max_pages=pdf_limit_value, **kwargs
+                )
 
                 if not render_specs:
                     continue
@@ -350,7 +343,9 @@ class PDFCollection(
                     labeled_image.paste(pdf_image, (0, label_height))
 
                     all_images.append(labeled_image)
-                    total_pages_shown += min(pdf_limit, len(pdf.pages))
+                    if pdf_limit is None:
+                        pdf_limit = len(pdf.pages)
+                    total_pages_shown += min(pdf_limit_value, len(pdf.pages))
 
             except Exception as e:
                 logger.warning(f"Failed to render PDF {pdf_name}: {e}")
@@ -496,7 +491,7 @@ class PDFCollection(
         )
 
         # Worker function takes PDF object again
-        def _process_pdf(pdf: PDF):
+        def _process_pdf(pdf: "PDF"):
             """Helper function to apply OCR to a single PDF, handling errors."""
             thread_id = threading.current_thread().name  # Get thread name for logging
             pdf_path = pdf.path  # Get path for logging
@@ -598,23 +593,27 @@ class PDFCollection(
         # 2. Initialize the progress bar
         progress_bar = tqdm(total=total_elements, desc="Correcting OCR Elements", unit="element")
 
-        # 3. Iterate through PDFs and delegate to PDF.correct_ocr
-        #    PDF.correct_ocr handles page iteration and passing the progress callback down.
+        def _tick_progress() -> None:
+            progress_bar.update()
+
         for pdf in self._pdfs:
             if not pdf.pages:
                 continue
-            try:
-                pdf.correct_ocr(
-                    correction_callback=correction_callback,
-                    max_workers=max_workers,
-                    progress_callback=progress_bar.update,  # Pass the bar's update method
-                )
-            except Exception as e:
-                logger.error(
-                    f"Error occurred during correction process for PDF {pdf.path}: {e}",
-                    exc_info=True,
-                )
-                # Decide if we should stop or continue? For now, continue.
+            for page in pdf.pages:
+                try:
+                    page.update_text(
+                        transform=correction_callback,
+                        selector="text[source=ocr]",
+                        apply_exclusions=False,
+                        max_workers=max_workers,
+                        progress_callback=_tick_progress,
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error occurred during correction process for page {getattr(page, 'number', '?')} of PDF {getattr(pdf, 'path', 'unknown')}: {e}",
+                        exc_info=True,
+                    )
+                    continue
 
         progress_bar.close()
 

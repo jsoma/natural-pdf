@@ -1,11 +1,13 @@
 # layout_manager.py
+import inspect
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Type, TypedDict, Union, cast
 
 from PIL import Image
 
 from .base import LayoutDetector  # Lightweight base class
 from .layout_options import (
+    BaseLayoutOptions,
     DoclingLayoutOptions,
     GeminiLayoutOptions,
     LayoutOptions,
@@ -23,41 +25,41 @@ from .layout_options import (
 # ------------------ Lazy import helpers ------------------ #
 
 
-def _lazy_import_yolo_detector():
+def _lazy_import_yolo_detector() -> Type[LayoutDetector]:
     """Import YOLO detector lazily to avoid heavy deps at import time."""
     from .yolo import YOLODocLayoutDetector  # Local import
 
-    return YOLODocLayoutDetector
+    return cast(Type[LayoutDetector], YOLODocLayoutDetector)
 
 
-def _lazy_import_tatr_detector():
+def _lazy_import_tatr_detector() -> Type[LayoutDetector]:
     from .tatr import TableTransformerDetector
 
-    return TableTransformerDetector
+    return cast(Type[LayoutDetector], TableTransformerDetector)
 
 
-def _lazy_import_paddle_detector():
+def _lazy_import_paddle_detector() -> Type[LayoutDetector]:
     from .paddle import PaddleLayoutDetector
 
-    return PaddleLayoutDetector
+    return cast(Type[LayoutDetector], PaddleLayoutDetector)
 
 
-def _lazy_import_surya_detector():
+def _lazy_import_surya_detector() -> Type[LayoutDetector]:
     from .surya import SuryaLayoutDetector
 
-    return SuryaLayoutDetector
+    return cast(Type[LayoutDetector], SuryaLayoutDetector)
 
 
-def _lazy_import_docling_detector():
+def _lazy_import_docling_detector() -> Type[LayoutDetector]:
     from .docling import DoclingLayoutDetector
 
-    return DoclingLayoutDetector
+    return cast(Type[LayoutDetector], DoclingLayoutDetector)
 
 
-def _lazy_import_gemini_detector():
+def _lazy_import_gemini_detector() -> Type[LayoutDetector]:
     from .gemini import GeminiLayoutDetector
 
-    return GeminiLayoutDetector
+    return cast(Type[LayoutDetector], GeminiLayoutDetector)
 
 
 # --------------------------------------------------------- #
@@ -65,11 +67,20 @@ def _lazy_import_gemini_detector():
 logger = logging.getLogger(__name__)
 
 
+EngineRegistryEntry = TypedDict(
+    "EngineRegistryEntry",
+    {
+        "class": Union[Type[LayoutDetector], Callable[[], Type[LayoutDetector]]],
+        "options_class": Type[BaseLayoutOptions],
+    },
+)
+
+
 class LayoutManager:
     """Manages layout detector selection, configuration, and execution."""
 
     # Registry mapping engine names to classes and default options
-    ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {}
+    ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {}
 
     # Populate registry with lazy import callables. The heavy imports are executed only
     # when the corresponding engine is first requested.
@@ -120,10 +131,11 @@ class LayoutManager:
             logger.info(f"Creating instance of layout engine: {engine_name}")
             engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
             # If the registry provides a callable (lazy import helper), call it to obtain the real class.
-            if callable(engine_class_or_factory) and not isinstance(engine_class_or_factory, type):
-                engine_class = engine_class_or_factory()
+            engine_class: Type[LayoutDetector]
+            if inspect.isclass(engine_class_or_factory):
+                engine_class = cast(Type[LayoutDetector], engine_class_or_factory)
             else:
-                engine_class = engine_class_or_factory
+                engine_class = cast(Type[LayoutDetector], engine_class_or_factory())
 
             detector_instance = engine_class()  # Instantiate
 
@@ -219,13 +231,10 @@ class LayoutManager:
         for name, registry_entry in self.ENGINE_REGISTRY.items():
             try:
                 engine_class_or_factory = registry_entry["class"]
-                if callable(engine_class_or_factory) and not isinstance(
-                    engine_class_or_factory, type
-                ):
-                    # Lazy factory – call it to obtain real class
-                    engine_class = engine_class_or_factory()
+                if inspect.isclass(engine_class_or_factory):
+                    engine_class = cast(Type[LayoutDetector], engine_class_or_factory)
                 else:
-                    engine_class = engine_class_or_factory
+                    engine_class = cast(Type[LayoutDetector], engine_class_or_factory())
 
                 if hasattr(engine_class, "is_available") and callable(engine_class.is_available):
                     if engine_class().is_available():
@@ -254,9 +263,10 @@ class LayoutManager:
             detector_name = detector_name.lower()
             if detector_name in self._detector_instances:
                 detector = self._detector_instances.pop(detector_name)
-                if hasattr(detector, "cleanup"):
+                cleanup_method = getattr(detector, "cleanup", None)
+                if callable(cleanup_method):
                     try:
-                        detector.cleanup()
+                        cleanup_method()
                     except Exception as e:
                         logger.debug(f"Detector {detector_name} cleanup method failed: {e}")
 
@@ -265,9 +275,10 @@ class LayoutManager:
         else:
             # Cleanup all detectors
             for name, detector in list(self._detector_instances.items()):
-                if hasattr(detector, "cleanup"):
+                cleanup_method = getattr(detector, "cleanup", None)
+                if callable(cleanup_method):
                     try:
-                        detector.cleanup()
+                        cleanup_method()
                     except Exception as e:
                         logger.debug(f"Detector {name} cleanup method failed: {e}")
 

@@ -68,7 +68,7 @@ class ClassificationMixin:
         """Should return the ClassificationManager instance."""
         raise NotImplementedError
 
-    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image"]:
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image.Image"]:
         """Should return the text content (str) or image (PIL.Image) for classification."""
         raise NotImplementedError
 

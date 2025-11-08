@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import warnings
 from typing import (
@@ -5,6 +7,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Optional,
@@ -12,11 +15,24 @@ from typing import (
     Set,
     Tuple,
     Union,
+    cast,
 )
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
+from natural_pdf.core.crop_utils import resolve_crop_bbox
+from natural_pdf.core.geometry_mixin import RegionGeometryMixin
+from natural_pdf.core.highlighter_utils import resolve_highlighter
+from natural_pdf.core.mixins import ContextResolverMixin
+from natural_pdf.core.multi_region_mixins import (
+    MultiRegionDirectionalMixin,
+    MultiRegionExclusionMixin,
+    MultiRegionOCRMixin,
+)
+from natural_pdf.core.qa_mixin import DocumentQAMixin, QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.elements.base import extract_bbox
+from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -37,7 +53,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FlowRegion(Visualizable):
+class FlowRegion(
+    Visualizable,
+    DocumentQAMixin,
+    MultiRegionOCRMixin,
+    MultiRegionExclusionMixin,
+    ContextResolverMixin,
+    MultiRegionDirectionalMixin,
+    RegionGeometryMixin,
+):
     """
     Represents a selected area within a Flow, potentially composed of multiple
     physical Region objects (constituent_regions) that might span across
@@ -52,7 +76,7 @@ class FlowRegion(Visualizable):
         flow: "Flow",
         constituent_regions: List["PhysicalRegion"],
         source_flow_element: Optional["FlowElement"] = None,
-        boundary_element_found: Optional["PhysicalElement"] = None,
+        boundary_element_found: Optional[Union["PhysicalElement", "PhysicalRegion"]] = None,
     ):
         """
         Initializes a FlowRegion.
@@ -68,7 +92,13 @@ class FlowRegion(Visualizable):
         self.flow: "Flow" = flow
         self.constituent_regions: List["PhysicalRegion"] = constituent_regions
         self.source_flow_element: Optional["FlowElement"] = source_flow_element
-        self.boundary_element_found: Optional["PhysicalElement"] = boundary_element_found
+        self.boundary_element_found: Optional[Union["PhysicalElement", "PhysicalRegion"]] = (
+            boundary_element_found
+        )
+
+        self.start_element: Optional[Union["PhysicalElement", "PhysicalRegion"]] = None
+        self.end_element: Optional[Union["PhysicalElement", "PhysicalRegion"]] = None
+        self._boundary_exclusions: Optional[str] = None
 
         # Add attributes for grid building, similar to Region
         self.source: Optional[str] = None
@@ -79,6 +109,135 @@ class FlowRegion(Visualizable):
         self._cached_text: Optional[str] = None
         self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
+        self._exclusions: List[Any] = []
+        self._multi_page_page_warned: bool = False
+
+    def _qa_context_page_number(self) -> int:
+        pages = self.pages
+        return pages[0].number if pages else -1
+
+    def _qa_source_elements(self) -> ElementCollection:
+        return ElementCollection([])
+
+    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        from natural_pdf.elements.region import Region
+
+        return Region._normalize_qa_output(result)
+
+    def _qa_blank_result(
+        self, question: QuestionInput
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        def _blank() -> Dict[str, Any]:
+            return {
+                "answer": None,
+                "confidence": 0.0,
+                "found": False,
+                "page_num": self._qa_context_page_number(),
+                "source_elements": [],
+                "region": self,
+            }
+
+        if isinstance(question, (list, tuple)):
+            return [_blank() for _ in question]
+        return _blank()
+
+    def _qa_target_region(self):
+        if not self.constituent_regions:
+            raise RuntimeError("FlowRegion has no constituent regions for QA.")
+
+        if len(self.constituent_regions) > 1:
+            logger.info(
+                "FlowRegion spans multiple regions; Document QA will evaluate the first region only."
+            )
+
+        return self.constituent_regions[0]
+
+    def _ocr_element_manager(self):
+        if not self.constituent_regions:
+            raise RuntimeError("FlowRegion has no regions for OCR operations")
+        return self.constituent_regions[0].page._element_mgr
+
+    def remove_ocr_elements(self) -> int:
+        removed = 0
+        for region in self.constituent_regions:
+            removed += region.remove_ocr_elements()
+        return removed
+
+    def clear_text_layer(self) -> Tuple[int, int]:
+        total_chars = 0
+        total_words = 0
+        seen_pages: Set[int] = set()
+        for region in self.constituent_regions:
+            page = region.page
+            marker = id(page)
+            if marker in seen_pages:
+                continue
+            seen_pages.add(marker)
+            cleared_chars, cleared_words = page.clear_text_layer()
+            total_chars += cleared_chars
+            total_words += cleared_words
+        return total_chars, total_words
+
+    def create_text_elements_from_ocr(
+        self, ocr_results: Any, scale_x: Optional[float] = None, scale_y: Optional[float] = None
+    ) -> List[Any]:
+        if not self.constituent_regions:
+            return []
+        return self.constituent_regions[0].page.create_text_elements_from_ocr(
+            ocr_results, scale_x=scale_x, scale_y=scale_y
+        )
+
+    def _iter_ocr_regions(self) -> Iterable[Any]:
+        return tuple(self.constituent_regions)
+
+    def _exclusion_element_manager(self):
+        if not self.constituent_regions:
+            raise RuntimeError("FlowRegion has no constituent regions for exclusions")
+        return self.constituent_regions[0].page._element_mgr
+
+    def _element_to_region(self, element: Any, label: Optional[str] = None) -> Optional[Region]:
+        bbox = extract_bbox(element)
+        if not bbox:
+            return None
+
+        page = getattr(element, "page", None)
+        if page is None and self.constituent_regions:
+            page = self.constituent_regions[0].page
+        if page is None:
+            return None
+
+        from natural_pdf.elements.region import (
+            Region as PhysicalRegion,  # Local import to avoid cycles
+        )
+
+        clamp_bbox = bbox
+        matching_regions = [
+            region for region in self.constituent_regions if getattr(region, "page", None) is page
+        ]
+        if matching_regions:
+            min_x0 = min(region.x0 for region in matching_regions)
+            min_top = min(region.top for region in matching_regions)
+            max_x1 = max(region.x1 for region in matching_regions)
+            max_bottom = max(region.bottom for region in matching_regions)
+
+            clamp_bbox = (
+                max(min_x0, bbox[0]),
+                max(min_top, bbox[1]),
+                min(max_x1, bbox[2]),
+                min(max_bottom, bbox[3]),
+            )
+
+            if clamp_bbox[0] >= clamp_bbox[2] or clamp_bbox[1] >= clamp_bbox[3]:
+                return None
+
+        return PhysicalRegion(page, clamp_bbox, label=label)
+
+    def _invalidate_exclusion_cache(self) -> None:
+        self._cached_text = None
+        self._cached_elements = None
+
+    def _iter_exclusion_regions(self) -> Iterable[Any]:
+        return tuple(self.constituent_regions)
 
     @property
     def pages(self) -> Tuple["Page", ...]:
@@ -97,86 +256,34 @@ class FlowRegion(Visualizable):
 
     @property
     def page(self) -> "Page":
-        """Return the single page for this region, raising if multi-page."""
+        """Return the primary page for this region (first page when multi-page)."""
         pages = self.pages
-        if not pages:
+        if len(pages) == 0:
             raise AttributeError("FlowRegion has no associated pages")
-        if len(pages) > 1:
-            raise AttributeError("FlowRegion spans multiple pages; access .pages instead of .page")
+        if len(pages) > 1 and not self._multi_page_page_warned:
+            logger.warning(
+                "FlowRegion spans multiple pages; returning the first page for .page access. "
+                "Use .pages to inspect all pages."
+            )
+            self._multi_page_page_warned = True
         return pages[0]
 
     def get_highlighter(self) -> "HighlightingService":
         """Resolve a highlighting service from the constituent regions."""
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions to get highlighter from")
-
-        sentinel = object()
-        for region in self.constituent_regions:
-            # Prefer explicit provider methods
-            if hasattr(region, "get_highlighter"):
-                try:
-                    return region.get_highlighter()  # type: ignore[attr-defined]
-                except AttributeError:
-                    pass
-
-            if hasattr(region, "_highlighter"):
-                return region._highlighter  # type: ignore[attr-defined]
-
-            page = getattr(region, "page", None)
-            if page is not None and hasattr(page, "_highlighter"):
-                return page._highlighter  # type: ignore[attr-defined]
-
-        raise RuntimeError("Cannot find HighlightingService from FlowRegion constituent regions.")
+        return resolve_highlighter(self.constituent_regions, self.flow)
 
     def _get_highlighter(self):
         """Compatibility hook for Visualizable mixin."""
         return self.get_highlighter()
 
-    def get_config(self, key: str, default: Any = None, *, scope: str = "region") -> Any:
-        """Delegate configuration lookup across constituent regions and flow."""
-        sentinel = object()
-        for region in self.constituent_regions:
-            if hasattr(region, "get_config"):
-                try:
-                    value = region.get_config(key, sentinel, scope=scope)  # type: ignore[attr-defined]
-                except ValueError:
-                    continue
-                if value is not sentinel:
-                    return value
-
-        flow = getattr(self, "flow", None)
-        if flow is not None and hasattr(flow, "get_config"):
-            value = flow.get_config(key, sentinel, scope=scope)  # type: ignore[attr-defined]
-            if value is not sentinel:
-                return value
-
-        pages = self.pages
-        for page in pages:
-            page_cfg = getattr(page, "_config", {})
-            if isinstance(page_cfg, dict) and key in page_cfg:
-                return page_cfg[key]
-            pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
-            pdf_cfg = getattr(pdf_obj, "_config", {}) if pdf_obj is not None else {}
-            if isinstance(pdf_cfg, dict) and key in pdf_cfg:
-                return pdf_cfg[key]
-
-        return default
-
-    def get_manager(self, name: str) -> Any:
-        """Resolve managers via constituent regions, flow, or parent PDF."""
-        for region in self.constituent_regions:
-            if hasattr(region, "get_manager"):
-                return region.get_manager(name)  # type: ignore[attr-defined]
-            page = getattr(region, "page", None)
-            pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
-            if pdf_obj is not None and hasattr(pdf_obj, "get_manager"):
-                return pdf_obj.get_manager(name)
-
-        flow = getattr(self, "flow", None)
-        if flow is not None and hasattr(flow, "get_manager"):
-            return flow.get_manager(name)  # type: ignore[attr-defined]
-
-        raise AttributeError(f"Cannot resolve manager '{name}' for FlowRegion")
+    def _context_resolution_roots(self) -> Iterable[Any]:
+        roots: List[Any] = [self]
+        roots.extend(self.constituent_regions)
+        if self.flow is not None:
+            roots.append(self.flow)
+        return roots
 
     def _get_render_specs(
         self,
@@ -203,38 +310,42 @@ class FlowRegion(Visualizable):
         if not self.constituent_regions:
             return []
 
-        # Group constituent regions by page
+        label_prefix = kwargs.pop("label_prefix", None)
+
         regions_by_page = {}
         for region in self.constituent_regions:
-            if hasattr(region, "page") and region.page:
-                page = region.page
-                if page not in regions_by_page:
-                    regions_by_page[page] = []
-                regions_by_page[page].append(region)
+            page = getattr(region, "page", None)
+            if page is None:
+                continue
+            regions_by_page.setdefault(page, []).append(region)
 
         if not regions_by_page:
             return []
 
-        # Create RenderSpec for each page
         specs = []
         for page, page_regions in regions_by_page.items():
             spec = RenderSpec(page=page)
 
-            # Handle cropping
-            if crop_bbox:
-                spec.crop_bbox = crop_bbox
-            elif crop == "content" or crop is True:
-                # Calculate bounds of regions on this page
-                x_coords = []
-                y_coords = []
+            def union_bbox() -> Optional[Tuple[float, float, float, float]]:
+                x_coords: List[float] = []
+                y_coords: List[float] = []
                 for region in page_regions:
-                    if hasattr(region, "bbox") and region.bbox:
-                        x0, y0, x1, y1 = region.bbox
+                    bbox = getattr(region, "bbox", None)
+                    if bbox:
+                        x0, y0, x1, y1 = bbox
                         x_coords.extend([x0, x1])
                         y_coords.extend([y0, y1])
-
                 if x_coords and y_coords:
-                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+                    return (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+                return None
+
+            spec.crop_bbox = resolve_crop_bbox(
+                width=page.width,
+                height=page.height,
+                crop=crop,
+                crop_bbox=crop_bbox,
+                content_bbox_fn=union_bbox,
+            )
 
             # Add highlights in show mode
             if mode == "show":
@@ -243,14 +354,16 @@ class FlowRegion(Visualizable):
                     # Label each part if multiple regions
                     label = None
                     if len(self.constituent_regions) > 1:
-                        # Find global index
                         try:
                             global_idx = self.constituent_regions.index(region)
-                            label = f"FlowPart_{global_idx + 1}"
                         except ValueError:
-                            label = f"FlowPart_{i + 1}"
+                            global_idx = i
+                        if label_prefix:
+                            label = f"{label_prefix}_{global_idx + 1}"
+                        else:
+                            label = f"FlowPart_{global_idx + 1}"
                     else:
-                        label = "FlowRegion"
+                        label = label_prefix or "FlowRegion"
 
                     spec.add_highlight(
                         bbox=region.bbox,
@@ -334,66 +447,72 @@ class FlowRegion(Visualizable):
         self._cached_bbox = merge_bboxes(region_bboxes)
         return self._cached_bbox
 
-    @property
-    def x0(self) -> Optional[float]:
-        return self.bbox[0] if self.bbox else None
+    def _require_bbox(self) -> Tuple[float, float, float, float]:
+        bbox = self.bbox
+        if bbox is None:
+            raise ValueError("FlowRegion has no bounding box; ensure it has constituent regions")
+        return bbox
 
     @property
-    def top(self) -> Optional[float]:
-        return self.bbox[1] if self.bbox else None
+    def x0(self) -> float:
+        return self._require_bbox()[0]
 
     @property
-    def x1(self) -> Optional[float]:
-        return self.bbox[2] if self.bbox else None
+    def top(self) -> float:
+        return self._require_bbox()[1]
 
     @property
-    def bottom(self) -> Optional[float]:
-        return self.bbox[3] if self.bbox else None
+    def x1(self) -> float:
+        return self._require_bbox()[2]
+
+    @property
+    def bottom(self) -> float:
+        return self._require_bbox()[3]
 
     @property
     def width(self) -> Optional[float]:
-        return self.x1 - self.x0 if self.bbox else None
+        bbox = self.bbox
+        if not bbox:
+            return None
+        return bbox[2] - bbox[0]
 
     @property
     def height(self) -> Optional[float]:
-        return self.bottom - self.top if self.bbox else None
+        bbox = self.bbox
+        if not bbox:
+            return None
+        return bbox[3] - bbox[1]
+
+    @property
+    def has_polygon(self) -> bool:
+        return False
+
+    @property
+    def polygon(self) -> List[Tuple[float, float]]:
+        bbox = self.bbox
+        if not bbox:
+            return []
+        x0, y0, x1, y1 = bbox
+        return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
     def extract_text(self, apply_exclusions: bool = True, **kwargs) -> str:
-        """
-        Extracts and concatenates text from all constituent physical regions.
-        The order of concatenation respects the flow's arrangement.
-
-        Args:
-            apply_exclusions: Whether to respect PDF exclusion zones within each
-                              constituent physical region during text extraction.
-            **kwargs: Additional arguments passed to the underlying extract_text method
-                      of each constituent region.
-
-        Returns:
-            The combined text content as a string.
-        """
-        if (
-            self._cached_text is not None and apply_exclusions
-        ):  # Simple cache check, might need refinement if kwargs change behavior
+        """Concatenate text from constituent regions while preserving flow order."""
+        if self._cached_text is not None and apply_exclusions:
             return self._cached_text
 
         if not self.constituent_regions:
             return ""
 
-        texts: List[str] = []
-        # For now, simple concatenation. Order depends on how constituent_regions were added.
-        # The FlowElement._flow_direction method is responsible for ordering constituent_regions correctly.
-        for region in self.constituent_regions:
-            texts.append(region.extract_text(apply_exclusions=apply_exclusions, **kwargs))
+        from natural_pdf.elements.element_collection import ElementCollection
 
-        # Join based on flow arrangement (e.g., newline for vertical, space for horizontal)
-        # This is a simplification; true layout-aware joining would be more complex.
-        joiner = (
-            "\n" if self.flow.arrangement == "vertical" else " "
-        )  # TODO: Consider flow.segment_gap for proportional spacing between segments
-        extracted = joiner.join(t for t in texts if t)
+        elements = self.elements(apply_exclusions=apply_exclusions)
+        # ElementCollection.extract_text handles ordering and layout-specific kwargs.
+        extracted = elements.extract_text(**kwargs)
 
-        if apply_exclusions:  # Only cache if standard exclusion behavior
+        if not extracted:
+            return ""
+
+        if apply_exclusions:
             self._cached_text = extracted
         return extracted
 
@@ -470,25 +589,19 @@ class FlowRegion(Visualizable):
             return None
 
         for region in self.constituent_regions:
-            try:
-                result = region.find(
-                    selector=selector,
-                    text=text,
-                    overlap=overlap,
-                    apply_exclusions=apply_exclusions,
-                    regex=regex,
-                    case=case,
-                    text_tolerance=text_tolerance,
-                    auto_text_tolerance=auto_text_tolerance,
-                    reading_order=reading_order,
-                )
-                if result is not None:
-                    return result
-            except Exception as e:
-                logger.warning(
-                    f"FlowRegion.find: error searching region {region}: {e}",
-                    exc_info=False,
-                )
+            result = region.find(
+                selector=selector,
+                text=text,
+                overlap=overlap,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
+            )
+            if result is not None:
+                return result
         return None
 
     def find_all(
@@ -510,25 +623,19 @@ class FlowRegion(Visualizable):
 
         combined: List["PhysicalElement"] = []
         for region in self.constituent_regions:
-            try:
-                collection = region.find_all(
-                    selector=selector,
-                    text=text,
-                    overlap=overlap,
-                    apply_exclusions=apply_exclusions,
-                    regex=regex,
-                    case=case,
-                    text_tolerance=text_tolerance,
-                    auto_text_tolerance=auto_text_tolerance,
-                    reading_order=reading_order,
-                )
-                if collection:
-                    combined.extend(collection.elements)
-            except Exception as e:
-                logger.warning(
-                    f"FlowRegion.find_all: error searching region {region}: {e}",
-                    exc_info=False,
-                )
+            collection = region.find_all(
+                selector=selector,
+                text=text,
+                overlap=overlap,
+                apply_exclusions=apply_exclusions,
+                regex=regex,
+                case=case,
+                text_tolerance=text_tolerance,
+                auto_text_tolerance=auto_text_tolerance,
+                reading_order=reading_order,
+            )
+            if collection:
+                combined.extend(collection.elements)
 
         unique: List["PhysicalElement"] = []
         seen: Set["PhysicalElement"] = set()
@@ -541,7 +648,7 @@ class FlowRegion(Visualizable):
 
     def highlight(
         self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs
-    ) -> "FlowRegion":  # Stringized
+    ) -> Optional["PIL_Image"]:
         """
         Highlights all constituent physical regions on their respective pages.
 
@@ -551,10 +658,10 @@ class FlowRegion(Visualizable):
             **kwargs: Additional arguments for the underlying highlight method.
 
         Returns:
-            Self for method chaining.
+            Image generated by the underlying highlight call, or None if no highlights were added.
         """
         if not self.constituent_regions:
-            return self
+            return None
 
         base_label = label if label else "FlowRegionPart"
         for i, region in enumerate(self.constituent_regions):
@@ -562,7 +669,7 @@ class FlowRegion(Visualizable):
                 f"{base_label}_{i+1}" if len(self.constituent_regions) > 1 else base_label
             )
             region.highlight(label=current_label, color=color, **kwargs)
-        return self
+        return None
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """
@@ -607,16 +714,10 @@ class FlowRegion(Visualizable):
 
         cropped_images: List["PIL_Image"] = []
         for region_part in self.constituent_regions:
-            try:
-                # Use render() for clean image without highlights
-                img = region_part.render(resolution=resolution, crop=True, **kwargs)
-                if img:
-                    cropped_images.append(img)
-            except Exception as e:
-                logger.error(
-                    f"Error generating image for constituent region {region_part.bbox}: {e}",
-                    exc_info=True,
-                )
+            # Use render() for clean image without highlights
+            img = region_part.render(resolution=resolution, crop=True, **kwargs)
+            if img:
+                cropped_images.append(img)
 
         return cropped_images
 
@@ -650,12 +751,7 @@ class FlowRegion(Visualizable):
             New FlowRegion with expanded constituent regions
         """
         if not self.constituent_regions:
-            return FlowRegion(
-                flow=self.flow,
-                constituent_regions=[],
-                source_flow_element=self.source_flow_element,
-                boundary_element_found=self.boundary_element_found,
-            )
+            return self._spawn_from_regions([])
 
         expanded_regions = []
         for idx, region in enumerate(self.constituent_regions):
@@ -694,367 +790,47 @@ class FlowRegion(Visualizable):
                 or height_factor != 1.0
             )
 
-            try:
-                expanded_region = (
-                    region.expand(
-                        left=apply_left,
-                        right=apply_right,
-                        top=apply_top,
-                        bottom=apply_bottom,
-                        width_factor=width_factor,
-                        height_factor=height_factor,
-                    )
-                    if needs_expansion
-                    else region
+            expanded_region = (
+                region.expand(
+                    left=apply_left,
+                    right=apply_right,
+                    top=apply_top,
+                    bottom=apply_bottom,
+                    width_factor=width_factor,
+                    height_factor=height_factor,
                 )
-                expanded_regions.append(expanded_region)
-            except Exception as e:
-                logger.warning(
-                    f"FlowRegion.expand: Error expanding constituent region {region.bbox}: {e}",
-                    exc_info=False,
-                )
-                expanded_regions.append(region)
+                if needs_expansion
+                else region
+            )
+            expanded_regions.append(expanded_region)
 
         # Create new FlowRegion with expanded constituent regions
+        return self._spawn_from_regions(expanded_regions)
+
+    def _spawn_from_regions(self, regions: List["PhysicalRegion"]) -> "FlowRegion":
+        """Create a FlowRegion clone with the supplied constituent regions."""
         new_flow_region = FlowRegion(
             flow=self.flow,
-            constituent_regions=expanded_regions,
+            constituent_regions=list(regions),
             source_flow_element=self.source_flow_element,
             boundary_element_found=self.boundary_element_found,
         )
-
-        # Copy metadata
         new_flow_region.source = self.source
         new_flow_region.region_type = self.region_type
-        new_flow_region.metadata = self.metadata.copy()
-
-        # Clear caches since the regions have changed
+        if isinstance(self.metadata, dict):
+            new_flow_region.metadata = self.metadata.copy()
+        else:
+            new_flow_region.metadata = self.metadata
         new_flow_region._cached_text = None
         new_flow_region._cached_elements = None
         new_flow_region._cached_bbox = None
-
         return new_flow_region
 
-    def above(
-        self,
-        height: Optional[float] = None,
-        width: str = "full",
-        include_source: bool = False,
-        until: Optional[str] = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ) -> "FlowRegion":
-        """
-        Create a FlowRegion with regions above this FlowRegion.
+    # Directional methods are provided by MultiRegionDirectionalMixin.
 
-        For vertical flows: Only expands the topmost constituent region upward.
-        For horizontal flows: Expands all constituent regions upward.
+    # (remaining directional helpers inherited)
 
-        Args:
-            height: Height of the region above, in points
-            width: Width mode - "full" for full page width or "element" for element width
-            include_source: Whether to include this FlowRegion in the result
-            until: Optional selector string to specify an upper boundary element
-            include_endpoint: Whether to include the boundary element in the region
-            **kwargs: Additional parameters
-
-        Returns:
-            New FlowRegion with regions above
-        """
-        if not self.constituent_regions:
-            return FlowRegion(
-                flow=self.flow,
-                constituent_regions=[],
-                source_flow_element=self.source_flow_element,
-                boundary_element_found=self.boundary_element_found,
-            )
-
-        new_regions = []
-
-        if self.flow.arrangement == "vertical":
-            # For vertical flow, use FLOW ORDER (index 0 is earliest). Only expand the
-            # first constituent region in that order.
-            for idx, region in enumerate(self.constituent_regions):
-                if idx == 0:  # Only expand the first region (earliest in flow)
-                    above_region = region.above(
-                        height=height,
-                        width="element",  # Keep original column width
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(above_region)
-                elif include_source:
-                    new_regions.append(region)
-        else:  # horizontal flow
-            # For horizontal flow, expand all regions upward
-            for region in self.constituent_regions:
-                above_region = region.above(
-                    height=height,
-                    width=width,
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(above_region)
-
-        return FlowRegion(
-            flow=self.flow,
-            constituent_regions=new_regions,
-            source_flow_element=self.source_flow_element,
-            boundary_element_found=self.boundary_element_found,
-        )
-
-    def below(
-        self,
-        height: Optional[float] = None,
-        width: str = "full",
-        include_source: bool = False,
-        until: Optional[str] = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ) -> "FlowRegion":
-        """
-        Create a FlowRegion with regions below this FlowRegion.
-
-        For vertical flows: Only expands the bottommost constituent region downward.
-        For horizontal flows: Expands all constituent regions downward.
-
-        Args:
-            height: Height of the region below, in points
-            width: Width mode - "full" for full page width or "element" for element width
-            include_source: Whether to include this FlowRegion in the result
-            until: Optional selector string to specify a lower boundary element
-            include_endpoint: Whether to include the boundary element in the region
-            **kwargs: Additional parameters
-
-        Returns:
-            New FlowRegion with regions below
-        """
-        if not self.constituent_regions:
-            return FlowRegion(
-                flow=self.flow,
-                constituent_regions=[],
-                source_flow_element=self.source_flow_element,
-                boundary_element_found=self.boundary_element_found,
-            )
-
-        new_regions = []
-
-        if self.flow.arrangement == "vertical":
-            # For vertical flow, expand only the LAST constituent region in flow order.
-            last_idx = len(self.constituent_regions) - 1
-            for idx, region in enumerate(self.constituent_regions):
-                if idx == last_idx:
-                    below_region = region.below(
-                        height=height,
-                        width="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(below_region)
-                elif include_source:
-                    new_regions.append(region)
-        else:  # horizontal flow
-            # For horizontal flow, expand all regions downward
-            for region in self.constituent_regions:
-                below_region = region.below(
-                    height=height,
-                    width=width,
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(below_region)
-
-        return FlowRegion(
-            flow=self.flow,
-            constituent_regions=new_regions,
-            source_flow_element=self.source_flow_element,
-            boundary_element_found=self.boundary_element_found,
-        )
-
-    def left(
-        self,
-        width: Optional[float] = None,
-        height: str = "full",
-        include_source: bool = False,
-        until: Optional[str] = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ) -> "FlowRegion":
-        """
-        Create a FlowRegion with regions to the left of this FlowRegion.
-
-        For vertical flows: Expands all constituent regions leftward.
-        For horizontal flows: Only expands the leftmost constituent region leftward.
-
-        Args:
-            width: Width of the region to the left, in points
-            height: Height mode - "full" for full page height or "element" for element height
-            include_source: Whether to include this FlowRegion in the result
-            until: Optional selector string to specify a left boundary element
-            include_endpoint: Whether to include the boundary element in the region
-            **kwargs: Additional parameters
-
-        Returns:
-            New FlowRegion with regions to the left
-        """
-        if not self.constituent_regions:
-            return FlowRegion(
-                flow=self.flow,
-                constituent_regions=[],
-                source_flow_element=self.source_flow_element,
-                boundary_element_found=self.boundary_element_found,
-            )
-
-        new_regions = []
-
-        if self.flow.arrangement == "vertical":
-            # For vertical flow, expand all regions leftward
-            for region in self.constituent_regions:
-                left_region = region.left(
-                    width=width,
-                    height="element",
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(left_region)
-        else:  # horizontal flow
-            # For horizontal flow, only expand the leftmost region leftward
-            leftmost_region = min(self.constituent_regions, key=lambda r: r.x0)
-            for region in self.constituent_regions:
-                if region == leftmost_region:
-                    # Expand this region leftward
-                    left_region = region.left(
-                        width=width,
-                        height="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(left_region)
-                elif include_source:
-                    # Include other regions unchanged if include_source is True
-                    new_regions.append(region)
-
-        return FlowRegion(
-            flow=self.flow,
-            constituent_regions=new_regions,
-            source_flow_element=self.source_flow_element,
-            boundary_element_found=self.boundary_element_found,
-        )
-
-    def right(
-        self,
-        width: Optional[float] = None,
-        height: str = "full",
-        include_source: bool = False,
-        until: Optional[str] = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ) -> "FlowRegion":
-        """
-        Create a FlowRegion with regions to the right of this FlowRegion.
-
-        For vertical flows: Expands all constituent regions rightward.
-        For horizontal flows: Only expands the rightmost constituent region rightward.
-
-        Args:
-            width: Width of the region to the right, in points
-            height: Height mode - "full" for full page height or "element" for element height
-            include_source: Whether to include this FlowRegion in the result
-            until: Optional selector string to specify a right boundary element
-            include_endpoint: Whether to include the boundary element in the region
-            **kwargs: Additional parameters
-
-        Returns:
-            New FlowRegion with regions to the right
-        """
-        if not self.constituent_regions:
-            return FlowRegion(
-                flow=self.flow,
-                constituent_regions=[],
-                source_flow_element=self.source_flow_element,
-                boundary_element_found=self.boundary_element_found,
-            )
-
-        new_regions = []
-
-        if self.flow.arrangement == "vertical":
-            # For vertical flow, expand all regions rightward
-            for region in self.constituent_regions:
-                right_region = region.right(
-                    width=width,
-                    height="element",
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(right_region)
-        else:  # horizontal flow
-            # For horizontal flow, only expand the rightmost region rightward
-            rightmost_region = max(self.constituent_regions, key=lambda r: r.x1)
-            for region in self.constituent_regions:
-                if region == rightmost_region:
-                    # Expand this region rightward
-                    right_region = region.right(
-                        width=width,
-                        height="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(right_region)
-                elif include_source:
-                    # Include other regions unchanged if include_source is True
-                    new_regions.append(region)
-
-        return FlowRegion(
-            flow=self.flow,
-            constituent_regions=new_regions,
-            source_flow_element=self.source_flow_element,
-            boundary_element_found=self.boundary_element_found,
-        )
-
-    def to_region(self) -> "FlowRegion":
-        """
-        Convert this FlowRegion to a region (returns a copy).
-        This is equivalent to calling expand() with no arguments.
-
-        Returns:
-            Copy of this FlowRegion
-        """
-        return self.expand()
-
-    @property
-    def is_empty(self) -> bool:
-        """Checks if the FlowRegion contains no constituent regions or if all are empty."""
-        if not self.constituent_regions:
-            return True
-        # A more robust check might see if extract_text() is empty and elements() is empty.
-        # For now, if it has regions, it's not considered empty by this simple check.
-        # User Point 4: FlowRegion can be empty (no text, no elements). This implies checking content.
-        try:
-            return not bool(self.extract_text(apply_exclusions=False).strip()) and not bool(
-                self.elements(apply_exclusions=False)
-            )
-        except Exception:
-            return True  # If error during check, assume empty to be safe
-
-    # ------------------------------------------------------------------
     # Table extraction helpers (delegates to underlying physical regions)
-    # ------------------------------------------------------------------
 
     def extract_table(
         self,
@@ -1065,6 +841,10 @@ class FlowRegion(Visualizable):
         text_options: Optional[Dict] = None,
         cell_extraction_func: Optional[Callable[["PhysicalRegion"], Optional[str]]] = None,
         show_progress: bool = False,
+        content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
+        apply_exclusions: bool = True,
+        verticals: Optional[List[float]] = None,
+        horizontals: Optional[List[float]] = None,
         # Optional row-level merge predicate. If provided, it decides whether
         # the current row (first row of a segment/page) should be merged with
         # the previous one (to handle multi-page spill-overs).
@@ -1085,6 +865,9 @@ class FlowRegion(Visualizable):
             method, table_settings, use_ocr, ocr_config, text_options, cell_extraction_func, show_progress:
                 Same as in :pymeth:`Region.extract_table` and are forwarded as-is
                 to each physical region.
+            content_filter: Optional content filter applied via the underlying Region extraction.
+            apply_exclusions: Whether exclusions should be applied inside each physical region.
+            verticals, horizontals: Explicit guide coordinates forwarded to each Region.
             merge_headers: Whether to merge tables by removing repeated headers from subsequent
                 pages/segments. If None (default), auto-detects by checking if the first row
                 of each segment matches the first row of the first segment. If segments have
@@ -1143,95 +926,94 @@ class FlowRegion(Visualizable):
         segment_has_repeated_header = []  # Track which segments have repeated headers
 
         for region_idx, region in enumerate(self.constituent_regions):
-            try:
-                region_result = region.extract_table(
-                    method=method,
-                    table_settings=table_settings.copy(),  # Avoid side-effects
-                    use_ocr=use_ocr,
-                    ocr_config=ocr_config,
-                    text_options=text_options.copy(),
-                    cell_extraction_func=cell_extraction_func,
-                    show_progress=show_progress,
-                    **kwargs,
-                )
+            region_result = region.extract_table(
+                method=method,
+                table_settings=table_settings.copy(),  # Avoid side-effects
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                text_options=text_options.copy(),
+                cell_extraction_func=cell_extraction_func,
+                show_progress=show_progress,
+                content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
+                verticals=verticals,
+                horizontals=horizontals,
+                **kwargs,
+            )
 
-                # Convert result to list of rows
-                if not region_result:
-                    continue
+            # Convert result to list of rows
+            if not region_result:
+                continue
 
-                if isinstance(region_result, TableResult):
-                    segment_rows = list(region_result)
+            segment_rows = (
+                list(region_result)
+                if isinstance(region_result, TableResult)
+                else list(region_result)
+            )
+
+            # Handle header detection and merging for multi-page tables
+            if region_idx == 0:
+                # First segment: capture potential header row
+                if segment_rows:
+                    header_row = segment_rows[0]
+                    # Determine if we should merge headers
+                    if merge_headers is None:
+                        # Auto-detect: we'll check all subsequent segments
+                        merge_headers_enabled = False  # Will be determined later
+                    else:
+                        merge_headers_enabled = merge_headers
+                    # Track that first segment exists (for consistency checking)
+                    segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
+            elif region_idx == 1 and merge_headers is None:
+                # Auto-detection: check if first row of second segment matches header
+                has_header = segment_rows and header_row and segment_rows[0] == header_row
+                segment_has_repeated_header.append(has_header)
+
+                if has_header:
+                    merge_headers_enabled = True
+                    # Remove the detected repeated header from this segment
+                    segment_rows = segment_rows[1:]
+                    if not headers_warned:
+                        warnings.warn(
+                            "Detected repeated headers in multi-page table. Merging by removing "
+                            "repeated headers from subsequent pages.",
+                            UserWarning,
+                            stacklevel=2,
+                        )
+                        headers_warned = True
                 else:
-                    segment_rows = list(region_result)
+                    merge_headers_enabled = False
+            elif region_idx > 1:
+                # Check consistency: all segments should have same pattern
+                has_header = segment_rows and header_row and segment_rows[0] == header_row
+                segment_has_repeated_header.append(has_header)
 
-                # Handle header detection and merging for multi-page tables
-                if region_idx == 0:
-                    # First segment: capture potential header row
-                    if segment_rows:
-                        header_row = segment_rows[0]
-                        # Determine if we should merge headers
-                        if merge_headers is None:
-                            # Auto-detect: we'll check all subsequent segments
-                            merge_headers_enabled = False  # Will be determined later
-                        else:
-                            merge_headers_enabled = merge_headers
-                        # Track that first segment exists (for consistency checking)
-                        segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
-                elif region_idx == 1 and merge_headers is None:
-                    # Auto-detection: check if first row of second segment matches header
-                    has_header = segment_rows and header_row and segment_rows[0] == header_row
-                    segment_has_repeated_header.append(has_header)
+                # Remove header if merging is enabled and header is present
+                if merge_headers_enabled and has_header:
+                    segment_rows = segment_rows[1:]
+            elif region_idx > 0 and merge_headers_enabled:
+                # Explicit merge_headers=True: remove headers from subsequent segments
+                if segment_rows and header_row and segment_rows[0] == header_row:
+                    segment_rows = segment_rows[1:]
+                    if not headers_warned:
+                        warnings.warn(
+                            "Removing repeated headers from multi-page table during merge.",
+                            UserWarning,
+                            stacklevel=2,
+                        )
+                        headers_warned = True
 
-                    if has_header:
-                        merge_headers_enabled = True
-                        # Remove the detected repeated header from this segment
-                        segment_rows = segment_rows[1:]
-                        if not headers_warned:
-                            warnings.warn(
-                                "Detected repeated headers in multi-page table. Merging by removing "
-                                "repeated headers from subsequent pages.",
-                                UserWarning,
-                                stacklevel=2,
-                            )
-                            headers_warned = True
-                    else:
-                        merge_headers_enabled = False
-                elif region_idx > 1:
-                    # Check consistency: all segments should have same pattern
-                    has_header = segment_rows and header_row and segment_rows[0] == header_row
-                    segment_has_repeated_header.append(has_header)
-
-                    # Remove header if merging is enabled and header is present
-                    if merge_headers_enabled and has_header:
-                        segment_rows = segment_rows[1:]
-                elif region_idx > 0 and merge_headers_enabled:
-                    # Explicit merge_headers=True: remove headers from subsequent segments
-                    if segment_rows and header_row and segment_rows[0] == header_row:
-                        segment_rows = segment_rows[1:]
-                        if not headers_warned:
-                            warnings.warn(
-                                "Removing repeated headers from multi-page table during merge.",
-                                UserWarning,
-                                stacklevel=2,
-                            )
-                            headers_warned = True
-
-                # Process remaining rows with stitch_rows logic
-                for row_idx, row in enumerate(segment_rows):
-                    if (
-                        predicate is not None
-                        and aggregated_rows
-                        and predicate(aggregated_rows[-1], row, row_idx, region)
-                    ):
-                        # Merge with previous row
-                        aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
-                    else:
-                        aggregated_rows.append(row)
-            except Exception as e:
-                logger.error(
-                    f"FlowRegion.extract_table: Error extracting table from constituent region {region}: {e}",
-                    exc_info=True,
-                )
+            # Process remaining rows with stitch_rows logic
+            for row_idx, row in enumerate(segment_rows):
+                if (
+                    predicate is not None
+                    and aggregated_rows
+                    and predicate(aggregated_rows[-1], row, row_idx, region)
+                ):
+                    # Merge with previous row
+                    aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
+                else:
+                    aggregated_rows.append(row)
 
         # Check for inconsistent header patterns after processing all segments
         if merge_headers is None and len(segment_has_repeated_header) > 2:
@@ -1284,20 +1066,17 @@ class FlowRegion(Visualizable):
         all_tables: List[List[List[Optional[str]]]] = []
 
         for region in self.constituent_regions:
-            try:
-                region_tables = region.extract_tables(
+            region_tables = cast(
+                List[List[List[Optional[str]]]],
+                region.extract_tables(
                     method=method,
                     table_settings=table_settings.copy(),
                     **kwargs,
-                )
-                # ``region_tables`` is a list (possibly empty).
-                if region_tables:
-                    all_tables.extend(region_tables)
-            except Exception as e:
-                logger.error(
-                    f"FlowRegion.extract_tables: Error extracting tables from constituent region {region}: {e}",
-                    exc_info=True,
-                )
+                ),
+            )
+            # ``region_tables`` is a list (possibly empty).
+            if region_tables:
+                all_tables.extend(region_tables)
 
         return all_tables
 

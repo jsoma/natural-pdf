@@ -2,14 +2,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 
-# Now import the flag from the canonical source - this import should always work
-
 DEFAULT_SEARCH_COLLECTION_NAME = "default_collection"
 
-# Avoid runtime import errors if extras not installed
-try:
-    # Import protocols and options first
-    from . import get_search_service
+if TYPE_CHECKING:
     from .search_options import SearchOptions, TextSearchOptions
     from .search_service_protocol import (
         Indexable,
@@ -17,25 +12,33 @@ try:
         IndexExistsError,
         SearchServiceProtocol,
     )
+else:
+    Indexable = Any  # type: ignore[assignment]
+    SearchServiceProtocol = Any  # type: ignore[assignment]
+    IndexConfigurationError = RuntimeError  # type: ignore[assignment]
+    IndexExistsError = RuntimeError  # type: ignore[assignment]
 
-    if TYPE_CHECKING:  # Keep type hints working
-        from natural_pdf.elements.region import Region  # Example indexable type
+    class _MissingSearchOptions:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ImportError("Search dependencies missing.")
+
+    class _MissingTextSearchOptions(_MissingSearchOptions):
+        pass
+
+    SearchOptions = _MissingSearchOptions  # type: ignore[assignment]
+    TextSearchOptions = _MissingTextSearchOptions  # type: ignore[assignment]
+
+try:
+    from . import get_search_service
 except ImportError:
-    # Define dummies if extras missing
-    SearchServiceProtocol, Indexable, IndexConfigurationError, IndexExistsError = (
-        object,
-        object,
-        RuntimeError,
-        RuntimeError,
-    )
-    SearchOptions, TextSearchOptions = object, object
-    DEFAULT_SEARCH_COLLECTION_NAME = "default_collection"
 
-    def get_search_service(**kwargs):
+    def get_search_service(
+        collection_name: str,
+        persist: bool = False,
+        uri: Optional[str] = None,
+        default_embedding_model: Optional[str] = None,
+    ) -> SearchServiceProtocol:
         raise ImportError("Search dependencies missing.")
-
-    class Region:
-        pass  # Dummy for type hint
 
 
 logger = logging.getLogger(__name__)
@@ -287,11 +290,7 @@ class SearchableMixin(ABC):
             logger.error(
                 f"Search failed: Collection '{collection_name}' not found by service. Error: {fnf}"
             )
-            raise  # Re-raise specific error
-        except Exception as e:
-            logger.error(f"Search failed for collection '{collection_name}': {e}", exc_info=True)
-            # Consider wrapping in a SearchError?
-            raise RuntimeError(f"Search failed in collection '{collection_name}'.") from e
+            raise
 
     def sync_index(
         self,
@@ -336,7 +335,11 @@ class SearchableMixin(ABC):
 
         if strategy == "full":
             required_methods = ["list_documents", "delete_documents"]
-            missing_methods = [m for m in required_methods if not hasattr(self._search_service, m)]
+            missing_methods = [
+                method
+                for method in required_methods
+                if not callable(getattr(self._search_service, method, None))
+            ]
             if missing_methods:
                 raise NotImplementedError(
                     f"The configured search service ({type(self._search_service).__name__}) "
@@ -345,38 +348,27 @@ class SearchableMixin(ABC):
 
         desired_state: Dict[str, Indexable] = {}  # {id: item}
         desired_hashes: Dict[str, Optional[str]] = {}  # {id: hash or None}
-        try:
-            for item in self.get_indexable_items():
-                item_id = item.get_id()
-                if not item_id:
-                    logger.warning(f"Skipping item with no ID: {item}")
-                    summary["skipped"] += 1
-                    continue
-                if item_id in desired_state:
-                    logger.warning(
-                        f"Duplicate ID '{item_id}' found in get_indexable_items(). Skipping subsequent item."
-                    )
-                    summary["skipped"] += 1
-                    continue
-                desired_state[item_id] = item
-                # Try to get hash, store None if unavailable or fails
-                try:
-                    desired_hashes[item_id] = item.get_content_hash()
-                except (AttributeError, NotImplementedError):
-                    logger.debug(
-                        f"get_content_hash not available for item ID '{item_id}' ({type(item).__name__}). Sync update check will be ID-based."
-                    )
-                    desired_hashes[item_id] = None
-                except Exception as e:
-                    logger.warning(
-                        f"Error getting content hash for item ID '{item_id}': {e}. Sync update check will be ID-based.",
-                        exc_info=False,
-                    )
-                    desired_hashes[item_id] = None
-
-        except Exception as e:
-            logger.error(f"Error iterating through get_indexable_items: {e}", exc_info=True)
-            raise RuntimeError("Failed to get current indexable items.") from e
+        for item in self.get_indexable_items():
+            item_id = item.get_id()
+            if not item_id:
+                logger.warning(f"Skipping item with no ID: {item}")
+                summary["skipped"] += 1
+                continue
+            if item_id in desired_state:
+                logger.warning(
+                    f"Duplicate ID '{item_id}' found in get_indexable_items(). Skipping subsequent item."
+                )
+                summary["skipped"] += 1
+                continue
+            desired_state[item_id] = item
+            # Try to get hash, store None if unavailable or fails
+            try:
+                desired_hashes[item_id] = item.get_content_hash()
+            except (AttributeError, NotImplementedError):
+                logger.debug(
+                    f"get_content_hash not available for item ID '{item_id}' ({type(item).__name__}). Sync update check will be ID-based."
+                )
+                desired_hashes[item_id] = None
 
         logger.info(f"Desired state contains {len(desired_state)} indexable items.")
 
@@ -399,31 +391,24 @@ class SearchableMixin(ABC):
         elif strategy == "full":
             # Complex case: Add/Update/Delete
             # 2a. Get Current Index State
-            try:
-                logger.debug("Listing documents currently in the index...")
-                # Assumes list_documents takes filters and include_metadata
-                # Fetch all documents with metadata
-                current_docs = self._search_service.list_documents(include_metadata=True)
-                current_state: Dict[str, Dict] = {}  # {id: {'meta': {...}, ...}}
-                duplicates = 0
-                for doc in current_docs:
-                    doc_id = doc.get("id")
-                    if not doc_id:
-                        continue  # Skip docs without ID from service
-                    if doc_id in current_state:
-                        duplicates += 1
-                    current_state[doc_id] = doc
-                logger.info(
-                    f"Found {len(current_state)} documents currently in the index (encountered {duplicates} duplicate IDs)."
+            logger.debug("Listing documents currently in the index...")
+            current_docs = self._search_service.list_documents(include_metadata=True)
+            current_state: Dict[str, Dict] = {}
+            duplicates = 0
+            for doc in current_docs:
+                doc_id = doc.get("id")
+                if not doc_id:
+                    continue
+                if doc_id in current_state:
+                    duplicates += 1
+                current_state[doc_id] = doc
+            logger.info(
+                f"Found {len(current_state)} documents currently in the index (encountered {duplicates} duplicate IDs)."
+            )
+            if duplicates > 0:
+                logger.warning(
+                    f"Found {duplicates} duplicate IDs in the index. Using the last encountered version for comparison."
                 )
-                if duplicates > 0:
-                    logger.warning(
-                        f"Found {duplicates} duplicate IDs in the index. Using the last encountered version for comparison."
-                    )
-
-            except Exception as e:
-                logger.error(f"Failed to list documents from search service: {e}", exc_info=True)
-                raise RuntimeError("Could not retrieve current index state for sync.") from e
 
             # 2b. Compare States and Plan Actions
             ids_in_desired = set(desired_state.keys())
@@ -468,30 +453,18 @@ class SearchableMixin(ABC):
                 # Execute Deletes
                 if ids_to_delete:
                     logger.info(f"Deleting {len(ids_to_delete)} items from index...")
-                    try:
-                        # Assuming delete_documents takes list of IDs
-                        # Implement batching if needed
-                        self._search_service.delete_documents(ids=list(ids_to_delete))
-                        logger.info("Deletion successful.")
-                    except Exception as e:
-                        logger.error(f"Failed to delete documents: {e}", exc_info=True)
-                        # Decide whether to continue or raise
-                        raise RuntimeError("Failed during deletion phase of sync.") from e
+                    self._search_service.delete_documents(ids=list(ids_to_delete))
+                    logger.info("Deletion successful.")
 
                 # Execute Adds/Updates
                 if items_to_index:
                     logger.info(f"Indexing/Updating {len(items_to_index)} items...")
-                    try:
-                        # Upsert logic handled by service's index method with force_reindex=False
-                        self._search_service.index(
-                            documents=items_to_index,
-                            force_reindex=False,
-                            embedder_device=embedder_device,
-                        )
-                        logger.info("Add/Update successful.")
-                    except Exception as e:
-                        logger.error(f"Failed to index/update documents: {e}", exc_info=True)
-                        raise RuntimeError("Failed during add/update phase of sync.") from e
+                    self._search_service.index(
+                        documents=items_to_index,
+                        force_reindex=False,
+                        embedder_device=embedder_device,
+                    )
+                    logger.info("Add/Update successful.")
                 logger.info("Sync actions completed.")
             else:
                 logger.info("[Dry Run] No changes applied to the index.")

@@ -3,7 +3,7 @@ import copy  # For deep copying options
 import logging
 import threading  # Import threading for lock
 import time  # Import time for timing
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Type, TypedDict, Union, cast
 
 from PIL import Image
 
@@ -26,6 +26,18 @@ from .ocr_options import (
 logger = logging.getLogger(__name__)
 
 
+EngineProvider = Union[
+    Type[OCREngine],
+    Callable[[], Type[OCREngine]],
+    Callable[[], OCREngine],
+]
+
+
+class EngineRegistration(TypedDict):
+    provider: EngineProvider
+    options_class: Type[BaseOCROptions]
+
+
 class OCRManager:
     """Manages OCR engine selection, configuration, and execution."""
 
@@ -36,15 +48,32 @@ class OCRManager:
 
         return PaddleOCREngine
 
-    # Registry mapping engine names to classes and default options
-    ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
-        "easyocr": {"class": EasyOCREngine, "options_class": EasyOCROptions},
+    @staticmethod
+    def _resolve_engine_provider(provider: EngineProvider) -> OCREngine:
+        """
+        Resolve an engine provider entry into a concrete OCREngine instance.
+        """
+        if isinstance(provider, type) and issubclass(provider, OCREngine):
+            return provider()
+
+        if callable(provider):
+            candidate = provider()
+            if isinstance(candidate, type) and issubclass(candidate, OCREngine):
+                return candidate()
+            if isinstance(candidate, OCREngine):
+                return candidate
+
+        raise TypeError("Engine provider must resolve to an OCREngine subclass or instance.")
+
+    # Registry mapping engine names to providers and default options
+    ENGINE_REGISTRY: Dict[str, EngineRegistration] = {
+        "easyocr": {"provider": EasyOCREngine, "options_class": EasyOCROptions},
         "paddle": {
-            "class": lambda: OCRManager._get_paddle_engine_class(),
+            "provider": lambda: OCRManager._get_paddle_engine_class()(),
             "options_class": PaddleOCROptions,
         },
-        "surya": {"class": SuryaOCREngine, "options_class": SuryaOCROptions},
-        "doctr": {"class": DoctrOCREngine, "options_class": DoctrOCROptions},
+        "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
+        "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
         # Add other engines here
     }
 
@@ -87,18 +116,10 @@ class OCRManager:
             logger.info(
                 f"[{threading.current_thread().name}] Creating shared instance of engine: {engine_name}"
             )
-            engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
-            # Handle lazy loading - if it's a lambda function, call it to get the actual class
-            if (
-                callable(engine_class_or_factory)
-                and getattr(engine_class_or_factory, "__name__", "") == "<lambda>"
-            ):
-                engine_class = engine_class_or_factory()
-            else:
-                engine_class = engine_class_or_factory
             start_time = time.monotonic()  # Optional: time initialization
             try:
-                engine_instance = engine_class()  # Instantiate first
+                registry_entry = self.ENGINE_REGISTRY[engine_name]
+                engine_instance = self._resolve_engine_provider(registry_entry["provider"])
                 if not engine_instance.is_available():
                     # Check availability before storing
                     install_hint = f"npdf install {engine_name}"
@@ -193,9 +214,7 @@ class OCRManager:
 
         # Type check options object if provided
         if final_options is not None:
-            options_class = self.ENGINE_REGISTRY[selected_engine_name].get(
-                "options_class", BaseOCROptions
-            )
+            options_class = self.ENGINE_REGISTRY[selected_engine_name]["options_class"]
             if not isinstance(final_options, options_class):
                 # Allow dicts to be passed directly too, assuming engine handles them
                 if not isinstance(final_options, dict):
@@ -251,7 +270,7 @@ class OCRManager:
                 min_confidence=min_confidence,
                 device=device,
                 detect_only=detect_only,
-                options=final_options,
+                options=cast(Optional[BaseOCROptions], final_options),
             )
             inference_end_time = time.monotonic()
             logger.debug(
@@ -287,17 +306,8 @@ class OCRManager:
         available = []
         for name, registry_entry in self.ENGINE_REGISTRY.items():
             try:
-                # Temporarily instantiate to check availability without caching
-                engine_class_or_factory = registry_entry["class"]
-                # Handle lazy loading - if it's a lambda function, call it to get the actual class
-                if (
-                    callable(engine_class_or_factory)
-                    and getattr(engine_class_or_factory, "__name__", "") == "<lambda>"
-                ):
-                    engine_class = engine_class_or_factory()
-                else:
-                    engine_class = engine_class_or_factory
-                if engine_class().is_available():
+                engine_instance = self._resolve_engine_provider(registry_entry["provider"])
+                if engine_instance.is_available():
                     available.append(name)
             except Exception as e:
                 logger.debug(
@@ -323,9 +333,10 @@ class OCRManager:
             engine_name = engine_name.lower()
             if engine_name in self._engine_instances:
                 engine = self._engine_instances.pop(engine_name)
-                if hasattr(engine, "cleanup"):
+                cleanup_fn = getattr(engine, "cleanup", None)
+                if callable(cleanup_fn):
                     try:
-                        engine.cleanup()
+                        cleanup_fn()
                     except Exception as e:
                         logger.debug(f"Engine {engine_name} cleanup method failed: {e}")
 
@@ -338,9 +349,10 @@ class OCRManager:
         else:
             # Cleanup all engines
             for name, engine in list(self._engine_instances.items()):
-                if hasattr(engine, "cleanup"):
+                cleanup_fn = getattr(engine, "cleanup", None)
+                if callable(cleanup_fn):
                     try:
-                        engine.cleanup()
+                        cleanup_fn()
                     except Exception as e:
                         logger.debug(f"Engine {name} cleanup method failed: {e}")
 

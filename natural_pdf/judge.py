@@ -6,25 +6,42 @@ to classify regions (like checkboxes) into categories. It uses basic image
 metrics rather than neural networks for fast, interpretable results.
 """
 
+import base64
 import hashlib
+import io
 import json
 import logging
 import shutil
 from collections import namedtuple
+from collections.abc import Iterable as IterableABC
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+
+class SupportsRender(Protocol):
+    def render(self, crop: bool = True) -> "Image.Image": ...
+
+
 if TYPE_CHECKING:
     from natural_pdf.elements.region import Region
-
-    RegionType = Region
-else:
-    RegionType = Any
 
 # Return types
 Decision = namedtuple("Decision", ["label", "score"])
@@ -35,6 +52,14 @@ class JudgeError(Exception):
     """Raised when Judge operations fail."""
 
     pass
+
+
+@dataclass
+class PreviewRegion:
+    image: Image.Image
+
+    def render(self, crop: bool = True) -> Image.Image:
+        return self.image
 
 
 class Judge:
@@ -71,7 +96,7 @@ class Judge:
         self,
         name: str,
         labels: List[str],
-        base_dir: Optional[str] = None,
+        base_dir: Optional[Union[str, Path]] = None,
         target_prior: Optional[float] = None,
     ):
         """
@@ -96,7 +121,7 @@ class Judge:
         self.target_prior = float(target_prior) if target_prior is not None else 0.5
 
         # Set up directory structure
-        self.base_dir: Path = Path(base_dir) if base_dir else Path.cwd()
+        self.base_dir: Path = Path(base_dir) if base_dir is not None else Path.cwd()
         self.root_dir: Path = self.base_dir / name
         self.root_dir.mkdir(exist_ok=True)
 
@@ -115,7 +140,7 @@ class Judge:
         if self.config_path.exists():
             self._load_config()
 
-    def add(self, region: RegionType, label: Optional[str] = None) -> None:
+    def add(self, region: SupportsRender, label: Optional[str] = None) -> None:
         """
         Add a region to the judge's dataset.
 
@@ -132,8 +157,10 @@ class Judge:
         # Render region to image
         try:
             img = region.render(crop=True)
+            if img is None:
+                raise JudgeError("Region.render returned no image.")
             if not isinstance(img, Image.Image):
-                img = Image.fromarray(img)
+                img = Image.fromarray(np.asarray(img))
         except Exception as e:
             raise JudgeError(f"Failed to render region: {e}")
 
@@ -394,7 +421,7 @@ class Judge:
             print("Note: Install ipyevents for keyboard shortcuts: pip install ipyevents")
 
     def decide(
-        self, regions: Union[RegionType, Sequence[RegionType]]
+        self, regions: Union[SupportsRender, Iterable[SupportsRender]]
     ) -> Union[Decision, List[Decision]]:
         """
         Classify one or more regions.
@@ -419,11 +446,11 @@ class Judge:
             self._retrain()
 
         # Normalize to list of regions
-        if isinstance(regions, Sequence) and not isinstance(regions, (str, bytes)):
-            region_list = list(regions)
+        if isinstance(regions, IterableABC) and not isinstance(regions, (str, bytes)):
+            region_list: List[SupportsRender] = list(regions)
             single_input = False
         else:
-            region_list = [cast(RegionType, regions)]
+            region_list = [cast(SupportsRender, regions)]
             single_input = True
 
         results: List[Decision] = []
@@ -528,7 +555,7 @@ class Judge:
     def pick(
         self,
         target_label: str,
-        regions: Sequence[RegionType],
+        regions: Iterable[SupportsRender],
         labels: Optional[Sequence[str]] = None,
     ) -> PickResult:
         """
@@ -577,7 +604,7 @@ class Judge:
 
         return PickResult(region=region, index=best_index, label=label, score=best_score)
 
-    def count(self, target_label: str, regions: Sequence[RegionType]) -> int:
+    def count(self, target_label: str, regions: Iterable[SupportsRender]) -> int:
         """
         Count how many regions match the target label.
 
@@ -622,6 +649,8 @@ class Judge:
             min_count = min(labeled_counts)
             if max_count != min_count:
                 # Find which is which
+                majority_label: Optional[str] = None
+                minority_label: Optional[str] = None
                 for i, label in enumerate(self.labels):
                     if counts.get(label, 0) == max_count:
                         majority_label = label
@@ -629,11 +658,11 @@ class Judge:
                         minority_label = label
 
                 ratio = max_count / min_count
-                print(
-                    f"\nClass imbalance: {majority_label}:{minority_label} = {max_count}:{min_count} ({ratio:.1f}:1)"
-                )
-
-                print("  Using Youden's J weights with soft voting and prior correction")
+                if majority_label is not None and minority_label is not None:
+                    print(
+                        f"\nClass imbalance: {majority_label}:{minority_label} = {max_count}:{min_count} ({ratio:.1f}:1)"
+                    )
+                    print("  Using Youden's J weights with soft voting and prior correction")
 
     def inspect(self, preview: bool = True) -> None:
         """
@@ -674,19 +703,26 @@ class Judge:
                                 f"    {label} distribution: mean={metric_stats[mean_key]:.3f}, std={metric_stats[std_key]:.3f}"
                             )
 
+        HTML = None
+        display = None
+
         if preview:
             # HTML preview mode
             try:
-                import base64
-                import io
+                from IPython.display import HTML as _HTML
+                from IPython.display import display as _display
 
-                from IPython.display import HTML, display
+                HTML = _HTML
+                display = _display
             except ImportError:
                 print("Preview mode requires IPython/Jupyter. Falling back to text mode.")
                 preview = False
+        if preview and (HTML is None or display is None):
+            preview = False
 
         if preview:
             # Build HTML tables for everything
+            assert HTML is not None and display is not None
             html_parts = []
             html_parts.append("<style>")
             html_parts.append("table { border-collapse: collapse; margin: 20px 0; }")
@@ -723,6 +759,7 @@ class Judge:
             # Check for imbalance
             labeled_counts = [counts.get(label, 0) for label in self.labels]
             is_imbalanced = False
+            ratio: Optional[float] = None
             if all(c > 0 for c in labeled_counts):
                 max_count = max(labeled_counts)
                 min_count = min(labeled_counts)
@@ -743,7 +780,7 @@ class Judge:
 
             html_parts.append("</table>")
 
-            if is_imbalanced:
+            if is_imbalanced and ratio is not None:
                 html_parts.append(
                     f"<p><em>Class imbalance detected ({ratio:.1f}:1). Using Youden's J weights with prior correction.</em></p>"
                 )
@@ -809,16 +846,16 @@ class Judge:
                 for img_path in sorted(examples)[:20]:  # Show max 20 per class in preview
                     # Load image
                     img = Image.open(img_path)
-                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+                    preview_region = PreviewRegion(img)
 
                     # Get prediction
-                    decision = self.decide(mock_region)
+                    decision = cast(Decision, self.decide(preview_region))
                     is_correct = decision.label == true_label
                     if is_correct:
                         correct += 1
 
                     # Extract metrics
-                    metrics = self._extract_metrics(mock_region)
+                    metrics = self._extract_metrics(preview_region)
 
                     # Convert image to base64
                     buffered = io.BytesIO()
@@ -878,13 +915,13 @@ class Judge:
                 for img_path in sorted(unlabeled_examples)[:20]:  # Show max 20
                     # Load image
                     img = Image.open(img_path)
-                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+                    preview_region = PreviewRegion(img)
 
                     # Get prediction
-                    decision = self.decide(mock_region)
+                    decision = cast(Decision, self.decide(preview_region))
 
                     # Extract metrics
-                    metrics = self._extract_metrics(mock_region)
+                    metrics = self._extract_metrics(preview_region)
 
                     # Convert image to base64
                     buffered = io.BytesIO()
@@ -937,16 +974,16 @@ class Judge:
                 for img_path in sorted(examples)[:10]:  # Show max 10 per class
                     # Load image and create mock region
                     img = Image.open(img_path)
-                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+                    preview_region = PreviewRegion(img)
 
                     # Get prediction
-                    decision = self.decide(mock_region)
+                    decision = cast(Decision, self.decide(preview_region))
                     is_correct = decision.label == true_label
                     if is_correct:
                         correct += 1
 
                     # Extract metrics for this example
-                    metrics = self._extract_metrics(mock_region)
+                    metrics = self._extract_metrics(preview_region)
 
                     # Show result
                     status = "✓" if is_correct else "✗"
@@ -982,15 +1019,15 @@ class Judge:
                 print(f"\nUNLABELED examples ({len(unlabeled_examples)} total) - predictions:")
 
                 for img_path in sorted(unlabeled_examples)[:10]:  # Show max 10
-                    # Load image and create mock region
+                    # Load image and create preview region
                     img = Image.open(img_path)
-                    mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
+                    preview_region = PreviewRegion(img)
 
                     # Get prediction
-                    decision = self.decide(mock_region)
+                    decision = cast(Decision, self.decide(preview_region))
 
                     # Extract metrics
-                    metrics = self._extract_metrics(mock_region)
+                    metrics = self._extract_metrics(preview_region)
 
                     print(
                         f"  {img_path.name}: predicted={decision.label} (score={decision.score:.3f})"
@@ -1007,7 +1044,7 @@ class Judge:
                 if len(unlabeled_examples) > 10:
                     print(f"  ... and {len(unlabeled_examples) - 10} more")
 
-    def lookup(self, region: RegionType) -> Optional[Tuple[str, Image.Image]]:
+    def lookup(self, region: SupportsRender) -> Optional[Tuple[str, Image.Image]]:
         """
         Look up a region and return its hash and image if found in training data.
 
@@ -1020,8 +1057,10 @@ class Judge:
         try:
             # Generate hash for the region
             img = region.render(crop=True)
+            if img is None:
+                raise JudgeError("Region.render returned no image")
             if not isinstance(img, Image.Image):
-                img = Image.fromarray(img)
+                img = Image.fromarray(np.asarray(img))
             if img.mode != "RGB":
                 img = img.convert("RGB")
             img_array = np.array(img)
@@ -1140,7 +1179,7 @@ class Judge:
         # Display all categories
         display(widgets.VBox(rows))
 
-    def forget(self, region: Optional[RegionType] = None, delete: bool = False) -> None:
+    def forget(self, region: Optional[SupportsRender] = None, delete: bool = False) -> None:
         """
         Clear training data, delete all files, or move a specific region to unlabeled.
 
@@ -1153,8 +1192,10 @@ class Judge:
             # Get hash of the region
             try:
                 img = region.render(crop=True)
+                if img is None:
+                    raise ValueError("Region.render returned no image")
                 if not isinstance(img, Image.Image):
-                    img = Image.fromarray(img)
+                    img = Image.fromarray(np.asarray(img))
                 if img.mode != "RGB":
                     img = img.convert("RGB")
                 img_array = np.array(img)
@@ -1222,7 +1263,7 @@ class Judge:
             print(f"Moved {moved_count} labeled images back to unlabeled.")
             print("Training data cleared. Judge is now untrained.")
 
-    def save(self, path: Optional[str] = None) -> None:
+    def save(self, path: Optional[Union[str, Path]] = None) -> None:
         """
         Save the judge configuration (auto-retrains first).
 
@@ -1250,7 +1291,7 @@ class Judge:
         logger.info(f"Saved judge to {save_path}")
 
     @classmethod
-    def load(cls, path: str) -> "Judge":
+    def load(cls, path: Union[str, Path]) -> "Judge":
         """
         Load a judge from a saved configuration.
 
@@ -1294,12 +1335,15 @@ class Judge:
 
     # Private methods
 
-    def _extract_metrics(self, region: RegionType) -> Dict[str, float]:
+    def _extract_metrics(self, region: SupportsRender) -> Dict[str, float]:
         """Extract image metrics from a region."""
         try:
             img = region.render(crop=True)
+            if img is None:
+                raise JudgeError("Region.render returned no image")
             if not isinstance(img, Image.Image):
-                img = Image.fromarray(img)
+                img_array = np.asarray(img)
+                img = Image.fromarray(img_array)
 
             # Convert to grayscale for analysis
             gray = np.array(img.convert("L"))
@@ -1362,9 +1406,8 @@ class Judge:
             label_dir = self.root_dir / label
             for img_path in label_dir.glob("*.png"):
                 img = Image.open(img_path)
-                # Create a mock region that just returns the image
-                mock_region = type("MockRegion", (), {"render": lambda self, crop=True: img})()
-                metrics = self._extract_metrics(mock_region)
+                preview_region = PreviewRegion(img)
+                metrics = self._extract_metrics(preview_region)
                 examples[label].append(metrics)
 
         # Check we have examples

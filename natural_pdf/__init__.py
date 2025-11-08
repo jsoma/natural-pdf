@@ -4,6 +4,7 @@ Natural PDF - A more intuitive interface for working with PDFs.
 
 import logging
 import os
+from typing import TYPE_CHECKING, Any, Type
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -131,25 +132,54 @@ from natural_pdf.flows.region import FlowRegion
 from natural_pdf.judge import Decision, Judge, JudgeError, PickResult
 
 # Search options (if extras installed)
+BaseSearchOptions: Type[Any]
+TextSearchOptions: Type[Any]
+MultiModalSearchOptions: Type[Any]
+
 try:
+    from natural_pdf.search.search_options import BaseSearchOptions as _BaseSearchOptions
     from natural_pdf.search.search_options import (
-        BaseSearchOptions,
-        MultiModalSearchOptions,
-        TextSearchOptions,
+        MultiModalSearchOptions as _MultiModalSearchOptions,
     )
-except ImportError:
-    # Define dummy classes if extras not installed, so imports don't break
-    class BaseSearchOptions:
+    from natural_pdf.search.search_options import TextSearchOptions as _TextSearchOptions
+except ImportError:  # pragma: no cover - optional dependency
+    _BaseSearchOptions = None  # type: ignore[assignment]
+    _MultiModalSearchOptions = None  # type: ignore[assignment]
+    _TextSearchOptions = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from natural_pdf.search.search_options import BaseSearchOptions as _TypeCheckBaseSearchOptions
+    from natural_pdf.search.search_options import (
+        MultiModalSearchOptions as _TypeCheckMultiModalSearchOptions,
+    )
+    from natural_pdf.search.search_options import TextSearchOptions as _TypeCheckTextSearchOptions
+
+if (
+    "_BaseSearchOptions" in locals()
+    and "_MultiModalSearchOptions" in locals()
+    and "_TextSearchOptions" in locals()
+    and _BaseSearchOptions is not None
+    and _MultiModalSearchOptions is not None
+    and _TextSearchOptions is not None
+):
+    BaseSearchOptions = _BaseSearchOptions
+    MultiModalSearchOptions = _MultiModalSearchOptions
+    TextSearchOptions = _TextSearchOptions
+else:
+
+    class _SearchOptionsFallback:
         def __init__(self, *args, **kwargs):
             pass
 
-    class TextSearchOptions:
-        def __init__(self, *args, **kwargs):
-            pass
+    class _TextSearchOptionsFallback(_SearchOptionsFallback):
+        pass
 
-    class MultiModalSearchOptions:
-        def __init__(self, *args, **kwargs):
-            pass
+    class _MultiModalSearchOptionsFallback(_SearchOptionsFallback):
+        pass
+
+    BaseSearchOptions = _SearchOptionsFallback
+    TextSearchOptions = _TextSearchOptionsFallback
+    MultiModalSearchOptions = _MultiModalSearchOptionsFallback
 
 
 # Import QA module if available

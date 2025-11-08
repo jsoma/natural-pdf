@@ -1,12 +1,12 @@
 """RT-DETR based checkbox detector implementation."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from PIL import Image
 
 from .base import CheckboxDetector
-from .checkbox_options import RTDETRCheckboxOptions
+from .checkbox_options import CheckboxOptions, RTDETRCheckboxOptions
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,15 @@ def _get_torch():
         )
 
 
+def _coerce_options(options: CheckboxOptions) -> RTDETRCheckboxOptions:
+    if not isinstance(options, RTDETRCheckboxOptions):
+        raise TypeError(
+            "RTDETRCheckboxDetector requires RTDETRCheckboxOptions, "
+            f"received {type(options).__name__}."
+        )
+    return cast(RTDETRCheckboxOptions, options)
+
+
 class RTDETRCheckboxDetector(CheckboxDetector):
     """RT-DETR based checkbox detector using HuggingFace transformers."""
 
@@ -60,43 +69,45 @@ class RTDETRCheckboxDetector(CheckboxDetector):
         except ImportError:
             return False
 
-    def _get_cache_key(self, options: RTDETRCheckboxOptions) -> str:
+    def _get_cache_key(self, options: CheckboxOptions) -> str:
         """Generate cache key including model repo and revision."""
-        base_key = super()._get_cache_key(options)
-        model_key = options.model_repo.replace("/", "_")
-        revision_key = options.model_revision or "default"
+        typed_options = _coerce_options(options)
+        base_key = super()._get_cache_key(typed_options)
+        model_key = typed_options.model_repo.replace("/", "_")
+        revision_key = typed_options.model_revision or "default"
         return f"{base_key}_{model_key}_{revision_key}"
 
-    def _load_model_from_options(self, options: RTDETRCheckboxOptions) -> Dict[str, Any]:
+    def _load_model_from_options(self, options: CheckboxOptions) -> Dict[str, Any]:
         """Load RT-DETR model and processor from HuggingFace."""
+        typed_options = _coerce_options(options)
         AutoImageProcessor, AutoModelForObjectDetection = _get_transformers()
         torch = _get_torch()
 
         try:
             # Load image processor
-            if options.image_processor_repo:
+            if typed_options.image_processor_repo:
                 image_processor = AutoImageProcessor.from_pretrained(
-                    options.image_processor_repo, revision=options.model_revision
+                    typed_options.image_processor_repo, revision=typed_options.model_revision
                 )
             else:
                 image_processor = AutoImageProcessor.from_pretrained(
-                    options.model_repo, revision=options.model_revision
+                    typed_options.model_repo, revision=typed_options.model_revision
                 )
 
             # Load model
             model = AutoModelForObjectDetection.from_pretrained(
-                options.model_repo, revision=options.model_revision
+                typed_options.model_repo, revision=typed_options.model_revision
             )
 
             # Move to device
-            if options.device and options.device != "cpu":
-                if options.device == "cuda" and torch.cuda.is_available():
+            if typed_options.device and typed_options.device != "cpu":
+                if typed_options.device == "cuda" and torch.cuda.is_available():
                     model = model.to("cuda")
-                elif options.device == "mps" and torch.backends.mps.is_available():
+                elif typed_options.device == "mps" and torch.backends.mps.is_available():
                     model = model.to("mps")
                 else:
                     self.logger.warning(
-                        f"Requested device '{options.device}' not available, using CPU"
+                        f"Requested device '{typed_options.device}' not available, using CPU"
                     )
                     model = model.to("cpu")
             else:
@@ -113,12 +124,12 @@ class RTDETRCheckboxDetector(CheckboxDetector):
 
         except Exception as e:
             raise RuntimeError(
-                f"Failed to load checkbox model '{options.model_repo}'. "
+                f"Failed to load checkbox model '{typed_options.model_repo}'. "
                 f"This may be due to network issues or missing credentials. "
                 f"Original error: {e}"
             )
 
-    def detect(self, image: Image.Image, options: RTDETRCheckboxOptions) -> List[Dict[str, Any]]:
+    def detect(self, image: Image.Image, options: CheckboxOptions) -> List[Dict[str, Any]]:
         """
         Detect checkboxes in the given image using RT-DETR.
 
@@ -129,10 +140,11 @@ class RTDETRCheckboxDetector(CheckboxDetector):
         Returns:
             List of standardized detection dictionaries
         """
+        typed_options = _coerce_options(options)
         torch = _get_torch()
 
         # Get cached model
-        model_dict = self._get_model(options)
+        model_dict = self._get_model(typed_options)
         model = model_dict["model"]
         processor = model_dict["processor"]
         device = model_dict["device"]
@@ -152,7 +164,9 @@ class RTDETRCheckboxDetector(CheckboxDetector):
             target_sizes = target_sizes.to(device)
 
         results = processor.post_process_object_detection(
-            outputs, threshold=options.post_process_threshold, target_sizes=target_sizes
+            outputs,
+            threshold=typed_options.post_process_threshold,
+            target_sizes=target_sizes,
         )[0]
 
         # Convert to standardized format
@@ -161,7 +175,7 @@ class RTDETRCheckboxDetector(CheckboxDetector):
             score = results["scores"][i].item()
 
             # Apply confidence threshold
-            if score < options.confidence:
+            if score < typed_options.confidence:
                 continue
 
             label = results["labels"][i].item()
@@ -174,7 +188,7 @@ class RTDETRCheckboxDetector(CheckboxDetector):
                 label_text = str(label)
 
             # Map to checkbox state
-            is_checked, state = self._map_label_to_state(label_text, options)
+            is_checked, state = self._map_label_to_state(label_text, typed_options)
 
             detection = {
                 "bbox": tuple(box),  # (x0, y0, x1, y1)
@@ -183,19 +197,19 @@ class RTDETRCheckboxDetector(CheckboxDetector):
                 "is_checked": is_checked,
                 "checkbox_state": state,
                 "confidence": score,
-                "model": options.model_repo.split("/")[-1],  # Short model name
+                "model": typed_options.model_repo.split("/")[-1],  # Short model name
                 "source": "checkbox",
             }
             detections.append(detection)
 
         # Apply NMS if needed
-        if options.nms_threshold > 0:
-            detections = self._apply_nms(detections, options.nms_threshold)
+        if typed_options.nms_threshold > 0:
+            detections = self._apply_nms(detections, typed_options.nms_threshold)
 
         # Limit detections if specified
-        if options.max_detections > 0 and len(detections) > options.max_detections:
+        if typed_options.max_detections > 0 and len(detections) > typed_options.max_detections:
             # Sort by confidence and keep top N
             detections = sorted(detections, key=lambda x: x["confidence"], reverse=True)
-            detections = detections[: options.max_detections]
+            detections = detections[: typed_options.max_detections]
 
         return detections

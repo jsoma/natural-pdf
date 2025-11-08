@@ -2,10 +2,14 @@
 Mixin for describe functionality.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from natural_pdf.core.page import Page
     from natural_pdf.describe.summary import ElementSummary, InspectionSummary
+    from natural_pdf.elements.base import Element
+    from natural_pdf.elements.element_collection import ElementCollection
+    from natural_pdf.elements.region import Region
 
 
 class DescribeMixin:
@@ -24,48 +28,43 @@ class DescribeMixin:
         Returns:
             ElementSummary with analysis appropriate for the object type
         """
+        from natural_pdf.core.page import Page
         from natural_pdf.describe import (
             describe_collection,
             describe_element,
             describe_page,
             describe_region,
         )
+        from natural_pdf.elements.base import Element
+        from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.elements.region import Region
 
-        # Determine the appropriate describe function based on class type
-        class_name = self.__class__.__name__
-
-        if class_name == "Page":
+        # Determine the appropriate describe function based on actual type
+        if isinstance(self, Page):
             return describe_page(self)
-        elif class_name == "ElementCollection":
+        if isinstance(self, ElementCollection):
             return describe_collection(self)
-        elif class_name == "Region":
+        if isinstance(self, Region):
             return describe_region(self)
-        else:
-            # Check if it's an individual element (inherits from Element base class)
-            from natural_pdf.elements.base import Element
+        if isinstance(self, Element):
+            return describe_element(self)
 
-            if isinstance(self, Element):
-                return describe_element(self)
+        # Fallback - try to determine based on available methods/attributes
+        class_name = self.__class__.__name__
+        if hasattr(self, "get_elements") and hasattr(self, "width") and hasattr(self, "height"):
+            if hasattr(self, "number"):
+                return describe_page(cast(Page, self))
+            return describe_region(cast(Region, self))
+        if hasattr(self, "__iter__") and hasattr(self, "__len__"):
+            return describe_collection(cast(ElementCollection, self))
 
-            # Fallback - try to determine based on available methods/attributes
-            if hasattr(self, "get_elements") and hasattr(self, "width") and hasattr(self, "height"):
-                # Looks like a page or region
-                if hasattr(self, "number"):
-                    return describe_page(self)  # Page
-                else:
-                    return describe_region(self)  # Region
-            elif hasattr(self, "__iter__") and hasattr(self, "__len__"):
-                # Looks like a collection
-                return describe_collection(self)
-            else:
-                # Unknown type - create a basic summary
-                from natural_pdf.describe.summary import ElementSummary
+        from natural_pdf.describe.summary import ElementSummary
 
-                data = {
-                    "object_type": class_name,
-                    "message": f"Describe not fully implemented for {class_name}",
-                }
-                return ElementSummary(data, f"{class_name} Summary")
+        data = {
+            "object_type": class_name,
+            "message": f"Describe not fully implemented for {class_name}",
+        }
+        return ElementSummary(data, f"{class_name} Summary")
 
 
 class InspectMixin:
@@ -88,5 +87,7 @@ class InspectMixin:
             properties, and other details for each element
         """
         from natural_pdf.describe import inspect_collection
+        from natural_pdf.elements.element_collection import ElementCollection
 
-        return inspect_collection(self, limit=limit)
+        collection = cast(ElementCollection, self)
+        return inspect_collection(collection, limit=limit)

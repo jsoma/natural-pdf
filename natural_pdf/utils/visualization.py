@@ -4,7 +4,7 @@ Visualization utilities for natural-pdf.
 
 import itertools  # Added for cycling
 import random
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union, cast
 
 try:
     import pypdfium2  # type: ignore[import-untyped]
@@ -116,7 +116,7 @@ class ColorManager:
 
 
 def create_legend(
-    labels_colors: Dict[str, Tuple[int, int, int, int]], width: int = 200, item_height: int = 30
+    labels_colors: Mapping[str, Sequence[int]], width: int = 200, item_height: int = 30
 ) -> Image.Image:
     """
     Create a legend image for the highlighted elements.
@@ -145,7 +145,7 @@ def create_legend(
         try:
             font = cast(ImageFont.ImageFont, ImageFont.truetype("Arial.ttf", 14))
         except IOError:
-            font = ImageFont.load_default()
+            font = cast(ImageFont.ImageFont, ImageFont.load_default())
 
     # Draw each legend item
     y = 5  # Start with 5px padding
@@ -153,10 +153,12 @@ def create_legend(
         # Get the color components
         # Handle potential case where alpha isn't provided (use default 255)
         if len(color) == 3:
-            r, g, b = color
+            r, g, b = cast(Tuple[int, int, int], tuple(color))  # type: ignore[misc]
             alpha = 255  # Assume opaque if alpha is missing
+        elif len(color) >= 4:
+            r, g, b, alpha = cast(Tuple[int, int, int, int], tuple(color[:4]))  # type: ignore[misc]
         else:
-            r, g, b, alpha = color
+            raise ValueError("Color sequences must have at least three components.")
 
         # Calculate the apparent color when drawn on white background
         # Alpha blending formula: result = (source * alpha) + (dest * (1-alpha))

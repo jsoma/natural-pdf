@@ -111,7 +111,7 @@ def test_guides_extract_table_real_pdf():
 
         # Verify cleanup: check that no temporary regions remain
         remaining_temp_regions = [
-            r for r in page._element_mgr.regions if getattr(r, "source", None) == "guides_temp"
+            r for r in page.iter_regions() if getattr(r, "source", None) == "guides_temp"
         ]
 
         assert (
@@ -163,7 +163,7 @@ def test_guides_extract_table_parameters():
 
         # Verify cleanup of custom source
         remaining_temp_regions = [
-            r for r in page._element_mgr.regions if getattr(r, "source", None) == "test_source"
+            r for r in page.iter_regions() if getattr(r, "source", None) == "test_source"
         ]
 
         assert len(remaining_temp_regions) == 0, "Custom source regions not cleaned up"
@@ -211,7 +211,7 @@ def test_guides_extract_table_workflow_comparison():
 
                 for region in regions_to_clean:
                     if region:
-                        page._element_mgr.remove_element(region, element_type="regions")
+                        page.remove_element(region, element_type="regions")
 
             # Compare results
             logger.debug(f"New method rows: {len(table_result_new)}")
@@ -231,9 +231,9 @@ def test_guides_extract_table_workflow_comparison():
                 raise
         finally:
             remaining_temp_regions = [
-                r for r in page._element_mgr.regions if getattr(r, "source", None) == "guides_temp"
+                r for r in page.iter_regions() if getattr(r, "source", None) == "guides_temp"
             ]
             for region in remaining_temp_regions:
-                page._element_mgr.remove_element(region, element_type="regions")
+                page.remove_element(region, element_type="regions")
     finally:
         pdf.close()

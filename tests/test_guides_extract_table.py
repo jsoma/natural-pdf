@@ -13,10 +13,12 @@ def test_guides_extract_table_basic():
 
     # Create mock page
     mock_page = Mock()
-    mock_page._element_mgr = Mock()
-    mock_page._element_mgr.regions = []
+    mock_page.iter_regions.return_value = []
+    mock_page.remove_element.return_value = True
+    mock_page.add_element.return_value = True
     mock_page.width = 612
     mock_page.height = 792
+    mock_page.page_number = 1
 
     # Create guides with some vertical and horizontal lines
     guides = Guides(verticals=[100, 200, 300], horizontals=[100, 150, 200], context=mock_page)
@@ -56,8 +58,10 @@ def test_guides_extract_table_with_parameters():
 
     # Create mock page
     mock_page = Mock()
-    mock_page._element_mgr = Mock()
-    mock_page._element_mgr.regions = []
+    mock_page.iter_regions.return_value = []
+    mock_page.remove_element.return_value = True
+    mock_page.add_element.return_value = True
+    mock_page.page_number = 1
 
     # Create guides
     guides = Guides(verticals=[100, 200], horizontals=[100, 200], context=mock_page)
@@ -116,17 +120,13 @@ def test_guides_extract_table_cleanup_on_success():
     other_region.source = "other_source"
     other_region.region_type = "table"
 
-    # Make sure regions is a proper list that can be iterated over
     regions_list = [temp_region1, temp_region2, other_region]
 
-    # Create mock element manager - use spec_set to prevent attribute creation
-    mock_element_manager = Mock(spec_set=["regions", "remove_element"])
-    mock_element_manager.regions = regions_list
-    mock_element_manager.remove_element = Mock()
-
-    # Create mock page
-    mock_page = Mock(spec_set=["_element_mgr", "width", "height"])
-    mock_page._element_mgr = mock_element_manager
+    # Create mock page exposing the public region APIs
+    mock_page = Mock(spec_set=["iter_regions", "remove_element", "add_element", "width", "height"])
+    mock_page.iter_regions.return_value = regions_list
+    mock_page.remove_element = Mock(return_value=True)
+    mock_page.add_element.return_value = True
     mock_page.width = 612
     mock_page.height = 792
 
@@ -143,16 +143,11 @@ def test_guides_extract_table_cleanup_on_success():
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
         result = guides.extract_table()
 
-        # Verify cleanup was called for temp regions only
-        expected_calls = [mock_element_manager.remove_element.call_args_list]
-
         # Should have called remove_element twice (for the two temp regions)
-        assert mock_element_manager.remove_element.call_count == 2
+        assert mock_page.remove_element.call_count == 2
 
         # Verify the temp regions were removed (other_region should not be removed)
-        removed_regions = [
-            call[0][0] for call in mock_element_manager.remove_element.call_args_list
-        ]
+        removed_regions = [call.args[0] for call in mock_page.remove_element.call_args_list]
         assert temp_region1 in removed_regions
         assert temp_region2 in removed_regions
         assert other_region not in removed_regions
@@ -168,14 +163,10 @@ def test_guides_extract_table_cleanup_on_failure():
     # Make sure regions is a proper list that can be iterated over
     regions_list = [temp_region]
 
-    # Create mock element manager - use spec_set to prevent attribute creation
-    mock_element_manager = Mock(spec_set=["regions", "remove_element"])
-    mock_element_manager.regions = regions_list
-    mock_element_manager.remove_element = Mock()
-
-    # Create mock page
-    mock_page = Mock(spec_set=["_element_mgr", "width", "height"])
-    mock_page._element_mgr = mock_element_manager
+    mock_page = Mock(spec_set=["iter_regions", "remove_element", "add_element", "width", "height"])
+    mock_page.iter_regions.return_value = regions_list
+    mock_page.remove_element = Mock(return_value=True)
+    mock_page.add_element.return_value = True
     mock_page.width = 612
     mock_page.height = 792
 
@@ -194,17 +185,16 @@ def test_guides_extract_table_cleanup_on_failure():
             guides.extract_table()
 
         # But cleanup should still happen
-        mock_element_manager.remove_element.assert_called_once_with(
-            temp_region, element_type="regions"
-        )
+        mock_page.remove_element.assert_called_once_with(temp_region, element_type="regions")
 
 
 def test_guides_extract_table_no_table_region():
     """Test error when no table region is created."""
 
     mock_page = Mock()
-    mock_page._element_mgr = Mock()
-    mock_page._element_mgr.regions = []
+    mock_page.iter_regions.return_value = []
+    mock_page.remove_element.return_value = True
+    mock_page.add_element.return_value = True
 
     guides = Guides(
         verticals=[100],  # Only one vertical - can't make table
@@ -224,8 +214,9 @@ def test_guides_extract_table_multi_page_list():
     """Test handling of multi-page case where table region is a list."""
 
     mock_page = Mock()
-    mock_page._element_mgr = Mock()
-    mock_page._element_mgr.regions = []
+    mock_page.iter_regions.return_value = []
+    mock_page.remove_element.return_value = True
+    mock_page.add_element.return_value = True
 
     guides = Guides(verticals=[100, 200], horizontals=[100, 200], context=mock_page)
 

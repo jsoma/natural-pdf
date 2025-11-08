@@ -121,8 +121,14 @@ class RectangleElement(Element):
             return "horizontal"
         elif self.is_vertical:
             return "vertical"
+        return "diagonal"
 
-    def extract_text(self, **kwargs) -> str:
+    def extract_text(
+        self,
+        preserve_whitespace: bool = True,
+        use_exclusions: bool = True,
+        **kwargs: Any,
+    ) -> str:
         """
         Extract text from inside this rectangle.
 
@@ -136,7 +142,11 @@ class RectangleElement(Element):
         from natural_pdf.elements.region import Region
 
         region = Region(self.page, self.bbox)
-        return region.extract_text(**kwargs)
+        return region.extract_text(
+            preserve_whitespace=preserve_whitespace,
+            use_exclusions=use_exclusions,
+            **kwargs,
+        )
 
     def __repr__(self) -> str:
         """String representation of the rectangle element."""

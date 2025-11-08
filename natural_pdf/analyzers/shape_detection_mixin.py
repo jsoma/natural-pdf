@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple, cast
 
 import numpy as np
 from PIL import Image
@@ -49,39 +51,37 @@ class ShapeDetectionMixin:
                 - origin_offset_pdf (Tuple[float, float]): (x0, top) offset in PDF points.
                 - page_obj (Page, optional): The page object this detection pertains to.
         """
-        pil_image = None
-        page_obj = None
+        pil_image: Optional[Image.Image]
         origin_offset_pdf = (0.0, 0.0)
 
-        # Determine the type of self and get the appropriate image and page context
-        if (
-            hasattr(self, "render") and hasattr(self, "width") and hasattr(self, "height")
-        ):  # Page or Region
-            if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):  # Region
-                logger.debug(f"Shape detection on Region: {self}")
-                page_obj = self._page
-                # Use render() for clean image without highlights, with cropping
-                pil_image = self.render(resolution=resolution, crop=True)
-                if pil_image:  # Ensure pil_image is not None before accessing attributes
-                    origin_offset_pdf = (self.x0, self.top)
-                    logger.debug(
-                        f"Region image rendered successfully: {pil_image.width}x{pil_image.height}, origin_offset: {origin_offset_pdf}"
-                    )
-            else:  # Page
-                logger.debug(f"Shape detection on Page: {self}")
-                page_obj = self
-                # Use render() for clean image without highlights
-                pil_image = self.render(resolution=resolution)
-                logger.debug(
-                    f"Page image rendered successfully: {pil_image.width}x{pil_image.height}"
-                )
-        else:
-            logger.error(f"Instance of type {type(self)} does not support to_image for detection.")
-            return None, 1.0, (0.0, 0.0), None
+        from natural_pdf.core.page import Page
+        from natural_pdf.utils.page_context import resolve_page_context
 
-        if not pil_image:
+        page_obj_result: Tuple[Page, Optional[Tuple[float, float, float, float]]]
+        try:
+            page_obj_result = resolve_page_context(self)
+        except ValueError as exc:
+            logger.error("Unable to resolve page context for shape detection: %s", exc)
+            return None, 1.0, (0.0, 0.0), None
+        page_obj, bounds = page_obj_result
+        assert isinstance(page_obj, Page)
+
+        if bounds is not None:
+            pdf_width = float(bounds[2] - bounds[0])
+            pdf_height = float(bounds[3] - bounds[1])
+            origin_offset_pdf = (bounds[0], bounds[1])
+            pil_image = page_obj.render(resolution=resolution, crop=True, crop_bbox=bounds)
+        else:
+            pdf_width = float(getattr(page_obj, "width", 0.0))
+            pdf_height = float(getattr(page_obj, "height", 0.0))
+            origin_offset_pdf = (0.0, 0.0)
+            pil_image = page_obj.render(resolution=resolution)
+
+        if pil_image is None:
             logger.warning("Failed to render image for shape detection.")
             return None, 1.0, (0.0, 0.0), page_obj
+
+        pil_image = cast(Image.Image, pil_image)
 
         if pil_image.mode != "RGB":
             pil_image = pil_image.convert("RGB")
@@ -92,27 +92,15 @@ class ShapeDetectionMixin:
         # For a Region, self.width/height are PDF points of the region. pil_image.width/height are pixels of the cropped image.
         # The scale factor should always relate the dimensions of the *processed image* to the *PDF dimensions* of that same area.
 
-        if page_obj and pil_image.width > 0 and pil_image.height > 0:
-            # If it's a region, its self.width/height are its dimensions in PDF points.
-            # pil_image.width/height are the pixel dimensions of the cropped image of that region.
-            # So, the scale factor remains consistent.
-            # We need to convert pixel distances on the image back to PDF point distances.
-            # If 100 PDF points span 200 pixels, then 1 pixel = 0.5 PDF points. scale_factor = points/pixels
-            # Example: Page width 500pt, image width 1000px. Scale = 500/1000 = 0.5 pt/px
-            # Region width 50pt, cropped image width 100px. Scale = 50/100 = 0.5 pt/px
-
-            # Use self.width/height for scale factor calculation because these correspond to the PDF dimensions of the area imaged.
-            # This ensures that if self is a Region, its specific dimensions are used for scaling its own cropped image.
-
-            # We need two scale factors if aspect ratio is not preserved by to_image,
-            # but to_image generally aims to preserve it when only resolution is changed.
-            # Assuming uniform scaling for now.
-            # A robust way: scale_x = self.width / pil_image.width; scale_y = self.height / pil_image.height
-            # For simplicity, let's assume uniform scaling or average it.
-            # Average scale factor:
-            scale_factor = ((self.width / pil_image.width) + (self.height / pil_image.height)) / 2.0
+        if pil_image.width > 0 and pil_image.height > 0:
+            scale_factor = ((pdf_width / pil_image.width) + (pdf_height / pil_image.height)) / 2.0
             logger.debug(
-                f"Calculated scale_factor: {scale_factor:.4f} (PDF dimensions: {self.width:.1f}x{self.height:.1f}, Image: {pil_image.width}x{pil_image.height})"
+                "Calculated scale_factor: %.4f (PDF dimensions: %.1fx%.1f, Image: %sx%s)",
+                scale_factor,
+                pdf_width,
+                pdf_height,
+                pil_image.width,
+                pil_image.height,
             )
 
         else:
@@ -596,14 +584,20 @@ class ShapeDetectionMixin:
             "min_nfa_score_vertical": min_nfa_score_vertical,
         }
 
-        if hasattr(self, "pdfs"):
-            for pdf_doc in self.pdfs:
-                for page_obj in pdf_doc.pages:
-                    page_obj.detect_lines(**collection_params)
+        host = cast(Any, self)
+        pdfs_attr = getattr(host, "pdfs", None)
+        if pdfs_attr is not None:
+            for pdf_doc in cast(Sequence[Any], pdfs_attr):
+                pages_seq = getattr(pdf_doc, "pages", ())
+                for page_obj in pages_seq:
+                    if hasattr(page_obj, "detect_lines"):
+                        page_obj.detect_lines(**collection_params)
             return self
-        elif hasattr(self, "pages") and not hasattr(self, "_page"):
-            for page_obj in self.pages:
-                page_obj.detect_lines(**collection_params)
+        pages_attr = getattr(host, "pages", None)
+        if pages_attr is not None and not hasattr(host, "_page"):
+            for page_obj in cast(Sequence[Any], pages_attr):
+                if hasattr(page_obj, "detect_lines"):
+                    page_obj.detect_lines(**collection_params)
             return self
 
         # Dispatch to appropriate detection method
@@ -683,13 +677,19 @@ class ShapeDetectionMixin:
             logger.warning(f"Skipping line detection for {self} due to image error.")
             return self
 
-        pil_image_for_dims = None
-        if hasattr(self, "render") and hasattr(self, "width") and hasattr(self, "height"):
-            if hasattr(self, "x0") and hasattr(self, "top") and hasattr(self, "_page"):
-                pil_image_for_dims = self.render(resolution=resolution, crop=True)
-            else:
-                # Use render() for clean image without highlights
-                pil_image_for_dims = self.render(resolution=resolution)
+        host = cast(Any, self)
+        pil_image_for_dims: Optional[Image.Image] = None
+        render_method = cast(
+            Optional[Callable[..., Optional[Image.Image]]], getattr(host, "render", None)
+        )
+        if callable(render_method) and hasattr(host, "width") and hasattr(host, "height"):
+            try:
+                if hasattr(host, "x0") and hasattr(host, "top") and hasattr(host, "_page"):
+                    pil_image_for_dims = render_method(resolution=resolution, crop=True)
+                else:
+                    pil_image_for_dims = render_method(resolution=resolution)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.debug("Secondary render for dims failed: %s", exc)
         if pil_image_for_dims is None:
             logger.warning(f"Could not re-render PIL image for dimensions for {self}.")
             pil_image_for_dims = Image.fromarray(cv_image)  # Ensure it's not None
@@ -698,9 +698,7 @@ class ShapeDetectionMixin:
             pil_image_for_dims = pil_image_for_dims.convert("RGB")
 
         if replace:
-            removed_count = page_object_ctx._element_mgr.remove_elements_by_source(
-                "lines", source_label
-            )
+            removed_count = page_object_ctx.remove_elements_by_source("lines", source_label)
             if removed_count > 0:
                 logger.info(
                     "Removed %d existing lines with source '%s' from %s",
@@ -732,14 +730,12 @@ class ShapeDetectionMixin:
         )
         from natural_pdf.elements.line import LineElement
 
-        element_manager = page_object_ctx._element_mgr
-
         for line_data_item_img in lines_data_img:
             element_constructor_data = self._convert_line_to_element_data(
                 line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
             )
             line_element = LineElement(element_constructor_data, page_object_ctx)
-            element_manager.add_element(line_element, element_type="lines")
+            page_object_ctx.add_element(line_element, element_type="lines")
 
         logger.info(
             f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using projection profiling."
@@ -780,21 +776,14 @@ class ShapeDetectionMixin:
             return self
 
         if replace:
-            from natural_pdf.elements.line import LineElement
-
-            element_manager = page_object_ctx._element_mgr
-            if hasattr(element_manager, "_elements") and "lines" in element_manager._elements:
-                original_count = len(element_manager._elements["lines"])
-                element_manager._elements["lines"] = [
-                    line
-                    for line in element_manager._elements["lines"]
-                    if getattr(line, "source", None) != source_label
-                ]
-                removed_count = original_count - len(element_manager._elements["lines"])
-                if removed_count > 0:
-                    logger.info(
-                        f"Removed {removed_count} existing lines with source '{source_label}' from {page_object_ctx}"
-                    )
+            removed_count = page_object_ctx.remove_elements_by_source("lines", source_label)
+            if removed_count > 0:
+                logger.info(
+                    "Removed %d existing lines with source '%s' from %s",
+                    removed_count,
+                    source_label,
+                    page_object_ctx,
+                )
 
         lines_data_img = self._process_image_for_lines_lsd(
             cv_image,
@@ -810,14 +799,12 @@ class ShapeDetectionMixin:
 
         from natural_pdf.elements.line import LineElement
 
-        element_manager = page_object_ctx._element_mgr
-
         for line_data_item_img in lines_data_img:
             element_constructor_data = self._convert_line_to_element_data(
                 line_data_item_img, scale_factor, origin_offset_pdf, page_object_ctx, source_label
             )
             line_element = LineElement(element_constructor_data, page_object_ctx)
-            element_manager.add_element(line_element, element_type="lines")
+            page_object_ctx.add_element(line_element, element_type="lines")
 
         logger.info(
             f"Detected and added {len(lines_data_img)} lines to {page_object_ctx} with source '{source_label}' using LSD."
@@ -1176,60 +1163,45 @@ class ShapeDetectionMixin:
             k = ks[knee_idx]
         # fit final model
         kmeans = MiniBatchKMeans(n_clusters=k, random_state=0, batch_size=1024)
-        full_labels = kmeans.fit_predict(img_arr_unmasked)
-        centroids = kmeans.cluster_centers_  # in 0-1 RGB
+        full_labels = np.asarray(kmeans.fit_predict(img_arr_unmasked), dtype=int)
+        centroids = np.asarray(kmeans.cluster_centers_, dtype=float)  # in 0-1 RGB
         h, w, _ = cv_image.shape
         full_label_flat = np.full(img_arr.shape[0], -1, dtype=int)
         full_label_flat[unmasked_pixels] = full_labels
-        labels_img = full_label_flat.reshape(h, w)
+        labels_img: np.ndarray = full_label_flat.reshape(h, w)
 
         # ------------------------------------------------------------------
-        # Merge clusters whose centroid colours are perceptually close
-        # (Delta-E CIE2000 < tolerance).  We first identify the most frequent
-        # cluster (likely background) and do NOT merge *into* it so that real
-        # colourful blobs don't disappear when tolerance is large.
+        # Merge clusters whose centroid colours are perceptually close using
+        # a simple Euclidean distance in RGB space.  We still avoid merging
+        # into the dominant (background) cluster to preserve foreground blobs.
         # ------------------------------------------------------------------
-        try:
-            from colormath2.color_conversions import convert_color
-            from colormath2.color_diff import delta_e_cie2000
-            from colormath2.color_objects import LabColor, sRGBColor
+        counts = np.bincount(full_labels, minlength=k)
+        bg_cluster = int(np.argmax(counts))
+        parent = list(range(k))
 
-            # Compute pixel counts per cluster to locate background
-            counts = np.bincount(full_labels, minlength=k)
-            bg_cluster = int(np.argmax(counts))  # largest cluster by pixel count
+        def find(idx: int) -> int:
+            while parent[idx] != idx:
+                parent[idx] = parent[parent[idx]]
+                idx = parent[idx]
+            return idx
 
-            lab_centroids = [convert_color(sRGBColor(*rgb), LabColor) for rgb in centroids]
+        def union(a: int, b: int) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
 
-            # Union-find parent array
-            parent = list(range(k))
+        for i in range(k):
+            for j in range(i + 1, k):
+                if bg_cluster in (i, j):
+                    continue
+                distance = float(np.linalg.norm(centroids[i] - centroids[j]))
+                if distance < tolerance / 10.0:  # empirical scaling for RGB space
+                    union(i, j)
 
-            def find(x):
-                while parent[x] != x:
-                    parent[x] = parent[parent[x]]
-                    x = parent[x]
-                return x
-
-            def union(a, b):
-                ra, rb = find(a), find(b)
-                if ra != rb:
-                    parent[rb] = ra
-
-            for i in range(k):
-                for j in range(i + 1, k):
-                    if bg_cluster in (i, j):
-                        continue  # never merge INTO background
-                    if delta_e_cie2000(lab_centroids[i], lab_centroids[j]) < tolerance:
-                        union(i, j)
-
-            # Remap every cluster id to its root parent
-            root_map = [find(idx) for idx in range(k)]
-            for old_id, new_id in enumerate(root_map):
-                if old_id != new_id:
-                    full_label_flat[full_label_flat == old_id] = new_id
-
-        except ImportError:
-            # colormath2 not available – skip merging
-            pass
+        root_map = [find(idx) for idx in range(k)]
+        for old_id, new_id in enumerate(root_map):
+            if old_id != new_id:
+                full_label_flat[full_label_flat == old_id] = new_id
 
         labels_img = full_label_flat.reshape(h, w)
 
@@ -1238,19 +1210,21 @@ class ShapeDetectionMixin:
             page_obj.remove_regions(source=source_label, region_type="blob")
 
         # ── iterate clusters ───────────────────────────────────────────────────
-        unique_clusters = [cid for cid in np.unique(labels_img) if cid >= 0]
+        unique_clusters_list = np.unique(labels_img).tolist()
+        unique_clusters = [int(cid) for cid in unique_clusters_list if int(cid) >= 0]
         for c_idx in unique_clusters:
             mask = labels_img == c_idx
             # clean tiny specks to avoid too many components
-            mask_small = binary_opening(mask, structure=np.ones((3, 3)))
+            struct = cast(np.ndarray, np.ones((3, 3), dtype=bool))
+            mask_small = cast(np.ndarray, binary_opening(mask, structure=struct))
             # Bridge small gaps so contiguous paint isn't split by tiny holes
-            if not mask_small.any():
+            if not mask_small.any():  # pyright: ignore[reportGeneralTypeIssues]
                 continue
-            comp_labels, n_comps = nd_label(mask_small)
+            comp_labels, n_comps = nd_label(mask_small)  # pyright: ignore[reportGeneralTypeIssues]
             if n_comps == 0:
                 continue
-            slices = find_objects(comp_labels)
-            for comp_idx, sl in enumerate(slices):
+            slices_seq = cast(Sequence[Optional[Tuple[slice, slice]]], find_objects(comp_labels))
+            for comp_idx, sl in enumerate(slices_seq):
                 if sl is None:
                     continue
                 y0, y1 = sl[0].start, sl[0].stop
@@ -1264,7 +1238,9 @@ class ShapeDetectionMixin:
                     continue
 
                 # Skip page-background blocks (≥80 % page area)
-                page_area_pts = page_obj.width * page_obj.height
+                page_width = float(getattr(page_obj, "width", 0.0))
+                page_height = float(getattr(page_obj, "height", 0.0))
+                page_area_pts = page_width * page_height
                 if area_pts / page_area_pts > 0.8:
                     continue
 
@@ -1325,21 +1301,16 @@ class ShapeDetectionMixin:
                 region.region_type = "blob"
                 region.normalized_type = "blob"
                 region.source = source_label
-                # Produce compact web colour using the 'colour' library if available
-                try:
-                    from colour import Color  # type: ignore
-
-                    hex_str = str(Color(rgb=tuple(avg_rgb)))  # gives named/shortest rep
-                except Exception:
-                    hex_str = "#{:02x}{:02x}{:02x}".format(
-                        int(avg_rgb[0] * 255), int(avg_rgb[1] * 255), int(avg_rgb[2] * 255)
-                    )
-                region.rgb = tuple(map(float, avg_rgb))  # numeric backup
-                region.color = hex_str
-                region.fill = hex_str
+                hex_str = "#{:02x}{:02x}{:02x}".format(
+                    int(avg_rgb[0] * 255), int(avg_rgb[1] * 255), int(avg_rgb[2] * 255)
+                )
+                setattr(region, "rgb", tuple(map(float, avg_rgb)))
+                setattr(region, "color", hex_str)
+                setattr(region, "fill", hex_str)
 
                 # Store readable colour for inspection tables
                 region.metadata["color_hex"] = hex_str
+                region.metadata["color_rgb"] = tuple(map(float, avg_rgb))
 
                 page_obj.add_region(region, source=source_label)
 

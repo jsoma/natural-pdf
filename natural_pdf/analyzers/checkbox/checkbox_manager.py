@@ -1,7 +1,9 @@
 """Manager for checkbox detection engines."""
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from PIL import Image
 
@@ -11,26 +13,35 @@ from .checkbox_options import CheckboxOptions, RTDETRCheckboxOptions
 logger = logging.getLogger(__name__)
 
 
-def _lazy_import_rtdetr_detector():
+def _lazy_import_rtdetr_detector() -> Type[CheckboxDetector]:
     """Lazy import RT-DETR detector to avoid heavy dependencies at module load."""
     from .rtdetr import RTDETRCheckboxDetector
 
     return RTDETRCheckboxDetector
 
 
+@dataclass(frozen=True)
+class EngineRegistration:
+    """Describes a registered checkbox detection engine."""
+
+    detector_factory: Callable[[], Type[CheckboxDetector]]
+    options_type: Type[CheckboxOptions]
+
+
 class CheckboxManager:
     """Manages checkbox detection engines and provides a unified interface."""
 
     # Registry of available engines
-    ENGINE_REGISTRY = {
-        "rtdetr": {
-            "class": _lazy_import_rtdetr_detector,
-            "options_class": RTDETRCheckboxOptions,
-        },
-        "wendys": {  # Alias for the default model
-            "class": _lazy_import_rtdetr_detector,
-            "options_class": RTDETRCheckboxOptions,
-        },
+    DEFAULT_ENGINE = "rtdetr"
+    ENGINE_REGISTRY: Dict[str, EngineRegistration] = {
+        "rtdetr": EngineRegistration(
+            detector_factory=_lazy_import_rtdetr_detector,
+            options_type=RTDETRCheckboxOptions,
+        ),
+        "wendys": EngineRegistration(
+            detector_factory=_lazy_import_rtdetr_detector,
+            options_type=RTDETRCheckboxOptions,
+        ),
     }
 
     def __init__(self):
@@ -58,40 +69,63 @@ class CheckboxManager:
             List of detection dictionaries
         """
         # Determine engine and options
-        if options is None:
-            if engine is None:
-                engine = "rtdetr"  # Default engine
-            options = self._create_options(engine, **kwargs)
-        elif isinstance(options, dict):
-            if engine is None:
-                engine = "rtdetr"
-            options = self._create_options(engine, **options, **kwargs)
-        else:
-            # options is a CheckboxOptions instance
-            # Determine engine from options type if not specified
-            if engine is None:
-                engine = self._get_engine_from_options(options)
-            # Apply any kwargs as overrides
-            if kwargs:
-                options = self._override_options(options, **kwargs)
+        engine_name, final_options = self.prepare_options(engine, options, overrides=kwargs)
 
         # Get detector
-        detector = self._get_detector(engine)
+        detector = self._get_detector(engine_name)
 
         # Run detection
         try:
-            return detector.detect(image, options)
+            return detector.detect(image, final_options)
         except Exception as e:
-            self.logger.error(f"Checkbox detection failed with {engine}: {e}", exc_info=True)
+            self.logger.error(f"Checkbox detection failed with {engine_name}: {e}", exc_info=True)
             raise
+
+    def prepare_options(
+        self,
+        engine: Optional[str],
+        options: Optional[Union[CheckboxOptions, Mapping[str, Any]]],
+        *,
+        overrides: Optional[Mapping[str, Any]] = None,
+    ) -> Tuple[str, CheckboxOptions]:
+        """
+        Resolve the engine name and return a concrete options instance.
+
+        Args:
+            engine: Requested engine name (optional).
+            options: Existing CheckboxOptions instance or mapping of parameters.
+            overrides: Additional option values to merge in.
+
+        Returns:
+            Tuple of (engine_name, CheckboxOptions instance).
+        """
+        override_kwargs: Dict[str, Any] = {}
+        if overrides:
+            override_kwargs.update(dict(overrides))
+
+        if isinstance(options, CheckboxOptions):
+            engine_name = engine or self._get_engine_from_options(options)
+            final_options = (
+                self._override_options(options, **override_kwargs) if override_kwargs else options
+            )
+            return engine_name, final_options
+
+        engine_name = engine or self.DEFAULT_ENGINE
+        base_kwargs: Dict[str, Any] = {}
+        if isinstance(options, Mapping):
+            base_kwargs.update(dict(options))
+        base_kwargs.update(override_kwargs)
+
+        final_options = self._create_options(engine_name, **base_kwargs)
+        return engine_name, final_options
 
     def _get_engine_from_options(self, options: CheckboxOptions) -> str:
         """Determine engine from options type."""
-        for engine_name, engine_info in self.ENGINE_REGISTRY.items():
-            if isinstance(options, engine_info["options_class"]):
+        for engine_name, registration in self.ENGINE_REGISTRY.items():
+            if isinstance(options, registration.options_type):
                 return engine_name
         # Default if can't determine
-        return "rtdetr"
+        return self.DEFAULT_ENGINE
 
     def _create_options(self, engine: str, **kwargs) -> CheckboxOptions:
         """Create options instance for the specified engine."""
@@ -101,21 +135,12 @@ class CheckboxManager:
                 f"Available: {list(self.ENGINE_REGISTRY.keys())}"
             )
 
-        options_class = self.ENGINE_REGISTRY[engine]["options_class"]
-        return options_class(**kwargs)
+        registration = self.ENGINE_REGISTRY[engine]
+        return registration.options_type(**kwargs)
 
     def _override_options(self, options: CheckboxOptions, **kwargs) -> CheckboxOptions:
         """Create a new options instance with overrides applied."""
-        # Get current values as dict
-        import dataclasses
-
-        current_values = dataclasses.asdict(options)
-
-        # Apply overrides
-        current_values.update(kwargs)
-
-        # Create new instance
-        return type(options)(**current_values)
+        return replace(options, **kwargs)
 
     def _get_detector(self, engine: str) -> CheckboxDetector:
         """Get or create a detector instance for the specified engine."""
@@ -127,19 +152,18 @@ class CheckboxManager:
                 )
 
             # Get detector class (lazy import)
-            detector_class = self.ENGINE_REGISTRY[engine]["class"]
-            if callable(detector_class):
-                detector_class = detector_class()  # Call factory function
+            registration = self.ENGINE_REGISTRY[engine]
+            detector_cls = registration.detector_factory()
 
             # Check availability
-            if not detector_class.is_available():
+            if not detector_cls.is_available():
                 raise RuntimeError(
                     f"Checkbox detection engine '{engine}' is not available. "
                     f"Please install required dependencies."
                 )
 
             # Create instance
-            self._detector_cache[engine] = detector_class()
+            self._detector_cache[engine] = detector_cls()
             self.logger.info(f"Initialized checkbox detector: {engine}")
 
         return self._detector_cache[engine]
@@ -150,10 +174,8 @@ class CheckboxManager:
             return False
 
         try:
-            detector_class = self.ENGINE_REGISTRY[engine]["class"]
-            if callable(detector_class):
-                detector_class = detector_class()
-            return detector_class.is_available()
+            detector_cls = self.ENGINE_REGISTRY[engine].detector_factory()
+            return detector_cls.is_available()
         except Exception:
             return False
 

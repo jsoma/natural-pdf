@@ -1,6 +1,6 @@
 # ocr_engine_surya.py
 import importlib.util
-from typing import Any, Dict, List, Optional, Sequence, Set
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 from PIL import Image
 
@@ -13,10 +13,10 @@ class SuryaOCREngine(OCREngine):
 
     def __init__(self):
         super().__init__()
-        self._recognition_predictor: Optional[Any] = None
-        self._detection_predictor: Optional[Any] = None
-        self._surya_recognition: Optional[Any] = None
-        self._surya_detection: Optional[Any] = None
+        self._recognition_predictor: Optional[Callable[..., Any]] = None
+        self._detection_predictor: Optional[Callable[..., Any]] = None
+        self._surya_recognition: Optional[Callable[..., Any]] = None
+        self._surya_detection: Optional[Callable[..., Any]] = None
         self._langs: Sequence[str] = self.DEFAULT_LANGUAGES
 
     def _initialize_model(
@@ -43,6 +43,9 @@ class SuryaOCREngine(OCREngine):
         if dropped:
             self.logger.warning(f"Dropped unsupported Surya args: {dropped}")
 
+        if self._surya_detection is None or self._surya_recognition is None:
+            raise RuntimeError("Failed to load Surya predictors.")
+
         self.logger.info("Instantiating Surya DetectionPredictor...")
         self._detection_predictor = self._surya_detection(**filtered_args)
         self.logger.info("Instantiating Surya RecognitionPredictor...")
@@ -58,7 +61,7 @@ class SuryaOCREngine(OCREngine):
         self, image: Any, detect_only: bool, options: Optional[BaseOCROptions]
     ) -> Any:
         """Process a single image with Surya OCR."""
-        if not self._recognition_predictor or not self._detection_predictor:
+        if self._recognition_predictor is None or self._detection_predictor is None:
             raise RuntimeError("Surya predictors are not initialized.")
 
         if not isinstance(image, Image.Image):
@@ -69,7 +72,9 @@ class SuryaOCREngine(OCREngine):
 
         # Surya expects lists of images, so we need to wrap our single image
         if detect_only:
-            results = self._detection_predictor(images=[image])
+            detection_predictor = self._detection_predictor
+            assert detection_predictor is not None
+            results = detection_predictor(images=[image])
         else:
             # Some Surya versions require 'langs' parameter in the __call__ while
             # others assume the predictor was initialized with languages already.
@@ -84,17 +89,22 @@ class SuryaOCREngine(OCREngine):
                 # Fallback: assume langs not required if signature cannot be inspected
                 has_langs_param = False
 
+            recognition_predictor = self._recognition_predictor
+            detection_predictor = self._detection_predictor
+            assert recognition_predictor is not None
+            assert detection_predictor is not None
+
             if has_langs_param:
-                results = recog_callable(
+                results = recognition_predictor(
                     langs=langs,
                     images=[image],
-                    det_predictor=self._detection_predictor,
+                    det_predictor=detection_predictor,
                 )
             else:
                 # Older/newer Surya versions that omit 'langs'
-                results = recog_callable(
+                results = recognition_predictor(
                     images=[image],
-                    det_predictor=self._detection_predictor,
+                    det_predictor=detection_predictor,
                 )
 
         # Surya may return a list with one result per image or a single result object
@@ -107,21 +117,36 @@ class SuryaOCREngine(OCREngine):
         """Convert Surya results to standardized TextRegion objects."""
         standardized_regions: List[TextRegion] = []
 
-        raw_result = raw_results
-        if isinstance(raw_results, list) and len(raw_results) > 0:
+        raw_result: Any
+        if isinstance(raw_results, list) and raw_results:
             raw_result = raw_results[0]
+        else:
+            raw_result = raw_results
 
-        results = (
-            raw_result.text_lines
-            if hasattr(raw_result, "text_lines") and not detect_only
-            else raw_result.bboxes
-        )
+        if raw_result is None:
+            return standardized_regions
 
-        for line in results:
+        if not detect_only and hasattr(raw_result, "text_lines"):
+            results_iter = getattr(raw_result, "text_lines", None)
+        else:
+            results_iter = getattr(raw_result, "bboxes", None)
+
+        if results_iter is None:
+            return standardized_regions
+
+        if isinstance(results_iter, Iterable):
+            results_iterable = results_iter
+        else:
+            results_iterable = [results_iter]
+
+        for line in results_iterable:
             # Always extract bbox first
+            bbox_raw: Any = None
             try:
                 # Prioritize line.bbox, fallback to line.polygon
-                bbox_raw = line.bbox if hasattr(line, "bbox") else getattr(line, "polygon", None)
+                bbox_raw = getattr(line, "bbox", None)
+                if bbox_raw is None:
+                    bbox_raw = getattr(line, "polygon", None)
                 if bbox_raw is None:
                     raise ValueError("Missing bbox/polygon data")
                 bbox = self._standardize_bbox(bbox_raw)

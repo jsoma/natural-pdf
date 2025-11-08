@@ -5,6 +5,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Optional,
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
 # Import required classes for the new methods
 # For runtime image manipulation
 
+from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
@@ -132,17 +134,19 @@ class Flow(Visualizable):
             segment_gap: The virtual gap (in PDF points) between segments.
         """
         # Handle PageCollection input
-        if hasattr(segments, "pages"):  # It's a PageCollection
-            segments = list(segments.pages)
-        else:
-            segments = list(segments)
+        from natural_pdf.core.page_collection import PageCollection as _PageCollection
 
-        if not segments:
+        if isinstance(segments, _PageCollection):
+            segment_list: List[SupportsSections] = list(segments.pages)
+        else:
+            segment_list = list(segments)
+
+        if not segment_list:
             raise ValueError("Flow segments cannot be empty.")
         if arrangement not in ["vertical", "horizontal"]:
             raise ValueError("Arrangement must be 'vertical' or 'horizontal'.")
 
-        self.segments: List["PhysicalRegion"] = self._normalize_segments(segments)
+        self.segments: List["PhysicalRegion"] = self._normalize_segments(segment_list)
         self.arrangement: Literal["vertical", "horizontal"] = arrangement
         self.alignment: Literal["start", "center", "end", "top", "left", "bottom", "right"] = (
             alignment
@@ -189,38 +193,25 @@ class Flow(Visualizable):
         if not self.segments:
             raise RuntimeError("Flow has no segments to get highlighter from")
 
-        # Get highlighter from first segment
-        first_segment = self.segments[0]
-        if hasattr(first_segment, "_highlighter"):
-            return first_segment._highlighter
-        elif hasattr(first_segment, "page") and hasattr(first_segment.page, "_highlighter"):
-            return first_segment.page._highlighter
-        else:
-            raise RuntimeError(
-                f"Cannot find HighlightingService from Flow segments. "
-                f"First segment type: {type(first_segment).__name__}"
-            )
+        return resolve_highlighter(self.segments[0])
 
     def show(
         self,
         *,
-        # Basic rendering options
         resolution: Optional[float] = None,
         width: Optional[int] = None,
-        # Highlight options
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         labels: bool = True,
         label_format: Optional[str] = None,
-        highlights: Optional[List[Dict[str, Any]]] = None,
-        # Layout options for multi-page/region
-        layout: Literal["stack", "grid", "single"] = "stack",
+        highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
+        legend_position: str = "right",
+        annotate: Optional[Union[str, List[str]]] = None,
+        layout: Optional[Literal["stack", "grid", "single"]] = None,
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
-        columns: Optional[int] = None,  # For grid layout
-        # Cropping options
-        crop: Union[bool, Literal["content"]] = False,
+        columns: Optional[int] = 6,
+        crop: Union[bool, int, str, "PhysicalRegion", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
-        # Flow-specific options
         in_context: bool = False,
         separator_color: Optional[Tuple[int, int, int]] = None,
         separator_thickness: int = 2,
@@ -252,10 +243,12 @@ class Flow(Visualizable):
         Returns:
             PIL Image object or None if nothing to render
         """
+        resolved_resolution = self._resolve_image_resolution(resolution)
+
         if in_context:
             # Use the special in_context visualization
             return self._show_in_context(
-                resolution=resolution or 150,
+                resolution=resolved_resolution,
                 width=width,
                 stack_direction=stack_direction,
                 stack_gap=gap,
@@ -272,6 +265,8 @@ class Flow(Visualizable):
             labels=labels,
             label_format=label_format,
             highlights=highlights,
+            legend_position=legend_position,
+            annotate=annotate,
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,
@@ -461,7 +456,7 @@ class Flow(Visualizable):
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
-        stitch_rows: Callable[[List[Optional[str]]], bool] = None,
+        stitch_rows: Optional[Callable[[List[Optional[str]]], bool]] = None,
     ) -> TableResult: ...
 
     @overload
@@ -475,9 +470,11 @@ class Flow(Visualizable):
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
-        stitch_rows: Callable[
-            [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
-            bool,
+        stitch_rows: Optional[
+            Callable[
+                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
+                bool,
+            ]
         ] = None,
     ) -> TableResult: ...
 
@@ -491,7 +488,7 @@ class Flow(Visualizable):
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
-        stitch_rows: Optional[Callable] = None,
+        stitch_rows: Optional[Callable[..., bool]] = None,
         merge_headers: Optional[bool] = None,
     ) -> TableResult:
         """
@@ -1048,14 +1045,12 @@ class Flow(Visualizable):
                             global_segment_idx = self.segments.index(segment)
                         except ValueError:
                             # If it's a generated full-page region, find its source page
-                            for idx, orig_segment in enumerate(self.segments):
-                                if (
-                                    hasattr(orig_segment, "index")
-                                    and hasattr(segment, "page")
-                                    and orig_segment.index == segment.page.index
-                                ):
-                                    global_segment_idx = idx
-                                    break
+                            seg_page = getattr(segment, "page", None)
+                            if seg_page is not None:
+                                for idx, orig_segment in enumerate(self.segments):
+                                    if getattr(orig_segment, "page", None) is seg_page:
+                                        global_segment_idx = idx
+                                        break
 
                         if global_segment_idx is not None:
                             segment_label = f"{label_prefix}_{global_segment_idx + 1}"
@@ -1393,9 +1388,11 @@ class Flow(Visualizable):
             if isinstance(start_elements_unwrapped, str):
                 seg_starts = segment.find_all(start_elements_unwrapped).elements
             elif start_elements_unwrapped:
-                seg_starts = [
-                    e for e in start_elements_unwrapped if _element_in_segment(e, segment)
-                ]
+                if isinstance(start_elements_unwrapped, Iterable):
+                    candidates = list(start_elements_unwrapped)
+                else:
+                    candidates = [start_elements_unwrapped]
+                seg_starts = [e for e in candidates if _element_in_segment(e, segment)]
             else:
                 seg_starts = []
 
@@ -1406,7 +1403,11 @@ class Flow(Visualizable):
             if isinstance(end_elements_unwrapped, str):
                 seg_ends = segment.find_all(end_elements_unwrapped).elements
             elif end_elements_unwrapped:
-                seg_ends = [e for e in end_elements_unwrapped if _element_in_segment(e, segment)]
+                if isinstance(end_elements_unwrapped, Iterable):
+                    candidates_end = list(end_elements_unwrapped)
+                else:
+                    candidates_end = [end_elements_unwrapped]
+                seg_ends = [e for e in candidates_end if _element_in_segment(e, segment)]
             else:
                 seg_ends = []
 
@@ -1445,7 +1446,7 @@ class Flow(Visualizable):
                         segment.page, (left, segment.top, right, segment.bottom)
                     )
 
-                implicit_region.is_implicit_start = True
+                implicit_region.metadata["is_implicit_start"] = True
                 return implicit_region
 
             synthetic_starts: List[Tuple[Region, int, Region]] = []

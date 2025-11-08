@@ -598,7 +598,7 @@ def _is_color_value(value) -> bool:
         # Otherwise try parsing as a color name/hex
         Color(value)
         return True
-    except:
+    except (ValueError, TypeError, AttributeError):
         return False
 
 
@@ -625,7 +625,7 @@ def _color_distance(color1: Any, color2: Any) -> float:
         lab1 = convert_color(rgb1, LabColor)
         lab2 = convert_color(rgb2, LabColor)
         return float(delta_e_cie2000(lab1, lab2))
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return float("inf")
 
 
@@ -743,7 +743,11 @@ def _build_filter_list(
                 return False
             try:
                 return bool(comparator(value, expected_value))
-            except Exception as exc:  # pragma: no cover - defensive logging
+            except (
+                ValueError,
+                TypeError,
+                AttributeError,
+            ) as exc:  # pragma: no cover - defensive logging
                 logger.debug(
                     "Comparison failed for attribute '%s': %s", attr_name, exc, exc_info=True
                 )
@@ -1235,12 +1239,8 @@ def _assemble_filter_func(filters: List[Dict[str, Any]]) -> Callable[[Any], bool
 
     def combined_filter(element):
         for f in filters:
-            try:
-                if not f["func"](element):
-                    return False
-            except Exception as e:
-                logger.error(f"Error applying filter '{f['name']}' to element: {e}", exc_info=True)
-                return False  # Treat errors as filter failures
+            if not f["func"](element):
+                return False
         return True
 
     return combined_filter
@@ -1269,21 +1269,20 @@ def _calculate_aggregates(elements: List[Any], selector: Dict[str, Any]) -> Dict
             # Extract attribute values from elements
             values = []
             for el in elements:
-                try:
-                    # Handle special bbox attributes
-                    if attr_name in ["x0", "y0", "x1", "y1"]:
-                        bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
-                        bbox = getattr(el, "_bbox", None) or getattr(el, "bbox", None)
+                # Handle special bbox attributes
+                if attr_name in ["x0", "y0", "x1", "y1"]:
+                    bbox_mapping = {"x0": 0, "y0": 1, "x1": 2, "y1": 3}
+                    bbox = getattr(el, "_bbox", None) or getattr(el, "bbox", None)
+                    try:
                         if bbox:
                             val = bbox[bbox_mapping[attr_name]]
                             values.append(val)
-                    else:
-                        # General attribute access
-                        val = getattr(el, attr_name.replace("-", "_"), None)
-                        if val is not None:
-                            values.append(val)
-                except Exception:
-                    continue
+                    except (TypeError, IndexError):
+                        continue
+                else:
+                    val = getattr(el, attr_name.replace("-", "_"), None)
+                    if val is not None:
+                        values.append(val)
 
             if not values:
                 # No valid values found, aggregate is None
@@ -1386,15 +1385,7 @@ def selector_to_filter_func(
 
         # Return OR combination - element matches if ANY sub-selector matches
         def or_filter(element):
-            for func in sub_filter_funcs:
-                try:
-                    if func(element):
-                        return True
-                except Exception as e:
-                    logger.error(f"Error applying OR sub-filter to element: {e}", exc_info=True)
-                    # Continue to next sub-filter on error
-                    continue
-            return False
+            return any(func(element) for func in sub_filter_funcs)
 
         return or_filter
 

@@ -1,55 +1,39 @@
 # layout_detector_yolo.py
+import importlib
 import importlib.util
 import logging
 import os
 import tempfile
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, cast
 
 from PIL import Image
 
-# Assuming base class and options are importable
-try:
+if TYPE_CHECKING:
     from .base import LayoutDetector
     from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
-except ImportError:
-    # Placeholders if run standalone or imports fail
-    class BaseLayoutOptions:
-        pass
-
-    class YOLOLayoutOptions(BaseLayoutOptions):
-        pass
-
-    class LayoutDetector:
-        def __init__(self):
-            self.logger = logging.getLogger()
-            self.supported_classes = set()
-
-        def _get_model(self, options):
-            raise NotImplementedError
-
-        def _normalize_class_name(self, n):
-            return n
-
-        def validate_classes(self, c):
-            pass
-
-    logging.basicConfig()
+else:  # pragma: no cover - runtime import with graceful fallback
+    from .base import LayoutDetector
+    from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
 
 logger = logging.getLogger(__name__)
 
-# Check for dependencies
+YOLOv10Type = Type[Any]
+HubDownloadCallable = Callable[..., str]
+
 yolo_spec = importlib.util.find_spec("doclayout_yolo")
 hf_spec = importlib.util.find_spec("huggingface_hub")
-YOLOv10 = None
-hf_hub_download = None
+YOLOv10: Optional[YOLOv10Type] = None
+hf_hub_download: Optional[HubDownloadCallable] = None
 
 if yolo_spec and hf_spec:
     try:
-        from doclayout_yolo import YOLOv10
-        from huggingface_hub import hf_hub_download
-    except ImportError as e:
-        logger.warning(f"Could not import YOLO dependencies: {e}")
-else:
+        yolo_module = importlib.import_module("doclayout_yolo")
+        hf_module = importlib.import_module("huggingface_hub")
+        YOLOv10 = cast(YOLOv10Type, getattr(yolo_module, "YOLOv10", None))
+        hf_hub_download = cast(HubDownloadCallable, getattr(hf_module, "hf_hub_download", None))
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        logger.warning(f"Could not import YOLO dependencies: {exc}")
+else:  # pragma: no cover - optional dependency
     logger.warning(
         "doclayout_yolo or huggingface_hub not found. YOLODocLayoutDetector will not be available."
     )
@@ -77,7 +61,7 @@ class YOLODocLayoutDetector(LayoutDetector):
         """Check if dependencies are installed."""
         return YOLOv10 is not None and hf_hub_download is not None
 
-    def _get_cache_key(self, options: YOLOLayoutOptions) -> str:
+    def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model repo/file and device."""
         # Ensure options is the correct type
         if not isinstance(options, YOLOLayoutOptions):
@@ -88,14 +72,21 @@ class YOLODocLayoutDetector(LayoutDetector):
         model_key = f"{options.model_repo.replace('/','_')}_{options.model_file}"
         return f"{self.__class__.__name__}_{device_key}_{model_key}"
 
-    def _load_model_from_options(self, options: YOLOLayoutOptions) -> Any:
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
         """Load the YOLOv10 model based on options."""
         if not self.is_available():
             raise RuntimeError("YOLO dependencies not installed. Please run: npdf install yolo")
+        if not isinstance(options, YOLOLayoutOptions):
+            raise TypeError("Incorrect options type provided for YOLO model loading.")
         self.logger.info(f"Loading YOLO model: {options.model_repo}/{options.model_file}")
         try:
-            model_path = hf_hub_download(repo_id=options.model_repo, filename=options.model_file)
-            model = YOLOv10(model_path)
+            hf_download = hf_hub_download
+            yolo_cls = YOLOv10
+            if hf_download is None or yolo_cls is None:
+                raise RuntimeError("YOLO dependencies not available at runtime.")
+
+            model_path = hf_download(repo_id=options.model_repo, filename=options.model_file)
+            model = yolo_cls(model_path)
             self.logger.info("YOLO model loaded.")
             return model
         except Exception as e:

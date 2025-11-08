@@ -4,17 +4,17 @@ Centralized service for managing and rendering highlights in a PDF document.
 
 import logging  # Added
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union, cast
 
 from PIL import Image, ImageDraw, ImageFont
 
-# Attempt to import Page for type hinting safely
-try:
-    from .page import Page
-except ImportError:
-    Page = Any  # Fallback if circular import issue arises during type checking
+if TYPE_CHECKING:  # pragma: no cover
+    from natural_pdf.core.page import Page
+else:  # pragma: no cover - runtime fallback
+    Page = Any  # type: ignore[assignment]
 
-from natural_pdf.core.render_spec import RenderSpec
+from natural_pdf.core.render_spec import ColorInput, RenderSpec
+from natural_pdf.elements.base import extract_bbox
 
 # Import ColorManager and related utils
 from natural_pdf.utils.visualization import (
@@ -31,6 +31,8 @@ DEFAULT_FALLBACK_COLOR = (255, 255, 0)  # Yellow fallback (RGB only, alpha added
 # Setup logger
 logger = logging.getLogger(__name__)
 
+RGBAColor = Tuple[int, int, int, int]
+
 
 @dataclass
 class Highlight:
@@ -41,10 +43,11 @@ class Highlight:
 
     page_index: int
     bbox: Tuple[float, float, float, float]
-    color: Tuple[int, int, int, int]  # Final RGBA color determined by service
+    color: RGBAColor  # Final RGBA color determined by service
     label: Optional[str] = None
     polygon: Optional[List[Tuple[float, float]]] = None
     attributes: Dict[str, Any] = field(default_factory=dict)  # Store extracted attribute values
+    quantitative_metadata: Optional[Dict[str, Any]] = None
 
     @property
     def is_polygon(self) -> bool:
@@ -106,13 +109,14 @@ class HighlightRenderer:
 
             scaled_bbox = None
 
-            if highlight.is_polygon:
+            if highlight.is_polygon and highlight.polygon is not None:
+                polygon = highlight.polygon
                 scaled_polygon = [
                     (
                         (p[0] + page_offset_x) * self.scale_factor,
                         (p[1] + page_offset_y) * self.scale_factor,
                     )
-                    for p in highlight.polygon
+                    for p in polygon
                 ]
                 # Draw polygon fill and border
                 draw.polygon(
@@ -156,10 +160,10 @@ class HighlightRenderer:
 
     def _draw_vertices(
         self,
-        draw: ImageDraw.Draw,
+        draw: ImageDraw.ImageDraw,
         vertices: List[Tuple[float, float]],
-        color: Tuple[int, int, int, int],
-    ):
+        color: RGBAColor,
+    ) -> None:
         """Draw small markers at each vertex."""
         for x, y in vertices:
             # Draw ellipse centered at vertex
@@ -174,8 +178,8 @@ class HighlightRenderer:
             )
 
     def _draw_attributes(
-        self, draw: ImageDraw.Draw, attributes: Dict[str, Any], bbox_scaled: List[float]
-    ):
+        self, draw: ImageDraw.ImageDraw, attributes: Dict[str, Any], bbox_scaled: List[float]
+    ) -> None:
         """Draws attribute key-value pairs on the highlight."""
         try:
             # Slightly larger font, scaled
@@ -304,6 +308,7 @@ class HighlightRenderer:
             )
 
             # Calculate text position (centered vertically, slightly offset from left)
+            text_top_offset = 0
             if hasattr(sized_font, "getbbox"):  # Modern PIL
                 _, text_top_offset, _, text_bottom_offset = sized_font.getbbox(element.text)
                 text_h = text_bottom_offset - text_top_offset
@@ -311,7 +316,7 @@ class HighlightRenderer:
                 text_h = font_size
             text_y = top_s + (box_h - text_h) / 2
             # Adjust for vertical offset in some fonts
-            text_y -= text_top_offset if hasattr(sized_font, "getbbox") else 0
+            text_y -= text_top_offset
             text_x = x0_s + padding  # Start near left edge with padding
 
             draw.text((text_x, text_y), element.text, fill=(0, 0, 0, 255), font=sized_font)
@@ -357,7 +362,7 @@ class HighlightContext:
         self,
         elements,
         label: Optional[str] = None,
-        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        color: Optional[ColorInput] = None,
         **kwargs,
     ) -> "HighlightContext":
         """
@@ -455,7 +460,7 @@ class HighlightContext:
             # Check if we're in a Jupyter/IPython environment
             try:
                 # Try to get IPython instance
-                from IPython import get_ipython
+                from IPython.core.getipython import get_ipython
 
                 ipython = get_ipython()
                 if ipython is not None:
@@ -487,9 +492,7 @@ class HighlightingService:
     # Removed _get_next_color - logic moved to ColorManager
     # Removed _color_cycle, _labels_colors - managed by ColorManager
 
-    def _process_color_input(
-        self, color_input: Optional[Union[Tuple, str]]
-    ) -> Optional[Tuple[int, int, int, int]]:
+    def _process_color_input(self, color_input: Optional[ColorInput]) -> Optional[RGBAColor]:
         """
         Parses various color input formats into a standard RGBA tuple (0-255).
         Returns None if input is invalid.
@@ -520,9 +523,9 @@ class HighlightingService:
             if len(processed) == 3:
                 # Use alpha from ColorManager instance
                 processed.append(self._color_manager._alpha)
-                return tuple(processed)
+                return cast(RGBAColor, tuple(processed))
             elif len(processed) == 4:
-                return tuple(processed)
+                return cast(RGBAColor, tuple(processed))
             else:
                 logger.warning(f"Invalid color tuple length: {color_input}")
                 return None  # Invalid length
@@ -542,7 +545,7 @@ class HighlightingService:
                 g = max(0, min(255, g))
                 b = max(0, min(255, b))
                 # Add alpha
-                rgba = (r, g, b, self._color_manager._alpha)
+                rgba: RGBAColor = (r, g, b, self._color_manager._alpha)
                 return rgba
             except ImportError:
                 logger.error("Color utility class not found. Cannot process string colors.")
@@ -556,10 +559,10 @@ class HighlightingService:
 
     def _determine_highlight_color(
         self,
-        color_input: Optional[Union[Tuple, str]] = None,
+        color_input: Optional[ColorInput] = None,
         label: Optional[str] = None,
         use_color_cycling: bool = False,
-    ) -> Tuple[int, int, int, int]:
+    ) -> RGBAColor:
         """
         Determines the final RGBA color for a highlight using the ColorManager.
 
@@ -578,13 +581,15 @@ class HighlightingService:
             return explicit_color
         else:
             # Otherwise, use the color manager to get a color based on label/cycling
-            return self._color_manager.get_color(label=label, force_cycle=use_color_cycling)
+            return cast(
+                RGBAColor, self._color_manager.get_color(label=label, force_cycle=use_color_cycling)
+            )
 
     def add(
         self,
         page_index: int,
-        bbox: Union[Tuple[float, float, float, float], Any],  # Relax input type hint
-        color: Optional[Union[Tuple, str]] = None,
+        bbox: Any,
+        color: Optional[ColorInput] = None,
         label: Optional[str] = None,
         use_color_cycling: bool = False,
         element: Optional[Any] = None,
@@ -593,42 +598,14 @@ class HighlightingService:
     ):
         """Adds a rectangular highlight."""
 
-        processed_bbox: Tuple[float, float, float, float]
-        # Check if bbox is an object with expected attributes (likely a Region)
-        # Assuming Region object has x0, top, x1, bottom attributes based on error context
-        if (
-            hasattr(bbox, "x0")
-            and hasattr(bbox, "top")
-            and hasattr(bbox, "x1")
-            and hasattr(bbox, "bottom")
-        ):
-            try:
-                # Ensure attributes are numeric before creating tuple
-                processed_bbox = (
-                    float(bbox.x0),
-                    float(bbox.top),
-                    float(bbox.x1),
-                    float(bbox.bottom),
-                )
-            except (ValueError, TypeError):
-                logger.error(
-                    f"Invalid attribute types in bbox object for page {page_index}: {bbox}. Expected numeric values."
-                )
-                return
-        elif isinstance(bbox, (list, tuple)) and len(bbox) == 4:
-            try:
-                # Ensure elements are numeric and convert to tuple
-                processed_bbox = tuple(float(v) for v in bbox)
-            except (ValueError, TypeError):
-                logger.error(
-                    f"Invalid values in bbox sequence for page {page_index}: {bbox}. Expected numeric values."
-                )
-                return
-        else:
+        bbox_tuple = extract_bbox(bbox)
+        if bbox_tuple is None:
             logger.error(
-                f"Invalid bbox type or structure provided for page {page_index}: {type(bbox)} - {bbox}. Expected tuple/list of 4 numbers or Region-like object."
+                f"Invalid bbox type or structure provided for page {page_index}: {type(bbox)} - {bbox}."
             )
-            return  # Don't proceed if bbox is invalid
+            return
+
+        processed_bbox = cast(Tuple[float, float, float, float], bbox_tuple)
 
         self._add_internal(
             page_index=page_index,
@@ -680,7 +657,7 @@ class HighlightingService:
         page_index: int,
         bbox: Tuple[float, float, float, float],
         polygon: Optional[List[Tuple[float, float]]],
-        color_input: Optional[Union[Tuple, str]],
+        color_input: Optional[ColorInput],
         label: Optional[str],
         use_color_cycling: bool,
         element: Optional[Any],
@@ -950,7 +927,7 @@ class HighlightingService:
 
             if not quantitative_metadata:
                 # Create regular categorical legend
-                labels_colors_on_page: Dict[str, Tuple[int, int, int, int]] = {}
+                labels_colors_on_page: Dict[str, RGBAColor] = {}
                 for hl in highlights_on_page:
                     if hl.label and hl.label not in labels_colors_on_page:
                         labels_colors_on_page[hl.label] = hl.color
@@ -1088,17 +1065,30 @@ class HighlightingService:
                             logger.warning(
                                 f"Attribute '{attr_name}' not found on element {element}"
                             )
-                if hl_data.get("bbox") or hl_data.get("polygon"):
-                    preview_highlights.append(
-                        Highlight(
-                            page_index=hl_data["page_index"],
-                            bbox=hl_data.get("bbox"),
-                            polygon=hl_data.get("polygon"),
-                            color=final_color,
-                            label=hl_data.get("label"),
-                            attributes=attrs_to_draw,
-                        )
+                bbox_value = extract_bbox(cast(Any, hl_data.get("bbox")))
+                polygon_value = hl_data.get("polygon")
+                if bbox_value is None and not polygon_value:
+                    continue
+
+                if bbox_value is not None:
+                    highlight_bbox = cast(Tuple[float, float, float, float], bbox_value)
+                elif polygon_value:
+                    xs = [pt[0] for pt in polygon_value]
+                    ys = [pt[1] for pt in polygon_value]
+                    highlight_bbox = (min(xs), min(ys), max(xs), max(ys))
+                else:
+                    continue
+
+                preview_highlights.append(
+                    Highlight(
+                        page_index=hl_data["page_index"],
+                        bbox=highlight_bbox,
+                        polygon=polygon_value,
+                        color=final_color,
+                        label=hl_data.get("label"),
+                        attributes=attrs_to_draw,
                     )
+                )
 
             # Use the calculated actual_scale_x for the HighlightRenderer
             # Assuming HighlightRenderer can handle a single scale or we adapt it.
@@ -1143,6 +1133,8 @@ class HighlightingService:
                         quantitative_metadata = hl_data["quantitative_metadata"]
                         break
 
+                final_image = rendered_image
+
                 if quantitative_metadata:
                     # Create colorbar for quantitative data
                     from natural_pdf.utils.visualization import create_colorbar
@@ -1169,14 +1161,14 @@ class HighlightingService:
 
                 if not quantitative_metadata:
                     # Create regular categorical legend
-                    preview_labels = {h.label: h.color for h in preview_highlights if h.label}
+                    preview_labels: Dict[str, RGBAColor] = {
+                        cast(str, h.label): h.color for h in preview_highlights if h.label
+                    }
                     if preview_labels:
                         legend = create_legend(preview_labels)
                         final_image = merge_images_with_legend(
                             rendered_image, legend, position=legend_position
                         )
-                    else:
-                        final_image = rendered_image
             else:
                 final_image = rendered_image
 
@@ -1507,7 +1499,7 @@ class HighlightingService:
                 page_offset_y = -page._page.bbox[1]
 
             # Draw the highlight
-            if polygon:
+            if polygon is not None:
                 # Scale polygon points and apply offset
                 scaled_polygon = [
                     (
@@ -1519,7 +1511,7 @@ class HighlightingService:
                 draw.polygon(
                     scaled_polygon, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
-            else:
+            elif bbox is not None:
                 # Scale bbox and apply offset
                 x0, y0, x1, y1 = bbox
                 scaled_bbox = [
@@ -1531,6 +1523,8 @@ class HighlightingService:
                 draw.rectangle(
                     scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
+            else:
+                continue
 
                 # Draw attributes if present
                 attributes_to_draw = highlight_dict.get("attributes_to_draw")
@@ -1542,7 +1536,7 @@ class HighlightingService:
 
     def _draw_spec_attributes(
         self,
-        draw: ImageDraw.Draw,
+        draw: ImageDraw.ImageDraw,
         attributes: Dict[str, Any],
         bbox_scaled: List[float],
         scale_factor: float,

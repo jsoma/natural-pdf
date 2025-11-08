@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
@@ -7,7 +6,7 @@ from pydantic import BaseModel, Field
 T_Schema = TypeVar("T_Schema", bound=BaseModel)
 
 
-class StructuredDataResult(BaseModel, Generic[T_Schema], Mapping):
+class StructuredDataResult(BaseModel, Generic[T_Schema]):
     """
     Represents the result of a structured data extraction operation.
 
@@ -36,9 +35,10 @@ class StructuredDataResult(BaseModel, Generic[T_Schema], Mapping):
             # Pydantic v1
             return self.dict()
 
-    def __iter__(self):
-        """Iterate over keys, preserving insertion order guaranteed in Py≥3.7."""
-        return iter(self._as_dict())
+    def __iter__(self, *args: Any, **kwargs: Any):
+        """Iterate over (key, value) pairs to mirror BaseModel behaviour."""
+        for item in self._as_dict().items():
+            yield item
 
     def __getitem__(self, key):
         try:

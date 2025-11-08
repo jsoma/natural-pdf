@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from pydantic import BaseModel, Field, create_model
 
+from natural_pdf.qa.qa_result import QAResult
+
 # Avoid circular import
 if TYPE_CHECKING:
     pass
@@ -64,7 +66,7 @@ class ExtractionMixin(ABC):
         metadata for quality assessment.
     """
 
-    def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
+    def _get_extraction_content(self: Any, using: str = "text", **kwargs) -> Any:
         """
         Retrieves the content (text or image) for extraction.
 
@@ -411,7 +413,7 @@ class ExtractionMixin(ABC):
     # Internal helper: Document-QA powered extraction
     # ------------------------------------------------------------------
     def _perform_docqa_extraction(
-        self,
+        self: Any,
         *,
         schema: Type[BaseModel],
         analysis_key: str,
@@ -470,12 +472,11 @@ class ExtractionMixin(ABC):
                 question = question_map[display_name]
             else:
                 description = None
-                if hasattr(field_obj, "field_info") and hasattr(
-                    field_obj.field_info, "description"
-                ):
-                    description = field_obj.field_info.description
+                field_info = getattr(field_obj, "field_info", None)
+                if field_info is not None and hasattr(field_info, "description"):
+                    description = getattr(field_info, "description")
                 elif hasattr(field_obj, "description"):
-                    description = field_obj.description
+                    description = getattr(field_obj, "description")
 
                 question = description or f"What is the {display_name.replace('_', ' ')}?"
 
@@ -496,8 +497,18 @@ class ExtractionMixin(ABC):
                         debug=debug,
                     )
 
-                confidence_val = qa_resp.get("confidence") if qa_resp else None
-                answer_val = qa_resp.get("answer") if qa_resp else None
+                qa_item = qa_resp
+                if isinstance(qa_resp, list):
+                    qa_item = qa_resp[0] if qa_resp else None
+
+                confidence_val = None
+                answer_val = None
+                if isinstance(qa_item, QAResult):
+                    confidence_val = qa_item.get("confidence")
+                    answer_val = qa_item.get("answer")
+                elif isinstance(qa_item, dict):
+                    confidence_val = qa_item.get("confidence")
+                    answer_val = qa_item.get("answer")
 
                 if confidence_val is not None and confidence_val < min_confidence:
                     answer_val = None
@@ -543,9 +554,10 @@ class ExtractionMixin(ABC):
             err_msg = str(exc)
 
         result = StructuredDataResult(
-            data=structured_instance if structured_instance is not None else combined,
+            data=structured_instance,
             success=success_flag,
             error_message=err_msg,
+            raw_output=combined,
             model_used=getattr(qa_engine, "model_name", None),
         )
 
@@ -555,7 +567,7 @@ class ExtractionMixin(ABC):
     # Internal helper: LLM powered extraction (existing behaviour)
     # ------------------------------------------------------------------
     def _perform_llm_extraction(
-        self,
+        self: Any,
         *,
         schema: Type[BaseModel],
         client: Any,
@@ -613,6 +625,7 @@ class ExtractionMixin(ABC):
                 data=None,
                 success=False,
                 error_message=msg,
+                raw_output=None,
                 model_used=model,
             )
         else:

@@ -4,6 +4,7 @@ import hashlib
 import logging
 import os
 import re
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import (  # Added overload
     TYPE_CHECKING,
@@ -16,12 +17,14 @@ from typing import (  # Added overload
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import pdfplumber
 from PIL import Image
 from tqdm.auto import tqdm  # Added tqdm import
 
+from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
@@ -29,12 +32,14 @@ from natural_pdf.tables.result import TableResult
 from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 
 if TYPE_CHECKING:
-    import pdfplumber
+    from pdfplumber.page import Page as PdfPlumberPage
 
     from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
     from natural_pdf.core.pdf import PDF
     from natural_pdf.describe.summary import InspectionSummary
     from natural_pdf.elements.base import Element
+else:  # pragma: no cover - runtime typing helper
+    PdfPlumberPage = Any  # type: ignore[assignment]
 
 # # New Imports
 
@@ -45,40 +50,37 @@ from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
-
-# --- Shape Detection Mixin --- #
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
 from natural_pdf.classification.manager import ClassificationManager  # For type hint
-
-# # --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
-from natural_pdf.core.element_manager import ElementManager
 
 # Add new import
-from natural_pdf.core.interfaces import SupportsSections
+from natural_pdf.core.crop_utils import resolve_crop_bbox
+from natural_pdf.core.element_manager import ElementManager
+from natural_pdf.core.exclusion_mixin import ExclusionMixin
+from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
+from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.ocr_mixin import OCRMixin
+from natural_pdf.core.qa_mixin import DocumentQAMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.selector_utils import execute_selector_query, normalize_selector_input
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr import OCRManager, OCROptions
-
-# --- Text update mixin import --- #
+from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.text_mixin import TextMixin
 
 # # Import new utils
-from natural_pdf.utils.sections import sanitize_sections
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
 from natural_pdf.vision.mixin import VisualSearchMixin
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
-# --- End Classification Imports --- #
-
-
 try:
-    from deskew import determine_skew
+    from deskew import determine_skew  # type: ignore[import]
 
     DESKEW_AVAILABLE = True
 except ImportError:
@@ -166,6 +168,10 @@ class Page(
     CheckboxDetectionMixin,
     DescribeMixin,
     VisualSearchMixin,
+    ExclusionMixin,
+    OCRMixin,
+    DocumentQAMixin,
+    SinglePageContextMixin,
     Visualizable,
     SupportsSections,
 ):
@@ -232,7 +238,7 @@ class Page(
 
     def __init__(
         self,
-        page: "pdfplumber.page.Page",
+        page: "PdfPlumberPage",
         parent: "PDF",
         index: int,
         font_attrs=None,
@@ -275,13 +281,12 @@ class Page(
         self._parent = parent
         self._index = index
         self._load_text = load_text
+        self._text_styles_summary: Dict[str, Any] = {}
         self._text_styles = None  # Lazy-loaded text style analyzer results
         self._exclusions = []  # List to store exclusion functions/regions
         self._skew_angle: Optional[float] = None  # Stores detected skew angle
 
-        # --- ADDED --- Metadata store for mixins
         self.metadata: Dict[str, Any] = {}
-        # --- END ADDED ---
 
         # Region management
         self._regions = {
@@ -289,20 +294,25 @@ class Page(
             "named": {},  # Named regions (name -> region)
         }
 
-        # -------------------------------------------------------------
-        # Page-scoped configuration begins as a shallow copy of the parent
-        # PDF-level configuration so that auto-computed tolerances or other
-        # page-specific values do not overwrite siblings.
-        # -------------------------------------------------------------
-        self._config = dict(getattr(self._parent, "_config", {}))
+        if not hasattr(self._parent, "_config"):
+            raise AttributeError(
+                "Parent PDF is missing _config; cannot initialise Page configuration"
+            )
+
+        # Page-scoped configuration begins as a shallow copy of the parent PDF-level
+        # configuration so that auto-computed tolerances or other page-specific
+        # values do not overwrite siblings.
+        self._config = dict(self._parent._config)
 
         # Initialize ElementManager, passing font_attrs
-        self._element_mgr = ElementManager(self, font_attrs=font_attrs, load_text=self._load_text)
+        self._element_mgr: ElementManager = ElementManager(
+            self, font_attrs=font_attrs, load_text=self._load_text
+        )
         # self._highlighter = HighlightingService(self) # REMOVED - Use property accessor
-        # --- NEW --- Central registry for analysis results
-        self.analyses: Dict[str, Any] = {}
+        if not hasattr(self, "metadata") or self.metadata is None:
+            self.metadata = {}
+        self.metadata.setdefault("analysis", {})
 
-        # --- Get OCR Manager Instance ---
         if (
             OCRManager
             and hasattr(parent, "_ocr_manager")
@@ -317,7 +327,6 @@ class Page(
                     f"Page {self.number}: OCRManager instance not found on parent PDF object."
                 )
 
-        # --- Get Layout Manager Instance ---
         if (
             LayoutManager
             and hasattr(parent, "_layout_manager")
@@ -365,27 +374,36 @@ class Page(
         """
         spec = RenderSpec(page=self)
 
-        # Handle cropping
-        if crop_bbox:
-            spec.crop_bbox = crop_bbox
-        elif crop == "content":
-            # Calculate content bounds from all elements
-            elements = self.get_elements(apply_exclusions=False)
-            if elements:
-                # Get bounding box of all elements
-                x_coords = []
-                y_coords = []
-                for elem in elements:
-                    if hasattr(elem, "bbox") and elem.bbox:
-                        x0, y0, x1, y1 = elem.bbox
-                        x_coords.extend([x0, x1])
-                        y_coords.extend([y0, y1])
+        elements: Optional[List[Element]] = None
+        content_bbox: Optional[Tuple[float, float, float, float]] = None
 
-                if x_coords and y_coords:
-                    spec.crop_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
-        elif crop is True:
-            # Crop to full page (no-op, but included for consistency)
-            spec.crop_bbox = (0, 0, self.width, self.height)
+        def ensure_content_bbox() -> Optional[Tuple[float, float, float, float]]:
+            nonlocal elements, content_bbox
+            if content_bbox is not None:
+                return content_bbox
+            if elements is None:
+                elements = self.get_elements(apply_exclusions=False)
+            if not elements:
+                return None
+            x_coords: List[float] = []
+            y_coords: List[float] = []
+            for elem in elements:
+                if hasattr(elem, "bbox") and elem.bbox:
+                    x0, y0, x1, y1 = elem.bbox
+                    x_coords.extend([x0, x1])
+                    y_coords.extend([y0, y1])
+            if x_coords and y_coords:
+                content_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+                return content_bbox
+            return None
+
+        spec.crop_bbox = resolve_crop_bbox(
+            width=self.width,
+            height=self.height,
+            crop=crop,
+            crop_bbox=crop_bbox,
+            content_bbox_fn=ensure_content_bbox,
+        )
 
         # Add highlights in show mode
         if mode == "show":
@@ -436,6 +454,30 @@ class Page(
         """Return a Region covering the full page."""
         return self.region(0, 0, self.width, self.height)
 
+    qa_target = "page"
+
+    def _qa_context_page_number(self) -> int:
+        return self.number
+
+    def _qa_source_elements(self) -> ElementCollection:
+        return ElementCollection([])
+
+    def _qa_target_region(self) -> Region:
+        return self.to_region()
+
+    def _element_to_region(self, element: Any, label: Optional[str] = None) -> Optional[Region]:
+        bbox = extract_bbox(element)
+        if bbox is None:
+            return None
+        return Region(self, bbox, label=label)
+
+    def _exclusion_element_manager(self) -> ElementManager:
+        return self._element_mgr
+
+    def _invalidate_exclusion_cache(self) -> None:
+        if self._element_mgr:
+            self._element_mgr.invalidate_cache()
+
     @property
     def pdf(self) -> "PDF":
         """Provides public access to the parent PDF object."""
@@ -466,7 +508,6 @@ class Page(
         """Get page height."""
         return self._page.height
 
-    # --- Highlighting Service Accessor ---
     @property
     def _highlighter(self) -> "HighlightingService":
         """Provides access to the parent PDF's HighlightingService."""
@@ -475,35 +516,12 @@ class Page(
             raise AttributeError("Parent PDF object does not have a 'highlighter' attribute.")
         return self._parent.highlighter
 
-    @property
-    def pages(self) -> Tuple["Page", ...]:
-        """Expose this page as an iterable for protocol compatibility."""
-        return (self,)
-
     def get_highlighter(self) -> "HighlightingService":
-        """Return the highlighting service for this page."""
+        """Expose the page-level HighlightingService for Visualizable consumers."""
         return self._highlighter
 
-    def get_config(self, key: str, default: Any = None, *, scope: str = "page") -> Any:
-        """Resolve configuration values for this page or its parent PDF."""
-        if scope not in {"region", "page", "pdf"}:
-            raise ValueError(f"Unsupported configuration scope: {scope}")
-
-        page_cfg = getattr(self, "_config", {})
-        if scope in {"region", "page"} and isinstance(page_cfg, dict) and key in page_cfg:
-            return page_cfg[key]
-
-        pdf_cfg = getattr(self.pdf, "_config", {}) if self.pdf is not None else {}
-        if scope in {"region", "page", "pdf"} and isinstance(pdf_cfg, dict) and key in pdf_cfg:
-            return pdf_cfg[key]
-
-        return default
-
-    def get_manager(self, name: str) -> Any:
-        """Delegate manager lookups to the parent PDF."""
-        if self.pdf is None:
-            raise AttributeError(f"Cannot resolve manager '{name}' without PDF context")
-        return self.pdf.get_manager(name)
+    def _context_page(self) -> "Page":
+        return self
 
     def clear_exclusions(self) -> "Page":
         """
@@ -540,239 +558,6 @@ class Page(
             yield self
         finally:
             self._computing_exclusions = old_value
-
-    def add_exclusion(
-        self,
-        exclusion_func_or_region: Union[
-            Callable[["Page"], "Region"], "Region", List[Any], Tuple[Any, ...], Any
-        ],
-        label: Optional[str] = None,
-        method: str = "region",
-    ) -> "Page":
-        """
-        Add an exclusion to the page. Text from these regions will be excluded from extraction.
-        Ensures non-callable items are stored as Region objects if possible.
-
-        Args:
-            exclusion_func_or_region: Either a callable function returning a Region,
-                                      a Region object, a list/tuple of regions or elements,
-                                      or another object with a valid .bbox attribute.
-            label: Optional label for this exclusion (e.g., 'header', 'footer').
-            method: Exclusion method - 'region' (exclude all elements in bounding box) or
-                    'element' (exclude only the specific elements). Default: 'region'.
-
-        Returns:
-            Self for method chaining
-
-        Raises:
-            TypeError: If a non-callable, non-Region object without a valid bbox is provided.
-            ValueError: If method is not 'region' or 'element'.
-        """
-        # Validate method parameter
-        if method not in ("region", "element"):
-            raise ValueError(f"Invalid exclusion method '{method}'. Must be 'region' or 'element'.")
-
-        # ------------------------------------------------------------------
-        # NEW: Handle selector strings and ElementCollection instances
-        # ------------------------------------------------------------------
-        # If a user supplies a selector string (e.g. "text:bold") we resolve it
-        # immediately *on this page* to the matching elements and turn each into
-        # a Region object which is added to the internal exclusions list.
-        #
-        # Likewise, if an ElementCollection is passed we iterate over its
-        # elements and create Regions for each one.
-        # ------------------------------------------------------------------
-        # Import ElementCollection from the new module path (old path removed)
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        # Selector string ---------------------------------------------------
-        if isinstance(exclusion_func_or_region, str):
-            selector_str = exclusion_func_or_region
-            matching_elements = self.find_all(selector_str, apply_exclusions=False)
-
-            if not matching_elements:
-                logger.warning(
-                    f"Page {self.index}: Selector '{selector_str}' returned no elements – no exclusions added."
-                )
-            else:
-                if method == "element":
-                    # Store the actual elements for element-based exclusion
-                    for el in matching_elements:
-                        self._exclusions.append((el, label, method))
-                        logger.debug(
-                            f"Page {self.index}: Added element exclusion from selector '{selector_str}' -> {el}"
-                        )
-                else:  # method == "region"
-                    for el in matching_elements:
-                        try:
-                            bbox_coords = (
-                                float(el.x0),
-                                float(el.top),
-                                float(el.x1),
-                                float(el.bottom),
-                            )
-                            region = Region(self, bbox_coords, label=label)
-                            # Store directly as a Region tuple so we don't recurse endlessly
-                            self._exclusions.append((region, label, method))
-                            logger.debug(
-                                f"Page {self.index}: Added exclusion region from selector '{selector_str}' -> {bbox_coords}"
-                            )
-                        except Exception as e:
-                            # Re-raise so calling code/test sees the failure immediately
-                            logger.error(
-                                f"Page {self.index}: Failed to create exclusion region from element {el}: {e}",
-                                exc_info=False,
-                            )
-                            raise
-            # Invalidate ElementManager cache since exclusions affect element filtering
-            if hasattr(self, "_element_mgr") and self._element_mgr:
-                self._element_mgr.invalidate_cache()
-            return self  # Completed processing for selector input
-
-        # ElementCollection -----------------------------------------------
-        if isinstance(exclusion_func_or_region, ElementCollection):
-            if method == "element":
-                # Store the actual elements for element-based exclusion
-                for el in exclusion_func_or_region:
-                    self._exclusions.append((el, label, method))
-                    logger.debug(
-                        f"Page {self.index}: Added element exclusion from ElementCollection -> {el}"
-                    )
-            else:  # method == "region"
-                # Convert each element to a Region and add
-                for el in exclusion_func_or_region:
-                    try:
-                        if not (hasattr(el, "bbox") and len(el.bbox) == 4):
-                            logger.warning(
-                                f"Page {self.index}: Skipping element without bbox in ElementCollection exclusion: {el}"
-                            )
-                            continue
-                        bbox_coords = tuple(float(v) for v in el.bbox)
-                        region = Region(self, bbox_coords, label=label)
-                        self._exclusions.append((region, label, method))
-                        logger.debug(
-                            f"Page {self.index}: Added exclusion region from ElementCollection element {bbox_coords}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Page {self.index}: Failed to convert ElementCollection element to Region: {e}",
-                            exc_info=False,
-                        )
-                        raise
-            # Invalidate ElementManager cache since exclusions affect element filtering
-            if hasattr(self, "_element_mgr") and self._element_mgr:
-                self._element_mgr.invalidate_cache()
-            return self  # Completed processing for ElementCollection input
-
-        # ------------------------------------------------------------------
-        # Existing logic (callable, Region, bbox-bearing objects)
-        # ------------------------------------------------------------------
-        exclusion_data = None  # Initialize exclusion data
-
-        if callable(exclusion_func_or_region):
-            # Store callable functions along with their label and method
-            exclusion_data = (exclusion_func_or_region, label, method)
-            logger.debug(
-                f"Page {self.index}: Added callable exclusion '{label}' with method '{method}': {exclusion_func_or_region}"
-            )
-        elif isinstance(exclusion_func_or_region, Region):
-            # Store Region objects directly, assigning the label
-            exclusion_func_or_region.label = label  # Assign label
-            exclusion_data = (
-                exclusion_func_or_region,
-                label,
-                method,
-            )  # Store as tuple for consistency
-            logger.debug(
-                f"Page {self.index}: Added Region exclusion '{label}' with method '{method}': {exclusion_func_or_region}"
-            )
-        elif (
-            hasattr(exclusion_func_or_region, "bbox")
-            and isinstance(getattr(exclusion_func_or_region, "bbox", None), (tuple, list))
-            and len(exclusion_func_or_region.bbox) == 4
-        ):
-            if method == "element":
-                # For element method, store the element directly
-                exclusion_data = (exclusion_func_or_region, label, method)
-                logger.debug(
-                    f"Page {self.index}: Added element exclusion '{label}': {exclusion_func_or_region}"
-                )
-            else:  # method == "region"
-                # Convert objects with a valid bbox to a Region before storing
-                try:
-                    bbox_coords = tuple(float(v) for v in exclusion_func_or_region.bbox)
-                    # Pass the label to the Region constructor
-                    region_to_add = Region(self, bbox_coords, label=label)
-                    exclusion_data = (region_to_add, label, method)  # Store as tuple
-                    logger.debug(
-                        f"Page {self.index}: Added exclusion '{label}' with method '{method}' converted to Region from {type(exclusion_func_or_region)}: {region_to_add}"
-                    )
-                except (ValueError, TypeError, Exception) as e:
-                    # Raise an error if conversion fails
-                    raise TypeError(
-                        f"Failed to convert exclusion object {exclusion_func_or_region} with bbox {getattr(exclusion_func_or_region, 'bbox', 'N/A')} to Region: {e}"
-                    ) from e
-        elif isinstance(exclusion_func_or_region, (list, tuple)):
-            # Handle lists/tuples of regions or elements
-            if not exclusion_func_or_region:
-                logger.warning(f"Page {self.index}: Empty list provided for exclusion, ignoring.")
-                return self
-
-            if method == "element":
-                # Store each element directly
-                for item in exclusion_func_or_region:
-                    if hasattr(item, "bbox") and len(getattr(item, "bbox", [])) == 4:
-                        self._exclusions.append((item, label, method))
-                        logger.debug(
-                            f"Page {self.index}: Added element exclusion from list -> {item}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Page {self.index}: Skipping item without valid bbox in list: {item}"
-                        )
-            else:  # method == "region"
-                # Convert each item to a Region and add
-                for item in exclusion_func_or_region:
-                    try:
-                        if isinstance(item, Region):
-                            item.label = label
-                            self._exclusions.append((item, label, method))
-                            logger.debug(f"Page {self.index}: Added Region from list: {item}")
-                        elif hasattr(item, "bbox") and len(getattr(item, "bbox", [])) == 4:
-                            bbox_coords = tuple(float(v) for v in item.bbox)
-                            region = Region(self, bbox_coords, label=label)
-                            self._exclusions.append((region, label, method))
-                            logger.debug(
-                                f"Page {self.index}: Added exclusion region from list item {bbox_coords}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Page {self.index}: Skipping item without valid bbox in list: {item}"
-                            )
-                    except Exception as e:
-                        logger.error(
-                            f"Page {self.index}: Failed to convert list item to Region: {e}"
-                        )
-                        continue
-            # Invalidate ElementManager cache since exclusions affect element filtering
-            if hasattr(self, "_element_mgr") and self._element_mgr:
-                self._element_mgr.invalidate_cache()
-            return self
-        else:
-            # Reject invalid types
-            raise TypeError(
-                f"Invalid exclusion type: {type(exclusion_func_or_region)}. Must be callable, Region, list/tuple of regions/elements, or have a valid .bbox attribute."
-            )
-
-        # Append the stored data (tuple of object/callable, label, and method)
-        if exclusion_data:
-            self._exclusions.append(exclusion_data)
-
-        # Invalidate ElementManager cache since exclusions affect element filtering
-        if hasattr(self, "_element_mgr") and self._element_mgr:
-            self._element_mgr.invalidate_cache()
-
-        return self
 
     def add_region(
         self, region: "Region", name: Optional[str] = None, *, source: Optional[str] = None
@@ -839,6 +624,73 @@ class Page(
                 self.add_region(region, source=source)
 
         return self
+
+    # Element manager facade helpers
+    def ensure_elements_loaded(self) -> None:
+        """Force the underlying element manager to load elements."""
+        self._element_mgr.load_elements()
+
+    def invalidate_element_cache(self) -> None:
+        """Invalidate the cached elements so they are reloaded on next access."""
+        self._element_mgr.invalidate_cache()
+
+    def has_element_cache(self) -> bool:
+        """Return True if the element manager currently holds any elements."""
+        return self._element_mgr.has_elements()
+
+    def get_all_elements_raw(self) -> List["Element"]:
+        """Return all elements without applying exclusions."""
+        return list(self._element_mgr.get_all_elements())
+
+    def get_elements_by_type(self, element_type: str) -> List[Any]:
+        """Return the elements for a specific backing collection (e.g. 'words')."""
+        return list(self._element_mgr.get_elements(element_type))
+
+    def add_element(self, element: Any, element_type: str = "words") -> bool:
+        """Add an element to the backing collection."""
+        return bool(self._element_mgr.add_element(element, element_type))
+
+    def _infer_element_type(self, element: Any, default: str = "words") -> str:
+        """Best-effort inference of element collection name for an object."""
+        element_type = getattr(element, "object_type", None)
+        if element_type is None and isinstance(element, dict):
+            element_type = element.get("object_type")
+
+        if isinstance(element_type, str):
+            normalized = element_type.lower()
+            if normalized == "word":
+                return "words"
+            if normalized == "char":
+                return "chars"
+            if normalized == "rect":
+                return "rects"
+            if normalized == "line":
+                return "lines"
+            if normalized == "region":
+                return "regions"
+            if normalized.endswith("s"):
+                return normalized
+        return default
+
+    def remove_element(self, element: Any, element_type: Optional[str] = None) -> bool:
+        """Remove an element from the backing collection."""
+        target_type = element_type or self._infer_element_type(element)
+        return bool(self._element_mgr.remove_element(element, target_type))
+
+    def remove_elements_by_source(self, element_type: str, source: str) -> int:
+        """Remove all elements of a given type whose source matches."""
+        return int(self._element_mgr.remove_elements_by_source(element_type, source))
+
+    def _ocr_element_manager(self) -> ElementManager:
+        return self._element_mgr
+
+    def iter_regions(self) -> List["Region"]:
+        """Return a list of regions currently registered with the page."""
+        return list(self._element_mgr.regions)
+
+    def remove_regions_by_source(self, source: str) -> int:
+        """Remove all registered regions that match the requested source."""
+        return int(self._element_mgr.remove_elements_by_source("regions", source))
 
     def remove_regions(
         self,
@@ -968,46 +820,85 @@ class Page(
                         regions.append(region_result)
                         if debug:
                             print(f"    ✓ Added region from callable '{label}': {region_result}")
-                    elif hasattr(region_result, "__iter__") and hasattr(region_result, "__len__"):
-                        # Handle ElementCollection or other iterables
-                        from natural_pdf.elements.element_collection import ElementCollection
+                    elif isinstance(region_result, ElementCollection):
+                        elements_iter: Iterable[Any] = region_result.elements
+                        if debug:
+                            print(
+                                f"    Converting ElementCollection with {len(region_result.elements)} elements to regions..."
+                            )
 
-                        if isinstance(region_result, ElementCollection) or (
-                            hasattr(region_result, "__iter__") and region_result
-                        ):
+                        for elem in elements_iter:
+                            try:
+                                bbox_candidate = getattr(elem, "bbox", None)
+                                if (
+                                    isinstance(bbox_candidate, (tuple, list))
+                                    and len(bbox_candidate) == 4
+                                ):
+                                    bbox_coords = cast(
+                                        Tuple[float, float, float, float],
+                                        tuple(
+                                            float(v) for v in cast(Sequence[float], bbox_candidate)
+                                        ),
+                                    )
+                                    region = Region(self, bbox_coords, label=label)
+                                    regions.append(region)
+                                    if debug:
+                                        print(f"      ✓ Added region from element: {bbox_coords}")
+                                else:
+                                    if debug:
+                                        print(
+                                            f"      ✗ Skipping element without valid bbox: {elem}"
+                                        )
+                            except Exception as e:
+                                if debug:
+                                    print(f"      ✗ Failed to convert element to region: {e}")
+                                continue
+
+                        if debug and region_result.elements:
+                            print(
+                                f"    ✓ Converted {len(region_result.elements)} elements from callable '{label}'"
+                            )
+                    elif isinstance(region_result, Iterable):
+                        materialised = list(cast(Iterable[Any], region_result))
+                        if not materialised:
+                            if debug:
+                                print(f"    ✗ Empty iterable returned from callable '{label}'")
+                        else:
                             if debug:
                                 print(
-                                    f"    Converting {type(region_result)} with {len(region_result)} elements to regions..."
+                                    f"    Converting iterable {type(region_result)} with {len(materialised)} elements to regions..."
                                 )
-
-                            # Convert each element to a region
-                            for elem in region_result:
+                            for elem in materialised:
                                 try:
-                                    if hasattr(elem, "bbox") and len(elem.bbox) == 4:
-                                        bbox_coords = tuple(float(v) for v in elem.bbox)
+                                    bbox_candidate = getattr(elem, "bbox", None)
+                                    if (
+                                        isinstance(bbox_candidate, (tuple, list))
+                                        and len(bbox_candidate) == 4
+                                    ):
+                                        bbox_coords = cast(
+                                            Tuple[float, float, float, float],
+                                            tuple(
+                                                float(v)
+                                                for v in cast(Sequence[float], bbox_candidate)
+                                            ),
+                                        )
                                         region = Region(self, bbox_coords, label=label)
                                         regions.append(region)
                                         if debug:
                                             print(
-                                                f"      ✓ Added region from element: {bbox_coords}"
+                                                f"      ✓ Added region from iterable element: {bbox_coords}"
                                             )
                                     else:
                                         if debug:
                                             print(
-                                                f"      ✗ Skipping element without valid bbox: {elem}"
+                                                f"      ✗ Skipping iterable element without valid bbox: {elem}"
                                             )
                                 except Exception as e:
                                     if debug:
-                                        print(f"      ✗ Failed to convert element to region: {e}")
+                                        print(
+                                            f"      ✗ Failed to convert iterable element to region: {e}"
+                                        )
                                     continue
-
-                            if debug and len(region_result) > 0:
-                                print(
-                                    f"    ✓ Converted {len(region_result)} elements from callable '{label}'"
-                                )
-                        else:
-                            if debug:
-                                print(f"    ✗ Empty iterable returned from callable '{label}'")
                     elif region_result:
                         # Check if it's a single Element that can be converted to a Region
                         from natural_pdf.elements.base import Element
@@ -1017,7 +908,7 @@ class Page(
                         ):
                             try:
                                 # Convert Element to Region using expand()
-                                expanded_region = region_result.expand()
+                                expanded_region = cast(Any, region_result).expand()
                                 if isinstance(expanded_region, Region):
                                     expanded_region.label = label
                                     regions.append(expanded_region)
@@ -1065,7 +956,7 @@ class Page(
                 if method == "region":
                     try:
                         # Convert Element to Region using expand()
-                        expanded_region = exclusion_item.expand()
+                        expanded_region = cast(Any, exclusion_item).expand()
                         if isinstance(expanded_region, Region):
                             expanded_region.label = label
                             regions.append(expanded_region)
@@ -1195,22 +1086,28 @@ class Page(
             if isinstance(exclusion_item, str) and method == "element":
                 selector_str = exclusion_item
                 matching_elements = self.find_all(selector_str, apply_exclusions=False)
-                for el in matching_elements:
-                    if hasattr(el, "bbox"):
-                        bbox = tuple(el.bbox)
-                        excluded_element_bboxes.add(bbox)
-                        if debug_exclusions:
-                            print(
-                                f"  - Added element exclusion from selector '{selector_str}': {bbox}"
-                            )
+                elements_iter = getattr(matching_elements, "elements", [])
+                for el in cast(Iterable[Any], elements_iter):
+                    bbox_vals = extract_bbox(cast(Any, el))
+                    if bbox_vals is None:
+                        continue
+                    excluded_element_bboxes.add(bbox_vals)
+                    if debug_exclusions:
+                        print(
+                            f"  - Added element exclusion from selector '{selector_str}': {bbox_vals}"
+                        )
 
             # Handle element-based exclusions
-            elif method == "element" and hasattr(exclusion_item, "bbox"):
-                # Store bbox tuple for comparison
-                bbox = tuple(exclusion_item.bbox)
-                excluded_element_bboxes.add(bbox)
-                if debug_exclusions:
-                    print(f"  - Added element exclusion with bbox {bbox}: {exclusion_item}")
+            elif method == "element":
+                bbox = extract_bbox(cast(Any, exclusion_item))
+                if bbox is not None:
+                    excluded_element_bboxes.add(bbox)
+                    if debug_exclusions:
+                        print(f"  - Added element exclusion with bbox {bbox}: {exclusion_item}")
+                else:
+                    logger.warning(
+                        f"Page {self.index}: Skipping element exclusion without bounding box: {exclusion_item}"
+                    )
 
         if debug_exclusions:
             print(
@@ -1226,7 +1123,8 @@ class Page(
             exclude = False
 
             # Check element-based exclusions first (faster)
-            if hasattr(element, "bbox") and tuple(element.bbox) in excluded_element_bboxes:
+            element_bbox = extract_bbox(element)
+            if element_bbox in excluded_element_bboxes:
                 exclude = True
                 element_excluded_count += 1
                 if debug_exclusions:
@@ -1257,7 +1155,7 @@ class Page(
     def _temporary_text_settings(
         self,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[bool] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
     ):
         """
         Temporarily override page-level text tolerance settings and refresh caches.
@@ -1278,15 +1176,23 @@ class Page(
                     }
                 }
             )
-        if auto_text_tolerance is not None:
-            overrides["auto_text_tolerance"] = bool(auto_text_tolerance)
+
+        auto_override: Optional[bool] = None
+        if isinstance(auto_text_tolerance, dict):
+            overrides.update(dict(auto_text_tolerance))
+            auto_override = True
+        else:
+            auto_override = auto_text_tolerance
+
+        if auto_override is not None:
+            overrides["auto_text_tolerance"] = bool(auto_override)
 
         if not overrides:
             yield False
             return
 
         sentinel = object()
-        page_config = getattr(self, "_config", {})
+        page_config = self._config
         previous_values: Dict[str, Any] = {key: page_config.get(key, sentinel) for key in overrides}
         cache_invalidated = False
         try:
@@ -1324,13 +1230,15 @@ class Page(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
-    ) -> Optional[Any]:
+        near_threshold: Optional[float] = None,
+    ) -> Optional[Element]:
         """
         Find first element on this page matching selector OR text content.
 
@@ -1339,68 +1247,55 @@ class Page(
         Args:
             selector: CSS-like selector string.
             text: Optional text shortcut (equivalent to ``text:contains(...)``).
+            overlap: Reserved for compatibility with region APIs; ignored for pages.
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
             text_tolerance: Optional dict of tolerance overrides applied temporarily.
             auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
             reading_order: Whether to sort matches in reading order when applicable (default: True).
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
 
         Returns:
             Element object or None if not found.
         """
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
+        effective_selector = normalize_selector_input(
+            selector,
+            text,
+            logger=logger,
+            context="Page.find",
+        )
 
-        # Construct selector if 'text' is provided
-        effective_selector = ""
-        if text is not None:
-            effective_selector = build_text_contains_selector(text)
-            logger.debug(
-                f"Using text shortcut: find(text={text!r}) -> find('{effective_selector}')"
-            )
-        elif selector is not None:
-            effective_selector = selector
-        else:
-            # Should be unreachable due to checks above
-            raise ValueError("Internal error: No selector or text provided.")
-
-        selector_obj = parse_selector(effective_selector)  # type: ignore[arg-type]
-
-        if text_tolerance is not None and not isinstance(text_tolerance, dict):
-            raise TypeError("text_tolerance must be a dict of tolerance overrides.")
-
-        with self._temporary_text_settings(
+        results_collection = execute_selector_query(
+            self,
+            effective_selector,
             text_tolerance=text_tolerance,
             auto_text_tolerance=auto_text_tolerance,
-        ):
-            selector_kwargs = {
-                "regex": regex,
-                "case": case,
-                "reading_order": reading_order,
-            }
+            regex=regex,
+            case=case,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+        )
 
-            results_collection = self._apply_selector(selector_obj, **selector_kwargs)
+        elements: List[Element] = list(results_collection.elements) if results_collection else []
+        if apply_exclusions and elements:
+            elements = self._filter_elements_by_exclusions(elements)
 
-            # Filter the results based on exclusions if requested
-            if apply_exclusions and results_collection:
-                filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-                return filtered_elements[0] if filtered_elements else None
-            return results_collection.first if results_collection else None
+        return cast(Optional[Element], elements[0] if elements else None)
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
     ) -> "ElementCollection":
         """
         Find all elements on this page matching selector OR text content.
@@ -1411,62 +1306,43 @@ class Page(
             selector: CSS-like selector string.
             text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
                   single string or an iterable of strings (matches any value).
+            overlap: Reserved for compatibility with region APIs; ignored for pages.
             apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
             text_tolerance: Optional dict of tolerance overrides applied temporarily.
             auto_text_tolerance: Optional overrides controlling automatic tolerance calculation.
             reading_order: Whether to sort matches in reading order (default: True).
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
 
         Returns:
             ElementCollection with matching elements.
         """
-        from natural_pdf.elements.element_collection import (  # Import here for type hint
-            ElementCollection,
+        effective_selector = normalize_selector_input(
+            selector,
+            text,
+            logger=logger,
+            context="Page.find_all",
         )
 
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        # Construct selector if 'text' is provided
-        effective_selector = ""
-        if text is not None:
-            effective_selector = build_text_contains_selector(text)
-            logger.debug(
-                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
-            )
-        elif selector is not None:
-            effective_selector = selector
-        else:
-            # Should be unreachable due to checks above
-            raise ValueError("Internal error: No selector or text provided.")
-
-        selector_obj = parse_selector(effective_selector)  # type: ignore[arg-type]
-
-        if text_tolerance is not None and not isinstance(text_tolerance, dict):
-            raise TypeError("text_tolerance must be a dict of tolerance overrides.")
-
-        with self._temporary_text_settings(
+        results_collection = execute_selector_query(
+            self,
+            effective_selector,
             text_tolerance=text_tolerance,
             auto_text_tolerance=auto_text_tolerance,
-        ):
-            selector_kwargs = {
-                "regex": regex,
-                "case": case,
-                "reading_order": reading_order,
-            }
-            results_collection = self._apply_selector(selector_obj, **selector_kwargs)
+            regex=regex,
+            case=case,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+        )
 
-            # Filter the results based on exclusions if requested
-            if apply_exclusions and results_collection:
-                filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-                return ElementCollection(filtered_elements)
-            return results_collection
+        if apply_exclusions and results_collection:
+            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
+            return ElementCollection(filtered_elements)
+        return results_collection
 
     def _apply_selector(
-        self, selector_obj: Dict, **kwargs
+        self, selector_obj: Dict[str, Any], **kwargs: Any
     ) -> "ElementCollection":  # Removed apply_exclusions arg
         """
         Apply selector to page elements.
@@ -1769,10 +1645,10 @@ class Page(
 
     def region(
         self,
-        left: float = None,
-        top: float = None,
-        right: float = None,
-        bottom: float = None,
+        left: Optional[float] = None,
+        top: Optional[float] = None,
+        right: Optional[float] = None,
+        bottom: Optional[float] = None,
         width: Union[str, float, None] = None,
         height: Optional[float] = None,
     ) -> Any:
@@ -1806,11 +1682,9 @@ class Page(
             >>> page.region(right=200, width=50)  # Region from x=150 to x=200
             >>> page.region(top=100, bottom=200, width="full") # Explicit full width
         """
-        # ------------------------------------------------------------------
         # Percentage support – convert strings like "30%" to absolute values
         # based on page dimensions.  X-axis params (left, right, width) use
         # page.width; Y-axis params (top, bottom, height) use page.height.
-        # ------------------------------------------------------------------
 
         def _pct_to_abs(val, axis: str):
             if isinstance(val, str) and val.strip().endswith("%"):
@@ -1828,7 +1702,6 @@ class Page(
         bottom = _pct_to_abs(bottom, "y")
         height = _pct_to_abs(height, "y")
 
-        # --- Type checking and basic validation ---
         is_width_numeric = isinstance(width, (int, float))
         is_width_string = isinstance(width, str)
         width_mode = "element"  # Default mode
@@ -1843,7 +1716,6 @@ class Page(
                 raise ValueError("String width argument must be 'full' or 'element'.")
             width_mode = width_lower
 
-        # --- Calculate Coordinates ---
         final_top = top
         final_bottom = bottom
         final_left = left
@@ -1869,34 +1741,39 @@ class Page(
                 final_left = 0
                 final_right = width
 
-        # --- Apply Defaults for Unset Coordinates ---
         # Only default coordinates if they weren't set by dimension calculation
         if final_top is None:
-            final_top = 0
+            final_top = 0.0
         if final_bottom is None:
             # Check if bottom should have been set by height calc
             if height is None or top is None:
-                final_bottom = self.height
+                final_bottom = float(self.height)
 
         if final_left is None:
-            final_left = 0
+            final_left = 0.0
         if final_right is None:
             # Check if right should have been set by width calc
             if not is_width_numeric or left is None:
-                final_right = self.width
+                final_right = float(self.width)
 
-        # --- Handle width_mode == 'full' ---
+        if final_top is None or final_bottom is None or final_left is None or final_right is None:
+            raise ValueError("Unable to resolve region coordinates.")
+
+        final_left = float(final_left)
+        final_top = float(final_top)
+        final_right = float(final_right)
+        final_bottom = float(final_bottom)
+
         if width_mode == "full":
             # Override left/right if mode is full
             final_left = 0
             final_right = self.width
 
-        # --- Final Validation & Creation ---
         # Ensure coordinates are within page bounds (clamp)
-        final_left = max(0, final_left)
-        final_top = max(0, final_top)
-        final_right = min(self.width, final_right)
-        final_bottom = min(self.height, final_bottom)
+        final_left = max(0.0, final_left)
+        final_top = max(0.0, final_top)
+        final_right = min(float(self.width), final_right)
+        final_bottom = min(float(self.height), final_bottom)
 
         # Ensure valid box (x0<=x1, top<=bottom)
         if final_left > final_right:
@@ -1925,7 +1802,7 @@ class Page(
             List of all elements on the page, potentially filtered by exclusions.
         """
         # Get all elements from the element manager
-        all_elements = self._element_mgr.get_all_elements()
+        all_elements = self.get_all_elements_raw()
 
         # Apply exclusions if requested
         if apply_exclusions:
@@ -1985,7 +1862,7 @@ class Page(
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
     ) -> Any:
         """
@@ -2034,10 +1911,10 @@ class Page(
             # Up to the target element
             region = Region(self, (0, 0, self.width, target_top))
 
-        region.end_element = target
+        region.end_element = cast(Element, target)
         return region
 
-    def crop(self, bbox=None, **kwargs) -> Any:
+    def crop(self, bbox: Optional[Bounds] = None, **kwargs: Any) -> Any:
         """
         Crop the page to the specified bounding box.
 
@@ -2051,7 +1928,17 @@ class Page(
             Cropped page object (pdfplumber.Page)
         """
         # Returns the pdfplumber page object, not a natural-pdf Page
-        return self._page.crop(bbox, **kwargs)
+        resolved_bbox: Optional[Tuple[float, float, float, float]]
+        if bbox is None:
+            resolved_bbox = None
+        else:
+            bbox_values = extract_bbox(bbox)
+            if bbox_values is None:
+                raise TypeError("crop expects a 4-tuple bbox or SupportsBBox-compatible object")
+            resolved_bbox = bbox_values
+
+        crop_arg: Any = resolved_bbox if resolved_bbox is not None else None
+        return self._page.crop(crop_arg, **kwargs)
 
     def extract_text(
         self,
@@ -2181,7 +2068,7 @@ class Page(
             if k not in merged_kwargs:
                 if k in self._config:
                     merged_kwargs[k] = self._config[k]
-                elif k in getattr(self._parent, "_config", {}):
+                elif hasattr(self._parent, "_config") and k in self._parent._config:
                     merged_kwargs[k] = self._parent._config[k]
 
         # Add content_filter to kwargs if provided
@@ -2194,7 +2081,6 @@ class Page(
             user_kwargs=merged_kwargs,
         )
 
-        # --- Optional: apply Unicode BiDi algorithm for mixed RTL/LTR correctness ---
         if bidi and result:
             # Quick check for any RTL character
             import unicodedata
@@ -2208,22 +2094,23 @@ class Page(
 
                     from natural_pdf.utils.bidi_mirror import mirror_brackets
 
-                    result = "\n".join(
-                        mirror_brackets(
-                            get_display(
-                                line,
-                                base_dir=(
-                                    "R"
-                                    if any(
-                                        unicodedata.bidirectional(ch) in ("R", "AL", "AN")
-                                        for ch in line
-                                    )
-                                    else "L"
-                                ),
+                    normalized_lines = []
+                    for line in result.split("\n"):
+                        base_dir = (
+                            "R"
+                            if any(
+                                unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in line
                             )
+                            else "L"
                         )
-                        for line in result.split("\n")
-                    )
+                        raw_display = get_display(line, base_dir=base_dir)
+                        display_line = (
+                            raw_display.decode("utf-8", errors="ignore")
+                            if isinstance(raw_display, bytes)
+                            else str(raw_display)
+                        )
+                        normalized_lines.append(mirror_brackets(display_line))
+                    result = "\n".join(normalized_lines)
                 except ModuleNotFoundError:
                     pass  # silently skip if python-bidi not available
 
@@ -2313,170 +2200,164 @@ class Page(
         Returns:
             List of tables, where each table is a list of rows, and each row is a list of cell values.
         """
-        if table_settings is None:
-            table_settings = {}
+        base_settings = table_settings.copy() if table_settings else {}
 
-        # Check for TATR-detected table regions first if enabled
+        def _normalise_table(table: Sequence[Sequence[Optional[str]]]) -> List[List[str]]:
+            return [[cell if isinstance(cell, str) else "" for cell in row] for row in table]
+
+        def _process_pdfplumber_tables(
+            raw_tables: Optional[Sequence[Sequence[Sequence[Any]]]],
+        ) -> List[List[List[str]]]:
+            if not raw_tables:
+                return []
+            processed: List[List[List[str]]] = []
+            for table in raw_tables:
+                normalized_rows: List[List[str]] = []
+                for row in table:
+                    normalized_row: List[str] = []
+                    for cell in row:
+                        text_value = "" if cell is None else str(cell)
+                        if text_value:
+                            text_value = self._apply_rtl_processing_to_text(text_value)
+                        normalized_row.append(text_value)
+                    normalized_rows.append(normalized_row)
+                processed.append(normalized_rows)
+            return processed
+
+        def _apply_text_strategy_overrides(settings: Dict[str, Any]) -> None:
+            if "text" not in (
+                settings.get("vertical_strategy"),
+                settings.get("horizontal_strategy"),
+            ):
+                return
+
+            if "text_x_tolerance" not in settings and "x_tolerance" not in settings:
+                x_tol = self.get_config("x_tolerance", None, scope="page")
+                if x_tol is not None:
+                    settings.setdefault("text_x_tolerance", x_tol)
+            if "text_y_tolerance" not in settings and "y_tolerance" not in settings:
+                y_tol = self.get_config("y_tolerance", None, scope="page")
+                if y_tol is not None:
+                    settings.setdefault("text_y_tolerance", y_tol)
+
+            if "snap_tolerance" not in settings and "snap_x_tolerance" not in settings:
+                y_tol = self.get_config("y_tolerance", 1, scope="page")
+                snap = max(1, round(float(y_tol) * 0.9))
+                settings.setdefault("snap_tolerance", snap)
+            if "join_tolerance" not in settings and "join_x_tolerance" not in settings:
+                join = settings.get("snap_tolerance", 1)
+                settings.setdefault("join_tolerance", join)
+                settings.setdefault("join_x_tolerance", join)
+                settings.setdefault("join_y_tolerance", join)
+
+        def _run_pdfplumber(
+            overrides: Optional[Dict[str, Any]] = None, *, force: bool = False
+        ) -> List[List[List[str]]]:
+            settings = base_settings.copy()
+            if overrides:
+                for key, value in overrides.items():
+                    if force or key not in settings:
+                        settings[key] = value
+            _apply_text_strategy_overrides(settings)
+            raw_tables = self._page.extract_tables(settings)
+            return _process_pdfplumber_tables(raw_tables)
+
+        def _auto_detect_tables() -> List[List[List[str]]]:
+            strategies = (
+                ("lattice", {"vertical_strategy": "lines", "horizontal_strategy": "lines"}),
+                ("stream", {"vertical_strategy": "text", "horizontal_strategy": "text"}),
+            )
+            for label, overrides in strategies:
+                try:
+                    tables = _run_pdfplumber(overrides, force=True)
+                    if tables:
+                        logger.debug(
+                            f"Page {self.number}: '{label}' strategy found {len(tables)} tables"
+                        )
+                        return tables
+                except Exception as exc:
+                    logger.debug(f"Page {self.number}: '{label}' strategy failed: {exc}")
+            return []
+
+        def _extract_tables_via_tatr() -> List[List[List[str]]]:
+            regions = self.find_all("region[type=table][model=tatr]")
+            if not regions:
+                logger.debug(
+                    f"Page {self.number}: No TATR table regions found, using pdfplumber methods"
+                )
+                return []
+
+            extracted: List[List[List[str]]] = []
+            for table_region in regions:
+                table_data = table_region.extract_table(method="tatr")
+                if table_data:
+                    extracted.append(_normalise_table(table_data))
+
+            if extracted:
+                logger.debug(
+                    f"Page {self.number}: Successfully extracted {len(extracted)} tables from TATR regions"
+                )
+            else:
+                logger.debug(
+                    f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber"
+                )
+            return extracted
+
         if check_tatr:
             try:
-                tatr_tables = self.find_all("region[type=table][model=tatr]")
+                tatr_tables = _extract_tables_via_tatr()
                 if tatr_tables:
-                    logger.debug(
-                        f"Page {self.number}: Found {len(tatr_tables)} TATR table regions, extracting from those..."
-                    )
-                    extracted_tables = []
-                    for table_region in tatr_tables:
-                        try:
-                            table_data = table_region.extract_table(method="tatr")
-                            if table_data:  # Only add non-empty tables
-                                extracted_tables.append(table_data)
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to extract table from TATR region {table_region.bbox}: {e}"
-                            )
-
-                    if extracted_tables:
-                        logger.debug(
-                            f"Page {self.number}: Successfully extracted {len(extracted_tables)} tables from TATR regions"
-                        )
-                        return extracted_tables
-                    else:
-                        logger.debug(
-                            f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber"
-                        )
-                else:
-                    logger.debug(
-                        f"Page {self.number}: No TATR table regions found, using pdfplumber methods"
-                    )
-            except Exception as e:
+                    return tatr_tables
+            except Exception as exc:
                 logger.debug(
-                    f"Page {self.number}: Error checking TATR regions: {e}, falling back to pdfplumber"
+                    f"Page {self.number}: Error checking TATR regions: {exc}, falling back to pdfplumber"
                 )
 
-        # Auto-detect method if not specified (try lattice first, then stream)
         if method is None:
-            logger.debug(f"Page {self.number}: Auto-detecting tables extraction method...")
-
-            # Try lattice first
-            try:
-                lattice_settings = table_settings.copy()
-                lattice_settings.setdefault("vertical_strategy", "lines")
-                lattice_settings.setdefault("horizontal_strategy", "lines")
-
-                logger.debug(f"Page {self.number}: Trying 'lattice' method first for tables...")
-                lattice_result = self._page.extract_tables(lattice_settings)
-
-                # Check if lattice found meaningful tables
-                if (
-                    lattice_result
-                    and len(lattice_result) > 0
-                    and any(
-                        any(
-                            any(cell and cell.strip() for cell in row if cell)
-                            for row in table
-                            if table
-                        )
-                        for table in lattice_result
-                    )
-                ):
-                    logger.debug(
-                        f"Page {self.number}: 'lattice' method found {len(lattice_result)} tables"
-                    )
-                    return lattice_result
-                else:
-                    logger.debug(f"Page {self.number}: 'lattice' method found no meaningful tables")
-
-            except Exception as e:
-                logger.debug(f"Page {self.number}: 'lattice' method failed: {e}")
-
-            # Fall back to stream
-            logger.debug(f"Page {self.number}: Falling back to 'stream' method for tables...")
-            stream_settings = table_settings.copy()
-            stream_settings.setdefault("vertical_strategy", "text")
-            stream_settings.setdefault("horizontal_strategy", "text")
-
-            return self._page.extract_tables(stream_settings)
-
-        effective_method = method
-
-        # Handle method aliases
-        if effective_method == "stream":
-            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "text")
-            table_settings.setdefault("horizontal_strategy", "text")
-        elif effective_method == "lattice":
+            auto_tables = _auto_detect_tables()
+            if auto_tables:
+                return auto_tables
             logger.debug(
-                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
+                f"Page {self.number}: Auto-detection failed to find tables. Returning empty list."
             )
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "lines")
-            table_settings.setdefault("horizontal_strategy", "lines")
+            return []
 
-        # Use the selected method
-        if effective_method == "pdfplumber":
-            # ---------------------------------------------------------
-            # Inject auto-computed or user-specified text tolerances so
-            # pdfplumber uses the same numbers we used for word grouping
-            # whenever the table algorithm relies on word positions.
-            # ---------------------------------------------------------
-            if "text" in (
-                table_settings.get("vertical_strategy"),
-                table_settings.get("horizontal_strategy"),
-            ):
-                print("SETTING IT UP")
-                pdf_cfg = getattr(self, "_config", getattr(self._parent, "_config", {}))
-                if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
-                    x_tol = pdf_cfg.get("x_tolerance")
-                    if x_tol is not None:
-                        table_settings.setdefault("text_x_tolerance", x_tol)
-                if "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
-                    y_tol = pdf_cfg.get("y_tolerance")
-                    if y_tol is not None:
-                        table_settings.setdefault("text_y_tolerance", y_tol)
+        settings = table_settings.copy() if table_settings else {}
 
-                # pdfplumber's text strategy benefits from a tight snap tolerance.
-                if (
-                    "snap_tolerance" not in table_settings
-                    and "snap_x_tolerance" not in table_settings
-                ):
-                    # Derive from y_tol if available, else default 1
-                    snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
-                    table_settings.setdefault("snap_tolerance", snap)
-                if (
-                    "join_tolerance" not in table_settings
-                    and "join_x_tolerance" not in table_settings
-                ):
-                    join = table_settings.get("snap_tolerance", 1)
-                    table_settings.setdefault("join_tolerance", join)
-                    table_settings.setdefault("join_x_tolerance", join)
-                    table_settings.setdefault("join_y_tolerance", join)
+        def _normalize_table(table: Sequence[Sequence[Optional[str]]]) -> List[List[str]]:
+            return [[cell if isinstance(cell, str) else "" for cell in row] for row in table]
 
-            raw_tables = self._page.extract_tables(table_settings)
+        def _extract_tables_via_tatr() -> List[List[List[str]]]:
+            regions = self.find_all("region[type=table][model=tatr]")
+            if not regions:
+                return []
 
-            # Apply RTL text processing to all extracted tables
-            if raw_tables:
-                processed_tables = []
-                for table in raw_tables:
-                    processed_table = []
-                    for row in table:
-                        processed_row = []
-                        for cell in row:
-                            if cell is not None:
-                                # Apply RTL text processing to each cell
-                                rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
-                                processed_row.append(rtl_processed_cell)
-                            else:
-                                processed_row.append(cell)
-                        processed_table.append(processed_row)
-                    processed_tables.append(processed_table)
-                return processed_tables
+            extracted: List[List[List[str]]] = []
+            for table_region in regions:
+                table_data = table_region.extract_table(method="tatr")
+                if table_data:
+                    extracted.append(_normalize_table(table_data))
+            return extracted
 
-            return raw_tables
-        else:
-            raise ValueError(
-                f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
-            )
+        if check_tatr:
+            try:
+                tatr_matches = _extract_tables_via_tatr()
+                if tatr_matches:
+                    logger.debug(
+                        f"Page {self.number}: Returning {len(tatr_matches)} tables from TATR regions."
+                    )
+                    return tatr_matches
+            except Exception as exc:
+                logger.debug(
+                    f"Page {self.number}: Error checking TATR regions: {exc}; falling back to pdfplumber."
+                )
+
+        page_region = self.to_region()
+        try:
+            return page_region.extract_tables(method=method, table_settings=settings)
+        except Exception as exc:
+            logger.debug(f"Page {self.number}: Table extraction failed: {exc}")
+            return []
 
     def _load_elements(self):
         """Load all elements from the page via ElementManager."""
@@ -2700,15 +2581,15 @@ class Page(
         Returns:
             ElementCollection containing all processed text elements with added style attributes.
         """
-        # Create analyzer (optionally pass default options from PDF config here)
-        # For now, it uses its own defaults if options=None
         analyzer = TextStyleAnalyzer()
-
-        # Analyze the page. The analyzer now modifies elements directly
-        # and returns the collection of processed elements.
         processed_elements_collection = analyzer.analyze(self, options=options)
 
-        # Return the collection of elements which now have style attributes
+        metadata = getattr(self, "metadata", None)
+        summary = None
+        if isinstance(metadata, dict):
+            summary = metadata.get("text_styles_summary")
+        self._text_styles_summary = summary or {}
+
         return processed_elements_collection
 
     def _create_text_elements_from_ocr(
@@ -2758,11 +2639,11 @@ class Page(
             return self  # Return self for chaining
 
         # Remove existing OCR elements if replace is True
-        if replace and hasattr(self, "_element_mgr"):
+        if replace:
             logger.info(
                 f"Page {self.number}: Removing existing OCR elements before applying new OCR."
             )
-            self._element_mgr.remove_ocr_elements()
+            self.remove_ocr_elements()
 
         logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
         # Delegate to parent PDF, targeting only this page's index
@@ -2847,25 +2728,18 @@ class Page(
         manager_args = {k: v for k, v in manager_args.items() if v is not None}
 
         logger.debug(
-            f"  Calling OCR Manager (extract only) with args: { {k:v for k,v in manager_args.items() if k != 'images'} }"
+            "  Calling OCR Manager (extract only) with args %s",
+            {k: v for k, v in manager_args.items() if k != "images"},
         )
         try:
-            # apply_ocr now returns List[List[Dict]] or List[Dict]
-            results_list = self._ocr_manager.apply_ocr(**manager_args)
-            # If it returned a list of lists (batch mode), take the first list
-            results = (
-                results_list[0]
-                if isinstance(results_list, list)
-                and results_list
-                and isinstance(results_list[0], list)
-                else results_list
-            )
+            results = self._parent._ocr_manager.apply_ocr(**manager_args)
+            if isinstance(results, list) and results and isinstance(results[0], list):
+                results = results[0]
             if not isinstance(results, list):
-                logger.error(f"  OCR Manager returned unexpected type: {type(results)}")
+                logger.error("  OCR Manager returned unexpected type: %s", type(results))
                 results = []
-            logger.info(f"  OCR Manager returned {len(results)} results for extraction.")
-        except Exception as e:
-            logger.error(f"  OCR processing failed during extraction: {e}", exc_info=True)
+        except Exception as exc:
+            logger.error("  OCR processing failed during extraction: %s", exc, exc_info=True)
             return []
 
         # Convert results but DO NOT add to ElementManager
@@ -2874,11 +2748,19 @@ class Page(
         scale_x = self.width / image.width if image.width else 1
         scale_y = self.height / image.height if image.height else 1
         for result in results:
-            try:  # Added try-except around result processing
-                x0, top, x1, bottom = [float(c) for c in result["bbox"]]
+            if not isinstance(result, Mapping):
+                logger.debug(f"  Skipping OCR result with unexpected type: {type(result)}")
+                continue
+            try:
+                bbox_raw = result.get("bbox")
+                text_value = result.get("text", "")
+                confidence = result.get("confidence", 0.0)
+                if not isinstance(bbox_raw, (list, tuple)) or len(bbox_raw) != 4:
+                    raise ValueError("OCR result missing bbox")
+                x0, top, x1, bottom = [float(cast(Union[int, float, str], c)) for c in bbox_raw]
                 elem_data = {
-                    "text": result["text"],
-                    "confidence": result["confidence"],
+                    "text": str(text_value),
+                    "confidence": float(confidence) if confidence is not None else 0.0,
                     "x0": x0 * scale_x,
                     "top": top * scale_y,
                     "x1": x1 * scale_x,
@@ -2906,7 +2788,7 @@ class Page(
         return (self._page.width, self._page.height)
 
     @property
-    def layout_analyzer(self) -> "LayoutAnalyzer":
+    def layout_analyzer(self) -> Optional["LayoutAnalyzer"]:
         """Get or create the layout analyzer for this page."""
         if self._layout_analyzer is None:
             if not self._layout_manager:
@@ -3023,320 +2905,41 @@ class Page(
             )
             return None
 
-    def split(self, divider, **kwargs) -> "ElementCollection[Region]":
-        """
-        Divides the page into sections based on the provided divider elements.
-        """
-        sections = self.get_sections(start_elements=divider, **kwargs)
-        top = self.region(0, 0, self.width, sections[0].top)
-        sections.append(top)
-
-        return sections
+    def split(self, divider, **kwargs: Any) -> "ElementCollection[Region]":
+        """Divide the page into sections based on the provided divider elements."""
+        base_region = self.create_region(0, 0, self.width, self.height)
+        return base_region.split(divider, **kwargs)
 
     def get_sections(
         self,
-        start_elements=None,
-        end_elements=None,
-        include_boundaries="start",
-        y_threshold=5.0,
-        bounding_box=None,
-        orientation="vertical",
+        start_elements: Union[str, Sequence[Element], ElementCollection, None] = None,
+        end_elements: Union[str, Sequence[Element], ElementCollection, None] = None,
+        include_boundaries: str = "start",
+        y_threshold: float = 5.0,
+        bounding_box: Optional[Bounds] = None,
+        orientation: str = "vertical",
+        **kwargs: Any,
     ) -> "ElementCollection[Region]":
-        """
-        Get sections of a page defined by start/end elements.
-        Uses the page-level implementation.
+        """Delegate section extraction to the Region implementation."""
 
-        Args:
-            start_elements: Elements or selector string that mark the start of sections
-            end_elements: Elements or selector string that mark the end of sections
-            include_boundaries: How to include boundary elements: 'start', 'end', 'both', or 'none'
-            y_threshold: Threshold for vertical alignment (only used for vertical orientation)
-            bounding_box: Optional bounding box to constrain sections
-            orientation: 'vertical' (default) or 'horizontal' - determines section direction
+        if bounding_box is not None:
+            x0, top, x1, bottom = bounding_box
+            base_region = self.create_region(x0, top, x1, bottom)
+        else:
+            base_region = self.create_region(0, 0, self.width, self.height)
 
-        Returns:
-            An ElementCollection containing the found Region objects.
-        """
-
-        # Helper function to get bounds from bounding_box parameter
-        def get_bounds():
-            if bounding_box:
-                x0, top, x1, bottom = bounding_box
-                # Clamp to page boundaries
-                return max(0, x0), max(0, top), min(self.width, x1), min(self.height, bottom)
-            else:
-                return 0, 0, self.width, self.height
-
-        regions = []
-
-        # Handle cases where elements are provided as strings (selectors)
-        if isinstance(start_elements, str):
-            start_elements = self.find_all(start_elements).elements  # Get list of elements
-        elif hasattr(start_elements, "elements"):  # Handle ElementCollection input
-            start_elements = start_elements.elements
-
-        if isinstance(end_elements, str):
-            end_elements = self.find_all(end_elements).elements
-        elif hasattr(end_elements, "elements"):
-            end_elements = end_elements.elements
-
-        # Ensure start_elements is a list
-        if start_elements is None:
-            start_elements = []
-        if end_elements is None:
-            end_elements = []
-
-        valid_inclusions = ["start", "end", "both", "none"]
-        if include_boundaries not in valid_inclusions:
-            raise ValueError(f"include_boundaries must be one of {valid_inclusions}")
-
-        if not start_elements and not end_elements:
-            # Return an empty ElementCollection if no boundary elements at all
-            return ElementCollection([])
-
-        # If we only have end elements, create implicit start elements
-        if not start_elements and end_elements:
-            x0, top_bound, x1, bottom_bound = get_bounds()
-            sorted_ends = sorted(end_elements, key=lambda el: (el.top, getattr(el, "x0", 0)))
-            regions = []
-            current_top = top_bound
-
-            for end_el in sorted_ends:
-                if current_top >= bottom_bound:
-                    break
-
-                section_top = current_top
-                section_bottom = (
-                    end_el.bottom if include_boundaries in ["end", "both"] else end_el.top
-                )
-
-                # Clamp to the bounding box limits
-                section_top = max(section_top, top_bound)
-                section_bottom = min(section_bottom, bottom_bound)
-
-                if section_top < section_bottom:
-                    region = self.create_region(x0, section_top, x1, section_bottom)
-                    region.start_element = None
-                    region.end_element = end_el
-                    region._boundary_exclusions = include_boundaries
-                    regions.append(region)
-
-                current_top = end_el.bottom if include_boundaries in ["end", "both"] else end_el.top
-
-            if regions:
-                cleaned = sanitize_sections(regions, orientation=orientation)
-                return ElementCollection(cleaned)
-
-            # Fallback to PageCollection implementation if manual extraction produced nothing
-            from natural_pdf.core.page_collection import PageCollection
-
-            pages = PageCollection([self])
-            return pages.get_sections(
-                start_elements=start_elements,
-                end_elements=end_elements,
-                include_boundaries=include_boundaries,
-                orientation=orientation,
-            )
-
-        # Combine start and end elements with their type
-        all_boundaries = []
-        for el in start_elements:
-            all_boundaries.append((el, "start"))
-        for el in end_elements:
-            all_boundaries.append((el, "end"))
-
-        # Sort all boundary elements based on orientation
-        try:
-            if orientation == "vertical":
-                all_boundaries.sort(key=lambda x: (x[0].top, x[0].x0))
-            else:  # horizontal
-                all_boundaries.sort(key=lambda x: (x[0].x0, x[0].top))
-        except AttributeError as e:
-            logger.error(f"Error sorting boundaries: Element missing position attribute? {e}")
-            return ElementCollection([])  # Cannot proceed if elements lack position
-
-        # Process sorted boundaries to find sections
-        current_start_element = None
-        active_section_started = False
-
-        for element, element_type in all_boundaries:
-            if element_type == "start":
-                # If we have an active section, this start implicitly ends it
-                if active_section_started:
-                    end_boundary_el = element  # Use this start as the end boundary
-                    # Determine region boundaries based on orientation
-                    if orientation == "vertical":
-                        sec_top = (
-                            current_start_element.top
-                            if include_boundaries in ["start", "both"]
-                            else current_start_element.bottom
-                        )
-                        sec_bottom = (
-                            end_boundary_el.top
-                            if include_boundaries not in ["end", "both"]
-                            else end_boundary_el.bottom
-                        )
-
-                        if sec_top < sec_bottom:  # Ensure valid region
-                            x0, _, x1, _ = get_bounds()
-                            region = self.create_region(x0, sec_top, x1, sec_bottom)
-                            region.start_element = current_start_element
-                            region.end_element = end_boundary_el  # Mark the element that ended it
-                            region.is_end_next_start = True  # Mark how it ended
-                            region._boundary_exclusions = include_boundaries
-                            regions.append(region)
-                    else:  # horizontal
-                        sec_left = (
-                            current_start_element.x0
-                            if include_boundaries in ["start", "both"]
-                            else current_start_element.x1
-                        )
-                        sec_right = (
-                            end_boundary_el.x0
-                            if include_boundaries not in ["end", "both"]
-                            else end_boundary_el.x1
-                        )
-
-                        if sec_left < sec_right:  # Ensure valid region
-                            _, y0, _, y1 = get_bounds()
-                            region = self.create_region(sec_left, y0, sec_right, y1)
-                            region.start_element = current_start_element
-                            region.end_element = end_boundary_el  # Mark the element that ended it
-                            region.is_end_next_start = True  # Mark how it ended
-                            region._boundary_exclusions = include_boundaries
-                            regions.append(region)
-                    active_section_started = False  # Reset for the new start
-
-                # Set this as the potential start of the next section
-                current_start_element = element
-                active_section_started = True
-
-            elif element_type == "end" and active_section_started:
-                # We found an explicit end for the current section
-                end_boundary_el = element
-                if orientation == "vertical":
-                    sec_top = (
-                        current_start_element.top
-                        if include_boundaries in ["start", "both"]
-                        else current_start_element.bottom
-                    )
-                    sec_bottom = (
-                        end_boundary_el.bottom
-                        if include_boundaries in ["end", "both"]
-                        else end_boundary_el.top
-                    )
-
-                    if sec_top < sec_bottom:  # Ensure valid region
-                        x0, _, x1, _ = get_bounds()
-                        region = self.create_region(x0, sec_top, x1, sec_bottom)
-                        region.start_element = current_start_element
-                        region.end_element = end_boundary_el
-                        region.is_end_next_start = False
-                        region._boundary_exclusions = include_boundaries
-                        regions.append(region)
-                else:  # horizontal
-                    sec_left = (
-                        current_start_element.x0
-                        if include_boundaries in ["start", "both"]
-                        else current_start_element.x1
-                    )
-                    sec_right = (
-                        end_boundary_el.x1
-                        if include_boundaries in ["end", "both"]
-                        else end_boundary_el.x0
-                    )
-
-                    if sec_left < sec_right:  # Ensure valid region
-                        _, y0, _, y1 = get_bounds()
-                        region = self.create_region(sec_left, y0, sec_right, y1)
-                        region.start_element = current_start_element
-                        region.end_element = end_boundary_el
-                        region.is_end_next_start = False
-                        region._boundary_exclusions = include_boundaries
-                        regions.append(region)
-
-                # Reset: section ended explicitly
-                current_start_element = None
-                active_section_started = False
-
-        # Handle the last section if it was started but never explicitly ended
-        if active_section_started:
-            if orientation == "vertical":
-                sec_top = (
-                    current_start_element.top
-                    if include_boundaries in ["start", "both"]
-                    else current_start_element.bottom
-                )
-                x0, _, x1, page_bottom = get_bounds()
-                if sec_top < page_bottom:
-                    region = self.create_region(x0, sec_top, x1, page_bottom)
-                    region.start_element = current_start_element
-                    region.end_element = None  # Ended by page end
-                    region.is_end_next_start = False
-                    region._boundary_exclusions = include_boundaries
-                    regions.append(region)
-            else:  # horizontal
-                sec_left = (
-                    current_start_element.x0
-                    if include_boundaries in ["start", "both"]
-                    else current_start_element.x1
-                )
-                page_left, y0, page_right, y1 = get_bounds()
-                if sec_left < page_right:
-                    region = self.create_region(sec_left, y0, page_right, y1)
-                    region.start_element = current_start_element
-                    region.end_element = None  # Ended by page end
-                    region.is_end_next_start = False
-                    region._boundary_exclusions = include_boundaries
-                    regions.append(region)
-
-        cleaned_regions = sanitize_sections(regions, orientation=orientation)
-        return ElementCollection(cleaned_regions)
+        return base_region.get_sections(
+            start_elements=start_elements,
+            end_elements=end_elements,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            y_threshold=y_threshold,
+            **kwargs,
+        )
 
     def __repr__(self) -> str:
         """String representation of the page."""
         return f"<Page number={self.number} index={self.index}>"
-
-    def ask(
-        self,
-        question: Union[str, List[str], Tuple[str, ...]],
-        min_confidence: float = 0.1,
-        model: Optional[str] = None,
-        debug: bool = False,
-        **kwargs,
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """
-        Ask a question about the page content using document QA.
-        """
-        try:
-            from natural_pdf.qa.document_qa import get_qa_engine
-
-            # Get or initialize QA engine with specified model
-            qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
-            # Ask the question using the QA engine
-            return qa_engine.ask_pdf_page(
-                self, question, min_confidence=min_confidence, debug=debug, **kwargs
-            )
-        except ImportError:
-            logger.error(
-                "Question answering requires the 'natural_pdf.qa' module. Please install necessary dependencies."
-            )
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.number,
-                "source_elements": [],
-            }
-        except Exception as e:
-            logger.error(f"Error during page.ask: {e}", exc_info=True)
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.number,
-                "source_elements": [],
-            }
 
     def show_preview(
         self,
@@ -3397,27 +3000,34 @@ class Page(
         Returns:
             A sorted list of unique style label strings.
         """
-        # Check if the summary attribute exists from a previous run
-        if not hasattr(self, "_text_styles_summary") or not self._text_styles_summary:
-            # If not, run the analysis with default options
-            logger.debug(f"Page {self.number}: Running default text style analysis to get labels.")
-            self.analyze_text_styles()  # Use default options
+        summary: dict[str, Any] = getattr(self, "_text_styles_summary", {})
+        if not summary:
+            metadata = getattr(self, "metadata", None)
+            if isinstance(metadata, dict):
+                meta_summary = metadata.get("text_styles_summary")
+                if isinstance(meta_summary, dict):
+                    summary = meta_summary
+                    self._text_styles_summary = summary
 
-        # Extract labels from the summary dictionary
-        if hasattr(self, "_text_styles_summary") and self._text_styles_summary:
-            # The summary maps style_key -> {'label': ..., 'properties': ...}
-            labels = {style_info["label"] for style_info in self._text_styles_summary.values()}
-            return sorted(list(labels))
-        else:
-            # Fallback if summary wasn't created for some reason (e.g., no text elements)
-            logger.warning(f"Page {self.number}: Text style summary not found after analysis.")
-            return []
+        if not summary:
+            logger.debug(f"Page {self.number}: Running default text style analysis to get labels.")
+            self.analyze_text_styles()
+            summary = getattr(self, "_text_styles_summary", {})
+
+        if summary:
+            labels = {
+                style_info["label"] for style_info in summary.values() if "label" in style_info
+            }
+            return sorted(labels)
+
+        logger.warning(f"Page {self.number}: Text style summary not available after analysis.")
+        return []
 
     def viewer(
         self,
         # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
         # include_source_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
-    ) -> Optional["InteractiveViewerWidget"]:  # Return type hint updated
+    ) -> Optional[Any]:
         """
         Creates and returns an interactive ipywidget for exploring elements on this page.
 
@@ -3453,7 +3063,6 @@ class Page(
             # raise # Option 1: Re-raise error (might include ValueError from from_page)
             return None  # Option 2: Return None on creation error
 
-    # --- Indexable Protocol Methods ---
     def get_id(self) -> str:
         """Returns a unique identifier for the page (required by Indexable protocol)."""
         # Ensure path is safe for use in IDs (replace problematic chars)
@@ -3489,7 +3098,6 @@ class Page(
         )  # Normalize whitespace?
         return hashlib.sha256(text_content.encode("utf-8")).hexdigest()
 
-    # --- New Method: save_searchable ---
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300):
         """
         Saves the PDF page with an OCR text layer, making content searchable.
@@ -3512,7 +3120,6 @@ class Page(
         create_searchable_pdf(self, output_path_str, dpi=dpi)
         logger.info(f"Searchable PDF saved to: {output_path_str}")
 
-    # --- Added correct_ocr method ---
     def update_text(
         self,
         transform: Callable[[Any], Optional[str]],
@@ -3590,10 +3197,8 @@ class Page(
                     )
                     return element, None, e  # Return element, no result, error
                 finally:
-                    # --- Update internal tqdm progress bar ---
                     if element_pbar:
                         element_pbar.update(1)
-                    # --- Call user's progress callback --- #
                     if progress_callback:
                         try:
                             progress_callback()
@@ -3606,7 +3211,6 @@ class Page(
 
             # Choose execution strategy based on max_workers
             if max_workers is not None and max_workers > 1:
-                # --- Parallel execution --- #
                 logger.info(
                     f"Page {self.number}: Running text update in parallel with {max_workers} workers."
                 )
@@ -3642,7 +3246,6 @@ class Page(
                             # Note: progress_callback was already called in the worker's finally block
 
             else:
-                # --- Sequential execution --- #
                 logger.info(f"Page {self.number}: Running text update sequentially.")
                 for element in target_elements:
                     # Call the task function directly (it handles progress_callback)
@@ -3666,7 +3269,6 @@ class Page(
             if element_pbar:
                 element_pbar.close()
 
-    # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
         if not hasattr(self, "pdf") or not hasattr(self.pdf, "get_manager"):
             raise AttributeError(
@@ -3679,9 +3281,7 @@ class Page(
             # Wrap potential errors from get_manager for clarity
             raise AttributeError(f"Failed to get ClassificationManager from PDF: {e}") from e
 
-    def _get_classification_content(
-        self, model_type: str, **kwargs
-    ) -> Union[str, "Image"]:  # Use "Image" for lazy import
+    def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         if model_type == "text":
             text_content = self.extract_text(
                 layout=False, use_exclusions=False
@@ -3715,10 +3315,6 @@ class Page(
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         return self.metadata
-
-    # --- Content Extraction ---
-
-    # --- Skew Detection and Correction --- #
 
     @property
     def skew_angle(self) -> Optional[float]:
@@ -3785,6 +3381,8 @@ class Page(
                 gray_np = img_np  # Use original if grayscale=False
 
             # Determine skew angle using the deskew library
+            if determine_skew is None:
+                raise RuntimeError("Deskew library not available despite DESKEW_AVAILABLE flag.")
             angle = determine_skew(gray_np, **deskew_kwargs)
             self._skew_angle = angle
             logger.debug(f"Page {self.number}: Detected skew angle = {angle}")
@@ -3871,11 +3469,7 @@ class Page(
             )
             return None
 
-    # --- End Skew Detection and Correction --- #
-
-    # ------------------------------------------------------------------
     # Unified analysis storage (maps to metadata["analysis"])
-    # ------------------------------------------------------------------
 
     @property
     def analyses(self) -> Dict[str, Any]:
@@ -3884,7 +3478,7 @@ class Page(
         return self.metadata.setdefault("analysis", {})
 
     @analyses.setter
-    def analyses(self, value: Dict[str, Any]):
+    def analyses(self, value: Dict[str, Any]) -> None:
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value

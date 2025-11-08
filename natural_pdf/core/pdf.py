@@ -32,10 +32,14 @@ from pydantic import Field, create_model
 if TYPE_CHECKING:
     from typing import Any as _Any
 
+    from pdfplumber.pdf import PDF as PdfPlumberPDF
+
     def tqdm(*args: _Any, **kwargs: _Any) -> _Any: ...
 
 else:
     from tqdm.auto import tqdm
+
+    PdfPlumberPDF = Any  # type: ignore[assignment]
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_manager import LayoutManager
@@ -48,6 +52,7 @@ from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr import OCRManager
+from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.search import (
     BaseSearchOptions,
     SearchOptions,
@@ -173,13 +178,13 @@ class _LazyPageList(Sequence["Page"]):
     def __init__(
         self,
         parent_pdf: "PDF",
-        plumber_pdf: "pdfplumber.PDF",
+        plumber_pdf: "PdfPlumberPDF",
         font_attrs: Optional[List[str]] = None,
         load_text: bool = True,
         indices: Optional[List[int]] = None,
     ):
         self._parent_pdf: "PDF" = parent_pdf
-        self._plumber_pdf: "pdfplumber.PDF" = plumber_pdf
+        self._plumber_pdf: "PdfPlumberPDF" = plumber_pdf
         self._font_attrs: Optional[List[str]] = font_attrs
         self._load_text: bool = load_text
 
@@ -760,7 +765,19 @@ class PDF(
             print(f"Created: {pdf.metadata.get('CreationDate')}")
             ```
         """
-        return self._pdf.metadata
+        if not hasattr(self, "_pdf") or self._pdf is None:
+            return {}
+        meta = getattr(self._pdf, "metadata", None)
+        if meta is None:
+            return {}
+        if isinstance(meta, dict):
+            return cast(Dict[str, Any], meta)
+        # pdfplumber stores metadata as a custom object exposing dict-like interface.
+        try:
+            return dict(meta)
+        except TypeError:
+            logger.debug("Unable to coerce PDF metadata to dict; returning empty metadata.")
+            return {}
 
     @property
     def pages(self) -> "PageCollection":
@@ -796,7 +813,7 @@ class PDF(
 
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
-        return PageCollection(self._pages)
+        return PageCollection(cast(Sequence["Page"], self._pages))
 
     def clear_exclusions(self) -> "PDF":
         """Clear all exclusion functions from the PDF.
@@ -994,12 +1011,13 @@ class PDF(
         import natural_pdf
 
         # Use global OCR options if parameters are not explicitly set
-        if engine is None:
-            engine = natural_pdf.options.ocr.engine
-        if languages is None:
-            languages = natural_pdf.options.ocr.languages
-        if min_confidence is None:
-            min_confidence = natural_pdf.options.ocr.min_confidence
+        ocr_options = getattr(natural_pdf.options, "ocr", None)
+        if engine is None and ocr_options is not None:
+            engine = getattr(ocr_options, "engine", engine)
+        if languages is None and ocr_options is not None:
+            languages = getattr(ocr_options, "languages", languages)
+        if min_confidence is None and ocr_options is not None:
+            min_confidence = getattr(ocr_options, "min_confidence", min_confidence)
         if device is None:
             pass  # No default device in options.ocr anymore
 
@@ -1015,7 +1033,7 @@ class PDF(
         page_numbers = [p.number for p in target_pages]
         logger.info(f"Applying batch OCR to pages: {page_numbers}...")
 
-        final_resolution = resolution or getattr(self, "_config", {}).get("resolution", 150)
+        final_resolution = resolution or self._config.get("resolution", 150)
         logger.debug(f"Using OCR image resolution: {final_resolution} DPI")
 
         images_pil = []
@@ -1095,12 +1113,12 @@ class PDF(
 
             logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
             try:
-                if replace and hasattr(page, "_element_mgr"):
-                    page._element_mgr.remove_ocr_elements()
+                if replace and hasattr(page, "remove_ocr_elements"):
+                    page.remove_ocr_elements()
 
                 img_scale_x = page.width / img.width if img.width > 0 else 1
                 img_scale_y = page.height / img.height if img.height > 0 else 1
-                elements = page._element_mgr.create_text_elements_from_ocr(
+                elements = page.create_text_elements_from_ocr(
                     results_for_page, img_scale_x, img_scale_y
                 )
 
@@ -1628,20 +1646,28 @@ class PDF(
                 )
             has_vector_elements = False
             for page in self.pages:
+                rects = getattr(page, "rects", None)
+                lines = getattr(page, "lines", None)
+                curves = getattr(page, "curves", None)
+                chars = getattr(page, "chars", None)
+                words = getattr(page, "words", None)
                 if (
-                    hasattr(page, "rects")
-                    and page.rects
-                    or hasattr(page, "lines")
-                    and page.lines
-                    or hasattr(page, "curves")
-                    and page.curves
+                    (rects and len(rects) > 0)  # type: ignore[arg-type]
+                    or (lines and len(lines) > 0)  # type: ignore[arg-type]
+                    or (curves and len(curves) > 0)  # type: ignore[arg-type]
                     or (
-                        hasattr(page, "chars")
-                        and any(getattr(el, "source", None) != "ocr" for el in page.chars)
+                        chars
+                        and any(
+                            getattr(el, "source", None) != "ocr"
+                            for el in cast(Iterable[Any], chars)
+                        )
                     )
                     or (
-                        hasattr(page, "words")
-                        and any(getattr(el, "source", None) != "ocr" for el in page.words)
+                        words
+                        and any(
+                            getattr(el, "source", None) != "ocr"
+                            for el in cast(Iterable[Any], words)
+                        )
                     )
                 ):
                     has_vector_elements = True
@@ -1766,7 +1792,7 @@ class PDF(
         top_p: Optional[float] = None,
         llm_client: Optional[Any] = None,
         prompt: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> QAResult:
         """
         Ask a single question about the document content.
 
@@ -1782,8 +1808,8 @@ class PDF(
             prompt: Optional system prompt override for generative QA.
 
         Returns:
-            Dict containing: answer, confidence (may be None in generative mode), found, page_num,
-            source_elements, etc.
+            :class:`QAResult` containing answer metadata. Confidence may be ``None`` in generative
+            mode; ``source_elements`` may be empty if no span is available.
         """
         # Delegate to ask_batch and return the first result
         results = self.ask_batch(
@@ -1797,10 +1823,10 @@ class PDF(
             llm_client=llm_client,
             prompt=prompt,
         )
-        return (
-            results[0]
-            if results
-            else {
+        if results:
+            return results[0]
+        return QAResult(
+            {
                 "answer": None,
                 "confidence": 0.0,
                 "found": False,
@@ -1821,7 +1847,7 @@ class PDF(
         top_p: Optional[float] = None,
         llm_client: Optional[Any] = None,
         prompt: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[QAResult]:
         """
         Ask multiple questions about the document content using batch processing.
 
@@ -1841,8 +1867,8 @@ class PDF(
             prompt: Optional system prompt override for generative QA.
 
         Returns:
-            List of Dicts, each containing: answer, confidence (may be None in generative mode),
-            found, page_num, source_elements, etc.
+            List of :class:`QAResult` objects containing answer metadata. Confidence may be
+            ``None`` in generative mode; ``source_elements`` may be empty if no span is available.
         """
         if not questions:
             return []
@@ -1855,14 +1881,16 @@ class PDF(
 
         target_pages = self._resolve_qa_pages(pages)
 
-        def _empty_result() -> Dict[str, Any]:
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": None,
-                "source_elements": [],
-            }
+        def _empty_result() -> QAResult:
+            return QAResult(
+                {
+                    "answer": None,
+                    "confidence": 0.0,
+                    "found": False,
+                    "page_num": None,
+                    "source_elements": [],
+                }
+            )
 
         if not target_pages:
             logger.warning("No valid pages found for QA processing.")
@@ -1884,16 +1912,20 @@ class PDF(
         qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
 
         if temperature is not None:
-            try:
-                qa_engine.set_temperature(temperature)
-            except AttributeError:
-                logger.debug("QA engine does not support temperature override; ignoring.")
+            set_temp = getattr(qa_engine, "set_temperature", None)
+            if callable(set_temp):
+                try:
+                    set_temp(temperature)
+                except Exception:
+                    logger.debug("QA engine rejected temperature override; ignoring.")
 
         if top_p is not None:
-            try:
-                qa_engine.set_top_p(top_p)
-            except AttributeError:
-                logger.debug("QA engine does not support top_p override; ignoring.")
+            set_top_p = getattr(qa_engine, "set_top_p", None)
+            if callable(set_top_p):
+                try:
+                    set_top_p(top_p)
+                except Exception:
+                    logger.debug("QA engine rejected top_p override; ignoring.")
 
         logger.info(
             f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA..."
@@ -1936,10 +1968,10 @@ class PDF(
             return [_empty_result() for _ in questions]
 
         # Process all questions against all pages in batch
-        all_results = []
+        all_results: List[QAResult] = []
 
         for question_text in questions:
-            question_results = []
+            question_results: List[QAResult] = []
 
             # Ask this question against each page (but in batch per page)
             for i, (page_image, word_boxes, page_meta) in enumerate(
@@ -1947,25 +1979,34 @@ class PDF(
             ):
                 try:
                     # Use the DocumentQA batch interface
-                    page_result = qa_engine.ask(
+                    raw_result = qa_engine.ask(
                         image=page_image,
                         question=question_text,
                         word_boxes=word_boxes,
                         min_confidence=min_confidence,
                     )
 
+                    page_result: Optional[QAResult]
+                    if isinstance(raw_result, QAResult):
+                        page_result = raw_result
+                    elif isinstance(raw_result, list) and raw_result:
+                        page_result = raw_result[0]
+                    else:
+                        page_result = None
+
                     if page_result and page_result.found:
-                        # Add page metadata to result
-                        page_result_dict = {
-                            "answer": page_result.answer,
-                            "confidence": page_result.confidence,
-                            "found": page_result.found,
-                            "page_num": page_meta["page_number"],
-                            "source_elements": getattr(page_result, "source_elements", []),
-                            "start": getattr(page_result, "start", -1),
-                            "end": getattr(page_result, "end", -1),
-                        }
-                        question_results.append(page_result_dict)
+                        qa_result = QAResult(
+                            {
+                                "answer": page_result.answer,
+                                "confidence": page_result.confidence,
+                                "found": page_result.found,
+                                "page_num": page_meta["page_number"],
+                                "source_elements": getattr(page_result, "source_elements", []),
+                                "start": getattr(page_result, "start", -1),
+                                "end": getattr(page_result, "end", -1),
+                            }
+                        )
+                        question_results.append(qa_result)
 
                 except Exception as e:
                     logger.warning(
@@ -1994,17 +2035,19 @@ class PDF(
         model: Optional[str],
         temperature: Optional[float],
         top_p: Optional[float],
-    ) -> List[Dict[str, Any]]:
+    ) -> List[QAResult]:
         """Handle the ``mode='generative'`` logic for :meth:`ask_batch`."""
 
-        def _empty_result() -> Dict[str, Any]:
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": None,
-                "source_elements": [],
-            }
+        def _empty_result() -> QAResult:
+            return QAResult(
+                {
+                    "answer": None,
+                    "confidence": 0.0,
+                    "found": False,
+                    "page_num": None,
+                    "source_elements": [],
+                }
+            )
 
         if llm_client is None:
             raise ValueError("Generative QA requires 'llm_client' to be provided.")
@@ -2075,7 +2118,7 @@ class PDF(
             llm_kwargs["top_p"] = top_p
 
         prompt_text = prompt or DEFAULT_GENERATIVE_QA_PROMPT
-        results: List[Dict[str, Any]] = []
+        results: List[QAResult] = []
 
         for question_text in questions:
             question_text = question_text.strip()
@@ -2125,15 +2168,17 @@ class PDF(
                 results.append(_empty_result())
                 continue
 
-            results.append(
-                {
-                    "answer": normalized_answer,
-                    "confidence": None,
-                    "found": True,
-                    "page_num": None,
-                    "source_elements": [],
-                }
-            )
+                results.append(
+                    QAResult(
+                        {
+                            "answer": normalized_answer,
+                            "confidence": None,
+                            "found": True,
+                            "page_num": None,
+                            "source_elements": [],
+                        }
+                    )
+                )
 
         return results
 
@@ -2471,11 +2516,7 @@ class PDF(
         if not force_overwrite:
             for page in target_pages:
                 # Check if the element manager has been initialized and contains any elements
-                if (
-                    hasattr(page, "_element_mgr")
-                    and page._element_mgr
-                    and page._element_mgr.has_elements()
-                ):
+                if hasattr(page, "has_element_cache") and page.has_element_cache():
                     raise ValueError(
                         f"Page {page.number} contains existing elements (text, OCR, etc.). "
                         f"Deskewing creates an image-only PDF, discarding these elements. "
@@ -2523,6 +2564,10 @@ class PDF(
         logger.info(f"Combining {len(deskewed_images_bytes)} deskewed images into in-memory PDF...")
         try:
             # Use img2pdf to combine image bytes into PDF bytes
+            if img2pdf is None:
+                raise RuntimeError(
+                    "img2pdf library is not available despite DESKEW_AVAILABLE flag being set."
+                )
             pdf_bytes = img2pdf.convert(deskewed_images_bytes)
 
             # Wrap bytes in a stream
@@ -2920,10 +2965,14 @@ class PDF(
 
     @property
     def analyses(self) -> Dict[str, Any]:
-        metadata = self._pdf.metadata
+        plumber_pdf = getattr(self, "_pdf", None)
+        if plumber_pdf is None:
+            raise RuntimeError("Underlying pdfplumber PDF is not initialized.")
+
+        metadata = getattr(plumber_pdf, "metadata", None)
         if metadata is None:
             metadata = {}
-            self._pdf.metadata = metadata
+            plumber_pdf.metadata = metadata
 
         analysis_entry = metadata.setdefault("analysis", {})
         if not isinstance(analysis_entry, dict):
@@ -2933,15 +2982,20 @@ class PDF(
 
     @analyses.setter
     def analyses(self, value: Dict[str, Any]):
-        metadata = self._pdf.metadata
+        plumber_pdf = getattr(self, "_pdf", None)
+        if plumber_pdf is None:
+            raise RuntimeError("Underlying pdfplumber PDF is not initialized.")
+
+        metadata = getattr(plumber_pdf, "metadata", None)
         if metadata is None:
             metadata = {}
-            self._pdf.metadata = metadata
+            plumber_pdf.metadata = metadata
         metadata["analysis"] = value
 
     # Static helper for weakref.finalize to avoid capturing 'self'
     @staticmethod
     def _finalize_cleanup(plumber_pdf, temp_file_obj, is_stream):
+        path: Optional[str] = None
         try:
             if plumber_pdf is not None:
                 plumber_pdf.close()

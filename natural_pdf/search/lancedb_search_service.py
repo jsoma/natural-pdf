@@ -1,7 +1,7 @@
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, cast
 
 import lancedb
 import pyarrow as pa
@@ -134,6 +134,7 @@ class LanceDBSearchService(SearchServiceProtocol):
             metadata = item.get_metadata().copy()
             content_obj = item.get_content()
             content_text = ""
+            content_hash = None
 
             if isinstance(content_obj, str):
                 content_text = content_obj
@@ -148,20 +149,18 @@ class LanceDBSearchService(SearchServiceProtocol):
 
             try:
                 content_hash = item.get_content_hash()
-                if content_hash:
-                    metadata["content_hash"] = content_hash
             except (AttributeError, NotImplementedError):
-                pass
-            except Exception as e:
-                logger.warning(f"Error getting content_hash for item ID '{doc_id}': {e}")
+                content_hash = None
+            if content_hash:
+                metadata["content_hash"] = content_hash
 
             # Ensure doc_id is not None - use a fallback if needed
             if doc_id is None:
                 # Generate a unique ID based on content hash or position in the list
-                try:
-                    doc_id = f"auto_{item.get_content_hash() if hasattr(item, 'get_content_hash') else hash(content_text)}"
-                except:
-                    doc_id = f"auto_{len(texts_to_embed)}"
+                fallback_hash = content_hash
+                if fallback_hash is None:
+                    fallback_hash = hash(content_text)
+                doc_id = f"auto_{fallback_hash}"
 
             texts_to_embed.append(content_text)
             original_items_info.append(
@@ -263,20 +262,26 @@ class LanceDBSearchService(SearchServiceProtocol):
         final_results: List[Dict[str, Any]] = []
         import json
 
-        for _, row in results_df.iterrows():
-            metadata = {}
-            if "metadata_json" in row and row["metadata_json"]:
+        records = cast(List[Dict[str, Any]], results_df.to_dict(orient="records"))
+
+        for row in records:
+            metadata: Dict[str, Any] = {}
+            metadata_json = row.get("metadata_json")
+            if isinstance(metadata_json, str) and metadata_json:
                 try:
-                    metadata = json.loads(row["metadata_json"])
+                    metadata = json.loads(metadata_json)
                 except json.JSONDecodeError:
                     logger.warning(f"Failed to parse metadata_json for id {row.get('id')}")
 
-            score = 1 - row["_distance"] if "_distance" in row else 0.0
+            distance_val = row.get("_distance")
+            score = 1.0 - float(distance_val) if isinstance(distance_val, (int, float)) else 0.0
+            text_val = row.get("text")
+            content_snippet = text_val[:200] if isinstance(text_val, str) else ""
 
             final_results.append(
                 {
                     "id": row.get("id"),
-                    "content_snippet": row["text"][:200] if "text" in row and row["text"] else "",
+                    "content_snippet": content_snippet,
                     "score": score,
                     "page_number": metadata.get("page_number"),
                     "pdf_path": metadata.get("pdf_path"),
@@ -327,18 +332,20 @@ class LanceDBSearchService(SearchServiceProtocol):
 
         lancedb_filter = kwargs.get("filters")
 
-        query = self._table.to_lance().scanner(columns=select_columns, filter=lancedb_filter)
+        table = cast(Any, self._table)
+        query = table.to_lance().scanner(columns=select_columns, filter=lancedb_filter)
         results_table = query.to_table()
-        results_list = results_table.to_pylist()
+        results_list = cast(Sequence[Dict[str, Any]], results_table.to_pylist())
 
         formatted_docs: List[Dict[str, Any]] = []
         import json
 
         for row in results_list:
             doc_data: Dict[str, Any] = {"id": row.get("id")}
-            if include_metadata and "metadata_json" in row and row["metadata_json"]:
+            metadata_json = row.get("metadata_json")
+            if include_metadata and isinstance(metadata_json, str) and metadata_json:
                 try:
-                    metadata = json.loads(row["metadata_json"])
+                    metadata = json.loads(metadata_json)
                     doc_data["meta"] = metadata
                 except json.JSONDecodeError:
                     doc_data["meta"] = {}

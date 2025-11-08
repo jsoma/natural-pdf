@@ -45,12 +45,8 @@ def test_words_vs_find_all_text():
     # Test the selector filtering logic
     # According to parser.py, 'text' selector matches elements with type in ['text', 'char', 'word']
     # We need to get all elements first
-    page._element_mgr.load_elements()
-    all_elements = []
-    if page._element_mgr._elements:
-        for element_list in page._element_mgr._elements.values():
-            if isinstance(element_list, list):
-                all_elements.extend(element_list)
+    page.ensure_elements_loaded()
+    all_elements = list(page.get_all_elements_raw())
 
     all_matching_types = [
         el for el in all_elements if hasattr(el, "type") and el.type in ["text", "char", "word"]

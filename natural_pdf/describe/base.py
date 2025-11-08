@@ -437,10 +437,12 @@ def _extract_element_value(element: "Element", column: str) -> Any:
         elif column == "state":
             # For checkbox regions, show checked/unchecked state
             if getattr(element, "region_type", "") == "checkbox":
-                if hasattr(element, "is_checked"):
-                    return "checked" if element.is_checked else "unchecked"
-                elif hasattr(element, "checkbox_state"):
-                    return element.checkbox_state
+                is_checked_value = getattr(element, "is_checked", None)
+                if isinstance(is_checked_value, bool):
+                    return "checked" if is_checked_value else "unchecked"
+                state_value = getattr(element, "checkbox_state", None)
+                if isinstance(state_value, str):
+                    return state_value
             return ""
 
         else:
@@ -488,8 +490,9 @@ def describe_element(element: "Element") -> "ElementSummary":
         }
 
     # Add text content if available - use dict structure for proper list formatting
-    if hasattr(element, "text") and element.text:
-        text = str(element.text).strip()
+    text_attr = getattr(element, "text", None)
+    if isinstance(text_attr, str) and text_attr.strip():
+        text = text_attr.strip()
         display_text = text[:50] + "..." if len(text) > 50 else text
         data["content"] = {"text": f"'{display_text}'", "length": f"{len(text)} chars"}
 
@@ -550,16 +553,16 @@ def describe_element(element: "Element") -> "ElementSummary":
             data["page"] = {"number": page_num}
 
     # Add polygon information if available - use dict structure for proper list formatting
-    if hasattr(element, "has_polygon") and element.has_polygon:
-        if hasattr(element, "polygon"):
-            polygon = element.polygon
+    if getattr(element, "has_polygon", False):
+        polygon = getattr(element, "polygon", None)
+        if polygon:
             if polygon and len(polygon) > 0:
                 data["shape"] = {"polygon_points": len(polygon)}
 
     # Create title
     title = f"{element_type.title()} Element"
-    if hasattr(element, "text") and element.text:
-        preview = str(element.text).strip()[:30]
+    if isinstance(text_attr, str) and text_attr.strip():
+        preview = text_attr.strip()[:30]
         if preview:
             title += f": '{preview}'"
 

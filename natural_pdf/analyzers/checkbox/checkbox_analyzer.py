@@ -1,7 +1,7 @@
 """Checkbox analyzer for PDF pages and regions."""
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from natural_pdf.elements.region import Region
 
@@ -64,50 +64,30 @@ class CheckboxAnalyzer:
         Returns:
             List of created Region objects representing checkboxes
         """
-        logger.info(
-            f"Detecting checkboxes (Engine: {engine or 'default'}, "
-            f"Element type: {'region' if self._is_region else 'page'})"
+        # Prepare options
+        option_kwargs: Dict[str, Any] = dict(kwargs)
+        if confidence is not None:
+            option_kwargs["confidence"] = confidence
+        if resolution is not None:
+            option_kwargs["resolution"] = resolution
+        if device is not None:
+            option_kwargs["device"] = device
+
+        engine_name, final_options = self._checkbox_manager.prepare_options(
+            engine, options, overrides=option_kwargs
         )
 
-        # Prepare options
-        if options is None:
-            # Build options from simple arguments
-            option_kwargs = {}
-            if confidence is not None:
-                option_kwargs["confidence"] = confidence
-            if resolution is not None:
-                option_kwargs["resolution"] = resolution
-            if device is not None:
-                option_kwargs["device"] = device
-            option_kwargs.update(kwargs)
-
-            # Let manager create appropriate options
-            final_options = None
-            final_kwargs = option_kwargs
-        else:
-            # Use provided options
-            final_options = options
-            # Apply any overrides
-            final_kwargs = {}
-            if confidence is not None:
-                final_kwargs["confidence"] = confidence
-            if resolution is not None:
-                final_kwargs["resolution"] = resolution
-            if device is not None:
-                final_kwargs["device"] = device
-            final_kwargs.update(kwargs)
+        logger.info(
+            "Detecting checkboxes (Engine: %s, Element type: %s)",
+            engine_name,
+            "region" if self._is_region else "page",
+        )
 
         # Render image
         try:
-            resolution_val = (
-                resolution
-                or (
-                    final_options.resolution
-                    if final_options and hasattr(final_options, "resolution")
-                    else None
-                )
-                or 150
-            )
+            resolution_val = resolution or getattr(final_options, "resolution", None) or 150
+
+            pdf_scale_from_page_image: Optional[Tuple[float, float]] = None
 
             if self._is_region:
                 # For regions, crop the page image to just the region bounds
@@ -124,6 +104,11 @@ class CheckboxAnalyzer:
                 img_y0 = int(y0 * img_scale_y)
                 img_x1 = int(x1 * img_scale_x)
                 img_y1 = int(y1 * img_scale_y)
+
+                pdf_scale_from_page_image = (
+                    self._page.width / page_image.width,
+                    self._page.height / page_image.height,
+                )
 
                 # Crop to region
                 image = page_image.crop((img_x0, img_y0, img_x1, img_y1))
@@ -159,7 +144,7 @@ class CheckboxAnalyzer:
         # Run detection
         try:
             detections = self._checkbox_manager.detect_checkboxes(
-                image=image, engine=engine, options=final_options, **final_kwargs
+                image=image, engine=engine_name, options=final_options
             )
             logger.info(f"Detected {len(detections)} checkboxes")
         except Exception as e:
@@ -182,18 +167,13 @@ class CheckboxAnalyzer:
                     page_img_y1 = img_y1 + crop_offset[1]
 
                     # Then scale to PDF coords
-                    pdf_x0 = page_img_x0 * (
-                        self._page.width / (self._page.render(resolution=resolution_val).width)
-                    )
-                    pdf_y0 = page_img_y0 * (
-                        self._page.height / (self._page.render(resolution=resolution_val).height)
-                    )
-                    pdf_x1 = page_img_x1 * (
-                        self._page.width / (self._page.render(resolution=resolution_val).width)
-                    )
-                    pdf_y1 = page_img_y1 * (
-                        self._page.height / (self._page.render(resolution=resolution_val).height)
-                    )
+                    if pdf_scale_from_page_image is None:
+                        raise RuntimeError("Missing page image scale for checkbox detection")
+                    pdf_scale_x, pdf_scale_y = pdf_scale_from_page_image
+                    pdf_x0 = page_img_x0 * pdf_scale_x
+                    pdf_y0 = page_img_y0 * pdf_scale_y
+                    pdf_x1 = page_img_x1 * pdf_scale_x
+                    pdf_y1 = page_img_y1 * pdf_scale_y
                 else:
                     # For pages, directly scale to PDF coordinates
                     pdf_x0 = img_x0 * scale_x + pdf_offset[0]
@@ -222,25 +202,29 @@ class CheckboxAnalyzer:
                         continue  # Skip this checkbox
 
                 # Create region
-                region = Region(self._page, (pdf_x0, pdf_y0, pdf_x1, pdf_y1))
+                region = self._page.create_region(pdf_x0, pdf_y0, pdf_x1, pdf_y1)
                 region.region_type = "checkbox"
                 region.normalized_type = "checkbox"
-                region.is_checked = detection.get("is_checked", False)
-                region.checkbox_state = detection.get("checkbox_state", "unchecked")
-                region.confidence = detection.get("confidence", 0.0)
+                region.is_checked = bool(detection.get("is_checked", False))
+                region.checkbox_state = str(detection.get("checkbox_state", "unchecked"))
+                region.confidence = float(detection.get("confidence", 0.0))
                 region.model = detection.get("model", "checkbox_detector")
                 region.source = "checkbox"
 
                 # Store original class for debugging
                 region.original_class = detection.get("class", "unknown")
 
+                region.analyses["checkbox"] = {
+                    "is_checked": region.is_checked,
+                    "state": region.checkbox_state,
+                    "confidence": region.confidence,
+                    "model": region.model,
+                    "class": region.original_class,
+                }
+
                 # Check if region contains text - if so, it's probably not a checkbox
                 # Get reject_with_text setting from options or kwargs, default to True
-                reject_with_text = True
-                if final_options:
-                    reject_with_text = getattr(final_options, "reject_with_text", True)
-                else:
-                    reject_with_text = kwargs.get("reject_with_text", True)
+                reject_with_text = getattr(final_options, "reject_with_text", True)
 
                 if reject_with_text:
                     text_in_region = region.extract_text().strip()
@@ -291,19 +275,19 @@ class CheckboxAnalyzer:
         # Store results
         logger.debug(f"Storing {len(checkbox_regions)} checkbox regions (mode: {existing})")
 
-        checkbox_store = self._page._regions.setdefault("checkbox", [])
-        if existing.lower() != "append":
+        append_mode = existing.lower() == "append"
+        if not append_mode:
             self._page.remove_regions(source="checkbox", region_type="checkbox")
-            checkbox_store.clear()
-
-        checkbox_store.extend(checkbox_regions)
 
         # Register regions with the page (ensures element manager + provenance)
         for region in checkbox_regions:
             self._page.add_region(region, source="checkbox")
 
-        # Store for easy access
-        self._page.detected_checkbox_regions = list(checkbox_store)
+        # Persist analysis snapshot for downstream consumers
+        checkbox_analysis = self._page.analyses.setdefault("checkbox", {})
+        prior_regions = list(checkbox_analysis.get("regions", [])) if append_mode else []
+        checkbox_analysis["regions"] = prior_regions + list(checkbox_regions)
+        checkbox_analysis["engine"] = engine_name
 
         logger.info(f"Checkbox detection complete. Found {len(checkbox_regions)} checkboxes.")
 

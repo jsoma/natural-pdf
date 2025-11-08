@@ -54,9 +54,8 @@ class TextElement(Element):
         """
         if self._char_indices:
             # Memory-efficient approach: access characters by index
-            if hasattr(self.page, "_element_mgr"):
-                char_elements = self.page._element_mgr.get_elements("chars")
-                return [char_elements[i] for i in self._char_indices if i < len(char_elements)]
+            char_elements = self.page.get_elements_by_type("chars")
+            return [char_elements[i] for i in self._char_indices if i < len(char_elements)]
 
         # Backward compatibility: convert _char_dicts to TextElement objects
         if self._char_dicts:
@@ -102,11 +101,10 @@ class TextElement(Element):
         try:
             # If using memory-efficient character indices, update the referenced chars
             if hasattr(self, "_char_indices") and self._char_indices:
-                if hasattr(self.page, "_element_mgr"):
-                    char_elements = self.page._element_mgr.get_elements("chars")
-                    for idx, char_idx in enumerate(self._char_indices):
-                        if char_idx < len(char_elements) and idx < len(value):
-                            char_elements[char_idx].text = value[idx]
+                char_elements = self.page.get_elements_by_type("chars")
+                for idx, char_idx in enumerate(self._char_indices):
+                    if char_idx < len(char_elements) and idx < len(value):
+                        char_elements[char_idx].text = value[idx]
 
             # Legacy _char_dicts synchronization for backward compatibility
             elif hasattr(self, "_char_dicts") and isinstance(self._char_dicts, list):
@@ -217,8 +215,8 @@ class TextElement(Element):
             if dicts:
                 return dicts
 
-        if self._char_indices and hasattr(self.page, "_element_mgr"):
-            char_elements = self.page._element_mgr.get_elements("chars")
+        if self._char_indices:
+            char_elements = self.page.get_elements_by_type("chars")
             dicts = []
             for idx in self._char_indices:
                 if idx < len(char_elements):
@@ -290,29 +288,35 @@ class TextElement(Element):
 
     def extract_text(
         self,
-        keep_blank_chars: bool = True,
-        strip: Optional[bool] = True,
+        preserve_whitespace: bool = True,
+        use_exclusions: bool = True,
         *,
+        strip: Optional[bool] = True,
         newlines: Union[bool, str] = True,
         content_filter=None,
+        keep_blank_chars: Optional[bool] = None,
         **kwargs,
     ) -> str:
         """
         Extract text from this element.
 
         Args:
-            keep_blank_chars: Retained for API compatibility (unused).
-            strip: If True (default) remove leading/trailing whitespace. Users may
-                   pass ``strip=False`` to preserve whitespace exactly as stored.
+            preserve_whitespace: Whether to retain whitespace characters (default: True).
+            use_exclusions: Present for API compatibility; exclusions are not applied within text elements.
+            strip: If True (default) remove leading/trailing whitespace unless ``preserve_whitespace`` is True.
             content_filter: Optional content filter to exclude specific text patterns. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
+            keep_blank_chars: Deprecated alias for ``preserve_whitespace``.
             **kwargs: Accepted for forward-compatibility and ignored here.
 
         Returns:
             The text content, optionally stripped and filtered.
         """
+        if keep_blank_chars is not None:
+            preserve_whitespace = keep_blank_chars
+
         # Basic retrieval
         result = self.text or ""
 
@@ -348,7 +352,7 @@ class TextElement(Element):
 
         # Apply optional stripping – align with global convention where simple
         # element extraction is stripped by default.
-        if strip:
+        if strip is not False and not preserve_whitespace:
             result = result.strip()
 
         # Flexible newline handling
@@ -613,7 +617,7 @@ class TextElement(Element):
 
             # Convert from logical order to visual order
             visual = get_display(logical, base_dir="R")
-            return mirror_brackets(visual)
+            return mirror_brackets(str(visual))
         except Exception:
             # If python-bidi is missing or errors, fall back to logical order
             return logical

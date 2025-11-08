@@ -51,9 +51,9 @@ def analyze_character_storage(page):
                 total_chars_in_words += len(element._char_dicts)
 
     # Get individual character elements
-    char_elements = []
-    if hasattr(page, "_element_mgr"):
-        char_elements = page._element_mgr.get_elements("chars")
+    char_elements = (
+        page.get_elements_by_type("chars") if hasattr(page, "get_elements_by_type") else []
+    )
 
     return {
         "total_words": len(text_elements),

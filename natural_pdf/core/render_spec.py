@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Unified rendering infrastructure for natural-pdf.
 
 This module provides the core components for the unified image generation system:
@@ -8,18 +10,47 @@ This module provides the core components for the unified image generation system
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Sequence, Set, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Protocol,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 if TYPE_CHECKING:
-    from PIL import Image as PIL_Image
+    from PIL.Image import Image as PILImage
 
     from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element
+    from natural_pdf.elements.region import Region
 
-from natural_pdf.core.interfaces import HasHighlighter, HasPages, HasSinglePage
+from natural_pdf.core.highlighter_utils import resolve_highlighter
+
+ColorInput = Union[str, Tuple[int, int, int], Tuple[int, int, int, int]]
 
 logger = logging.getLogger(__name__)
+
+
+class ImageOptionsProtocol(Protocol):
+    resolution: Optional[float]
+
+
+def _image_options() -> Optional[ImageOptionsProtocol]:
+    try:
+        import natural_pdf
+    except Exception:  # pragma: no cover - defensive guard
+        return None
+
+    return cast(ImageOptionsProtocol, getattr(natural_pdf.options, "image", None))
 
 
 @dataclass
@@ -49,9 +80,9 @@ class RenderSpec:
         self,
         bbox: Optional[Tuple[float, float, float, float]] = None,
         polygon: Optional[List[Tuple[float, float]]] = None,
-        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        color: Optional[ColorInput] = None,
         label: Optional[str] = None,
-        element: Optional["Element"] = None,
+        element: Optional[Any] = None,
     ) -> None:
         """Add a highlight to this render spec.
 
@@ -86,44 +117,6 @@ class RenderSpec:
         # Remove None values
         highlight = {k: v for k, v in highlight.items() if v is not None}
         self.highlights.append(highlight)
-
-
-def _resolve_highlighter(source: Any) -> "HighlightingService":
-    """Resolve a HighlightingService from a visualizable object hierarchy."""
-
-    visited: Set[int] = set()
-
-    def _inner(obj: Any) -> "HighlightingService":
-        marker = id(obj)
-        if marker in visited:
-            raise RuntimeError("Circular reference encountered during highlighter resolution")
-        visited.add(marker)
-
-        if isinstance(obj, HasHighlighter):
-            return obj.get_highlighter()
-
-        if hasattr(obj, "_highlighter"):
-            return obj._highlighter  # type: ignore[attr-defined]
-
-        if isinstance(obj, HasSinglePage):
-            return _inner(obj.page)
-
-        if isinstance(obj, HasPages):
-            pages = obj.pages
-            for page in pages:
-                return _inner(page)
-            raise RuntimeError("Object reported no pages for highlighter resolution")
-
-        if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
-            for candidate in obj:
-                try:
-                    return _inner(candidate)
-                except RuntimeError:
-                    continue
-
-        raise RuntimeError(f"Cannot locate highlighter for object of type {type(obj).__name__}")
-
-    return _inner(source)
 
 
 class Visualizable:
@@ -202,7 +195,7 @@ class Visualizable:
         a different way of accessing the highlighter.
         """
         try:
-            return _resolve_highlighter(self)
+            return resolve_highlighter(self)
         except RuntimeError as exc:
             raise RuntimeError(
                 f"Cannot find HighlightingService for {self.__class__.__name__}. "
@@ -232,7 +225,7 @@ class Visualizable:
         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
-    ) -> Optional["PIL_Image"]:
+    ) -> Optional[PILImage]:
         """Generate a preview image with highlights.
 
         This method is for interactive debugging and visualization.
@@ -300,9 +293,10 @@ class Visualizable:
                 layout = "single"
 
         highlighter = self._get_highlighter()
+        effective_resolution = self._resolve_image_resolution(resolution)
         return highlighter.unified_render(
             specs=specs,
-            resolution=resolution,
+            resolution=effective_resolution,
             width=width,
             labels=labels,
             label_format=label_format,
@@ -329,7 +323,7 @@ class Visualizable:
         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
-    ) -> Optional["PIL_Image"]:
+    ) -> Optional[PILImage]:
         """Generate a clean image without highlights.
 
         This method produces publication-ready images without
@@ -361,9 +355,10 @@ class Visualizable:
             return None
 
         highlighter = self._get_highlighter()
+        effective_resolution = self._resolve_image_resolution(resolution)
         return highlighter.unified_render(
             specs=specs,
-            resolution=resolution,
+            resolution=effective_resolution,
             width=width,
             labels=False,  # Never show labels in render mode
             layout=layout,
@@ -439,3 +434,15 @@ class Visualizable:
 
         image.save(path, format=format, **save_kwargs)
         logger.info(f"Exported {self.__class__.__name__} to {path}")
+
+    def _resolve_image_resolution(self, requested: Optional[float]) -> float:
+        """Resolve an explicit resolution or fall back to configured defaults."""
+
+        if requested is not None:
+            return float(requested)
+
+        options = _image_options()
+        if options is not None and options.resolution is not None:
+            return float(options.resolution)
+
+        return 150.0

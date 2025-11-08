@@ -29,6 +29,7 @@ from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 
 # Add Visualizable import
+from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsBBox, SupportsElement
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
@@ -457,35 +458,7 @@ class ElementCollection(
         if not self._elements:
             raise RuntimeError("Cannot get highlighter from empty ElementCollection")
 
-        # Try to get highlighter from first element's page
-        for elem in self._elements:
-            if hasattr(elem, "get_highlighter"):
-                try:
-                    return elem.get_highlighter()  # type: ignore[attr-defined]
-                except Exception:
-                    pass
-
-            if hasattr(elem, "page"):
-                try:
-                    page = elem.page  # type: ignore[attr-defined]
-                except Exception:
-                    page = None
-                if page is not None and hasattr(page, "_highlighter"):
-                    return page._highlighter  # type: ignore[attr-defined]
-
-            pages_attr = getattr(elem, "pages", None)
-            if pages_attr:
-                try:
-                    for page in pages_attr:
-                        if hasattr(page, "_highlighter"):
-                            return page._highlighter  # type: ignore[attr-defined]
-                except TypeError:
-                    pass
-
-        # If no elements have pages, we can't render
-        raise RuntimeError(
-            "Cannot find HighlightingService. ElementCollection elements don't have page access."
-        )
+        return resolve_highlighter(self._elements)
 
     def __len__(self) -> int:
         """Get the number of elements in the collection."""
@@ -841,6 +814,9 @@ class ElementCollection(
                 layout_kwargs["y_shift"] = coll_top
 
             try:
+                # chars_to_textmap constructs a layout-aware text map from the supplied
+                # character dictionaries, letting pdfplumber cluster characters into
+                # rows/columns using the provided tolerances.
                 # Sort chars by document order (page, top, x0)
                 # Need page info on char dicts for multi-page collections
                 # Assuming char dicts have 'page_number' from element creation
@@ -850,17 +826,9 @@ class ElementCollection(
                 textmap = chars_to_textmap(all_char_dicts, **layout_kwargs)
                 result = textmap.as_string
             except Exception as e:
-                logger.error(
-                    f"ElementCollection: Error calling chars_to_textmap: {e}", exc_info=True
-                )
-                logger.warning(
-                    "ElementCollection: Falling back to simple text join due to layout error."
-                )
-                # Fallback sorting and joining
-                all_char_dicts.sort(
-                    key=lambda c: (c.get("page_number", 0), c.get("top", 0), c.get("x0", 0))
-                )
-                result = " ".join(c.get("text", "") for c in all_char_dicts)
+                raise RuntimeError(
+                    "ElementCollection.extract_text failed to build layout textmap"
+                ) from e
 
         else:
             # Default: Simple join without layout
@@ -989,7 +957,7 @@ class ElementCollection(
         annotate: Optional[List[str]] = None,
         replace: bool = False,
         bins: Optional[Union[int, List[float]]] = None,
-    ) -> "ElementCollection":
+    ) -> Optional[Image.Image]:
         """
         Adds persistent highlights for all elements in the collection to the page
         via the HighlightingService.
@@ -1031,9 +999,6 @@ class ElementCollection(
                   Can be an integer (number of equal-width bins) or a list of bin edges.
                   Only used when group_by contains quantitative data.
 
-        Returns:
-            Self for method chaining
-
         Raises:
             AttributeError: If 'group_by' is provided but the attribute doesn't exist
                             on some elements.
@@ -1058,13 +1023,13 @@ class ElementCollection(
 
         # 2. Add prepared highlights to the persistent service
         if not highlight_data_list:
-            return self  # Nothing to add
+            return None  # Nothing to add
 
         # Get page and highlighter from the first element (assume uniform page)
         first_element = self._elements[0]
         if not hasattr(first_element, "page") or not hasattr(first_element.page, "_highlighter"):
             logger.warning("Cannot highlight collection: Elements lack page or highlighter access.")
-            return self
+            return None
 
         page = first_element.page
         highlighter = page._highlighter
@@ -1106,7 +1071,7 @@ class ElementCollection(
             else:
                 logger.warning(f"Skipping highlight data, no bbox or polygon found: {data}")
 
-        return self
+        return None
 
     def _prepare_highlight_data(
         self,
@@ -2229,7 +2194,7 @@ class ElementCollection(
         """
         Remove all elements in this collection from their respective pages.
 
-        This method removes elements from the page's _element_mgr storage.
+        This method removes elements from their respective pages via the public element APIs.
         It's particularly useful for removing OCR elements before applying new OCR.
 
         Returns:
@@ -2241,32 +2206,30 @@ class ElementCollection(
         removed_count = 0
 
         for element in self._elements:
-            # Each element should have a reference to its page
-            if hasattr(element, "page") and hasattr(element.page, "_element_mgr"):
-                element_mgr = element.page._element_mgr
+            page_obj = getattr(element, "page", None)
+            if page_obj is None or not hasattr(page_obj, "remove_element"):
+                logger.warning("Element has no page or page lacks remove_element: %s", element)
+                continue
 
-                # Determine element type
-                element_type = getattr(element, "object_type", None)
-                if element_type:
-                    # Convert to plural form expected by element_mgr
-                    if element_type == "word":
-                        element_type = "words"
-                    elif element_type == "char":
-                        element_type = "chars"
-                    elif element_type == "rect":
-                        element_type = "rects"
-                    elif element_type == "line":
-                        element_type = "lines"
+            element_type = getattr(element, "object_type", None)
+            if isinstance(element_type, str):
+                normalized = element_type.lower()
+                if normalized == "word":
+                    element_type = "words"
+                elif normalized == "char":
+                    element_type = "chars"
+                elif normalized == "rect":
+                    element_type = "rects"
+                elif normalized == "line":
+                    element_type = "lines"
+                elif normalized == "region":
+                    element_type = "regions"
 
-                    # Try to remove from the element manager
-                    if hasattr(element_mgr, "remove_element"):
-                        success = element_mgr.remove_element(element, element_type)
-                        if success:
-                            removed_count += 1
-                    else:
-                        logger.warning("ElementManager does not have remove_element method")
+            success = bool(page_obj.remove_element(element, element_type=element_type))
+            if success:
+                removed_count += 1
             else:
-                logger.warning(f"Element has no page or page has no _element_mgr: {element}")
+                logger.debug("Failed to remove element from page collection: %s", element)
 
         return removed_count
 
@@ -2577,18 +2540,13 @@ class ElementCollection(
                         continue
 
                     if page_context_for_adding and text_el.page == page_context_for_adding:
-                        if (
-                            hasattr(page_context_for_adding, "_element_mgr")
-                            and page_context_for_adding._element_mgr is not None
-                        ):
-                            add_as_type = (
-                                "words"
-                                if object_type == "word"
-                                else "chars" if object_type == "char" else object_type
-                            )
-                            page_context_for_adding._element_mgr.add_element(
-                                text_el, element_type=add_as_type
-                            )
+                        add_as_type = (
+                            "words"
+                            if object_type == "word"
+                            else "chars" if object_type == "char" else object_type
+                        )
+                        if hasattr(page_context_for_adding, "add_element"):
+                            page_context_for_adding.add_element(text_el, element_type=add_as_type)
                         else:
                             page_num_str = (
                                 str(page_context_for_adding.page_number)
@@ -2596,7 +2554,10 @@ class ElementCollection(
                                 else "N/A"
                             )
                             logger.error(
-                                f"Page context for region {element.bbox} (Page {page_num_str}) is missing '_element_mgr'. Cannot add TextElement."
+                                "Page context for region %s (Page %s) does not expose add_element. "
+                                "Cannot add TextElement.",
+                                element.bbox,
+                                page_num_str,
                             )
                     elif page_context_for_adding and text_el.page != page_context_for_adding:
                         current_page_num_str = (

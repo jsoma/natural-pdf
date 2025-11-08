@@ -15,7 +15,7 @@ The module includes:
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pdfplumber.utils.text import WordExtractor
 
@@ -25,6 +25,8 @@ from natural_pdf.elements.rect import RectangleElement
 from natural_pdf.elements.text import TextElement
 
 logger = logging.getLogger(__name__)
+
+CharDirection = Literal["ltr", "rtl", "ttb", "btt"]
 
 # ------------------------------------------------------------------
 #  Default decoration-detection parameters (magic numbers centralised)
@@ -80,11 +82,18 @@ def disable_text_sync():
         with complex text layouts or right-to-left scripts that would otherwise
         trigger expensive character synchronization operations.
     """
-    # Save original setter
-    original_setter = TextElement.text.fset
+    # Save original property so we can restore it afterwards
+    original_property = TextElement.text
+    original_getter = original_property.fget
+    original_setter = original_property.fset
+
+    if original_getter is None or original_setter is None:
+        # If the property is oddly configured, skip the optimisation entirely.
+        yield
+        return
 
     # Create a fast setter that skips sync
-    def fast_setter(self, value):
+    def fast_setter(self: TextElement, value: str) -> None:
         self._obj["text"] = value
         if hasattr(self, "_layout_text_cache"):
             self._layout_text_cache = value
@@ -92,13 +101,14 @@ def disable_text_sync():
             self._text_manually_set = True
 
     # Apply fast setter
-    TextElement.text = property(TextElement.text.fget, fast_setter)
+    fast_property = property(original_getter, fast_setter)
+    setattr(TextElement, "text", fast_property)
 
     try:
         yield
     finally:
         # Restore original setter
-        TextElement.text = property(TextElement.text.fget, original_setter)
+        setattr(TextElement, "text", original_property)
 
 
 class NaturalWordExtractor(WordExtractor):
@@ -160,7 +170,7 @@ class NaturalWordExtractor(WordExtractor):
         self,
         prev_char: Dict[str, Any],
         curr_char: Dict[str, Any],
-        direction: str,
+        direction: CharDirection,
         x_tolerance: float,
         y_tolerance: float,
     ) -> bool:
@@ -210,7 +220,7 @@ class ElementManager:
             load_text: Whether to load text elements from the PDF (default: True).
         """
         self._page = page
-        self._elements = None  # Lazy-loaded
+        self._elements: Optional[Dict[str, List[Any]]] = None  # Lazy-loaded cache
         self._load_text = load_text
         # Default to splitting by fontname, size, bold, italic if not specified
         # Renamed internal variable for clarity
@@ -299,8 +309,8 @@ class ElementManager:
         word_elements: List[TextElement] = []
 
         # Get config objects (needed for auto_text_tolerance check)
-        page_config = getattr(self._page, "_config", {})
-        pdf_config = getattr(self._page._parent, "_config", {})
+        page_config = self._page._config
+        pdf_config = self._page._parent._config
 
         auto_text_tolerance = page_config.get("auto_text_tolerance")
         if auto_text_tolerance is None:
@@ -491,7 +501,13 @@ class ElementManager:
                         with disable_text_sync():
                             # word_element.text is currently in visual order (from PDF)
                             # Convert to logical order using bidi with auto direction detection
-                            logical_text = get_display(word_element.text, base_dir="L")
+                            element_text_obj = word_element.text
+                            if isinstance(element_text_obj, bytes):
+                                element_text = element_text_obj.decode("utf-8", errors="ignore")
+                            else:
+                                element_text = str(element_text_obj)
+                            logical_text = get_display(element_text, base_dir="L")
+                            logical_text = str(logical_text)
                             # Apply bracket mirroring for logical order
                             word_element.text = mirror_brackets(logical_text)
                     except Exception:
@@ -864,6 +880,13 @@ class ElementManager:
         )
         return added_word_elements
 
+    def _element_store(self) -> Dict[str, List[Any]]:
+        """Return the cached element mapping, ensuring it is populated."""
+        self.load_elements()
+        if self._elements is None:
+            raise RuntimeError("Element storage was not initialised")
+        return self._elements
+
     def add_element(self, element, element_type="words"):
         """
         Add an element to the managed elements.
@@ -876,13 +899,16 @@ class ElementManager:
             True if added successfully, False otherwise
         """
         # Load elements if not already loaded
-        self.load_elements()
-
         # Add to the appropriate list
-        if element_type in self._elements:
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return False
+
+        if element_type in store:
             # Avoid adding duplicates
-            if element not in self._elements[element_type]:
-                self._elements[element_type].append(element)
+            if element not in store[element_type]:
+                store[element_type].append(element)
                 return True
             else:
                 # logger.debug(f"Element already exists in {element_type}: {element}")
@@ -902,15 +928,18 @@ class ElementManager:
             True if added successfully, False otherwise
         """
         # Load elements if not already loaded
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return False
 
         # Make sure regions is in _elements
-        if "regions" not in self._elements:
-            self._elements["regions"] = []
+        if "regions" not in store:
+            store["regions"] = []
 
         # Add to elements for selector queries
-        if region not in self._elements["regions"]:
-            self._elements["regions"].append(region)
+        if region not in store["regions"]:
+            store["regions"].append(region)
             return True
 
         return False
@@ -926,14 +955,17 @@ class ElementManager:
             List of elements
         """
         # Load elements if not already loaded
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
 
         if element_type:
-            return self._elements.get(element_type, [])
+            return store.get(element_type, [])
 
         # Combine all element types
-        all_elements = []
-        for elements in self._elements.values():
+        all_elements: List[Any] = []
+        for elements in store.values():
             all_elements.extend(elements)
 
         return all_elements
@@ -945,22 +977,24 @@ class ElementManager:
         Returns:
             List of all elements
         """
-        # Load elements if not already loaded
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
 
-        # Combine all element types
-        all_elements = []
-        if self._elements:  # Ensure _elements is not None
-            for elements in self._elements.values():
-                if isinstance(elements, list):  # Ensure we only extend lists
-                    all_elements.extend(elements)
+        all_elements: List[Any] = []
+        for elements in store.values():
+            all_elements.extend(elements)
         return all_elements
 
     @property
     def chars(self):
         """Get all character elements."""
-        self.load_elements()
-        return self._elements.get("chars", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("chars", [])
 
     def invalidate_cache(self):
         """Invalidate the cached elements, forcing a reload on next access."""
@@ -970,32 +1004,47 @@ class ElementManager:
     @property
     def words(self):
         """Get all word elements."""
-        self.load_elements()
-        return self._elements.get("words", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("words", [])
 
     @property
     def rects(self):
         """Get all rectangle elements."""
-        self.load_elements()
-        return self._elements.get("rects", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("rects", [])
 
     @property
     def lines(self):
         """Get all line elements."""
-        self.load_elements()
-        return self._elements.get("lines", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("lines", [])
 
     @property
     def regions(self):
         """Get all region elements."""
-        self.load_elements()
-        return self._elements.get("regions", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("regions", [])
 
     @property
     def images(self):
         """Get all image elements."""
-        self.load_elements()
-        return self._elements.get("images", [])
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return []
+        return store.get("images", [])
 
     def remove_ocr_elements(self):
         """
@@ -1005,29 +1054,31 @@ class ElementManager:
         Returns:
             int: Number of OCR elements removed
         """
-        # Load elements if not already loaded
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return 0
 
         removed_count = 0
 
         # Filter out OCR elements from words
-        if "words" in self._elements:
-            original_len = len(self._elements["words"])
-            self._elements["words"] = [
-                word for word in self._elements["words"] if getattr(word, "source", None) != "ocr"
+        if "words" in store:
+            original_len = len(store["words"])
+            store["words"] = [
+                word for word in store["words"] if getattr(word, "source", None) != "ocr"
             ]
-            removed_count += original_len - len(self._elements["words"])
+            removed_count += original_len - len(store["words"])
 
         # Filter out OCR elements from chars
-        if "chars" in self._elements:
-            original_len = len(self._elements["chars"])
-            self._elements["chars"] = [
+        if "chars" in store:
+            original_len = len(store["chars"])
+            store["chars"] = [
                 char
-                for char in self._elements["chars"]
+                for char in store["chars"]
                 if (isinstance(char, dict) and char.get("source") != "ocr")
                 or (not isinstance(char, dict) and getattr(char, "source", None) != "ocr")
             ]
-            removed_count += original_len - len(self._elements["chars"])
+            removed_count += original_len - len(store["chars"])
 
         logger.info(f"Page {self._page.number}: Removed {removed_count} OCR elements.")
         return removed_count
@@ -1043,18 +1094,20 @@ class ElementManager:
         Returns:
             bool: True if removed successfully, False otherwise
         """
-        # Load elements if not already loaded
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return False
 
         # Check if the collection exists
-        if element_type not in self._elements:
+        if element_type not in store:
             logger.warning(f"Cannot remove element: collection '{element_type}' does not exist")
             return False
 
         # Try to remove the element
         try:
-            if element in self._elements[element_type]:
-                self._elements[element_type].remove(element)
+            if element in store[element_type]:
+                store[element_type].remove(element)
                 logger.debug(f"Removed element from {element_type}: {element}")
                 return True
             else:
@@ -1066,18 +1119,21 @@ class ElementManager:
 
     def remove_elements_by_source(self, element_type: str, source: str) -> int:
         """Remove all elements of ``element_type`` whose ``source`` attribute matches ``source``."""
-        self.load_elements()
-
-        if self._elements is None or element_type not in self._elements:
+        try:
+            store = self._element_store()
+        except RuntimeError:
             return 0
 
-        elements = self._elements[element_type]
+        if element_type not in store:
+            return 0
+
+        elements = store[element_type]
         original_len = len(elements)
-        self._elements[element_type] = [
+        store[element_type] = [
             element for element in elements if getattr(element, "source", None) != source
         ]
 
-        removed = original_len - len(self._elements[element_type])
+        removed = original_len - len(store[element_type])
         if removed:
             logger.info(
                 "Page %s: Removed %d '%s' element(s) with source '%s'.",
@@ -1090,21 +1146,19 @@ class ElementManager:
 
     def clear_text_layer(self) -> tuple[int, int]:
         """Remove all word and character elements tracked by this manager."""
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return 0, 0
 
-        removed_words = 0
-        removed_chars = 0
+        removed_words = len(store.get("words", []))
+        removed_chars = len(store.get("chars", []))
 
-        if self._elements is None:
-            return removed_words, removed_chars
+        if "words" in store:
+            store["words"] = []
 
-        if "words" in self._elements:
-            removed_words = len(self._elements["words"])
-            self._elements["words"] = []
-
-        if "chars" in self._elements:
-            removed_chars = len(self._elements["chars"])
-            self._elements["chars"] = []
+        if "chars" in store:
+            store["chars"] = []
 
         return removed_words, removed_chars
 
@@ -1116,10 +1170,13 @@ class ElementManager:
         Returns:
             True if any elements exist, False otherwise.
         """
-        self.load_elements()
+        try:
+            store = self._element_store()
+        except RuntimeError:
+            return False
 
         for key in ["words", "rects", "lines", "regions"]:
-            if self._elements.get(key):
+            if store.get(key):
                 return True
 
         return False
@@ -1225,16 +1282,16 @@ class ElementManager:
         self,
         char_dicts: List[Dict[str, Any]],
         *,
-        thickness_tol: float = None,
-        horiz_tol: float = None,
-        coverage_ratio: float = None,
-        band_frac: float = None,
-        below_pad: float = None,
+        thickness_tol: Optional[float] = None,
+        horiz_tol: Optional[float] = None,
+        coverage_ratio: Optional[float] = None,
+        band_frac: Optional[float] = None,
+        below_pad: Optional[float] = None,
     ) -> None:
         """Annotate character dicts with ``underline`` flag."""
 
         # Allow user overrides via PDF._config["underline_detection"]
-        pdf_cfg = getattr(self._page._parent, "_config", {}).get("underline_detection", {})
+        pdf_cfg = self._page._parent._config.get("underline_detection", {})
 
         thickness_tol = (
             thickness_tol
@@ -1334,7 +1391,7 @@ class ElementManager:
     def _mark_highlight_chars(self, char_dicts: List[Dict[str, Any]]) -> None:
         """Detect PDF marker-style highlights and set ``highlight`` on char dicts."""
 
-        cfg = getattr(self._page._parent, "_config", {}).get("highlight_detection", {})
+        cfg = self._page._parent._config.get("highlight_detection", {})
 
         height_min_ratio = cfg.get("height_min_ratio", HIGHLIGHT_DEFAULTS["height_min_ratio"])
         height_max_ratio = cfg.get("height_max_ratio", HIGHLIGHT_DEFAULTS["height_max_ratio"])

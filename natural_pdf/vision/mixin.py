@@ -3,18 +3,52 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Union, cast
 
 from tqdm.auto import tqdm
+
+from natural_pdf.core.interfaces import (
+    HasRenderablePages,
+    RenderablePage,
+    RenderableRegion,
+    SupportsPDFCollection,
+)
 
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
     from natural_pdf.vision.results import MatchResults
 
+SearchTarget = Union[RenderablePage, RenderableRegion]
+
 
 class VisualSearchMixin:
     """Add visual template matching helpers to classes that include this mixin"""
+
+    def _collect_search_targets(self) -> List[SearchTarget]:
+        """
+        Resolve the pages or regions that should be scanned for template matches.
+        """
+        if isinstance(self, SupportsPDFCollection):
+            targets: List[SearchTarget] = []
+            for pdf in self:
+                if not isinstance(pdf, HasRenderablePages):
+                    raise TypeError(
+                        "Objects yielded by PDF collections must expose a 'pages' sequence."
+                    )
+                targets.extend(list(cast(Sequence[RenderablePage], pdf.pages)))
+            return targets
+
+        if isinstance(self, HasRenderablePages):
+            return list(cast(Sequence[RenderablePage], self.pages))
+
+        if isinstance(self, RenderableRegion):
+            return [self]
+
+        if isinstance(self, RenderablePage):
+            return [self]
+
+        raise TypeError(f"Cannot search in {type(self)}")
 
     def match_template(
         self,
@@ -79,25 +113,14 @@ class VisualSearchMixin:
         for example in example_list:
             # Render the example region/element
             example_image = example.render(resolution=resolution, crop=True)
+            if example_image is None:
+                raise ValueError("Unable to render template example to an image.")
             template_hash = compute_phash(
                 example_image, hash_size=hash_size, mask_threshold=mask_threshold_255
             )
             templates.append({"image": example_image, "hash": template_hash, "source": example})
 
-        # Get pages to search based on the object type
-        if hasattr(self, "__class__") and self.__class__.__name__ == "PDFCollection":
-            # PDFCollection needs to iterate through all PDFs
-            pages_to_search = []
-            for pdf in self:
-                pages_to_search.extend(pdf.pages)
-        elif hasattr(self, "pages"):  # PDF
-            pages_to_search = self.pages
-        elif hasattr(self, "number"):  # Single page
-            pages_to_search = [self]
-        elif hasattr(self, "page") and hasattr(self, "bbox"):  # Region
-            pages_to_search = [self]
-        else:
-            raise TypeError(f"Cannot search in {type(self)}")
+        pages_to_search = self._collect_search_targets()
 
         # Calculate total operations for progress bar
         total_operations = 0
@@ -107,15 +130,8 @@ class VisualSearchMixin:
 
             # Pre-calculate for all pages and templates
             for search_obj in pages_to_search:
-                # Estimate image size based on object type
-                if hasattr(search_obj, "page") and hasattr(search_obj, "bbox"):
-                    # Region
-                    page_w = int(search_obj.width * resolution / 72.0)
-                    page_h = int(search_obj.height * resolution / 72.0)
-                else:
-                    # Page
-                    page_w = int(search_obj.width * resolution / 72.0)
-                    page_h = int(search_obj.height * resolution / 72.0)
+                page_w = int(search_obj.width * resolution / 72.0)
+                page_h = int(search_obj.height * resolution / 72.0)
 
                 for template_data in templates:
                     template_w, template_h = template_data["image"].size
@@ -154,19 +170,19 @@ class VisualSearchMixin:
                 mininterval=0.1,  # Minimum time between updates (seconds)
             )
 
-        for page_idx, search_obj in enumerate(pages_to_search):
-            # Determine if we're searching in a page or a region
-            if hasattr(search_obj, "page") and hasattr(search_obj, "bbox"):
-                # This is a Region - render only the region area
+        for search_obj in pages_to_search:
+            if isinstance(search_obj, RenderableRegion):
                 region = search_obj
-                page = region.page
+                page = cast(RenderablePage, region.page)
                 page_image = region.render(resolution=resolution, crop=True)
-                # Region offset for coordinate conversion
+                if page_image is None:
+                    raise ValueError("Region.render returned None during visual search.")
                 region_x0, region_y0 = region.x0, region.top
             else:
-                # This is a Page - render the full page
-                page = search_obj
+                page = cast(RenderablePage, search_obj)
                 page_image = page.render(resolution=resolution)
+                if page_image is None:
+                    raise ValueError("Page.render returned None during visual search.")
                 region_x0, region_y0 = 0, 0
 
             # Convert page coordinates to image coordinates

@@ -1,51 +1,50 @@
 # layout_detector_docling.py
+import importlib
 import importlib.util
 import logging
 import os
 import tempfile
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Type, cast
 
 from PIL import Image
 
-# Assuming base class and options are importable
-try:
+if TYPE_CHECKING:
     from .base import LayoutDetector
     from .layout_options import BaseLayoutOptions, DoclingLayoutOptions
-except ImportError:
-    # Placeholders if run standalone or imports fail
-    class BaseLayoutOptions:
-        pass
-
-    class DoclingLayoutOptions(BaseLayoutOptions):
-        pass
-
-    class LayoutDetector:
-        def __init__(self):
-            self.logger = logging.getLogger()
-            self.supported_classes = set()
-
-        def _get_model(self, options):
-            raise NotImplementedError
-
-        def _normalize_class_name(self, n):
-            return n
-
-        def validate_classes(self, c):
-            pass
-
-    logging.basicConfig()
+else:  # pragma: no cover - runtime import with graceful fallback
+    try:
+        from .base import LayoutDetector
+        from .layout_options import BaseLayoutOptions, DoclingLayoutOptions
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            "Docling layout detector requires natural_pdf.analyzers.layout base modules"
+        ) from exc
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Optional Docling dependency
+# ---------------------------------------------------------------------------
+
+
+class _DocumentConverterInstance(Protocol):
+    def convert(self, path: str) -> Any: ...
+
+
+DocumentConverterType = Type[_DocumentConverterInstance]
+
 # Check for dependency
 docling_spec = importlib.util.find_spec("docling")
-DocumentConverter = None
+DocumentConverter: Optional[DocumentConverterType] = None
 if docling_spec:
     try:
-        from docling.document_converter import DocumentConverter
-    except ImportError as e:
-        logger.warning(f"Could not import Docling dependencies: {e}")
-else:
+        docling_module = importlib.import_module("docling.document_converter")
+        DocumentConverter = cast(
+            DocumentConverterType, getattr(docling_module, "DocumentConverter")
+        )
+    except (ImportError, AttributeError) as exc:  # pragma: no cover - optional dependency
+        logger.warning(f"Could not import Docling dependencies: {exc}")
+else:  # pragma: no cover - optional dependency
     logger.warning("docling not found. DoclingLayoutDetector will not be available.")
 
 
@@ -77,6 +76,7 @@ class DoclingLayoutDetector(LayoutDetector):
             "Metadata",  # Add more as needed
         }
         self._docling_document_cache = {}  # Cache the output doc per image/options if needed
+        self._docling_document: Optional[Any] = None
 
     def is_available(self) -> bool:
         """Check if docling is installed."""
@@ -103,9 +103,13 @@ class DoclingLayoutDetector(LayoutDetector):
         self.logger.info("Initializing Docling DocumentConverter...")
         try:
             # Pass device if converter accepts it, otherwise handle via extra_args
-            converter_args = options.extra_args.copy()
+            converter_args = dict(options.extra_args)
 
-            converter = DocumentConverter(**converter_args)
+            converter_cls = DocumentConverter
+            if converter_cls is None:  # Narrow for type-checkers
+                raise RuntimeError("Docling DocumentConverter unavailable.")
+
+            converter = converter_cls(**converter_args)
             self.logger.info("Docling DocumentConverter initialized.")
             return converter
         except Exception as e:
@@ -126,8 +130,8 @@ class DoclingLayoutDetector(LayoutDetector):
                 classes=options.classes,
                 exclude_classes=options.exclude_classes,
                 device=options.device,
-                extra_args=options.extra_args,
-                verbose=options.extra_args.get("verbose", False),
+                extra_args=dict(options.extra_args),
+                verbose=bool(options.extra_args.get("verbose", False)),
             )
 
         # Validate classes before proceeding (note: Docling classes are case-sensitive)
@@ -171,7 +175,7 @@ class DoclingLayoutDetector(LayoutDetector):
                         self.logger.warning(f"Could not remove temp file {temp_image_path}: {e_rm}")
 
         # Cache the docling document if needed elsewhere (maybe associate with page?)
-        # self._docling_document_cache[image_hash] = docling_doc # Needs a way to key this
+        self._docling_document = docling_doc
 
         self.logger.info(f"Docling detected {len(detections)} layout elements matching criteria.")
         return detections

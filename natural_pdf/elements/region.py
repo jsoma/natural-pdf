@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping as MappingABC
+from collections.abc import Sequence as SequenceABC
+from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
+    Mapping,
     Optional,
     Protocol,
     Sequence,
     Tuple,
+    TypeAlias,
     Union,
     cast,
 )
@@ -23,19 +29,22 @@ from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
-
-# --- Shape Detection Mixin --- #
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.classification.manager import ClassificationManager  # Keep for type hint
-
-# --- Classification Imports --- #
 from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.crop_utils import resolve_crop_bbox
+from natural_pdf.core.exclusion_mixin import ExclusionMixin
 
 # Add Visualizable import
+from natural_pdf.core.geometry_mixin import RegionGeometryMixin
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.ocr_mixin import OCRMixin
+from natural_pdf.core.qa_mixin import DocumentQAMixin, QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.core.table_mixin import TableExtractionMixin
 from natural_pdf.describe.mixin import DescribeMixin
-from natural_pdf.elements.base import DirectionalMixin
+from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.selectors.parser import (
@@ -44,10 +53,7 @@ from natural_pdf.selectors.parser import (
     selector_to_filter_func,
 )
 
-# ------------------------------------------------------------------
 # Table utilities
-# ------------------------------------------------------------------
-from natural_pdf.tables import TableResult
 from natural_pdf.text_mixin import TextMixin
 
 # Import new utils
@@ -57,23 +63,21 @@ from natural_pdf.vision.mixin import VisualSearchMixin
 # Import viewer widget support
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
-# --- End Classification Imports --- #
-
-
-# --- End Shape Detection Mixin --- #
-
 if TYPE_CHECKING:
-    # --- NEW: Add Image type hint for classification --- #
     from PIL.Image import Image
 
-    from natural_pdf.core.highlighting_service import HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.elements.base import Element  # Added for type hint
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.text import TextElement
     from natural_pdf.flows.region import FlowRegion
+    from natural_pdf.widgets.viewer import InteractiveViewerWidget as InteractiveViewerWidgetType
+else:  # pragma: no cover - typing fallback
+    InteractiveViewerWidgetType: TypeAlias = Any
 
 logger = logging.getLogger(__name__)
+
+CustomOCRCallable = Callable[["Region"], Optional[str]]
 
 
 class LayoutOptionsProtocol(Protocol):
@@ -86,6 +90,16 @@ def _layout_options() -> LayoutOptionsProtocol:
     import natural_pdf
 
     return cast(LayoutOptionsProtocol, natural_pdf.options.layout)
+
+
+class ImageOptionsProtocol(Protocol):
+    resolution: Optional[float]
+
+
+def _image_options() -> ImageOptionsProtocol:
+    import natural_pdf
+
+    return cast(ImageOptionsProtocol, natural_pdf.options.image)
 
 
 class RegionContext:
@@ -125,6 +139,12 @@ class Region(
     CheckboxDetectionMixin,
     DescribeMixin,
     VisualSearchMixin,
+    ExclusionMixin,
+    OCRMixin,
+    TableExtractionMixin,
+    DocumentQAMixin,
+    RegionGeometryMixin,
+    SinglePageContextMixin,
     Visualizable,
     SupportsSections,
 ):
@@ -245,12 +265,18 @@ class Region(
 
         # Standard attributes for all elements
         self.object_type: str = "region"  # For selector compatibility
+        self.start_element: Optional["Element"] = None
+        self.end_element: Optional["Element"] = None
+        self._boundary_exclusions: Optional[str] = None
 
         # Layout detection attributes
         self.region_type: Optional[str] = None
         self.normalized_type: Optional[str] = None
         self.confidence: Optional[float] = None
         self.model: Optional[str] = None
+        self.is_checked: Optional[bool] = None
+        self.checkbox_state: Optional[str] = None
+        self.original_class: Optional[str] = None
 
         # Region management attributes
         self.name: Optional[str] = None
@@ -270,6 +296,118 @@ class Region(
 
         if self.parent_region is not None:
             self.parent_region.child_regions.append(self)
+
+        self._cached_text: Optional[str] = None
+        self._cached_elements: Optional[ElementCollection] = None
+        self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
+        self._exclusions: List[Any] = []
+
+    def _exclusion_element_manager(self):
+        return self.page._element_mgr
+
+    def _element_to_region(self, element: Any, label: Optional[str] = None) -> Optional["Region"]:
+        bbox = extract_bbox(element)
+        if not bbox:
+            return None
+        # Clamp to this region's bounds
+        x0 = max(self.x0, bbox[0])
+        top = max(self.top, bbox[1])
+        x1 = min(self.x1, bbox[2])
+        bottom = min(self.bottom, bbox[3])
+        if x0 >= x1 or top >= bottom:
+            return None
+        return Region(self.page, (x0, top, x1, bottom), label=label)
+
+    def _invalidate_exclusion_cache(self) -> None:
+        self._cached_text = None
+        self._cached_elements = None
+
+    def _ocr_element_manager(self):
+        return self.page._element_mgr
+
+    def _qa_context_page_number(self) -> int:
+        return self.page.number
+
+    def _qa_source_elements(self) -> "ElementCollection":
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        return ElementCollection([])
+
+    def _qa_target_region(self) -> "Region":
+        return self
+
+    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        return self._normalize_qa_output(result)
+
+    def _qa_blank_result(
+        self, question: QuestionInput
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        def _blank() -> Dict[str, Any]:
+            return {
+                "answer": None,
+                "confidence": 0.0,
+                "found": False,
+                "page_num": self.page.number,
+                "source_elements": [],
+                "region": self,
+            }
+
+        if isinstance(question, (list, tuple)):
+            return [_blank() for _ in question]
+        return _blank()
+
+    def _evaluate_local_exclusions(
+        self, include_callable: bool = True, debug: bool = False
+    ) -> List["Region"]:
+        if not getattr(self, "_exclusions", None):
+            return []
+        return self._evaluate_exclusion_entries(self._exclusions, include_callable, debug)
+
+    def _get_exclusion_regions(
+        self, include_callable: bool = True, debug: bool = False
+    ) -> List["Region"]:
+        local = self._evaluate_local_exclusions(include_callable=include_callable, debug=debug)
+        page_regions = self.page._get_exclusion_regions(
+            include_callable=include_callable, debug=debug
+        )
+        return local + page_regions
+
+    def remove_ocr_elements(self) -> int:
+        if not hasattr(self.page, "get_elements_by_type"):
+            return 0
+
+        removed_count = 0
+
+        def _safe_remove(elem, element_type: Optional[str] = None):
+            nonlocal removed_count
+            if self.page.remove_element(elem, element_type=element_type):
+                removed_count += 1
+
+        for word in list(self.page.get_elements_by_type("words")):
+            if getattr(word, "source", None) == "ocr" and self.intersects(word):
+                _safe_remove(word, element_type="words")
+
+        for char in list(self.page.get_elements_by_type("chars")):
+            char_source = (
+                char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+            )
+            if char_source != "ocr":
+                continue
+            if isinstance(char, dict):
+                bbox_tuple = (
+                    float(char.get("x0", 0.0)),
+                    float(char.get("top", 0.0)),
+                    float(char.get("x1", 0.0)),
+                    float(char.get("bottom", 0.0)),
+                )
+            else:
+                bbox_tuple = getattr(char, "bbox", None)
+            if not bbox_tuple:
+                continue
+            if get_bbox_overlap(self.bbox, bbox_tuple) is not None:
+                _safe_remove(char, element_type="chars")
+
+        return removed_count
 
     def to_region(self) -> "Region":
         """Regions already satisfy the section surface; return self."""
@@ -305,30 +443,13 @@ class Region(
 
         spec = RenderSpec(page=self.page)
 
-        # Handle cropping
-        if crop_bbox:
-            spec.crop_bbox = crop_bbox
-        elif crop:
-            x0, y0, x1, y1 = self.bbox
-
-            if crop is True:
-                # Crop to region bounds
-                spec.crop_bbox = self.bbox
-            elif isinstance(crop, (int, float)):
-                # Add padding around region
-                padding = float(crop)
-                spec.crop_bbox = (
-                    max(0, x0 - padding),
-                    max(0, y0 - padding),
-                    min(self.page.width, x1 + padding),
-                    min(self.page.height, y1 + padding),
-                )
-            elif crop == "wide":
-                # Full page width, cropped vertically to region
-                spec.crop_bbox = (0, y0, self.page.width, y1)
-            elif hasattr(crop, "bbox"):
-                # Crop to another region's bounds
-                spec.crop_bbox = crop.bbox
+        spec.crop_bbox = resolve_crop_bbox(
+            width=self.page.width,
+            height=self.page.height,
+            crop=crop,
+            crop_bbox=crop_bbox,
+            content_bbox_fn=lambda: self.bbox,
+        )
 
         # Add highlights in show mode (unless explicitly disabled with highlights=False)
         if mode == "show" and highlights is not False:
@@ -700,44 +821,14 @@ class Region(
                 (self.x0, self.bottom),  # bottom-left
             ]
 
-    @property
-    def pages(self) -> Tuple["Page", ...]:
-        """Expose this region's page in iterable form for protocol compatibility."""
-        return (self.page,)
+    def _context_page(self) -> "Page":
+        return self.page
 
-    def get_highlighter(self) -> "HighlightingService":
-        """Provide the highlighting service for this region."""
-        if not hasattr(self.page, "_highlighter"):
-            raise AttributeError("Parent page does not expose a highlighting service")
-        return self.page._highlighter
-
-    def get_config(self, key: str, default: Any = None, *, scope: str = "region") -> Any:
-        """Resolve configuration values with fallbacks across region, page, and PDF scopes."""
-        if scope not in {"region", "page", "pdf"}:
-            raise ValueError(f"Unsupported configuration scope: {scope}")
-
-        if scope in {"region"}:
-            region_cfg = self.metadata.get("config")
-            if isinstance(region_cfg, dict) and key in region_cfg:
-                return region_cfg[key]
-
-        page_cfg = getattr(self.page, "_config", {})
-        if scope in {"region", "page"} and isinstance(page_cfg, dict) and key in page_cfg:
-            return page_cfg[key]
-
-        pdf_obj = getattr(self.page, "pdf", getattr(self.page, "_parent", None))
-        pdf_cfg = getattr(pdf_obj, "_config", {}) if pdf_obj is not None else {}
-        if scope in {"region", "page", "pdf"} and isinstance(pdf_cfg, dict) and key in pdf_cfg:
-            return pdf_cfg[key]
-
-        return default
-
-    def get_manager(self, name: str) -> Any:
-        """Access service managers via the owning PDF."""
-        pdf_obj = getattr(self.page, "pdf", getattr(self.page, "_parent", None))
-        if pdf_obj is None or not hasattr(pdf_obj, "get_manager"):
-            raise AttributeError(f"Cannot resolve manager '{name}' without PDF context")
-        return pdf_obj.get_manager(name)
+    def _context_region_config(self, key: str, sentinel: object) -> Any:
+        region_cfg = self.metadata.get("config")
+        if isinstance(region_cfg, dict) and key in region_cfg:
+            return region_cfg[key]
+        return sentinel
 
     @property
     def origin(self) -> Optional[Union["Element", "Region"]]:
@@ -748,207 +839,6 @@ class Region(
     def endpoint(self) -> Optional["Element"]:
         """The element where this region stopped (if created with 'until' parameter)."""
         return getattr(self, "boundary_element", None)
-
-    def _is_point_in_polygon(self, x: float, y: float) -> bool:
-        """
-        Check if a point is inside the polygon using ray casting algorithm.
-
-        Args:
-            x: X coordinate of the point
-            y: Y coordinate of the point
-
-        Returns:
-            bool: True if the point is inside the polygon
-        """
-        if not self.has_polygon:
-            return (self.x0 <= x <= self.x1) and (self.top <= y <= self.bottom)
-
-        # Ray casting algorithm
-        inside = False
-        j = len(self.polygon) - 1
-
-        for i in range(len(self.polygon)):
-            if ((self.polygon[i][1] > y) != (self.polygon[j][1] > y)) and (
-                x
-                < (self.polygon[j][0] - self.polygon[i][0])
-                * (y - self.polygon[i][1])
-                / (self.polygon[j][1] - self.polygon[i][1])
-                + self.polygon[i][0]
-            ):
-                inside = not inside
-            j = i
-
-        return inside
-
-    def is_point_inside(self, x: float, y: float) -> bool:
-        """
-        Check if a point is inside this region using ray casting algorithm for polygons.
-
-        Args:
-            x: X coordinate of the point
-            y: Y coordinate of the point
-
-        Returns:
-            bool: True if the point is inside the region
-        """
-        if not self.has_polygon:
-            return (self.x0 <= x <= self.x1) and (self.top <= y <= self.bottom)
-
-        # Ray casting algorithm
-        inside = False
-        j = len(self.polygon) - 1
-
-        for i in range(len(self.polygon)):
-            if ((self.polygon[i][1] > y) != (self.polygon[j][1] > y)) and (
-                x
-                < (self.polygon[j][0] - self.polygon[i][0])
-                * (y - self.polygon[i][1])
-                / (self.polygon[j][1] - self.polygon[i][1])
-                + self.polygon[i][0]
-            ):
-                inside = not inside
-            j = i
-
-        return inside
-
-    def is_element_center_inside(self, element: "Element") -> bool:
-        """
-        Check if the center point of an element's bounding box is inside this region.
-
-        Args:
-            element: Element to check
-
-        Returns:
-            True if the element's center point is inside the region, False otherwise.
-        """
-        # Check if element is on the same page
-        if not hasattr(element, "page") or element.page != self._page:
-            return False
-
-        # Ensure element has necessary attributes
-        if not all(hasattr(element, attr) for attr in ["x0", "x1", "top", "bottom"]):
-            logger.warning(
-                f"Element {element} lacks bounding box attributes. Cannot check center point."
-            )
-            return False  # Cannot determine position
-
-        # Calculate center point
-        center_x = (element.x0 + element.x1) / 2
-        center_y = (element.top + element.bottom) / 2
-
-        # Use the existing is_point_inside check
-        return self.is_point_inside(center_x, center_y)
-
-    def _is_element_in_region(
-        self, element: SupportsGeometry, use_boundary_tolerance: bool = True
-    ) -> bool:
-        """
-        Check if an element intersects or is contained within this region.
-
-        Args:
-            element: Element to check
-            use_boundary_tolerance: Whether to apply a small tolerance for boundary elements
-
-        Returns:
-            True if the element is in the region, False otherwise
-        """
-        # Use centralized spatial utility for consistency
-        from natural_pdf.utils.spatial import is_element_in_region
-
-        return is_element_in_region(element, self, strategy="center", check_page=True)
-
-    def contains(self, element: SupportsGeometry) -> bool:
-        """
-        Check if this region completely contains an element.
-
-        Args:
-            element: Element to check
-
-        Returns:
-            True if the element is completely contained within the region, False otherwise
-        """
-        # Check if element is on the same page
-        if not hasattr(element, "page") or element.page != self._page:
-            return False
-
-        # Ensure element has necessary attributes
-        if not all(hasattr(element, attr) for attr in ["x0", "x1", "top", "bottom"]):
-            return False  # Cannot determine position
-
-        # For rectangular regions, check if element's bbox is fully inside region's bbox
-        if not self.has_polygon:
-            return (
-                self.x0 <= element.x0
-                and element.x1 <= self.x1
-                and self.top <= element.top
-                and element.bottom <= self.bottom
-            )
-
-        # For polygon regions, check if all corners of the element are inside the polygon
-        element_corners = [
-            (element.x0, element.top),  # top-left
-            (element.x1, element.top),  # top-right
-            (element.x1, element.bottom),  # bottom-right
-            (element.x0, element.bottom),  # bottom-left
-        ]
-
-        return all(self.is_point_inside(x, y) for x, y in element_corners)
-
-    def intersects(self, element: "Element") -> bool:
-        """
-        Check if this region intersects with an element (any overlap).
-
-        Args:
-            element: Element to check
-
-        Returns:
-            True if the element overlaps with the region at all, False otherwise
-        """
-        # Check if element is on the same page
-        if not hasattr(element, "page") or element.page != self._page:
-            return False
-
-        # Ensure element has necessary attributes
-        if not all(hasattr(element, attr) for attr in ["x0", "x1", "top", "bottom"]):
-            return False  # Cannot determine position
-
-        # For rectangular regions, check for bbox overlap
-        if not self.has_polygon:
-            return (
-                self.x0 < element.x1
-                and self.x1 > element.x0
-                and self.top < element.bottom
-                and self.bottom > element.top
-            )
-
-        # For polygon regions, check if any corner of the element is inside the polygon
-        element_corners = [
-            (element.x0, element.top),  # top-left
-            (element.x1, element.top),  # top-right
-            (element.x1, element.bottom),  # bottom-right
-            (element.x0, element.bottom),  # bottom-left
-        ]
-
-        # First check if any element corner is inside the polygon
-        if any(self.is_point_inside(x, y) for x, y in element_corners):
-            return True
-
-        # Also check if any polygon corner is inside the element's rectangle
-        for x, y in self.polygon:
-            if element.x0 <= x <= element.x1 and element.top <= y <= element.bottom:
-                return True
-
-        # Also check if any polygon edge intersects with any rectangle edge
-        # This is a simplification - for complex cases, we'd need a full polygon-rectangle
-        # intersection algorithm
-
-        # For now, return True if bounding boxes overlap (approximation for polygon-rectangle case)
-        return (
-            self.x0 < element.x1
-            and self.x1 > element.x0
-            and self.top < element.bottom
-            and self.bottom > element.top
-        )
 
     def exclude(self):
         """
@@ -965,7 +855,7 @@ class Region(
         use_color_cycling: bool = False,
         annotate: Optional[List[str]] = None,
         existing: str = "append",
-    ) -> "Region":
+    ) -> None:
         """
         Highlight this region on the page.
 
@@ -977,7 +867,7 @@ class Region(
             existing: How to handle existing highlights ('append' or 'replace').
 
         Returns:
-            Self for method chaining
+            None
         """
         # Access the highlighter service correctly
         highlighter = self.page._highlighter
@@ -1001,7 +891,7 @@ class Region(
             highlight_args["bbox"] = self.bbox
             highlighter.add(**highlight_args)
 
-        return self
+        return None
 
     def save(
         self,
@@ -1022,14 +912,12 @@ class Region(
         Returns:
             Self for method chaining
         """
-        # Apply global options as defaults
-        import natural_pdf
-
+        image_options = _image_options()
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
+            default_resolution = image_options.resolution
+            resolution = float(default_resolution) if default_resolution is not None else 144.0
+        else:
+            resolution = float(resolution)
 
         # Highlight this region if not already highlighted
         self.highlight()
@@ -1061,14 +949,12 @@ class Region(
         Returns:
             Self for method chaining
         """
-        # Apply global options as defaults
-        import natural_pdf
-
+        image_options = _image_options()
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
+            default_resolution = image_options.resolution
+            resolution = float(default_resolution) if default_resolution is not None else 144.0
+        else:
+            resolution = float(resolution)
 
         # Use export() to save the image
         if include_highlights:
@@ -1082,7 +968,7 @@ class Region(
         else:
             # Without highlights, use render() and save manually
             image = self.render(resolution=resolution, crop=crop, **kwargs)
-            if image:
+            if image is not None:
                 image.save(filename)
             else:
                 logger.error(f"Failed to render region image for saving to {filename}")
@@ -1130,14 +1016,12 @@ class Region(
         loose = region.trim(padding=3, threshold=0.98)
         ```
         """
-        # Apply global options as defaults
-        import natural_pdf
-
+        image_options = _image_options()
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
+            default_resolution = image_options.resolution
+            resolution = float(default_resolution) if default_resolution is not None else 144.0
+        else:
+            resolution = float(resolution)
 
         # Pre-shrink the region to avoid box slivers
         work_region = (
@@ -1362,10 +1246,10 @@ class Region(
 
     def region(
         self,
-        left: float = None,
-        top: float = None,
-        right: float = None,
-        bottom: float = None,
+        left: Optional[float] = None,
+        top: Optional[float] = None,
+        right: Optional[float] = None,
+        bottom: Optional[float] = None,
         width: Union[str, float, None] = None,
         height: Optional[float] = None,
         relative: bool = False,
@@ -1401,22 +1285,30 @@ class Region(
         """
         # If relative coordinates requested, convert to absolute
         if relative:
-            if left is not None:
-                left = self.x0 + left
-            if top is not None:
-                top = self.top + top
-            if right is not None:
-                right = self.x0 + right
-            if bottom is not None:
-                bottom = self.top + bottom
+            left = (self.x0 + left) if left is not None else None
+            top = (self.top + top) if top is not None else None
+            right = (self.x0 + right) if right is not None else None
+            bottom = (self.top + bottom) if bottom is not None else None
 
             # For numeric width/height with relative coords, we need to handle the calculation
             # in the context of absolute positioning
 
         # Use the parent page's region method to create the region with all its logic
-        new_region = self.page.region(
-            left=left, top=top, right=right, bottom=bottom, width=width, height=height
-        )
+        region_kwargs: Dict[str, Any] = {}
+        if left is not None:
+            region_kwargs["left"] = left
+        if top is not None:
+            region_kwargs["top"] = top
+        if right is not None:
+            region_kwargs["right"] = right
+        if bottom is not None:
+            region_kwargs["bottom"] = bottom
+        if width is not None:
+            region_kwargs["width"] = width
+        if height is not None:
+            region_kwargs["height"] = height
+
+        new_region = self.page.region(**region_kwargs)
 
         # Clip the new region to this region's bounds
         return new_region.clip(self)
@@ -1590,10 +1482,7 @@ class Region(
         apply_exclusions_flag = kwargs.get("apply_exclusions", apply_exclusions)
         exclusion_regions = []
         if apply_exclusions_flag:
-            # Always call _get_exclusion_regions to get both page and PDF level exclusions
-            all_page_exclusions = self._page._get_exclusion_regions(
-                include_callable=True, debug=debug
-            )
+            all_page_exclusions = self._get_exclusion_regions(include_callable=True, debug=debug)
             overlapping_exclusions = []
             for excl in all_page_exclusions:
                 if get_bbox_overlap(self.bbox, excl.bbox) is not None:
@@ -1671,876 +1560,19 @@ class Region(
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result
 
-    def extract_table(
-        self,
-        method: Optional[str] = None,  # Make method optional
-        table_settings: Optional[dict] = None,  # Use Optional
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,  # Use Optional
-        text_options: Optional[Dict] = None,
-        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
-        # --- NEW: Add tqdm control option --- #
-        show_progress: bool = False,  # Controls progress bar for text method
-        content_filter: Optional[
-            Union[str, Callable[[str], bool], List[str]]
-        ] = None,  # NEW: Content filtering
-        apply_exclusions: bool = True,  # Whether to apply exclusion regions during extraction
-        verticals: Optional[List] = None,  # Explicit vertical lines
-        horizontals: Optional[List] = None,  # Explicit horizontal lines
-    ) -> TableResult:  # Return type allows Optional[str] for cells
-        """
-        Extract a table from this region.
-
-        Args:
-            method: Method to use: 'tatr', 'pdfplumber', 'text', 'stream', 'lattice', or None (auto-detect).
-                    'stream' is an alias for 'pdfplumber' with text-based strategies (equivalent to
-                    setting `vertical_strategy` and `horizontal_strategy` to 'text').
-                    'lattice' is an alias for 'pdfplumber' with line-based strategies (equivalent to
-                    setting `vertical_strategy` and `horizontal_strategy` to 'lines').
-            table_settings: Settings for pdfplumber table extraction (used with 'pdfplumber', 'stream', or 'lattice' methods).
-            use_ocr: Whether to use OCR for text extraction (currently only applicable with 'tatr' method).
-            ocr_config: OCR configuration parameters.
-            text_options: Dictionary of options for the 'text' method, corresponding to arguments
-                          of analyze_text_table_structure (e.g., snap_tolerance, expand_bbox).
-            cell_extraction_func: Optional callable function that takes a cell Region object
-                                  and returns its string content. Overrides default text extraction
-                                  for the 'text' method.
-            show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
-            content_filter: Optional content filter to apply during cell text extraction. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-                Works with all extraction methods by filtering cell content.
-            apply_exclusions: Whether to apply exclusion regions during text extraction (default: True).
-                When True, text within excluded regions (e.g., headers/footers) will not be extracted.
-            verticals: Optional list of explicit vertical lines for table extraction. When provided,
-                       automatically sets vertical_strategy='explicit' and explicit_vertical_lines.
-            horizontals: Optional list of explicit horizontal lines for table extraction. When provided,
-                         automatically sets horizontal_strategy='explicit' and explicit_horizontal_lines.
-
-        Returns:
-            Table data as a list of rows, where each row is a list of cell values (str or None).
-        """
-        # Default settings if none provided
-        if table_settings is None:
-            table_settings = {}
-        if text_options is None:
-            text_options = {}  # Initialize empty dict
-
-        # Handle explicit vertical and horizontal lines
-        if verticals is not None:
-            table_settings["vertical_strategy"] = "explicit"
-            table_settings["explicit_vertical_lines"] = verticals
-        if horizontals is not None:
-            table_settings["horizontal_strategy"] = "explicit"
-            table_settings["explicit_horizontal_lines"] = horizontals
-
-        # Auto-detect method if not specified
-        if method is None:
-            # If this is a TATR-detected region, use TATR method
-            if hasattr(self, "model") and self.model == "tatr" and self.region_type == "table":
-                effective_method = "tatr"
-            else:
-                # Try lattice first, then fall back to stream if no meaningful results
-                logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
-
-                # --- NEW: Prefer already-created table_cell regions if they exist --- #
-                try:
-                    cell_regions_in_table = [
-                        c
-                        for c in self.page.find_all(
-                            "region[type=table_cell]", apply_exclusions=False
-                        )
-                        if self.intersects(c)
-                    ]
-                except Exception as _cells_err:
-                    cell_regions_in_table = []  # Fallback silently
-
-                if cell_regions_in_table:
-                    logger.debug(
-                        f"Region {self.bbox}: Found {len(cell_regions_in_table)} pre-computed table_cell regions – using 'cells' method."
-                    )
-                    return TableResult(
-                        self._extract_table_from_cells(
-                            cell_regions_in_table,
-                            content_filter=content_filter,
-                            apply_exclusions=apply_exclusions,
-                        )
-                    )
-
-                # --------------------------------------------------------------- #
-
-                try:
-                    logger.debug(f"Region {self.bbox}: Trying 'lattice' method first...")
-                    lattice_result = self.extract_table(
-                        "lattice", table_settings=table_settings.copy()
-                    )
-
-                    # Check if lattice found meaningful content
-                    if (
-                        lattice_result
-                        and len(lattice_result) > 0
-                        and any(
-                            any(cell and cell.strip() for cell in row if cell)
-                            for row in lattice_result
-                        )
-                    ):
-                        logger.debug(
-                            f"Region {self.bbox}: 'lattice' method found table with {len(lattice_result)} rows"
-                        )
-                        return lattice_result
-                    else:
-                        logger.debug(
-                            f"Region {self.bbox}: 'lattice' method found no meaningful content"
-                        )
-                except Exception as e:
-                    logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-
-                # Fall back to stream
-                logger.debug(f"Region {self.bbox}: Falling back to 'stream' method...")
-                return self.extract_table("stream", table_settings=table_settings.copy())
-        else:
-            effective_method = method
-
-        # Handle method aliases for pdfplumber
-        if effective_method == "stream":
-            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
-            effective_method = "pdfplumber"
-            # Set default text strategies if not already provided by the user
-            table_settings.setdefault("vertical_strategy", "text")
-            table_settings.setdefault("horizontal_strategy", "text")
-        elif effective_method == "lattice":
-            logger.debug(
-                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
-            )
-            effective_method = "pdfplumber"
-            # Set default line strategies if not already provided by the user
-            table_settings.setdefault("vertical_strategy", "lines")
-            table_settings.setdefault("horizontal_strategy", "lines")
-
-        # -------------------------------------------------------------
-        # Auto-inject tolerances when text-based strategies are requested.
-        # This must happen AFTER alias handling (so strategies are final)
-        # and BEFORE we delegate to _extract_table_* helpers.
-        # -------------------------------------------------------------
-        if "text" in (
-            table_settings.get("vertical_strategy"),
-            table_settings.get("horizontal_strategy"),
-        ):
-            page_cfg = getattr(self.page, "_config", {})
-            # Ensure text_* tolerances passed to pdfplumber
-            if "text_x_tolerance" not in table_settings and "x_tolerance" not in table_settings:
-                if page_cfg.get("x_tolerance") is not None:
-                    table_settings["text_x_tolerance"] = page_cfg["x_tolerance"]
-            if "text_y_tolerance" not in table_settings and "y_tolerance" not in table_settings:
-                if page_cfg.get("y_tolerance") is not None:
-                    table_settings["text_y_tolerance"] = page_cfg["y_tolerance"]
-
-            # Snap / join tolerances (~ line spacing)
-            if "snap_tolerance" not in table_settings and "snap_x_tolerance" not in table_settings:
-                snap = max(1, round((page_cfg.get("y_tolerance", 1)) * 0.9))
-                table_settings["snap_tolerance"] = snap
-            if "join_tolerance" not in table_settings and "join_x_tolerance" not in table_settings:
-                table_settings["join_tolerance"] = table_settings["snap_tolerance"]
-
-        logger.debug(f"Region {self.bbox}: Extracting table using method '{effective_method}'")
-
-        # For stream method with text-based edge detection and explicit vertical lines,
-        # adjust guides to ensure they fall within text bounds for proper intersection
-        if (
-            effective_method == "pdfplumber"
-            and table_settings.get("horizontal_strategy") == "text"
-            and table_settings.get("vertical_strategy") == "explicit"
-            and "explicit_vertical_lines" in table_settings
-        ):
-
-            text_elements = self.find_all("text", apply_exclusions=apply_exclusions)
-            if text_elements:
-                text_bounds = text_elements.merge().bbox
-                text_left = text_bounds[0]
-                text_right = text_bounds[2]
-
-                # Adjust vertical guides to fall within text bounds
-                original_verticals = table_settings["explicit_vertical_lines"]
-                adjusted_verticals = []
-
-                for v in original_verticals:
-                    if v < text_left:
-                        # Guide is left of text bounds, clip to text start
-                        adjusted_verticals.append(text_left)
-                        logger.debug(
-                            f"Region {self.bbox}: Adjusted left guide from {v:.1f} to {text_left:.1f}"
-                        )
-                    elif v > text_right:
-                        # Guide is right of text bounds, clip to text end
-                        adjusted_verticals.append(text_right)
-                        logger.debug(
-                            f"Region {self.bbox}: Adjusted right guide from {v:.1f} to {text_right:.1f}"
-                        )
-                    else:
-                        # Guide is within text bounds, keep as is
-                        adjusted_verticals.append(v)
-
-                # Update table settings with adjusted guides
-                table_settings["explicit_vertical_lines"] = adjusted_verticals
-                logger.debug(
-                    f"Region {self.bbox}: Adjusted {len(original_verticals)} guides for stream extraction. "
-                    f"Text bounds: {text_left:.1f}-{text_right:.1f}"
-                )
-
-        # Use the selected method
-        if effective_method == "tatr":
-            table_rows = self._extract_table_tatr(
-                use_ocr=use_ocr,
-                ocr_config=ocr_config,
-                content_filter=content_filter,
-                apply_exclusions=apply_exclusions,
-            )
-        elif effective_method == "text":
-            current_text_options = text_options.copy()
-            current_text_options["cell_extraction_func"] = cell_extraction_func
-            current_text_options["show_progress"] = show_progress
-            current_text_options["content_filter"] = content_filter
-            current_text_options["apply_exclusions"] = apply_exclusions
-            table_rows = self._extract_table_text(**current_text_options)
-        elif effective_method == "pdfplumber":
-            table_rows = self._extract_table_plumber(
-                table_settings, content_filter=content_filter, apply_exclusions=apply_exclusions
-            )
-        else:
-            raise ValueError(
-                f"Unknown table extraction method: '{method}'. Choose from 'tatr', 'pdfplumber', 'text', 'stream', 'lattice'."
-            )
-
-        return TableResult(table_rows)
-
-    def extract_tables(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-    ) -> List[List[List[str]]]:
-        """
-        Extract all tables from this region using pdfplumber-based methods.
-
-        Note: Only 'pdfplumber', 'stream', and 'lattice' methods are supported for extract_tables.
-        'tatr' and 'text' methods are designed for single table extraction only.
-
-        Args:
-            method: Method to use: 'pdfplumber', 'stream', 'lattice', or None (auto-detect).
-                    'stream' uses text-based strategies, 'lattice' uses line-based strategies.
-            table_settings: Settings for pdfplumber table extraction.
-
-        Returns:
-            List of tables, where each table is a list of rows, and each row is a list of cell values.
-        """
-        if table_settings is None:
-            table_settings = {}
-
-        # Auto-detect method if not specified (try lattice first, then stream)
-        if method is None:
-            logger.debug(f"Region {self.bbox}: Auto-detecting tables extraction method...")
-
-            # Try lattice first
-            try:
-                lattice_settings = table_settings.copy()
-                lattice_settings.setdefault("vertical_strategy", "lines")
-                lattice_settings.setdefault("horizontal_strategy", "lines")
-
-                logger.debug(f"Region {self.bbox}: Trying 'lattice' method first for tables...")
-                lattice_result = self._extract_tables_plumber(lattice_settings)
-
-                # Check if lattice found meaningful tables
-                if (
-                    lattice_result
-                    and len(lattice_result) > 0
-                    and any(
-                        any(
-                            any(cell and cell.strip() for cell in row if cell)
-                            for row in table
-                            if table
-                        )
-                        for table in lattice_result
-                    )
-                ):
-                    logger.debug(
-                        f"Region {self.bbox}: 'lattice' method found {len(lattice_result)} tables"
-                    )
-                    return lattice_result
-                else:
-                    logger.debug(f"Region {self.bbox}: 'lattice' method found no meaningful tables")
-
-            except Exception as e:
-                logger.debug(f"Region {self.bbox}: 'lattice' method failed: {e}")
-
-            # Fall back to stream
-            logger.debug(f"Region {self.bbox}: Falling back to 'stream' method for tables...")
-            stream_settings = table_settings.copy()
-            stream_settings.setdefault("vertical_strategy", "text")
-            stream_settings.setdefault("horizontal_strategy", "text")
-
-            return self._extract_tables_plumber(stream_settings)
-
-        effective_method = method
-
-        # Handle method aliases
-        if effective_method == "stream":
-            logger.debug("Using 'stream' method alias for 'pdfplumber' with text-based strategies.")
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "text")
-            table_settings.setdefault("horizontal_strategy", "text")
-        elif effective_method == "lattice":
-            logger.debug(
-                "Using 'lattice' method alias for 'pdfplumber' with line-based strategies."
-            )
-            effective_method = "pdfplumber"
-            table_settings.setdefault("vertical_strategy", "lines")
-            table_settings.setdefault("horizontal_strategy", "lines")
-
-        # Use the selected method
-        if effective_method == "pdfplumber":
-            return self._extract_tables_plumber(table_settings)
-        else:
-            raise ValueError(
-                f"Unknown tables extraction method: '{method}'. Choose from 'pdfplumber', 'stream', 'lattice'."
-            )
-
-    def _extract_tables_plumber(self, table_settings: dict) -> List[List[List[str]]]:
-        """
-        Extract all tables using pdfplumber's table extraction.
-
-        Args:
-            table_settings: Settings for pdfplumber table extraction
-
-        Returns:
-            List of tables, where each table is a list of rows, and each row is a list of cell values
-        """
-        # Inject global PDF-level text tolerances if not explicitly present
-        pdf_cfg = getattr(self.page, "_config", getattr(self.page._parent, "_config", {}))
-        _uses_text = "text" in (
-            table_settings.get("vertical_strategy"),
-            table_settings.get("horizontal_strategy"),
-        )
-        if (
-            _uses_text
-            and "text_x_tolerance" not in table_settings
-            and "x_tolerance" not in table_settings
-        ):
-            x_tol = pdf_cfg.get("x_tolerance")
-            if x_tol is not None:
-                table_settings.setdefault("text_x_tolerance", x_tol)
-        if (
-            _uses_text
-            and "text_y_tolerance" not in table_settings
-            and "y_tolerance" not in table_settings
-        ):
-            y_tol = pdf_cfg.get("y_tolerance")
-            if y_tol is not None:
-                table_settings.setdefault("text_y_tolerance", y_tol)
-
-        if (
-            _uses_text
-            and "snap_tolerance" not in table_settings
-            and "snap_x_tolerance" not in table_settings
-        ):
-            snap = max(1, round((pdf_cfg.get("y_tolerance", 1)) * 0.9))
-            table_settings.setdefault("snap_tolerance", snap)
-        if (
-            _uses_text
-            and "join_tolerance" not in table_settings
-            and "join_x_tolerance" not in table_settings
-        ):
-            join = table_settings.get("snap_tolerance", 1)
-            table_settings.setdefault("join_tolerance", join)
-            table_settings.setdefault("join_x_tolerance", join)
-            table_settings.setdefault("join_y_tolerance", join)
-
-        # -------------------------------------------------------------
-        # Apply char-level exclusion filtering, if any exclusions are
-        # defined on the parent Page.  We create a lightweight
-        # pdfplumber.Page copy whose .chars list omits characters that
-        # fall inside any exclusion Region.  Other object types are
-        # left untouched for now ("chars-only" strategy).
-        # -------------------------------------------------------------
-        base_plumber_page = self.page._page
-
-        if getattr(self.page, "_exclusions", None):
-            # Resolve exclusion Regions (callables already evaluated)
-            exclusion_regions = self.page._get_exclusion_regions(include_callable=True)
-
-            def _keep_char(obj):
-                """Return True if pdfplumber obj should be kept."""
-                if obj.get("object_type") != "char":
-                    # Keep non-char objects unchanged – lattice grids etc.
-                    return True
-
-                # Compute character centre point
-                cx = (obj["x0"] + obj["x1"]) / 2.0
-                cy = (obj["top"] + obj["bottom"]) / 2.0
-
-                # Reject if the centre lies inside ANY exclusion Region
-                for reg in exclusion_regions:
-                    if reg.x0 <= cx <= reg.x1 and reg.top <= cy <= reg.bottom:
-                        return False
-                return True
-
-            try:
-                filtered_page = base_plumber_page.filter(_keep_char)
-            except Exception as _filter_err:
-                # Fallback – if filtering fails, log and proceed unfiltered
-                logger.warning(
-                    f"Region {self.bbox}: Failed to filter pdfplumber chars for exclusions: {_filter_err}"
-                )
-                filtered_page = base_plumber_page
-        else:
-            filtered_page = base_plumber_page
-
-        # Ensure bbox is within pdfplumber page bounds
-        page_bbox = filtered_page.bbox
-        clipped_bbox = (
-            max(self.bbox[0], page_bbox[0]),  # x0
-            max(self.bbox[1], page_bbox[1]),  # y0
-            min(self.bbox[2], page_bbox[2]),  # x1
-            min(self.bbox[3], page_bbox[3]),  # y1
-        )
-
-        # Only crop if the clipped bbox is valid (has positive width and height)
-        if clipped_bbox[2] > clipped_bbox[0] and clipped_bbox[3] > clipped_bbox[1]:
-            cropped = filtered_page.crop(clipped_bbox)
-        else:
-            # If the region is completely outside the page bounds, return empty list
-            return []
-
-        # Extract all tables from the cropped area
-        tables = cropped.extract_tables(table_settings)
-
-        # Apply RTL text processing to all tables
-        if tables:
-            processed_tables = []
-            for table in tables:
-                processed_table = []
-                for row in table:
-                    processed_row = []
-                    for cell in row:
-                        if cell is not None:
-                            # Apply RTL text processing to each cell
-                            rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
-                            processed_row.append(rtl_processed_cell)
-                        else:
-                            processed_row.append(cell)
-                    processed_table.append(processed_row)
-                processed_tables.append(processed_table)
-            return processed_tables
-
-        # Return empty list if no tables found
-        return []
-
-    def _extract_table_plumber(
-        self, table_settings: dict, content_filter=None, apply_exclusions=True
-    ) -> List[List[str]]:
-        """
-        Extract table using pdfplumber's table extraction.
-        This method extracts the largest table within the region.
-
-        Args:
-            table_settings: Settings for pdfplumber table extraction
-            content_filter: Optional content filter to apply to cell values
-
-        Returns:
-            Table data as a list of rows, where each row is a list of cell values
-        """
-        # Inject global PDF-level text tolerances if not explicitly present
-        pdf_cfg = getattr(self.page, "_config", getattr(self.page._parent, "_config", {}))
-        _uses_text = "text" in (
-            table_settings.get("vertical_strategy"),
-            table_settings.get("horizontal_strategy"),
-        )
-        if (
-            _uses_text
-            and "text_x_tolerance" not in table_settings
-            and "x_tolerance" not in table_settings
-        ):
-            x_tol = pdf_cfg.get("x_tolerance")
-            if x_tol is not None:
-                table_settings.setdefault("text_x_tolerance", x_tol)
-        if (
-            _uses_text
-            and "text_y_tolerance" not in table_settings
-            and "y_tolerance" not in table_settings
-        ):
-            y_tol = pdf_cfg.get("y_tolerance")
-            if y_tol is not None:
-                table_settings.setdefault("text_y_tolerance", y_tol)
-
-        # -------------------------------------------------------------
-        # Apply char-level exclusion filtering (chars only) just like in
-        # _extract_tables_plumber so header/footer text does not appear
-        # in extracted tables.
-        # -------------------------------------------------------------
-        base_plumber_page = self.page._page
-
-        if apply_exclusions and getattr(self.page, "_exclusions", None):
-            exclusion_regions = self.page._get_exclusion_regions(include_callable=True)
-
-            def _keep_char(obj):
-                if obj.get("object_type") != "char":
-                    return True
-                cx = (obj["x0"] + obj["x1"]) / 2.0
-                cy = (obj["top"] + obj["bottom"]) / 2.0
-                for reg in exclusion_regions:
-                    if reg.x0 <= cx <= reg.x1 and reg.top <= cy <= reg.bottom:
-                        return False
-                return True
-
-            try:
-                filtered_page = base_plumber_page.filter(_keep_char)
-            except Exception as _filter_err:
-                logger.warning(
-                    f"Region {self.bbox}: Failed to filter pdfplumber chars for exclusions (single table): {_filter_err}"
-                )
-                filtered_page = base_plumber_page
-        else:
-            filtered_page = base_plumber_page
-
-        # Now crop the (possibly filtered) page to the region bbox
-        # Ensure bbox is within pdfplumber page bounds
-        page_bbox = filtered_page.bbox
-        clipped_bbox = (
-            max(self.bbox[0], page_bbox[0]),  # x0
-            max(self.bbox[1], page_bbox[1]),  # y0
-            min(self.bbox[2], page_bbox[2]),  # x1
-            min(self.bbox[3], page_bbox[3]),  # y1
-        )
-
-        # Only crop if the clipped bbox is valid (has positive width and height)
-        if clipped_bbox[2] > clipped_bbox[0] and clipped_bbox[3] > clipped_bbox[1]:
-            cropped = filtered_page.crop(clipped_bbox)
-        else:
-            # If the region is completely outside the page bounds, return empty table
-            return []
-
-        # Extract the single largest table from the cropped area
-        table = cropped.extract_table(table_settings)
-
-        # Return the table or an empty list if none found
-        if table:
-            # Apply RTL text processing and content filtering if provided
-            processed_table = []
-            for row in table:
-                processed_row = []
-                for cell in row:
-                    if cell is not None:
-                        # Apply RTL text processing first
-                        rtl_processed_cell = self._apply_rtl_processing_to_text(cell)
-
-                        # Then apply content filter if provided
-                        if content_filter is not None:
-                            filtered_cell = self._apply_content_filter_to_text(
-                                rtl_processed_cell, content_filter
-                            )
-                            processed_row.append(filtered_cell)
-                        else:
-                            processed_row.append(rtl_processed_cell)
-                    else:
-                        processed_row.append(cell)
-                processed_table.append(processed_row)
-            return processed_table
-        return []
-
-    def _extract_table_tatr(
-        self, use_ocr=False, ocr_config=None, content_filter=None, apply_exclusions=True
-    ) -> List[List[str]]:
-        """
-        Extract table using TATR structure detection.
-
-        Args:
-            use_ocr: Whether to apply OCR to each cell for better text extraction
-            ocr_config: Optional OCR configuration parameters
-            content_filter: Optional content filter to apply to cell values
-
-        Returns:
-            Table data as a list of rows, where each row is a list of cell values
-        """
-        # Find all rows and headers in this table
-        rows = self.page.find_all("region[type=table-row][model=tatr]")
-        headers = self.page.find_all("region[type=table-column-header][model=tatr]")
-        columns = self.page.find_all("region[type=table-column][model=tatr]")
-
-        # Filter to only include rows/headers/columns that overlap with this table region
-        def is_in_table(region):
-            # Check for overlap - simplifying to center point for now
-            region_center_x = (region.x0 + region.x1) / 2
-            region_center_y = (region.top + region.bottom) / 2
-            return (
-                self.x0 <= region_center_x <= self.x1 and self.top <= region_center_y <= self.bottom
-            )
-
-        rows = [row for row in rows if is_in_table(row)]
-        headers = [header for header in headers if is_in_table(header)]
-        columns = [column for column in columns if is_in_table(column)]
-
-        # Sort rows by vertical position (top to bottom)
-        rows.sort(key=lambda r: r.top)
-
-        # Sort columns by horizontal position (left to right)
-        columns.sort(key=lambda c: c.x0)
-
-        # Create table data structure
-        table_data = []
-
-        # Prepare OCR config if needed
-        if use_ocr:
-            # Default OCR config focuses on small text with low confidence
-            default_ocr_config = {
-                "enabled": True,
-                "min_confidence": 0.1,  # Lower than default to catch more text
-                "detection_params": {
-                    "text_threshold": 0.1,  # Lower threshold for low-contrast text
-                    "link_threshold": 0.1,  # Lower threshold for connecting text components
-                },
-            }
-
-            # Merge with provided config if any
-            if ocr_config:
-                if isinstance(ocr_config, dict):
-                    # Update default config with provided values
-                    for key, value in ocr_config.items():
-                        if (
-                            isinstance(value, dict)
-                            and key in default_ocr_config
-                            and isinstance(default_ocr_config[key], dict)
-                        ):
-                            # Merge nested dicts
-                            default_ocr_config[key].update(value)
-                        else:
-                            # Replace value
-                            default_ocr_config[key] = value
-                else:
-                    # Not a dict, use as is
-                    default_ocr_config = ocr_config
-
-            # Use the merged config
-            ocr_config = default_ocr_config
-
-        # Add header row if headers were detected
-        if headers:
-            header_texts = []
-            for header in headers:
-                if use_ocr:
-                    # Try OCR for better text extraction
-                    ocr_elements = header.apply_ocr(**ocr_config)
-                    if ocr_elements:
-                        ocr_text = " ".join(e.text for e in ocr_elements).strip()
-                        if ocr_text:
-                            header_texts.append(ocr_text)
-                            continue
-
-                # Fallback to normal extraction
-                header_text = header.extract_text(apply_exclusions=apply_exclusions).strip()
-                if content_filter is not None:
-                    header_text = self._apply_content_filter_to_text(header_text, content_filter)
-                header_texts.append(header_text)
-            table_data.append(header_texts)
-
-        # Process rows
-        for row in rows:
-            row_cells = []
-
-            # If we have columns, use them to extract cells
-            if columns:
-                for column in columns:
-                    # Create a cell region at the intersection of row and column
-                    cell_bbox = (column.x0, row.top, column.x1, row.bottom)
-
-                    # Create a region for this cell
-                    from natural_pdf.elements.region import (  # Import here to avoid circular imports
-                        Region,
-                    )
-
-                    cell_region = Region(self.page, cell_bbox)
-
-                    # Extract text from the cell
-                    if use_ocr:
-                        # Apply OCR to the cell
-                        ocr_elements = cell_region.apply_ocr(**ocr_config)
-                        if ocr_elements:
-                            # Get text from OCR elements
-                            ocr_text = " ".join(e.text for e in ocr_elements).strip()
-                            if ocr_text:
-                                row_cells.append(ocr_text)
-                                continue
-
-                    # Fallback to normal extraction
-                    cell_text = cell_region.extract_text(apply_exclusions=apply_exclusions).strip()
-                    if content_filter is not None:
-                        cell_text = self._apply_content_filter_to_text(cell_text, content_filter)
-                    row_cells.append(cell_text)
-            else:
-                # No column information, just extract the whole row text
-                if use_ocr:
-                    # Try OCR on the whole row
-                    ocr_elements = row.apply_ocr(**ocr_config)
-                    if ocr_elements:
-                        ocr_text = " ".join(e.text for e in ocr_elements).strip()
-                        if ocr_text:
-                            row_cells.append(ocr_text)
-                            continue
-
-                # Fallback to normal extraction
-                row_text = row.extract_text(apply_exclusions=apply_exclusions).strip()
-                if content_filter is not None:
-                    row_text = self._apply_content_filter_to_text(row_text, content_filter)
-                row_cells.append(row_text)
-
-            table_data.append(row_cells)
-
-        return table_data
-
-    def _extract_table_text(self, **text_options) -> List[List[Optional[str]]]:
-        """
-        Extracts table content based on text alignment analysis.
-
-        Args:
-            **text_options: Options passed to analyze_text_table_structure,
-                          plus optional 'cell_extraction_func', 'coordinate_grouping_tolerance',
-                          'show_progress', and 'content_filter'.
-
-        Returns:
-            Table data as list of lists of strings (or None for empty cells).
-        """
-        cell_extraction_func = text_options.pop("cell_extraction_func", None)
-        # --- Get show_progress option --- #
-        show_progress = text_options.pop("show_progress", False)
-        # --- Get content_filter option --- #
-        content_filter = text_options.pop("content_filter", None)
-        # --- Get apply_exclusions option --- #
-        apply_exclusions = text_options.pop("apply_exclusions", True)
-
-        # Analyze structure first (or use cached results)
-        if "text_table_structure" in self.analyses:
-            analysis_results = self.analyses["text_table_structure"]
-            logger.debug("Using cached text table structure analysis results.")
-        else:
-            analysis_results = self.analyze_text_table_structure(**text_options)
-
-        if analysis_results is None or not analysis_results.get("cells"):
-            logger.warning(f"Region {self.bbox}: No cells found using 'text' method.")
-            return []
-
-        cell_dicts = analysis_results["cells"]
-
-        # --- Grid Reconstruction Logic --- #
-        if not cell_dicts:
-            return []
-
-        # 1. Get unique sorted top and left coordinates (cell boundaries)
-        coord_tolerance = text_options.get("coordinate_grouping_tolerance", 1)
-        tops = sorted(
-            list(set(round(c["top"] / coord_tolerance) * coord_tolerance for c in cell_dicts))
-        )
-        lefts = sorted(
-            list(set(round(c["left"] / coord_tolerance) * coord_tolerance for c in cell_dicts))
-        )
-
-        # Refine boundaries (cluster_coords helper remains the same)
-        def cluster_coords(coords):
-            if not coords:
-                return []
-            clustered = []
-            current_cluster = [coords[0]]
-            for c in coords[1:]:
-                if abs(c - current_cluster[-1]) <= coord_tolerance:
-                    current_cluster.append(c)
-                else:
-                    clustered.append(min(current_cluster))
-                    current_cluster = [c]
-            clustered.append(min(current_cluster))
-            return clustered
-
-        unique_tops = cluster_coords(tops)
-        unique_lefts = cluster_coords(lefts)
-
-        # Determine iterable for tqdm
-        cell_iterator = cell_dicts
-        if show_progress:
-            # Only wrap if progress should be shown
-            cell_iterator = tqdm(
-                cell_dicts,
-                desc=f"Extracting text from {len(cell_dicts)} cells (text method)",
-                unit="cell",
-                leave=False,  # Optional: Keep bar after completion
-            )
-        # --- End tqdm Setup --- #
-
-        # 2. Create a lookup map for cell text: {(rounded_top, rounded_left): cell_text}
-        cell_text_map = {}
-        # --- Use the potentially wrapped iterator --- #
-        for cell_data in cell_iterator:
-            try:
-                cell_region = self.page.region(**cell_data)
-                cell_value = None  # Initialize
-                if callable(cell_extraction_func):
-                    try:
-                        cell_value = cell_extraction_func(cell_region)
-                        if not isinstance(cell_value, (str, type(None))):
-                            logger.warning(
-                                f"Custom cell_extraction_func returned non-string/None type ({type(cell_value)}) for cell {cell_data}. Treating as None."
-                            )
-                            cell_value = None
-                    except Exception as func_err:
-                        logger.error(
-                            f"Error executing custom cell_extraction_func for cell {cell_data}: {func_err}",
-                            exc_info=True,
-                        )
-                        cell_value = None
-                else:
-                    cell_value = cell_region.extract_text(
-                        layout=False,
-                        apply_exclusions=apply_exclusions,
-                        content_filter=content_filter,
-                    ).strip()
-
-                rounded_top = round(cell_data["top"] / coord_tolerance) * coord_tolerance
-                rounded_left = round(cell_data["left"] / coord_tolerance) * coord_tolerance
-                cell_text_map[(rounded_top, rounded_left)] = cell_value
-            except Exception as e:
-                logger.warning(f"Could not process cell {cell_data} for text extraction: {e}")
-
-        # 3. Build the final list-of-lists table (loop remains the same)
-        final_table = []
-        for row_top in unique_tops:
-            row_data = []
-            for col_left in unique_lefts:
-                best_match_key = None
-                min_dist_sq = float("inf")
-                for map_top, map_left in cell_text_map.keys():
-                    if (
-                        abs(map_top - row_top) <= coord_tolerance
-                        and abs(map_left - col_left) <= coord_tolerance
-                    ):
-                        dist_sq = (map_top - row_top) ** 2 + (map_left - col_left) ** 2
-                        if dist_sq < min_dist_sq:
-                            min_dist_sq = dist_sq
-                            best_match_key = (map_top, map_left)
-                cell_value = cell_text_map.get(best_match_key)
-                row_data.append(cell_value)
-            final_table.append(row_data)
-
-        return final_table
-
-    # --- END MODIFIED METHOD --- #
-
     def find(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
     ) -> Optional["Element"]:
         """
         Find the first element in this region matching the selector OR text content.
@@ -2562,6 +1594,7 @@ class Region(
             auto_text_tolerance: Optional overrides for automatic tolerance calculation.
             reading_order: Whether to return the first match according to natural reading order
                 (default: True). When False the raw selector ordering is preserved.
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
         Returns:
             First matching element or None.
         """
@@ -2576,6 +1609,7 @@ class Region(
             text_tolerance=text_tolerance,
             auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
+            near_threshold=near_threshold,
         )
         return elements.first if elements else None
 
@@ -2584,13 +1618,14 @@ class Region(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = "full",
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
     ) -> "ElementCollection":
         """
         Find all elements in this region matching the selector OR text content.
@@ -2611,75 +1646,68 @@ class Region(
                 temporarily while evaluating the selector.
             auto_text_tolerance: Optional overrides for automatic tolerance calculation.
             reading_order: Whether to sort matches according to natural reading order (default: True).
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
         Returns:
             ElementCollection with matching elements.
         """
         from natural_pdf.elements.element_collection import ElementCollection
 
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        # Validate overlap parameter
-        if overlap not in ["full", "partial", "center"]:
+        overlap_mode = (overlap or "full").lower()
+        if overlap_mode not in {"full", "partial", "center"}:
             raise ValueError(
-                f"Invalid overlap value: {overlap}. Must be 'full', 'partial', or 'center'"
+                f"Invalid overlap value: {overlap_mode}. Must be 'full', 'partial', or 'center'"
             )
 
-        # Construct selector if 'text' is provided
-        effective_selector = ""
-        if text is not None:
-            effective_selector = build_text_contains_selector(text)
-            logger.debug(
-                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
-            )
-        elif selector is not None:
-            effective_selector = selector
-        else:
-            raise ValueError("Internal error: No selector or text provided.")
+        page_results = self.page.find_all(
+            selector=selector,
+            text=text,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+        )
 
-        # Normal case: Region is on a single page
-        try:
-            # Get all potentially relevant elements from the page
-            # Let the page handle its exclusion logic if needed
-            potential_elements = self.page.find_all(
-                selector=effective_selector,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-            )
-
-            # Filter these elements based on the specified containment method
-            region_bbox = self.bbox
-            matching_elements = []
-
-            if overlap == "full":  # Fully inside (strict)
-                matching_elements = [
-                    el
-                    for el in potential_elements
-                    if el.x0 >= region_bbox[0]
-                    and el.top >= region_bbox[1]
-                    and el.x1 <= region_bbox[2]
-                    and el.bottom <= region_bbox[3]
-                ]
-            elif overlap == "partial":  # Any overlap
-                matching_elements = [el for el in potential_elements if self.intersects(el)]
-            elif overlap == "center":  # Center point inside
-                matching_elements = [
-                    el for el in potential_elements if self.is_element_center_inside(el)
-                ]
-
-            return ElementCollection(matching_elements)
-
-        except Exception as e:
-            logger.error(f"Error during find_all in region: {e}", exc_info=True)
+        if not page_results:
             return ElementCollection([])
 
-    def apply_ocr(self, replace=True, **ocr_params) -> "Region":
+        filtered = self._filter_elements_by_overlap_mode(
+            page_results.elements,
+            overlap_mode,
+        )
+
+        unique: List["Element"] = []
+        seen_ids: set[int] = set()
+        for element in filtered:
+            marker = id(element)
+            if marker in seen_ids:
+                continue
+            seen_ids.add(marker)
+            unique.append(element)
+
+        return ElementCollection(unique)
+
+    def _filter_elements_by_overlap_mode(
+        self,
+        elements: Sequence["Element"],
+        overlap_mode: str,
+    ) -> List["Element"]:
+        """
+        Apply region overlap filtering while preserving the upstream ordering.
+        """
+        if not elements:
+            return []
+
+        if overlap_mode == "full":
+            return [el for el in elements if self.contains(el)]
+        if overlap_mode == "partial":
+            return [el for el in elements if self.intersects(el)]
+        # overlap_mode == "center"
+        return [el for el in elements if self.is_element_center_inside(el)]
+
+    def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
 
@@ -2711,9 +1739,11 @@ class Region(
         -------
             Self – for chaining.
         """
-        # --- Custom OCR function path --------------------------------------------------
-        custom_func = ocr_params.pop("function", None) or ocr_params.pop("ocr_function", None)
-        if callable(custom_func):
+        custom_func_candidate = ocr_params.pop("function", None) or ocr_params.pop(
+            "ocr_function", None
+        )
+        if callable(custom_func_candidate):
+            custom_func = cast(CustomOCRCallable, custom_func_candidate)
             # Delegate to the specialised helper while preserving key kwargs
             return self.apply_custom_ocr(
                 ocr_function=custom_func,
@@ -2723,84 +1753,32 @@ class Region(
                 add_to_page=ocr_params.pop("add_to_page", True),
             )
 
-        # --- Original built-in OCR engine path (unchanged except docstring) ------------
         # Ensure OCRManager is available
         if not hasattr(self.page._parent, "_ocr_manager") or self.page._parent._ocr_manager is None:
             logger.error("OCRManager not available on parent PDF. Cannot apply OCR to region.")
             return self
 
-        # If replace is True, find and remove existing OCR elements in this region
         if replace:
-            logger.info(
-                f"Region {self.bbox}: Removing existing OCR elements before applying new OCR."
-            )
-
-            # --- Robust removal: iterate through all OCR elements on the page and
-            #     remove those that overlap this region. This avoids reliance on
-            #     identity‐based look-ups that can break if the ElementManager
-            #     rebuilt its internal lists.
-
-            removed_count = 0
-
-            # Helper to remove a single element safely
-            def _safe_remove(elem):
-                nonlocal removed_count
-                success = False
-                if hasattr(elem, "page") and hasattr(elem.page, "_element_mgr"):
-                    etype = getattr(elem, "object_type", "word")
-                    if etype == "word":
-                        etype_key = "words"
-                    elif etype == "char":
-                        etype_key = "chars"
-                    else:
-                        etype_key = etype + "s" if not etype.endswith("s") else etype
-                    try:
-                        success = elem.page._element_mgr.remove_element(elem, etype_key)
-                    except Exception:
-                        success = False
-                if success:
-                    removed_count += 1
-
-            # Remove OCR WORD elements overlapping region
-            for word in list(self.page._element_mgr.words):
-                if getattr(word, "source", None) == "ocr" and self.intersects(word):
-                    _safe_remove(word)
-
-            # Remove OCR CHAR dicts overlapping region
-            for char in list(self.page._element_mgr.chars):
-                # char can be dict or TextElement; normalise
-                char_src = (
-                    char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
+            removed = self.remove_ocr_elements()
+            if removed:
+                logger.info(
+                    f"Region {self.bbox}: Removed {removed} existing OCR elements before re-applying OCR."
                 )
-                if char_src == "ocr":
-                    # Rough bbox for dicts
-                    if isinstance(char, dict):
-                        cx0, ctop, cx1, cbottom = (
-                            char.get("x0", 0),
-                            char.get("top", 0),
-                            char.get("x1", 0),
-                            char.get("bottom", 0),
-                        )
-                    else:
-                        cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
-                    # Quick overlap check
-                    if not (
-                        cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom
-                    ):
-                        _safe_remove(char)
-
-            logger.info(
-                f"Region {self.bbox}: Removed {removed_count} existing OCR elements (words & chars) before re-applying OCR."
-            )
+            else:
+                logger.debug(
+                    f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
+                )
 
         ocr_mgr = self.page._parent._ocr_manager
 
         # Determine rendering resolution from parameters
         final_resolution = ocr_params.get("resolution")
-        if final_resolution is None and hasattr(self.page, "_parent") and self.page._parent:
-            final_resolution = getattr(self.page._parent, "_config", {}).get("resolution", 150)
-        elif final_resolution is None:
-            final_resolution = 150
+        if final_resolution is None:
+            parent_pdf = getattr(self.page, "_parent", None)
+            if parent_pdf is not None:
+                final_resolution = parent_pdf._config.get("resolution", 150)
+            else:
+                final_resolution = 150
         logger.debug(
             f"Region {self.bbox}: Applying OCR with resolution {final_resolution} DPI and params: {ocr_params}"
         )
@@ -2842,10 +1820,30 @@ class Region(
         scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
         scale_y = self.height / region_image.height if region_image.height > 0 else 1.0
         logger.debug(f"Region OCR scaling factors (PDF/Img): x={scale_x:.2f}, y={scale_y:.2f}")
-        created_elements = []
-        for result in results:
+        created_elements: List[TextElement] = []
+
+        valid_results: List[Mapping[str, Any]] = []
+        for entry in results:
+            if isinstance(entry, MappingABC):
+                valid_results.append(entry)
+            else:
+                logger.warning("Skipping OCR result with unexpected type: %s", type(entry))
+
+        for result in valid_results:
             try:
-                img_x0, img_top, img_x1, img_bottom = map(float, result["bbox"])
+                bbox_data = result.get("bbox")
+                if not isinstance(bbox_data, SequenceABC):
+                    logger.warning("OCR result missing sequence bbox: %s", result)
+                    continue
+                if len(bbox_data) < 4:
+                    logger.warning("OCR result bbox has insufficient coordinates: %s", bbox_data)
+                    continue
+                img_x0, img_top, img_x1, img_bottom = (
+                    float(bbox_data[0]),
+                    float(bbox_data[1]),
+                    float(bbox_data[2]),
+                    float(bbox_data[3]),
+                )
                 pdf_height = (img_bottom - img_top) * scale_y
                 page_x0 = self.x0 + (img_x0 * scale_x)
                 page_top = self.top + (img_top * scale_y)
@@ -2858,7 +1856,10 @@ class Region(
                 except (TypeError, ValueError):
                     confidence_val = None
 
-                text_val = result.get("text")  # May legitimately be None in detect_only mode
+                raw_text = result.get("text")  # May legitimately be None in detect_only mode
+                text_val = (
+                    raw_text if isinstance(raw_text, str) or raw_text is None else str(raw_text)
+                )
 
                 element_data = {
                     "text": text_val,
@@ -2883,12 +1884,10 @@ class Region(
                 ocr_char_dict["object_type"] = "char"
                 ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
                 element_data["_char_dicts"] = [ocr_char_dict]
-                from natural_pdf.elements.text import TextElement
-
                 elem = TextElement(element_data, self.page)
                 created_elements.append(elem)
-                self.page._element_mgr.add_element(elem, element_type="words")
-                self.page._element_mgr.add_element(ocr_char_dict, element_type="chars")
+                self.page.add_element(elem, element_type="words")
+                self.page.add_element(ocr_char_dict, element_type="chars")
             except Exception as e:
                 logger.error(
                     f"Failed to convert region OCR result to element: {result}. Error: {e}",
@@ -2899,7 +1898,7 @@ class Region(
 
     def apply_custom_ocr(
         self,
-        ocr_function: Callable[["Region"], Optional[str]],
+        ocr_function: CustomOCRCallable,
         source_label: str = "custom-ocr",
         replace: bool = True,
         confidence: Optional[float] = None,
@@ -2955,25 +1954,17 @@ class Region(
             # Helper to remove a single element safely
             def _safe_remove(elem):
                 nonlocal removed_count
-                success = False
-                if hasattr(elem, "page") and hasattr(elem.page, "_element_mgr"):
-                    etype = getattr(elem, "object_type", "word")
-                    if etype == "word":
-                        etype_key = "words"
-                    elif etype == "char":
-                        etype_key = "chars"
-                    else:
-                        etype_key = etype + "s" if not etype.endswith("s") else etype
-                    try:
-                        success = elem.page._element_mgr.remove_element(elem, etype_key)
-                    except Exception:
-                        success = False
+                page_obj = getattr(elem, "page", None)
+                if page_obj is None or not hasattr(page_obj, "remove_element"):
+                    return
+                etype = getattr(elem, "object_type", None)
+                success = bool(page_obj.remove_element(elem, element_type=etype))
                 if success:
                     removed_count += 1
 
             # Remove ALL OCR elements overlapping this region
             # Remove elements with source=="ocr" (built-in OCR) or matching the source_label (previous custom OCR)
-            for word in list(self.page._element_mgr.words):
+            for word in list(self.page.get_elements_by_type("words")):
                 word_source = getattr(word, "source", "")
                 # Match built-in OCR behavior: remove elements with source "ocr" exactly
                 # Also remove elements with the same source_label to avoid duplicates
@@ -2981,7 +1972,7 @@ class Region(
                     _safe_remove(word)
 
             # Also remove char dicts if needed (matching built-in OCR)
-            for char in list(self.page._element_mgr.chars):
+            for char in list(self.page.get_elements_by_type("chars")):
                 # char can be dict or TextElement; normalize
                 char_src = (
                     char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
@@ -3122,10 +2113,11 @@ class Region(
 
     def get_sections(
         self,
-        start_elements=None,
-        end_elements=None,
-        include_boundaries="both",
-        orientation="vertical",
+        start_elements: Union[str, Sequence["Element"], "ElementCollection", None] = None,
+        end_elements: Union[str, Sequence["Element"], "ElementCollection", None] = None,
+        include_boundaries: str = "both",
+        orientation: str = "vertical",
+        **kwargs: Any,
     ) -> "ElementCollection[Region]":
         """
         Get sections within this region based on start/end elements.
@@ -3142,13 +2134,29 @@ class Region(
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.utils.sections import extract_sections_from_region
 
+        def _normalize_section_boundary(
+            arg: Union[str, Sequence["Element"], "ElementCollection", None]
+        ) -> Union[str, List["Element"], None]:
+            if arg is None or isinstance(arg, str):
+                return arg
+
+            if isinstance(arg, ElementCollection):
+                return list(arg)
+
+            if isinstance(arg, Sequence):
+                return list(arg)
+
+            # Fallback: wrap single element-like object
+            return [arg]  # type: ignore[list-item]
+
         # Use centralized section extraction logic
         sections = extract_sections_from_region(
             region=self,
-            start_elements=start_elements,
-            end_elements=end_elements,
+            start_elements=_normalize_section_boundary(start_elements),
+            end_elements=_normalize_section_boundary(end_elements),
             include_boundaries=include_boundaries,
             orientation=orientation,
+            **kwargs,
         )
 
         return ElementCollection(sections)
@@ -3285,80 +2293,30 @@ class Region(
 
         return self  # Return self for chaining
 
-    def ask(
-        self,
-        question: Union[str, List[str], Tuple[str, ...]],
-        min_confidence: float = 0.1,
-        model: Optional[str] = None,
-        debug: bool = False,
-        **kwargs,
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """
-        Ask a question about the region content using document QA.
+    @staticmethod
+    def _normalize_qa_output(result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        """Convert QA engine results into plain dictionaries for typing compliance."""
+        from natural_pdf.qa.qa_result import QAResult
 
-        This method uses a document question answering model to extract answers from the region content.
-        It leverages both textual content and layout information for better understanding.
+        if isinstance(result, QAResult):
+            return dict(result)
 
-        Args:
-            question: The question to ask about the region content
-            min_confidence: Minimum confidence threshold for answers (0.0-1.0)
-            model: Optional model name to use for QA (if None, uses default model)
-            **kwargs: Additional parameters to pass to the QA engine
+        if isinstance(result, list):
+            normalized: List[Dict[str, Any]] = []
+            for item in result:
+                if isinstance(item, QAResult):
+                    normalized.append(dict(item))
+                elif isinstance(item, MappingABC):
+                    normalized.append(dict(item))
+                else:
+                    normalized.append({"value": item})
+            return normalized
 
-        Returns:
-            Dictionary with answer details: {
-                "answer": extracted text,
-                "confidence": confidence score,
-                "found": whether an answer was found,
-                "page_num": page number,
-                "region": reference to this region,
-                "source_elements": list of elements that contain the answer (if found)
-            }
-        """
-        try:
-            from natural_pdf.qa.document_qa import get_qa_engine
-        except ImportError:
-            logger.error(
-                "Question answering requires optional dependencies. Install with `pip install natural-pdf[ai]`"
-            )
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.page.number,
-                "source_elements": [],
-                "region": self,
-            }
+        if isinstance(result, MappingABC):
+            return dict(result)
 
-        # Get or initialize QA engine with specified model
-        try:
-            qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
-        except Exception as e:
-            logger.error(f"Failed to initialize QA engine (model: {model}): {e}", exc_info=True)
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.page.number,
-                "source_elements": [],
-                "region": self,
-            }
-
-        # Ask the question using the QA engine
-        try:
-            return qa_engine.ask_pdf_region(
-                self, question, min_confidence=min_confidence, debug=debug, **kwargs
-            )
-        except Exception as e:
-            logger.error(f"Error during qa_engine.ask_pdf_region: {e}", exc_info=True)
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.page.number,
-                "source_elements": [],
-                "region": self,
-            }
+        logger.warning("Unexpected QA result type %s; wrapping in dictionary", type(result))
+        return {"value": result}
 
     def add_child(self, child):
         """
@@ -3469,16 +2427,16 @@ class Region(
         from natural_pdf.elements.element_collection import ElementCollection
 
         # Create a list starting with self
-        elements = [self]
+        elements: List[Union[Element, "Region"]] = [self]
 
         # Add the other element(s)
         if isinstance(other, (Element, Region)):
             elements.append(other)
         elif isinstance(other, ElementCollection):
-            elements.extend(other)
+            elements.extend(cast(Iterable[Union[Element, "Region"]], list(other)))
         elif hasattr(other, "__iter__") and not isinstance(other, (str, bytes)):
             # Handle other iterables but exclude strings
-            elements.extend(other)
+            elements.extend(cast(Iterable[Union[Element, "Region"]], list(other)))
         else:
             raise TypeError(f"Cannot add Region with {type(other)}")
 
@@ -3523,11 +2481,9 @@ class Region(
         override simply ensures the search is scoped to the region.
         """
 
-        return TextMixin.update_text(
-            self, transform, selector=selector, apply_exclusions=apply_exclusions
-        )
+        TextMixin.update_text(self, transform, selector=selector, apply_exclusions=apply_exclusions)
+        return self
 
-    # --- Classification Mixin Implementation --- #
     def _get_classification_manager(self) -> "ClassificationManager":
         if (
             not hasattr(self, "page")
@@ -3584,9 +2540,6 @@ class Region(
             self.metadata = {}
         return self.metadata
 
-    # --- End Classification Mixin Implementation --- #
-
-    # --- NEW METHOD: analyze_text_table_structure ---
     def analyze_text_table_structure(
         self,
         snap_tolerance: int = 10,
@@ -3621,8 +2574,30 @@ class Region(
         # Determine the search region (expand if requested)
         search_region = self
         if expand_bbox and isinstance(expand_bbox, dict):
+
+            def _coerce_expand_value(value: Any) -> Union[float, bool, str]:
+                if isinstance(value, (bool, str)):
+                    return value
+                return float(value)
+
+            sanitized_expand: Dict[str, Any] = {}
             try:
-                search_region = self.expand(**expand_bbox)
+                if "amount" in expand_bbox and expand_bbox["amount"] is not None:
+                    sanitized_expand["amount"] = float(expand_bbox["amount"])
+                for key in ("left", "right", "top", "bottom"):
+                    if key in expand_bbox and expand_bbox[key] is not None:
+                        sanitized_expand[key] = _coerce_expand_value(expand_bbox[key])
+                if "width_factor" in expand_bbox and expand_bbox["width_factor"] is not None:
+                    sanitized_expand["width_factor"] = float(expand_bbox["width_factor"])
+                if "height_factor" in expand_bbox and expand_bbox["height_factor"] is not None:
+                    sanitized_expand["height_factor"] = float(expand_bbox["height_factor"])
+                if (
+                    "apply_exclusions" in expand_bbox
+                    and expand_bbox["apply_exclusions"] is not None
+                ):
+                    sanitized_expand["apply_exclusions"] = bool(expand_bbox["apply_exclusions"])
+
+                search_region = self.expand(**sanitized_expand)
                 logger.debug(
                     f"Expanded search region for text table analysis to: {search_region.bbox}"
                 )
@@ -3665,9 +2640,6 @@ class Region(
             logger.error(f"Error during text-based table analysis: {e}", exc_info=True)
             return None
 
-    # --- END NEW METHOD ---
-
-    # --- NEW METHOD: get_text_table_cells ---
     def get_text_table_cells(
         self,
         snap_tolerance: int = 10,
@@ -3741,8 +2713,6 @@ class Region(
         # 4. Return the list wrapped in an ElementCollection
         logger.debug(f"get_text_table_cells: Created {len(cell_regions)} temporary cell regions.")
         return ElementCollection(cell_regions)
-
-    # --- END NEW METHOD ---
 
     def to_text_element(
         self,
@@ -3854,34 +2824,35 @@ class Region(
         text_element = TextElement(elem_data, self.page)
 
         if add_to_page:
-            if hasattr(self.page, "_element_mgr") and self.page._element_mgr is not None:
-                add_as_type = (
-                    "words"
-                    if object_type == "word"
-                    else "chars" if object_type == "char" else object_type
-                )
-                # REMOVED try-except block around add_element
-                self.page._element_mgr.add_element(text_element, element_type=add_as_type)
+            add_as_type = (
+                "words"
+                if object_type == "word"
+                else "chars" if object_type == "char" else object_type
+            )
+            if hasattr(self.page, "add_element"):
+                self.page.add_element(text_element, element_type=add_as_type)
                 logger.debug(
-                    f"TextElement created from region {self.bbox} and added to page {self.page.page_number} as {add_as_type}."
+                    "TextElement created from region %s and added to page %s as %s.",
+                    self.bbox,
+                    getattr(self.page, "page_number", "N/A"),
+                    add_as_type,
                 )
-                # Also add character dictionaries to the chars collection
                 if char_dicts and object_type == "word":
                     for char_dict in char_dicts:
-                        self.page._element_mgr.add_element(char_dict, element_type="chars")
+                        self.page.add_element(char_dict, element_type="chars")
             else:
                 page_num_str = (
                     str(self.page.page_number) if hasattr(self.page, "page_number") else "N/A"
                 )
                 logger.warning(
-                    f"Cannot add TextElement to page: Page {page_num_str} for region {self.bbox} is missing '_element_mgr'."
+                    "Cannot add TextElement to page: Page %s for region %s does not expose add_element.",
+                    page_num_str,
+                    self.bbox,
                 )
 
         return text_element
 
-    # ------------------------------------------------------------------
     # Unified analysis storage (maps to metadata["analysis"])
-    # ------------------------------------------------------------------
 
     @property
     def analyses(self) -> Dict[str, Any]:
@@ -3895,107 +2866,7 @@ class Region(
             self.metadata = {}
         self.metadata["analysis"] = value
 
-    # ------------------------------------------------------------------
     # New helper: build table from pre-computed table_cell regions
-    # ------------------------------------------------------------------
-
-    def _extract_table_from_cells(
-        self, cell_regions: List["Region"], content_filter=None, apply_exclusions=True
-    ) -> List[List[Optional[str]]]:
-        """Construct a table (list-of-lists) from table_cell regions.
-
-        This assumes each cell Region has metadata.row_index / col_index as written by
-        detect_table_structure_from_lines().  If these keys are missing we will
-        fall back to sorting by geometry.
-
-        Args:
-            cell_regions: List of table cell Region objects to extract text from
-            content_filter: Optional content filter to apply to cell text extraction
-        """
-        if not cell_regions:
-            return []
-
-        # Attempt to use explicit indices first
-        all_row_idxs = []
-        all_col_idxs = []
-        for cell in cell_regions:
-            try:
-                row_idx_value = cell.metadata.get("row_index")
-                col_idx_value = cell.metadata.get("col_index")
-                if row_idx_value is None or col_idx_value is None:
-                    raise ValueError("Missing explicit indices")
-
-                r_idx = int(row_idx_value)
-                c_idx = int(col_idx_value)
-                all_row_idxs.append(r_idx)
-                all_col_idxs.append(c_idx)
-            except Exception:
-                # Not all cells have indices – clear the lists so we switch to geometric sorting
-                all_row_idxs = []
-                all_col_idxs = []
-                break
-
-        if all_row_idxs and all_col_idxs:
-            num_rows = max(all_row_idxs) + 1
-            num_cols = max(all_col_idxs) + 1
-
-            # Initialise blank grid
-            table_grid: List[List[Optional[str]]] = [[None] * num_cols for _ in range(num_rows)]
-
-            for cell in cell_regions:
-                row_idx_value = cell.metadata.get("row_index")
-                col_idx_value = cell.metadata.get("col_index")
-                if row_idx_value is None or col_idx_value is None:
-                    raise ValueError("Missing explicit indices")
-
-                r_idx = int(row_idx_value)
-                c_idx = int(col_idx_value)
-                text_val = cell.extract_text(
-                    layout=False,
-                    apply_exclusions=apply_exclusions,
-                    content_filter=content_filter,
-                ).strip()
-                table_grid[r_idx][c_idx] = text_val if text_val else None
-
-            return table_grid
-
-        import numpy as np
-
-        # Build arrays of centers
-        centers = np.array([[(c.x0 + c.x1) / 2.0, (c.top + c.bottom) / 2.0] for c in cell_regions])
-        xs = centers[:, 0]
-        ys = centers[:, 1]
-
-        # Cluster unique row Y positions and column X positions with a tolerance
-        def _cluster(vals, tol=1.0):
-            sorted_vals = np.sort(vals)
-            groups = [[sorted_vals[0]]]
-            for v in sorted_vals[1:]:
-                if abs(v - groups[-1][-1]) <= tol:
-                    groups[-1].append(v)
-                else:
-                    groups.append([v])
-            return [np.mean(g) for g in groups]
-
-        row_centers = _cluster(ys)
-        col_centers = _cluster(xs)
-
-        num_rows = len(row_centers)
-        num_cols = len(col_centers)
-
-        table_grid: List[List[Optional[str]]] = [[None] * num_cols for _ in range(num_rows)]
-
-        # Assign each cell to nearest row & col center
-        for cell, (cx, cy) in zip(cell_regions, centers):
-            row_idx = int(np.argmin([abs(cy - rc) for rc in row_centers]))
-            col_idx = int(np.argmin([abs(cx - cc) for cc in col_centers]))
-
-            text_val = cell.extract_text(
-                layout=False, apply_exclusions=apply_exclusions, content_filter=content_filter
-            ).strip()
-            table_grid[row_idx][col_idx] = text_val if text_val else None
-
-        return table_grid
 
     def _apply_rtl_processing_to_text(self, text: str) -> str:
         """
@@ -4035,8 +2906,11 @@ class Region(
                     # Determine base direction for this line
                     base_dir = "R" if _contains_rtl(line) else "L"
                     logical_line = get_display(line, base_dir=base_dir)
+                    logical_line_str = (
+                        logical_line if isinstance(logical_line, str) else str(logical_line)
+                    )
                     # Apply bracket mirroring for correct logical order
-                    processed_lines.append(mirror_brackets(logical_line))
+                    processed_lines.append(mirror_brackets(logical_line_str))
                 else:
                     processed_lines.append(line)
 
@@ -4092,9 +2966,7 @@ class Region(
 
         return text
 
-    # ------------------------------------------------------------------
     # Interactive Viewer Support
-    # ------------------------------------------------------------------
 
     def viewer(
         self,
@@ -4102,7 +2974,7 @@ class Region(
         resolution: int = 150,
         include_chars: bool = False,
         include_attributes: Optional[List[str]] = None,
-    ) -> Optional["InteractiveViewerWidget"]:
+    ) -> Optional[Any]:
         """Create an interactive ipywidget viewer for **this specific region**.
 
         The method renders the region to an image (cropped to the region bounds) and
@@ -4125,14 +2997,12 @@ class Region(
 
         Returns
         -------
-        InteractiveViewerWidget | None
+        InteractiveViewerWidgetType | None
             The widget instance, or ``None`` if *ipywidgets* is not installed or
             an error occurred during creation.
         """
 
-        # ------------------------------------------------------------------
         # Dependency / environment checks
-        # ------------------------------------------------------------------
         if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
             logger.error(
                 "Interactive viewer requires 'ipywidgets'. "
@@ -4141,9 +3011,7 @@ class Region(
             return None
 
         try:
-            # ------------------------------------------------------------------
             # Render region image (cropped) and encode as data URI
-            # ------------------------------------------------------------------
             import base64
             from io import BytesIO
 
@@ -4158,9 +3026,7 @@ class Region(
             img_str = base64.b64encode(buf.getvalue()).decode()
             image_uri = f"data:image/png;base64,{img_str}"
 
-            # ------------------------------------------------------------------
             # Prepare element overlay data (coordinates relative to region)
-            # ------------------------------------------------------------------
             scale = resolution / 72.0  # Same convention as page viewer
 
             # Gather elements intersecting the region
@@ -4227,9 +3093,7 @@ class Region(
 
             viewer_data = {"page_image": image_uri, "elements": elements_json}
 
-            # ------------------------------------------------------------------
             # Instantiate the widget directly using the prepared data
-            # ------------------------------------------------------------------
             return InteractiveViewerWidget(pdf_data=viewer_data)
 
         except Exception as e:

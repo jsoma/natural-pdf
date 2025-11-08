@@ -2,7 +2,7 @@ import logging
 import threading  # Add threading for locks
 import time
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from PIL import Image
 
@@ -35,17 +35,21 @@ def _get_torch():
 def _get_transformers_components():
     """Lazy import for transformers components."""
     from transformers import (
-        AutoModelForSequenceClassification,
-        AutoModelForZeroShotImageClassification,
-        AutoTokenizer,
-        pipeline,
+        AutoModelForSequenceClassification as _AutoModelForSequenceClassification,  # pyright: ignore[reportPrivateImportUsage]
     )
+    from transformers import (
+        AutoModelForZeroShotImageClassification as _AutoModelForZeroShotImageClassification,  # pyright: ignore[reportPrivateImportUsage]
+    )
+    from transformers import (
+        AutoTokenizer as _AutoTokenizer,  # pyright: ignore[reportPrivateImportUsage]
+    )
+    from transformers import pipeline as _pipeline  # pyright: ignore[reportPrivateImportUsage]
 
     return {
-        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
-        "AutoModelForZeroShotImageClassification": AutoModelForZeroShotImageClassification,
-        "AutoTokenizer": AutoTokenizer,
-        "pipeline": pipeline,
+        "AutoModelForSequenceClassification": _AutoModelForSequenceClassification,
+        "AutoModelForZeroShotImageClassification": _AutoModelForZeroShotImageClassification,
+        "AutoTokenizer": _AutoTokenizer,
+        "pipeline": _pipeline,
     }
 
 
@@ -55,7 +59,7 @@ from tqdm.auto import tqdm
 from .results import CategoryScore, ClassificationResult
 
 if TYPE_CHECKING:
-    from transformers import Pipeline
+    from transformers.pipelines.base import Pipeline  # pyright: ignore[reportPrivateImportUsage]
 
 
 logger = logging.getLogger(__name__)
@@ -123,17 +127,18 @@ class ClassificationManager:
                     f"Loading {using} classification pipeline for model '{model_id}' on device '{self.device}'..."
                 )
                 start_time = time.time()
+                task = (
+                    "zero-shot-classification"
+                    if using == "text"
+                    else "zero-shot-image-classification"
+                )
                 try:
-                    # Lazy import transformers components
                     transformers_components = _get_transformers_components()
-                    pipeline = transformers_components["pipeline"]
+                    pipeline_factory = transformers_components["pipeline"]
 
-                    task = (
-                        "zero-shot-classification"
-                        if using == "text"
-                        else "zero-shot-image-classification"
+                    _PIPELINE_CACHE[cache_key] = pipeline_factory(
+                        task, model=model_id, device=self.device
                     )
-                    _PIPELINE_CACHE[cache_key] = pipeline(task, model=model_id, device=self.device)
                     end_time = time.time()
                     logger.info(
                         f"Pipeline for '{model_id}' loaded in {end_time - start_time:.2f} seconds."
@@ -367,12 +372,15 @@ class ClassificationManager:
 
         try:
             # Use pipeline directly for batching
-            results_iterator = pipeline_instance(
-                item_contents,
-                candidate_labels=labels,
-                multi_label=multi_label,
-                batch_size=batch_size,
-                **kwargs,
+            results_iterator = cast(
+                Iterable[Any],
+                pipeline_instance(
+                    item_contents,
+                    candidate_labels=labels,
+                    multi_label=multi_label,
+                    batch_size=batch_size,
+                    **kwargs,
+                ),
             )
 
             # Wrap with tqdm for progress if requested
@@ -481,13 +489,14 @@ class ClassificationManager:
                 for key in keys_to_remove:
                     pipeline = _PIPELINE_CACHE.pop(key, None)
                     if pipeline and hasattr(pipeline, "model"):
-                        # Try to cleanup GPU memory if using torch
                         try:
                             torch = _get_torch()
-                            if hasattr(pipeline.model, "to"):
-                                pipeline.model.to("cpu")  # Move to CPU
+                            model_obj = getattr(pipeline, "model", None)
+                            model_to = getattr(model_obj, "to", None)
+                            if callable(model_to):
+                                cast(Callable[[Any], Any], model_to)("cpu")
                             if torch.cuda.is_available():
-                                torch.cuda.empty_cache()  # Clear GPU cache
+                                torch.cuda.empty_cache()
                         except Exception as e:
                             logger.debug(f"GPU cleanup failed for model {model_id}: {e}")
 
@@ -511,10 +520,12 @@ class ClassificationManager:
                     if hasattr(pipeline, "model"):
                         try:
                             torch = _get_torch()
-                            if hasattr(pipeline.model, "to"):
-                                pipeline.model.to("cpu")  # Move to CPU
+                            model_obj = getattr(pipeline, "model", None)
+                            model_to = getattr(model_obj, "to", None)
+                            if callable(model_to):
+                                cast(Callable[[Any], Any], model_to)("cpu")
                             if torch.cuda.is_available():
-                                torch.cuda.empty_cache()  # Clear GPU cache
+                                torch.cuda.empty_cache()
                         except Exception as e:
                             logger.debug(f"GPU cleanup failed for pipeline {key}: {e}")
 

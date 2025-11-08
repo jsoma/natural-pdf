@@ -355,7 +355,9 @@ class TextStyleAnalyzer:
                     f"Error processing element {element} for text style: {e}", exc_info=True
                 )
 
-        page._text_styles_summary = style_cache
+        metadata = getattr(page, "metadata", None)
+        if isinstance(metadata, dict):
+            metadata["text_styles_summary"] = style_cache
         logger.info(
             f"Finished text style analysis for page {page.number}. Found {len(style_cache)} unique styles."
         )
@@ -391,10 +393,11 @@ class TextStyleAnalyzer:
 
         properties["size_for_keying"] = size_for_keying
 
-        font_name = None
-        normalized_font_name = None
-        if hasattr(element, "fontname") and element.fontname is not None:
-            font_name = element.fontname
+        font_name: Optional[str] = None
+        normalized_font_name: Optional[str] = None
+        font_name_raw = getattr(element, "fontname", None)
+        if isinstance(font_name_raw, str):
+            font_name = font_name_raw
             normalized_font_name = self._normalize_font_name(font_name, options)
         properties["fontname"] = normalized_font_name if options.normalize_fontname else font_name
 
@@ -415,13 +418,9 @@ class TextStyleAnalyzer:
         properties["is_italic"] = is_italic
 
         # Text color
-        color = None
-        if (
-            not options.ignore_color
-            and hasattr(element, "non_stroking_color")
-            and element.non_stroking_color is not None
-        ):
-            raw_color = element.non_stroking_color
+        color: Optional[Any] = None
+        raw_color = getattr(element, "non_stroking_color", None)
+        if not options.ignore_color and raw_color is not None:
             # Convert color to a hashable form (tuple)
             if isinstance(raw_color, (list, tuple)):
                 color = tuple(round(c, 3) for c in raw_color)  # Round color components

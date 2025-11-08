@@ -11,251 +11,65 @@ from typing import (
     List,
     Literal,
     Optional,
+    Protocol,
     Sequence,
+    SupportsIndex,
     Tuple,
     TypeGuard,
     Union,
     cast,
+    overload,
 )
 
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image, ImageDraw
 
 from natural_pdf.core.interfaces import HasPages, HasSinglePage
-from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion
 
+from .flow_adapter import FlowGuideAdapter
+from .grid_helpers import collect_constituent_pages, register_regions_with_pages
+from .helpers import (
+    BoolArray,
+    Bounds,
+    GuidesContext,
+    IntArray,
+    _bounds_from_object,
+    _collect_line_elements,
+    _constituent_regions,
+    _is_flow_region,
+    _is_guides_context,
+    _label_contiguous_regions,
+    _normalize_markers,
+    _require_bounds,
+    _resolve_single_page,
+)
+from .text_detect import (
+    collect_text_elements,
+    find_horizontal_element_gaps,
+    find_horizontal_whitespace_gaps,
+    find_vertical_element_gaps,
+    find_vertical_whitespace_gaps,
+)
+
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
     from natural_pdf.elements.base import Element
-    from natural_pdf.elements.element_collection import ElementCollection
-    from natural_pdf.elements.region import Region
     from natural_pdf.flows.region import FlowRegion
-    from natural_pdf.tables.result import TableResult
+
+from natural_pdf.tables.result import TableResult
 
 logger = logging.getLogger(__name__)
 
 Bounds = Tuple[float, float, float, float]
-GuidesContext = Union["Page", "Region", FlowRegion]
-
-
-def _is_flow_region(obj: Any) -> TypeGuard[FlowRegion]:
-    return isinstance(obj, FlowRegion)
-
-
-def _constituent_regions(flow_region: FlowRegion) -> Sequence["Region"]:
-    return flow_region.constituent_regions
-
-
-def _ensure_bounds_tuple(bounds: Tuple[Any, Any, Any, Any]) -> Bounds:
-    """Convert a bbox-like tuple into a strict float tuple."""
-    return (
-        float(bounds[0]),
-        float(bounds[1]),
-        float(bounds[2]),
-        float(bounds[3]),
-    )
-
-
-def _union_bounds(bound_list: Iterable[Bounds]) -> Optional[Bounds]:
-    coords = list(bound_list)
-    if not coords:
-        return None
-    x0 = min(b[0] for b in coords)
-    top = min(b[1] for b in coords)
-    x1 = max(b[2] for b in coords)
-    bottom = max(b[3] for b in coords)
-    return (x0, top, x1, bottom)
-
-
-def _bounds_from_object(obj: Any) -> Optional[Bounds]:
-    """Best-effort extraction of bounds from any supported object."""
-    if obj is None:
-        return None
-
-    if isinstance(obj, tuple) and len(obj) == 4:
-        try:
-            return _ensure_bounds_tuple(obj)
-        except (TypeError, ValueError):
-            return None
-
-    bbox = extract_bbox(obj)
-    if bbox is not None:
-        try:
-            return _ensure_bounds_tuple(bbox)
-        except (TypeError, ValueError):
-            return None
-
-    regions_attr = getattr(obj, "constituent_regions", None)
-    if regions_attr is not None:
-        try:
-            regions = list(regions_attr)
-        except TypeError:
-            regions = None
-
-        if regions is not None:
-            collected: List[Bounds] = []
-            for region in regions:
-                region_bounds = _bounds_from_object(region)
-                if region_bounds is not None:
-                    collected.append(region_bounds)
-            return _union_bounds(collected)
-
-    if hasattr(obj, "width") and hasattr(obj, "height"):
-        try:
-            return (0.0, 0.0, float(obj.width), float(obj.height))
-        except (TypeError, ValueError):
-            return None
-
-    return None
-
-
-def _resolve_single_page(obj: Any) -> "Page":
-    """Return the single page associated with an object, or raise if ambiguous."""
-    if isinstance(obj, HasPages):
-        pages = list(obj.pages)
-        seen: set[int] = set()
-        unique_pages: List["Page"] = []
-        for page in pages:
-            marker = id(page)
-            if marker not in seen:
-                seen.add(marker)
-                unique_pages.append(page)
-        if not unique_pages:
-            raise ValueError("Object does not reference any pages")
-        if len(unique_pages) > 1:
-            raise ValueError("Object spans multiple pages; cannot pick a single page")
-        return unique_pages[0]
-
-    if isinstance(obj, HasSinglePage):
-        page = obj.page  # type: ignore[attr-defined]
-        if page is None:
-            raise ValueError("Object reported no page")
-        return page
-
-    if hasattr(obj, "_page"):
-        return obj._page  # type: ignore[attr-defined]
-
-    raise TypeError(f"Cannot resolve page from {type(obj).__name__}")
-
-
-def _is_guides_context(value: Any) -> TypeGuard[GuidesContext]:
-    """Return True when value quacks like a guides context object."""
-    if value is None:
-        return False
-
-    if isinstance(value, FlowRegion):
-        return True
-
-    if isinstance(value, Region):
-        return True
-
-    cls = value.__class__
-    module_name = getattr(cls, "__module__", "")
-    class_name = getattr(cls, "__name__", "")
-    if class_name == "Page" and module_name.startswith("natural_pdf.core.page"):
-        return True
-
-    # Fallback to duck-typing: if we can extract bounds, treat it as a context.
-    bounds = _bounds_from_object(value)
-    return bounds is not None
-
-
-def _require_bounds(obj: Any, *, context: str = "object") -> Bounds:
-    bounds = _bounds_from_object(obj)
-    if bounds is None:
-        raise ValueError(f"Could not determine bounds for {context}")
-    return bounds
-
-
-def _collect_line_elements(obj: GuidesContext) -> List[LineElement]:
-    if _is_flow_region(obj):
-        lines: List[LineElement] = []
-        for region in obj.constituent_regions:
-            lines.extend(_collect_line_elements(region))
-        return lines
-
-    lines_attr = getattr(obj, "lines", None)
-    if lines_attr is not None:
-        return [cast(LineElement, line) for line in cast(Iterable[Any], lines_attr)]
-
-    if hasattr(obj, "find_all"):
-        found = cast(Any, obj.find_all("line"))  # type: ignore[attr-defined]
-        if isinstance(found, ElementCollection):
-            return [cast(LineElement, line) for line in found.elements]
-        if isinstance(found, Iterable):
-            return [cast(LineElement, line) for line in found]
-    return []
-
-
-def _normalize_markers(
-    markers: Union[str, List[str], ElementCollection, None],
-    obj: GuidesContext,
-) -> List[str]:
-    """Normalize various marker inputs into a list of strings."""
-    if markers is None:
-        return []
-
-    if _is_flow_region(obj):
-        aggregated: List[str] = []
-        for region in obj.constituent_regions:
-            aggregated.extend(_normalize_markers(markers, region))
-        seen: set[str] = set()
-        unique: List[str] = []
-        for marker in aggregated:
-            if marker not in seen:
-                seen.add(marker)
-                unique.append(marker)
-        return unique
-
-    if isinstance(markers, str):
-        if markers.startswith(("text", "region", "line", "rect", "blob", "image")):
-            if hasattr(obj, "find_all"):
-                elements = obj.find_all(markers)
-                return [elem.text if hasattr(elem, "text") else str(elem) for elem in elements]
-            logger.warning(f"Object {obj} doesn't support find_all for selector '{markers}'")
-        return [markers]
-
-    if isinstance(markers, ElementCollection):
-        try:
-            return [str(value) for value in markers.extract_each_text()]
-        except Exception as exc:
-            logger.warning(f"Failed to extract text from ElementCollection: {exc}")
-            return [
-                (
-                    elem.text
-                    if hasattr(elem, "text")
-                    else elem.extract_text() if hasattr(elem, "extract_text") else str(elem)
-                )
-                for elem in markers
-            ]
-
-    if isinstance(markers, Iterable):
-        normalized: List[str] = []
-        for marker in markers:
-            if isinstance(marker, str):
-                if marker.startswith(("text", "region", "line", "rect", "blob", "image")):
-                    if hasattr(obj, "find_all"):
-                        elements = obj.find_all(marker)
-                        normalized.extend(
-                            [elem.text if hasattr(elem, "text") else str(elem) for elem in elements]
-                        )
-                    else:
-                        normalized.append(marker)
-                else:
-                    normalized.append(marker)
-            elif hasattr(marker, "text"):
-                normalized.append(marker.text)
-            elif hasattr(marker, "extract_text"):
-                normalized.append(marker.extract_text())
-            else:
-                normalized.append(str(marker))
-        return normalized
-
-    return [str(markers)]
+OuterBoundaryMode = Union[bool, Literal["first", "last"]]
+BoolArray = NDArray[np.bool_]
+IntArray = NDArray[np.int_]
 
 
 class GuidesList(UserList[float]):
@@ -273,6 +87,20 @@ class GuidesList(UserList[float]):
         self._parent = parent_guides
         self._axis: Literal["vertical", "horizontal"] = axis
 
+    if TYPE_CHECKING:
+        data: List[float]
+    else:
+
+        @property
+        def data(self) -> List[float]:
+            """Access the underlying coordinate list."""
+            return cast(List[float], self.__dict__.setdefault("_data", []))
+
+        @data.setter
+        def data(self, value: Iterable[float]) -> None:
+            values = [float(v) for v in value] if value else []
+            self.__dict__["_data"] = sorted(values)
+
     def __setitem__(self, i, item):
         """Override to maintain sorted order."""
         self.data[i] = float(item)
@@ -288,11 +116,17 @@ class GuidesList(UserList[float]):
         self.data.extend(float(value) for value in other)
         self.data.sort()
 
-    def __getitem__(self, i):
-        """Return float for indices and plain lists for slices."""
+    @overload
+    def __getitem__(self, i: SupportsIndex) -> float: ...
+
+    @overload
+    def __getitem__(self, i: slice) -> "GuidesList": ...
+
+    def __getitem__(self, i: Union[SupportsIndex, slice]) -> Union[float, "GuidesList"]:
+        """Return float for indices and GuidesList for slices."""
         if isinstance(i, slice):
-            return list(self.data[i])
-        return self.data[i]
+            return self.__class__(self._parent, self._axis, self.data[i])
+        return self.data[int(i)]
 
     def insert(self, i, item):
         """Override to maintain sorted order."""
@@ -305,17 +139,6 @@ class GuidesList(UserList[float]):
         self.data.sort()
         return self
 
-    @property
-    def data(self) -> List[float]:
-        """Get the data list."""
-        return self._data
-
-    @data.setter
-    def data(self, value: Iterable[float]):
-        """Set the data list, always keeping it sorted."""
-        values = [float(v) for v in value] if value else []
-        self._data = sorted(values)
-
     def from_content(
         self,
         markers: Union[str, List[str], "ElementCollection", Callable, None],
@@ -323,7 +146,7 @@ class GuidesList(UserList[float]):
         align: Union[
             Literal["left", "right", "center", "between"], Literal["top", "bottom"]
         ] = "left",
-        outer: bool = True,
+        outer: OuterBoundaryMode = True,
         tolerance: float = 5,
         *,
         append: bool = False,
@@ -373,90 +196,28 @@ class GuidesList(UserList[float]):
 
         # Check if parent is in flow mode
         if self._parent.is_flow_region:
-            # Create guides across all constituent regions
-            all_guides = []
-            for region in self._parent._flow_constituent_regions():
-                # Pass markers directly - from_content will handle them properly
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
 
-                # Create guides for this region
+            for region in adapter.regions:
                 region_guides = Guides.from_content(
                     obj=region,
                     axis=self._axis,
-                    markers=actual_markers,  # Pass original markers, not normalized text
+                    markers=actual_markers,
                     align=align,
                     outer=outer,
                     tolerance=tolerance,
                     apply_exclusions=apply_exclusions,
                 )
 
-                # Collect guides from this region
-                if self._axis == "vertical":
-                    all_guides.extend(region_guides.vertical)
-                else:
-                    all_guides.extend(region_guides.horizontal)
-
-            # Update parent's flow guides structure
-            if append:
-                # Append to existing
-                existing = [
-                    coord
-                    for coord, _ in (
-                        self._parent._unified_vertical
-                        if self._axis == "vertical"
-                        else self._parent._unified_horizontal
-                    )
-                ]
-                all_guides = existing + all_guides
-
-            # Remove duplicates and sort
-            unique_guides = sorted({float(coord) for coord in all_guides})
-
-            # Clear and rebuild unified view
-            if self._axis == "vertical":
-                self._parent._unified_vertical = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent._flow_constituent_regions():
-                        region_bounds = _bounds_from_object(region)
-                        if region_bounds is not None:
-                            x0, _, x1, _ = region_bounds
-                            if x0 <= coord <= x1:
-                                self._parent._unified_vertical.append((float(coord), region))
-                                break
-                self._parent._vertical_cache = None
-                self.data = unique_guides
-            else:
-                self._parent._unified_horizontal = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent._flow_constituent_regions():
-                        region_bounds = _bounds_from_object(region)
-                        if region_bounds is not None:
-                            _, y0, _, y1 = region_bounds
-                            if y0 <= coord <= y1:
-                                self._parent._unified_horizontal.append((float(coord), region))
-                                break
-                self._parent._horizontal_cache = None
-                self.data = unique_guides
-
-            # Update per-region guides
-            for region in self._parent._flow_constituent_regions():
-                region_verticals = []
-                region_horizontals = []
-
-                for coord, r in self._parent._unified_vertical:
-                    if r == region:
-                        region_verticals.append(coord)
-
-                for coord, r in self._parent._unified_horizontal:
-                    if r == region:
-                        region_horizontals.append(coord)
-
-                self._parent._flow_guides[region] = (
-                    sorted(region_verticals),
-                    sorted(region_horizontals),
+                values = (
+                    [float(value) for value in region_guides.vertical]
+                    if self._axis == "vertical"
+                    else [float(value) for value in region_guides.horizontal]
                 )
+                region_values[region] = values
 
+            adapter.update_axis_from_regions(self._axis, region_values, append=append)
             return self._parent
 
         # Original single-region logic
@@ -556,11 +317,10 @@ class GuidesList(UserList[float]):
 
         # Check if parent is in flow mode
         if self._parent.is_flow_region:
-            # Create guides across all constituent regions
-            all_guides = []
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
 
-            for region in self._parent._flow_constituent_regions():
-                # Create guides for this specific region
+            for region in adapter.regions:
                 region_guides = Guides.from_lines(
                     obj=region,
                     axis=self._axis,
@@ -573,73 +333,14 @@ class GuidesList(UserList[float]):
                     resolution=resolution,
                     **detect_kwargs,
                 )
-
-                # Collect guides from this region
-                if self._axis == "vertical":
-                    all_guides.extend(region_guides.vertical)
-                else:
-                    all_guides.extend(region_guides.horizontal)
-
-            # Update parent's flow guides structure
-            if append:
-                # Append to existing
-                existing = [
-                    coord
-                    for coord, _ in (
-                        self._parent._unified_vertical
-                        if self._axis == "vertical"
-                        else self._parent._unified_horizontal
-                    )
-                ]
-                all_guides = existing + all_guides
-
-            # Remove duplicates and sort
-            unique_guides = sorted(list(set(all_guides)))
-
-            # Clear and rebuild unified view
-            if self._axis == "vertical":
-                self._parent._unified_vertical = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent._flow_constituent_regions():
-                        if hasattr(region, "bbox"):
-                            x0, _, x1, _ = region.bbox
-                            if x0 <= coord <= x1:
-                                self._parent._unified_vertical.append((coord, region))
-                                break
-                self._parent._vertical_cache = None
-                self.data = unique_guides
-            else:
-                self._parent._unified_horizontal = []
-                for coord in unique_guides:
-                    # Find which region(s) this guide belongs to
-                    for region in self._parent._flow_constituent_regions():
-                        if hasattr(region, "bbox"):
-                            _, y0, _, y1 = region.bbox
-                            if y0 <= coord <= y1:
-                                self._parent._unified_horizontal.append((coord, region))
-                                break
-                self._parent._horizontal_cache = None
-                self.data = unique_guides
-
-            # Update per-region guides
-            for region in self._parent._flow_constituent_regions():
-                region_verticals = []
-                region_horizontals = []
-
-                for coord, r in self._parent._unified_vertical:
-                    if r == region:
-                        region_verticals.append(coord)
-
-                for coord, r in self._parent._unified_horizontal:
-                    if r == region:
-                        region_horizontals.append(coord)
-
-                self._parent._flow_guides[region] = (
-                    sorted(region_verticals),
-                    sorted(region_horizontals),
+                values = (
+                    [float(value) for value in region_guides.vertical]
+                    if self._axis == "vertical"
+                    else [float(value) for value in region_guides.horizontal]
                 )
+                region_values[region] = values
 
+            adapter.update_axis_from_regions(self._axis, region_values, append=append)
             return self._parent
 
         # Original single-region logic
@@ -694,6 +395,20 @@ class GuidesList(UserList[float]):
 
         generated = Guides.from_whitespace(target_obj, axis=axis_literal, min_gap=min_gap)
 
+        if self._parent.is_flow_region:
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
+            for region in adapter.regions:
+                verticals, horizontals = generated._flow_guides.get(region, ([], []))
+                values = (
+                    [float(value) for value in verticals]
+                    if self._axis == "vertical"
+                    else [float(value) for value in horizontals]
+                )
+                region_values[region] = values
+            adapter.update_axis_from_regions(self._axis, region_values, append=append)
+            return self._parent
+
         def _merge(existing: List[float], new_values: Iterable[float]) -> List[float]:
             new_iter = [float(value) for value in new_values]
             if append:
@@ -704,33 +419,6 @@ class GuidesList(UserList[float]):
             self.data = _merge(self.data, generated.vertical)
         else:
             self.data = _merge(self.data, generated.horizontal)
-
-        if self._parent.is_flow_region:
-            flow_context = self._parent._flow_context()
-            for region in flow_context.constituent_regions:
-                existing_vert, existing_horiz = self._parent._flow_guides.get(region, ([], []))
-                gen_vert, gen_horiz = generated._flow_guides.get(region, ([], []))
-                if self._axis == "vertical":
-                    merged_vert = _merge([float(v) for v in existing_vert], gen_vert)
-                    self._parent._flow_guides[region] = (merged_vert, existing_horiz)
-                else:
-                    merged_horiz = _merge([float(v) for v in existing_horiz], gen_horiz)
-                    self._parent._flow_guides[region] = (existing_vert, merged_horiz)
-
-            if self._axis == "vertical":
-                unified = []
-                for region in flow_context.constituent_regions:
-                    for value in self._parent._flow_guides.get(region, ([], []))[0]:
-                        unified.append((float(value), region))
-                self._parent._unified_vertical = unified
-                self._parent._vertical_cache = None
-            else:
-                unified = []
-                for region in flow_context.constituent_regions:
-                    for value in self._parent._flow_guides.get(region, ([], []))[1]:
-                        unified.append((float(value), region))
-                self._parent._unified_horizontal = unified
-                self._parent._horizontal_cache = None
 
         return self._parent
 
@@ -752,44 +440,19 @@ class GuidesList(UserList[float]):
         axis_literal: Literal["vertical", "horizontal"] = self._axis
 
         if _is_flow_region(target_obj):
-            flow_values: List[float] = []
-            for region in target_obj.constituent_regions:
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
+            for region in adapter.regions:
                 region_guides = Guides.divide(obj=region, n=n, axis=axis_literal)
                 axis_values = (
-                    region_guides.vertical
+                    [float(value) for value in region_guides.vertical]
                     if axis_literal == "vertical"
-                    else region_guides.horizontal
+                    else [float(value) for value in region_guides.horizontal]
                 )
-                flow_values.extend(float(value) for value in axis_values)
+                region_values[region] = axis_values
 
-                existing_vert, existing_horiz = self._parent._flow_guides.get(region, ([], []))
-                if axis_literal == "vertical":
-                    self._parent._flow_guides[region] = (
-                        sorted([float(v) for v in axis_values]),
-                        existing_horiz,
-                    )
-                else:
-                    self._parent._flow_guides[region] = (
-                        existing_vert,
-                        sorted([float(v) for v in axis_values]),
-                    )
-
-            self.data = sorted(set(flow_values))
-
-            if axis_literal == "vertical":
-                self._parent._unified_vertical = [
-                    (float(value), region)
-                    for region in target_obj.constituent_regions
-                    for value in self._parent._flow_guides.get(region, ([], []))[0]
-                ]
-                self._parent._vertical_cache = None
-            else:
-                self._parent._unified_horizontal = [
-                    (float(value), region)
-                    for region in target_obj.constituent_regions
-                    for value in self._parent._flow_guides.get(region, ([], []))[1]
-                ]
-                self._parent._horizontal_cache = None
+            adapter.update_axis_from_regions(axis_literal, region_values, append=False)
+            return self._parent
         else:
             # Create guides using divide
             new_guides = Guides.divide(
@@ -1113,7 +776,7 @@ class GuidesList(UserList[float]):
         # Normalize headers into elements with usable bounds
         header_candidates: Iterable[Any]
         if hasattr(headers, "elements"):
-            header_candidates = list(headers.elements)
+            header_candidates = list(cast("ElementCollection", headers).elements)
         elif isinstance(headers, list) and headers and isinstance(headers[0], str):
             resolved: List[Any] = []
             for header_text in headers:
@@ -1128,7 +791,7 @@ class GuidesList(UserList[float]):
                 return self._parent
             header_candidates = resolved
         else:
-            header_candidates = list(headers)
+            header_candidates = list(cast(Iterable[Any], headers))
 
         header_data: List[Tuple[Any, Bounds]] = []
         skipped = 0
@@ -1326,7 +989,7 @@ class GuidesList(UserList[float]):
                     dp[y, x] = min(dp[y, x], cost_matrix[y, x] + dp[y - 1, x + 1])
 
         # Find minimum cost at bottom
-        min_x = np.argmin(dp[-1, :])
+        min_x = int(np.argmin(dp[-1, :]))
 
         # Trace back to get path
         path_x_coords = [min_x]
@@ -1344,7 +1007,7 @@ class GuidesList(UserList[float]):
             path_x_coords.append(next_x)
 
         # Return median x-coordinate of the path
-        median_x = np.median(path_x_coords)
+        median_x = float(np.median(path_x_coords))
         return x0 + median_x
 
     def _stabilize_with_rows(
@@ -1553,6 +1216,8 @@ class Guides:
         self.bounds: Optional[Bounds] = coerced_bounds
         self.relative = relative
         self.snap_behavior = snap_behavior
+        # Backwards compatibility alias for legacy options
+        self.on_no_snap = snap_behavior
 
         # Check if we're dealing with a FlowRegion
         self.is_flow_region = _is_flow_region(context_obj)
@@ -1799,10 +1464,12 @@ class Guides:
         # Handle FlowRegion
         if _is_flow_region(obj):
             guides = cls(context=obj)
+            adapter = FlowGuideAdapter(guides)
 
-            # Process each constituent region
-            for region in obj.constituent_regions:
-                # Create guides for this specific region
+            vert_values: Dict[Any, List[float]] = {}
+            horiz_values: Dict[Any, List[float]] = {}
+
+            for region in adapter.regions:
                 region_guides = cls.from_lines(
                     region,
                     axis=axis,
@@ -1815,23 +1482,13 @@ class Guides:
                     resolution=resolution,
                     **detect_kwargs,
                 )
+                vert_values[region] = [float(v) for v in region_guides.vertical]
+                horiz_values[region] = [float(h) for h in region_guides.horizontal]
 
-                # Store in flow guides
-                guides._flow_guides[region] = (
-                    list(region_guides.vertical),
-                    list(region_guides.horizontal),
-                )
-
-                # Add to unified view
-                for v in region_guides.vertical:
-                    guides._unified_vertical.append((float(v), region))
-                for h in region_guides.horizontal:
-                    guides._unified_horizontal.append((float(h), region))
-
-            # Invalidate caches to force rebuild on next access
-            guides._vertical_cache = None
-            guides._horizontal_cache = None
-
+            if axis in ("vertical", "both"):
+                adapter.update_axis_from_regions("vertical", vert_values, append=False)
+            if axis in ("horizontal", "both"):
+                adapter.update_axis_from_regions("horizontal", horiz_values, append=False)
             return guides
 
         # Original single-region logic follows...
@@ -1992,7 +1649,7 @@ class Guides:
         align: Union[
             Literal["left", "right", "center", "between"], Literal["top", "bottom"]
         ] = "left",
-        outer: bool = True,
+        outer: OuterBoundaryMode = True,
         tolerance: float = 5,
         apply_exclusions: bool = True,
     ) -> "Guides":
@@ -2027,10 +1684,10 @@ class Guides:
         # Handle FlowRegion
         if _is_flow_region(obj):
             guides = cls(context=obj)
+            adapter = FlowGuideAdapter(guides)
 
-            # Process each constituent region
-            for region in obj.constituent_regions:
-                # Create guides for this specific region
+            axis_values: Dict[Any, List[float]] = {}
+            for region in adapter.regions:
                 region_guides = cls.from_content(
                     region,
                     axis=axis,
@@ -2040,23 +1697,14 @@ class Guides:
                     tolerance=tolerance,
                     apply_exclusions=apply_exclusions,
                 )
-
-                # Store in flow guides
-                guides._flow_guides[region] = (
-                    list(region_guides.vertical),
-                    list(region_guides.horizontal),
+                values = (
+                    [float(value) for value in region_guides.vertical]
+                    if axis == "vertical"
+                    else [float(value) for value in region_guides.horizontal]
                 )
+                axis_values[region] = values
 
-                # Add to unified view
-                for v in region_guides.vertical:
-                    guides._unified_vertical.append((v, region))
-                for h in region_guides.horizontal:
-                    guides._unified_horizontal.append((h, region))
-
-            # Invalidate caches
-            guides._vertical_cache = None
-            guides._horizontal_cache = None
-
+            adapter.update_axis_from_regions(axis, axis_values, append=False)
             return guides
 
         # Original single-region logic follows...
@@ -2064,16 +1712,18 @@ class Guides:
         bounds: Optional[Bounds] = _bounds_from_object(obj)
 
         # Handle different marker types
-        elements_to_process = []
+        elements_to_process: List[Any] = []
+        marker_texts: List[str] = []
 
         # Check if markers is an ElementCollection or has elements attribute
         if hasattr(markers, "elements") or hasattr(markers, "_elements"):
             # It's an ElementCollection - use elements directly
-            elements_to_process = getattr(markers, "elements", getattr(markers, "_elements", []))
-        elif hasattr(markers, "__iter__") and not isinstance(markers, str):
+            raw_elements = getattr(markers, "elements", getattr(markers, "_elements", []))
+            elements_to_process = list(cast(Iterable[Any], raw_elements))
+        elif markers is not None and hasattr(markers, "__iter__") and not isinstance(markers, str):
             # Check if it's an iterable of elements (not strings)
             try:
-                markers_list = list(markers)
+                markers_list = list(cast(Iterable[Any], markers))
                 if markers_list and hasattr(markers_list[0], "x0"):
                     # It's a list of elements
                     elements_to_process = markers_list
@@ -2215,7 +1865,7 @@ class Guides:
                         marker_bounds.append((top, bottom))
             else:
                 # Fall back to text search
-                if "marker_texts" not in locals():
+                if not marker_texts:
                     marker_texts = _normalize_markers(markers, obj)
                 for marker in marker_texts:
                     if hasattr(obj, "find"):
@@ -2279,26 +1929,18 @@ class Guides:
         """Create guides by detecting whitespace gaps (divide + snap placeholder)."""
         if _is_flow_region(obj):
             guides = cls(context=obj)
-            for region in obj.constituent_regions:
+            adapter = FlowGuideAdapter(guides)
+            vert_values: Dict[Any, List[float]] = {}
+            horiz_values: Dict[Any, List[float]] = {}
+            for region in adapter.regions:
                 region_guides = cls._build_whitespace_guides(region, axis, min_gap)
-                vert_values = [float(value) for value in region_guides.vertical]
-                horiz_values = [float(value) for value in region_guides.horizontal]
-                guides._flow_guides[region] = (vert_values, horiz_values)
-                if axis in ("vertical", "both"):
-                    guides._unified_vertical.extend((value, region) for value in vert_values)
-                if axis in ("horizontal", "both"):
-                    guides._unified_horizontal.extend((value, region) for value in horiz_values)
+                vert_values[region] = [float(value) for value in region_guides.vertical]
+                horiz_values[region] = [float(value) for value in region_guides.horizontal]
 
             if axis in ("vertical", "both"):
-                guides._vertical.data = sorted(
-                    {float(value) for value, _ in guides._unified_vertical}
-                )
+                adapter.update_axis_from_regions("vertical", vert_values, append=False)
             if axis in ("horizontal", "both"):
-                guides._horizontal.data = sorted(
-                    {float(value) for value, _ in guides._unified_horizontal}
-                )
-            guides._vertical_cache = None
-            guides._horizontal_cache = None
+                adapter.update_axis_from_regions("horizontal", horiz_values, append=False)
             return guides
 
         return cls._build_whitespace_guides(cast(Union["Page", "Region"], obj), axis, min_gap)
@@ -2364,6 +2006,7 @@ class Guides:
             threshold: Threshold for what counts as a trough:
                       - float (0.0-1.0): areas with this fraction or less of max density count as troughs
                       - 'auto': automatically find threshold that creates enough troughs for guides
+                      (only applies when detection_method='pixels')
             on_no_snap: Action when snapping fails ('warn', 'ignore', 'raise')
 
         Returns:
@@ -2373,114 +2016,99 @@ class Guides:
             logger.warning("No context available for whitespace detection")
             return self
 
+        detection_mode = detection_method.lower()
+        if detection_mode not in {"pixels", "text"}:
+            raise ValueError("detection_method must be 'pixels' or 'text'")
+
+        text_elements = collect_text_elements(self.context)
+
+        def _compute_gaps(axis: str, guide_positions: Sequence[float]) -> List[Tuple[float, float]]:
+            if detection_mode == "pixels":
+                if axis == "vertical":
+                    return find_vertical_whitespace_gaps(
+                        self.bounds,
+                        text_elements,
+                        min_gap,
+                        threshold,
+                        guide_positions=guide_positions,
+                    )
+                return find_horizontal_whitespace_gaps(
+                    self.bounds,
+                    text_elements,
+                    min_gap,
+                    threshold,
+                    guide_positions=guide_positions,
+                )
+            if axis == "vertical":
+                return find_vertical_element_gaps(self.bounds, text_elements, min_gap)
+            return find_horizontal_element_gaps(self.bounds, text_elements, min_gap)
+
         # Handle FlowRegion case - collect all text elements across regions
         if self.is_flow_region:
-            all_text_elements = []
-            region_bounds = {}
-
-            for region in self._flow_constituent_regions():
-                # Get text elements from this region
-                if hasattr(region, "find_all"):
-                    try:
-                        text_elements = region.find_all("text", apply_exclusions=False)
-                        elements = (
-                            text_elements.elements
-                            if hasattr(text_elements, "elements")
-                            else text_elements
-                        )
-                        all_text_elements.extend(elements)
-
-                        # Store bounds for each region
-                        bounds = _bounds_from_object(region)
-                        if bounds is not None:
-                            region_bounds[region] = bounds
-                    except Exception as e:
-                        logger.warning(f"Error getting text elements from region: {e}")
-
-            if not all_text_elements:
+            if not text_elements:
                 logger.warning(
                     "No text elements found across flow regions for whitespace detection"
                 )
                 return self
 
-            # Find whitespace gaps across all regions
             if axis == "vertical":
-                gaps = self._find_vertical_whitespace_gaps(all_text_elements, min_gap, threshold)
-                # Get all vertical guides across regions
+                gaps = _compute_gaps("vertical", self.vertical.data)
                 all_guides = []
-                guide_to_region_map = {}  # Map guide coordinate to its original list of regions
+                guide_to_region_map = {}
                 for coord, region in self._unified_vertical:
                     all_guides.append(coord)
                     guide_to_region_map.setdefault(coord, []).append(region)
 
                 if gaps and all_guides:
-                    # Keep a copy of original guides to maintain mapping
                     original_guides = all_guides.copy()
-
-                    # Snap guides to gaps
                     self._snap_guides_to_gaps(all_guides, gaps, axis)
 
-                    # Update the unified view with snapped positions
                     self._unified_vertical = []
                     for i, new_coord in enumerate(all_guides):
-                        # Find the original region for this guide using the original position
                         original_coord = original_guides[i]
-                        # A guide might be associated with multiple regions, add them all
                         regions = guide_to_region_map.get(original_coord, [])
                         for region in regions:
                             self._unified_vertical.append((new_coord, region))
 
-                    # Update individual region guides
                     for region in self._flow_guides:
-                        region_verticals = []
-                        for coord, r in self._unified_vertical:
-                            if r == region:
-                                region_verticals.append(coord)
+                        region_verticals = [
+                            coord for coord, r in self._unified_vertical if r == region
+                        ]
                         self._flow_guides[region] = (
-                            sorted(list(set(region_verticals))),  # Deduplicate here
+                            sorted(list(set(region_verticals))),
                             self._flow_guides[region][1],
                         )
 
-                    # Invalidate cache
                     self._vertical_cache = None
 
             elif axis == "horizontal":
-                gaps = self._find_horizontal_whitespace_gaps(all_text_elements, min_gap, threshold)
-                # Get all horizontal guides across regions
+                gaps = _compute_gaps("horizontal", self.horizontal.data)
                 all_guides = []
-                guide_to_region_map = {}  # Map guide coordinate to its original list of regions
+                guide_to_region_map = {}
                 for coord, region in self._unified_horizontal:
                     all_guides.append(coord)
                     guide_to_region_map.setdefault(coord, []).append(region)
 
                 if gaps and all_guides:
-                    # Keep a copy of original guides to maintain mapping
                     original_guides = all_guides.copy()
-
-                    # Snap guides to gaps
                     self._snap_guides_to_gaps(all_guides, gaps, axis)
 
-                    # Update the unified view with snapped positions
                     self._unified_horizontal = []
                     for i, new_coord in enumerate(all_guides):
-                        # Find the original region for this guide using the original position
                         original_coord = original_guides[i]
                         regions = guide_to_region_map.get(original_coord, [])
                         for region in regions:
                             self._unified_horizontal.append((new_coord, region))
 
-                    # Update individual region guides
                     for region in self._flow_guides:
-                        region_horizontals = []
-                        for coord, r in self._unified_horizontal:
-                            if r == region:
-                                region_horizontals.append(coord)
+                        region_horizontals = [
+                            coord for coord, r in self._unified_horizontal if r == region
+                        ]
                         self._flow_guides[region] = (
                             self._flow_guides[region][0],
-                            sorted(list(set(region_horizontals))),  # Deduplicate here
+                            sorted(list(set(region_horizontals))),
                         )
 
-                    # Invalidate cache
                     self._horizontal_cache = None
 
             else:
@@ -2488,19 +2116,16 @@ class Guides:
 
             return self
 
-        # Original single-region logic
-        # Get elements for trough detection
-        text_elements = self._get_text_elements()
         if not text_elements:
             logger.warning("No text elements found for whitespace detection")
             return self
 
         if axis == "vertical":
-            gaps = self._find_vertical_whitespace_gaps(text_elements, min_gap, threshold)
+            gaps = _compute_gaps("vertical", self.vertical.data)
             if gaps:
                 self._snap_guides_to_gaps(self.vertical.data, gaps, axis)
         elif axis == "horizontal":
-            gaps = self._find_horizontal_whitespace_gaps(text_elements, min_gap, threshold)
+            gaps = _compute_gaps("horizontal", self.horizontal.data)
             if gaps:
                 self._snap_guides_to_gaps(self.horizontal.data, gaps, axis)
         else:
@@ -3018,40 +2643,34 @@ class Guides:
             base_images = []
             region_infos = []  # Store region info for guide coordinate mapping
 
-            for region in self._flow_constituent_regions():
-                try:
-                    # Render region without guides using new system
-                    if hasattr(region, "render"):
-                        img = region.render(
-                            resolution=kwargs.get("resolution", 150),
-                            width=kwargs.get("width", None),
-                            crop=True,  # Always crop regions to their bounds
-                        )
-                    else:
-                        # Fallback to old method
-                        img = region.render(**kwargs)
-                    if img:
-                        base_images.append(img)
+            for region in list(self._flow_constituent_regions()):
+                render_fn = getattr(region, "render", None)
+                if render_fn is None:
+                    raise AttributeError(f"Region {region} does not support rendering")
+                img = render_fn(
+                    resolution=kwargs.get("resolution", 150),
+                    width=kwargs.get("width", None),
+                    crop=True,
+                )
+                if img:
+                    base_images.append(img)
 
-                        # Calculate scaling factors for this region
-                        scale_x = img.width / region.width
-                        scale_y = img.height / region.height
+                    scale_x = img.width / region.width
+                    scale_y = img.height / region.height
 
-                        region_infos.append(
-                            {
-                                "region": region,
-                                "img_width": img.width,
-                                "img_height": img.height,
-                                "scale_x": scale_x,
-                                "scale_y": scale_y,
-                                "pdf_x0": region.x0,
-                                "pdf_top": region.top,
-                                "pdf_x1": region.x1,
-                                "pdf_bottom": region.bottom,
-                            }
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to render region: {e}")
+                    region_infos.append(
+                        {
+                            "region": region,
+                            "img_width": img.width,
+                            "img_height": img.height,
+                            "scale_x": scale_x,
+                            "scale_y": scale_y,
+                            "pdf_x0": region.x0,
+                            "pdf_top": region.top,
+                            "pdf_x1": region.x1,
+                            "pdf_bottom": region.bottom,
+                        }
+                    )
 
             if not base_images:
                 raise ValueError("Failed to render any images for FlowRegion")
@@ -3177,39 +2796,34 @@ class Guides:
 
         # Get base image
         if hasattr(target, "render"):
-            # Use the new unified rendering system
-            img = target.render(**image_kwargs)
-        elif hasattr(target, "render"):
-            # Fallback to old method if available
-            img = target.render(**image_kwargs)
+            rendered = cast(Any, target).render(**image_kwargs)
+            if rendered is None:
+                raise ValueError("Failed to generate base image")
+            img = cast(Image.Image, rendered)
         elif hasattr(target, "mode") and hasattr(target, "size"):
             # It's already a PIL Image
-            img = target
+            img = cast(Image.Image, target)
         else:
             raise ValueError(f"Object {target} does not support render() and is not a PIL Image")
 
-        if img is None:
-            raise ValueError("Failed to generate base image")
-
         # Create a copy to draw on
-        img = img.copy()
+        img = cast(Image.Image, img.copy())
         draw = ImageDraw.Draw(img)
 
         # Determine scale factor for coordinate conversion
-        if (
-            hasattr(target, "width")
-            and hasattr(target, "height")
-            and not (hasattr(target, "mode") and hasattr(target, "size"))
-        ):
+        if _has_size(target) and not (hasattr(target, "mode") and hasattr(target, "size")):
             # target is a PDF object (Page/Region) with PDF coordinates
-            scale_x = img.width / target.width
-            scale_y = img.height / target.height
+            size_target = cast(_SupportsSize, target)
+            scale_x = img.width / size_target.width
+            scale_y = img.height / size_target.height
 
             # If we're showing guides on a region, we need to adjust coordinates
             # to be relative to the region's origin
             if hasattr(target, "bbox") and target_is_single_page:
                 # This is a Region - adjust guide coordinates to be relative to region
-                region_x0, region_top = target.x0, target.top
+                region_like = cast(Any, target)
+                region_x0 = float(getattr(region_like, "x0", 0.0))
+                region_top = float(getattr(region_like, "top", 0.0))
             else:
                 # This is a Page - no adjustment needed
                 region_x0, region_top = 0, 0
@@ -3345,329 +2959,12 @@ class Guides:
 
     def _handle_snap_failure(self, message: str):
         """Handle cases where snapping cannot be performed."""
-        if hasattr(self, "on_no_snap"):
-            if self.on_no_snap == "warn":
-                logger.warning(message)
-            elif self.on_no_snap == "raise":
-                raise ValueError(message)
-            # 'ignore' case: do nothing
-        else:
-            logger.warning(message)  # Default behavior
-
-    def _find_vertical_whitespace_gaps(
-        self, text_elements, min_gap: float, threshold: Union[float, str] = "auto"
-    ) -> List[Tuple[float, float]]:
-        """
-        Find vertical whitespace gaps using bbox-based density analysis.
-        Returns list of (start, end) tuples representing trough ranges.
-        """
-        if not self.bounds:
-            return []
-
-        x0, _, x1, _ = self.bounds
-        width_pixels = int(x1 - x0)
-
-        if width_pixels <= 0:
-            return []
-
-        # Create density histogram: count bbox overlaps per x-coordinate
-        density = np.zeros(width_pixels)
-
-        for element in text_elements:
-            if not hasattr(element, "x0") or not hasattr(element, "x1"):
-                continue
-
-            # Clip coordinates to bounds
-            elem_x0 = max(x0, element.x0) - x0
-            elem_x1 = min(x1, element.x1) - x0
-
-            if elem_x1 > elem_x0:
-                start_px = int(elem_x0)
-                end_px = int(elem_x1)
-                density[start_px:end_px] += 1
-
-        if density.max() == 0:
-            return []
-
-        # Determine the threshold value
-        if threshold == "auto":
-            # Auto mode: try different thresholds with step 0.05 until we have enough troughs
-            guides_needing_troughs = len(
-                [g for i, g in enumerate(self.vertical) if 0 < i < len(self.vertical) - 1]
-            )
-            if guides_needing_troughs == 0:
-                threshold_val = 0.5  # Default when no guides need placement
-            else:
-                threshold_val = None
-                for test_threshold in np.arange(0.1, 1.0, 0.05):
-                    test_gaps = self._find_gaps_with_threshold(density, test_threshold, min_gap, x0)
-                    if len(test_gaps) >= guides_needing_troughs:
-                        threshold_val = test_threshold
-                        logger.debug(
-                            f"Auto threshold found: {test_threshold:.2f} (found {len(test_gaps)} troughs for {guides_needing_troughs} guides)"
-                        )
-                        break
-
-                if threshold_val is None:
-                    threshold_val = 0.8  # Fallback to permissive threshold
-                    logger.debug(f"Auto threshold fallback to {threshold_val}")
-        else:
-            # Fixed threshold mode
-            if not isinstance(threshold, (int, float)) or not (0.0 <= threshold <= 1.0):
-                raise ValueError("threshold must be a number between 0.0 and 1.0, or 'auto'")
-            threshold_val = float(threshold)
-
-        return self._find_gaps_with_threshold(density, threshold_val, min_gap, x0)
-
-    def _find_gaps_with_threshold(self, density, threshold_val, min_gap, x0):
-        """Helper method to find gaps given a specific threshold value."""
-        max_density = density.max()
-        threshold_density = threshold_val * max_density
-
-        # Smooth the density for better trough detection
-        from scipy.ndimage import gaussian_filter1d
-
-        smoothed_density = gaussian_filter1d(density.astype(float), sigma=1.0)
-
-        # Find regions below threshold
-        below_threshold = smoothed_density <= threshold_density
-
-        # Find contiguous regions
-        from scipy.ndimage import label as nd_label
-
-        labeled_regions, num_regions = nd_label(below_threshold)
-
-        gaps = []
-        for region_id in range(1, num_regions + 1):
-            region_mask = labeled_regions == region_id
-            region_indices = np.where(region_mask)[0]
-
-            if len(region_indices) == 0:
-                continue
-
-            start_px = region_indices[0]
-            end_px = region_indices[-1] + 1
-
-            # Convert back to PDF coordinates
-            start_pdf = x0 + start_px
-            end_pdf = x0 + end_px
-
-            # Check minimum gap size
-            if end_pdf - start_pdf >= min_gap:
-                gaps.append((start_pdf, end_pdf))
-
-        return gaps
-
-    def _find_horizontal_whitespace_gaps(
-        self, text_elements, min_gap: float, threshold: Union[float, str] = "auto"
-    ) -> List[Tuple[float, float]]:
-        """
-        Find horizontal whitespace gaps using bbox-based density analysis.
-        Returns list of (start, end) tuples representing trough ranges.
-        """
-        if not self.bounds:
-            return []
-
-        _, y0, _, y1 = self.bounds
-        height_pixels = int(y1 - y0)
-
-        if height_pixels <= 0:
-            return []
-
-        # Create density histogram: count bbox overlaps per y-coordinate
-        density = np.zeros(height_pixels)
-
-        for element in text_elements:
-            if not hasattr(element, "top") or not hasattr(element, "bottom"):
-                continue
-
-            # Clip coordinates to bounds
-            elem_top = max(y0, element.top) - y0
-            elem_bottom = min(y1, element.bottom) - y0
-
-            if elem_bottom > elem_top:
-                start_px = int(elem_top)
-                end_px = int(elem_bottom)
-                density[start_px:end_px] += 1
-
-        if density.max() == 0:
-            return []
-
-        # Determine the threshold value (same logic as vertical)
-        if threshold == "auto":
-            guides_needing_troughs = len(
-                [g for i, g in enumerate(self.horizontal) if 0 < i < len(self.horizontal) - 1]
-            )
-            if guides_needing_troughs == 0:
-                threshold_val = 0.5  # Default when no guides need placement
-            else:
-                threshold_val = None
-                for test_threshold in np.arange(0.1, 1.0, 0.05):
-                    test_gaps = self._find_gaps_with_threshold_horizontal(
-                        density, test_threshold, min_gap, y0
-                    )
-                    if len(test_gaps) >= guides_needing_troughs:
-                        threshold_val = test_threshold
-                        logger.debug(
-                            f"Auto threshold found: {test_threshold:.2f} (found {len(test_gaps)} troughs for {guides_needing_troughs} guides)"
-                        )
-                        break
-
-                if threshold_val is None:
-                    threshold_val = 0.8  # Fallback to permissive threshold
-                    logger.debug(f"Auto threshold fallback to {threshold_val}")
-        else:
-            # Fixed threshold mode
-            if not isinstance(threshold, (int, float)) or not (0.0 <= threshold <= 1.0):
-                raise ValueError("threshold must be a number between 0.0 and 1.0, or 'auto'")
-            threshold_val = float(threshold)
-
-        return self._find_gaps_with_threshold_horizontal(density, threshold_val, min_gap, y0)
-
-    def _find_gaps_with_threshold_horizontal(self, density, threshold_val, min_gap, y0):
-        """Helper method to find horizontal gaps given a specific threshold value."""
-        max_density = density.max()
-        threshold_density = threshold_val * max_density
-
-        # Smooth the density for better trough detection
-        from scipy.ndimage import gaussian_filter1d
-
-        smoothed_density = gaussian_filter1d(density.astype(float), sigma=1.0)
-
-        # Find regions below threshold
-        below_threshold = smoothed_density <= threshold_density
-
-        # Find contiguous regions
-        from scipy.ndimage import label as nd_label
-
-        labeled_regions, num_regions = nd_label(below_threshold)
-
-        gaps = []
-        for region_id in range(1, num_regions + 1):
-            region_mask = labeled_regions == region_id
-            region_indices = np.where(region_mask)[0]
-
-            if len(region_indices) == 0:
-                continue
-
-            start_px = region_indices[0]
-            end_px = region_indices[-1] + 1
-
-            # Convert back to PDF coordinates
-            start_pdf = y0 + start_px
-            end_pdf = y0 + end_px
-
-            # Check minimum gap size
-            if end_pdf - start_pdf >= min_gap:
-                gaps.append((start_pdf, end_pdf))
-
-        return gaps
-
-    def _find_vertical_element_gaps(
-        self, text_elements, min_gap: float
-    ) -> List[Tuple[float, float]]:
-        """
-        Find vertical whitespace gaps using text element spacing analysis.
-        Returns list of (start, end) tuples representing trough ranges.
-        """
-        if not self.bounds or not text_elements:
-            return []
-
-        x0, _, x1, _ = self.bounds
-
-        # Get all element right and left edges
-        element_edges = []
-        for element in text_elements:
-            if not hasattr(element, "x0") or not hasattr(element, "x1"):
-                continue
-            # Only include elements that overlap vertically with our bounds
-            if hasattr(element, "top") and hasattr(element, "bottom"):
-                if element.bottom < self.bounds[1] or element.top > self.bounds[3]:
-                    continue
-            element_edges.extend([element.x0, element.x1])
-
-        if not element_edges:
-            return []
-
-        # Sort edges and find gaps
-        element_edges = sorted(set(element_edges))
-
-        trough_ranges = []
-        for i in range(len(element_edges) - 1):
-            gap_start = element_edges[i]
-            gap_end = element_edges[i + 1]
-            gap_width = gap_end - gap_start
-
-            if gap_width >= min_gap:
-                # Check if this gap actually contains no text (is empty space)
-                gap_has_text = False
-                for element in text_elements:
-                    if (
-                        hasattr(element, "x0")
-                        and hasattr(element, "x1")
-                        and element.x0 < gap_end
-                        and element.x1 > gap_start
-                    ):
-                        gap_has_text = True
-                        break
-
-                if not gap_has_text:
-                    trough_ranges.append((gap_start, gap_end))
-
-        return trough_ranges
-
-    def _find_horizontal_element_gaps(
-        self, text_elements, min_gap: float
-    ) -> List[Tuple[float, float]]:
-        """
-        Find horizontal whitespace gaps using text element spacing analysis.
-        Returns list of (start, end) tuples representing trough ranges.
-        """
-        if not self.bounds or not text_elements:
-            return []
-
-        _, y0, _, y1 = self.bounds
-
-        # Get all element top and bottom edges
-        element_edges = []
-        for element in text_elements:
-            if not hasattr(element, "top") or not hasattr(element, "bottom"):
-                continue
-            # Only include elements that overlap horizontally with our bounds
-            if hasattr(element, "x0") and hasattr(element, "x1"):
-                if element.x1 < self.bounds[0] or element.x0 > self.bounds[2]:
-                    continue
-            element_edges.extend([element.top, element.bottom])
-
-        if not element_edges:
-            return []
-
-        # Sort edges and find gaps
-        element_edges = sorted(set(element_edges))
-
-        trough_ranges = []
-        for i in range(len(element_edges) - 1):
-            gap_start = element_edges[i]
-            gap_end = element_edges[i + 1]
-            gap_width = gap_end - gap_start
-
-            if gap_width >= min_gap:
-                # Check if this gap actually contains no text (is empty space)
-                gap_has_text = False
-                for element in text_elements:
-                    if (
-                        hasattr(element, "top")
-                        and hasattr(element, "bottom")
-                        and element.top < gap_end
-                        and element.bottom > gap_start
-                    ):
-                        gap_has_text = True
-                        break
-
-                if not gap_has_text:
-                    trough_ranges.append((gap_start, gap_end))
-
-        return trough_ranges
+        behavior = getattr(self, "snap_behavior", getattr(self, "on_no_snap", "warn"))
+        if behavior == "warn":
+            logger.warning(message)
+        elif behavior == "raise":
+            raise ValueError(message)
+        # 'ignore' case: do nothing
 
     def _optimal_guide_assignment(
         self, guides: List[float], trough_ranges: List[Tuple[float, float]]
@@ -3825,25 +3122,21 @@ class Guides:
                             verticals=verticals, horizontals=horizontals, context=region
                         )
 
-                        try:
-                            result = region_guides._build_grid_single_page(
-                                target=region,
-                                source=source,
-                                cell_padding=cell_padding,
-                                include_outer_boundaries=include_outer_boundaries,
-                            )
+                        result = region_guides._build_grid_single_page(
+                            target=region,
+                            source=source,
+                            cell_padding=cell_padding,
+                            include_outer_boundaries=include_outer_boundaries,
+                        )
 
-                            for key in total_counts:
-                                total_counts[key] += result["counts"][key]
+                        for key in total_counts:
+                            total_counts[key] += result["counts"][key]
 
-                            if result["regions"]["table"]:
-                                all_regions["table"].append(result["regions"]["table"])
-                            all_regions["rows"].extend(result["regions"]["rows"])
-                            all_regions["columns"].extend(result["regions"]["columns"])
-                            all_regions["cells"].extend(result["regions"]["cells"])
-
-                        except Exception as e:
-                            logger.warning(f"Failed to build grid on region: {e}")
+                        if result["regions"]["table"]:
+                            all_regions["table"].append(result["regions"]["table"])
+                        all_regions["rows"].extend(result["regions"]["rows"])
+                        all_regions["columns"].extend(result["regions"]["columns"])
+                        all_regions["cells"].extend(result["regions"]["cells"])
 
                 logger.info(
                     f"Created {total_counts['table']} tables, {total_counts['rows']} rows, "
@@ -3879,83 +3172,26 @@ class Guides:
         """
         from natural_pdf.flows.region import FlowRegion
 
-        if not self.is_flow_region or not hasattr(self.context, "flow") or not self.context.flow:
+        if not self.is_flow_region:
+            raise ValueError("Multi-page grid building requires a FlowRegion with a valid Flow.")
+        flow_context = self._flow_context()
+        if not getattr(flow_context, "flow", None):
             raise ValueError("Multi-page grid building requires a FlowRegion with a valid Flow.")
 
-        # Determine flow orientation to guide stitching
         orientation = self._get_flow_orientation()
+        adapter = FlowGuideAdapter(self)
+        region_grids = adapter.build_region_grids(source=source, cell_padding=cell_padding)
 
-        # Phase 1: Build physical grid on each page, clipping guides to that page's region
-        results_by_region = []
-        unified_verticals = self.vertical.data
-        unified_horizontals = self.horizontal.data
-
-        for region in self._flow_constituent_regions():
-            bounds = region.bbox
-            if not bounds:
-                continue
-
-            # Clip unified guides to the current region's bounds
-            clipped_verticals = [v for v in unified_verticals if bounds[0] <= v <= bounds[2]]
-            clipped_horizontals = [h for h in unified_horizontals if bounds[1] <= h <= bounds[3]]
-
-            # Ensure the region's own boundaries are included to close off cells at page breaks
-            clipped_verticals = sorted(list(set([bounds[0], bounds[2]] + clipped_verticals)))
-            clipped_horizontals = sorted(list(set([bounds[1], bounds[3]] + clipped_horizontals)))
-
-            if len(clipped_verticals) < 2 or len(clipped_horizontals) < 2:
-                continue  # Not enough guides to form a cell
-
-            region_guides = Guides(
-                verticals=clipped_verticals,
-                horizontals=clipped_horizontals,
-                context=region,
-            )
-
-            grid_parts = region_guides._build_grid_single_page(
-                target=region,
-                source=source,
-                cell_padding=cell_padding,
-                include_outer_boundaries=False,  # Boundaries are already handled
-            )
-
-            if grid_parts["counts"]["table"] > 0:
-                # Mark physical regions as fragments by updating their region_type
-                # This happens before stitching into logical FlowRegions
-                if len(self._flow_constituent_regions()) > 1:
-                    # Update region types to indicate these are fragments
-                    if grid_parts["regions"]["table"]:
-                        grid_parts["regions"]["table"].region_type = "table_fragment"
-                        grid_parts["regions"]["table"].metadata["is_fragment"] = True
-
-                    for row in grid_parts["regions"]["rows"]:
-                        row.region_type = "table_row_fragment"
-                        row.metadata["is_fragment"] = True
-
-                    for col in grid_parts["regions"]["columns"]:
-                        col.region_type = "table_column_fragment"
-                        col.metadata["is_fragment"] = True
-
-                    for cell in grid_parts["regions"]["cells"]:
-                        cell.region_type = "table_cell_fragment"
-                        cell.metadata["is_fragment"] = True
-
-                results_by_region.append(grid_parts)
-
-        if not results_by_region:
+        if not region_grids:
             return {
                 "counts": {"table": 0, "rows": 0, "columns": 0, "cells": 0},
                 "regions": {"table": None, "rows": [], "columns": [], "cells": []},
             }
 
-        # Phase 2: Stitch physical regions into logical FlowRegions based on orientation
         flow_region = self._flow_context()
         flow = flow_region.flow
 
-        # The overall table is always a FlowRegion
-        physical_tables = [
-            table for res in results_by_region if (table := res["regions"]["table"]) is not None
-        ]
+        physical_tables = [grid.table for grid in region_grids if grid.table is not None]
         multi_page_table = FlowRegion(
             flow=flow, constituent_regions=physical_tables, source_flow_element=None
         )
@@ -3965,170 +3201,19 @@ class Guides:
             {"is_multi_page": True, "num_rows": self.n_rows, "num_cols": self.n_cols}
         )
 
-        # Initialize final region collections
-        final_rows = []
-        final_cols = []
-        final_cells = []
+        final_rows, final_cols, final_cells = adapter.stitch_region_results(
+            region_grids, orientation, source
+        )
 
-        orientation = self._get_flow_orientation()
-
-        if orientation == "vertical":
-            # Start with all rows & cells from the first page's grid
-            if results_by_region:
-                # Make copies to modify
-                page_rows = [res["regions"]["rows"] for res in results_by_region]
-                page_cells = [res["regions"]["cells"] for res in results_by_region]
-
-                # Iterate through page breaks to merge split rows/cells
-                for i in range(len(results_by_region) - 1):
-                    region_A = self._flow_constituent_regions()[i]
-
-                    # Check if a guide exists at the boundary
-                    is_break_bounded = any(
-                        abs(h - region_A.bottom) < 0.1 for h in self.horizontal.data
-                    )
-
-                    if not is_break_bounded and page_rows[i] and page_rows[i + 1]:
-                        # No guide at break -> merge last row of A with first row of B
-                        last_row_A = page_rows[i].pop(-1)
-                        first_row_B = page_rows[i + 1].pop(0)
-
-                        merged_row = FlowRegion(
-                            flow, [last_row_A, first_row_B], source_flow_element=None
-                        )
-                        merged_row.source = source
-                        merged_row.region_type = "table_row"
-                        merged_row.metadata.update(
-                            {
-                                "row_index": last_row_A.metadata.get("row_index"),
-                                "is_multi_page": True,
-                            }
-                        )
-                        page_rows[i].append(merged_row)  # Add merged row back in place of A's last
-
-                        # Merge the corresponding cells using explicit row/col indices
-                        last_row_idx = last_row_A.metadata.get("row_index")
-                        first_row_idx = first_row_B.metadata.get("row_index")
-
-                        # Cells belonging to those rows
-                        last_cells_A = [
-                            c for c in page_cells[i] if c.metadata.get("row_index") == last_row_idx
-                        ]
-                        first_cells_B = [
-                            c
-                            for c in page_cells[i + 1]
-                            if c.metadata.get("row_index") == first_row_idx
-                        ]
-
-                        # Remove them from their page lists
-                        page_cells[i] = [
-                            c for c in page_cells[i] if c.metadata.get("row_index") != last_row_idx
-                        ]
-                        page_cells[i + 1] = [
-                            c
-                            for c in page_cells[i + 1]
-                            if c.metadata.get("row_index") != first_row_idx
-                        ]
-
-                        # Sort both lists by column index to keep alignment stable
-                        last_cells_A.sort(key=lambda c: c.metadata.get("col_index", 0))
-                        first_cells_B.sort(key=lambda c: c.metadata.get("col_index", 0))
-
-                        # Pair-wise merge
-                        for cell_A, cell_B in zip(last_cells_A, first_cells_B):
-                            merged_cell = FlowRegion(
-                                flow, [cell_A, cell_B], source_flow_element=None
-                            )
-                            merged_cell.source = source
-                            merged_cell.region_type = "table_cell"
-                            merged_cell.metadata.update(
-                                {
-                                    "row_index": cell_A.metadata.get("row_index"),
-                                    "col_index": cell_A.metadata.get("col_index"),
-                                    "is_multi_page": True,
-                                }
-                            )
-                            page_cells[i].append(merged_cell)
-
-                # Flatten the potentially modified lists of rows and cells
-                final_rows = [row for rows_list in page_rows for row in rows_list]
-                final_cells = [cell for cells_list in page_cells for cell in cells_list]
-
-                # Stitch columns, which always span vertically
-                physical_cols_by_index = zip(
-                    *(res["regions"]["columns"] for res in results_by_region)
-                )
-                for j, physical_cols in enumerate(physical_cols_by_index):
-                    col_fr = FlowRegion(
-                        flow=flow, constituent_regions=list(physical_cols), source_flow_element=None
-                    )
-                    col_fr.source = source
-                    col_fr.region_type = "table_column"
-                    col_fr.metadata.update({"col_index": j, "is_multi_page": True})
-                    final_cols.append(col_fr)
-
-        elif orientation == "horizontal":
-            # Symmetric logic for horizontal flow (not fully implemented here for brevity)
-            # This would merge last column of A with first column of B if no vertical guide exists
-            logger.warning("Horizontal table stitching not fully implemented.")
-            final_rows = [row for res in results_by_region for row in res["regions"]["rows"]]
-            final_cols = [col for res in results_by_region for col in res["regions"]["columns"]]
-            final_cells = [cell for res in results_by_region for cell in res["regions"]["cells"]]
-
-        else:  # Unknown orientation, just flatten everything
-            final_rows = [row for res in results_by_region for row in res["regions"]["rows"]]
-            final_cols = [col for res in results_by_region for col in res["regions"]["columns"]]
-            final_cells = [cell for res in results_by_region for cell in res["regions"]["cells"]]
-
-        # SMART PAGE-LEVEL REGISTRY: Remove individual tables and replace with multi-page table
-        # This ensures that page.find('table') finds the logical multi-page table, not fragments
-        constituent_pages: set["Page"] = set()
-        for region in self._flow_constituent_regions():
-            candidate_pages: Sequence["Page"] = ()
-            if isinstance(region, HasPages):
-                candidate_pages = tuple(region.pages)
-            elif isinstance(region, HasSinglePage):
-                candidate_pages = (region.page,)  # type: ignore[attr-defined]
-            else:
-                page_candidate = getattr(region, "page", None)
-                if page_candidate is not None:
-                    candidate_pages = (page_candidate,)
-
-            for page in candidate_pages:
-                if hasattr(page, "_element_mgr"):
-                    constituent_pages.add(page)
-
-        # Register the logical multi-page table with all constituent pages
-        # Note: Physical table fragments are already registered with region_type="table_fragment"
-        for page in constituent_pages:
-            try:
-                page._element_mgr.add_element(multi_page_table, element_type="regions")
-                logger.debug(f"Registered multi-page table with page {page.page_number}")
-
-            except Exception as e:
-                logger.warning(
-                    f"Failed to register multi-page table with page {page.page_number}: {e}"
-                )
-
-        # SMART PAGE-LEVEL REGISTRY: Register logical FlowRegion elements.
-        # Physical fragments are already registered with their pages with _fragment region types,
-        # so users can differentiate between logical regions and physical fragments.
-        for page in constituent_pages:
-            try:
-                # Register all logical rows with this page
-                for row in final_rows:
-                    page._element_mgr.add_element(row, element_type="regions")
-
-                # Register all logical columns with this page
-                for col in final_cols:
-                    page._element_mgr.add_element(col, element_type="regions")
-
-                # Register all logical cells with this page
-                for cell in final_cells:
-                    page._element_mgr.add_element(cell, element_type="regions")
-
-            except Exception as e:
-                logger.warning(f"Failed to register multi-region table elements with page: {e}")
+        constituent_pages = collect_constituent_pages(self._flow_constituent_regions())
+        register_regions_with_pages(
+            constituent_pages,
+            multi_page_table,
+            final_rows,
+            final_cols,
+            final_cells,
+            log=logger,
+        )
 
         final_counts = {
             "table": 1,
@@ -4152,7 +3237,7 @@ class Guides:
 
     def _build_grid_single_page(
         self,
-        target: Optional[Union["Page", "Region"]] = None,
+        target: Optional[GuidesContext] = None,
         source: str = "guides",
         cell_padding: float = 0.5,
         include_outer_boundaries: bool = False,
@@ -4168,14 +3253,25 @@ class Guides:
         target_obj = target or self.context
         if not target_obj:
             raise ValueError("No target object available. Provide target parameter or context.")
+        if _is_flow_region(target_obj):
+            raise ValueError(
+                "FlowRegion targets require multi-page handling – call build_grid with multi_page=True."
+            )
 
         bounds = _require_bounds(target_obj, context="grid target")
         origin_x, origin_y, max_x, max_y = bounds
         context_width = max_x - origin_x
         context_height = max_y - origin_y
 
-        if hasattr(target_obj, "_element_mgr") and not hasattr(target_obj, "_page"):
-            page = target_obj  # Already a page-like object with element manager
+        from natural_pdf.core.page import Page
+
+        page: Page
+        if isinstance(target_obj, Page):
+            page = target_obj
+        elif isinstance(target_obj, Region):
+            if target_obj.page is None:
+                raise ValueError("Region is not associated with a page")
+            page = target_obj.page
         else:
             try:
                 page = _resolve_single_page(target_obj)
@@ -4183,11 +3279,11 @@ class Guides:
                 raise ValueError(
                     f"Target object {target_obj} does not expose a single page reference"
                 ) from exc
+            if not isinstance(page, Page):
+                raise ValueError("Resolved page does not implement the Page interface")
 
-        if not hasattr(page, "_element_mgr"):
-            raise ValueError("Target page does not expose an element manager for grid registration")
-
-        element_manager = page._element_mgr
+        if not hasattr(page, "add_element") or not hasattr(page, "remove_element"):
+            raise ValueError("Target page does not expose element registration helpers")
 
         # Setup boundaries
         row_boundaries = [float(v) for v in self.horizontal]
@@ -4209,6 +3305,16 @@ class Guides:
         row_boundaries = sorted(list(set(row_boundaries)))
         col_boundaries = sorted(list(set(col_boundaries)))
 
+        def _collect_regions_from_page_obj(page_obj):
+            iterator = getattr(page_obj, "iter_regions", None)
+            regions = iterator() if callable(iterator) else iterator
+            if regions is None:
+                return []
+            try:
+                return list(regions)
+            except TypeError:
+                return []
+
         # ------------------------------------------------------------------
         # Clean-up: remove any previously created grid regions (table, rows,
         # columns, cells) that were generated by the same `source` label and
@@ -4216,45 +3322,47 @@ class Guides:
         # `ElementManager` from accumulating stale/duplicate regions when the
         # user rebuilds the grid multiple times.
         # ------------------------------------------------------------------
-        try:
-            # Bounding box of the grid we are about to create
-            if row_boundaries and col_boundaries:
-                grid_bbox = (
-                    col_boundaries[0],  # x0
-                    row_boundaries[0],  # top
-                    col_boundaries[-1],  # x1
-                    row_boundaries[-1],  # bottom
+        if row_boundaries and col_boundaries:
+            grid_bbox = (
+                col_boundaries[0],  # x0
+                row_boundaries[0],  # top
+                col_boundaries[-1],  # x1
+                row_boundaries[-1],  # bottom
+            )
+
+            def _bbox_overlap(b1, b2):
+                """Return True if two (x0, top, x1, bottom) bboxes overlap."""
+                return not (
+                    b1[2] <= b2[0]  # b1 right ≤ b2 left
+                    or b1[0] >= b2[2]  # b1 left ≥ b2 right
+                    or b1[3] <= b2[1]  # b1 bottom ≤ b2 top
+                    or b1[1] >= b2[3]  # b1 top ≥ b2 bottom
                 )
 
-                def _bbox_overlap(b1, b2):
-                    """Return True if two (x0, top, x1, bottom) bboxes overlap."""
-                    return not (
-                        b1[2] <= b2[0]  # b1 right ≤ b2 left
-                        or b1[0] >= b2[2]  # b1 left ≥ b2 right
-                        or b1[3] <= b2[1]  # b1 bottom ≤ b2 top
-                        or b1[1] >= b2[3]  # b1 top ≥ b2 bottom
-                    )
+            existing_regions = _collect_regions_from_page_obj(page)
+            regions_to_remove = []
+            for r in existing_regions:
+                if getattr(r, "source", None) != source:
+                    continue
+                if getattr(r, "region_type", None) not in {
+                    "table",
+                    "table_row",
+                    "table_column",
+                    "table_cell",
+                }:
+                    continue
+                if not hasattr(r, "bbox"):
+                    continue
+                if _bbox_overlap(r.bbox, grid_bbox):
+                    regions_to_remove.append(r)
 
-                # Collect existing regions that match the source & region types
-                regions_to_remove = [
-                    r
-                    for r in element_manager.regions
-                    if getattr(r, "source", None) == source
-                    and getattr(r, "region_type", None)
-                    in {"table", "table_row", "table_column", "table_cell"}
-                    and hasattr(r, "bbox")
-                    and _bbox_overlap(r.bbox, grid_bbox)
-                ]
+            for r in regions_to_remove:
+                page.remove_element(r, element_type="regions")
 
-                for r in regions_to_remove:
-                    element_manager.remove_element(r, element_type="regions")
-
-                if regions_to_remove:
-                    logger.debug(
-                        f"Removed {len(regions_to_remove)} existing grid region(s) prior to rebuild"
-                    )
-        except Exception as cleanup_err:  # pragma: no cover – cleanup must never crash
-            logger.warning(f"Grid cleanup failed: {cleanup_err}")
+            if regions_to_remove:
+                logger.debug(
+                    f"Removed {len(regions_to_remove)} existing grid region(s) prior to rebuild"
+                )
 
         logger.debug(
             f"Building grid with {len(row_boundaries)} row and {len(col_boundaries)} col boundaries"
@@ -4362,43 +3470,6 @@ class Guides:
             f"cells={len(self.get_cells())})"
         )
 
-    def _get_text_elements(self):
-        """Get text elements from the context."""
-        if not self.context:
-            return []
-
-        # Handle FlowRegion context
-        if self.is_flow_region:
-            all_text_elements = []
-            for region in self._flow_constituent_regions():
-                if hasattr(region, "find_all"):
-                    try:
-                        text_elements = region.find_all("text", apply_exclusions=False)
-                        elements = (
-                            text_elements.elements
-                            if hasattr(text_elements, "elements")
-                            else text_elements
-                        )
-                        all_text_elements.extend(elements)
-                    except Exception as e:
-                        logger.warning(f"Error getting text elements from region: {e}")
-            return all_text_elements
-
-        # Original single-region logic
-        # Get text elements from the context
-        if hasattr(self.context, "find_all"):
-            try:
-                text_elements = self.context.find_all("text", apply_exclusions=False)
-                return (
-                    text_elements.elements if hasattr(text_elements, "elements") else text_elements
-                )
-            except Exception as e:
-                logger.warning(f"Error getting text elements: {e}")
-                return []
-        else:
-            logger.warning("Context does not support text element search")
-            return []
-
     def _spans_pages(self) -> bool:
         """Check if any guides are defined across multiple pages in a FlowRegion."""
         if not self.is_flow_region:
@@ -4434,7 +3505,7 @@ class Guides:
         markers: Union[str, List[str], "ElementCollection", None] = None,
         obj: Optional[Union["Page", "Region"]] = None,
         align: Literal["left", "right", "center", "between"] = "left",
-        outer: Union[str, bool] = True,
+        outer: OuterBoundaryMode = True,
         tolerance: float = 5,
         apply_exclusions: bool = True,
     ) -> "Guides":
@@ -4670,7 +3741,6 @@ class Guides:
             ```
         """
         from natural_pdf.core.page_collection import PageCollection
-        from natural_pdf.elements.element_collection import ElementCollection
 
         target_obj = target if target is not None else self.context
         if target_obj is None:
@@ -4694,13 +3764,16 @@ class Guides:
                 apply_exclusions=apply_exclusions,
             )
 
+        from natural_pdf.core.page import Page
+
         # Get the page for cleanup later
         if hasattr(target_obj, "x0") and hasattr(target_obj, "top"):  # Region
-            page = target_obj._page
-            element_manager = page._element_mgr
-        elif hasattr(target_obj, "_element_mgr"):  # Page
-            page = target_obj
-            element_manager = page._element_mgr
+            page_obj = getattr(target_obj, "_page", None)
+            if page_obj is None:
+                raise ValueError("Region is not associated with a page")
+            page = cast(Page, page_obj)
+        elif hasattr(target_obj, "add_element"):  # Page-like
+            page = cast(Page, target_obj)
         else:
             raise ValueError(f"Target object {target_obj} is not a Page or Region")
 
@@ -4774,23 +3847,29 @@ class Guides:
         finally:
             # Step 4: Clean up all temporary regions created by build_grid
             # This ensures no regions are left behind regardless of success/failure
-            try:
-                regions_to_remove = [
-                    r
-                    for r in element_manager.regions
-                    if getattr(r, "source", None) == source
-                    and getattr(r, "region_type", None)
-                    in {"table", "table_row", "table_column", "table_cell"}
-                ]
+            iter_regions = getattr(page, "iter_regions", None)
+            existing_regions = iter_regions() if callable(iter_regions) else iter_regions
+            if existing_regions is None:
+                existing_regions = []
+            else:
+                try:
+                    existing_regions = list(existing_regions)
+                except TypeError:
+                    existing_regions = []
 
-                for region in regions_to_remove:
-                    element_manager.remove_element(region, element_type="regions")
+            regions_to_remove = [
+                r
+                for r in existing_regions
+                if getattr(r, "source", None) == source
+                and getattr(r, "region_type", None)
+                in {"table", "table_row", "table_column", "table_cell"}
+            ]
 
-                if regions_to_remove:
-                    logger.debug(f"Cleaned up {len(regions_to_remove)} temporary regions")
+            for region in regions_to_remove:
+                page.remove_element(region, element_type="regions")
 
-            except Exception as cleanup_err:
-                logger.warning(f"Failed to clean up temporary regions: {cleanup_err}")
+            if regions_to_remove:
+                logger.debug("Cleaned up %d temporary regions", len(regions_to_remove))
 
     def _extract_table_from_collection(
         self,
@@ -4849,7 +3928,6 @@ class Guides:
             ```
         """
         from natural_pdf.core.page_collection import PageCollection
-        from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.tables.result import TableResult
 
         # Convert to list if it's a collection
@@ -4985,7 +4063,6 @@ class _ColumnAccessor:
 
     def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
         """Get column at the specified index or slice."""
-        from natural_pdf.elements.element_collection import ElementCollection
 
         if isinstance(index, slice):
             # Handle slice notation - return multiple columns
@@ -5017,7 +4094,6 @@ class _RowAccessor:
 
     def __getitem__(self, index: Union[int, slice]) -> Union["Region", "ElementCollection"]:
         """Get row at the specified index or slice."""
-        from natural_pdf.elements.element_collection import ElementCollection
 
         if isinstance(index, slice):
             # Handle slice notation - return multiple rows
@@ -5055,7 +4131,6 @@ class _CellAccessor:
         - guides.cells[:, :] - all cells
         - guides.cells[row][:] - all cells in a row (nested)
         """
-        from natural_pdf.elements.element_collection import ElementCollection
 
         if isinstance(key, tuple) and len(key) == 2:
             row, col = key
@@ -5131,7 +4206,6 @@ class _CellRowAccessor:
 
     def __getitem__(self, col: Union[int, slice]) -> Union["Region", "ElementCollection"]:
         """Get cell at [row][col] or all cells in row with [row][:]."""
-        from natural_pdf.elements.element_collection import ElementCollection
 
         if isinstance(col, slice):
             # Handle slice notation - return all cells in this row

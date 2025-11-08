@@ -156,9 +156,7 @@ def test_get_elements_with_pdf_exclusions():
     filtered_elements = [all_elements[0], all_elements[2]]  # Exclude middle one
 
     # Mock the element manager
-    mock_element_mgr = Mock()
-    mock_element_mgr.get_all_elements = Mock(return_value=all_elements)
-    page._element_mgr = mock_element_mgr
+    page.get_all_elements_raw = Mock(return_value=all_elements)
 
     # Mock the filter method
     page._filter_elements_by_exclusions = Mock(return_value=filtered_elements)

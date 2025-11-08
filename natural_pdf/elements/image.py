@@ -30,7 +30,13 @@ class ImageElement(Element):
     @property
     def srcsize(self) -> Tuple[float, float]:
         """Original pixel dimensions of the embedded image (width, height)."""
-        return self._obj.get("srcsize", (None, None))
+        value = self._obj.get("srcsize")
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            width_raw, height_raw = value
+            width = float(width_raw) if width_raw is not None else 0.0
+            height = float(height_raw) if height_raw is not None else 0.0
+            return (width, height)
+        return (0.0, 0.0)
 
     @property
     def colorspace(self):  # raw pdfminer data

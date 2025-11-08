@@ -1,6 +1,6 @@
-"""
-Base Element class for natural-pdf.
-"""
+"""Base Element class for natural-pdf."""
+
+from __future__ import annotations
 
 from collections.abc import Mapping as MappingABC
 from collections.abc import Sequence as SequenceABC
@@ -49,6 +49,24 @@ class _DirectionalHost(SupportsGeometry, Protocol):
 
     @property
     def height(self) -> float: ...
+
+    def _direction(self, *args: Any, **kwargs: Any) -> Union["Region", "FlowRegion"]: ...
+
+    def _direction_multipage(self, *args: Any, **kwargs: Any) -> Union["Region", "FlowRegion"]: ...
+
+
+class _LayoutConfig(Protocol):
+    directional_offset: float
+    auto_multipage: bool
+    directional_within: Optional["Region"]
+
+
+class _ImageConfig(Protocol):
+    resolution: Optional[float]
+
+
+def _get_layout_config() -> _LayoutConfig:
+    return cast(_LayoutConfig, natural_pdf.options.layout)
 
 
 def extract_bbox(obj: SupportsBBox | Mapping[str, Any] | Sequence[float]) -> Optional[Bounds]:
@@ -159,14 +177,8 @@ class DirectionalMixin:
     """
 
     # Inform static type checkers about required attributes.
-    page: "Page"
-    x0: float
-    top: float
-    x1: float
-    bottom: float
-
     def _direction(
-        self: _DirectionalHost,
+        self,
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
@@ -204,80 +216,81 @@ class DirectionalMixin:
         is_horizontal = direction in ("left", "right")
         is_positive = direction in ("right", "below")  # right/below are positive directions
         pixel_offset = offset  # Use provided offset for excluding elements/endpoints
+        layout_config = _get_layout_config()
+        host = cast(_DirectionalHost, self)
 
         # initialise optional coordinate holders to satisfy static checkers
-        x0_initial = x1_initial = self.x0
-        y0_initial = y1_initial = self.top
-        x0_final = x1_final = self.x0
-        y0_final = y1_final = self.top
-        y0 = self.top
-        y1 = self.bottom
-        x0 = self.x0
-        x1 = self.x1
+        x0_initial = x1_initial = host.x0
+        y0_initial = y1_initial = host.top
+        x0_final = x1_final = host.x0
+        y0_final = y1_final = host.top
+        y0 = host.top
+        y1 = host.bottom
+        x0 = host.x0
+        x1 = host.x1
 
         # Normalize anchor parameter
         def normalize_anchor(anchor_value: str, dir: str) -> str:
             """Convert start/end/center to explicit edges based on direction."""
             if anchor_value == "center":
                 return "center"
-            elif anchor_value == "start":
+            if anchor_value == "start":
                 # Start means the edge we're moving away from
                 if dir == "below":
                     return "top"
-                elif dir == "above":
+                if dir == "above":
                     return "bottom"
-                elif dir == "right":
+                if dir == "right":
                     return "left"
-                elif dir == "left":
+                if dir == "left":
                     return "right"
             elif anchor_value == "end":
                 # End means the edge we're moving towards
                 if dir == "below":
                     return "bottom"
-                elif dir == "above":
+                if dir == "above":
                     return "top"
-                elif dir == "right":
+                if dir == "right":
                     return "right"
-                elif dir == "left":
+                if dir == "left":
                     return "left"
-            else:
-                # Already explicit (top/bottom/left/right)
-                return anchor_value
+            # Already explicit (top/bottom/left/right) or unhandled direction fallback
+            return anchor_value
 
         normalized_anchor = normalize_anchor(anchor, direction)
 
         # 1. Determine initial boundaries based on direction and include_source
         if is_horizontal:
             # Initial cross-boundaries (vertical)
-            y0 = 0 if cross_size == "full" else self.top
-            y1 = self.page.height if cross_size == "full" else self.bottom
+            y0 = 0 if cross_size == "full" else host.top
+            y1 = host.page.height if cross_size == "full" else host.bottom
 
             # Initial primary boundaries (horizontal)
             if is_positive:  # right
-                x0_initial = self.x0 if include_source else self.x1 + pixel_offset
-                x1_initial = self.x1  # This edge moves
+                x0_initial = host.x0 if include_source else host.x1 + pixel_offset
+                x1_initial = host.x1  # This edge moves
             else:  # left
-                x0_initial = self.x0  # This edge moves
-                x1_initial = self.x1 if include_source else self.x0 - pixel_offset
+                x0_initial = host.x0  # This edge moves
+                x1_initial = host.x1 if include_source else host.x0 - pixel_offset
         else:  # Vertical
             # Initial cross-boundaries (horizontal)
-            x0 = 0 if cross_size == "full" else self.x0
-            x1 = self.page.width if cross_size == "full" else self.x1
+            x0 = 0 if cross_size == "full" else host.x0
+            x1 = host.page.width if cross_size == "full" else host.x1
 
             # Initial primary boundaries (vertical)
             if is_positive:  # below
-                y0_initial = self.top if include_source else self.bottom + pixel_offset
-                y1_initial = self.bottom  # This edge moves
+                y0_initial = host.top if include_source else host.bottom + pixel_offset
+                y1_initial = host.bottom  # This edge moves
             else:  # above
-                y0_initial = self.top  # This edge moves
-                y1_initial = self.bottom if include_source else self.top - pixel_offset
+                y0_initial = host.top  # This edge moves
+                y1_initial = host.bottom if include_source else host.top - pixel_offset
 
         # 2. Calculate the final primary boundary, considering 'size' or page limits
         if is_horizontal:
             if is_positive:  # right
                 x1_final = min(
-                    self.page.width,
-                    x1_initial + (size if size is not None else (self.page.width - x1_initial)),
+                    host.page.width,
+                    x1_initial + (size if size is not None else (host.page.width - x1_initial)),
                 )
                 x0_final = x0_initial
             else:  # left
@@ -286,8 +299,8 @@ class DirectionalMixin:
         else:  # Vertical
             if is_positive:  # below
                 y1_final = min(
-                    self.page.height,
-                    y1_initial + (size if size is not None else (self.page.height - y1_initial)),
+                    host.page.height,
+                    y1_initial + (size if size is not None else (host.page.height - y1_initial)),
                 )
                 y0_final = y0_initial
             else:  # above
@@ -300,7 +313,7 @@ class DirectionalMixin:
             from natural_pdf.elements.element_collection import ElementCollection
 
             # Get constraint region (from parameter or global options)
-            constraint_region = within or natural_pdf.options.layout.directional_within
+            constraint_region = within or layout_config.directional_within
 
             # Check if until uses :closest selector (preserve ordering)
             preserve_order = isinstance(until, str) and ":closest" in until
@@ -308,19 +321,21 @@ class DirectionalMixin:
             # If until is an elementcollection, just use it
             if isinstance(until, ElementCollection):
                 # Only take ones on the same page
-                all_matches = [m for m in until if m.page == self.page]
+                all_matches = [
+                    cast(SupportsGeometry, m)
+                    for m in until
+                    if hasattr(m, "page") and getattr(m, "page") == host.page
+                ]
             else:
                 # If we have a constraint region, search within it instead of the whole page
-                if (
-                    constraint_region
-                    and hasattr(constraint_region, "page")
-                    and constraint_region.page == self.page
-                ):
+                from natural_pdf.elements.region import Region
+
+                if isinstance(constraint_region, Region) and constraint_region.page == host.page:
                     all_matches = constraint_region.find_all(
                         until, apply_exclusions=apply_exclusions, **kwargs
                     )
                 else:
-                    all_matches = self.page.find_all(
+                    all_matches = host.page.find_all(
                         until, apply_exclusions=apply_exclusions, **kwargs
                     )
             matches_in_direction = []
@@ -342,20 +357,20 @@ class DirectionalMixin:
             # Determine reference point based on normalized_anchor
             if direction == "above":
                 if normalized_anchor == "top":
-                    ref_y = self.top
+                    ref_y = host.top
                     comparator = lambda m: m.bottom < ref_y
                 elif normalized_anchor == "center":
-                    ref_y = (self.top + self.bottom) / 2
+                    ref_y = (host.top + host.bottom) / 2
                     comparator = lambda m: m.bottom <= ref_y
                 else:  # 'bottom'
-                    ref_y = self.bottom
+                    ref_y = host.bottom
                     comparator = lambda m: m.bottom <= ref_y
 
                 matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
-                        m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
+                        m for m in matches_in_direction if m.x0 < host.x1 and m.x1 > host.x0
                     ]
                 # Only sort by position if not using :closest (which is already sorted by quality)
                 if not preserve_order:
@@ -363,20 +378,20 @@ class DirectionalMixin:
 
             elif direction == "below":
                 if normalized_anchor == "top":
-                    ref_y = self.top
+                    ref_y = host.top
                     comparator = lambda m: m.top > ref_y
                 elif normalized_anchor == "center":
-                    ref_y = (self.top + self.bottom) / 2
+                    ref_y = (host.top + host.bottom) / 2
                     comparator = lambda m: m.top >= ref_y
                 else:  # 'bottom'
-                    ref_y = self.bottom
+                    ref_y = host.bottom
                     comparator = lambda m: m.top >= ref_y
 
                 matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by horizontal bounds if cross_size='element'
                 if cross_size == "element":
                     matches_in_direction = [
-                        m for m in matches_in_direction if m.x0 < self.x1 and m.x1 > self.x0
+                        m for m in matches_in_direction if m.x0 < host.x1 and m.x1 > host.x0
                     ]
                 # Only sort by position if not using :closest (which is already sorted by quality)
                 if not preserve_order:
@@ -384,13 +399,13 @@ class DirectionalMixin:
 
             elif direction == "left":
                 if normalized_anchor == "left":
-                    ref_x = self.x0
+                    ref_x = host.x0
                     comparator = lambda m: m.x1 < ref_x
                 elif normalized_anchor == "center":
-                    ref_x = (self.x0 + self.x1) / 2
+                    ref_x = (host.x0 + host.x1) / 2
                     comparator = lambda m: m.x1 <= ref_x
                 else:  # 'right'
-                    ref_x = self.x1
+                    ref_x = host.x1
                     comparator = lambda m: m.x1 <= ref_x
 
                 matches_in_direction = [m for m in all_matches if comparator(m)]
@@ -399,7 +414,7 @@ class DirectionalMixin:
                     matches_in_direction = [
                         m
                         for m in matches_in_direction
-                        if m.top < self.bottom and m.bottom > self.top
+                        if m.top < host.bottom and m.bottom > host.top
                     ]
                 # Only sort by position if not using :closest (which is already sorted by quality)
                 if not preserve_order:
@@ -407,13 +422,13 @@ class DirectionalMixin:
 
             elif direction == "right":
                 if normalized_anchor == "left":
-                    ref_x = self.x0
+                    ref_x = host.x0
                     comparator = lambda m: m.x0 >= ref_x
                 elif normalized_anchor == "center":
-                    ref_x = (self.x0 + self.x1) / 2
+                    ref_x = (host.x0 + host.x1) / 2
                     comparator = lambda m: m.x0 >= ref_x
                 else:  # 'right'
-                    ref_x = self.x1
+                    ref_x = host.x1
                     comparator = lambda m: m.x0 > ref_x
 
                 matches_in_direction = [m for m in all_matches if comparator(m)]
@@ -422,7 +437,7 @@ class DirectionalMixin:
                     matches_in_direction = [
                         m
                         for m in matches_in_direction
-                        if m.top < self.bottom and m.bottom > self.top
+                        if m.top < host.bottom and m.bottom > host.top
                     ]
                 # Only sort by position if not using :closest (which is already sorted by quality)
                 if not preserve_order:
@@ -452,11 +467,11 @@ class DirectionalMixin:
                 # Adjust cross boundaries if cross_size is 'element'
                 if cross_size == "element":
                     if is_horizontal:  # Adjust y0, y1
-                        y0 = min(y0, self.top)
-                        y1 = max(y1, self.bottom)
+                        y0 = min(y0, host.top)
+                        y1 = max(y1, host.bottom)
                     else:  # Adjust x0, x1
-                        x0 = min(x0, self.x0)
-                        x1 = max(x1, self.x1)
+                        x0 = min(x0, host.x0)
+                        x1 = max(x1, host.x1)
 
         # 4. Finalize bbox coordinates
         if is_horizontal:
@@ -472,10 +487,10 @@ class DirectionalMixin:
         final_bbox = (final_x0, final_y0, final_x1, final_y1)
 
         # 4.5. Apply within constraint if provided (or from global options)
-        constraint_region = within or natural_pdf.options.layout.directional_within
+        constraint_region = within or layout_config.directional_within
         if constraint_region:
             # Ensure constraint is on same page
-            if hasattr(constraint_region, "page") and constraint_region.page != self.page:
+            if hasattr(constraint_region, "page") and constraint_region.page != host.page:
                 raise ValueError("within constraint must be on the same page as the source element")
 
             # Apply constraint by intersecting with the constraint region's bounds
@@ -490,7 +505,7 @@ class DirectionalMixin:
         # 5. Check if multipage is needed
         # Use global default if not explicitly set
         if multipage is None:
-            use_multipage = natural_pdf.options.layout.auto_multipage
+            use_multipage = layout_config.auto_multipage
         else:
             use_multipage = multipage
 
@@ -512,11 +527,11 @@ class DirectionalMixin:
 
             # Case 2: size extends beyond page boundaries
             if not until:
-                if direction == "below" and final_bbox[3] >= self.page.height:
+                if direction == "below" and final_bbox[3] >= host.page.height:
                     needs_multipage = True
                 elif direction == "above" and final_bbox[1] <= 0:
                     needs_multipage = True
-                elif direction == "right" and final_bbox[2] >= self.page.width:
+                elif direction == "right" and final_bbox[2] >= host.page.width:
                     needs_multipage = True
                 elif direction == "left" and final_bbox[0] <= 0:
                     needs_multipage = True
@@ -538,17 +553,20 @@ class DirectionalMixin:
         # 6. Create and return appropriate object based on self type
         from natural_pdf.elements.region import Region
 
-        result = Region(self.page, final_bbox)
-        result.source_element = self
+        result = Region(host.page, final_bbox)
+        result.source_element = cast("Element | Region", self)
         result.includes_source = include_source
         # Optionally store the boundary element if found
         if target:
-            result.boundary_element = target
+            # Boundary elements are typically Element instances; guard to satisfy the type checker.
+            if hasattr(target, "object_type") and getattr(target, "object_type") != "region":
+                result.boundary_element = cast("Element", target)
+            setattr(result, "end_element", target)
 
         return result
 
     def _direction_multipage(
-        self: _DirectionalHost,
+        self,
         direction: str,
         size: Optional[float] = None,
         cross_size: str = "full",
@@ -564,12 +582,13 @@ class DirectionalMixin:
 
         Returns FlowRegion if result spans multiple pages, Region if on single page.
         """
+        host = cast(_DirectionalHost, self)
         # Get access to the PDF to create a Flow
-        pdf = self.page.pdf
+        pdf = host.page.pdf
         # Find the index of the current page
         current_page_idx = None
         for idx, page in enumerate(pdf.pages):
-            if page == self.page:
+            if page == host.page:
                 current_page_idx = idx
                 break
 
@@ -577,10 +596,10 @@ class DirectionalMixin:
             # Fallback - just use current page
             from natural_pdf.flows.flow import Flow
 
-            flow = Flow(segments=[self.page], arrangement="vertical")
+            flow = Flow(segments=[host.page], arrangement="vertical")
             from natural_pdf.flows.element import FlowElement
 
-            flow_element = FlowElement(physical_object=self, flow=flow)
+            flow_element = FlowElement(physical_object=cast("Element | Region", self), flow=flow)
             return getattr(flow_element, direction)(**kwargs)
 
         # Determine which pages to include in the Flow based on direction
@@ -592,15 +611,21 @@ class DirectionalMixin:
             flow_pages = pdf.pages[: current_page_idx + 1]
 
         # Create a temporary Flow
+        from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.flows.flow import Flow
 
-        flow = Flow(segments=list(flow_pages), arrangement="vertical")
+        if isinstance(flow_pages, PageCollection):
+            segments_source = flow_pages
+        else:
+            segments_source = list(flow_pages)
+
+        flow = Flow(segments=segments_source, arrangement="vertical")
 
         # Find the element in the flow
         # We need to create a FlowElement that corresponds to self
         from natural_pdf.flows.element import FlowElement
 
-        flow_element = FlowElement(physical_object=self, flow=flow)
+        flow_element = FlowElement(physical_object=cast("Element | Region", self), flow=flow)
 
         # Call the directional method on the FlowElement
         # Remove parameters that FlowElement methods don't expect
@@ -616,7 +641,7 @@ class DirectionalMixin:
             if cross_size == "full":
                 width_absolute = None  # Let FlowElement use its defaults
             elif cross_size == "element":
-                width_absolute = self.width
+                width_absolute = host.width
             elif isinstance(cross_size, (int, float)):
                 width_absolute = cross_size
             else:
@@ -646,7 +671,7 @@ class DirectionalMixin:
             if cross_size == "full":
                 height_absolute = None  # Let FlowElement use its defaults
             elif cross_size == "element":
-                height_absolute = self.height
+                height_absolute = host.height
             elif isinstance(cross_size, (int, float)):
                 height_absolute = cross_size
             else:
@@ -680,13 +705,15 @@ class DirectionalMixin:
             single_region = result.constituent_regions[0]
             # Copy over any metadata
             if hasattr(result, "boundary_element_found"):
-                single_region.boundary_element = result.boundary_element_found
+                boundary_candidate = result.boundary_element_found
+                if isinstance(boundary_candidate, Element):
+                    single_region.boundary_element = boundary_candidate
             return single_region
 
         return result
 
     def above(
-        self: _DirectionalHost,
+        self,
         height: Optional[float] = None,
         width: str = "full",
         include_source: bool = False,
@@ -731,9 +758,10 @@ class DirectionalMixin:
             signature.above(until='text:contains("Date")')  # Region from date to signature
             ```
         """
+        layout_config = _get_layout_config()
         # Use global default if offset not provided
         if offset is None:
-            offset = natural_pdf.options.layout.directional_offset
+            offset = layout_config.directional_offset
 
         return self._direction(
             direction="above",
@@ -751,7 +779,7 @@ class DirectionalMixin:
         )
 
     def below(
-        self: _DirectionalHost,
+        self,
         height: Optional[float] = None,
         width: str = "full",
         include_source: bool = False,
@@ -796,9 +824,10 @@ class DirectionalMixin:
             header.below(height=200)  # Gets 200pt tall region below header
             ```
         """
+        layout_config = _get_layout_config()
         # Use global default if offset not provided
         if offset is None:
-            offset = natural_pdf.options.layout.directional_offset
+            offset = layout_config.directional_offset
 
         return self._direction(
             direction="below",
@@ -816,7 +845,7 @@ class DirectionalMixin:
         )
 
     def left(
-        self: _DirectionalHost,
+        self,
         width: Optional[float] = None,
         height: str = "element",
         include_source: bool = False,
@@ -861,9 +890,10 @@ class DirectionalMixin:
             table.left(height=100)  # Gets 100pt tall region to the left
             ```
         """
+        layout_config = _get_layout_config()
         # Use global default if offset not provided
         if offset is None:
-            offset = natural_pdf.options.layout.directional_offset
+            offset = layout_config.directional_offset
 
         return self._direction(
             direction="left",
@@ -881,7 +911,7 @@ class DirectionalMixin:
         )
 
     def right(
-        self: _DirectionalHost,
+        self,
         width: Optional[float] = None,
         height: str = "element",
         include_source: bool = False,
@@ -926,9 +956,10 @@ class DirectionalMixin:
             label.right(height=50)  # Gets 50pt tall region to the right
             ```
         """
+        layout_config = _get_layout_config()
         # Use global default if offset not provided
         if offset is None:
-            offset = natural_pdf.options.layout.directional_offset
+            offset = layout_config.directional_offset
 
         return self._direction(
             direction="right",
@@ -969,7 +1000,7 @@ class DirectionalMixin:
         ...
 
     def expand(
-        self: _DirectionalHost,
+        self,
         amount: Optional[float] = None,
         left: Union[float, bool, str] = 0,
         right: Union[float, bool, str] = 0,
@@ -1020,30 +1051,32 @@ class DirectionalMixin:
         if amount is not None:
             left = right = top = bottom = amount
 
+        host = cast(_DirectionalHost, self)
+
         # Helper function to process expansion values
-        def process_expansion(value, direction):
+        def process_expansion(value: Union[float, bool, str], direction: str) -> float:
             """Process expansion value and return the new coordinate."""
             is_horizontal = direction in ("left", "right")
             is_positive = direction in ("right", "bottom")
 
             # Get current bounds
             if is_horizontal:
-                current_edge = self.x1 if is_positive else self.x0
-                page_limit = self.page.width if is_positive else 0
+                current_edge = host.x1 if is_positive else host.x0
+                page_limit = float(host.page.width) if is_positive else 0.0
             else:
-                current_edge = self.bottom if is_positive else self.top
-                page_limit = self.page.height if is_positive else 0
+                current_edge = host.bottom if is_positive else host.top
+                page_limit = float(host.page.height) if is_positive else 0.0
 
             # Handle boolean True - expand to page edge
             if value is True:
-                return page_limit
+                return float(page_limit)
 
             # Handle numeric values - fixed pixel expansion
             elif isinstance(value, (int, float)):
                 if is_positive:
-                    return current_edge + value
+                    return float(current_edge + float(value))
                 else:
-                    return current_edge - value
+                    return float(current_edge - float(value))
 
             # Handle string selectors - use directional methods
             elif isinstance(value, str):
@@ -1059,7 +1092,7 @@ class DirectionalMixin:
                         include_source=True,
                         apply_exclusions=apply_exclusions,
                     )
-                    return region.x0
+                    return float(cast(Any, region).x0)
                 elif direction == "right":
                     region = self.right(
                         until=selector,
@@ -1067,7 +1100,7 @@ class DirectionalMixin:
                         include_source=True,
                         apply_exclusions=apply_exclusions,
                     )
-                    return region.x1
+                    return float(cast(Any, region).x1)
                 elif direction == "top":
                     region = self.above(
                         until=selector,
@@ -1076,7 +1109,7 @@ class DirectionalMixin:
                         width="element",
                         apply_exclusions=apply_exclusions,
                     )
-                    return region.top
+                    return float(cast(Any, region).top)
                 elif direction == "bottom":
                     region = self.below(
                         until=selector,
@@ -1085,20 +1118,20 @@ class DirectionalMixin:
                         width="element",
                         apply_exclusions=apply_exclusions,
                     )
-                    return region.bottom
+                    return float(cast(Any, region).bottom)
 
                 # Should not reach here
-                return current_edge
+                return float(current_edge)
 
             else:
                 # Invalid value type, return current edge
-                return current_edge
+                return float(current_edge)
 
         # Process each direction
-        new_x0 = process_expansion(left, "left") if left else self.x0
-        new_x1 = process_expansion(right, "right") if right else self.x1
-        new_top = process_expansion(top, "top") if top else self.top
-        new_bottom = process_expansion(bottom, "bottom") if bottom else self.bottom
+        new_x0 = process_expansion(left, "left")
+        new_x1 = process_expansion(right, "right")
+        new_top = process_expansion(top, "top")
+        new_bottom = process_expansion(bottom, "bottom")
 
         # Apply percentage factors if provided
         if width_factor != 1.0 or height_factor != 1.0:
@@ -1121,10 +1154,14 @@ class DirectionalMixin:
             new_bottom = center_y + new_height / 2
 
         # Clamp coordinates to page boundaries
+        new_x0 = float(new_x0)
+        new_x1 = float(new_x1)
+        new_top = float(new_top)
+        new_bottom = float(new_bottom)
         new_x0 = max(0, new_x0)
         new_top = max(0, new_top)
-        new_x1 = min(self.page.width, new_x1)
-        new_bottom = min(self.page.height, new_bottom)
+        new_x1 = min(host.page.width, new_x1)
+        new_bottom = min(host.page.height, new_bottom)
 
         # Ensure coordinates are valid (x0 <= x1, top <= bottom)
         if new_x0 > new_x1:
@@ -1135,7 +1172,7 @@ class DirectionalMixin:
         # Create new region with expanded bbox
         from natural_pdf.elements.region import Region
 
-        new_region = Region(self.page, (new_x0, new_top, new_x1, new_bottom))
+        new_region = Region(host.page, (new_x0, new_top, new_x1, new_bottom))
 
         return new_region
 
@@ -1184,8 +1221,10 @@ class DirectionalMixin:
             candidates = []
 
         # Add detected regions if present
-        if hasattr(page, "_element_mgr") and hasattr(page._element_mgr, "regions"):
-            candidates.extend(list(page._element_mgr.regions))
+        try:
+            candidates.extend(page.iter_regions())
+        except Exception:
+            pass
 
         # Remove self from pool
         candidates = [c for c in candidates if c is not self]
@@ -1275,22 +1314,24 @@ class HighlightableMixin:
             List of highlight specification dictionaries
         """
         # Default implementation for regular elements
-        if not hasattr(self, "page") or self.page is None:
+        page_obj = getattr(self, "page", None)
+        if page_obj is None:
             return []
 
-        if not hasattr(self, "bbox") or self.bbox is None:
+        bbox_value = getattr(self, "bbox", None)
+        if bbox_value is None:
             return []
 
         spec = {
-            "page": self.page,
-            "page_index": self.page.index if hasattr(self.page, "index") else 0,
-            "bbox": self.bbox,
+            "page": page_obj,
+            "page_index": page_obj.index if hasattr(page_obj, "index") else 0,
+            "bbox": bbox_value,
             "element": self,
         }
 
         # Add polygon if available
-        if hasattr(self, "polygon") and hasattr(self, "has_polygon") and self.has_polygon:
-            spec["polygon"] = self.polygon
+        if hasattr(self, "polygon") and getattr(self, "has_polygon", False):
+            spec["polygon"] = getattr(self, "polygon")
 
         return [spec]
 
@@ -1386,6 +1427,7 @@ class Element(
 
         # Containers for per-element metadata and analysis results (e.g., classification)
         self.metadata: Dict[str, Any] = {}
+        self._polygon: Optional[List[Tuple[float, float]]] = None
         # Access analysis results via self.analyses property (see below)
 
     @property
@@ -1766,7 +1808,7 @@ class Element(
 
         region = Region(self.page, (x0, top, x1, bottom))
         region.source_element = self
-        region.end_element = target
+        setattr(region, "end_element", target)
         return region
 
     # Note: select_until method removed in favor of until()
@@ -1824,7 +1866,7 @@ class Element(
         use_color_cycling: bool = True,
         annotate: Optional[List[str]] = None,
         existing: str = "append",
-    ) -> "Element":
+    ) -> None:
         """Highlight the element with the specified colour.
 
         Highlight the element on the page.
@@ -1852,7 +1894,7 @@ class Element(
             highlight_args["bbox"] = self.bbox
             highlighter.add(**highlight_args)
 
-        return self
+        return None
 
     def exclude(self):
         """
@@ -1910,13 +1952,21 @@ class Element(
         if crop_bbox:
             spec.crop_bbox = crop_bbox
         elif crop:
+            from natural_pdf.elements.region import Region
+
             # Get element bounds as starting point
-            if hasattr(self, "bbox") and self.bbox:
-                x0, y0, x1, y1 = self.bbox
+            bbox_obj = getattr(self, "bbox", None)
+            if isinstance(bbox_obj, SequenceABC) and len(bbox_obj) >= 4:
+                x0, y0, x1, y1 = (
+                    float(bbox_obj[0]),
+                    float(bbox_obj[1]),
+                    float(bbox_obj[2]),
+                    float(bbox_obj[3]),
+                )
 
                 if crop is True:
                     # Tight crop to element bounds
-                    spec.crop_bbox = self.bbox
+                    spec.crop_bbox = (x0, y0, x1, y1)
                 elif isinstance(crop, (int, float)):
                     # Add padding around element
                     padding = float(crop)
@@ -1929,7 +1979,7 @@ class Element(
                 elif crop == "wide":
                     # Full page width, cropped vertically to element
                     spec.crop_bbox = (0, y0, self.page.width, y1)
-                elif hasattr(crop, "bbox"):
+                elif isinstance(crop, Region):
                     # Crop to another region's bounds
                     spec.crop_bbox = crop.bbox
 
@@ -1969,7 +2019,7 @@ class Element(
         resolution: Optional[float] = None,
         labels: bool = True,
         legend_position: str = "right",
-    ) -> None:
+    ) -> "Element":
         """
         Save the page with this element highlighted to an image file.
 
@@ -1983,13 +2033,10 @@ class Element(
             Self for method chaining
         """
         # Apply global options as defaults
-        import natural_pdf
-
+        image_config = cast(_ImageConfig, natural_pdf.options.image)
         if resolution is None:
-            if natural_pdf.options.image.resolution is not None:
-                resolution = natural_pdf.options.image.resolution
-            else:
-                resolution = 144  # Default resolution when none specified
+            default_resolution = image_config.resolution
+            resolution = float(default_resolution) if default_resolution is not None else 144.0
         # Save the highlighted image
         self.page.save_image(
             filename, resolution=resolution, labels=labels, legend_position=legend_position
@@ -2018,7 +2065,7 @@ class Element(
         from natural_pdf.elements.region import Region
 
         # Create a list starting with self
-        elements = [self]
+        elements: List[Union["Element", Region]] = [self]
 
         # Add the other element(s)
         if isinstance(other, (Element, Region)):

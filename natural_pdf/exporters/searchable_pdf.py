@@ -6,7 +6,8 @@ import logging
 import os
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING, List, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Sequence, Union
 from xml.etree.ElementTree import Element as ETElement
 from xml.etree.ElementTree import SubElement
 
@@ -306,7 +307,7 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
 
 def create_searchable_pdf(
     source: Union["Page", "PageCollection", "PDF"], output_path: str, dpi: int = 300
-):
+) -> None:
     """
     Creates a searchable PDF from a natural_pdf.PDF object using OCR results.
 
@@ -318,16 +319,36 @@ def create_searchable_pdf(
         dpi: The resolution (dots per inch) for rendering page images and hOCR.
     """
 
-    # duck type to see if source has .pages, to populate pages =
-    if hasattr(source, "pages"):
-        pages = source.pages
-    else:
+    if pikepdf is None:
+        raise ImportError(
+            "create_searchable_pdf requires 'pikepdf'. Install with: pip install \"natural-pdf[ocr-export]\""
+        )
+    if Image is None:
+        raise ImportError("create_searchable_pdf requires Pillow to render images.")
+    if HocrTransform is None:
+        raise ImportError("create_searchable_pdf requires the hOCR exporter dependencies.")
+
+    from natural_pdf.core.page import Page
+    from natural_pdf.core.page_collection import PageCollection
+    from natural_pdf.core.pdf import PDF
+
+    pages: Sequence[Page]
+    if isinstance(source, Page):
         pages = [source]
+    elif isinstance(source, PageCollection):
+        pages = list(source.pages)
+    elif isinstance(source, PDF):
+        pages = list(source.pages)
+    else:
+        raise TypeError(f"Unsupported source type for create_searchable_pdf: {type(source)}")
+
+    if not pages:
+        raise ValueError("Source does not contain any pages to process.")
 
     logger.info(f"Starting searchable PDF creation '{output_path}' at {dpi} DPI.")
 
-    temp_pdf_pages: List[str] = []
-    output_abs_path = os.path.abspath(output_path)
+    temp_pdf_pages: List[Path] = []
+    output_abs_path = Path(output_path).resolve()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         logger.debug(f"Using temporary directory: {tmpdir}")
@@ -335,11 +356,9 @@ def create_searchable_pdf(
         for i, page in enumerate(pages):
             logger.debug(f"Processing page {i+1} of {len(pages)}...")
             page_base_name = f"page_{i}"
-            img_path = os.path.join(
-                tmpdir, f"{page_base_name}.png"
-            )  # Use PNG for potentially better quality
-            hocr_path = os.path.join(tmpdir, f"{page_base_name}.hocr")
-            pdf_page_path = os.path.join(tmpdir, f"{page_base_name}.pdf")
+            img_path = Path(tmpdir) / f"{page_base_name}.png"
+            hocr_path = Path(tmpdir) / f"{page_base_name}.hocr"
+            pdf_page_path = Path(tmpdir) / f"{page_base_name}.pdf"
 
             try:
                 # 1. Render page image at target DPI
@@ -347,30 +366,37 @@ def create_searchable_pdf(
                 # Use the Page's to_image method
                 # Use render() for clean image without highlights
                 pil_image = page.render(resolution=dpi)
-                pil_image.save(img_path, format="PNG")
+                if pil_image is None:
+                    logger.warning(
+                        "  Page %s did not return an image; skipping.",
+                        getattr(page, "number", i + 1),
+                    )
+                    continue
+                pil_image.save(str(img_path), format="PNG")
                 img_width, img_height = pil_image.size
                 logger.debug(f"  Image saved to {img_path} ({img_width}x{img_height})")
 
                 # 2. Generate hOCR
                 logger.debug("  Generating hOCR...")
                 hocr_content = _generate_hocr_for_page(page, img_width, img_height)
-                with open(hocr_path, "w", encoding="utf-8") as f:
+                with hocr_path.open("w", encoding="utf-8") as f:
                     f.write(hocr_content)
                 logger.debug(f"  hOCR saved to {hocr_path}")
 
                 # 3. Use HocrTransform to create searchable PDF page
                 logger.debug("  Running HocrTransform...")
-                hocr_transform = HocrTransform(hocr_filename=hocr_path, dpi=dpi)
+                hocr_transform = HocrTransform(hocr_filename=str(hocr_path), dpi=dpi)
                 # Pass image_filename explicitly
                 hocr_transform.to_pdf(out_filename=pdf_page_path, image_filename=img_path)
                 temp_pdf_pages.append(pdf_page_path)
                 logger.debug(f"  Temporary PDF page saved to {pdf_page_path}")
 
             except Exception as e:
-                logger.error(f"  Failed to process page {page.number}: {e}", exc_info=True)
+                page_label = getattr(page, "number", i + 1)
+                logger.error(f"  Failed to process page {page_label}: {e}", exc_info=True)
                 # Decide whether to skip or raise error
                 # For now, let's skip and continue
-                logger.warning(f"  Skipping page {page.number} due to error.")
+                logger.warning(f"  Skipping page {page_label} due to error.")
                 continue  # Skip to the next page
 
         # 4. Merge temporary PDF pages
@@ -383,7 +409,7 @@ def create_searchable_pdf(
             # Use pikepdf for merging
             output_pdf = pikepdf.Pdf.new()
             for temp_pdf_path in temp_pdf_pages:
-                with pikepdf.Pdf.open(temp_pdf_path) as src_page_pdf:
+                with pikepdf.Pdf.open(str(temp_pdf_path)) as src_page_pdf:
                     # Assuming each temp PDF has exactly one page
                     if len(src_page_pdf.pages) == 1:
                         output_pdf.pages.append(src_page_pdf.pages[0])
@@ -391,7 +417,7 @@ def create_searchable_pdf(
                         logger.warning(
                             f"Temporary PDF '{temp_pdf_path}' had unexpected number of pages ({len(src_page_pdf.pages)}). Skipping."
                         )
-            output_pdf.save(output_abs_path)
+            output_pdf.save(str(output_abs_path))
             logger.info(f"Successfully saved merged searchable PDF to: {output_abs_path}")
         except Exception as e:
             logger.error(

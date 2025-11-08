@@ -81,9 +81,7 @@ class LayoutAnalyzer:
             f"  Rendering page {self._page.number} to image for initial layout detection..."
         )
         try:
-            layout_resolution = getattr(self._page._parent, "_config", {}).get(
-                "layout_image_resolution", 72
-            )
+            layout_resolution = self._page.get_config("layout_image_resolution", 72, scope="pdf")
             # Use render() for clean image without highlights
             std_res_page_image = self._page.render(resolution=layout_resolution)
             if not std_res_page_image:
@@ -198,7 +196,8 @@ class LayoutAnalyzer:
             )
             final_options.extra_args = {}
 
-        final_options.extra_args["_page_ref"] = self._page
+        final_options.extra_args["_layout_host"] = self._page
+        final_options.extra_args["_page_ref"] = self._page  # Backwards compatibility
         final_options.extra_args["_img_scale_x"] = img_scale_x
         final_options.extra_args["_img_scale_y"] = img_scale_y
         logger.debug(
@@ -257,16 +256,18 @@ class LayoutAnalyzer:
                 # Add extra info if available
                 if "text" in detection:
                     region.text_content = detection["text"]
-                if "docling_id" in detection:
-                    region.docling_id = detection["docling_id"]
-                if "parent_id" in detection:
-                    region.parent_id = detection["parent_id"]
+
+                docling_id = detection.get("docling_id")
+                parent_id = detection.get("parent_id")
+                if docling_id is not None or parent_id is not None:
+                    docling_meta = region.metadata.setdefault("docling", {})
+                    if docling_id is not None:
+                        docling_meta["id"] = docling_id
+                        docling_id_to_region[docling_id] = region
+                    if parent_id is not None:
+                        docling_meta["parent_id"] = parent_id
 
                 layout_regions.append(region)
-
-                # Track Docling IDs for hierarchy
-                if hasattr(region, "docling_id") and region.docling_id:
-                    docling_id_to_region[region.docling_id] = region
 
             except (KeyError, IndexError, TypeError, ValueError) as e:
                 logger.warning(f"Could not process layout detection: {detection}. Error: {e}")
@@ -276,8 +277,10 @@ class LayoutAnalyzer:
         if docling_id_to_region:
             logger.debug("Building Docling region hierarchy...")
             for region in layout_regions:
-                if hasattr(region, "parent_id") and region.parent_id:
-                    parent_region = docling_id_to_region.get(region.parent_id)
+                docling_meta = region.metadata.get("docling", {})
+                parent_id = docling_meta.get("parent_id")
+                if parent_id:
+                    parent_region = docling_id_to_region.get(parent_id)
                     if parent_region:
                         if hasattr(parent_region, "add_child"):
                             parent_region.add_child(region)

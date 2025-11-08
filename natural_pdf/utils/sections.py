@@ -5,13 +5,33 @@ functionality that's used across Page, PDF, Region, and Flow classes.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeGuard,
+    Union,
+    cast,
+)
 
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
+    from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
 
 logger = logging.getLogger(__name__)
+
+
+def _is_element(obj: Any) -> TypeGuard["Element"]:
+    return hasattr(obj, "bbox") and hasattr(obj, "extract_text")
+
+
+def _is_element_collection(obj: Any) -> TypeGuard["ElementCollection"]:
+    return hasattr(obj, "elements") and hasattr(obj, "__iter__")
 
 
 def calculate_section_bounds(
@@ -277,30 +297,28 @@ def process_selector_to_elements(
         return []
 
     if isinstance(selector_or_elements, str):
-        # It's a selector string - search for matching elements
         if hasattr(search_context, find_method_name):
             result = getattr(search_context, find_method_name)(selector_or_elements)
-            if hasattr(result, "elements"):
-                return result.elements
-            elif isinstance(result, list):
-                return result
-            else:
-                return []
-        else:
-            logger.warning(f"Search context {type(search_context)} lacks {find_method_name} method")
+            if _is_element_collection(result):
+                return list(cast("ElementCollection", result).elements)
+            if isinstance(result, Sequence):
+                return [cast("Element", item) for item in result]
             return []
+        logger.warning(f"Search context {type(search_context)} lacks {find_method_name} method")
+        return []
 
-    # Handle single element
-    if hasattr(selector_or_elements, "bbox"):  # Duck typing for Element
-        return [selector_or_elements]
+    if _is_element(selector_or_elements):
+        return [cast("Element", selector_or_elements)]
 
-    # Handle ElementCollection or similar
-    if hasattr(selector_or_elements, "elements"):
-        return selector_or_elements.elements
+    if _is_element_collection(selector_or_elements):
+        collection = cast("ElementCollection", selector_or_elements)
+        return list(collection.elements)
 
-    # Handle list/iterable
-    if hasattr(selector_or_elements, "__iter__"):
-        return list(selector_or_elements)
+    if isinstance(selector_or_elements, Sequence):
+        return [cast("Element", item) for item in selector_or_elements]
+
+    if isinstance(selector_or_elements, Iterable):
+        return [cast("Element", item) for item in selector_or_elements]
 
     return []
 

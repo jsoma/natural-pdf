@@ -8,8 +8,6 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw
 
-from natural_pdf.elements.element_collection import ElementCollection
-
 from .qa_result import QAResult
 
 logger = logging.getLogger("natural_pdf.qa.document_qa")
@@ -32,11 +30,7 @@ def get_qa_engine(model_name: str = "impira/layoutlm-document-qa", **kwargs):
     global _QA_ENGINE_INSTANCE
 
     if _QA_ENGINE_INSTANCE is None:
-        try:
-            _QA_ENGINE_INSTANCE = DocumentQA(model_name=model_name, **kwargs)
-        except Exception as e:
-            logger.error(f"Failed to initialize QA engine: {e}")
-            raise
+        _QA_ENGINE_INSTANCE = DocumentQA(model_name=model_name, **kwargs)
 
     return _QA_ENGINE_INSTANCE
 
@@ -62,43 +56,35 @@ class DocumentQA:
             device: Device to run the model on ('cuda' or 'cpu'). If None, will use cuda if available.
         """
         try:
-            import torch
-            from transformers import pipeline
-
-            logger.info(f"Initializing DocumentQA with model {model_name} on {device}")
-
-            # Try MPS, fallback to CPU if OOM
-            if device is None and torch.backends.mps.is_available():
-                try:
-                    self.pipe = pipeline(
-                        "document-question-answering", model=model_name, device="mps"
-                    )
-                    self.device = "mps"
-                except RuntimeError as e:
-                    logger.warning(f"MPS OOM: {e}, falling back to CPU")
-                    self.pipe = pipeline(
-                        "document-question-answering", model=model_name, device="cpu"
-                    )
-                    self.device = "cpu"
-            else:
-                self.pipe = pipeline("document-question-answering", model=model_name, device=device)
-                self.device = device
-
-            self.model_name = model_name
-            self.device = device
-            self._is_initialized = True
-
-        except ImportError as e:
-            logger.error(f"Failed to import required packages: {e}")
+            import torch  # type: ignore
+            from transformers import pipeline  # type: ignore
+        except ImportError as exc:
             self._is_initialized = False
             raise ImportError(
                 "DocumentQA requires transformers and torch to be installed. "
                 "Install with pip install transformers torch"
+            ) from exc
+
+        logger.info(f"Initializing DocumentQA with model {model_name} on {device}")
+
+        resolved_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+
+        if device is None and torch.backends.mps.is_available():
+            try:
+                self.pipe = pipeline("document-question-answering", model=model_name, device="mps")
+                self.device = "mps"
+            except RuntimeError as e:
+                logger.warning(f"MPS OOM: {e}, falling back to CPU")
+                self.pipe = pipeline("document-question-answering", model=model_name, device="cpu")
+                self.device = "cpu"
+        else:
+            self.pipe = pipeline(
+                "document-question-answering", model=model_name, device=resolved_device
             )
-        except Exception as e:
-            logger.error(f"Failed to initialize DocumentQA: {e}")
-            self._is_initialized = False
-            raise
+            self.device = resolved_device
+
+        self.model_name = model_name
+        self._is_initialized = True
 
     def is_available(self) -> bool:
         """Check if the QA engine is properly initialized."""
@@ -287,7 +273,7 @@ class DocumentQA:
                             for k, v in top_res.items()
                         }
                         json.dump(serializable, f, indent=2)
-                except Exception as e:
+                except (OSError, TypeError, ValueError) as e:
                     logger.warning(f"Failed to save debug QA result for question '{q}': {e}")
 
             # Apply confidence threshold
@@ -414,6 +400,8 @@ class DocumentQA:
                                 if element.text in matched_texts:
                                     matched_texts.remove(element.text)
 
+                        from natural_pdf.elements.element_collection import ElementCollection
+
                         res.source_elements = ElementCollection(source_elements)
 
             # Return result(s) preserving original input type
@@ -530,6 +518,8 @@ class DocumentQA:
                                 source_elements.append(element)
                                 if element.text in matched_texts:
                                     matched_texts.remove(element.text)
+
+                        from natural_pdf.elements.element_collection import ElementCollection
 
                         res.source_elements = ElementCollection(source_elements)
 

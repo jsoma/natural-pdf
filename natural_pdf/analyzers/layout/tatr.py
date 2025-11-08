@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 torch_spec = importlib.util.find_spec("torch")
 torchvision_spec = importlib.util.find_spec("torchvision")
 transformers_spec = importlib.util.find_spec("transformers")
-torch = None
-transforms = None
-AutoModelForObjectDetection = None
+torch: Any = None
+transforms: Any = None
+AutoModelForObjectDetection: Any = None
 
 if torch_spec and torchvision_spec and transformers_spec:
     try:
@@ -70,7 +70,7 @@ class TableTransformerDetector(LayoutDetector):
             torch is not None and transforms is not None and AutoModelForObjectDetection is not None
         )
 
-    def _get_cache_key(self, options: TATRLayoutOptions) -> str:
+    def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model IDs and device."""
         if not isinstance(options, TATRLayoutOptions):
             options = TATRLayoutOptions(device=options.device)
@@ -80,12 +80,14 @@ class TableTransformerDetector(LayoutDetector):
         struct_model_key = options.structure_model.replace("/", "_")
         return f"{self.__class__.__name__}_{device_key}_{det_model_key}_{struct_model_key}"
 
-    def _load_model_from_options(self, options: TATRLayoutOptions) -> Dict[str, Any]:
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> Dict[str, Any]:
         """Load the TATR detection and structure models."""
         if not self.is_available():
             raise RuntimeError(
                 "TATR dependencies (torch, torchvision, transformers) not installed."
             )
+        if not isinstance(options, TATRLayoutOptions):
+            raise TypeError("Incorrect options type provided for TATR model loading.")
 
         device = options.device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.logger.info(

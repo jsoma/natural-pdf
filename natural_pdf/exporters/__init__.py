@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 from .base import FinetuneExporter
+
+if TYPE_CHECKING:
+    from .paddleocr import PaddleOCRRecognitionExporter
 
 
 # Lazy import for PaddleOCRRecognitionExporter to avoid heavy paddle dependencies at module level

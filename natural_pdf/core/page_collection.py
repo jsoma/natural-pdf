@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Iterable, Sequence
 from pathlib import Path
@@ -6,23 +8,22 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     Iterator,
     List,
     Literal,
     Optional,
     Protocol,
     Tuple,
-    TypeVar,
     Union,
+    cast,
     overload,
     runtime_checkable,
 )
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from natural_pdf.collections.mixins import ApplyMixin
-from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.collections.mixins import ApplyMixin, SectionsCollectionMixin
+from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections, SupportsTextElements
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
@@ -57,13 +58,11 @@ if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_groupby import PageGroupBy
-    from natural_pdf.core.pdf import PDF  # ---> ADDED PDF type hint
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.region import Region
     from natural_pdf.flows.flow import Flow
-
-T = TypeVar("T")
-P = TypeVar("P", bound=SupportsSections)
+else:  # pragma: no cover - runtime typing helpers
+    Page = Any  # type: ignore[assignment]
 
 
 @runtime_checkable
@@ -72,18 +71,24 @@ class ElementsProvider(Protocol):
     def elements(self) -> Sequence[SupportsGeometry]: ...
 
 
-BoundarySource = Union[str, ElementsProvider, Iterable["Element"], None]
+BoundarySource = Union[str, ElementsProvider, Iterable[SupportsGeometry], Iterable["Element"], None]
 
 
 class PageCollection(
-    TextMixin, Generic[P], ApplyMixin, ShapeDetectionMixin, CheckboxDetectionMixin, Visualizable
+    TextMixin,
+    ApplyMixin,
+    SectionsCollectionMixin,
+    ShapeDetectionMixin,
+    CheckboxDetectionMixin,
+    Visualizable,
+    Sequence["Page"],
 ):
     """
     Represents a collection of Page objects, often from a single PDF document.
     Provides methods for batch operations on these pages.
     """
 
-    def __init__(self, pages: Union[List[P], Sequence[P]]):
+    def __init__(self, pages: Sequence["Page"] | Iterable["Page"]):
         """
         Initialize a page collection.
 
@@ -92,23 +97,29 @@ class PageCollection(
         """
         # Store the sequence as-is to preserve lazy behavior
         # Only convert to list if we need list-specific operations
-        if hasattr(pages, "__iter__") and hasattr(pages, "__len__"):
-            self.pages = pages
+        if isinstance(pages, Sequence):
+            self.pages: Sequence["Page"] = pages
         else:
-            # Fallback for non-sequence types
+            # Fallback for non-sequence types – materialise to preserve ordering
             self.pages = list(pages)
 
     def __len__(self) -> int:
         """Return the number of pages in the collection."""
         return len(self.pages)
 
-    def __getitem__(self, idx) -> Union[P, "PageCollection[P]"]:
+    @overload
+    def __getitem__(self, idx: int) -> "Page": ...
+
+    @overload
+    def __getitem__(self, idx: slice) -> Sequence["Page"]: ...
+
+    def __getitem__(self, idx: Union[int, slice]) -> Union["Page", Sequence["Page"]]:
         """Support indexing and slicing."""
         if isinstance(idx, slice):
             return PageCollection(self.pages[idx])
         return self.pages[idx]
 
-    def __iter__(self) -> Iterator[P]:
+    def __iter__(self) -> Iterator["Page"]:
         """Support iteration."""
         return iter(self.pages)
 
@@ -116,7 +127,12 @@ class PageCollection(
         """Return a string representation showing the page count."""
         return f"<PageCollection(count={len(self)})>"
 
-    def _get_items_for_apply(self) -> Iterator[P]:
+    @property
+    def elements(self) -> Sequence["Page"]:
+        """Alias to expose pages for APIs expecting an elements attribute."""
+        return self.pages
+
+    def _get_items_for_apply(self) -> Iterator["Page"]:
         """
         Override ApplyMixin's _get_items_for_apply to preserve lazy behavior.
 
@@ -139,6 +155,22 @@ class PageCollection(
         else:
             return [p.index for p in self.pages]
 
+    def _resolve_parent_pdf(self) -> "PDF":
+        """
+        Resolve the parent PDF instance shared by pages in this collection.
+
+        Raises:
+            RuntimeError: If the collection is empty or pages do not expose a parent PDF.
+        """
+        if not self.pages:
+            raise RuntimeError("PageCollection is empty; cannot resolve parent PDF.")
+
+        parent = getattr(self.pages[0], "_parent", None)
+        if parent is None:
+            raise RuntimeError("Pages in this collection do not expose a parent PDF.")
+
+        return cast("PDF", parent)
+
     def extract_text(
         self,
         keep_blank_chars: bool = True,
@@ -158,25 +190,27 @@ class PageCollection(
         Returns:
             Combined text from all pages
         """
-        texts = []
+        texts: List[str] = []
+        extra_kwargs = kwargs.copy()
+
+        explicit_strip_final = extra_kwargs.pop("strip_final", None)
+        explicit_strip_empty = extra_kwargs.pop("strip_empty", None)
+
         for page in self.pages:
             text = page.extract_text(
-                keep_blank_chars=keep_blank_chars,
-                apply_exclusions=apply_exclusions,
-                **kwargs,
+                preserve_whitespace=keep_blank_chars,
+                use_exclusions=apply_exclusions,
+                strip_final=(
+                    explicit_strip_final
+                    if explicit_strip_final is not None
+                    else (strip if strip is not None else False)
+                ),
+                strip_empty=explicit_strip_empty if explicit_strip_empty is not None else False,
+                **extra_kwargs,
             )
             texts.append(text)
 
-        combined = "\n".join(texts)
-
-        # Default strip behaviour: if caller picks, honour; else respect layout flag passed via kwargs.
-        use_layout = kwargs.get("layout", False)
-        strip_final = strip if strip is not None else (not use_layout)
-
-        if strip_final:
-            combined = "\n".join(line.rstrip() for line in combined.splitlines()).strip()
-
-        return combined
+        return "\n".join(texts)
 
     def apply_ocr(
         self,
@@ -190,7 +224,7 @@ class PageCollection(
         replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options ---
         options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
-    ) -> "PageCollection[P]":
+    ) -> "PageCollection":
         """
         Applies OCR to all pages within this collection using batch processing.
 
@@ -222,12 +256,7 @@ class PageCollection(
             logger.warning("Cannot apply OCR to an empty PageCollection.")
             return self
 
-        # Assume all pages share the same parent PDF object
-        first_page = self.pages[0]
-        if not hasattr(first_page, "_parent") or not first_page._parent:
-            raise RuntimeError("Pages in this collection do not have a parent PDF reference.")
-
-        parent_pdf = first_page._parent
+        parent_pdf = self._resolve_parent_pdf()
 
         if not hasattr(parent_pdf, "apply_ocr") or not callable(parent_pdf.apply_ocr):
             raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
@@ -253,95 +282,12 @@ class PageCollection(
 
         return self  # Return self for chaining
 
-    @overload
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
-        reading_order: bool = True,
-    ) -> Optional[T]: ...
-
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
-        reading_order: bool = True,
-    ) -> Optional[T]:
-        """Find the first matching element across pages."""
-
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        for page in self.pages:
-            element = page.find(
-                selector=selector,
-                text=text,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-            )
-            if element is not None:
-                return element
-        return None
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
-        reading_order: bool = True,
-    ) -> "ElementCollection":
-        """Find matching elements across all pages and flatten the results."""
-
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        all_elements: List = []
-        for page in self.pages:
-            page_elements = page.find_all(
-                selector=selector,
-                text=text,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-            )
-            if page_elements:
-                all_elements.extend(page_elements.elements)
-
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        return ElementCollection(all_elements)
+    def _iter_sections(self) -> Iterable["SupportsSections"]:
+        return iter(self.pages)
 
     def split(
         self,
-        divider,
+        divider: BoundarySource,
         *,
         include_boundaries: str = "start",
         orientation: str = "vertical",
@@ -395,7 +341,13 @@ class PageCollection(
                             break
                 else:
                     # divider is already elements
-                    first_divider = divider[0] if hasattr(divider, "__getitem__") else divider
+                    first_divider = None
+                    if isinstance(divider, Iterable):
+                        first_candidate = next(iter(divider), None)
+                    else:
+                        first_candidate = divider
+                    if isinstance(first_candidate, SupportsGeometry):
+                        first_divider = first_candidate
 
                 if first_divider and all_elements[0] != first_divider:
                     # There's content before the first divider
@@ -490,9 +442,12 @@ class PageCollection(
             }
 
             # Add PDF information if available
-            if hasattr(page, "pdf") and page.pdf:
-                page_data["pdf_path"] = page.pdf.path
-                page_data["pdf_filename"] = Path(page.pdf.path).name
+            pdf_obj = getattr(page, "pdf", None)
+            if pdf_obj is not None:
+                pdf_path = getattr(pdf_obj, "path", None)
+                if pdf_path:
+                    page_data["pdf_path"] = pdf_path
+                    page_data["pdf_filename"] = Path(pdf_path).name
 
             # Include extracted text if requested
             if include_content:
@@ -504,25 +459,32 @@ class PageCollection(
 
             # Save image if requested
             if include_images:
-                try:
-                    # Create image filename
-                    pdf_name = "unknown"
-                    if hasattr(page, "pdf") and page.pdf:
-                        pdf_name = Path(page.pdf.path).stem
+                if image_dir is None:
+                    logger.error("image_dir must be provided when include_images=True")
+                else:
+                    try:
+                        # Create image filename
+                        pdf_name = "unknown"
+                        if pdf_obj is not None:
+                            pdf_path = getattr(pdf_obj, "path", None)
+                            if pdf_path:
+                                pdf_name = Path(pdf_path).stem
 
-                    image_filename = f"{pdf_name}_page_{page.number}.{image_format}"
-                    image_path = image_dir / image_filename
+                        image_filename = f"{pdf_name}_page_{page.number}.{image_format}"
+                        image_path = image_dir / image_filename
 
-                    # Save image
-                    page.save_image(
-                        str(image_path), resolution=image_resolution, include_highlights=True
-                    )
+                        # Save image
+                        page.save_image(
+                            str(image_path), resolution=image_resolution, include_highlights=True
+                        )
 
-                    # Add relative path to data
-                    page_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
-                except Exception as e:
-                    logger.error(f"Error saving image for page {page.number}: {e}")
-                    page_data["image_path"] = None
+                        # Add relative path to data
+                        page_data["image_path"] = str(
+                            Path(image_path).relative_to(image_dir.parent)
+                        )
+                    except Exception as e:
+                        logger.error(f"Error saving image for page {page.number}: {e}")
+                        page_data["image_path"] = None
 
             # Add analyses data
             if hasattr(page, "analyses") and page.analyses:
@@ -594,12 +556,7 @@ class PageCollection(
             logger.warning("Cannot deskew an empty PageCollection.")
             raise ValueError("Cannot deskew an empty PageCollection.")
 
-        # Assume all pages share the same parent PDF object
-        # Need to hint the type of _parent for type checkers
-        if TYPE_CHECKING:
-            parent_pdf: "PDF" = self.pages[0]._parent
-        else:
-            parent_pdf = self.pages[0]._parent
+        parent_pdf = self._resolve_parent_pdf()
 
         if not parent_pdf or not hasattr(parent_pdf, "deskew") or not callable(parent_pdf.deskew):
             raise RuntimeError(
@@ -729,21 +686,18 @@ class PageCollection(
             has_vector_elements = False
             for page in self.pages:
                 # Simplified check for common vector types or non-OCR chars/words
+                rects = getattr(page, "rects", [])
+                lines = getattr(page, "lines", [])
+                curves = getattr(page, "curves", [])
+                chars = getattr(page, "chars", [])
+                words = getattr(page, "words", [])
+
                 if (
-                    hasattr(page, "rects")
-                    and page.rects
-                    or hasattr(page, "lines")
-                    and page.lines
-                    or hasattr(page, "curves")
-                    and page.curves
-                    or (
-                        hasattr(page, "chars")
-                        and any(getattr(el, "source", None) != "ocr" for el in page.chars)
-                    )
-                    or (
-                        hasattr(page, "words")
-                        and any(getattr(el, "source", None) != "ocr" for el in page.words)
-                    )
+                    rects
+                    or lines
+                    or curves
+                    or any(getattr(el, "source", None) != "ocr" for el in chars)
+                    or any(getattr(el, "source", None) != "ocr" for el in words)
                 ):
                     has_vector_elements = True
                     break

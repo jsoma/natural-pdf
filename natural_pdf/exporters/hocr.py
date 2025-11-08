@@ -436,6 +436,9 @@ class HocrTransform:
             space_box = Rectangle(box.urx, box.lly, next_box.llx, next_box.ury)
         elif text_direction == TextDirection.RTL:
             space_box = Rectangle(next_box.urx, box.lly, box.llx, next_box.ury)
+        else:
+            return
+
         self._debug_draw_space_bbox(canvas, space_box)
         space_width = self._font.text_width(" ", fontsize)
         if space_width > 0 and space_box.width > 0:

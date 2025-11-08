@@ -7,9 +7,15 @@ from typing import Dict
 
 from packaging.requirements import Requirement
 
+
 # ---------------------------------------------------------------------------
 # Mapping: sub-command name -> list of pip requirement specifiers to install
 # ---------------------------------------------------------------------------
+def _package_prefix() -> str:
+    package_name = __package__ or "natural_pdf"
+    return package_name.split(".")[0]
+
+
 INSTALL_RECIPES: Dict[str, list[str]] = {
     # heavyweight stacks
     "paddle": ["paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2", "pandas>=2.2.0"],
@@ -19,10 +25,10 @@ INSTALL_RECIPES: Dict[str, list[str]] = {
     "yolo": ["doclayout_yolo", "huggingface_hub>=0.29.3"],
     "docling": ["docling"],
     # light helpers
-    "deskew": [f"{__package__.split('.')[0]}[deskew]"],
-    "search": [f"{__package__.split('.')[0]}[search]"],
+    "deskew": [f"{_package_prefix()}[deskew]"],
+    "search": [f"{_package_prefix()}[search]"],
     "easyocr": ["easyocr"],
-    "ai": [f"{__package__.split('.')[0]}[ai]"],
+    "ai": [f"{_package_prefix()}[ai]"],
 }
 
 

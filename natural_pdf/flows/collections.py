@@ -7,16 +7,22 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Optional,
     Sequence,
     Set,
+    SupportsIndex,
     Tuple,
-    TypeVar,
     Union,
+    cast,
     overload,
 )
 
 from PIL import Image  # Single import for PIL.Image module
+
+from natural_pdf.collections.mixins import SectionsCollectionMixin
+from natural_pdf.core.highlighter_utils import resolve_highlighter
+from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 if TYPE_CHECKING:
     # from PIL.Image import Image as PIL_Image # No longer needed with Image.Image type hint
@@ -30,44 +36,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-T_FEC = TypeVar("T_FEC", bound="FlowElement")
-T_FRC = TypeVar("T_FRC", bound="FlowRegion")
 
-
-class FlowElementCollection(MutableSequence[T_FEC]):
+class FlowElementCollection(MutableSequence["FlowElement"]):
     """
     A collection of FlowElement objects, typically the result of Flow.find_all().
     Provides directional methods that operate on its contained FlowElements and
     return FlowRegionCollection objects.
     """
 
-    def __init__(self, flow_elements: List["FlowElement"]):
+    def __init__(self, flow_elements: Optional[Sequence["FlowElement"]] = None):
         self._flow_elements: List["FlowElement"] = (
-            flow_elements if flow_elements is not None else []
+            list(flow_elements) if flow_elements is not None else []
         )
 
-    @overload
-    def __getitem__(self, index: int, /) -> "FlowElement": ...
-
-    @overload
-    def __getitem__(self, index: slice) -> "FlowElementCollection": ...
-
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union["FlowElement", "FlowElementCollection"]:
+    def __getitem__(self, index: Union[int, slice, SupportsIndex]) -> Any:
         if isinstance(index, slice):
             return FlowElementCollection(self._flow_elements[index])
-        return self._flow_elements[index]
+        numeric_index = int(index)
+        return self._flow_elements[numeric_index]
 
-    @overload
-    def __setitem__(self, index: int, value: "FlowElement", /) -> None: ...
-
-    @overload
-    def __setitem__(self, index: slice, value: Iterable["FlowElement"]) -> None: ...
-
-    def __setitem__(
-        self, index: Union[int, slice], value: Union["FlowElement", Iterable["FlowElement"]]
-    ) -> None:
+    def __setitem__(self, index: Union[int, slice, SupportsIndex], value: Any) -> None:
         if isinstance(index, slice):
             if isinstance(value, FlowElementCollection):
                 replacement = list(value._flow_elements)
@@ -79,18 +67,14 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                 )
             self._flow_elements[index] = replacement
         else:
-            if isinstance(value, Iterable):
-                raise TypeError("Single-index assignment requires a FlowElement instance.")
-            self._flow_elements[index] = value  # type: ignore[assignment]
+            numeric_index = int(index)
+            self._flow_elements[numeric_index] = cast("FlowElement", value)
 
-    @overload
-    def __delitem__(self, index: int, /) -> None: ...
-
-    @overload
-    def __delitem__(self, index: slice) -> None: ...
-
-    def __delitem__(self, index: Union[int, slice]) -> None:
-        del self._flow_elements[index]
+    def __delitem__(self, index: Union[int, slice, SupportsIndex]) -> None:
+        if isinstance(index, slice):
+            del self._flow_elements[index]
+        else:
+            del self._flow_elements[int(index)]
 
     def __len__(self) -> int:
         return len(self._flow_elements)
@@ -316,6 +300,8 @@ class FlowElementCollection(MutableSequence[T_FEC]):
             if not temp_highlights_for_page:
                 continue
 
+            effective_resolution = float(resolution) if resolution is not None else 150.0
+
             page_image = highlighter_service.render_preview(
                 page_index=(
                     page_obj.index
@@ -323,7 +309,7 @@ class FlowElementCollection(MutableSequence[T_FEC]):
                     else getattr(page_obj, "page_number", 1) - 1
                 ),
                 temporary_highlights=temp_highlights_for_page,
-                resolution=resolution,
+                resolution=effective_resolution,
                 width=width,
                 labels=labels,
                 legend_position=legend_position,
@@ -383,36 +369,24 @@ class FlowElementCollection(MutableSequence[T_FEC]):
             )
 
 
-class FlowRegionCollection(MutableSequence[T_FRC]):
+class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequence["FlowRegion"]):
     """
     A collection of FlowRegion objects, typically the result of directional
     operations on a FlowElementCollection.
     Provides methods for querying and visualizing the aggregated content.
     """
 
-    def __init__(self, flow_regions: List["FlowRegion"]):
-        self._flow_regions: List["FlowRegion"] = flow_regions if flow_regions is not None else []
+    def __init__(self, flow_regions: Optional[Sequence["FlowRegion"]] = None):
+        self._flow_regions: List["FlowRegion"] = (
+            list(flow_regions) if flow_regions is not None else []
+        )
 
-    @overload
-    def __getitem__(self, index: int, /) -> "FlowRegion": ...
-
-    @overload
-    def __getitem__(self, index: slice) -> "FlowRegionCollection": ...
-
-    def __getitem__(self, index: Union[int, slice]) -> Union["FlowRegion", "FlowRegionCollection"]:
+    def __getitem__(self, index: Union[int, slice, SupportsIndex]) -> Any:
         if isinstance(index, slice):
             return FlowRegionCollection(self._flow_regions[index])
-        return self._flow_regions[index]
+        return self._flow_regions[int(index)]
 
-    @overload
-    def __setitem__(self, index: int, value: "FlowRegion", /) -> None: ...
-
-    @overload
-    def __setitem__(self, index: slice, value: Iterable["FlowRegion"]) -> None: ...
-
-    def __setitem__(
-        self, index: Union[int, slice], value: Union["FlowRegion", Iterable["FlowRegion"]]
-    ) -> None:
+    def __setitem__(self, index: Union[int, slice, SupportsIndex], value: Any) -> None:
         if isinstance(index, slice):
             if isinstance(value, FlowRegionCollection):
                 replacement = list(value._flow_regions)
@@ -424,18 +398,13 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
                 )
             self._flow_regions[index] = replacement
         else:
-            if isinstance(value, Iterable):
-                raise TypeError("Single-index assignment requires a FlowRegion instance.")
-            self._flow_regions[index] = value  # type: ignore[assignment]
+            self._flow_regions[int(index)] = cast("FlowRegion", value)
 
-    @overload
-    def __delitem__(self, index: int, /) -> None: ...
-
-    @overload
-    def __delitem__(self, index: slice) -> None: ...
-
-    def __delitem__(self, index: Union[int, slice]) -> None:
-        del self._flow_regions[index]
+    def __delitem__(self, index: Union[int, slice, SupportsIndex]) -> None:
+        if isinstance(index, slice):
+            del self._flow_regions[index]
+        else:
+            del self._flow_regions[int(index)]
 
     def __len__(self) -> int:
         return len(self._flow_regions)
@@ -445,6 +414,68 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
 
     def __repr__(self) -> str:
         return f"<FlowRegionCollection(count={len(self)})>"
+
+    def _get_highlighter(self):
+        if not self._flow_regions:
+            raise RuntimeError("Cannot locate highlighting service for empty FlowRegionCollection.")
+        return resolve_highlighter(self._flow_regions)
+
+    @staticmethod
+    def _merge_crop_bbox(
+        existing: Optional[Tuple[float, float, float, float]],
+        incoming: Optional[Tuple[float, float, float, float]],
+    ) -> Optional[Tuple[float, float, float, float]]:
+        if existing is None:
+            return incoming
+        if incoming is None:
+            return existing
+        return (
+            min(existing[0], incoming[0]),
+            min(existing[1], incoming[1]),
+            max(existing[2], incoming[2]),
+            max(existing[3], incoming[3]),
+        )
+
+    def _get_render_specs(
+        self,
+        mode: Literal["show", "render"] = "show",
+        color: Optional[Union[str, Tuple[int, int, int]]] = None,
+        highlights: Optional[List[Dict[str, Any]]] = None,
+        crop: Union[bool, int, Literal["content", "wide"]] = False,
+        crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+        **kwargs,
+    ) -> List[RenderSpec]:
+        if not self._flow_regions:
+            return []
+
+        label_prefix = kwargs.pop("label_prefix", None)
+        fr_kwargs = dict(kwargs)
+        if label_prefix is not None:
+            fr_kwargs["label_prefix"] = label_prefix
+
+        specs_by_page: Dict[Any, RenderSpec] = {}
+        ordered_pages: List[Any] = []
+
+        for fr in self._flow_regions:
+            fr_specs = fr._get_render_specs(
+                mode=mode,
+                color=color,
+                highlights=highlights,
+                crop=crop,
+                crop_bbox=crop_bbox,
+                **fr_kwargs,
+            )
+            for spec in fr_specs:
+                page = spec.page
+                if page in specs_by_page:
+                    existing = specs_by_page[page]
+                    existing.highlights.extend(spec.highlights)
+                    existing.crop_bbox = self._merge_crop_bbox(existing.crop_bbox, spec.crop_bbox)
+                else:
+                    specs_by_page[page] = spec
+                    ordered_pages.append(page)
+
+        return [specs_by_page[page] for page in ordered_pages]
 
     def __add__(self, other: "FlowRegionCollection") -> "FlowRegionCollection":
         if not isinstance(other, FlowRegionCollection):
@@ -492,88 +523,8 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
             self._flow_regions.sort(key=key, reverse=reverse)
         return self
 
-    def extract_text(self, separator: str = "\n", apply_exclusions: bool = True, **kwargs) -> str:
-        texts = [
-            fr.extract_text(apply_exclusions=apply_exclusions, **kwargs)
-            for fr in self._flow_regions
-        ]
-        return separator.join(t for t in texts if t)  # Filter out empty strings from concatenation
-
-    def extract_each_text(self, apply_exclusions: bool = True, **kwargs) -> List[str]:
-        return [
-            fr.extract_text(apply_exclusions=apply_exclusions, **kwargs)
-            for fr in self._flow_regions
-        ]
-
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
-        reading_order: bool = True,
-    ) -> Optional["PhysicalElement"]:
-
-        for fr in self._flow_regions:
-            found = fr.find(
-                selector=selector,
-                text=text,
-                overlap=overlap,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-            )
-            if found:
-                return found
-        return None
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
-        reading_order: bool = True,
-    ) -> "ElementCollection":
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        all_physical_elements: List["PhysicalElement"] = []
-        for fr in self._flow_regions:
-            elements_in_fr: ElementCollection = fr.find_all(
-                selector=selector,
-                text=text,
-                overlap=overlap,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-            )
-            if elements_in_fr and elements_in_fr.elements:
-                all_physical_elements.extend(elements_in_fr.elements)
-
-        # Deduplicate while preserving order
-        seen: Set["PhysicalElement"] = set()
-        unique_elements: List["PhysicalElement"] = []
-        for el in all_physical_elements:
-            if el not in seen:
-                unique_elements.append(el)
-                seen.add(el)
-        return ElementCollection(unique_elements)
+    def _iter_sections(self) -> Iterable["FlowRegion"]:
+        return iter(self._flow_regions)
 
     def highlight(
         self,
@@ -611,136 +562,24 @@ class FlowRegionCollection(MutableSequence[T_FRC]):
             255,
         ),  # New: Background for stacking
         **kwargs,
-    ) -> Optional[Image.Image]:  # Return type changed
+    ) -> Optional[Image.Image]:
         if not self._flow_regions:
             logger.info("FlowRegionCollection.show() called on an empty collection.")
-            return None  # Changed from []
+            return None
 
-        regions_by_page: dict["PhysicalPage", List[dict[str, Any]]] = {}
-
-        first_flow_region = self._flow_regions[0]
-        highlighter_service = None
-        if first_flow_region and first_flow_region.flow and first_flow_region.flow.segments:
-            first_segment_page = first_flow_region.flow.segments[0].page
-            if first_segment_page and hasattr(first_segment_page, "_highlighter"):
-                highlighter_service = first_segment_page._highlighter
-
-        if not highlighter_service:
-            logger.error("Cannot get highlighter service for FlowRegionCollection.show().")
-            return None  # Changed from []
-
-        constituent_idx = 0
-        for fr_idx, fr in enumerate(self._flow_regions):
-            for constituent_region in fr.constituent_regions:
-                page_obj = constituent_region.page
-                if not page_obj:
-                    logger.warning(
-                        f"Constituent region {constituent_region.bbox} has no page. Skipping in show()."
-                    )
-                    continue
-
-                if page_obj not in regions_by_page:
-                    regions_by_page[page_obj] = []
-
-                part_label = None
-                if label_prefix:
-                    part_label = f"{label_prefix}_{constituent_idx}"
-
-                regions_by_page[page_obj].append(
-                    {
-                        "page_index": (
-                            page_obj.index
-                            if hasattr(page_obj, "index")
-                            else getattr(page_obj, "page_number", 1) - 1
-                        ),
-                        "bbox": constituent_region.bbox,
-                        "polygon": (
-                            constituent_region.polygon if constituent_region.has_polygon else None
-                        ),
-                        "color": default_color,
-                        "label": part_label,
-                        "use_color_cycling": False,
-                    }
-                )
-                constituent_idx += 1
-
-        output_page_images: List[Image.Image] = []
-        sorted_pages = sorted(
-            regions_by_page.keys(),
-            key=lambda p: p.index if hasattr(p, "index") else getattr(p, "page_number", 0),
+        if label_prefix is not None and "label_prefix" not in kwargs:
+            kwargs["label_prefix"] = label_prefix
+        kwargs.setdefault("stack_background_color", stack_background_color)
+        return super().show(
+            resolution=resolution,
+            width=width,
+            labels=labels,
+            legend_position=legend_position,
+            color=default_color,
+            stack_direction=stack_direction,
+            gap=stack_gap,
+            **kwargs,
         )
-
-        for page_obj in sorted_pages:
-            temp_highlights_for_page = regions_by_page[page_obj]
-            if not temp_highlights_for_page:
-                continue
-
-            page_image = highlighter_service.render_preview(
-                page_index=(
-                    page_obj.index
-                    if hasattr(page_obj, "index")
-                    else getattr(page_obj, "page_number", 1) - 1
-                ),
-                temporary_highlights=temp_highlights_for_page,
-                resolution=resolution,
-                width=width,
-                labels=labels,
-                legend_position=legend_position,
-                **kwargs,
-            )
-            if page_image:
-                output_page_images.append(page_image)
-
-        if not output_page_images:
-            logger.info("FlowRegionCollection.show() produced no page images to concatenate.")
-            return None
-
-        if len(output_page_images) == 1:
-            return output_page_images[0]
-
-        if stack_direction == "vertical":
-            final_width = max(img.width for img in output_page_images)
-            final_height = (
-                sum(img.height for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            if final_width == 0 or final_height == 0:
-                logger.warning("Cannot create concatenated image with zero width or height.")
-                return None
-
-            concatenated_image = Image.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_y = 0
-            for img in output_page_images:
-                paste_x = (final_width - img.width) // 2  # Center horizontally
-                concatenated_image.paste(img, (paste_x, current_y))
-                current_y += img.height + stack_gap
-            return concatenated_image
-        elif stack_direction == "horizontal":
-            final_width = (
-                sum(img.width for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            final_height = max(img.height for img in output_page_images)
-            if final_width == 0 or final_height == 0:
-                logger.warning("Cannot create concatenated image with zero width or height.")
-                return None
-
-            concatenated_image = Image.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_x = 0
-            for img in output_page_images:
-                paste_y = (final_height - img.height) // 2  # Center vertically
-                concatenated_image.paste(img, (current_x, paste_y))
-                current_x += img.width + stack_gap
-            return concatenated_image
-        else:
-            logger.error(
-                f"Invalid stack_direction '{stack_direction}' for FlowRegionCollection.show(). Must be 'vertical' or 'horizontal'."
-            )
-            return None
 
     def to_images(self, resolution: float = 150, **kwargs) -> List[Image.Image]:
         """Returns a flat list of cropped images of all constituent physical regions."""
