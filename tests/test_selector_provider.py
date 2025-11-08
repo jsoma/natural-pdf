@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import natural_pdf as npdf
 from natural_pdf.engine_provider import get_provider
+from natural_pdf.flows.flow import Flow
 from natural_pdf.selectors import register_pseudo, unregister_pseudo
 from natural_pdf.selectors.selector_provider import SelectorResult
 
@@ -17,15 +18,20 @@ class _StubSelectorEngine:
         return SelectorResult(elements=ElementCollection([]))
 
 
-def test_page_find_all_uses_registered_selector_engine():
+def _register_stub_engine(name: str) -> _StubSelectorEngine:
     provider = get_provider()
-    stub_engine = _StubSelectorEngine()
-    provider.register("selectors", "test-selectors", lambda **_: stub_engine, replace=True)
+    stub = _StubSelectorEngine()
+    provider.register("selectors", name, lambda **_: stub, replace=True)
+    return stub
+
+
+def test_page_find_all_uses_registered_selector_engine():
+    stub_engine = _register_stub_engine("test-selectors-page")
 
     pdf = npdf.PDF("pdfs/01-practice.pdf")
     try:
         page = pdf.pages[0]
-        page.find_all("text", engine="test-selectors")
+        page.find_all("text", engine="test-selectors-page")
     finally:
         pdf.close()
 
@@ -56,3 +62,28 @@ def test_regex_pseudo_via_clause_registry():
         assert matches is not None
     finally:
         pdf.close()
+
+
+def test_region_find_all_passes_engine_to_page_selector():
+    stub_engine = _register_stub_engine("test-selectors-region")
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        region = page.create_region(0, 0, page.width / 2, page.height / 2)
+        region.find_all("text", engine="test-selectors-region")
+    finally:
+        pdf.close()
+
+    assert stub_engine.calls >= 1
+
+
+def test_flow_find_all_passes_engine_to_pages():
+    stub_engine = _register_stub_engine("test-selectors-flow")
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        flow = Flow([pdf.pages[0]], arrangement="vertical", alignment="start")
+        flow.find_all("text", engine="test-selectors-flow")
+    finally:
+        pdf.close()
+
+    assert stub_engine.calls >= 1

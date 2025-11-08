@@ -582,8 +582,13 @@ class FlowRegion(
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        engine: Optional[str] = None,
     ) -> Optional["PhysicalElement"]:
-        """Find the first matching element in flow order."""
+        """Find the first matching element in flow order.
+
+        Args:
+            engine: Optional selector engine name forwarded to each constituent region.
+        """
 
         if not self.constituent_regions:
             return None
@@ -599,6 +604,7 @@ class FlowRegion(
                 text_tolerance=text_tolerance,
                 auto_text_tolerance=auto_text_tolerance,
                 reading_order=reading_order,
+                engine=engine,
             )
             if result is not None:
                 return result
@@ -616,8 +622,13 @@ class FlowRegion(
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """Find all matching elements across constituent regions."""
+        """Find all matching elements across constituent regions.
+
+        Args:
+            engine: Optional selector engine name forwarded to each constituent region.
+        """
 
         from natural_pdf.elements.element_collection import ElementCollection
 
@@ -633,6 +644,7 @@ class FlowRegion(
                 text_tolerance=text_tolerance,
                 auto_text_tolerance=auto_text_tolerance,
                 reading_order=reading_order,
+                engine=engine,
             )
             if collection:
                 combined.extend(collection.elements)

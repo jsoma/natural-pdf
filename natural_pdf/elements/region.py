@@ -47,6 +47,14 @@ from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
+from natural_pdf.ocr.ocr_manager import (
+    normalize_ocr_options,
+    resolve_ocr_device,
+    resolve_ocr_engine_name,
+    resolve_ocr_languages,
+    resolve_ocr_min_confidence,
+    run_ocr_engine,
+)
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -1573,6 +1581,7 @@ class Region(
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional["Element"]:
         """
         Find the first element in this region matching the selector OR text content.
@@ -1595,6 +1604,7 @@ class Region(
             reading_order: Whether to return the first match according to natural reading order
                 (default: True). When False the raw selector ordering is preserved.
             near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered with the selector provider.
         Returns:
             First matching element or None.
         """
@@ -1610,6 +1620,7 @@ class Region(
             auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
             near_threshold=near_threshold,
+            engine=engine,
         )
         return elements.first if elements else None
 
@@ -1626,6 +1637,7 @@ class Region(
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
         """
         Find all elements in this region matching the selector OR text content.
@@ -1647,6 +1659,7 @@ class Region(
             auto_text_tolerance: Optional overrides for automatic tolerance calculation.
             reading_order: Whether to sort matches according to natural reading order (default: True).
             near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered with the selector provider.
         Returns:
             ElementCollection with matching elements.
         """
@@ -1668,6 +1681,7 @@ class Region(
             auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
             near_threshold=near_threshold,
+            engine=engine,
         )
 
         if not page_results:
@@ -1712,9 +1726,9 @@ class Region(
         Apply OCR to this region and return the created text elements.
 
         This method supports two modes:
-        1. **Built-in OCR Engines** (default) – identical to previous behaviour. Pass typical
-           parameters like ``engine='easyocr'`` or ``languages=['en']`` and the method will
-           route the request through :class:`OCRManager`.
+        1. **Built-in/registered OCR engines** – pass parameters like ``engine='easyocr'`` or
+           ``languages=['en']`` and the request is routed through the shared
+           :class:`~natural_pdf.engine_provider.EngineProvider` registry.
         2. **Custom OCR Function** – pass a *callable* under the keyword ``function`` (or
            ``ocr_function``). The callable will receive *this* Region instance and should
            return the extracted text (``str``) or ``None``.  Internally the call is
@@ -1753,11 +1767,6 @@ class Region(
                 add_to_page=ocr_params.pop("add_to_page", True),
             )
 
-        # Ensure OCRManager is available
-        if not hasattr(self.page._parent, "_ocr_manager") or self.page._parent._ocr_manager is None:
-            logger.error("OCRManager not available on parent PDF. Cannot apply OCR to region.")
-            return self
-
         if replace:
             removed = self.remove_ocr_elements()
             if removed:
@@ -1769,7 +1778,21 @@ class Region(
                     f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
                 )
 
-        ocr_mgr = self.page._parent._ocr_manager
+        normalized_options = normalize_ocr_options(ocr_params.get("options"))
+        engine_name = resolve_ocr_engine_name(
+            context=self,
+            requested=ocr_params.get("engine"),
+            options=normalized_options,
+            scope="region",
+        )
+        resolved_languages = resolve_ocr_languages(
+            self, ocr_params.get("languages"), scope="region"
+        )
+        resolved_min_conf = resolve_ocr_min_confidence(
+            self, ocr_params.get("min_confidence"), scope="region"
+        )
+        resolved_device = resolve_ocr_device(self, ocr_params.get("device"), scope="region")
+        detect_only = bool(ocr_params.get("detect_only", False))
 
         # Determine rendering resolution from parameters
         final_resolution = ocr_params.get("resolution")
@@ -1780,7 +1803,10 @@ class Region(
             else:
                 final_resolution = 150
         logger.debug(
-            f"Region {self.bbox}: Applying OCR with resolution {final_resolution} DPI and params: {ocr_params}"
+            "Region %s: Applying OCR via '%s' at %s DPI",
+            self.bbox,
+            engine_name,
+            final_resolution,
         )
 
         # Render the page region to an image using the determined resolution
@@ -1795,25 +1821,20 @@ class Region(
             logger.error(f"Error rendering region to image for OCR: {e}", exc_info=True)
             return self
 
-        # Prepare args for the OCR Manager
-        manager_args = {
-            "images": region_image,
-            "engine": ocr_params.get("engine"),
-            "languages": ocr_params.get("languages"),
-            "min_confidence": ocr_params.get("min_confidence"),
-            "device": ocr_params.get("device"),
-            "options": ocr_params.get("options"),
-            "detect_only": ocr_params.get("detect_only"),
-        }
-        manager_args = {k: v for k, v in manager_args.items() if v is not None}
-
-        # Run OCR on this region's image using the manager
-        results = ocr_mgr.apply_ocr(**manager_args)
+        results = run_ocr_engine(
+            region_image,
+            context=self,
+            engine_name=engine_name,
+            languages=resolved_languages,
+            min_confidence=resolved_min_conf,
+            device=resolved_device,
+            detect_only=detect_only,
+            options=normalized_options,
+        )
         if not isinstance(results, list):
-            logger.error(
-                f"OCRManager returned unexpected type for single region image: {type(results)}"
+            raise TypeError(
+                f"OCR engine '{engine_name}' returned unexpected type for region {self.bbox}: {type(results)}"
             )
-            return self
         logger.debug(f"Region OCR processing returned {len(results)} results.")
 
         # Convert results to TextElements

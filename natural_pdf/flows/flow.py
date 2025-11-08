@@ -287,6 +287,7 @@ class Flow(Visualizable):
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        engine: Optional[str] = None,
     ) -> Optional["FlowElement"]:
         """
         Finds the first element within the flow that matches the given selector or text criteria.
@@ -302,6 +303,7 @@ class Flow(Visualizable):
             text_tolerance: Optional dict of text tolerance overrides.
             auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
             reading_order: Whether to sort matches in reading order when applicable (default: True).
+            engine: Optional selector engine name registered via the selector provider.
 
         Returns:
             A FlowElement if a match is found, otherwise None.
@@ -315,6 +317,7 @@ class Flow(Visualizable):
             text_tolerance=text_tolerance,
             auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
+            engine=engine,
         )
         return results.first if results else None
 
@@ -329,6 +332,7 @@ class Flow(Visualizable):
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Dict[str, Any]] = None,
         reading_order: bool = True,
+        engine: Optional[str] = None,
     ) -> "FlowElementCollection":
         """
         Finds all elements within the flow that match the given selector or text criteria.
@@ -339,6 +343,9 @@ class Flow(Visualizable):
 
         Elements found are wrapped as FlowElement objects, anchored to this Flow,
         and returned in a FlowElementCollection.
+
+        Args:
+            engine: Optional selector engine name forwarded to page-level queries.
         """
         from .collections import FlowElementCollection
         from .element import FlowElement
@@ -387,6 +394,7 @@ class Flow(Visualizable):
                 text_tolerance=text_tolerance,
                 auto_text_tolerance=auto_text_tolerance,
                 reading_order=reading_order,
+                engine=engine,
             )
 
             if not page_matches:
