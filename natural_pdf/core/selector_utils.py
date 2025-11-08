@@ -118,6 +118,7 @@ def _run_native_selector(
     }
     if near_threshold is not None:
         selector_kwargs["near_threshold"] = near_threshold
+    selector_kwargs.setdefault("selector_context", host)
 
     selector_obj = selector_obj or parse_selector(selector)
 

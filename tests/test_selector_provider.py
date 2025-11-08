@@ -64,6 +64,16 @@ def test_regex_pseudo_via_clause_registry():
         pdf.close()
 
 
+def test_contains_clause_still_operational():
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        matches = page.find_all("text:contains('Total')")
+        assert matches is not None
+    finally:
+        pdf.close()
+
+
 def test_region_find_all_passes_engine_to_page_selector():
     stub_engine = _register_stub_engine("test-selectors-region")
     pdf = npdf.PDF("pdfs/01-practice.pdf")
