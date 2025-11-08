@@ -48,7 +48,6 @@ import numpy as np
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
-from natural_pdf.analyzers.layout.layout_manager import LayoutManager
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.analyzers.text_options import TextStyleOptions
@@ -70,7 +69,15 @@ from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
-from natural_pdf.ocr import OCRManager, OCROptions
+from natural_pdf.ocr import OCROptions
+from natural_pdf.ocr.ocr_manager import (
+    normalize_ocr_options,
+    resolve_ocr_device,
+    resolve_ocr_engine_name,
+    resolve_ocr_languages,
+    resolve_ocr_min_confidence,
+    run_ocr_engine,
+)
 from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.text_mixin import TextMixin
 
@@ -312,34 +319,6 @@ class Page(
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata.setdefault("analysis", {})
-
-        if (
-            OCRManager
-            and hasattr(parent, "_ocr_manager")
-            and isinstance(parent._ocr_manager, OCRManager)
-        ):
-            self._ocr_manager = parent._ocr_manager
-            logger.debug(f"Page {self.number}: Using OCRManager instance from parent PDF.")
-        else:
-            self._ocr_manager = None
-            if OCRManager:
-                logger.warning(
-                    f"Page {self.number}: OCRManager instance not found on parent PDF object."
-                )
-
-        if (
-            LayoutManager
-            and hasattr(parent, "_layout_manager")
-            and isinstance(parent._layout_manager, LayoutManager)
-        ):
-            self._layout_manager = parent._layout_manager
-            logger.debug(f"Page {self.number}: Using LayoutManager instance from parent PDF.")
-        else:
-            self._layout_manager = None
-            if LayoutManager:
-                logger.warning(
-                    f"Page {self.number}: LayoutManager instance not found on parent PDF object. Layout analysis will fail."
-                )
 
         # Initialize the internal variable with a single underscore
         self._layout_analyzer = None
@@ -1238,6 +1217,7 @@ class Page(
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional[Element]:
         """
         Find first element on this page matching selector OR text content.
@@ -1255,6 +1235,7 @@ class Page(
             auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
             reading_order: Whether to sort matches in reading order when applicable (default: True).
             near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered via :mod:`natural_pdf.engine_provider`.
 
         Returns:
             Element object or None if not found.
@@ -1275,6 +1256,7 @@ class Page(
             case=case,
             reading_order=reading_order,
             near_threshold=near_threshold,
+            engine=engine,
         )
 
         elements: List[Element] = list(results_collection.elements) if results_collection else []
@@ -1296,6 +1278,7 @@ class Page(
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
         """
         Find all elements on this page matching selector OR text content.
@@ -1314,6 +1297,7 @@ class Page(
             auto_text_tolerance: Optional overrides controlling automatic tolerance calculation.
             reading_order: Whether to sort matches in reading order (default: True).
             near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered with the selector provider.
 
         Returns:
             ElementCollection with matching elements.
@@ -1334,6 +1318,7 @@ class Page(
             case=case,
             reading_order=reading_order,
             near_threshold=near_threshold,
+            engine=engine,
         )
 
         if apply_exclusions and results_collection:
@@ -2674,8 +2659,7 @@ class Page(
         resolution: Optional[int] = None,
     ) -> List["TextElement"]:
         """
-        Extract text elements using OCR *without* adding them to the page's elements.
-        Uses the shared OCRManager instance.
+        Extract text elements using OCR *without* mutating this page's element store.
 
         Args:
             engine: Name of the OCR engine.
@@ -2688,13 +2672,19 @@ class Page(
         Returns:
             List of created TextElement objects derived from OCR results for this page.
         """
-        if not self._ocr_manager:
-            logger.error(
-                f"Page {self.number}: OCRManager not available. Cannot extract OCR elements."
-            )
-            return []
 
         logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
+
+        normalized_options = normalize_ocr_options(options)
+        engine_name = resolve_ocr_engine_name(
+            context=self,
+            requested=engine,
+            options=normalized_options,
+            scope="page",
+        )
+        resolved_languages = resolve_ocr_languages(self, languages, scope="page")
+        resolved_min_conf = resolve_ocr_min_confidence(self, min_confidence, scope="page")
+        resolved_device = resolve_ocr_device(self, device, scope="page")
 
         # Determine rendering resolution
         final_resolution = resolution if resolution is not None else 150  # Default to 150 DPI
@@ -2716,31 +2706,27 @@ class Page(
             logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
             return []
 
-        # Prepare arguments for the OCR Manager call
-        manager_args = {
-            "images": image,
-            "engine": engine,
-            "languages": languages,
-            "min_confidence": min_confidence,
-            "device": device,
-            "options": options,
-        }
-        manager_args = {k: v for k, v in manager_args.items() if v is not None}
-
         logger.debug(
-            "  Calling OCR Manager (extract only) with args %s",
-            {k: v for k, v in manager_args.items() if k != "images"},
+            "  Calling OCR engine '%s' (extract only) with languages=%s, device=%s",
+            engine_name,
+            resolved_languages,
+            resolved_device,
         )
-        try:
-            results = self._parent._ocr_manager.apply_ocr(**manager_args)
-            if isinstance(results, list) and results and isinstance(results[0], list):
-                results = results[0]
-            if not isinstance(results, list):
-                logger.error("  OCR Manager returned unexpected type: %s", type(results))
-                results = []
-        except Exception as exc:
-            logger.error("  OCR processing failed during extraction: %s", exc, exc_info=True)
-            return []
+
+        results = run_ocr_engine(
+            image,
+            context=self,
+            engine_name=engine_name,
+            languages=resolved_languages,
+            min_confidence=resolved_min_conf,
+            device=resolved_device,
+            detect_only=False,
+            options=normalized_options,
+        )
+        if isinstance(results, list) and results and isinstance(results[0], list):
+            results = results[0]
+        if not isinstance(results, list):
+            raise TypeError(f"Unexpected OCR result type for page {self.number}: {type(results)}")
 
         # Convert results but DO NOT add to ElementManager
         logger.debug("  Converting OCR results to TextElements (extract only)...")
@@ -2791,9 +2777,6 @@ class Page(
     def layout_analyzer(self) -> Optional["LayoutAnalyzer"]:
         """Get or create the layout analyzer for this page."""
         if self._layout_analyzer is None:
-            if not self._layout_manager:
-                logger.warning("LayoutManager not available, cannot create LayoutAnalyzer.")
-                return None
             self._layout_analyzer = LayoutAnalyzer(self)
         return self._layout_analyzer
 
@@ -2810,18 +2793,13 @@ class Page(
         client: Optional[Any] = None,  # Add client parameter
     ) -> "ElementCollection[Region]":
         """
-        Analyze the page layout using the configured LayoutManager.
+        Analyze the page layout using the configured layout engine.
         Adds detected Region objects to the page's element manager.
 
         Returns:
             ElementCollection containing the detected Region objects.
         """
         analyzer = self.layout_analyzer
-        if not analyzer:
-            logger.error(
-                "Layout analysis failed: LayoutAnalyzer not initialized (is LayoutManager available?)."
-            )
-            return ElementCollection([])  # Return empty collection
 
         # Clear existing detected regions if 'replace' is specified
         if existing == "replace":

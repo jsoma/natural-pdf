@@ -74,6 +74,9 @@ class Options:
         # Table extraction defaults
         self.tables = ConfigSection(engine="pdfplumber")
 
+        # Selector defaults (None = native engine)
+        self.selectors = ConfigSection(engine=None)
+
 
 # Create global options instance
 options = Options()

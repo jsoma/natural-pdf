@@ -48,11 +48,15 @@ def execute_selector_query(
     case: bool = True,
     reading_order: bool = True,
     near_threshold: Optional[float] = None,
+    engine: Optional[str] = None,
 ) -> "ElementCollection":
-    """
-    Execute a selector query against a host object that exposes `_apply_selector`
-    and `_temporary_text_settings`.
-    """
+    """Execute a selector query using either the native engine or provider-backed engines."""
+    from natural_pdf.selectors.selector_provider import (
+        NATIVE_SELECTOR_ENGINE,
+        resolve_selector_engine_name,
+        run_selector_engine,
+    )
+
     if text_tolerance is not None and not isinstance(text_tolerance, dict):
         raise TypeError("text_tolerance must be a dict of tolerance overrides.")
 
@@ -65,6 +69,57 @@ def execute_selector_query(
     }
     if near_threshold is not None:
         selector_kwargs["near_threshold"] = near_threshold
+
+    resolved_engine = resolve_selector_engine_name(host, engine)
+    if resolved_engine and resolved_engine != NATIVE_SELECTOR_ENGINE:
+        return run_selector_engine(
+            host,
+            selector,
+            engine_name=resolved_engine,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            regex=regex,
+            case=case,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+        )
+
+    return _run_native_selector(
+        host,
+        selector,
+        text_tolerance=text_tolerance,
+        auto_text_tolerance=auto_text_tolerance,
+        regex=regex,
+        case=case,
+        reading_order=reading_order,
+        near_threshold=near_threshold,
+        selector_obj=selector_obj,
+        selector_kwargs=selector_kwargs,
+    )
+
+
+def _run_native_selector(
+    host: Any,
+    selector: str,
+    *,
+    text_tolerance: Optional[Dict[str, Any]] = None,
+    auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+    regex: bool = False,
+    case: bool = True,
+    reading_order: bool = True,
+    near_threshold: Optional[float] = None,
+    selector_obj: Optional[Dict[str, Any]] = None,
+    selector_kwargs: Optional[Dict[str, Any]] = None,
+) -> "ElementCollection":
+    selector_kwargs = selector_kwargs or {
+        "regex": regex,
+        "case": case,
+        "reading_order": reading_order,
+    }
+    if near_threshold is not None:
+        selector_kwargs["near_threshold"] = near_threshold
+
+    selector_obj = selector_obj or parse_selector(selector)
 
     temporary_text_settings = getattr(host, "_temporary_text_settings", None)
     cm = (

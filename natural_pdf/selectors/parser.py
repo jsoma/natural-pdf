@@ -42,6 +42,12 @@ from colormath2.color_diff import delta_e_cie2000  # type: ignore[import-untyped
 from colormath2.color_objects import LabColor, sRGBColor  # type: ignore[import-untyped]
 from colour import Color  # type: ignore[import-untyped]
 
+from natural_pdf.selectors.registry import (
+    ClauseEvalContext,
+    get_attribute_handler,
+    get_pseudo_handler,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -702,6 +708,20 @@ def _build_filter_list(
     else:
         aggregate_values = dict(aggregates)
 
+    clause_ctx = ClauseEvalContext(
+        selector_context=kwargs.get("selector_context"),
+        aggregates=aggregate_values,
+        options=kwargs,
+    )
+
+    def _extend_from_handler(result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]):
+        if not result:
+            return
+        if isinstance(result, list):
+            filters.extend(result)
+        else:
+            filters.append(result)
+
     # Filter by element type
     if selector_type != "any":
         filter_name = f"type is '{selector_type}'"
@@ -761,6 +781,12 @@ def _build_filter_list(
         op = attr_filter["op"]
         value = attr_filter["value"]
         python_name = name.replace("-", "_")  # Convert CSS-style names
+
+        handler = get_attribute_handler(name)
+        if handler:
+            handler_result = handler(attr_filter, clause_ctx)
+            _extend_from_handler(handler_result)
+            continue
 
         # Check if value is an aggregate function
         if isinstance(value, dict) and value.get("type") == "aggregate":
@@ -1006,6 +1032,12 @@ def _build_filter_list(
         args = pseudo["args"]
 
         # Relational pseudo-classes and collection-level pseudo-classes are handled separately by the caller
+
+        handler = get_pseudo_handler(name)
+        if handler:
+            handler_result = handler(pseudo, clause_ctx)
+            _extend_from_handler(handler_result)
+            continue
         if name in ("above", "below", "near", "left-of", "right-of", "first", "last"):
             continue
 
@@ -1074,30 +1106,6 @@ def _build_filter_list(
                         return search_term in element_text
 
             filters.append({"name": filter_name, "func": contains_check})
-            continue
-
-        # --- Handle :regex pseudo-class (same as :contains with regex=True) ---
-        elif name == "regex" and args is not None:
-            ignore_case = not kwargs.get("case", True)  # Default case sensitive
-            filter_name = f"pseudo-class :regex({args!r}, ignore_case={ignore_case})"
-
-            def regex_check(element: Any, pattern_text=args, ignore=ignore_case) -> bool:
-                if not hasattr(element, "text") or not element.text:
-                    return False  # Element must have non-empty text
-
-                element_text = element.text
-                search_term = str(pattern_text)  # Ensure args is string
-
-                try:
-                    pattern = re.compile(search_term, re.IGNORECASE if ignore else 0)
-                    return bool(pattern.search(element_text))
-                except re.error as e:
-                    logger.warning(
-                        f"Invalid regex '{search_term}' in :regex selector: {e}. Returning False."
-                    )
-                    return False
-
-            filters.append({"name": filter_name, "func": regex_check})
             continue
 
         # --- Handle :closest pseudo-class for fuzzy text matching --- #
