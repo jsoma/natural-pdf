@@ -104,6 +104,7 @@ def test_annotate_nonexistent_attribute():
     assert image.size[0] == 600
 
 
+@pytest.mark.optional_deps
 def test_annotate_with_regions():
     """Test annotate with regions."""
     pdf = PDF("pdfs/01-practice.pdf")

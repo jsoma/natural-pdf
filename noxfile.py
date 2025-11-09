@@ -66,7 +66,15 @@ def lint(session):
 def test_minimal(session):
     """Run tests with only core dependencies, expecting failures for optional features."""
     session.install(".[test]")
-    session.run("pytest", "tests", "-n", "auto", "-m", "not tutorial")
+    # Skip tutorial, QA, and optional dependency suites to keep this environment lightweight
+    session.run(
+        "pytest",
+        "tests",
+        "-n",
+        "auto",
+        "-m",
+        "not tutorial and not qa and not optional_deps",
+    )
 
 
 @nox.session(python=PYTHON_VERSIONS)
