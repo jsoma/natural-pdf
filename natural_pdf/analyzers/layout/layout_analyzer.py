@@ -1,8 +1,9 @@
 import copy
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+from natural_pdf import options as npdf_options
+from natural_pdf.analyzers.layout.layout_manager import ENGINE_REGISTRY
 from natural_pdf.analyzers.layout.layout_options import (
     BaseLayoutOptions,
     GeminiLayoutOptions,
@@ -10,6 +11,7 @@ from natural_pdf.analyzers.layout.layout_options import (
     TATRLayoutOptions,
 )
 from natural_pdf.elements.region import Region
+from natural_pdf.engine_provider import get_provider
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +22,14 @@ class LayoutAnalyzer:
     coordinate scaling, region creation, and result storage.
     """
 
-    def __init__(self, page, layout_manager: Optional[LayoutManager] = None):
-        """
-        Initialize the layout analyzer.
-
-        Args:
-            page: The Page object to analyze
-            layout_manager: Optional LayoutManager instance. If None, will try to get from page's parent.
-        """
+    def __init__(self, page, layout_manager: Optional[Any] = None):
+        """Initialize the layout analyzer for a page."""
         self._page = page
-        self._layout_manager = layout_manager or getattr(page._parent, "_layout_manager", None)
-
-        if not self._layout_manager:
+        if layout_manager is not None:
             logger.warning(
-                f"LayoutManager not available for page {page.number}. Layout analysis will fail."
+                "layout_manager argument is deprecated and ignored; engines are now provided via EngineProvider."
             )
+        self._engine_provider = get_provider()
 
     def analyze_layout(
         self,
@@ -48,10 +43,10 @@ class LayoutAnalyzer:
         **kwargs,
     ) -> List[Region]:
         """
-        Analyze the page layout using the configured LayoutManager.
+        Analyze the page layout using the registered layout engine.
 
         This method constructs the final options object, including internal context,
-        and passes it to the LayoutManager.
+        and passes it to the requested engine via the EngineProvider.
 
         Args:
             engine: Name of the layout engine (e.g., 'yolo', 'tatr'). Uses manager's default if None and no options object given.
@@ -66,12 +61,6 @@ class LayoutAnalyzer:
         Returns:
             List of created Region objects.
         """
-        if not self._layout_manager:
-            logger.error(
-                f"Page {self._page.number}: LayoutManager not available. Cannot analyze layout."
-            )
-            return []
-
         logger.info(
             f"Page {self._page.number}: Analyzing layout (Engine: {engine or 'default'}, Options provided: {options is not None})..."
         )
@@ -115,7 +104,7 @@ class LayoutAnalyzer:
                 )
             # Infer engine from options type if engine arg wasn't provided
             if engine is None:
-                for name, registry_entry in self._layout_manager.ENGINE_REGISTRY.items():
+                for name, registry_entry in ENGINE_REGISTRY.items():
                     if isinstance(final_options, registry_entry["options_class"]):
                         engine = name
                         logger.debug(f"Inferred engine '{engine}' from options type.")
@@ -125,11 +114,9 @@ class LayoutAnalyzer:
         else:
             # Construct options from simple args (engine, confidence, classes, etc.)
             logger.debug("Constructing options from simple arguments.")
-            selected_engine = (
-                engine or self._layout_manager.get_available_engines()[0]
-            )  # Use provided or first available
+            selected_engine = engine or self._default_engine_name()
             engine_lower = selected_engine.lower()
-            registry = self._layout_manager.ENGINE_REGISTRY
+            registry = ENGINE_REGISTRY
 
             if engine_lower not in registry:
                 raise ValueError(
@@ -186,6 +173,8 @@ class LayoutAnalyzer:
                 # Re-raise for now, indicates programming error or invalid kwarg.
                 raise e
 
+            engine = selected_engine
+
         # --- Add Internal Context to extra_args (Applies to the final_options object) ---
         if not hasattr(final_options, "extra_args") or final_options.extra_args is None:
             # Ensure extra_args exists, potentially overwriting if needed
@@ -205,22 +194,9 @@ class LayoutAnalyzer:
         )
 
         # --- Call Layout Manager (ALWAYS with options object) ---
-        logger.debug("Calling Layout Manager with final options object.")
-        try:
-            # ALWAYS pass the constructed/modified options object
-            detections = self._layout_manager.analyze_layout(
-                image=std_res_page_image,
-                options=final_options,  # Pass the final object with internal context
-            )
-            logger.info(f"  Layout Manager returned {len(detections)} detections.")
-        # Specifically let errors about unknown/unavailable engines propagate
-        except (ValueError, RuntimeError) as engine_error:
-            logger.error(f"Layout analysis failed: {engine_error}")
-            raise engine_error  # Re-raise the specific error
-        except Exception as e:
-            # Catch other unexpected errors during analysis execution
-            logger.error(f"  Layout analysis failed with unexpected error: {e}", exc_info=True)
-            return []  # Return empty list for other runtime errors
+        detections = self._run_layout_engine(std_res_page_image, final_options, engine=engine)
+        if detections is None:
+            return []
 
         # --- Process Detections (Convert to Regions, Scale Coords from Image to PDF) ---
         layout_regions = []
@@ -319,3 +295,62 @@ class LayoutAnalyzer:
             logger.info("  Finished cell creation process triggered by options.")
 
         return layout_regions
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_engine_name(
+        self, engine: Optional[str], options: BaseLayoutOptions
+    ) -> Optional[str]:
+        if engine:
+            return engine.lower()
+
+        for name, entry in ENGINE_REGISTRY.items():
+            if isinstance(options, entry["options_class"]):
+                return name.lower()
+        return None
+
+    def _run_layout_engine(self, image, options, engine: Optional[str]):
+        engine_name = self._resolve_engine_name(engine, options)
+        if engine_name is None:
+            logger.error("Unable to determine layout engine for provided options")
+            return None
+
+        try:
+            detector = self._engine_provider.get("layout", context=self._page, name=engine_name)
+            detections = detector.detect(image, options)
+            logger.info(
+                "  Layout engine '%s' returned %d detections.",
+                engine_name,
+                len(detections),
+            )
+            return detections
+        except LookupError as provider_err:
+            raise RuntimeError(
+                f"Layout engine '{engine_name}' is not registered: {provider_err}"
+            ) from provider_err
+        except Exception as exc:
+            logger.error(
+                "Layout engine '%s' failed via provider: %s", engine_name, exc, exc_info=True
+            )
+            return None
+
+    def _default_engine_name(self) -> str:
+        config_engine = self._page.get_config("layout_engine", None, scope="page")
+        if isinstance(config_engine, str):
+            config_engine = config_engine.strip().lower()
+
+        global_default = getattr(npdf_options.layout, "engine", None)
+        if isinstance(global_default, str):
+            global_default = global_default.strip().lower()
+
+        available = tuple(self._engine_provider.list("layout").get("layout", ()))
+        if not available:
+            raise RuntimeError("No layout engines are registered.")
+
+        for candidate in (config_engine, global_default):
+            if candidate and candidate in available:
+                return candidate
+
+        return available[0]

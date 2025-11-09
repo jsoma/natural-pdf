@@ -1,13 +1,17 @@
-# layout_manager.py
+"""Registration helpers for layout engines."""
+
+from __future__ import annotations
+
 import inspect
 import logging
-from typing import Any, Callable, Dict, List, Optional, Type, TypedDict, Union, cast
+import threading
+from typing import Any, Dict, Type, cast
 
-from PIL import Image
+from natural_pdf.engine_provider import get_provider
+from natural_pdf.engine_registry import register_builtin, register_layout_engine
 
-from .base import LayoutDetector  # Lightweight base class
+from .base import LayoutDetector
 from .layout_options import (
-    BaseLayoutOptions,
     DoclingLayoutOptions,
     GeminiLayoutOptions,
     LayoutOptions,
@@ -17,17 +21,16 @@ from .layout_options import (
     YOLOLayoutOptions,
 )
 
-# --- Import lightweight components only ---
-# Heavy detector implementations (paddle, yolo, etc.) are **not** imported at module load.
-# Instead, we provide tiny helper functions that import them lazily **only when needed**.
+logger = logging.getLogger(__name__)
 
 
-# ------------------ Lazy import helpers ------------------ #
+# ---------------------------------------------------------------------------
+# Lazy import helpers
+# ---------------------------------------------------------------------------
 
 
 def _lazy_import_yolo_detector() -> Type[LayoutDetector]:
-    """Import YOLO detector lazily to avoid heavy deps at import time."""
-    from .yolo import YOLODocLayoutDetector  # Local import
+    from .yolo import YOLODocLayoutDetector
 
     return cast(Type[LayoutDetector], YOLODocLayoutDetector)
 
@@ -62,232 +65,83 @@ def _lazy_import_gemini_detector() -> Type[LayoutDetector]:
     return cast(Type[LayoutDetector], GeminiLayoutDetector)
 
 
-# --------------------------------------------------------- #
+# ---------------------------------------------------------------------------
+# Registry and caching
+# ---------------------------------------------------------------------------
 
-logger = logging.getLogger(__name__)
+ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "yolo": {"class": _lazy_import_yolo_detector, "options_class": YOLOLayoutOptions},
+    "tatr": {"class": _lazy_import_tatr_detector, "options_class": TATRLayoutOptions},
+    "paddle": {"class": _lazy_import_paddle_detector, "options_class": PaddleLayoutOptions},
+    "surya": {"class": _lazy_import_surya_detector, "options_class": SuryaLayoutOptions},
+    "docling": {"class": _lazy_import_docling_detector, "options_class": DoclingLayoutOptions},
+    "gemini": {"class": _lazy_import_gemini_detector, "options_class": GeminiLayoutOptions},
+}
+
+_detector_instances: Dict[str, LayoutDetector] = {}
+_detector_lock = threading.RLock()
 
 
-EngineRegistryEntry = TypedDict(
-    "EngineRegistryEntry",
-    {
-        "class": Union[Type[LayoutDetector], Callable[[], Type[LayoutDetector]]],
-        "options_class": Type[BaseLayoutOptions],
-    },
-)
+def _resolve_engine_class(engine_name: str) -> Type[LayoutDetector]:
+    entry = ENGINE_REGISTRY[engine_name]["class"]
+    if inspect.isclass(entry):
+        return cast(Type[LayoutDetector], entry)
+    return cast(Type[LayoutDetector], entry())
 
 
-class LayoutManager:
-    """Manages layout detector selection, configuration, and execution."""
-
-    # Registry mapping engine names to classes and default options
-    ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {}
-
-    # Populate registry with lazy import callables. The heavy imports are executed only
-    # when the corresponding engine is first requested.
-    ENGINE_REGISTRY = {
-        "yolo": {
-            "class": _lazy_import_yolo_detector,  # returns detector class when called
-            "options_class": YOLOLayoutOptions,
-        },
-        "tatr": {
-            "class": _lazy_import_tatr_detector,
-            "options_class": TATRLayoutOptions,
-        },
-        "paddle": {
-            "class": _lazy_import_paddle_detector,
-            "options_class": PaddleLayoutOptions,
-        },
-        "surya": {
-            "class": _lazy_import_surya_detector,
-            "options_class": SuryaLayoutOptions,
-        },
-        "docling": {
-            "class": _lazy_import_docling_detector,
-            "options_class": DoclingLayoutOptions,
-        },
-        "gemini": {
-            "class": _lazy_import_gemini_detector,
-            "options_class": GeminiLayoutOptions,
-        },
-    }
-
-    def __init__(self):
-        """Initializes the Layout Manager."""
-        # Cache for detector instances (different from model cache inside detector)
-        self._detector_instances: Dict[str, LayoutDetector] = {}
-        logger.info(
-            f"LayoutManager initialized. Available engines: {list(self.ENGINE_REGISTRY.keys())}"
+def _get_engine_instance(engine_name: str) -> LayoutDetector:
+    engine_name = engine_name.lower()
+    if engine_name not in ENGINE_REGISTRY:
+        raise RuntimeError(
+            f"Unknown layout engine '{engine_name}'. Available: {list(ENGINE_REGISTRY.keys())}"
         )
 
-    def _get_engine_instance(self, engine_name: str) -> LayoutDetector:
-        """Retrieves or creates an instance of the specified layout detector."""
-        engine_name = engine_name.lower()
-        if engine_name not in self.ENGINE_REGISTRY:
-            raise ValueError(
-                f"Unknown layout engine: '{engine_name}'. Available: {list(self.ENGINE_REGISTRY.keys())}"
-            )
+    with _detector_lock:
+        if engine_name in _detector_instances:
+            return _detector_instances[engine_name]
 
-        if engine_name not in self._detector_instances:
-            logger.info(f"Creating instance of layout engine: {engine_name}")
-            engine_class_or_factory = self.ENGINE_REGISTRY[engine_name]["class"]
-            # If the registry provides a callable (lazy import helper), call it to obtain the real class.
-            engine_class: Type[LayoutDetector]
-            if inspect.isclass(engine_class_or_factory):
-                engine_class = cast(Type[LayoutDetector], engine_class_or_factory)
-            else:
-                engine_class = cast(Type[LayoutDetector], engine_class_or_factory())
-
-            detector_instance = engine_class()  # Instantiate
-
-            # Try to check availability and capture any errors
-            availability_error = None
-            is_available = False
-            try:
-                is_available = detector_instance.is_available()
-            except Exception as e:
-                availability_error = e
-                logger.error(f"Error checking availability of {engine_name}: {e}", exc_info=True)
-
-            if not is_available:
-                # Check availability before storing
-                # Construct helpful error message with install hint
-                install_hint = ""
-                if engine_name in {"yolo", "paddle", "surya", "docling"}:
-                    install_hint = f"npdf install {engine_name}"
-                elif engine_name == "tatr":
-                    install_hint = "(should be installed with natural-pdf core dependencies)"
-                elif engine_name == "gemini":
-                    install_hint = "pip install openai"  # keep as-is for now
-                else:
-                    install_hint = f"(Check installation requirements for {engine_name})"
-
-                error_msg = f"Layout engine '{engine_name}' is not available. Please install the required dependencies: {install_hint}"
-
-                # If we have an availability error, include it
-                if availability_error:
-                    error_msg += f"\nAvailability check error: {availability_error}"
-
-                raise RuntimeError(error_msg)
-            self._detector_instances[engine_name] = detector_instance  # Store if available
-
-        return self._detector_instances[engine_name]
-
-    def analyze_layout(
-        self,
-        image: Image.Image,
-        options: LayoutOptions,
-    ) -> List[Dict[str, Any]]:
-        """
-        Analyzes layout of a single image using a specific options object.
-
-        Args:
-            image: The PIL Image to analyze.
-            options: Specific LayoutOptions object containing configuration and context.
-                     This object MUST be provided.
-
-        Returns:
-            A list of standardized detection dictionaries.
-        """
-        selected_engine_name: Optional[str] = None
-        found_engine = False
-        for name, registry_entry in self.ENGINE_REGISTRY.items():
-            if isinstance(options, registry_entry["options_class"]):
-                selected_engine_name = name
-                found_engine = True
-                break
-        if not found_engine or selected_engine_name is None:
-            available_options_types = [
-                reg["options_class"].__name__ for reg in self.ENGINE_REGISTRY.values()
-            ]
-            raise TypeError(
-                f"Provided options object type '{type(options).__name__}' does not match any registered layout engine options: {available_options_types}"
-            )
+        logger.info("Creating layout engine instance: %s", engine_name)
+        engine_class = _resolve_engine_class(engine_name)
+        detector_instance = engine_class()
 
         try:
-            engine_instance = self._get_engine_instance(selected_engine_name)
-            logger.info(f"Analyzing layout with engine '{selected_engine_name}'...")
+            available = detector_instance.is_available()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Failed to check availability for %s", engine_name)
+            raise RuntimeError(f"Layout engine '{engine_name}' availability check failed: {exc}")
 
-            detections = engine_instance.detect(image, options)  # Pass options directly
-
-            logger.info(f"Layout analysis complete. Found {len(detections)} regions.")
-            return detections
-
-        except (ImportError, RuntimeError, ValueError, TypeError) as e:
-            # Add engine name to error message if possible
-            engine_context = f" for engine '{selected_engine_name}'" if selected_engine_name else ""
-            logger.error(f"Layout analysis failed{engine_context}: {e}", exc_info=True)
-            raise  # Re-raise expected errors
-        except Exception as e:
-            engine_context = f" for engine '{selected_engine_name}'" if selected_engine_name else ""
-            logger.error(
-                f"An unexpected error occurred during layout analysis{engine_context}: {e}",
-                exc_info=True,
+        if not available:
+            install_hint = (
+                f"npdf install {engine_name}"
+                if engine_name in {"yolo", "paddle", "surya", "docling"}
+                else ""
             )
-            raise  # Re-raise unexpected errors
+            raise RuntimeError(
+                f"Layout engine '{engine_name}' is not available. {install_hint}".strip()
+            )
 
-    def get_available_engines(self) -> List[str]:
-        """Returns a list of registered layout engine names that are currently available."""
-        available = []
-        for name, registry_entry in self.ENGINE_REGISTRY.items():
-            try:
-                engine_class_or_factory = registry_entry["class"]
-                if inspect.isclass(engine_class_or_factory):
-                    engine_class = cast(Type[LayoutDetector], engine_class_or_factory)
-                else:
-                    engine_class = cast(Type[LayoutDetector], engine_class_or_factory())
+        _detector_instances[engine_name] = detector_instance
+        return detector_instance
 
-                if hasattr(engine_class, "is_available") and callable(engine_class.is_available):
-                    if engine_class().is_available():
-                        available.append(name)
-                else:
-                    available.append(name)
-            except Exception as e:
-                logger.debug(f"Layout engine '{name}' check failed: {e}")
-                pass
-        return available
 
-    def cleanup_detector(self, detector_name: Optional[str] = None) -> int:
-        """
-        Cleanup layout detector instances to free memory.
+# ---------------------------------------------------------------------------
+# Provider registration
+# ---------------------------------------------------------------------------
 
-        Args:
-            detector_name: Specific detector to cleanup, or None to cleanup all detectors
 
-        Returns:
-            Number of detectors cleaned up
-        """
-        cleaned_count = 0
+def register_layout_engines(provider=None) -> None:
+    for engine_name in ENGINE_REGISTRY.keys():
 
-        if detector_name:
-            # Cleanup specific detector
-            detector_name = detector_name.lower()
-            if detector_name in self._detector_instances:
-                detector = self._detector_instances.pop(detector_name)
-                cleanup_method = getattr(detector, "cleanup", None)
-                if callable(cleanup_method):
-                    try:
-                        cleanup_method()
-                    except Exception as e:
-                        logger.debug(f"Detector {detector_name} cleanup method failed: {e}")
+        def factory(*, context=None, _engine_name=engine_name, **opts):
+            return _get_engine_instance(_engine_name)
 
-                logger.info(f"Cleaned up layout detector: {detector_name}")
-                cleaned_count = 1
-        else:
-            # Cleanup all detectors
-            for name, detector in list(self._detector_instances.items()):
-                cleanup_method = getattr(detector, "cleanup", None)
-                if callable(cleanup_method):
-                    try:
-                        cleanup_method()
-                    except Exception as e:
-                        logger.debug(f"Detector {name} cleanup method failed: {e}")
+        register_builtin(provider, "layout", engine_name, factory)
 
-            # Clear all caches
-            detector_count = len(self._detector_instances)
-            self._detector_instances.clear()
 
-            if detector_count > 0:
-                logger.info(f"Cleaned up {detector_count} layout detectors")
-            cleaned_count = detector_count
+try:  # Register at import time so engines are discoverable immediately.
+    register_layout_engines()
+except Exception:  # pragma: no cover - defensive
+    logger.exception("Failed to register built-in layout engines")
 
-        return cleaned_count
+
+__all__ = ["ENGINE_REGISTRY", "register_layout_engines"]

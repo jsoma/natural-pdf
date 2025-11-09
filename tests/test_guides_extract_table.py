@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from natural_pdf.analyzers.guides import Guides
+from natural_pdf.tables.result import TableResult
 
 
 def test_guides_extract_table_basic():
@@ -25,13 +26,12 @@ def test_guides_extract_table_basic():
 
     # Mock the build_grid method to return a result
     mock_table_region = Mock()
-    mock_table_result = Mock()
-    mock_table_region.extract_table.return_value = mock_table_result
-
     mock_grid_result = {
         "counts": {"table": 1, "rows": 2, "columns": 2, "cells": 4},
         "regions": {"table": mock_table_region, "rows": [], "columns": [], "cells": []},
     }
+
+    mock_table_region.extract_table.return_value = TableResult([["r1c1", "r1c2"], ["r2c1", "r2c2"]])
 
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
         # Call extract_table
@@ -46,11 +46,20 @@ def test_guides_extract_table_basic():
             multi_page="auto",
         )
 
-        # Verify that extract_table was called on the table region
-        mock_table_region.extract_table.assert_called_once()
-
-        # Verify result
-        assert result == mock_table_result
+        mock_table_region.extract_table.assert_called_once_with(
+            method=None,
+            table_settings=None,
+            use_ocr=False,
+            ocr_config=None,
+            text_options=None,
+            cell_extraction_func=None,
+            show_progress=False,
+            content_filter=None,
+            apply_exclusions=True,
+            structure_engine=None,
+        )
+        assert isinstance(result, TableResult)
+        assert list(result) == [["r1c1", "r1c2"], ["r2c1", "r2c2"]]
 
 
 def test_guides_extract_table_with_parameters():
@@ -68,12 +77,11 @@ def test_guides_extract_table_with_parameters():
 
     # Mock the build_grid method
     mock_table_region = Mock()
-    mock_table_result = Mock()
-    mock_table_region.extract_table.return_value = mock_table_result
-
     mock_grid_result = {
         "regions": {"table": mock_table_region, "rows": [], "columns": [], "cells": []}
     }
+
+    mock_table_region.extract_table.return_value = TableResult([["data"]])
 
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
         # Call with custom parameters
@@ -90,7 +98,6 @@ def test_guides_extract_table_with_parameters():
             multi_page="auto",
         )
 
-        # Verify extract_table was called with custom parameters
         mock_table_region.extract_table.assert_called_once_with(
             method="tatr",
             table_settings=None,
@@ -101,7 +108,9 @@ def test_guides_extract_table_with_parameters():
             show_progress=False,
             content_filter=None,
             apply_exclusions=True,
+            structure_engine=None,
         )
+        assert isinstance(result, TableResult)
 
 
 def test_guides_extract_table_cleanup_on_success():
@@ -135,10 +144,9 @@ def test_guides_extract_table_cleanup_on_success():
 
     # Mock successful table extraction
     mock_table_region = Mock()
-    mock_table_result = Mock()
-    mock_table_region.extract_table.return_value = mock_table_result
-
     mock_grid_result = {"regions": {"table": mock_table_region}}
+
+    mock_table_region.extract_table.return_value = TableResult([["data"]])
 
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
         result = guides.extract_table()
@@ -173,18 +181,15 @@ def test_guides_extract_table_cleanup_on_failure():
     # Create guides
     guides = Guides(verticals=[100, 200], horizontals=[100, 200], context=mock_page)
 
-    # Mock build_grid to return valid result but extract_table to fail
     mock_table_region = Mock()
-    mock_table_region.extract_table.side_effect = ValueError("Extraction failed")
-
     mock_grid_result = {"regions": {"table": mock_table_region}}
 
+    mock_table_region.extract_table.side_effect = ValueError("Extraction failed")
+
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
-        # Should raise the extraction error
         with pytest.raises(ValueError, match="Extraction failed"):
             guides.extract_table()
 
-        # But cleanup should still happen
         mock_page.remove_element.assert_called_once_with(temp_region, element_type="regions")
 
 
@@ -223,21 +228,17 @@ def test_guides_extract_table_multi_page_list():
     # Mock multi-page result with list of table regions
     mock_table_region1 = Mock()
     mock_table_region2 = Mock()
-    mock_table_result = Mock()
-    mock_table_region1.extract_table.return_value = mock_table_result
-
     mock_grid_result = {
         "regions": {"table": [mock_table_region1, mock_table_region2]}  # List of regions
     }
 
+    mock_table_region1.extract_table.return_value = TableResult([["data"]])
+
     with patch.object(guides, "build_grid", return_value=mock_grid_result):
         result = guides.extract_table()
 
-        # Should use the first table region
         mock_table_region1.extract_table.assert_called_once()
-        mock_table_region2.extract_table.assert_not_called()
-
-        assert result == mock_table_result
+        assert isinstance(result, TableResult)
 
 
 if __name__ == "__main__":

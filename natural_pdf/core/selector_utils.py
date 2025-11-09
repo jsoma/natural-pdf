@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
+from natural_pdf.selectors.registry import (
+    ClauseEvalContext,
+    get_post_handler,
+    get_relational_handler,
+)
 
 TextInput = Union[str, Sequence[str]]
 
@@ -134,3 +139,31 @@ def _run_native_selector(
 
     with cm:
         return host._apply_selector(selector_obj, **selector_kwargs)  # type: ignore[attr-defined]
+
+
+def _apply_relational_post_pseudos(
+    host: Any,
+    selector_obj: Dict[str, Any],
+    elements: List[Any],
+    selector_kwargs: Dict[str, Any],
+) -> List[Any]:
+    """Apply registered relational and post-collection pseudo handlers."""
+    relational = selector_obj.get("relational_pseudos")
+    post = selector_obj.get("post_pseudos")
+    if not relational and not post:
+        return elements
+
+    ctx_options = dict(selector_kwargs)
+    ctx_options.pop("selector_context", None)
+    context = ClauseEvalContext(selector_context=host, aggregates={}, options=ctx_options)
+
+    result = list(elements)
+    for pseudo in relational or []:
+        handler = get_relational_handler(pseudo.get("name"))
+        if handler:
+            result = handler(result, pseudo, context)
+    for pseudo in post or []:
+        handler = get_post_handler(pseudo.get("name"))
+        if handler:
+            result = handler(result, pseudo, context)
+    return result

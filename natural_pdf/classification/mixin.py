@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from PIL import Image
 
+from .classification_provider import get_classification_engine, run_classification_item
 from .results import ClassificationResult
 
 if TYPE_CHECKING:
@@ -32,7 +33,6 @@ class ClassificationMixin:
     - Automatic: Manager selects best mode based on content availability
 
     Host class requirements:
-    - Must implement _get_classification_manager() -> ClassificationManager
     - Must implement _get_classification_content() -> str | Image
     - Must have 'analyses' attribute as Dict[str, Any]
 
@@ -63,10 +63,6 @@ class ClassificationMixin:
 
     # --- Abstract methods/properties required by the host class --- #
     # These must be implemented by classes using this mixin (Page, Region)
-
-    def _get_classification_manager(self) -> "ClassificationManager":
-        """Should return the ClassificationManager instance."""
-        raise NotImplementedError
 
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, "Image.Image"]:
         """Should return the text content (str) or image (PIL.Image) for classification."""
@@ -113,23 +109,21 @@ class ClassificationMixin:
             self.analyses = {}
 
         try:
-            manager = self._get_classification_manager()
+            engine_obj = get_classification_engine(self, kwargs.pop("classification_engine", None))
 
-            # ------------------------------------------------------------
-            # Resolve engine ('text' vs 'vision')
-            # ------------------------------------------------------------
-            engine: Optional[str] = using  # rename for clarity
+            chosen_mode = using
+            content = None
 
-            content = None  # will hold final content
+            candidate_model = model or engine_obj.default_model("text")
+            inferred_mode = engine_obj.infer_using(candidate_model, chosen_mode)
+            chosen_mode = inferred_mode
 
-            if engine is None:
-                # Try text first
+            if chosen_mode == "text":
                 try:
                     tentative_text = self._get_classification_content("text", **kwargs)
                     if tentative_text and not (
                         isinstance(tentative_text, str) and tentative_text.isspace()
                     ):
-                        engine = "text"
                         content = tentative_text
                     else:
                         raise ValueError("Empty text")
@@ -139,30 +133,21 @@ class ClassificationMixin:
                         "Pass using='vision' explicitly to silence this message.",
                         UserWarning,
                     )
-                    engine = "vision"
+                    chosen_mode = "vision"
 
-            # If engine determined but content not yet retrieved, get it now
             if content is None:
-                content = self._get_classification_content(model_type=engine, **kwargs)
+                if chosen_mode is None:
+                    chosen_mode = "vision"
+                content = self._get_classification_content(model_type=chosen_mode, **kwargs)
 
-            # ------------------------------------------------------------
-            # Determine model ID default based on engine
-            # ------------------------------------------------------------
-            effective_model_id = model
-            if effective_model_id is None:
-                effective_model_id = (
-                    manager.DEFAULT_TEXT_MODEL if engine == "text" else manager.DEFAULT_VISION_MODEL
-                )
-                logger.debug(
-                    f"No model provided, using default for mode '{engine}': '{effective_model_id}'"
-                )
+            effective_model_id = model or engine_obj.default_model(chosen_mode)
 
-            # Manager now returns a ClassificationResult object
-            result_obj: ClassificationResult = manager.classify_item(
-                item_content=content,
+            result_obj = run_classification_item(
+                context=self,
+                content=content,
                 labels=labels,
                 model_id=effective_model_id,
-                using=engine,
+                using=chosen_mode,
                 min_confidence=min_confidence,
                 multi_label=multi_label,
                 **kwargs,

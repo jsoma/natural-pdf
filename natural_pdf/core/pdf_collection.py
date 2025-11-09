@@ -662,32 +662,13 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
     def classify_all(
         self,
         labels: List[str],
-        using: Optional[str] = None,  # Default handled by PDF.classify -> manager
-        model: Optional[str] = None,  # Optional model ID
-        analysis_key: str = "classification",  # Key for storing result in PDF.analyses
+        using: Optional[str] = None,
+        model: Optional[str] = None,
+        analysis_key: str = "classification",
         **kwargs,
     ) -> "PDFCollection":
         """
-        Classify each PDF document in the collection using batch processing.
-
-        This method gathers content from all PDFs and processes them in a single
-        batch to avoid multiprocessing resource accumulation that can occur with
-        sequential individual classifications.
-
-        Args:
-            labels: A list of string category names.
-            using: Processing mode ('text', 'vision'). If None, manager infers (defaulting to text).
-            model: Optional specific model identifier (e.g., HF ID). If None, manager uses default for 'using' mode.
-            analysis_key: Key under which to store the ClassificationResult in each PDF's `analyses` dict.
-            **kwargs: Additional arguments passed down to the ClassificationManager.
-
-        Returns:
-            Self for method chaining.
-
-        Raises:
-            ValueError: If labels list is empty, or if using='vision' on a multi-page PDF.
-            ClassificationError: If classification fails.
-            ImportError: If classification dependencies are missing.
+        Classify each PDF document in the collection using provider-backed batch processing.
         """
         if not labels:
             raise ValueError("Labels list cannot be empty.")
@@ -701,91 +682,45 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
             f"Starting batch classification for {len(self._pdfs)} PDFs in collection ({mode_desc})..."
         )
 
-        # Get classification manager from first PDF
-        try:
-            first_pdf = self._pdfs[0]
-            if not hasattr(first_pdf, "get_manager"):
-                raise RuntimeError("PDFs do not support classification manager")
-            manager = first_pdf.get_manager("classification")
-            if not manager or not manager.is_available():
-                raise RuntimeError("ClassificationManager is not available")
-        except Exception as e:
-            from natural_pdf.classification.manager import ClassificationError
+        first_pdf = self._pdfs[0]
+        engine_name = kwargs.pop("classification_engine", None)
+        engine_obj = get_classification_engine(first_pdf, engine_name)
+        inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
 
-            raise ClassificationError(f"Cannot access ClassificationManager: {e}") from e
-
-        # Determine processing mode early
-        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
-
-        # Gather content from all PDFs
-        pdf_contents = []
-        valid_pdfs = []
+        pdf_contents: List[Any] = []
+        valid_pdfs: List[Any] = []
 
         logger.info(f"Gathering content from {len(self._pdfs)} PDFs for batch classification...")
-
         for pdf in self._pdfs:
             try:
-                # Get the content for classification - use the same logic as individual PDF classify
-                if inferred_using == "text":
-                    # Extract text content from PDF
-                    content = pdf.extract_text()
-                    if not content or content.isspace():
-                        logger.warning(f"Skipping PDF {pdf.path}: No text content found")
-                        continue
-                elif inferred_using == "vision":
-                    # For vision, we need single-page PDFs only
-                    if len(pdf.pages) != 1:
-                        logger.warning(
-                            f"Skipping PDF {pdf.path}: Vision classification requires single-page PDFs"
-                        )
-                        continue
-                    # Get first page image
-                    content = pdf.pages[0].render()
-                else:
-                    raise ValueError(f"Unsupported using mode: {inferred_using}")
-
+                content = pdf._get_classification_content(model_type=inferred_using, **kwargs)
                 pdf_contents.append(content)
                 valid_pdfs.append(pdf)
-
-            except Exception as e:
-                logger.warning(f"Skipping PDF {pdf.path}: Error getting content - {e}")
-                continue
+            except Exception as exc:
+                logger.warning(f"Skipping PDF {pdf.path}: {exc}")
 
         if not pdf_contents:
             logger.warning("No valid content could be gathered from PDFs for classification.")
             return self
 
-        logger.info(
-            f"Gathered content from {len(valid_pdfs)} PDFs. Running batch classification..."
-        )
-
-        # Run batch classification
         try:
-            batch_results = manager.classify_batch(
-                item_contents=pdf_contents,
+            batch_results = run_classification_batch(
+                context=self,
+                contents=pdf_contents,
                 labels=labels,
-                model_id=model,
+                model_id=model or engine_obj.default_model(inferred_using),
                 using=inferred_using,
-                progress_bar=True,  # Let the manager handle progress display
-                **kwargs,
+                min_confidence=kwargs.get("min_confidence", 0.0),
+                multi_label=kwargs.get("multi_label", False),
+                batch_size=8,
+                progress_bar=True,
+                engine_name=engine_name,
             )
-        except Exception as e:
-            logger.error(f"Batch classification failed: {e}")
-            from natural_pdf.classification.manager import ClassificationError
+        except Exception as exc:
+            raise ClassificationError(f"Batch classification failed: {exc}") from exc
 
-            raise ClassificationError(f"Batch classification failed: {e}") from e
-
-        # Assign results back to PDFs
         if len(batch_results) != len(valid_pdfs):
-            logger.error(
-                f"Batch classification result count ({len(batch_results)}) mismatch "
-                f"with PDFs processed ({len(valid_pdfs)}). Cannot assign results."
-            )
-            from natural_pdf.classification.manager import ClassificationError
-
             raise ClassificationError("Batch result count mismatch with input PDFs")
-
-        logger.info(f"Assigning {len(batch_results)} results to PDFs under key '{analysis_key}'.")
 
         processed_count = 0
         for pdf, result_obj in zip(valid_pdfs, batch_results):
@@ -794,8 +729,8 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
                     pdf.analyses = {}
                 pdf.analyses[analysis_key] = result_obj
                 processed_count += 1
-            except Exception as e:
-                logger.warning(f"Failed to store classification result for {pdf.path}: {e}")
+            except Exception as exc:
+                logger.warning(f"Failed to store classification result for {pdf.path}: {exc}")
 
         skipped_count = len(self._pdfs) - processed_count
         final_message = f"Finished batch classification. Processed: {processed_count}"

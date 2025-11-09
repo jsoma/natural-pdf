@@ -9,39 +9,26 @@ This test verifies that:
 """
 
 
+import threading
+
 import pytest
 
-from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+import natural_pdf.ocr.ocr_manager as ocr_registry
 from natural_pdf.classification.manager import ClassificationManager
-from natural_pdf.ocr.ocr_manager import OCRManager
+from natural_pdf.ocr.ocr_manager import cleanup_engine
 
 
 class TestCleanupMethods:
     """Test suite for manager cleanup methods"""
 
-    def test_ocr_manager_cleanup_empty(self):
-        """Test OCR manager cleanup when no engines are loaded"""
-        manager = OCRManager()
+    def test_ocr_cleanup_empty(self, monkeypatch):
+        """Test OCR cleanup helpers when no engines are loaded"""
+        monkeypatch.setattr(ocr_registry, "_engine_instances", {})
+        monkeypatch.setattr(ocr_registry, "_engine_locks", {})
+        monkeypatch.setattr(ocr_registry, "_engine_inference_locks", {})
 
-        # Test cleanup when nothing is loaded
-        count = manager.cleanup_engine()
-        assert count == 0, "Should return 0 when no engines loaded"
-
-        # Test cleanup of specific non-existent engine
-        count = manager.cleanup_engine("nonexistent")
-        assert count == 0, "Should return 0 when engine doesn't exist"
-
-    def test_layout_manager_cleanup_empty(self):
-        """Test Layout manager cleanup when no detectors are loaded"""
-        manager = LayoutManager()
-
-        # Test cleanup when nothing is loaded
-        count = manager.cleanup_detector()
-        assert count == 0, "Should return 0 when no detectors loaded"
-
-        # Test cleanup of specific non-existent detector
-        count = manager.cleanup_detector("nonexistent")
-        assert count == 0, "Should return 0 when detector doesn't exist"
+        assert cleanup_engine() == 0, "Should return 0 when no engines loaded"
+        assert cleanup_engine("nonexistent") == 0, "Should return 0 when engine doesn't exist"
 
     def test_classification_manager_cleanup_empty(self):
         """Test Classification manager cleanup when no models are loaded"""
@@ -59,73 +46,38 @@ class TestCleanupMethods:
         except ImportError:
             pytest.skip("Classification dependencies not available")
 
-    def test_ocr_manager_cleanup_with_engine(self):
-        """Test OCR manager cleanup after loading an engine"""
-        manager = OCRManager()
+    def test_ocr_cleanup_with_engine(self, monkeypatch):
+        """Test OCR cleanup after manually caching an engine"""
 
-        # Check if any OCR engines are available
-        available_engines = manager.get_available_engines()
-        if not available_engines:
-            pytest.skip("No OCR engines available for testing")
+        class _DummyEngine:
+            def __init__(self):
+                self.cleaned = False
 
-        engine_name = available_engines[0]
-        print(f"Testing with OCR engine: {engine_name}")
+            def cleanup(self):
+                self.cleaned = True
 
-        # Load an engine by accessing it
-        try:
-            engine_instance = manager._get_engine_instance(engine_name)
-            assert engine_name in manager._engine_instances, "Engine should be cached"
+        instances = {}
+        locks = {}
+        inference_locks = {}
+        monkeypatch.setattr(ocr_registry, "_engine_instances", instances)
+        monkeypatch.setattr(ocr_registry, "_engine_locks", locks)
+        monkeypatch.setattr(ocr_registry, "_engine_inference_locks", inference_locks)
 
-            # Test cleanup of specific engine
-            count = manager.cleanup_engine(engine_name)
-            assert count == 1, f"Should return 1 after cleaning up {engine_name}"
-            assert (
-                engine_name not in manager._engine_instances
-            ), "Engine should be removed from cache"
+        dummy_name = "__test_engine__"
+        dummy_engine = _DummyEngine()
+        instances[dummy_name] = dummy_engine
+        locks[dummy_name] = threading.Lock()
+        inference_locks[dummy_name] = threading.Lock()
 
-        except Exception as e:
-            pytest.skip(f"Could not load {engine_name} engine: {e}")
-
-    def test_layout_manager_cleanup_with_detector(self):
-        """Test Layout manager cleanup after loading a detector"""
-        manager = LayoutManager()
-
-        # Check if any layout engines are available
-        available_engines = manager.get_available_engines()
-        if not available_engines:
-            pytest.skip("No layout engines available for testing")
-
-        engine_name = available_engines[0]
-        print(f"Testing with layout engine: {engine_name}")
-
-        # Load a detector by accessing it
-        try:
-            detector_instance = manager._get_engine_instance(engine_name)
-            assert engine_name in manager._detector_instances, "Detector should be cached"
-
-            # Test cleanup of specific detector
-            count = manager.cleanup_detector(engine_name)
-            assert count == 1, f"Should return 1 after cleaning up {engine_name}"
-            assert (
-                engine_name not in manager._detector_instances
-            ), "Detector should be removed from cache"
-
-        except Exception as e:
-            pytest.skip(f"Could not load {engine_name} detector: {e}")
+        count = cleanup_engine(dummy_name)
+        assert count == 1, "Should report one cleaned engine"
+        assert dummy_engine.cleaned, "Cleanup hook should be invoked"
+        assert dummy_name not in instances
 
     def test_methods_exist(self):
         """Test that all cleanup methods exist and are callable"""
-        # Test OCRManager
-        manager = OCRManager()
-        assert hasattr(manager, "cleanup_engine"), "OCRManager should have cleanup_engine method"
-        assert callable(manager.cleanup_engine), "cleanup_engine should be callable"
-
-        # Test LayoutManager
-        layout_manager = LayoutManager()
-        assert hasattr(
-            layout_manager, "cleanup_detector"
-        ), "LayoutManager should have cleanup_detector method"
-        assert callable(layout_manager.cleanup_detector), "cleanup_detector should be callable"
+        # Test OCR cleanup helper existence
+        assert callable(cleanup_engine), "cleanup_engine helper should be callable"
 
         # Test ClassificationManager (if available)
         try:

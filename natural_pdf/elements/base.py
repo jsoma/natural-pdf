@@ -31,7 +31,6 @@ from natural_pdf.describe.mixin import DescribeMixin
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 
 if TYPE_CHECKING:
-    from natural_pdf.classification.manager import ClassificationManager  # noqa: F401
     from natural_pdf.core.page import Page
     from natural_pdf.elements.element_collection import ElementCollection
     from natural_pdf.elements.region import Region
@@ -2238,19 +2237,6 @@ class Element(
     # ------------------------------------------------------------------
     # ClassificationMixin requirements
     # ------------------------------------------------------------------
-
-    def _get_classification_manager(self) -> "ClassificationManager":
-        """Access the shared ClassificationManager via the parent PDF."""
-        if (
-            not hasattr(self, "page")
-            or not hasattr(self.page, "pdf")
-            or not hasattr(self.page.pdf, "get_manager")
-        ):
-            raise AttributeError(
-                "ClassificationManager cannot be accessed: Parent Page, PDF, or get_manager method missing."
-            )
-
-        return self.page.pdf.get_manager("classification")
 
     def _get_classification_content(self, model_type: str, **kwargs):  # type: ignore[override]
         """Return either text or an image, depending on model_type (text|vision)."""

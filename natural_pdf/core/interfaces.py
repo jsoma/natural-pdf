@@ -98,6 +98,18 @@ class SupportsElement(SupportsGeometry, Protocol):
 
     def extract_text(self, *args: Any, **kwargs: Any) -> str: ...
 
+    def find(
+        self,
+        selector: Optional[str] = None,
+        **kwargs: Any,
+    ) -> "ElementCollection": ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        **kwargs: Any,
+    ) -> "ElementCollection": ...
+
 
 @runtime_checkable
 class HasPolygon(Protocol):

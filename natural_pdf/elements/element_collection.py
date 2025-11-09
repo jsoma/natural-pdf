@@ -34,6 +34,7 @@ from natural_pdf.core.interfaces import SupportsBBox, SupportsElement
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
+from natural_pdf.elements.mixins.classification_batch_mixin import ClassificationBatchMixin
 from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
@@ -79,6 +80,7 @@ class ElementCollection(
     ApplyMixin,
     ExportMixin,
     ClassificationMixin,
+    ClassificationBatchMixin,
     CheckboxDetectionMixin,
     DirectionalCollectionMixin,
     DescribeMixin,
@@ -1922,8 +1924,6 @@ class ElementCollection(
 
         matches: List[Element] = []
         for element in self._elements:
-            if not hasattr(element, "find"):
-                continue
 
             call_kwargs: Dict[str, Any] = {
                 "selector": selector,
@@ -1950,7 +1950,6 @@ class ElementCollection(
             try:
                 found = element.find(**filtered_kwargs)  # type: ignore[misc]
             except TypeError:
-                # Retry without overlap if the element does not accept it
                 if "overlap" in filtered_kwargs:
                     filtered_kwargs.pop("overlap")
                     found = element.find(**filtered_kwargs)  # type: ignore[misc]
@@ -2037,8 +2036,6 @@ class ElementCollection(
 
         all_found_elements: List[Element] = []
         for element in self._elements:
-            if not hasattr(element, "find_all"):
-                continue
 
             call_kwargs: Dict[str, Any] = {
                 "selector": selector,
@@ -2233,124 +2230,7 @@ class ElementCollection(
 
         return removed_count
 
-    # --- Classification Method --- #
-    def classify_all(
-        self,
-        labels: List[str],
-        model: Optional[str] = None,
-        using: Optional[str] = None,
-        min_confidence: float = 0.0,
-        analysis_key: str = "classification",
-        multi_label: bool = False,
-        batch_size: int = 8,
-        progress_bar: bool = True,
-        **kwargs,
-    ):
-        """Classifies all elements in the collection in batch.
-
-        Args:
-            labels: List of category labels.
-            model: Model ID (or alias 'text', 'vision').
-            using: Optional processing mode ('text' or 'vision'). Inferred if None.
-            min_confidence: Minimum confidence threshold.
-            analysis_key: Key for storing results in element.analyses.
-            multi_label: Allow multiple labels per item.
-            batch_size: Size of batches passed to the inference pipeline.
-            progress_bar: Display a progress bar.
-            **kwargs: Additional arguments for the ClassificationManager.
-        """
-        if not self.elements:
-            logger.info("ElementCollection is empty, skipping classification.")
-            return self
-
-        # Requires access to the PDF's manager. Assume first element has it.
-        first_element = self.elements[0]
-        page_obj = getattr(first_element, "page", None)
-        manager_source = getattr(page_obj, "pdf", None)
-        if manager_source is None:
-            manager_source = getattr(first_element, "pdf", None)
-
-        if not manager_source or not hasattr(manager_source, "get_manager"):
-            raise RuntimeError("Cannot access ClassificationManager via elements.")
-
-        try:
-            manager = manager_source.get_manager("classification")
-        except Exception as e:
-            raise RuntimeError(f"Failed to get ClassificationManager: {e}") from e
-
-        if not manager or not manager.is_available():
-            raise RuntimeError("ClassificationManager is not available.")
-
-        # Determine engine type early for content gathering
-        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
-
-        # Gather content from all elements
-        items_to_classify: List[Any] = []
-        original_elements: List[Any] = []
-        logger.info(
-            f"Gathering content for {len(self.elements)} elements for batch classification..."
-        )
-        for element in self.elements:
-            if not isinstance(element, ClassificationMixin):
-                logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
-                continue
-            try:
-                # Delegate content fetching to the element itself
-                content = element._get_classification_content(model_type=inferred_using, **kwargs)
-                items_to_classify.append(content)
-                original_elements.append(element)
-            except (ValueError, NotImplementedError) as e:
-                logger.warning(
-                    f"Skipping element {element!r}: Cannot get content for classification - {e}"
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Skipping element {element!r}: Error getting classification content - {e}"
-                )
-
-        if not items_to_classify:
-            logger.warning("No content could be gathered from elements for batch classification.")
-            return self
-
-        logger.info(
-            f"Collected content for {len(items_to_classify)} elements. Running batch classification..."
-        )
-
-        # Call manager's batch classify
-        batch_results: List[ClassificationResult] = manager.classify_batch(
-            item_contents=items_to_classify,
-            labels=labels,
-            model_id=model,
-            using=inferred_using,
-            min_confidence=min_confidence,
-            multi_label=multi_label,
-            batch_size=batch_size,
-            progress_bar=progress_bar,
-            **kwargs,
-        )
-
-        # Assign results back to elements
-        if len(batch_results) != len(original_elements):
-            logger.error(
-                f"Batch classification result count ({len(batch_results)}) mismatch "
-                f"with elements processed ({len(original_elements)}). Cannot assign results."
-            )
-            # Decide how to handle mismatch - maybe store errors?
-        else:
-            logger.info(
-                f"Assigning {len(batch_results)} results to elements under key '{analysis_key}'."
-            )
-            for element, result_obj in zip(original_elements, batch_results):
-                try:
-                    if not hasattr(element, "analyses") or element.analyses is None:
-                        element.analyses = {}
-                    element.analyses[analysis_key] = result_obj
-                except Exception as e:
-                    logger.warning(f"Failed to store classification result for {element!r}: {e}")
-
-        return self
-
-    # --- End Classification Method --- #
+    # Classification batch handled by ClassificationBatchMixin
 
     def _gather_analysis_data(
         self,
@@ -3429,8 +3309,8 @@ class ElementCollection(
         Two modes are supported depending on the arguments provided:
 
         1. **Built-in OCR engines** – pass parameters like ``engine='easyocr'``
-           or ``languages=['en']`` and each element delegates to the global
-           OCRManager.
+           or ``languages=['en']`` and each element delegates to the shared
+           engine provider.
         2. **Custom function** – pass a *callable* via the ``function`` keyword
            (alias ``ocr_function`` also recognised).  The callable will receive
            the element/region and must return the recognised text (or ``None``).

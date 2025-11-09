@@ -1,18 +1,26 @@
-"""
-OCR engines for natural-pdf.
-
-This module provides different OCR engines that can be used with natural-pdf.
-"""
+"""Public OCR helpers for natural-pdf."""
 
 import logging
 
-# Set up module logger
 logger = logging.getLogger("natural_pdf.ocr")
 
-# Import the base classes that are always available
+from natural_pdf.engine_registry import register_ocr_engine
+
 from .engine import OCREngine
 from .ocr_factory import OCRFactory
-from .ocr_manager import OCRManager
+from .ocr_manager import ENGINE_REGISTRY, OCRRunResult, cleanup_engine, infer_engine_from_options
+from .ocr_manager import list_available_engines as list_registered_engines
+from .ocr_manager import (
+    normalize_ocr_options,
+    register_ocr_engines,
+    resolve_ocr_device,
+    resolve_ocr_engine_name,
+    resolve_ocr_languages,
+    resolve_ocr_min_confidence,
+    run_ocr_apply,
+    run_ocr_engine,
+    run_ocr_extract,
+)
 from .ocr_options import (
     BaseOCROptions,
     EasyOCROptions,
@@ -21,9 +29,7 @@ from .ocr_options import (
     SuryaOCROptions,
 )
 
-# Add all public symbols that should be available when importing this module
 __all__ = [
-    "OCRManager",
     "OCREngine",
     "OCROptions",
     "BaseOCROptions",
@@ -31,6 +37,21 @@ __all__ = [
     "PaddleOCROptions",
     "SuryaOCROptions",
     "OCRFactory",
+    "ENGINE_REGISTRY",
+    "register_ocr_engine",
+    "register_ocr_engines",
+    "OCRRunResult",
+    "run_ocr_apply",
+    "run_ocr_engine",
+    "run_ocr_extract",
+    "cleanup_engine",
+    "normalize_ocr_options",
+    "infer_engine_from_options",
+    "resolve_ocr_engine_name",
+    "resolve_ocr_languages",
+    "resolve_ocr_min_confidence",
+    "resolve_ocr_device",
+    "list_registered_engines",
     "get_engine",
     "list_available_engines",
 ]

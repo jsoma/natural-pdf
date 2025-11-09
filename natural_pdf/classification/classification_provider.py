@@ -1,0 +1,156 @@
+"""Provider-backed helpers for document classification."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, List, Optional, Sequence, Union
+
+from natural_pdf.engine_provider import get_provider
+from natural_pdf.engine_registry import register_builtin, register_classification_engine
+
+from .manager import ClassificationManager, ClassificationResult
+
+logger = logging.getLogger(__name__)
+
+
+class ClassificationEngine:
+    """Protocol-like wrapper for classification engines."""
+
+    def infer_using(self, model_id: Optional[str], using: Optional[str]) -> str:
+        raise NotImplementedError
+
+    def default_model(self, using: str) -> str:
+        raise NotImplementedError
+
+    def classify_item(
+        self,
+        *,
+        item_content: Union[str, "Image.Image"],
+        labels: List[str],
+        model_id: Optional[str],
+        using: Optional[str],
+        min_confidence: float,
+        multi_label: bool,
+        **kwargs,
+    ) -> ClassificationResult:
+        raise NotImplementedError
+
+    def classify_batch(
+        self,
+        *,
+        item_contents: Sequence[Union[str, "Image.Image"]],
+        labels: List[str],
+        model_id: Optional[str],
+        using: Optional[str],
+        min_confidence: float,
+        multi_label: bool,
+        batch_size: int,
+        progress_bar: bool,
+        **kwargs,
+    ) -> List[ClassificationResult]:
+        raise NotImplementedError
+
+
+class _DefaultClassificationEngine(ClassificationEngine):
+    def __init__(self) -> None:
+        self._manager = ClassificationManager()
+
+    def infer_using(self, model_id: Optional[str], using: Optional[str]) -> str:
+        candidate = model_id or self._manager.DEFAULT_TEXT_MODEL
+        return self._manager.infer_using(candidate, using)
+
+    def default_model(self, using: str) -> str:
+        return (
+            self._manager.DEFAULT_TEXT_MODEL
+            if using == "text"
+            else self._manager.DEFAULT_VISION_MODEL
+        )
+
+    def classify_item(self, **kwargs):
+        return self._manager.classify_item(**kwargs)
+
+    def classify_batch(self, **kwargs):
+        return self._manager.classify_batch(**kwargs)
+
+
+def register_classification_engines(provider=None) -> None:
+    def factory(**_opts):
+        return _DefaultClassificationEngine()
+
+    register_builtin(provider, "classification", "default", factory)
+
+
+def get_classification_engine(context: Any, name: Optional[str] = None) -> ClassificationEngine:
+    return _get_engine(context, name)
+
+
+def _get_engine(context: Any, name: Optional[str] = None) -> ClassificationEngine:
+    provider = get_provider()
+    engine_name = (name or "default").strip().lower()
+    return provider.get("classification", context=context, name=engine_name)
+
+
+def run_classification_item(
+    *,
+    context: Any,
+    content: Union[str, "Image.Image"],
+    labels: List[str],
+    model_id: Optional[str],
+    using: Optional[str],
+    min_confidence: float,
+    multi_label: bool,
+    engine_name: Optional[str] = None,
+    **kwargs,
+) -> ClassificationResult:
+    engine = _get_engine(context, engine_name)
+    return engine.classify_item(
+        item_content=content,
+        labels=labels,
+        model_id=model_id,
+        using=using,
+        min_confidence=min_confidence,
+        multi_label=multi_label,
+        **kwargs,
+    )
+
+
+def run_classification_batch(
+    *,
+    context: Any,
+    contents: Sequence[Union[str, "Image.Image"]],
+    labels: List[str],
+    model_id: Optional[str],
+    using: Optional[str],
+    min_confidence: float,
+    multi_label: bool,
+    batch_size: int,
+    progress_bar: bool,
+    engine_name: Optional[str] = None,
+    **kwargs,
+) -> List[ClassificationResult]:
+    engine = _get_engine(context, engine_name)
+    return engine.classify_batch(
+        item_contents=contents,
+        labels=labels,
+        model_id=model_id,
+        using=using,
+        min_confidence=min_confidence,
+        multi_label=multi_label,
+        batch_size=batch_size,
+        progress_bar=progress_bar,
+        **kwargs,
+    )
+
+
+try:  # Register built-in engine immediately
+    register_classification_engines()
+except Exception:  # pragma: no cover
+    logger.exception("Failed to register classification engines")
+
+
+__all__ = [
+    "register_classification_engines",
+    "get_classification_engine",
+    "run_classification_item",
+    "run_classification_batch",
+]

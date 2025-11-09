@@ -97,3 +97,23 @@ def test_flow_find_all_passes_engine_to_pages():
         pdf.close()
 
     assert stub_engine.calls >= 1
+
+
+def test_first_post_pseudo_returns_single_result():
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        matches = page.find_all("text:first")
+        assert len(matches.elements if matches else []) <= 1
+    finally:
+        pdf.close()
+
+
+def test_above_relational_pseudo_executes():
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        matches = page.find_all("text:above(text:last)")
+        assert matches is not None
+    finally:
+        pdf.close()

@@ -5,9 +5,13 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Callable, Dict, List, Optional, Protocol
 
 from natural_pdf.engine_provider import get_provider
+from natural_pdf.engine_registry import register_builtin, register_table_engine
+from natural_pdf.tables.engines.pdfplumber import PdfPlumberTablesEngine
+from natural_pdf.tables.engines.tatr import TATRTableEngine
+from natural_pdf.tables.engines.text import TextTablesEngine
 
 logger = logging.getLogger(__name__)
 
@@ -26,93 +30,18 @@ class TableExtractionEngine(Protocol):
         """Extract tables for the provided region."""
 
 
-class PdfPlumberTablesEngine:
-    """Wraps pdfplumber-based extraction strategies for provider dispatch."""
-
-    def __init__(self, mode: str):
-        self._mode = mode
-
-    def extract_tables(
-        self,
-        *,
-        context: Any,
-        region: Any,
-        table_settings: Optional[Dict[str, Any]] = None,
-        **_: Any,
-    ) -> List[List[List[str]]]:
-        settings = dict(table_settings or {})
-        if self._mode == "direct":
-            return self._extract_direct(region, settings)
-        if self._mode == "stream":
-            return self._extract_stream(region, settings)
-        if self._mode == "lattice":
-            return self._extract_lattice(region, settings)
-        if self._mode == "auto":
-            return self._extract_auto(region, settings)
-        raise ValueError(f"Unsupported pdfplumber table mode: {self._mode}")
-
-    # -- strategy helpers -------------------------------------------------
-    def _extract_direct(self, region: Any, settings: Dict[str, Any]) -> List[List[List[str]]]:
-        return region._extract_tables_plumber(settings)
-
-    def _extract_stream(self, region: Any, settings: Dict[str, Any]) -> List[List[List[str]]]:
-        settings.setdefault("vertical_strategy", "text")
-        settings.setdefault("horizontal_strategy", "text")
-        return region._extract_tables_plumber(settings)
-
-    def _extract_lattice(self, region: Any, settings: Dict[str, Any]) -> List[List[List[str]]]:
-        settings.setdefault("vertical_strategy", "lines")
-        settings.setdefault("horizontal_strategy", "lines")
-        return region._extract_tables_plumber(settings)
-
-    def _extract_auto(self, region: Any, settings: Dict[str, Any]) -> List[List[List[str]]]:
-        logger.debug(
-            "Region %s: Auto-detecting tables extraction method...", getattr(region, "bbox", None)
-        )
-        try:
-            lattice_tables = self._extract_lattice(region, settings.copy())
-            if self._has_meaningful_content(lattice_tables):
-                logger.debug(
-                    "Region %s: 'lattice' method found %d tables",
-                    getattr(region, "bbox", None),
-                    len(lattice_tables),
-                )
-                return lattice_tables
-            logger.debug(
-                "Region %s: 'lattice' method found no meaningful tables",
-                getattr(region, "bbox", None),
-            )
-        except Exception as exc:
-            logger.debug(
-                "Region %s: 'lattice' method failed: %s", getattr(region, "bbox", None), exc
-            )
-
-        logger.debug(
-            "Region %s: Falling back to 'stream' method for tables", getattr(region, "bbox", None)
-        )
-        return self._extract_stream(region, settings.copy())
-
-    @staticmethod
-    def _has_meaningful_content(tables: Optional[List[List[List[str]]]]) -> bool:
-        if not tables:
-            return False
-        for table in tables:
-            if not table:
-                continue
-            for row in table:
-                if row and any((cell or "").strip() for cell in row):
-                    return True
-        return False
-
-
 def register_table_engines(provider=None) -> None:
-    """Register built-in table engines with the global provider."""
+    """Register built-in table engines with the provider or global registry."""
 
-    provider = provider or get_provider()
-    provider.register("tables", "pdfplumber_auto", lambda **_: PdfPlumberTablesEngine("auto"))
-    provider.register("tables", "pdfplumber", lambda **_: PdfPlumberTablesEngine("direct"))
-    provider.register("tables", "stream", lambda **_: PdfPlumberTablesEngine("stream"))
-    provider.register("tables", "lattice", lambda **_: PdfPlumberTablesEngine("lattice"))
+    def _register(name: str, factory: Callable[..., Any]) -> None:
+        register_builtin(provider, "tables", name, factory)
+
+    _register("pdfplumber_auto", lambda **_: PdfPlumberTablesEngine("auto"))
+    _register("pdfplumber", lambda **_: PdfPlumberTablesEngine("direct"))
+    _register("stream", lambda **_: PdfPlumberTablesEngine("stream"))
+    _register("lattice", lambda **_: PdfPlumberTablesEngine("lattice"))
+    _register("tatr", lambda **_: TATRTableEngine())
+    _register("text", lambda **_: TextTablesEngine())
 
 
 def run_table_engine(
@@ -127,7 +56,7 @@ def run_table_engine(
 
     Args:
         context: Object initiating the extraction (Page, Region, Flow, etc.).
-        region: Region-like object providing ``_extract_tables_plumber``.
+        region: Region-like object for which the engine should compute tables.
         engine_name: Registered engine identifier.
         table_settings: Mutable dictionary of pdfplumber settings passed to the engine.
         **kwargs: Additional capability-specific arguments.
@@ -244,4 +173,6 @@ __all__ = [
     "resolve_table_engine_name",
     "run_table_engine",
     "PdfPlumberTablesEngine",
+    "TATRTableEngine",
+    "TextTablesEngine",
 ]

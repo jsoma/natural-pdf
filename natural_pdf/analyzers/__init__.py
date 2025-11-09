@@ -12,7 +12,6 @@ from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
 
 if TYPE_CHECKING:
     from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
-    from natural_pdf.analyzers.layout.layout_manager import LayoutManager
     from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 
 
@@ -23,10 +22,6 @@ def __getattr__(name):
         from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 
         return LayoutAnalyzer
-    elif name == "LayoutManager":
-        from natural_pdf.analyzers.layout.layout_manager import LayoutManager
-
-        return LayoutManager
     elif name == "LayoutOptions":
         from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 
@@ -36,7 +31,6 @@ def __getattr__(name):
 
 __all__ = [
     "LayoutAnalyzer",
-    "LayoutManager",
     "LayoutOptions",
     "ShapeDetectionMixin",
     "TextStyleOptions",

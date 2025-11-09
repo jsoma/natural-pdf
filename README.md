@@ -94,6 +94,32 @@ Natural PDF offers a range of features for working with PDFs:
 
 Dive deeper into the features and explore advanced usage in the [**Complete Documentation**](https://jsoma.github.io/natural-pdf).
 
+## Extending Natural PDF
+
+Natural PDF now exposes its pluggable engines through small helper functions so you rarely have to touch the core registry directly. Two handy entry points:
+
+```python
+from natural_pdf.tables import register_table_function
+
+def table_delim(region, *, context=None, **kwargs):
+    # return a TableResult or list-of-lists
+    ...
+
+register_table_function("table_delim", table_delim)
+```
+
+```python
+from natural_pdf.selectors import register_selector_engine
+
+class DebugSelectorEngine:
+    def query(self, *, context, selector, options):
+        ...
+
+register_selector_engine("debug", lambda **_: DebugSelectorEngine())
+```
+
+Internally, page- and region-like objects already mix in a shared “analysis” capability bundle (covering OCR, selectors, QA, etc.), so custom hosts can usually inherit `AnalysisHostMixin` instead of wiring a dozen mixins by hand.
+
 ## Best friends
 
 Natural PDF sits on top of a *lot* of fantastic tools and mdoels, some of which are:

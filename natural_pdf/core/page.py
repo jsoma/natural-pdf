@@ -27,9 +27,9 @@ from tqdm.auto import tqdm  # Added tqdm import
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.tables.result import TableResult
-from natural_pdf.utils.locks import pdf_render_lock  # Import from utils instead
 
 if TYPE_CHECKING:
     from pdfplumber.page import Page as PdfPlumberPage
@@ -44,28 +44,25 @@ else:  # pragma: no cover - runtime typing helper
 # # New Imports
 
 # # Deskew Imports (Conditional)
-import numpy as np
 
-from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
-from natural_pdf.classification.manager import ClassificationManager  # For type hint
-from natural_pdf.classification.mixin import ClassificationMixin  # Import classification mixin
+from natural_pdf.core.capabilities import AnalysisHostMixin
 
 # Add new import
 from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
-from natural_pdf.core.exclusion_mixin import ExclusionMixin
-from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
-from natural_pdf.core.mixins import SinglePageContextMixin
-from natural_pdf.core.ocr_mixin import OCRMixin
-from natural_pdf.core.qa_mixin import DocumentQAMixin
+from natural_pdf.core.interfaces import Bounds, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.selector_utils import execute_selector_query, normalize_selector_input
+from natural_pdf.core.selector_utils import (
+    _apply_relational_post_pseudos,
+    execute_selector_query,
+    normalize_selector_input,
+)
 from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
+from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
 from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
@@ -76,7 +73,8 @@ from natural_pdf.ocr.ocr_manager import (
     resolve_ocr_engine_name,
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
-    run_ocr_engine,
+    run_ocr_apply,
+    run_ocr_extract,
 )
 from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.text_mixin import TextMixin
@@ -86,13 +84,6 @@ from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_t
 from natural_pdf.vision.mixin import VisualSearchMixin
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
-try:
-    from deskew import determine_skew  # type: ignore[import]
-
-    DESKEW_AVAILABLE = True
-except ImportError:
-    DESKEW_AVAILABLE = False
-    determine_skew = None
 # End Deskew Imports
 
 logger = logging.getLogger(__name__)
@@ -167,21 +158,7 @@ def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> fl
     return max(0.0, min(1.0, jaro_winkler))
 
 
-class Page(
-    TextMixin,
-    ClassificationMixin,
-    ExtractionMixin,
-    ShapeDetectionMixin,
-    CheckboxDetectionMixin,
-    DescribeMixin,
-    VisualSearchMixin,
-    ExclusionMixin,
-    OCRMixin,
-    DocumentQAMixin,
-    SinglePageContextMixin,
-    Visualizable,
-    SupportsSections,
-):
+class Page(TextMixin, AnalysisHostMixin, Visualizable):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
 
     This class provides a fluent interface for working with PDF pages,
@@ -1342,12 +1319,35 @@ class Page(
         """
         from natural_pdf.selectors.parser import _calculate_aggregates, selector_to_filter_func
 
+        selector_kwargs = dict(kwargs)
+        selector_kwargs.setdefault("selector_context", self)
+
+        def _apply_relational_only(sel: Dict[str, Any], elements: List[Any]) -> List[Any]:
+            relational = sel.get("relational_pseudos")
+            if not relational:
+                return elements
+            return _apply_relational_post_pseudos(
+                self,
+                {"relational_pseudos": relational},
+                elements,
+                selector_kwargs,
+            )
+
+        def _apply_post_only(sel: Dict[str, Any], elements: List[Any]) -> List[Any]:
+            post = sel.get("post_pseudos")
+            if not post:
+                return elements
+            return _apply_relational_post_pseudos(
+                self,
+                {"post_pseudos": post},
+                elements,
+                selector_kwargs,
+            )
+
         # Handle compound OR selectors
         if selector_obj.get("type") == "or":
-            # For OR selectors, search all elements and let the filter function decide
             elements_to_search = self._element_mgr.get_all_elements()
 
-            # Check if any sub-selector contains aggregate functions
             has_aggregates = False
             for sub_selector in selector_obj.get("selectors", []):
                 for attr in sub_selector.get("attributes", []):
@@ -1358,10 +1358,8 @@ class Page(
                 if has_aggregates:
                     break
 
-            # Calculate aggregates if needed - for OR selectors we calculate on ALL elements
-            aggregates = {}
+            aggregates: Dict[str, Any] = {}
             if has_aggregates:
-                # Need to calculate aggregates for each sub-selector type
                 for sub_selector in selector_obj.get("selectors", []):
                     sub_type = sub_selector.get("type", "any").lower()
                     if sub_type == "text":
@@ -1378,169 +1376,74 @@ class Page(
                     sub_aggregates = _calculate_aggregates(sub_elements, sub_selector)
                     aggregates.update(sub_aggregates)
 
-            # Create filter function from compound selector
-            filter_func = selector_to_filter_func(selector_obj, aggregates=aggregates, **kwargs)
-
-            # Apply the filter to all elements
+            filter_func = selector_to_filter_func(
+                selector_obj, aggregates=aggregates, **selector_kwargs
+            )
             matching_elements = [element for element in elements_to_search if filter_func(element)]
 
-            # Sort elements in reading order if requested
-            if kwargs.get("reading_order", True):
+            matching_elements = _apply_relational_only(selector_obj, matching_elements)
+
+            if selector_kwargs.get("reading_order", True):
                 if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
                     matching_elements.sort(key=lambda el: (el.top, el.x0))
-                else:
+                elif matching_elements:
                     logger.warning(
                         "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                     )
 
             # Handle collection-level pseudo-classes (:first, :last) for OR selectors
-            # Note: We only apply :first/:last if they appear in any of the sub-selectors
-            has_first = False
-            has_last = False
-            for sub_selector in selector_obj.get("selectors", []):
-                for pseudo in sub_selector.get("pseudo_classes", []):
-                    if pseudo.get("name") == "first":
-                        has_first = True
-                    elif pseudo.get("name") == "last":
-                        has_last = True
+            has_first = any(
+                any(p.get("name") == "first" for p in sub_selector.get("post_pseudos", []))
+                for sub_selector in selector_obj.get("selectors", [])
+            )
+            has_last = any(
+                any(p.get("name") == "last" for p in sub_selector.get("post_pseudos", []))
+                for sub_selector in selector_obj.get("selectors", [])
+            )
 
             if has_first:
                 matching_elements = matching_elements[:1] if matching_elements else []
             elif has_last:
                 matching_elements = matching_elements[-1:] if matching_elements else []
 
-            # Return result collection
             return ElementCollection(matching_elements)
 
-        # Handle single selectors (existing logic)
-        # Get element type to filter
         element_type = selector_obj.get("type", "any").lower()
-
-        # Determine which elements to search based on element type
-        elements_to_search = []
-        if element_type == "any":
-            elements_to_search = self._element_mgr.get_all_elements()
-        elif element_type == "text":
+        if element_type == "text" or element_type == "word":
             elements_to_search = self._element_mgr.words
         elif element_type == "char":
             elements_to_search = self._element_mgr.chars
-        elif element_type == "word":
-            elements_to_search = self._element_mgr.words
-        elif element_type == "rect" or element_type == "rectangle":
+        elif element_type in ("rect", "rectangle"):
             elements_to_search = self._element_mgr.rects
         elif element_type == "line":
             elements_to_search = self._element_mgr.lines
         elif element_type == "region":
             elements_to_search = self._element_mgr.regions
+        elif element_type == "any":
+            elements_to_search = self._element_mgr.get_all_elements()
         else:
             elements_to_search = self._element_mgr.get_all_elements()
 
-        # Check if selector contains aggregate functions
-        has_aggregates = False
-        for attr in selector_obj.get("attributes", []):
-            value = attr.get("value")
-            if isinstance(value, dict) and value.get("type") == "aggregate":
-                has_aggregates = True
-                break
+        has_aggregates = any(
+            isinstance(attr.get("value"), dict) and attr["value"].get("type") == "aggregate"
+            for attr in selector_obj.get("attributes", [])
+        )
 
-        # Calculate aggregates if needed
-        aggregates = {}
+        aggregates: Dict[str, Any] = {}
         if has_aggregates:
-            # For aggregates, we need to calculate based on ALL elements of the same type
-            # not just the filtered subset
             aggregates = _calculate_aggregates(elements_to_search, selector_obj)
 
-        # Create filter function from selector, passing any additional parameters
-        filter_func = selector_to_filter_func(selector_obj, aggregates=aggregates, **kwargs)
-
-        # Apply the filter to matching elements
+        filter_func = selector_to_filter_func(
+            selector_obj, aggregates=aggregates, **selector_kwargs
+        )
         matching_elements = [element for element in elements_to_search if filter_func(element)]
 
-        # Handle spatial pseudo-classes that require relationship checking
-        for pseudo in selector_obj.get("pseudo_classes", []):
-            name = pseudo.get("name")
-            args = pseudo.get("args", "")
+        matching_elements = _apply_relational_only(selector_obj, matching_elements)
 
-            if name in ("above", "below", "near", "left-of", "right-of"):
-                # Find the reference element first
-                from natural_pdf.selectors.parser import parse_selector
-
-                ref_selector = parse_selector(args) if isinstance(args, str) else args
-                # Recursively call _apply_selector for reference element (exclusions handled later)
-                ref_elements = self._apply_selector(ref_selector, **kwargs)
-
-                if not ref_elements:
-                    return ElementCollection([])
-
-                ref_element = ref_elements.first
-                if not ref_element:
-                    continue
-
-                # Filter elements based on spatial relationship
-                if name == "above":
-                    matching_elements = [
-                        el
-                        for el in matching_elements
-                        if hasattr(el, "bottom")
-                        and hasattr(ref_element, "top")
-                        and el.bottom <= ref_element.top
-                    ]
-                elif name == "below":
-                    matching_elements = [
-                        el
-                        for el in matching_elements
-                        if hasattr(el, "top")
-                        and hasattr(ref_element, "bottom")
-                        and el.top >= ref_element.bottom
-                    ]
-                elif name == "left-of":
-                    matching_elements = [
-                        el
-                        for el in matching_elements
-                        if hasattr(el, "x1")
-                        and hasattr(ref_element, "x0")
-                        and el.x1 <= ref_element.x0
-                    ]
-                elif name == "right-of":
-                    matching_elements = [
-                        el
-                        for el in matching_elements
-                        if hasattr(el, "x0")
-                        and hasattr(ref_element, "x1")
-                        and el.x0 >= ref_element.x1
-                    ]
-                elif name == "near":
-
-                    def distance(el1, el2):
-                        if not (
-                            hasattr(el1, "x0")
-                            and hasattr(el1, "x1")
-                            and hasattr(el1, "top")
-                            and hasattr(el1, "bottom")
-                            and hasattr(el2, "x0")
-                            and hasattr(el2, "x1")
-                            and hasattr(el2, "top")
-                            and hasattr(el2, "bottom")
-                        ):
-                            return float("inf")  # Cannot calculate distance
-                        el1_center_x = (el1.x0 + el1.x1) / 2
-                        el1_center_y = (el1.top + el1.bottom) / 2
-                        el2_center_x = (el2.x0 + el2.x1) / 2
-                        el2_center_y = (el2.top + el2.bottom) / 2
-                        return (
-                            (el1_center_x - el2_center_x) ** 2 + (el1_center_y - el2_center_y) ** 2
-                        ) ** 0.5
-
-                    threshold = kwargs.get("near_threshold", 50)
-                    matching_elements = [
-                        el for el in matching_elements if distance(el, ref_element) <= threshold
-                    ]
-
-        # Sort elements in reading order if requested
-        if kwargs.get("reading_order", True):
+        if selector_kwargs.get("reading_order", True):
             if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
                 matching_elements.sort(key=lambda el: (el.top, el.x0))
-            else:
+            elif matching_elements:
                 logger.warning(
                     "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                 )
@@ -1548,68 +1451,46 @@ class Page(
         # Handle :closest pseudo-class for fuzzy text matching
         for pseudo in selector_obj.get("pseudo_classes", []):
             name = pseudo.get("name")
-            if name == "closest" and pseudo.get("args") is not None:
-                # Parse search text and threshold
-                search_text = str(pseudo["args"]).strip()
-                threshold = 0.0  # Default threshold
+            if name != "closest" or pseudo.get("args") is None:
+                continue
 
-                # Handle empty search text
-                if not search_text:
-                    matching_elements = []
-                    break
+            search_text = str(pseudo["args"]).strip()
+            threshold = 0.0
+            if not search_text:
+                matching_elements = []
+                break
 
-                # Check if threshold is specified with @ separator
-                if "@" in search_text and search_text.count("@") == 1:
-                    text_part, threshold_part = search_text.rsplit("@", 1)
-                    try:
-                        threshold = float(threshold_part)
-                        search_text = text_part.strip()
-                    except (ValueError, TypeError):
-                        pass  # Keep original search_text and default threshold
+            if "@" in search_text and search_text.count("@") == 1:
+                text_part, threshold_part = search_text.rsplit("@", 1)
+                try:
+                    threshold = float(threshold_part)
+                    search_text = text_part.strip()
+                except (ValueError, TypeError):
+                    pass
 
-                # Determine case sensitivity
-                ignore_case = not kwargs.get("case", False)
+            ignore_case = not selector_kwargs.get("case", True)
+            scored_elements = []
+            for el in matching_elements:
+                if not getattr(el, "text", None):
+                    continue
+                el_text = el.text.strip()
+                search_term = search_text
+                if ignore_case:
+                    el_text = el_text.lower()
+                    search_term = search_term.lower()
 
-                # Calculate similarity scores for all elements
-                scored_elements = []
+                ratio = _jaro_winkler_similarity(search_term, el_text)
+                contains_match = search_term in el_text
+                if ratio >= threshold:
+                    scored_elements.append((contains_match, ratio, el))
 
-                for el in matching_elements:
-                    if hasattr(el, "text") and el.text:
-                        el_text = el.text.strip()
-                        search_term = search_text
+            scored_elements.sort(key=lambda x: (x[0], x[1]), reverse=True)
+            matching_elements = [entry[2] for entry in scored_elements]
+            break
 
-                        if ignore_case:
-                            el_text = el_text.lower()
-                            search_term = search_term.lower()
+        matching_elements = _apply_post_only(selector_obj, matching_elements)
 
-                        ratio = _jaro_winkler_similarity(search_term, el_text)
-                        contains_match = search_term in el_text
-
-                        if ratio >= threshold:
-                            scored_elements.append((contains_match, ratio, el))
-
-                # Sort by:
-                # 1. Contains match (True before False)
-                # 2. Similarity score (highest first)
-                scored_elements.sort(key=lambda x: (x[0], x[1]), reverse=True)
-
-                # Extract just the elements
-                matching_elements = [entry[2] for entry in scored_elements]
-                break  # Only process the first :closest pseudo-class
-
-        # Handle collection-level pseudo-classes (:first, :last)
-        for pseudo in selector_obj.get("pseudo_classes", []):
-            name = pseudo.get("name")
-
-            if name == "first":
-                matching_elements = matching_elements[:1] if matching_elements else []
-            elif name == "last":
-                matching_elements = matching_elements[-1:] if matching_elements else []
-
-        # Create result collection - exclusions are handled by the calling methods (find, find_all)
-        result = ElementCollection(matching_elements)
-
-        return result
+        return ElementCollection(matching_elements)
 
     def create_region(self, x0: float, top: float, x1: float, bottom: float) -> Any:
         """
@@ -1647,10 +1528,10 @@ class Page(
             right: Right x-coordinate (default: page width if width not used).
             bottom: Bottom y-coordinate (default: page height if height not used).
             width: Width definition. Can be:
-                   - Numeric: The width of the region in points. Cannot be used with both left and right.
-                   - String 'full': Sets region width to full page width (overrides left/right).
-                   - String 'element' or None (default): Uses provided/calculated left/right,
-                     defaulting to page width if neither are specified.
+                    - Numeric: The width of the region in points. Cannot be used with both left and right.
+                    - String 'full': Sets region width to full page width (overrides left/right).
+                    - String 'element' or None (default): Uses provided/calculated left/right,
+                        defaulting to page width if neither are specified.
             height: Numeric height of the region. Cannot be used with both top and bottom.
 
         Returns:
@@ -1658,7 +1539,7 @@ class Page(
 
         Raises:
             ValueError: If conflicting arguments are provided (e.g., top, bottom, and height)
-                      or if width is an invalid string.
+                        or if width is an invalid string.
 
         Examples:
             >>> page.region(top=100, height=50)  # Region from y=100 to y=150, default width
@@ -1951,7 +1832,7 @@ class Page(
         Args:
             preserve_line_breaks: When False, collapse newlines into spaces for a flattened string.
             use_exclusions: Whether to apply exclusion regions (default: True).
-                          Note: Filtering logic is now always applied if exclusions exist.
+                            Note: Filtering logic is now always applied if exclusions exist.
             debug_exclusions: Whether to output detailed exclusion debugging info (default: False).
             content_filter: Optional content filter to exclude specific text patterns. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
@@ -2127,6 +2008,7 @@ class Page(
         content_filter=None,
         verticals: Optional[List[float]] = None,
         horizontals: Optional[List[float]] = None,
+        structure_engine: Optional[str] = None,
     ) -> TableResult:
         """
         Extract the largest table from this page using enhanced region-based extraction.
@@ -2138,7 +2020,7 @@ class Page(
             ocr_config: OCR configuration parameters.
             text_options: Dictionary of options for the 'text' method.
             cell_extraction_func: Optional callable function that takes a cell Region object
-                                  and returns its string content. For 'text' method only.
+                                    and returns its string content. For 'text' method only.
             show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
             content_filter: Optional content filter to apply during cell text extraction. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
@@ -2146,6 +2028,9 @@ class Page(
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
             verticals: Optional list of x-coordinates for explicit vertical table lines.
             horizontals: Optional list of y-coordinates for explicit horizontal table lines.
+            structure_engine: Optional structure detection engine forwarded to the underlying
+                region so provider-backed engines (e.g., TATR structure consumers) can be leveraged
+                before falling back to standard extraction methods.
 
         Returns:
             TableResult: A sequence-like object containing table rows that also provides .to_df() for pandas conversion.
@@ -2163,6 +2048,7 @@ class Page(
             content_filter=content_filter,
             verticals=verticals,
             horizontals=horizontals,
+            structure_engine=structure_engine,
         )
 
     def extract_tables(
@@ -2561,7 +2447,7 @@ class Page(
 
         Args:
             options: Optional TextStyleOptions to configure the analysis.
-                     If None, the analyzer's default options are used.
+                        If None, the analyzer's default options are used.
 
         Returns:
             ElementCollection containing all processed text elements with added style attributes.
@@ -2600,53 +2486,62 @@ class Page(
         apply_exclusions: bool = True,
         replace: bool = True,
     ) -> "Page":
-        """
-        Apply OCR to THIS page and add results to page elements via PDF.apply_ocr.
+        """Apply OCR directly to this page."""
+        normalized_options = normalize_ocr_options(options)
+        engine_name = resolve_ocr_engine_name(
+            context=self,
+            requested=engine,
+            options=normalized_options,
+            scope="page",
+        )
+        resolved_languages = resolve_ocr_languages(self, languages, scope="page")
+        resolved_min_conf = resolve_ocr_min_confidence(self, min_confidence, scope="page")
+        resolved_device = resolve_ocr_device(self, device, scope="page")
 
-        Args:
-            engine: Name of the OCR engine.
-            options: Engine-specific options object or dict.
-            languages: List of engine-specific language codes.
-            min_confidence: Minimum confidence threshold.
-            device: Device to run OCR on.
-            resolution: DPI resolution for rendering page image before OCR.
-            apply_exclusions: If True (default), render page image for OCR
-                              with excluded areas masked (whited out).
-            detect_only: If True, only detect text bounding boxes, don't perform OCR.
-            replace: If True (default), remove any existing OCR elements before
-                    adding new ones. If False, add new OCR elements to existing ones.
-
-        Returns:
-            Self for method chaining.
-        """
-        if not hasattr(self._parent, "apply_ocr"):
-            logger.error(f"Page {self.number}: Parent PDF missing 'apply_ocr'. Cannot apply OCR.")
-            return self  # Return self for chaining
-
-        # Remove existing OCR elements if replace is True
         if replace:
-            logger.info(
-                f"Page {self.number}: Removing existing OCR elements before applying new OCR."
-            )
-            self.remove_ocr_elements()
+            removed = self.remove_ocr_elements()
+            if removed:
+                logger.info(
+                    f"Page {self.number}: Removed {removed} OCR elements before new OCR run."
+                )
 
-        logger.info(f"Page {self.number}: Delegating apply_ocr to PDF.apply_ocr.")
-        # Delegate to parent PDF, targeting only this page's index
-        # Pass all relevant parameters through, including apply_exclusions
-        self._parent.apply_ocr(
-            pages=[self.index],
-            engine=engine,
-            options=options,
-            languages=languages,
-            min_confidence=min_confidence,
-            device=device,
-            resolution=resolution,
-            detect_only=detect_only,
-            apply_exclusions=apply_exclusions,
-            replace=replace,  # Pass the replace parameter to PDF.apply_ocr
+        final_resolution = (
+            resolution
+            if resolution is not None
+            else getattr(getattr(self, "_parent", None), "_config", {}).get("resolution", 150)
         )
 
-        # Return self for chaining
+        try:
+            ocr_payload = run_ocr_apply(
+                target=self,
+                context=self,
+                engine_name=engine_name,
+                resolution=final_resolution,
+                languages=resolved_languages,
+                min_confidence=resolved_min_conf,
+                device=resolved_device,
+                detect_only=detect_only,
+                options=normalized_options,
+                render_kwargs={},
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(f"Page {self.number}: OCR failed: {exc}", exc_info=True)
+            return self
+
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            logger.error(f"Page {self.number}: OCR payload missing image dimensions.")
+            return self
+
+        scale_x = self.width / image_width if image_width else 1.0
+        scale_y = self.height / image_height if image_height else 1.0
+        created_elements = self.create_text_elements_from_ocr(
+            ocr_payload.results, scale_x=scale_x, scale_y=scale_y
+        )
+
+        logger.info(
+            f"Page {self.number}: Added {len(created_elements)} OCR elements using '{engine_name}'."
+        )
         return self
 
     def extract_ocr_elements(
@@ -2686,53 +2581,37 @@ class Page(
         resolved_min_conf = resolve_ocr_min_confidence(self, min_confidence, scope="page")
         resolved_device = resolve_ocr_device(self, device, scope="page")
 
-        # Determine rendering resolution
-        final_resolution = resolution if resolution is not None else 150  # Default to 150 DPI
+        final_resolution = resolution if resolution is not None else 150
         logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
 
         try:
-            # Get base image without highlights using the determined resolution
-            # Use the global PDF rendering lock
-            with pdf_render_lock:
-                # Use render() for clean image without highlights
-                image = self.render(resolution=final_resolution)
-                if not image:
-                    logger.error(
-                        f"  Failed to render page {self.number} to image for OCR extraction."
-                    )
-                    return []
-                logger.debug(f"  Rendered image size: {image.width}x{image.height}")
-        except Exception as e:
-            logger.error(f"  Failed to render page {self.number} to image: {e}", exc_info=True)
+            ocr_payload = run_ocr_extract(
+                target=self,
+                context=self,
+                engine_name=engine_name,
+                resolution=final_resolution,
+                languages=resolved_languages,
+                min_confidence=resolved_min_conf,
+                device=resolved_device,
+                detect_only=False,
+                options=normalized_options,
+                render_kwargs={},
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(f"  OCR extraction failed on page {self.number}: {exc}", exc_info=True)
             return []
 
-        logger.debug(
-            "  Calling OCR engine '%s' (extract only) with languages=%s, device=%s",
-            engine_name,
-            resolved_languages,
-            resolved_device,
-        )
-
-        results = run_ocr_engine(
-            image,
-            context=self,
-            engine_name=engine_name,
-            languages=resolved_languages,
-            min_confidence=resolved_min_conf,
-            device=resolved_device,
-            detect_only=False,
-            options=normalized_options,
-        )
-        if isinstance(results, list) and results and isinstance(results[0], list):
-            results = results[0]
-        if not isinstance(results, list):
-            raise TypeError(f"Unexpected OCR result type for page {self.number}: {type(results)}")
+        results = ocr_payload.results
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            logger.error("  OCR payload missing image dimensions; aborting extraction.")
+            return []
 
         # Convert results but DO NOT add to ElementManager
         logger.debug("  Converting OCR results to TextElements (extract only)...")
         temp_elements = []
-        scale_x = self.width / image.width if image.width else 1
-        scale_y = self.height / image.height if image.height else 1
+        scale_x = self.width / image_width if image_width else 1
+        scale_y = self.height / image_height if image_height else 1
         for result in results:
             if not isinstance(result, Mapping):
                 logger.debug(f"  Skipping OCR result with unexpected type: {type(result)}")
@@ -2934,7 +2813,7 @@ class Page(
 
         Args:
             temporary_highlights: List of highlight data dictionaries (as prepared by
-                                  ElementCollection._prepare_highlight_data).
+                                    ElementCollection._prepare_highlight_data).
             resolution: Resolution in DPI for rendering (default: 144 DPI, equivalent to previous scale=2.0).
             width: Optional width for the output image.
             labels: Whether to include a legend.
@@ -3083,7 +2962,7 @@ class Page(
         Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
 
         Note: OCR must have been applied to the pages beforehand
-              (e.g., pdf.apply_ocr()).
+                (e.g., pdf.apply_ocr()).
 
         Args:
             output_path: Path to save the searchable PDF.
@@ -3117,12 +2996,12 @@ class Page(
 
         Args:
             transform: A function accepting an element and returning
-                       `Optional[str]` (new text or None).
+                        `Optional[str]` (new text or None).
             selector: CSS-like selector string to match text elements.
             apply_exclusions: Whether exclusion regions should be honoured (default: False to
                 maintain backward compatibility with the base mixin behaviour).
             max_workers: The maximum number of threads to use for parallel execution.
-                         If None or 0 or 1, runs sequentially.
+                            If None or 0 or 1, runs sequentially.
             progress_callback: Optional callback function to call after processing each element.
 
         Returns:
@@ -3247,18 +3126,6 @@ class Page(
             if element_pbar:
                 element_pbar.close()
 
-    def _get_classification_manager(self) -> "ClassificationManager":
-        if not hasattr(self, "pdf") or not hasattr(self.pdf, "get_manager"):
-            raise AttributeError(
-                "ClassificationManager cannot be accessed: Parent PDF or get_manager method missing."
-            )
-        try:
-            # Use the PDF's manager registry accessor
-            return self.pdf.get_manager("classification")
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Wrap potential errors from get_manager for clarity
-            raise AttributeError(f"Failed to get ClassificationManager from PDF: {e}") from e
-
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         if model_type == "text":
             text_content = self.extract_text(
@@ -3306,70 +3173,28 @@ class Page(
         force_recalculate: bool = False,
         **deskew_kwargs,
     ) -> Optional[float]:
-        """
-        Detects the skew angle of the page image and stores it.
-
-        Args:
-            resolution: DPI resolution for rendering the page image for detection.
-            grayscale: Whether to convert the image to grayscale before detection.
-            force_recalculate: If True, recalculate even if an angle exists.
-            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
-                             (e.g., `max_angle`, `num_peaks`).
-
-        Returns:
-            The detected skew angle in degrees, or None if detection failed.
-
-        Raises:
-            ImportError: If the 'deskew' library is not installed.
-        """
-        if not DESKEW_AVAILABLE:
-            raise ImportError(
-                "Deskew library not found. Install with: pip install natural-pdf[deskew]"
-            )
-
+        """Detect the skew angle of this page using the deskew provider."""
         if self._skew_angle is not None and not force_recalculate:
             logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle:.2f}")
             return self._skew_angle
 
-        logger.debug(f"Page {self.number}: Detecting skew angle (resolution={resolution} DPI)...")
         try:
-            # Render the page at the specified detection resolution
-            # Use render() for clean image without highlights
-            img = self.render(resolution=resolution)
-            if not img:
-                logger.warning(f"Page {self.number}: Failed to render image for skew detection.")
-                self._skew_angle = None
-                return None
-
-            # Convert to numpy array
-            img_np = np.array(img)
-
-            # Convert to grayscale if needed
-            if grayscale:
-                if len(img_np.shape) == 3 and img_np.shape[2] >= 3:
-                    gray_np = np.mean(img_np[:, :, :3], axis=2).astype(np.uint8)
-                elif len(img_np.shape) == 2:
-                    gray_np = img_np  # Already grayscale
-                else:
-                    logger.warning(
-                        f"Page {self.number}: Unexpected image shape {img_np.shape} for grayscale conversion."
-                    )
-                    gray_np = img_np  # Try using it anyway
-            else:
-                gray_np = img_np  # Use original if grayscale=False
-
-            # Determine skew angle using the deskew library
-            if determine_skew is None:
-                raise RuntimeError("Deskew library not available despite DESKEW_AVAILABLE flag.")
-            angle = determine_skew(gray_np, **deskew_kwargs)
-            self._skew_angle = angle
-            logger.debug(f"Page {self.number}: Detected skew angle = {angle}")
-            return angle
-
-        except Exception as e:
-            logger.warning(f"Page {self.number}: Failed during skew detection: {e}", exc_info=True)
+            angle = run_deskew_detect(
+                target=self,
+                context=self,
+                resolution=resolution,
+                grayscale=grayscale,
+                deskew_kwargs=deskew_kwargs,
+            )
+        except ImportError:
+            raise
+        except Exception as exc:
+            logger.warning(f"Page {self.number}: Skew detection failed: {exc}", exc_info=True)
             self._skew_angle = None
             return None
+
+        self._skew_angle = angle
+        return angle
 
     def deskew(
         self,
@@ -3389,7 +3214,7 @@ class Page(
             angle: The specific angle (in degrees) to rotate by. If None, detects automatically.
             detection_resolution: DPI resolution used for detection if `angle` is None.
             **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
-                             if automatic detection is performed.
+                                if automatic detection is performed.
 
         Returns:
             A deskewed PIL.Image.Image object, or None if rendering/rotation fails.
@@ -3397,55 +3222,26 @@ class Page(
         Raises:
             ImportError: If the 'deskew' library is not installed.
         """
-        if not DESKEW_AVAILABLE:
-            raise ImportError(
-                "Deskew library not found. Install with: pip install natural-pdf[deskew]"
-            )
-
-        # Determine the angle to use
-        rotation_angle = angle
-        if rotation_angle is None:
-            # Detect angle (or use cached) if not explicitly provided
-            rotation_angle = self.detect_skew_angle(
-                resolution=detection_resolution, **deskew_kwargs
-            )
-
-        logger.debug(
-            f"Page {self.number}: Preparing to deskew (output resolution={resolution} DPI). Using angle: {rotation_angle}"
-        )
-
         try:
-            # Render the original page at the desired output resolution
-            # Use render() for clean image without highlights
-            img = self.render(resolution=resolution)
-            if not img:
-                logger.error(f"Page {self.number}: Failed to render image for deskewing.")
-                return None
-
-            # Rotate if a significant angle was found/provided
-            if rotation_angle is not None and abs(rotation_angle) > 0.05:
-                logger.debug(f"Page {self.number}: Rotating by {rotation_angle:.2f} degrees.")
-                # Determine fill color based on image mode
-                fill = (255, 255, 255) if img.mode == "RGB" else 255  # White background
-                # Rotate the image using PIL
-                rotated_img = img.rotate(
-                    rotation_angle,  # deskew provides angle, PIL rotates counter-clockwise
-                    resample=Image.Resampling.BILINEAR,
-                    expand=True,  # Expand image to fit rotated content
-                    fillcolor=fill,
-                )
-                return rotated_img
-            else:
-                logger.debug(
-                    f"Page {self.number}: No significant rotation needed (angle={rotation_angle}). Returning original render."
-                )
-                return img  # Return the original rendered image if no rotation needed
-
-        except Exception as e:
+            result = run_deskew_apply(
+                target=self,
+                context=self,
+                resolution=resolution,
+                angle=angle,
+                detection_resolution=detection_resolution,
+                grayscale=True,
+                deskew_kwargs=deskew_kwargs,
+            )
+        except ImportError:
+            raise
+        except Exception as exc:
             logger.error(
-                f"Page {self.number}: Error during deskewing image generation: {e}", exc_info=True
+                f"Page {self.number}: Error during deskewing image generation: {exc}",
+                exc_info=True,
             )
             return None
+
+        return result.image
 
     # Unified analysis storage (maps to metadata["analysis"])
 

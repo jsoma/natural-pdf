@@ -4,6 +4,8 @@ Natural PDF - A more intuitive interface for working with PDFs.
 
 import logging
 import os
+from importlib import metadata as importlib_metadata
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Type
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -113,8 +115,16 @@ def set_option(name: str, value):
         raise KeyError(f"Unknown option: {name}")
 
 
-# Version
-__version__ = "0.1.1"
+# Version (surfaced from installed metadata when possible)
+try:
+    __version__ = importlib_metadata.version("natural-pdf")
+except importlib_metadata.PackageNotFoundError:
+    try:
+        from setuptools_scm import get_version
+
+        __version__ = get_version(root=Path(__file__).resolve().parents[1])
+    except Exception:  # pragma: no cover - SCM fallback is best-effort
+        __version__ = "0.0.0"
 
 # Apply pdfminer patches for known bugs
 try:

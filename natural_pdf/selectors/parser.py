@@ -714,6 +714,9 @@ def _build_filter_list(
         options=kwargs,
     )
 
+    post_pseudos: List[Dict[str, Any]] = []
+    relational_pseudos: List[Dict[str, Any]] = []
+
     def _extend_from_handler(result: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]):
         if not result:
             return
@@ -1038,7 +1041,11 @@ def _build_filter_list(
             handler_result = handler(pseudo, clause_ctx)
             _extend_from_handler(handler_result)
             continue
-        if name in ("above", "below", "near", "left-of", "right-of", "first", "last"):
+        if name in ("first", "last"):
+            post_pseudos.append(pseudo)
+            continue
+        if name in ("above", "below", "near", "left-of", "right-of"):
+            relational_pseudos.append(pseudo)
             continue
 
         # --- Handle :not() ---
@@ -1084,6 +1091,8 @@ def _build_filter_list(
         else:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
 
+    selector["post_pseudos"] = post_pseudos
+    selector["relational_pseudos"] = relational_pseudos
     return filters
 
 

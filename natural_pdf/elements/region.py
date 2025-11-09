@@ -27,33 +27,21 @@ from pdfplumber.utils.geometry import get_bbox_overlap
 # New Imports
 from tqdm.auto import tqdm
 
-from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from natural_pdf.classification.manager import ClassificationManager  # Keep for type hint
-from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.capabilities import AnalysisHostMixin, TabularRegionMixin
 from natural_pdf.core.crop_utils import resolve_crop_bbox
-from natural_pdf.core.exclusion_mixin import ExclusionMixin
-
-# Add Visualizable import
-from natural_pdf.core.geometry_mixin import RegionGeometryMixin
-from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
-from natural_pdf.core.mixins import SinglePageContextMixin
-from natural_pdf.core.ocr_mixin import OCRMixin
-from natural_pdf.core.qa_mixin import DocumentQAMixin, QuestionInput
+from natural_pdf.core.interfaces import SupportsGeometry
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.table_mixin import TableExtractionMixin
-from natural_pdf.describe.mixin import DescribeMixin
-from natural_pdf.elements.base import DirectionalMixin, extract_bbox
+from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
-from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
     resolve_ocr_engine_name,
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
-    run_ocr_engine,
+    run_ocr_apply,
 )
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
@@ -66,7 +54,6 @@ from natural_pdf.text_mixin import TextMixin
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
-from natural_pdf.vision.mixin import VisualSearchMixin
 
 # Import viewer widget support
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
@@ -138,24 +125,7 @@ class RegionContext:
         return False  # Don't suppress exceptions
 
 
-class Region(
-    TextMixin,
-    DirectionalMixin,
-    ClassificationMixin,
-    ExtractionMixin,
-    ShapeDetectionMixin,
-    CheckboxDetectionMixin,
-    DescribeMixin,
-    VisualSearchMixin,
-    ExclusionMixin,
-    OCRMixin,
-    TableExtractionMixin,
-    DocumentQAMixin,
-    RegionGeometryMixin,
-    SinglePageContextMixin,
-    Visualizable,
-    SupportsSections,
-):
+class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
     """Represents a rectangular region on a page.
 
     Regions are fundamental building blocks in natural-pdf that define rectangular
@@ -1809,111 +1779,40 @@ class Region(
             final_resolution,
         )
 
-        # Render the page region to an image using the determined resolution
         try:
-            # Use render() for clean image without highlights, with cropping
-            region_image = self.render(resolution=final_resolution, crop=True)
-            if not region_image:
-                logger.error("Failed to render region to image for OCR.")
-                return self
-            logger.debug(f"Region rendered to image size: {region_image.size}")
-        except Exception as e:
-            logger.error(f"Error rendering region to image for OCR: {e}", exc_info=True)
+            ocr_payload = run_ocr_apply(
+                target=self,
+                context=self,
+                engine_name=engine_name,
+                resolution=final_resolution,
+                languages=resolved_languages,
+                min_confidence=resolved_min_conf,
+                device=resolved_device,
+                detect_only=detect_only,
+                options=normalized_options,
+                render_kwargs={"crop": True},
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(f"Error rendering region for OCR: {exc}", exc_info=True)
             return self
 
-        results = run_ocr_engine(
-            region_image,
-            context=self,
-            engine_name=engine_name,
-            languages=resolved_languages,
-            min_confidence=resolved_min_conf,
-            device=resolved_device,
-            detect_only=detect_only,
-            options=normalized_options,
-        )
-        if not isinstance(results, list):
-            raise TypeError(
-                f"OCR engine '{engine_name}' returned unexpected type for region {self.bbox}: {type(results)}"
-            )
-        logger.debug(f"Region OCR processing returned {len(results)} results.")
-
-        # Convert results to TextElements
-        scale_x = self.width / region_image.width if region_image.width > 0 else 1.0
-        scale_y = self.height / region_image.height if region_image.height > 0 else 1.0
-        logger.debug(f"Region OCR scaling factors (PDF/Img): x={scale_x:.2f}, y={scale_y:.2f}")
-        created_elements: List[TextElement] = []
+        image_width, image_height = ocr_payload.image_size
+        if not image_width or not image_height:
+            logger.warning(f"Region {self.bbox}: OCR payload missing image dimensions.")
+            return self
 
         valid_results: List[Mapping[str, Any]] = []
-        for entry in results:
+        for entry in ocr_payload.results:
             if isinstance(entry, MappingABC):
                 valid_results.append(entry)
             else:
                 logger.warning("Skipping OCR result with unexpected type: %s", type(entry))
 
-        for result in valid_results:
-            try:
-                bbox_data = result.get("bbox")
-                if not isinstance(bbox_data, SequenceABC):
-                    logger.warning("OCR result missing sequence bbox: %s", result)
-                    continue
-                if len(bbox_data) < 4:
-                    logger.warning("OCR result bbox has insufficient coordinates: %s", bbox_data)
-                    continue
-                img_x0, img_top, img_x1, img_bottom = (
-                    float(bbox_data[0]),
-                    float(bbox_data[1]),
-                    float(bbox_data[2]),
-                    float(bbox_data[3]),
-                )
-                pdf_height = (img_bottom - img_top) * scale_y
-                page_x0 = self.x0 + (img_x0 * scale_x)
-                page_top = self.top + (img_top * scale_y)
-                page_x1 = self.x0 + (img_x1 * scale_x)
-                page_bottom = self.top + (img_bottom * scale_y)
-                raw_conf = result.get("confidence")
-                # Convert confidence to float unless it is None/invalid
-                try:
-                    confidence_val = float(raw_conf) if raw_conf is not None else None
-                except (TypeError, ValueError):
-                    confidence_val = None
-
-                raw_text = result.get("text")  # May legitimately be None in detect_only mode
-                text_val = (
-                    raw_text if isinstance(raw_text, str) or raw_text is None else str(raw_text)
-                )
-
-                element_data = {
-                    "text": text_val,
-                    "x0": page_x0,
-                    "top": page_top,
-                    "x1": page_x1,
-                    "bottom": page_bottom,
-                    "width": page_x1 - page_x0,
-                    "height": page_bottom - page_top,
-                    "object_type": "word",
-                    "source": "ocr",
-                    "confidence": confidence_val,
-                    "fontname": "OCR",
-                    "size": round(pdf_height) if pdf_height > 0 else 10.0,
-                    "page_number": self.page.number,
-                    "bold": False,
-                    "italic": False,
-                    "upright": True,
-                    "doctop": page_top + self.page._page.initial_doctop,
-                }
-                ocr_char_dict = element_data.copy()
-                ocr_char_dict["object_type"] = "char"
-                ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
-                element_data["_char_dicts"] = [ocr_char_dict]
-                elem = TextElement(element_data, self.page)
-                created_elements.append(elem)
-                self.page.add_element(elem, element_type="words")
-                self.page.add_element(ocr_char_dict, element_type="chars")
-            except Exception as e:
-                logger.error(
-                    f"Failed to convert region OCR result to element: {result}. Error: {e}",
-                    exc_info=True,
-                )
+        scale_x = self.width / image_width if image_width else 1.0
+        scale_y = self.height / image_height if image_height else 1.0
+        created_elements = self.page.create_text_elements_from_ocr(
+            valid_results, scale_x=scale_x, scale_y=scale_y
+        )
         logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
         return self
 
@@ -2504,24 +2403,6 @@ class Region(
 
         TextMixin.update_text(self, transform, selector=selector, apply_exclusions=apply_exclusions)
         return self
-
-    def _get_classification_manager(self) -> "ClassificationManager":
-        if (
-            not hasattr(self, "page")
-            or not hasattr(self.page, "pdf")
-            or not hasattr(self.page.pdf, "get_manager")
-        ):
-            raise AttributeError(
-                "ClassificationManager cannot be accessed: Parent Page, PDF, or get_manager method missing."
-            )
-        try:
-            # Use the PDF's manager registry accessor via page
-            return self.page.pdf.get_manager("classification")
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Wrap potential errors from get_manager for clarity
-            raise AttributeError(
-                f"Failed to get ClassificationManager from PDF via Page: {e}"
-            ) from e
 
     def _get_classification_content(
         self, model_type: str, **kwargs

@@ -1,6 +1,7 @@
 """Selector utilities and extension hooks."""
 
 # Ensure built-in clauses are registered
+from natural_pdf.engine_registry import register_selector_engine
 from natural_pdf.selectors import _clauses as _builtin_clauses  # noqa: F401
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
@@ -10,9 +11,13 @@ from natural_pdf.selectors.parser import (
 from natural_pdf.selectors.registry import (
     ClauseEvalContext,
     get_attribute_handler,
+    get_post_handler,
     get_pseudo_handler,
+    get_relational_handler,
     register_attribute,
+    register_post_pseudo,
     register_pseudo,
+    register_relational_pseudo,
     unregister_attribute,
     unregister_pseudo,
 )
@@ -22,9 +27,14 @@ __all__ = [
     "build_text_contains_selector",
     "get_attribute_handler",
     "get_pseudo_handler",
+    "get_post_handler",
+    "get_relational_handler",
     "parse_selector",
     "register_attribute",
     "register_pseudo",
+    "register_post_pseudo",
+    "register_relational_pseudo",
+    "register_selector_engine",
     "selector_to_filter_func",
     "unregister_attribute",
     "unregister_pseudo",

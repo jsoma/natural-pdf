@@ -20,16 +20,11 @@ from typing import (
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
+from natural_pdf.core.capabilities import MultiRegionAnalysisMixin
 from natural_pdf.core.crop_utils import resolve_crop_bbox
-from natural_pdf.core.geometry_mixin import RegionGeometryMixin
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.mixins import ContextResolverMixin
-from natural_pdf.core.multi_region_mixins import (
-    MultiRegionDirectionalMixin,
-    MultiRegionExclusionMixin,
-    MultiRegionOCRMixin,
-)
-from natural_pdf.core.qa_mixin import DocumentQAMixin, QuestionInput
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
@@ -53,15 +48,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FlowRegion(
-    Visualizable,
-    DocumentQAMixin,
-    MultiRegionOCRMixin,
-    MultiRegionExclusionMixin,
-    ContextResolverMixin,
-    MultiRegionDirectionalMixin,
-    RegionGeometryMixin,
-):
+class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
     """
     Represents a selected area within a Flow, potentially composed of multiple
     physical Region objects (constituent_regions) that might span across
@@ -864,6 +851,7 @@ class FlowRegion(
             Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
         ] = None,
         merge_headers: Optional[bool] = None,
+        structure_engine: Optional[str] = None,
         **kwargs,
     ) -> TableResult:
         """Extracts a single logical table from the FlowRegion.
@@ -885,6 +873,7 @@ class FlowRegion(
                 of each segment matches the first row of the first segment. If segments have
                 inconsistent header patterns (some repeat, others don't), raises ValueError.
                 Useful for multi-page tables where headers repeat on each page.
+            structure_engine: Optional structure detection engine forwarded to constituent regions.
             **kwargs: Additional keyword arguments forwarded to the underlying
                 ``Region.extract_table`` implementation.
 
@@ -950,6 +939,7 @@ class FlowRegion(
                 apply_exclusions=apply_exclusions,
                 verticals=verticals,
                 horizontals=horizontals,
+                structure_engine=structure_engine,
                 **kwargs,
             )
 

@@ -35,12 +35,13 @@ if TYPE_CHECKING:
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
 
 
-class Flow(Visualizable):
+class Flow(Visualizable, SelectorHostMixin):
     """Defines a logical flow or sequence of physical Page or Region objects.
 
     A Flow represents a continuous logical document structure that spans across
@@ -152,6 +153,7 @@ class Flow(Visualizable):
             alignment
         )
         self.segment_gap: float = segment_gap
+        self._analysis_region_cache: Optional["FlowRegion"] = None
 
         self._validate_alignment()
 
@@ -187,6 +189,20 @@ class Flow(Visualizable):
                 f"Invalid alignment '{self.alignment}' for '{self.arrangement}' arrangement. "
                 f"Valid options are: {valid_alignments[self.arrangement]}"
             )
+
+    def _analysis_region(self) -> "FlowRegion":
+        """
+        Create (and cache) a FlowRegion representing the entire flow for analysis tasks.
+        """
+
+        if self._analysis_region_cache is None:
+            from natural_pdf.flows.region import FlowRegion
+
+            self._analysis_region_cache = FlowRegion(
+                flow=self,
+                constituent_regions=list(self.segments),
+            )
+        return self._analysis_region_cache
 
     def _get_highlighter(self):
         """Get the highlighting service from the first segment."""
@@ -273,6 +289,75 @@ class Flow(Visualizable):
             columns=columns,
             crop=crop,
             crop_bbox=crop_bbox,
+            **kwargs,
+        )
+
+    # ------------------------------------------------------------------
+    # Analysis helpers (delegated to a FlowRegion spanning all segments)
+    # ------------------------------------------------------------------
+
+    def apply_ocr(self, *args: Any, **kwargs: Any) -> "Flow":
+        """
+        Apply OCR across every segment in the flow.
+        """
+
+        self._analysis_region().apply_ocr(*args, **kwargs)
+        return self
+
+    def extract_ocr_elements(self, *args: Any, **kwargs: Any) -> List[Any]:
+        """
+        Extract OCR-derived text elements from all segments.
+        """
+
+        return self._analysis_region().extract_ocr_elements(*args, **kwargs)
+
+    def remove_ocr_elements(self) -> int:
+        """
+        Remove OCR elements that were previously added to constituent pages.
+        """
+
+        return self._analysis_region().remove_ocr_elements()
+
+    def clear_text_layer(self) -> Tuple[int, int]:
+        """
+        Clear the underlying text layers (words/chars) for every segment page.
+        """
+
+        return self._analysis_region().clear_text_layer()
+
+    def create_text_elements_from_ocr(
+        self,
+        ocr_results: Any,
+        scale_x: Optional[float] = None,
+        scale_y: Optional[float] = None,
+    ) -> List[Any]:
+        """
+        Utility for constructing text elements from OCR output.
+        """
+
+        return self._analysis_region().create_text_elements_from_ocr(
+            ocr_results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+        )
+
+    def ask(
+        self,
+        question: Union[str, Sequence[str], Tuple[str, ...]],
+        min_confidence: float = 0.1,
+        model: Optional[str] = None,
+        debug: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Run document QA across the flow by delegating to a FlowRegion.
+        """
+
+        return self._analysis_region().ask(
+            question,
+            min_confidence=min_confidence,
+            model=model,
+            debug=debug,
             **kwargs,
         )
 
@@ -465,6 +550,7 @@ class Flow(Visualizable):
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
         stitch_rows: Optional[Callable[[List[Optional[str]]], bool]] = None,
+        structure_engine: Optional[str] = None,
     ) -> TableResult: ...
 
     @overload
@@ -484,6 +570,7 @@ class Flow(Visualizable):
                 bool,
             ]
         ] = None,
+        structure_engine: Optional[str] = None,
     ) -> TableResult: ...
 
     def extract_table(
@@ -498,6 +585,7 @@ class Flow(Visualizable):
         content_filter: Optional[Any] = None,
         stitch_rows: Optional[Callable[..., bool]] = None,
         merge_headers: Optional[bool] = None,
+        structure_engine: Optional[str] = None,
     ) -> TableResult:
         """
         Extract table data from all segments in the flow, combining results sequentially.
@@ -537,6 +625,8 @@ class Flow(Visualizable):
                          When True is returned, rows are concatenated cell-by-cell.
                          This is useful for handling table rows split across page
                          boundaries or segments. If None, rows are never merged.
+            structure_engine: Optional structure detection engine forwarded to each segment's
+                ``extract_table`` implementation before falling back to traditional engines.
 
         Returns:
             TableResult object containing the aggregated table data from all segments.
@@ -631,6 +721,7 @@ class Flow(Visualizable):
                     cell_extraction_func=cell_extraction_func,
                     show_progress=show_progress,
                     content_filter=content_filter,
+                    structure_engine=structure_engine,
                 )
 
                 if not segment_result:

@@ -30,6 +30,7 @@ from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion
+from natural_pdf.guides.guides_provider import run_guides_detect
 
 from .flow_adapter import FlowGuideAdapter
 from .grid_helpers import collect_constituent_pages, register_regions_with_pages
@@ -47,6 +48,11 @@ from .helpers import (
     _normalize_markers,
     _require_bounds,
     _resolve_single_page,
+)
+from .separators import (
+    find_min_crossing_separator,
+    find_seam_carving_separator,
+    stabilize_with_rows,
 )
 from .text_detect import (
     collect_text_elements,
@@ -194,67 +200,43 @@ class GuidesList(UserList[float]):
             elif align == "bottom":
                 align = "right"
 
-        # Check if parent is in flow mode
+        options = {
+            "markers": actual_markers,
+            "align": align,
+            "outer": outer,
+            "tolerance": tolerance,
+            "apply_exclusions": apply_exclusions,
+        }
+
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
             region_values: Dict[Any, List[float]] = {}
 
             for region in adapter.regions:
-                region_guides = Guides.from_content(
-                    obj=region,
+                result = run_guides_detect(
                     axis=self._axis,
-                    markers=actual_markers,
-                    align=align,
-                    outer=outer,
-                    tolerance=tolerance,
-                    apply_exclusions=apply_exclusions,
+                    method="content",
+                    context=region,
+                    options=options,
                 )
-
-                values = (
-                    [float(value) for value in region_guides.vertical]
-                    if self._axis == "vertical"
-                    else [float(value) for value in region_guides.horizontal]
-                )
-                region_values[region] = values
+                region_values[region] = [float(value) for value in result.coordinates]
 
             adapter.update_axis_from_regions(self._axis, region_values, append=append)
             return self._parent
 
-        # Original single-region logic
-        # Pass markers directly to from_content which will handle them properly
-        # (no need to normalize here since from_content now handles ElementCollection)
-
-        # Create guides for this axis
-        new_guides = Guides.from_content(
-            obj=target_obj,
+        result = run_guides_detect(
             axis=self._axis,
-            markers=actual_markers,  # Pass original markers, not normalized text
-            align=align,
-            outer=outer,
-            tolerance=tolerance,
-            apply_exclusions=apply_exclusions,
+            method="content",
+            context=target_obj,
+            options=options,
         )
 
-        # Replace or append based on parameter
         if append:
-            if self._axis == "vertical":
-                self.extend(new_guides.vertical)
-            else:
-                self.extend(new_guides.horizontal)
+            self.data.extend(float(value) for value in result.coordinates)
         else:
-            if self._axis == "vertical":
-                self.data = list(new_guides.vertical)
-            else:
-                self.data = list(new_guides.horizontal)
+            self.data = [float(value) for value in result.coordinates]
 
-        # Remove duplicates while preserving order
-        seen = set()
-        unique = []
-        for x in self.data:
-            if x not in seen:
-                seen.add(x)
-                unique.append(x)
-        self.data = unique
+        self.data = sorted(set(self.data))
 
         return self._parent  # Return parent for chaining
 
@@ -315,69 +297,46 @@ class GuidesList(UserList[float]):
             axis_key = "min_gap_h" if self._axis == "horizontal" else "min_gap_v"
             detect_kwargs.setdefault(axis_key, min_gap)
 
-        # Check if parent is in flow mode
+        options = {
+            "threshold": threshold,
+            "source_label": source_label,
+            "max_lines_h": max_lines_h,
+            "max_lines_v": max_lines_v,
+            "outer": outer,
+            "detection_method": detection_method,
+            "resolution": resolution,
+            **detect_kwargs,
+        }
+
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
             region_values: Dict[Any, List[float]] = {}
 
             for region in adapter.regions:
-                region_guides = Guides.from_lines(
-                    obj=region,
+                result = run_guides_detect(
                     axis=self._axis,
-                    threshold=threshold,
-                    source_label=source_label,
-                    max_lines_h=max_lines_h,
-                    max_lines_v=max_lines_v,
-                    outer=outer,
-                    detection_method=detection_method,
-                    resolution=resolution,
-                    **detect_kwargs,
+                    method="lines",
+                    context=region,
+                    options=options,
                 )
-                values = (
-                    [float(value) for value in region_guides.vertical]
-                    if self._axis == "vertical"
-                    else [float(value) for value in region_guides.horizontal]
-                )
-                region_values[region] = values
+                region_values[region] = [float(value) for value in result.coordinates]
 
             adapter.update_axis_from_regions(self._axis, region_values, append=append)
             return self._parent
 
-        # Original single-region logic
-        # Create guides for this axis
-        new_guides = Guides.from_lines(
-            obj=target_obj,
+        result = run_guides_detect(
             axis=self._axis,
-            threshold=threshold,
-            source_label=source_label,
-            max_lines_h=max_lines_h,
-            max_lines_v=max_lines_v,
-            outer=outer,
-            detection_method=detection_method,
-            resolution=resolution,
-            **detect_kwargs,
+            method="lines",
+            context=target_obj,
+            options=options,
         )
 
-        # Replace or append based on parameter
         if append:
-            if self._axis == "vertical":
-                self.extend(new_guides.vertical)
-            else:
-                self.extend(new_guides.horizontal)
+            self.data.extend(float(value) for value in result.coordinates)
         else:
-            if self._axis == "vertical":
-                self.data = list(new_guides.vertical)
-            else:
-                self.data = list(new_guides.horizontal)
+            self.data = [float(value) for value in result.coordinates]
 
-        # Remove duplicates
-        seen = set()
-        unique = []
-        for x in self.data:
-            if x not in seen:
-                seen.add(x)
-                unique.append(x)
-        self.data = unique
+        self.data = sorted(set(self.data))
 
         return self._parent
 
@@ -388,37 +347,38 @@ class GuidesList(UserList[float]):
         *,
         append: bool = False,
     ) -> "Guides":
-        axis_literal: Literal["vertical", "horizontal"] = self._axis
         target_obj = obj or self._parent.context
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        generated = Guides.from_whitespace(target_obj, axis=axis_literal, min_gap=min_gap)
+        options = {"min_gap": min_gap}
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
             region_values: Dict[Any, List[float]] = {}
             for region in adapter.regions:
-                verticals, horizontals = generated._flow_guides.get(region, ([], []))
-                values = (
-                    [float(value) for value in verticals]
-                    if self._axis == "vertical"
-                    else [float(value) for value in horizontals]
+                result = run_guides_detect(
+                    axis=self._axis,
+                    method="whitespace",
+                    context=region,
+                    options=options,
                 )
-                region_values[region] = values
+                region_values[region] = [float(value) for value in result.coordinates]
             adapter.update_axis_from_regions(self._axis, region_values, append=append)
             return self._parent
 
-        def _merge(existing: List[float], new_values: Iterable[float]) -> List[float]:
-            new_iter = [float(value) for value in new_values]
-            if append:
-                return sorted(set(existing).union(new_iter))
-            return sorted(new_iter)
+        result = run_guides_detect(
+            axis=self._axis,
+            method="whitespace",
+            context=target_obj,
+            options=options,
+        )
 
-        if self._axis == "vertical":
-            self.data = _merge(self.data, generated.vertical)
+        new_coords = [float(value) for value in result.coordinates]
+        if append:
+            self.data = sorted(set(self.data).union(new_coords))
         else:
-            self.data = _merge(self.data, generated.horizontal)
+            self.data = sorted(new_coords)
 
         return self._parent
 
@@ -773,307 +733,75 @@ class GuidesList(UserList[float]):
         if target_obj is None:
             raise ValueError("No object provided and no context available")
 
-        # Normalize headers into elements with usable bounds
-        header_candidates: Iterable[Any]
-        if hasattr(headers, "elements"):
-            header_candidates = list(cast("ElementCollection", headers).elements)
-        elif isinstance(headers, list) and headers and isinstance(headers[0], str):
-            resolved: List[Any] = []
-            for header_text in headers:
-                all_text = target_obj.find_all("text")
-                exact_matches = [elem for elem in all_text if elem.extract_text() == header_text]
-                if exact_matches:
-                    resolved.append(exact_matches[0])
-                else:
-                    logger.warning(f"Could not find header text: {header_text}")
-            if not resolved:
-                logger.warning("No header elements found from provided text strings")
-                return self._parent
-            header_candidates = resolved
-        else:
-            header_candidates = list(cast(Iterable[Any], headers))
+        options = {
+            "headers": headers,
+            "method": method,
+            "min_width": min_width,
+            "max_width": max_width,
+            "margin": margin,
+            "row_stabilization": row_stabilization,
+            "num_samples": num_samples,
+        }
 
-        header_data: List[Tuple[Any, Bounds]] = []
-        skipped = 0
-        for candidate in header_candidates:
-            bounds = _bounds_from_object(candidate)
-            if bounds is None:
-                skipped += 1
-                continue
-            header_data.append((candidate, bounds))
-
-        if len(header_data) < 2:
-            if skipped:
-                logger.warning(
-                    "Some header inputs were ignored because their bounds could not be determined."
+        if self._parent.is_flow_region:
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
+            for region in adapter.regions:
+                result = run_guides_detect(
+                    axis="vertical",
+                    method="headers",
+                    context=region,
+                    options=options,
                 )
-            logger.warning("Need at least 2 headers for column detection")
+                region_values[region] = [float(value) for value in result.coordinates]
+            adapter.update_axis_from_regions("vertical", region_values, append=append)
             return self._parent
 
-        header_data.sort(key=lambda item: item[1][0])
-        header_elements = [item[0] for item in header_data]
-        header_bounds = [item[1] for item in header_data]
+        result = run_guides_detect(
+            axis="vertical",
+            method="headers",
+            context=target_obj,
+            options=options,
+        )
 
-        page_bounds = _bounds_from_object(target_obj)
-        if page_bounds is None:
-            logger.warning("Could not determine page bounds")
-            return self._parent
-
-        # Get text below headers for occupancy analysis
-        header_bottom = max(bounds[3] for bounds in header_bounds)
-        all_text = target_obj.find_all("text")
-
-        # Extract bounding boxes below headers
-        bboxes: List[Tuple[float, float, float, float]] = []
-        for element in all_text:
-            elem_bounds = _bounds_from_object(element)
-            if elem_bounds is None:
-                continue
-            if elem_bounds[1] > header_bottom:
-                bboxes.append(elem_bounds)
-
-        # Find separators between each header pair
-        separators = []
-        logger.debug(f"Processing {len(header_elements)} headers for column detection")
-        for i in range(len(header_bounds) - 1):
-            left_bounds = header_bounds[i]
-            right_bounds = header_bounds[i + 1]
-
-            # Define search band
-            left_edge = left_bounds[2]
-            right_edge = right_bounds[0]
-            gap = right_edge - left_edge
-
-            # If gap is too small, place separator in the middle
-            if gap <= 2 * margin:
-                # Place separator in the middle of the gap
-                separator = (left_edge + right_edge) / 2
-                separators.append(separator)
-                continue
-
-            # Normal case - search within the band
-            x0 = left_edge + margin
-            x1 = right_edge - margin
-
-            # Apply width constraints if provided
-            if min_width and (x1 - x0) < min_width:
-                # Center the separator
-                center = (x0 + x1) / 2
-                separators.append(center)
-                continue
-
-            if method == "min_crossings":
-                separator = self._find_min_crossing_separator(x0, x1, bboxes, num_samples)
-            else:  # seam_carving
-                separator = self._find_seam_carving_separator(
-                    x0, x1, target_obj, header_bottom, page_bounds[3], bboxes
-                )
-
-            # Apply width constraints only if they don't conflict with header positions
-            if separators:
-                if min_width and separator - separators[-1] < min_width:
-                    # Only enforce if it doesn't push into next header
-                    proposed = separators[-1] + min_width
-                    if proposed < right_edge:
-                        separator = proposed
-                if max_width and separator - separators[-1] > max_width:
-                    separator = separators[-1] + max_width
-
-            separators.append(separator)
-
-        # Ensure we have page boundaries
-        if separators:
-            if not any(abs(sep - page_bounds[0]) < 0.1 for sep in separators):
-                separators.insert(0, page_bounds[0])
-            if not any(abs(sep - page_bounds[2]) < 0.1 for sep in separators):
-                separators.append(page_bounds[2])
-
-        # Apply row stabilization if requested
-        if row_stabilization and separators:
-            separators = self._stabilize_with_rows(separators, target_obj, bboxes, header_bottom)
-
-        # Update guides
+        coords = [float(value) for value in result.coordinates]
         if append:
-            self.extend(separators)
+            self.extend(coords)
         else:
-            self.data = separators
+            self.data = coords
+        self.data = sorted(set(self.data))
 
         return self._parent
 
+    @staticmethod
     def _find_min_crossing_separator(
-        self,
         x0: float,
         x1: float,
         bboxes: List[Tuple[float, float, float, float]],
         num_samples: int,
     ) -> float:
-        """Find x-coordinate with minimum text crossings in band."""
-        candidates = np.linspace(x0, x1, num_samples)
+        """Backward-compatible shim for separator helper."""
+        return find_min_crossing_separator(x0, x1, bboxes, num_samples)
 
-        best_x = x0
-        min_crossings = float("inf")
-        best_gap = 0
-
-        for x in candidates:
-            # Count how many bboxes this x-line crosses
-            crossings = sum(1 for bbox in bboxes if bbox[0] < x < bbox[2])
-
-            # Calculate minimum gap to any edge (for tie-breaking)
-            if crossings > 0:
-                gaps = []
-                for bbox in bboxes:
-                    if bbox[0] < x < bbox[2]:
-                        gaps.extend([abs(x - bbox[0]), abs(x - bbox[2])])
-                min_gap = min(gaps) if gaps else float("inf")
-            else:
-                min_gap = float("inf")
-
-            # Update best if fewer crossings or same crossings but larger gap
-            if crossings < min_crossings or (crossings == min_crossings and min_gap > best_gap):
-                min_crossings = crossings
-                best_x = x
-                best_gap = min_gap
-
-        return best_x
-
+    @staticmethod
     def _find_seam_carving_separator(
-        self,
         x0: float,
         x1: float,
-        obj,
+        obj,  # Retained for compatibility, unused now
         header_y: float,
         page_bottom: float,
         bboxes: List[Tuple[float, float, float, float]],
     ) -> float:
-        """Find optimal separator using seam carving (dynamic programming)."""
-        # Create cost matrix
-        band_width = int(x1 - x0)
-        band_height = int(page_bottom - header_y)
+        return find_seam_carving_separator(x0, x1, header_y, page_bottom, bboxes)
 
-        if band_width <= 0 or band_height <= 0:
-            return (x0 + x1) / 2
-
-        # Resolution for cost matrix (1 pixel = 1 point for now)
-        cost_matrix = np.zeros((band_height, band_width))
-
-        # Fill cost matrix - high cost where text exists
-        for bbox in bboxes:
-            # Check if bbox intersects with our band
-            # bbox format is (x0, top, x1, bottom)
-            if bbox[2] > x0 and bbox[0] < x1 and bbox[3] > header_y:
-                # Convert to band coordinates
-                left = max(0, int(bbox[0] - x0))
-                right = min(band_width, int(bbox[2] - x0))
-                top = max(0, int(bbox[1] - header_y))
-                bottom = min(band_height, int(bbox[3] - header_y))
-
-                # Set high cost for text regions
-                cost_matrix[top:bottom, left:right] = 100
-
-        # Add small gradient cost to prefer straight lines
-        for i in range(band_width):
-            cost_matrix[:, i] += abs(i - band_width // 2) * 0.1
-
-        # Dynamic programming to find minimum cost path
-        dp = np.full_like(cost_matrix, np.inf)
-        dp[0, :] = cost_matrix[0, :]
-
-        # Fill DP table
-        for y in range(1, band_height):
-            for x in range(band_width):
-                # Can come from directly above or diagonally
-                dp[y, x] = cost_matrix[y, x] + dp[y - 1, x]
-                if x > 0:
-                    dp[y, x] = min(dp[y, x], cost_matrix[y, x] + dp[y - 1, x - 1])
-                if x < band_width - 1:
-                    dp[y, x] = min(dp[y, x], cost_matrix[y, x] + dp[y - 1, x + 1])
-
-        # Find minimum cost at bottom
-        min_x = int(np.argmin(dp[-1, :]))
-
-        # Trace back to get path
-        path_x_coords = [min_x]
-        for y in range(band_height - 2, -1, -1):
-            x = path_x_coords[-1]
-
-            # Find which direction we came from
-            candidates = [(x, dp[y, x])]
-            if x > 0:
-                candidates.append((x - 1, dp[y, x - 1]))
-            if x < band_width - 1:
-                candidates.append((x + 1, dp[y, x + 1]))
-
-            next_x = min(candidates, key=lambda c: c[1])[0]
-            path_x_coords.append(next_x)
-
-        # Return median x-coordinate of the path
-        median_x = float(np.median(path_x_coords))
-        return x0 + median_x
-
+    @staticmethod
     def _stabilize_with_rows(
-        self,
         separators: List[float],
         obj,
         bboxes: List[Tuple[float, float, float, float]],
         header_y: float,
     ) -> List[float]:
-        """Stabilize separators using row-wise analysis."""
-        if not bboxes:
-            return separators
-
-        # Detect rows by finding horizontal gaps
-        # bbox format is (x0, top, x1, bottom)
-        y_coords = sorted(set([bbox[1] for bbox in bboxes] + [bbox[3] for bbox in bboxes]))
-
-        # Find gaps larger than typical line height
-        gaps = []
-        for i in range(len(y_coords) - 1):
-            gap_size = y_coords[i + 1] - y_coords[i]
-            if gap_size > 5:  # Minimum gap to consider a row boundary
-                gaps.append((y_coords[i], y_coords[i + 1]))
-
-        if not gaps:
-            return separators
-
-        # For each separator, collect positions across rows
-        stabilized = []
-        for i, sep in enumerate(separators):
-            row_positions = []
-
-            for gap_start, gap_end in gaps:
-                # Get elements in this row
-                row_elements = [
-                    bbox for bbox in bboxes if bbox[1] >= gap_start and bbox[3] <= gap_end
-                ]
-
-                if row_elements:
-                    # Find best position in this row
-                    if i == 0:
-                        # First separator - look left of content
-                        x0 = 0
-                        x1 = sep + 20
-                    elif i == len(separators) - 1:
-                        # Last separator - look right of content
-                        x0 = sep - 20
-                        x1 = float("inf")
-                    else:
-                        # Middle separator - look around current position
-                        x0 = sep - 20
-                        x1 = sep + 20
-
-                    # Find minimum crossing position in this range
-                    best_x = self._find_min_crossing_separator(
-                        max(x0, sep - 20), min(x1, sep + 20), row_elements, 50
-                    )
-                    row_positions.append(best_x)
-
-            # Use median of row positions if we have enough samples
-            if len(row_positions) >= 3:
-                stabilized.append(np.median(row_positions))
-            else:
-                stabilized.append(sep)
-
-        return stabilized
+        return stabilize_with_rows(separators, bboxes, header_y)
 
     def from_stripes(
         self,
@@ -1106,49 +834,39 @@ class GuidesList(UserList[float]):
         Returns:
             Parent Guides object for chaining
         """
-        from collections import defaultdict
-
         target_obj = self._parent.context
         if target_obj is None:
             raise ValueError("No context available for stripe detection")
 
-        if stripes is None:
-            if color:
-                # User specified color
-                stripes = target_obj.find_all(f"rect[fill={color}]")
-            else:
-                # Auto-detect most common non-white fill
-                all_rects = target_obj.find_all("rect[fill]")
+        options = {"stripes": stripes, "color": color}
 
-                # Group by fill color
-                fill_counts = defaultdict(list)
-                for rect in all_rects:
-                    if rect.fill and rect.fill not in ["#ffffff", "white", "none", "transparent"]:
-                        fill_counts[rect.fill].append(rect)
+        if self._parent.is_flow_region:
+            adapter = FlowGuideAdapter(self._parent)
+            region_values: Dict[Any, List[float]] = {}
 
-                if not fill_counts:
-                    return self._parent  # No stripes found
+            for region in adapter.regions:
+                result = run_guides_detect(
+                    axis=self._axis,
+                    method="stripes",
+                    context=region,
+                    options=options,
+                )
+                region_values[region] = [float(value) for value in result.coordinates]
 
-                # Find most common fill color
-                stripes = max(fill_counts.values(), key=len)
-
-        if not stripes:
+            adapter.update_axis_from_regions(self._axis, region_values, append=True)
             return self._parent
 
-        # Get both edges of each stripe
-        edges = []
-        if self._axis == "horizontal":
-            for stripe in stripes:
-                edges.extend([stripe.top, stripe.bottom])
-        else:
-            for stripe in stripes:
-                edges.extend([stripe.x0, stripe.x1])
+        result = run_guides_detect(
+            axis=self._axis,
+            method="stripes",
+            context=target_obj,
+            options=options,
+        )
 
-        # Remove duplicates and sort
-        edges = sorted(set(edges))
+        coords = sorted({float(value) for value in result.coordinates})
+        if coords:
+            self.extend(coords)
 
-        # Add guides
-        self.extend(edges)
         return self._parent
 
     def __add__(self, other):
@@ -1461,184 +1179,78 @@ class Guides:
         Returns:
             New Guides object with detected line positions
         """
-        # Handle FlowRegion
+        if axis == "both":
+            vertical_guides = cls.from_lines(
+                obj,
+                axis="vertical",
+                threshold=threshold,
+                source_label=source_label,
+                max_lines_h=max_lines_h,
+                max_lines_v=max_lines_v,
+                outer=outer,
+                detection_method=detection_method,
+                resolution=resolution,
+                **detect_kwargs,
+            )
+            horizontal_guides = cls.from_lines(
+                obj,
+                axis="horizontal",
+                threshold=threshold,
+                source_label=source_label,
+                max_lines_h=max_lines_h,
+                max_lines_v=max_lines_v,
+                outer=outer,
+                detection_method=detection_method,
+                resolution=resolution,
+                **detect_kwargs,
+            )
+            bounds = _bounds_from_object(obj)
+            return cls(
+                verticals=list(vertical_guides.vertical),
+                horizontals=list(horizontal_guides.horizontal),
+                context=obj,
+                bounds=bounds,
+            )
+
+        options = {
+            "threshold": threshold,
+            "source_label": source_label,
+            "max_lines_h": max_lines_h if axis == "horizontal" else None,
+            "max_lines_v": max_lines_v if axis == "vertical" else None,
+            "outer": outer,
+            "detection_method": detection_method,
+            "resolution": resolution,
+            **detect_kwargs,
+        }
+
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-
-            vert_values: Dict[Any, List[float]] = {}
-            horiz_values: Dict[Any, List[float]] = {}
-
+            axis_values: Dict[Any, List[float]] = {}
             for region in adapter.regions:
-                region_guides = cls.from_lines(
-                    region,
+                result = run_guides_detect(
                     axis=axis,
-                    threshold=threshold,
-                    source_label=source_label,
-                    max_lines_h=max_lines_h,
-                    max_lines_v=max_lines_v,
-                    outer=outer,
-                    detection_method=detection_method,
-                    resolution=resolution,
-                    **detect_kwargs,
+                    method="lines",
+                    context=region,
+                    options=options,
                 )
-                vert_values[region] = [float(v) for v in region_guides.vertical]
-                horiz_values[region] = [float(h) for h in region_guides.horizontal]
+                axis_values[region] = [float(value) for value in result.coordinates]
 
-            if axis in ("vertical", "both"):
-                adapter.update_axis_from_regions("vertical", vert_values, append=False)
-            if axis in ("horizontal", "both"):
-                adapter.update_axis_from_regions("horizontal", horiz_values, append=False)
+            adapter.update_axis_from_regions(axis, axis_values, append=False)
             return guides
 
-        # Original single-region logic follows...
+        result = run_guides_detect(
+            axis=axis,
+            method="lines",
+            context=obj,
+            options=options,
+        )
+
+        coords = [float(value) for value in result.coordinates]
         bounds = _bounds_from_object(obj)
-        if bounds is None:
-            raise ValueError(f"Could not determine bounds for object {obj!r} when detecting lines.")
-
-        verticals = []
-        horizontals = []
-
-        if detection_method == "pixels":
-            if not hasattr(obj, "detect_lines"):
-                raise ValueError(f"Object {obj} does not support pixel-based line detection")
-
-            detect_params = {
-                "resolution": resolution,
-                "source_label": source_label or "guides_detection",
-                "horizontal": axis in ("horizontal", "both"),
-                "vertical": axis in ("vertical", "both"),
-                "replace": True,
-                "method": detect_kwargs.get("method", "projection"),
-            }
-
-            if threshold == "auto" and detection_method == "vector":
-                detect_params["peak_threshold_h"] = 0.0
-                detect_params["peak_threshold_v"] = 0.0
-                detect_params["max_lines_h"] = max_lines_h
-                detect_params["max_lines_v"] = max_lines_v
-            if threshold == "auto" and detection_method == "pixels":
-                detect_params["peak_threshold_h"] = 0.5
-                detect_params["peak_threshold_v"] = 0.5
-                detect_params["max_lines_h"] = max_lines_h
-                detect_params["max_lines_v"] = max_lines_v
-            else:
-                detect_params["peak_threshold_h"] = (
-                    float(threshold) if axis in ("horizontal", "both") else 1.0
-                )
-                detect_params["peak_threshold_v"] = (
-                    float(threshold) if axis in ("vertical", "both") else 1.0
-                )
-                detect_params["max_lines_h"] = max_lines_h
-                detect_params["max_lines_v"] = max_lines_v
-
-            for key in [
-                "min_gap_h",
-                "min_gap_v",
-                "binarization_method",
-                "adaptive_thresh_block_size",
-                "adaptive_thresh_C_val",
-                "morph_op_h",
-                "morph_kernel_h",
-                "morph_op_v",
-                "morph_kernel_v",
-                "smoothing_sigma_h",
-                "smoothing_sigma_v",
-                "peak_width_rel_height",
-            ]:
-                if key in detect_kwargs:
-                    detect_params[key] = detect_kwargs[key]
-
-            obj.detect_lines(**detect_params)
-
-            lines = [
-                line
-                for line in _collect_line_elements(obj)
-                if getattr(line, "source", None) == detect_params["source_label"]
-            ]
-
-        else:  # detection_method == 'vector' (default)
-            lines = _collect_line_elements(obj)
-            if not lines and not hasattr(obj, "lines") and not hasattr(obj, "find_all"):
-                logger.warning(f"Object {obj} has no lines or find_all method")
-
-            if source_label:
-                lines = [line for line in lines if getattr(line, "source", None) == source_label]
-
-        # Process lines (same logic for both methods)
-        # Separate lines by orientation and collect with metadata for ranking
-        h_line_data = []  # (y_coord, length, line_obj)
-        v_line_data = []  # (x_coord, length, line_obj)
-
-        for line in lines:
-            if hasattr(line, "is_horizontal") and hasattr(line, "is_vertical"):
-                if line.is_horizontal and axis in ("horizontal", "both"):
-                    # Use the midpoint y-coordinate for horizontal lines
-                    y = (line.top + line.bottom) / 2
-                    # Calculate line length for ranking
-                    length = getattr(
-                        line, "width", abs(getattr(line, "x1", 0) - getattr(line, "x0", 0))
-                    )
-                    h_line_data.append((y, length, line))
-                elif line.is_vertical and axis in ("vertical", "both"):
-                    # Use the midpoint x-coordinate for vertical lines
-                    x = (line.x0 + line.x1) / 2
-                    # Calculate line length for ranking
-                    length = getattr(
-                        line, "height", abs(getattr(line, "bottom", 0) - getattr(line, "top", 0))
-                    )
-                    v_line_data.append((x, length, line))
-
-        # Process horizontal lines
-        if max_lines_h is not None and h_line_data:
-            # Sort by length (longer lines are typically more significant)
-            h_line_data.sort(key=lambda x: x[1], reverse=True)
-            # Take the top N by length
-            selected_h = h_line_data[:max_lines_h]
-            # Extract just the coordinates and sort by position
-            horizontals = sorted([coord for coord, _, _ in selected_h])
-            logger.debug(
-                f"Selected {len(horizontals)} horizontal lines from {len(h_line_data)} candidates"
-            )
-        else:
-            # Use all horizontal lines (original behavior)
-            horizontals = [coord for coord, _, _ in h_line_data]
-            horizontals = sorted(list(set(horizontals)))
-
-        # Process vertical lines
-        if max_lines_v is not None and v_line_data:
-            # Sort by length (longer lines are typically more significant)
-            v_line_data.sort(key=lambda x: x[1], reverse=True)
-            # Take the top N by length
-            selected_v = v_line_data[:max_lines_v]
-            # Extract just the coordinates and sort by position
-            verticals = sorted([coord for coord, _, _ in selected_v])
-            logger.debug(
-                f"Selected {len(verticals)} vertical lines from {len(v_line_data)} candidates"
-            )
-        else:
-            # Use all vertical lines (original behavior)
-            verticals = [coord for coord, _, _ in v_line_data]
-            verticals = sorted(list(set(verticals)))
-
-        # Add outer guides if requested
-        if outer and bounds:
-            if axis in ("vertical", "both"):
-                if not verticals or verticals[0] > bounds[0]:
-                    verticals.insert(0, bounds[0])  # x0
-                if not verticals or verticals[-1] < bounds[2]:
-                    verticals.append(bounds[2])  # x1
-            if axis in ("horizontal", "both"):
-                if not horizontals or horizontals[0] > bounds[1]:
-                    horizontals.insert(0, bounds[1])  # y0
-                if not horizontals or horizontals[-1] < bounds[3]:
-                    horizontals.append(bounds[3])  # y1
-
-        # Remove duplicates and sort again
-        verticals = sorted({float(v) for v in verticals})
-        horizontals = sorted({float(h) for h in horizontals})
-
-        return cls(verticals=verticals, horizontals=horizontals, context=obj, bounds=bounds)
+        if axis == "vertical":
+            return cls(verticals=coords, horizontals=[], context=obj, bounds=bounds)
+        return cls(verticals=[], horizontals=coords, context=obj, bounds=bounds)
 
     @classmethod
     def from_content(
@@ -1674,250 +1286,48 @@ class Guides:
         Returns:
             New Guides object aligned to text content
         """
-        # Normalize alignment for horizontal guides
         if axis == "horizontal":
             if align == "top":
                 align = "left"
             elif align == "bottom":
                 align = "right"
 
-        # Handle FlowRegion
+        options = {
+            "markers": markers,
+            "align": align,
+            "outer": outer,
+            "tolerance": tolerance,
+            "apply_exclusions": apply_exclusions,
+        }
+
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-
             axis_values: Dict[Any, List[float]] = {}
             for region in adapter.regions:
-                region_guides = cls.from_content(
-                    region,
+                result = run_guides_detect(
                     axis=axis,
-                    markers=markers,
-                    align=align,
-                    outer=outer,
-                    tolerance=tolerance,
-                    apply_exclusions=apply_exclusions,
+                    method="content",
+                    context=region,
+                    options=options,
                 )
-                values = (
-                    [float(value) for value in region_guides.vertical]
-                    if axis == "vertical"
-                    else [float(value) for value in region_guides.horizontal]
-                )
-                axis_values[region] = values
+                axis_values[region] = [float(value) for value in result.coordinates]
 
             adapter.update_axis_from_regions(axis, axis_values, append=False)
             return guides
 
-        # Original single-region logic follows...
-        guides_coords: List[float] = []
-        bounds: Optional[Bounds] = _bounds_from_object(obj)
+        result = run_guides_detect(
+            axis=axis,
+            method="content",
+            context=obj,
+            options=options,
+        )
 
-        # Handle different marker types
-        elements_to_process: List[Any] = []
-        marker_texts: List[str] = []
-
-        # Check if markers is an ElementCollection or has elements attribute
-        if hasattr(markers, "elements") or hasattr(markers, "_elements"):
-            # It's an ElementCollection - use elements directly
-            raw_elements = getattr(markers, "elements", getattr(markers, "_elements", []))
-            elements_to_process = list(cast(Iterable[Any], raw_elements))
-        elif markers is not None and hasattr(markers, "__iter__") and not isinstance(markers, str):
-            # Check if it's an iterable of elements (not strings)
-            try:
-                markers_list = list(cast(Iterable[Any], markers))
-                if markers_list and hasattr(markers_list[0], "x0"):
-                    # It's a list of elements
-                    elements_to_process = markers_list
-            except:
-                pass
-
-        def _coerce_element_bounds(element: Any) -> Optional[Bounds]:
-            """Best-effort conversion of arbitrary objects into bounds."""
-            candidate = _bounds_from_object(element)
-            if candidate is not None:
-                return candidate
-
-            context_bounds = bounds
-            if context_bounds is None:
-                context_bounds = _bounds_from_object(obj)
-
-            if context_bounds is not None:
-                default_x0, default_top, default_x1, default_bottom = context_bounds
-            else:
-                default_x0 = default_top = default_x1 = default_bottom = 0.0
-
-            def _maybe_float(value: Any) -> Optional[float]:
-                try:
-                    if value is None:
-                        return None
-                    return float(value)
-                except (TypeError, ValueError):
-                    return None
-
-            x0_val = _maybe_float(getattr(element, "x0", None))
-            x1_val = _maybe_float(getattr(element, "x1", None))
-            top_val = _maybe_float(getattr(element, "top", None))
-            bottom_val = _maybe_float(getattr(element, "bottom", None))
-
-            if all(value is None for value in (x0_val, x1_val, top_val, bottom_val)):
-                return None
-
-            resolved_x0 = (
-                x0_val if x0_val is not None else (x1_val if x1_val is not None else default_x0)
-            )
-            resolved_x1 = (
-                x1_val if x1_val is not None else (x0_val if x0_val is not None else default_x1)
-            )
-            resolved_top = top_val if top_val is not None else default_top
-            resolved_bottom = (
-                bottom_val
-                if bottom_val is not None
-                else (top_val if top_val is not None else default_bottom)
-            )
-
-            return (
-                float(resolved_x0),
-                float(resolved_top),
-                float(resolved_x1),
-                float(resolved_bottom),
-            )
-
-        if elements_to_process:
-            # Process elements directly without text search
-            for element in elements_to_process:
-                elem_bounds = _coerce_element_bounds(element)
-                if elem_bounds is None:
-                    continue
-                x0, top, x1, bottom = elem_bounds
-
-                if axis == "vertical":
-                    if align == "left":
-                        guides_coords.append(x0)
-                    elif align == "right":
-                        guides_coords.append(x1)
-                    elif align == "center":
-                        guides_coords.append((x0 + x1) / 2)
-                    elif align == "between":
-                        # For between, collect left edges for processing later
-                        guides_coords.append(x0)
-                else:  # horizontal
-                    if align == "left":  # top for horizontal
-                        guides_coords.append(top)
-                    elif align == "right":  # bottom for horizontal
-                        guides_coords.append(bottom)
-                    elif align == "center":
-                        guides_coords.append((top + bottom) / 2)
-                    elif align == "between":
-                        # For between, collect top edges for processing later
-                        guides_coords.append(top)
-        else:
-            # Fall back to text-based search
-            marker_texts = _normalize_markers(markers, obj)
-
-            # Find each marker and determine guide position
-            for marker in marker_texts:
-                if hasattr(obj, "find"):
-                    element = obj.find(
-                        f'text:contains("{marker}")', apply_exclusions=apply_exclusions
-                    )
-                    if element:
-                        elem_bounds = _coerce_element_bounds(element)
-                        if elem_bounds is None:
-                            continue
-                        x0, top, x1, bottom = elem_bounds
-
-                        if axis == "vertical":
-                            if align == "left":
-                                guides_coords.append(x0)
-                            elif align == "right":
-                                guides_coords.append(x1)
-                            elif align == "center":
-                                guides_coords.append((x0 + x1) / 2)
-                            elif align == "between":
-                                # For between, collect left edges for processing later
-                                guides_coords.append(x0)
-                        else:  # horizontal
-                            if align == "left":  # top for horizontal
-                                guides_coords.append(top)
-                            elif align == "right":  # bottom for horizontal
-                                guides_coords.append(bottom)
-                            elif align == "center":
-                                guides_coords.append((top + bottom) / 2)
-                            elif align == "between":
-                                # For between, collect top edges for processing later
-                                guides_coords.append(top)
-
-        # Handle 'between' alignment - find midpoints between adjacent markers
-        if align == "between" and len(guides_coords) >= 2:
-            # We need to get the right and left edges of each marker
-            marker_bounds = []
-
-            if elements_to_process:
-                # Use elements directly
-                for element in elements_to_process:
-                    elem_bounds = _coerce_element_bounds(element)
-                    if elem_bounds is None:
-                        continue
-                    left, right = elem_bounds[0], elem_bounds[2]
-                    if axis == "vertical":
-                        marker_bounds.append((left, right))
-                    else:  # horizontal
-                        top, bottom = elem_bounds[1], elem_bounds[3]
-                        marker_bounds.append((top, bottom))
-            else:
-                # Fall back to text search
-                if not marker_texts:
-                    marker_texts = _normalize_markers(markers, obj)
-                for marker in marker_texts:
-                    if hasattr(obj, "find"):
-                        element = obj.find(
-                            f'text:contains("{marker}")', apply_exclusions=apply_exclusions
-                        )
-                        if element:
-                            elem_bounds = _coerce_element_bounds(element)
-                            if elem_bounds is None:
-                                continue
-                            if axis == "vertical":
-                                marker_bounds.append((elem_bounds[0], elem_bounds[2]))
-                            else:  # horizontal
-                                marker_bounds.append((elem_bounds[1], elem_bounds[3]))
-
-            # Sort markers by their left edge (or top edge for horizontal)
-            marker_bounds.sort(key=lambda x: x[0])
-
-            # Create guides at midpoints between adjacent markers
-            between_coords = []
-            for i in range(len(marker_bounds) - 1):
-                # Midpoint between right edge of current marker and left edge of next marker
-                right_edge_current = marker_bounds[i][1]
-                left_edge_next = marker_bounds[i + 1][0]
-                midpoint = (right_edge_current + left_edge_next) / 2
-                between_coords.append(midpoint)
-
-            guides_coords = between_coords
-
-        # Add outer guides if requested
-        if outer:
-            if bounds is None:
-                bounds = _require_bounds(obj, context="content bounds")
-            if axis == "vertical":
-                if outer is True or outer == "first":
-                    guides_coords.insert(0, bounds[0])  # x0
-                if outer is True or outer == "last":
-                    guides_coords.append(bounds[2])  # x1
-            else:
-                if outer is True or outer == "first":
-                    guides_coords.insert(0, bounds[1])  # y0
-                if outer is True or outer == "last":
-                    guides_coords.append(bounds[3])  # y1
-
-        # Remove duplicates and sort
-        guides_coords = sorted({float(coord) for coord in guides_coords})
-
-        # Create guides object
+        coords = [float(value) for value in result.coordinates]
+        bounds = _bounds_from_object(obj)
         if axis == "vertical":
-            return cls(verticals=guides_coords, context=obj, bounds=bounds)
-        else:
-            return cls(horizontals=guides_coords, context=obj, bounds=bounds)
+            return cls(verticals=coords, context=obj, bounds=bounds)
+        return cls(horizontals=coords, context=obj, bounds=bounds)
 
     @classmethod
     def from_whitespace(
@@ -1927,41 +1337,146 @@ class Guides:
         min_gap: float = 10,
     ) -> "Guides":
         """Create guides by detecting whitespace gaps (divide + snap placeholder)."""
+        if axis == "both":
+            vertical_guides = cls.from_whitespace(obj, axis="vertical", min_gap=min_gap)
+            horizontal_guides = cls.from_whitespace(obj, axis="horizontal", min_gap=min_gap)
+            bounds = _bounds_from_object(obj)
+            return cls(
+                verticals=list(vertical_guides.vertical),
+                horizontals=list(horizontal_guides.horizontal),
+                context=obj,
+                bounds=bounds,
+            )
+
+        options = {"min_gap": min_gap}
+
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            vert_values: Dict[Any, List[float]] = {}
-            horiz_values: Dict[Any, List[float]] = {}
+            axis_values: Dict[Any, List[float]] = {}
             for region in adapter.regions:
-                region_guides = cls._build_whitespace_guides(region, axis, min_gap)
-                vert_values[region] = [float(value) for value in region_guides.vertical]
-                horiz_values[region] = [float(value) for value in region_guides.horizontal]
+                result = run_guides_detect(
+                    axis=axis,
+                    method="whitespace",
+                    context=region,
+                    options=options,
+                )
+                axis_values[region] = [float(value) for value in result.coordinates]
 
-            if axis in ("vertical", "both"):
-                adapter.update_axis_from_regions("vertical", vert_values, append=False)
-            if axis in ("horizontal", "both"):
-                adapter.update_axis_from_regions("horizontal", horiz_values, append=False)
+            adapter.update_axis_from_regions(axis, axis_values, append=False)
             return guides
 
-        return cls._build_whitespace_guides(cast(Union["Page", "Region"], obj), axis, min_gap)
+        result = run_guides_detect(
+            axis=axis,
+            method="whitespace",
+            context=obj,
+            options=options,
+        )
+
+        coords = [float(value) for value in result.coordinates]
+        bounds = _bounds_from_object(obj)
+        if axis == "vertical":
+            return cls(verticals=coords, horizontals=[], context=obj, bounds=bounds)
+        return cls(verticals=[], horizontals=coords, context=obj, bounds=bounds)
 
     @classmethod
-    def _build_whitespace_guides(
+    def from_headers(
         cls,
-        obj: Union["Page", "Region"],
-        axis: Literal["vertical", "horizontal", "both"],
-        min_gap: float,
+        obj: GuidesContext,
+        axis: Literal["vertical", "horizontal"] = "vertical",
+        headers: Union["ElementCollection", Sequence[Any], None] = None,
+        method: Literal["min_crossings", "seam_carving"] = "min_crossings",
+        min_width: Optional[float] = None,
+        max_width: Optional[float] = None,
+        margin: float = 0.5,
+        row_stabilization: bool = True,
+        num_samples: int = 400,
     ) -> "Guides":
-        guides = cls.divide(obj, n=3, axis=axis)
-        if axis in ("vertical", "both"):
-            guides.snap_to_whitespace(
-                axis="vertical", min_gap=min_gap, detection_method="text", on_no_snap="ignore"
-            )
-        if axis in ("horizontal", "both"):
-            guides.snap_to_whitespace(
-                axis="horizontal", min_gap=min_gap, detection_method="text", on_no_snap="ignore"
-            )
-        return guides
+        """Create vertical guides by analyzing header elements."""
+
+        if axis != "vertical":
+            raise ValueError("from_headers() only works for vertical guides (columns)")
+
+        options = {
+            "headers": headers,
+            "method": method,
+            "min_width": min_width,
+            "max_width": max_width,
+            "margin": margin,
+            "row_stabilization": row_stabilization,
+            "num_samples": num_samples,
+        }
+
+        if _is_flow_region(obj):
+            guides = cls(context=obj)
+            adapter = FlowGuideAdapter(guides)
+            region_values: Dict[Any, List[float]] = {}
+
+            for region in adapter.regions:
+                result = run_guides_detect(
+                    axis="vertical",
+                    method="headers",
+                    context=region,
+                    options=options,
+                )
+                region_values[region] = [float(value) for value in result.coordinates]
+
+            adapter.update_axis_from_regions("vertical", region_values, append=False)
+            return guides
+
+        result = run_guides_detect(
+            axis="vertical",
+            method="headers",
+            context=obj,
+            options=options,
+        )
+
+        coords = [float(value) for value in result.coordinates]
+        bounds = _bounds_from_object(obj)
+        return cls(verticals=coords, horizontals=[], context=obj, bounds=bounds)
+
+    @classmethod
+    def from_stripes(
+        cls,
+        obj: GuidesContext,
+        axis: Literal["vertical", "horizontal"] = "horizontal",
+        stripes: Optional[Union["ElementCollection", Sequence[Any]]] = None,
+        color: Optional[str] = None,
+    ) -> "Guides":
+        """Create guides from zebra stripes or colored bands."""
+
+        axis = axis.lower()
+        if axis not in {"vertical", "horizontal"}:
+            raise ValueError("axis must be 'vertical' or 'horizontal'")
+
+        options = {"stripes": stripes, "color": color}
+
+        if _is_flow_region(obj):
+            guides = cls(context=obj)
+            adapter = FlowGuideAdapter(guides)
+            region_values: Dict[Any, List[float]] = {}
+
+            for region in adapter.regions:
+                result = run_guides_detect(
+                    axis=axis, method="stripes", context=region, options=options
+                )
+                region_values[region] = [float(value) for value in result.coordinates]
+
+            adapter.update_axis_from_regions(axis, region_values, append=True)
+            return guides
+
+        result = run_guides_detect(
+            axis=axis,
+            method="stripes",
+            context=obj,
+            options=options,
+        )
+
+        coords = [float(value) for value in result.coordinates]
+        bounds = _bounds_from_object(obj)
+        if axis == "vertical":
+            return cls(verticals=coords, horizontals=[], context=obj, bounds=bounds)
+        return cls(verticals=[], horizontals=coords, context=obj, bounds=bounds)
 
     @classmethod
     def new(cls, context: Optional[Union["Page", "Region"]] = None) -> "Guides":
@@ -3676,6 +3191,7 @@ class Guides:
         multi_page: Literal["auto", True, False] = "auto",
         header: Union[str, List[str], None] = "first",
         skip_repeating_headers: Optional[bool] = None,
+        structure_engine: Optional[str] = None,
     ) -> "TableResult":
         """
         Extract table data directly from guides without leaving temporary regions.
@@ -3711,6 +3227,8 @@ class Guides:
                 - List[str]: Custom column names
             skip_repeating_headers: Whether to remove duplicate header rows when extracting from collections.
                 Defaults to True when header is "first" or "all", False otherwise.
+            structure_engine: Optional structure detection engine name passed to the underlying
+                region extraction to leverage provider-backed table structure results.
 
         Returns:
             TableResult: Extracted table data
@@ -3762,6 +3280,7 @@ class Guides:
                 show_progress=show_progress,
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
+                structure_engine=structure_engine,
             )
 
         from natural_pdf.core.page import Page
@@ -3800,6 +3319,7 @@ class Guides:
                     content_filter=content_filter,
                     verticals=list(self.vertical) if has_verticals else None,
                     horizontals=list(self.horizontal) if has_horizontals else None,
+                    structure_engine=structure_engine,
                 )
             else:
                 raise ValueError(f"Target object {type(target_obj)} does not support extract_table")
@@ -3829,8 +3349,7 @@ class Guides:
                 # Use the first table region for extraction
                 table_region = table_region[0]
 
-            # Step 3: Extract table data using the region's extract_table method
-            table_result = table_region.extract_table(
+            return table_region.extract_table(
                 method=method,
                 table_settings=table_settings,
                 use_ocr=use_ocr,
@@ -3840,9 +3359,8 @@ class Guides:
                 show_progress=show_progress,
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
+                structure_engine=structure_engine,
             )
-
-            return table_result
 
         finally:
             # Step 4: Clean up all temporary regions created by build_grid
@@ -3885,6 +3403,7 @@ class Guides:
         show_progress: bool = True,
         content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
         apply_exclusions: bool = True,
+        structure_engine: Optional[str] = None,
     ) -> "TableResult":
         """
         Extract tables from multiple pages or regions using this guide pattern.
@@ -3911,6 +3430,7 @@ class Guides:
             show_progress: Show progress bar for multi-element extraction (default: True)
             content_filter: Content filtering function or patterns
             apply_exclusions: Whether to apply exclusion regions during extraction
+            structure_engine: Optional structure engine forwarded to each element extraction.
 
         Returns:
             TableResult: Combined table data from all elements
@@ -3984,6 +3504,7 @@ class Guides:
                 show_progress=False,  # Don't show nested progress
                 content_filter=content_filter,
                 apply_exclusions=apply_exclusions,
+                structure_engine=structure_engine,
             )
 
             # Convert to list of rows

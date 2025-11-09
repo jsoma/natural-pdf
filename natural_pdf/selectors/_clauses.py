@@ -1,12 +1,30 @@
-"""Built-in selector clause registrations."""
+"""Built-in selector clause registrations.
+
+This module is intentionally declarative: every pseudo-class we support in the
+core engine is registered through the clause-pack API so third parties can
+follow the exact same pattern.  Each handler receives the parsed AST node plus a
+``ClauseEvalContext`` (which provides the selector host/context/tolerances) and
+either returns per-element filters (for simple predicates) or rewrites the
+matched element list (for relational or collection-wide pseudos).  External
+packages can import the ``register_*`` decorators below to plug in new clauses
+without touching the parser.
+
+When adding a new clause, prefer small helper factories so aliases remain
+readable and logic stays testable.
+"""
 
 from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from natural_pdf.selectors.registry import ClauseEvalContext, register_pseudo
+from natural_pdf.selectors.registry import (
+    ClauseEvalContext,
+    register_post_pseudo,
+    register_pseudo,
+    register_relational_pseudo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +34,35 @@ def _element_text(element: Any) -> str:
     if text is None:
         return ""
     return str(text)
+
+
+def _resolve_reference_elements(ctx: ClauseEvalContext, selector: Any) -> List[Any]:
+    host = ctx.selector_context
+    if host is None or not selector:
+        return []
+
+    selector_str = str(selector)
+    find_kwargs = {}
+    for key in (
+        "regex",
+        "case",
+        "text_tolerance",
+        "auto_text_tolerance",
+        "reading_order",
+        "near_threshold",
+        "engine",
+    ):
+        if key in ctx.options:
+            find_kwargs[key] = ctx.options[key]
+
+    try:
+        collection = host.find_all(selector=selector_str, **find_kwargs)
+    except Exception:  # pragma: no cover - defensive
+        return []
+
+    if collection is None:
+        return []
+    return list(getattr(collection, "elements", collection))
 
 
 @register_pseudo("contains", replace=True)
@@ -137,3 +184,74 @@ _register_boolean(["unchecked"], "is_checked", invert=True)
 _register_boolean(["strike", "strikethrough", "strikeout"], "strike")
 _register_boolean(["underline", "underlined"], "underline")
 _register_boolean(["highlight", "highlighted"], "is_highlighted")
+
+
+def _single_reference(ctx: ClauseEvalContext, pseudo: Dict[str, Any]) -> Any:
+    refs = _resolve_reference_elements(ctx, pseudo.get("args"))
+    return refs[0] if refs else None
+
+
+@register_post_pseudo("first", replace=True)
+def _post_first(elements: List[Any], _pseudo: Dict[str, Any], _ctx: ClauseEvalContext) -> List[Any]:
+    return elements[:1] if elements else []
+
+
+@register_post_pseudo("last", replace=True)
+def _post_last(elements: List[Any], _pseudo: Dict[str, Any], _ctx: ClauseEvalContext) -> List[Any]:
+    if not elements:
+        return []
+    return elements[-1:]
+
+
+def _register_relational(name: str, predicate):
+    @register_relational_pseudo(name, replace=True)
+    def _handler(elements: List[Any], pseudo: Dict[str, Any], ctx: ClauseEvalContext) -> List[Any]:
+        ref = _single_reference(ctx, pseudo)
+        if ref is None:
+            return []
+        return [el for el in elements if predicate(el, ref, ctx)]
+
+    return _handler
+
+
+def _has_attrs(element: Any, *attrs: str) -> bool:
+    return all(hasattr(element, attr) for attr in attrs)
+
+
+def _rel_above(el: Any, ref: Any, _ctx: ClauseEvalContext) -> bool:
+    return _has_attrs(el, "bottom") and _has_attrs(ref, "top") and el.bottom <= ref.top  # type: ignore[attr-defined]
+
+
+def _rel_below(el: Any, ref: Any, _ctx: ClauseEvalContext) -> bool:
+    return _has_attrs(el, "top") and _has_attrs(ref, "bottom") and el.top >= ref.bottom  # type: ignore[attr-defined]
+
+
+def _rel_left_of(el: Any, ref: Any, _ctx: ClauseEvalContext) -> bool:
+    return _has_attrs(el, "x1") and _has_attrs(ref, "x0") and el.x1 <= ref.x0  # type: ignore[attr-defined]
+
+
+def _rel_right_of(el: Any, ref: Any, _ctx: ClauseEvalContext) -> bool:
+    return _has_attrs(el, "x0") and _has_attrs(ref, "x1") and el.x0 >= ref.x1  # type: ignore[attr-defined]
+
+
+def _rel_near(el: Any, ref: Any, ctx: ClauseEvalContext) -> bool:
+    if not _has_attrs(el, "x0", "x1", "top", "bottom") or not _has_attrs(
+        ref, "x0", "x1", "top", "bottom"
+    ):
+        return False
+    el_center_x = (el.x0 + el.x1) / 2  # type: ignore[attr-defined]
+    el_center_y = (el.top + el.bottom) / 2
+    ref_center_x = (ref.x0 + ref.x1) / 2  # type: ignore[attr-defined]
+    ref_center_y = (ref.top + ref.bottom) / 2
+    distance = ((el_center_x - ref_center_x) ** 2 + (el_center_y - ref_center_y) ** 2) ** 0.5
+    threshold = ctx.options.get("near_threshold")
+    if threshold is None:
+        threshold = 50
+    return distance <= threshold
+
+
+_register_relational("above", _rel_above)
+_register_relational("below", _rel_below)
+_register_relational("left-of", _rel_left_of)
+_register_relational("right-of", _rel_right_of)
+_register_relational("near", _rel_near)

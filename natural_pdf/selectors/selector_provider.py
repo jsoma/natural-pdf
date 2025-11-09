@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional, Protocol, Union
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.engine_provider import get_provider
+from natural_pdf.engine_registry import register_builtin, register_selector_engine
+from natural_pdf.selectors.host_mixin import SupportsSelectorHost
 
 NATIVE_SELECTOR_ENGINE = "native"
 
@@ -26,15 +28,31 @@ class SelectorOptions:
 
 @dataclass
 class SelectorContext:
-    host: Any
-    page: Any
-    region: Any
-    flow: Any
+    """
+    Lightweight context wrapper that exposes a consistent view of the selector host.
+
+    Engines should rely on this object instead of reaching directly into Page/Region/Flow
+    internals so alternate hosts (or future types) automatically gain parity.
+    """
+
+    host: SupportsSelectorHost
 
     def parse(self, selector: str) -> Dict[str, Any]:
         from natural_pdf.selectors.parser import parse_selector
 
         return parse_selector(selector)
+
+    @property
+    def page(self) -> Any:
+        return self.host.selector_page()
+
+    @property
+    def region(self) -> Any:
+        return self.host.selector_region()
+
+    @property
+    def flow(self) -> Any:
+        return self.host.selector_flow()
 
 
 @dataclass
@@ -79,10 +97,10 @@ class NativeSelectorEngine:
 
 
 def register_selector_engines(provider=None) -> None:
-    provider = provider or get_provider()
-    provider.register(
-        "selectors", NATIVE_SELECTOR_ENGINE, lambda **_: NativeSelectorEngine(), replace=True
-    )
+    def factory(**_):
+        return NativeSelectorEngine()
+
+    register_builtin(provider, "selectors", NATIVE_SELECTOR_ENGINE, factory)
 
 
 def resolve_selector_engine_name(host: Any, requested: Optional[str]) -> Optional[str]:
@@ -126,14 +144,14 @@ def run_selector_engine(
     reading_order: bool = True,
     near_threshold: Optional[float] = None,
 ) -> ElementCollection:
+    if not isinstance(host, SupportsSelectorHost):
+        raise TypeError(
+            f"Selector host of type '{type(host).__name__}' does not implement SupportsSelectorHost."
+        )
+
     provider = get_provider()
     engine = provider.get("selectors", context=host, name=engine_name)
-    context = SelectorContext(
-        host=host,
-        page=getattr(host, "page", host if hasattr(host, "chars") else None),
-        region=getattr(host, "region", host if hasattr(host, "bbox") else None),
-        flow=getattr(host, "flow", None),
-    )
+    context = SelectorContext(host=host)
     options = SelectorOptions(
         selector=selector,
         parsed=None,

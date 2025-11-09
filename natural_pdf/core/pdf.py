@@ -4,8 +4,6 @@ import json
 import logging
 import os
 import ssl
-import threading
-import time
 import urllib.request
 import weakref
 from collections.abc import Iterator, Sequence
@@ -42,7 +40,10 @@ else:
     PdfPlumberPDF = Any  # type: ignore[assignment]
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
-from natural_pdf.analyzers.layout.layout_manager import LayoutManager
+from natural_pdf.classification.classification_provider import (
+    get_classification_engine,
+    run_classification_batch,
+)
 from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.core.highlighting_service import HighlightingService
@@ -51,7 +52,13 @@ from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
 from natural_pdf.extraction.mixin import ExtractionMixin
-from natural_pdf.ocr import OCRManager
+from natural_pdf.ocr.ocr_manager import (
+    normalize_ocr_options,
+    resolve_ocr_device,
+    resolve_ocr_engine_name,
+    resolve_ocr_languages,
+    resolve_ocr_min_confidence,
+)
 from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.search import (
     BaseSearchOptions,
@@ -65,7 +72,6 @@ from natural_pdf.text_mixin import TextMixin
 from natural_pdf.vision.mixin import VisualSearchMixin
 
 if TYPE_CHECKING:
-    from natural_pdf.classification.manager import ClassificationManager
     from natural_pdf.core.highlighting_service import HighlightContext
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_collection import PageCollection
@@ -101,13 +107,6 @@ create_original_pdf: Optional[CreateOriginalPdfFn] = cast(
 logger = logging.getLogger("natural_pdf.core.pdf")
 
 
-def _get_classification_manager_class():
-    """Lazy import for ClassificationManager."""
-    from natural_pdf.classification.manager import ClassificationManager
-
-    return ClassificationManager
-
-
 ManagerFactory = Union[Callable[[], Any], type[Any]]
 ManagerFactories = Dict[str, ManagerFactory]
 ManagerCache = Dict[str, Any]
@@ -116,7 +115,6 @@ RegionFactory = Callable[["Page"], Optional["Region"]]
 RegionRegistry = List[Tuple[RegionFactory, Optional[str]]]
 
 DEFAULT_MANAGERS: ManagerFactories = {
-    "classification": _get_classification_manager_class,
     "structured_data": StructuredDataManager,
 }
 
@@ -617,13 +615,8 @@ class PDF(
         self._config = {"keep_spaces": keep_spaces}
         self._font_attrs = font_attrs
 
-        self._ocr_manager: Optional[OCRManager] = None
-        if OCRManager is not None:
-            self._ocr_manager = OCRManager()
-
-        self._layout_manager: Optional[LayoutManager] = None
-        if LayoutManager is not None:
-            self._layout_manager = LayoutManager()
+        # Deprecated managers remain for backwards compatibility but are no longer instantiated.
+        self._layout_manager = None
 
         self.highlighter: HighlightingService = HighlightingService(self)
         self._manager_factories: ManagerFactories = {}
@@ -1003,134 +996,43 @@ class PDF(
             resolutions. Consider using exclusions to mask unwanted regions and
             processing pages in batches for large documents.
         """
-        if not self._ocr_manager:
-            logger.error("OCRManager not available. Cannot apply OCR.")
-            return self
-
-        # Apply global options as defaults, but allow explicit parameters to override
-        import natural_pdf
-
-        # Use global OCR options if parameters are not explicitly set
-        ocr_options = getattr(natural_pdf.options, "ocr", None)
-        if engine is None and ocr_options is not None:
-            engine = getattr(ocr_options, "engine", engine)
-        if languages is None and ocr_options is not None:
-            languages = getattr(ocr_options, "languages", languages)
-        if min_confidence is None and ocr_options is not None:
-            min_confidence = getattr(ocr_options, "min_confidence", min_confidence)
-        if device is None:
-            pass  # No default device in options.ocr anymore
-
-        thread_id = threading.current_thread().name
-        logger.debug(f"[{thread_id}] PDF.apply_ocr starting for {self.path}")
+        normalized_options = normalize_ocr_options(options)
+        engine_name = resolve_ocr_engine_name(
+            context=self,
+            requested=engine,
+            options=normalized_options,
+            scope="pdf",
+        )
+        resolved_languages = resolve_ocr_languages(self, languages, scope="pdf")
+        resolved_min_confidence = resolve_ocr_min_confidence(self, min_confidence, scope="pdf")
+        resolved_device = resolve_ocr_device(self, device, scope="pdf")
 
         target_pages = self._get_target_pages(pages)
-
         if not target_pages:
             logger.warning("No pages selected for OCR processing.")
             return self
 
-        page_numbers = [p.number for p in target_pages]
-        logger.info(f"Applying batch OCR to pages: {page_numbers}...")
-
         final_resolution = resolution or self._config.get("resolution", 150)
-        logger.debug(f"Using OCR image resolution: {final_resolution} DPI")
-
-        images_pil = []
-        page_image_map = []
-        logger.info(f"[{thread_id}] Rendering {len(target_pages)} pages...")
-        failed_page_num = "unknown"
-        render_start_time = time.monotonic()
-
-        try:
-            for i, page in enumerate(tqdm(target_pages, desc="Rendering pages", leave=False)):
-                failed_page_num = page.number
-                logger.debug(f"  Rendering page {page.number} (index {page.index})...")
-                # Use render() for clean image without highlights
-                img = page.render(resolution=final_resolution)
-                if img is None:
-                    logger.error(f"  Failed to render page {page.number} to image.")
-                    continue
-                images_pil.append(img)
-                page_image_map.append((page, img))
-        except Exception as e:
-            logger.error(f"Failed to render pages for batch OCR: {e}")
-            logger.error(f"Failed to render pages for batch OCR: {e}")
-            raise RuntimeError(f"Failed to render page {failed_page_num} for OCR.") from e
-
-        render_end_time = time.monotonic()
-        logger.debug(
-            f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)"
-        )
-        logger.debug(
-            f"[{thread_id}] Finished rendering {len(images_pil)} images (Duration: {render_end_time - render_start_time:.2f}s)"
+        logger.info(
+            "Applying OCR to %d page(s) with engine '%s' at %s DPI.",
+            len(target_pages),
+            engine_name,
+            final_resolution,
         )
 
-        if not images_pil or not page_image_map:
-            logger.error("No images were successfully rendered for batch OCR.")
-            return self
+        for page in tqdm(target_pages, desc="Applying OCR", leave=False):
+            page.apply_ocr(
+                engine=engine_name,
+                options=normalized_options,
+                languages=resolved_languages,
+                min_confidence=resolved_min_confidence,
+                device=resolved_device,
+                resolution=final_resolution,
+                detect_only=detect_only,
+                apply_exclusions=apply_exclusions,
+                replace=replace,
+            )
 
-        ocr_kwargs: Dict[str, Any] = {
-            "detect_only": detect_only,
-        }
-        if engine is not None:
-            ocr_kwargs["engine"] = engine
-        if languages is not None:
-            ocr_kwargs["languages"] = languages
-        if min_confidence is not None:
-            ocr_kwargs["min_confidence"] = min_confidence
-        if device is not None:
-            ocr_kwargs["device"] = device
-        if options is not None:
-            ocr_kwargs["options"] = options
-
-        logger.info(f"[{thread_id}] Calling OCR Manager with args: {ocr_kwargs}...")
-        ocr_start_time = time.monotonic()
-
-        batch_results = self._ocr_manager.apply_ocr(images=images_pil, **ocr_kwargs)
-
-        if not isinstance(batch_results, list) or len(batch_results) != len(images_pil):
-            logger.error("OCR Manager returned unexpected result format or length.")
-            return self
-
-        logger.info("OCR Manager batch processing complete.")
-
-        ocr_end_time = time.monotonic()
-        logger.debug(
-            f"[{thread_id}] OCR processing finished (Duration: {ocr_end_time - ocr_start_time:.2f}s)"
-        )
-
-        logger.info("Adding OCR results to respective pages...")
-        total_elements_added = 0
-
-        for i, (page, img) in enumerate(page_image_map):
-            results_for_page = batch_results[i]
-            if not isinstance(results_for_page, list):
-                logger.warning(
-                    f"Skipping results for page {page.number}: Expected list, got {type(results_for_page)}"
-                )
-                continue
-
-            logger.debug(f"  Processing {len(results_for_page)} results for page {page.number}...")
-            try:
-                if replace and hasattr(page, "remove_ocr_elements"):
-                    page.remove_ocr_elements()
-
-                img_scale_x = page.width / img.width if img.width > 0 else 1
-                img_scale_y = page.height / img.height if img.height > 0 else 1
-                elements = page.create_text_elements_from_ocr(
-                    results_for_page, img_scale_x, img_scale_y
-                )
-
-                if elements:
-                    total_elements_added += len(elements)
-                    logger.debug(f"  Added {len(elements)} OCR TextElements to page {page.number}.")
-                else:
-                    logger.debug(f"  No valid TextElements created for page {page.number}.")
-            except Exception as e:
-                logger.error(f"  Error adding OCR elements to page {page.number}: {e}")
-
-        logger.info(f"Finished adding OCR results. Total elements added: {total_elements_added}")
         return self
 
     def add_region(
@@ -2617,28 +2519,15 @@ class PDF(
         if not labels:
             raise ValueError("Labels list cannot be empty.")
 
-        try:
-            manager = self.get_manager("classification")
-        except (ValueError, RuntimeError) as e:
-            raise ClassificationError(f"Cannot get ClassificationManager: {e}") from e
-
-        if not manager or not manager.is_available():
-            from natural_pdf.classification.manager import is_classification_available
-
-            if not is_classification_available():
-                raise ImportError(
-                    "Classification dependencies missing. "
-                    'Install with: pip install "natural-pdf[ai]"'
-                )
-            raise ClassificationError("ClassificationManager not available.")
-
         target_pages = self._get_target_pages(pages)
 
         if not target_pages:
             logger.warning("No pages selected for classification.")
             return self
 
-        inferred_using = manager.infer_using(model if model else manager.DEFAULT_TEXT_MODEL, using)
+        engine_name = kwargs.pop("classification_engine", None)
+        engine_obj = get_classification_engine(self, engine_name)
+        inferred_using = engine_obj.infer_using(model or engine_obj.default_model("text"), using)
         logger.info(
             f"Classifying {len(target_pages)} pages using model '{model or '(default)'}' (mode: {inferred_using})"
         )
@@ -2664,11 +2553,17 @@ class PDF(
         logger.debug(f"Gathered content for {len(pages_to_classify)} pages.")
 
         try:
-            batch_results = manager.classify_batch(
-                item_contents=page_contents,
+            batch_results = run_classification_batch(
+                context=self,
+                contents=page_contents,
                 labels=labels,
-                model_id=model,
+                model_id=model or engine_obj.default_model(inferred_using),
                 using=inferred_using,
+                min_confidence=min_confidence,
+                multi_label=multi_label,
+                batch_size=8,
+                progress_bar=True,
+                engine_name=engine_name,
                 **kwargs,
             )
         except Exception as e:
@@ -2895,22 +2790,6 @@ class PDF(
         return resolved
 
     # --- Classification Mixin Implementation --- #
-
-    def _get_classification_manager(self) -> "ClassificationManager":
-        """Returns the ClassificationManager instance for this PDF."""
-        try:
-            manager = self.get_manager("classification")
-        except (KeyError, RuntimeError) as e:
-            raise AttributeError(f"Could not retrieve ClassificationManager: {e}") from e
-
-        from natural_pdf.classification.manager import (
-            ClassificationManager as _ClassificationManager,
-        )
-
-        if not isinstance(manager, _ClassificationManager):
-            raise AttributeError("Retrieved classification manager does not match expected type.")
-
-        return manager
 
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         """
