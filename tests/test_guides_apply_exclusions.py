@@ -8,23 +8,13 @@ import pytest
 from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 
-
-def find_test_pdf():
-    """Find a suitable test PDF file."""
-    project_root = Path(__file__).parent.parent
-    pdf_path = (
-        project_root
-        / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-    )
-    return pdf_path if pdf_path.exists() else None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_from_content_apply_exclusions():
     """Test that from_content respects apply_exclusions parameter."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find some text that exists on the page
@@ -70,12 +60,10 @@ def test_from_content_apply_exclusions():
     print("✅ apply_exclusions parameter accepted and processed")
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_from_content_with_exclusion_zones():
     """Test from_content behavior when exclusion zones are actually set."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find some text elements
@@ -126,12 +114,10 @@ def test_from_content_with_exclusion_zones():
     print("✅ Exclusion zones properly handled in from_content")
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_add_content_apply_exclusions():
     """Test that add_content instance method also supports apply_exclusions."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find a text marker
@@ -184,33 +170,17 @@ def test_apply_exclusions_parameter_defaults():
 
 
 if __name__ == "__main__":
-    # Run a simple test
-    pdf_path = find_test_pdf()
-    if pdf_path:
-        print(f"Found test PDF: {pdf_path}")
+    pdf = PDF(TEST_PDF)
+    page = pdf[0]
 
-        pdf = PDF(pdf_path)
-        page = pdf[0]
-
-        # Test that the parameter is accepted
-        try:
-            guides = Guides.from_content(
-                obj=page, axis="vertical", markers=["test"], apply_exclusions=True
-            )
-            print("✅ from_content accepts apply_exclusions=True")
-        except TypeError as e:
-            print(f"❌ Parameter not accepted: {e}")
-
-        try:
-            guides = Guides.from_content(
-                obj=page, axis="vertical", markers=["test"], apply_exclusions=False
-            )
-            print("✅ from_content accepts apply_exclusions=False")
-        except TypeError as e:
-            print(f"❌ Parameter not accepted: {e}")
-
-    else:
-        print("❌ No test PDF found")
+    try:
+        Guides.from_content(obj=page, axis="vertical", markers=["test"], apply_exclusions=True)
+        Guides.from_content(obj=page, axis="vertical", markers=["test"], apply_exclusions=False)
+        print("✅ from_content accepts apply_exclusions parameter")
+    except TypeError as exc:
+        print(f"❌ Parameter not accepted: {exc}")
 
     # Run pytest
+    import pytest
+
     pytest.main([__file__, "-v"])

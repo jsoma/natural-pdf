@@ -24,7 +24,7 @@ class PdfPlumberTablesEngine:
         region: Any,
         table_settings: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         settings = dict(table_settings or {})
         apply_exclusions = kwargs.get("apply_exclusions", True)
 
@@ -60,7 +60,7 @@ class PdfPlumberTablesEngine:
         settings: Dict[str, Any],
         *,
         apply_exclusions: bool,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         logger.debug(
             "Region %s: Auto-detecting tables extraction method...",
             getattr(region, "bbox", None),

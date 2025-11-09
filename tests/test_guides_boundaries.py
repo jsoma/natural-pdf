@@ -75,11 +75,10 @@ class TestGuidesBoundaries:
             has_left_boundary = any(abs(x - 0) < 1 for x in guides.vertical.data)
             has_right_boundary = any(abs(x - page.width) < 1 for x in guides.vertical.data)
 
-            # By default, boundaries should NOT be included
-            # This is the current behavior that causes missing columns
+            # Vector PDFs expose their own boundary lines, so they should be present by default
             assert (
-                not has_left_boundary or not has_right_boundary
-            ), "Default from_lines should not include both boundaries"
+                has_left_boundary and has_right_boundary
+            ), "Expected detected guides to include both page boundaries"
 
         finally:
             os.unlink(pdf_path)

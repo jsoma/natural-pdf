@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Optional, Sequence, Set, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence, Set, Tuple
 
 from natural_pdf.core.interfaces import HasPages, HasSinglePage
 
-try:  # pragma: no cover - typing helper
+if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-except ImportError:  # pragma: no cover
-    Page = Any  # type: ignore
+else:  # pragma: no cover
+    Page = Any  # type: ignore[misc, assignment]
 
 logger = logging.getLogger(__name__)
 

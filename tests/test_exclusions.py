@@ -158,7 +158,7 @@ class TestExclusionMethods:
         pdf = npdf.PDF("pdfs/confidential.pdf")
         page = pdf.pages[0]
 
-        with pytest.raises(ValueError, match="Invalid exclusion method"):
+        with pytest.raises(ValueError, match="Exclusion method must be 'region' or 'element'"):
             page.add_exclusion('text:contains("test")', method="invalid")
 
     def test_debug_output(self):

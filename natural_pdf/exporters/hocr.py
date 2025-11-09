@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Optional, Union
 from xml.etree import ElementTree
 
-from pikepdf import Matrix, Name, Rectangle
-from pikepdf.canvas import (
+from pikepdf import Matrix, Name, Rectangle  # type: ignore[import]
+from pikepdf.canvas import (  # type: ignore[import]
     BLACK,
     BLUE,
     CYAN,

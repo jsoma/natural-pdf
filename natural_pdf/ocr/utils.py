@@ -1,7 +1,7 @@
 import base64
 import io
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Protocol, TypeGuard
 
 from tqdm.auto import tqdm
 
@@ -14,6 +14,14 @@ if TYPE_CHECKING:
 from natural_pdf.utils.locks import pdf_render_lock
 
 logger = logging.getLogger(__name__)
+
+
+class _SupportsMutableText(Protocol):
+    text: str
+
+
+def _has_mutable_text(element: Any) -> TypeGuard[_SupportsMutableText]:
+    return hasattr(element, "text")
 
 
 def _apply_ocr_correction_to_elements(
@@ -54,10 +62,10 @@ def _apply_ocr_correction_to_elements(
         if (
             isinstance(element_source, str)
             and element_source.startswith("ocr")
-            and hasattr(element, "text")
+            and _has_mutable_text(element)
         ):
             elements_checked += 1
-            current_text = getattr(element, "text")  # Already checked hasattr
+            current_text = element.text  # Already ensured via type guard
 
             new_text = correction_callback(element)
 

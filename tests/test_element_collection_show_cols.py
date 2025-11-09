@@ -1,26 +1,37 @@
 #!/usr/bin/env python3
 """Test that ElementCollection.show() respects the columns parameter for multi-page collections."""
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
+from natural_pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.elements.text import TextElement
 
 
-def create_mock_element(page_index, text="Test"):
-    """Create a mock TextElement with required attributes."""
-    elem = Mock(spec=TextElement)
-    elem.page = Mock()
-    elem.page.page_index = page_index
-    elem.page._highlighter = Mock()
-    elem.text = text
-    elem.bbox = (100, 100, 200, 200)
+def collect_real_text_elements(target_count: int, min_unique_pages: int = 1) -> list:
+    """Collect TextElements from a real PDF to avoid brittle mocks."""
+    pdf = PDF(Path("pdfs/multi-page-table.pdf"))
+    collected = []
+    per_page_limit = max(1, (target_count + min_unique_pages - 1) // max(1, min_unique_pages))
 
-    # Mock the get_highlight_specs method if it exists
-    if hasattr(TextElement, "get_highlight_specs"):
-        elem.get_highlight_specs = Mock(return_value=None)
+    for page in pdf:
+        text_elements = list(page.find_all("text"))
+        if not text_elements:
+            continue
+        take = min(per_page_limit, target_count - len(collected), len(text_elements))
+        collected.extend(text_elements[:take])
+        if (
+            len(collected) >= target_count
+            and len({elem.page for elem in collected}) >= min_unique_pages
+        ):
+            break
 
-    return elem
+    unique_pages = {elem.page for elem in collected}
+    if len(collected) < target_count or len(unique_pages) < min_unique_pages:
+        raise RuntimeError(
+            f"Unable to collect {target_count} text elements from at least {min_unique_pages} pages"
+        )
+    return collected[:target_count]
 
 
 class TestElementCollectionShowCols:
@@ -29,7 +40,7 @@ class TestElementCollectionShowCols:
     def test_show_respects_columns_parameter(self):
         """Test that show() passes the columns parameter to unified_render."""
         # Create a collection with elements from multiple pages
-        elements = [create_mock_element(i) for i in range(12)]
+        elements = collect_real_text_elements(12)
         collection = ElementCollection(elements)
 
         # Mock the highlighter and its unified_render method
@@ -63,7 +74,7 @@ class TestElementCollectionShowCols:
 
     def test_show_with_cols_parameter_works_as_alias(self):
         """Test that using 'cols' parameter works as an alias for 'columns'."""
-        elements = [create_mock_element(i) for i in range(6)]
+        elements = collect_real_text_elements(6)
         collection = ElementCollection(elements)
 
         mock_highlighter = Mock()
@@ -81,7 +92,7 @@ class TestElementCollectionShowCols:
 
     def test_show_layout_defaults_for_multipage(self):
         """Test that multi-page collections default to grid layout."""
-        elements = [create_mock_element(i) for i in range(4)]
+        elements = collect_real_text_elements(4, min_unique_pages=2)
         collection = ElementCollection(elements)
 
         mock_highlighter = Mock()

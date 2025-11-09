@@ -33,12 +33,14 @@ def _autodetect_stripes(context: GuidesContext, color: Optional[str]) -> List[An
     try:
         raw = finder(selector)
     except Exception:  # pragma: no cover
-        raw = []
+        raw = None
 
-    if hasattr(raw, "elements"):
+    if isinstance(raw, ElementCollection):
         candidates = list(raw.elements)
+    elif isinstance(raw, Sequence):
+        candidates = list(raw)
     else:
-        candidates = list(raw or [])
+        candidates = []
 
     if color:
         return candidates
@@ -67,7 +69,7 @@ def _coerce_bounds(stripe: Any) -> Optional[Bounds]:
     x1 = getattr(stripe, "x1", None)
     top = getattr(stripe, "top", None)
     bottom = getattr(stripe, "bottom", None)
-    if None in (x0, x1, top, bottom):
+    if x0 is None or x1 is None or top is None or bottom is None:
         return None
     try:
         return (float(x0), float(top), float(x1), float(bottom))

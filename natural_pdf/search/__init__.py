@@ -1,7 +1,7 @@
 """Makes search functionality easily importable and provides factory functions."""
 
 import logging
-from typing import Optional
+from typing import Optional, Type, Union
 
 # Import constants
 from .search_options import (
@@ -15,32 +15,40 @@ from .search_service_protocol import Indexable, IndexConfigurationError, SearchS
 # Check search extras availability
 LANCEDB_AVAILABLE = False
 SEARCH_DEPENDENCIES_AVAILABLE = False
+LanceDBSearchService: Optional[Type[SearchServiceProtocol]] = None
+NumpySearchService: Optional[Type[SearchServiceProtocol]] = None
+DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+DEFAULT_LANCEDB_PERSIST_PATH = "./lancedb_data"
 
 try:
-    import numpy as np
+    import numpy as np  # noqa: F401
 
-    # Lazy import for sentence_transformers to avoid heavy loading at module level
-    # import sentence_transformers
-    # Basic search dependencies are available
     SEARCH_DEPENDENCIES_AVAILABLE = True
 
-    # Check if LanceDB is available
     try:
-        import lancedb
-        import pyarrow
-
-        LANCEDB_AVAILABLE = True
         from .lancedb_search_service import (
-            DEFAULT_EMBEDDING_MODEL,
-            DEFAULT_LANCEDB_PERSIST_PATH,
-            LanceDBSearchService,
+            DEFAULT_EMBEDDING_MODEL as LANCEDB_DEFAULT_EMBEDDING_MODEL,
         )
+        from .lancedb_search_service import DEFAULT_LANCEDB_PERSIST_PATH as LANCEDB_PERSIST_PATH
+        from .lancedb_search_service import LanceDBSearchService as _LanceDBSearchService
+
+        LanceDBSearchService = _LanceDBSearchService
+        DEFAULT_EMBEDDING_MODEL = LANCEDB_DEFAULT_EMBEDDING_MODEL
+        DEFAULT_LANCEDB_PERSIST_PATH = LANCEDB_PERSIST_PATH
+        LANCEDB_AVAILABLE = True
     except ImportError:
-        # LanceDB not available, we'll use NumPy fallback
         LANCEDB_AVAILABLE = False
-        from .numpy_search_service import DEFAULT_EMBEDDING_MODEL, NumpySearchService
+        try:
+            from .numpy_search_service import (
+                DEFAULT_EMBEDDING_MODEL as NUMPY_DEFAULT_EMBEDDING_MODEL,
+            )
+            from .numpy_search_service import NumpySearchService as _NumpySearchService
+
+            NumpySearchService = _NumpySearchService
+            DEFAULT_EMBEDDING_MODEL = NUMPY_DEFAULT_EMBEDDING_MODEL
+        except ImportError:
+            NumpySearchService = None
 except ImportError:
-    # Basic dependencies missing
     SEARCH_DEPENDENCIES_AVAILABLE = False
     LANCEDB_AVAILABLE = False
 
@@ -118,13 +126,18 @@ def get_search_service(
         )
 
     # Select the appropriate implementation
-    if LANCEDB_AVAILABLE:
+    if LANCEDB_AVAILABLE and LanceDBSearchService is not None:
         logger.info(f"Using LanceDB for vector search (collection: {collection_name})")
         service_instance = LanceDBSearchService(**service_args)
-    else:
+    elif NumpySearchService is not None:
         logger.info(
             f"Using NumPy fallback for in-memory vector search (collection: {collection_name})"
         )
         service_instance = NumpySearchService(**service_args)
+    else:
+        raise RuntimeError(
+            "Vector search dependencies are not available. "
+            "Install with: pip install natural-pdf[search]"
+        )
 
     return service_instance

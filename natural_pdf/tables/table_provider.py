@@ -26,8 +26,9 @@ class TableExtractionEngine(Protocol):
         region: Any,
         table_settings: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         """Extract tables for the provided region."""
+        ...
 
 
 def register_table_engines(provider=None) -> None:
@@ -51,7 +52,7 @@ def run_table_engine(
     engine_name: str,
     table_settings: Optional[Dict[str, Any]] = None,
     **kwargs: Any,
-) -> List[List[List[str]]]:
+) -> List[List[List[Optional[str]]]]:
     """Execute a registered table engine and return the extracted tables.
 
     Args:

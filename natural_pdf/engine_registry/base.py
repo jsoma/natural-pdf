@@ -68,4 +68,5 @@ def list_engines(capability: Optional[str] = None) -> dict[str, tuple[str, ...]]
     """Return registered engines for a specific capability (or all if None)."""
 
     provider = get_provider()
-    return provider.list(capability)
+    raw = provider.list(capability)
+    return {cap: tuple(names) for cap, names in raw.items()}

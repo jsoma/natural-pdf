@@ -2070,17 +2070,17 @@ class PDF(
                 results.append(_empty_result())
                 continue
 
-                results.append(
-                    QAResult(
-                        {
-                            "answer": normalized_answer,
-                            "confidence": None,
-                            "found": True,
-                            "page_num": None,
-                            "source_elements": [],
-                        }
-                    )
+            results.append(
+                QAResult(
+                    {
+                        "answer": normalized_answer,
+                        "confidence": None,
+                        "found": True,
+                        "page_num": None,
+                        "source_elements": [],
+                    }
                 )
+            )
 
         return results
 
@@ -2471,6 +2471,8 @@ class PDF(
                     "img2pdf library is not available despite DESKEW_AVAILABLE flag being set."
                 )
             pdf_bytes = img2pdf.convert(deskewed_images_bytes)
+            if pdf_bytes is None:
+                raise RuntimeError("img2pdf.convert returned no data.")
 
             # Wrap bytes in a stream
             pdf_stream = io.BytesIO(pdf_bytes)
@@ -2500,6 +2502,8 @@ class PDF(
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         analysis_key: str = "classification",
         using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        multi_label: bool = False,
         **kwargs,
     ) -> "PDF":
         """

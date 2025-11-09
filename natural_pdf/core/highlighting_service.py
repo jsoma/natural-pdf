@@ -533,7 +533,7 @@ class HighlightingService:
         elif isinstance(color_input, str):
             try:
                 # Convert color name/hex string to RGB tuple (0.0-1.0 floats)
-                from colour import Color  # Import here if not at top
+                from colour import Color  # type: ignore[import-untyped]
 
                 color_obj = Color(color_input)
                 # Convert floats (0.0-1.0) to integers (0-255)
@@ -1221,40 +1221,33 @@ class HighlightingService:
         from natural_pdf.core.render_spec import RenderSpec
 
         if not specs:
-            logger.warning("unified_render called with empty specs list")
-            return None
+            raise ValueError("unified_render requires at least one RenderSpec")
 
         # Process each spec into an image
         images = []
 
         for spec_idx, spec in enumerate(specs):
             if not isinstance(spec, RenderSpec):
-                logger.error(f"Invalid spec type at index {spec_idx}: {type(spec)}")
-                continue
+                raise TypeError(f"Spec index {spec_idx} expected RenderSpec, got {type(spec)}")
 
-            try:
-                # Render the page
-                page_image = self._render_spec(
-                    spec=spec,
-                    resolution=resolution,
-                    width=width,
-                    labels=labels,
-                    label_format=label_format,
-                    legend_position=legend_position,
-                    spec_index=spec_idx,
-                    **kwargs,
-                )
+            page_image = self._render_spec(
+                spec=spec,
+                resolution=resolution,
+                width=width,
+                labels=labels,
+                label_format=label_format,
+                legend_position=legend_position,
+                spec_index=spec_idx,
+                **kwargs,
+            )
 
-                if page_image:
-                    images.append(page_image)
+            if page_image is None:
+                raise RuntimeError(f"Render spec {spec_idx} produced no image")
 
-            except Exception as e:
-                logger.error(f"Error rendering spec {spec_idx}: {e}", exc_info=True)
-                continue
+            images.append(page_image)
 
         if not images:
-            logger.warning("No images generated from specs")
-            return None
+            raise RuntimeError("unified_render produced no images from specs")
 
         # Single image - return directly
         if len(images) == 1:
@@ -1269,8 +1262,9 @@ class HighlightingService:
             return self._grid_images(
                 images, columns=columns, gap=gap, background_color=background_color
             )
-        else:  # "single" - just return first image
-            logger.warning("Multiple specs with layout='single', returning first image only")
+        else:  # "single"
+            if len(images) > 1:
+                raise ValueError("layout='single' cannot be used with multiple specs")
             return images[0]
 
     def _render_spec(
@@ -1300,22 +1294,10 @@ class HighlightingService:
             actual_resolution = resolution if resolution is not None else 150
 
         # Get base page image
-        try:
-            # Use render_plain_page for clean rendering
-            logger.debug(
-                f"Calling render_plain_page with page={page}, resolution={actual_resolution}"
-            )
-            page_image = render_plain_page(page, resolution=actual_resolution)
-        except Exception as e:
-            logger.error(f"Failed to render page: {e}")
-            logger.error(f"Page: {page}, Resolution: {actual_resolution}, Width: {width}")
-            import traceback
-
-            traceback.print_exc()
-            return None
-
+        logger.debug(f"Calling render_plain_page with page={page}, resolution={actual_resolution}")
+        page_image = render_plain_page(page, resolution=actual_resolution)
         if page_image is None:
-            return None
+            raise RuntimeError(f"render_plain_page returned None for page {page}")
 
         # Apply crop if specified
         if spec.crop_bbox:
@@ -1356,26 +1338,20 @@ class HighlightingService:
                         break
 
                 if quantitative_metadata:
-                    # Create colorbar for quantitative data
-                    try:
-                        colorbar = create_colorbar(
-                            values=quantitative_metadata["values"],
-                            colormap=quantitative_metadata["colormap"],
-                            bins=quantitative_metadata["bins"],
-                            orientation=(
-                                "horizontal" if legend_position in ["top", "bottom"] else "vertical"
-                            ),
-                        )
-                        page_image = merge_images_with_legend(
-                            page_image, colorbar, position=legend_position
-                        )
-                        logger.debug(
-                            f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' in spec {spec_index}."
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to create colorbar for spec {spec_index}: {e}")
-                        # Fall back to regular legend
-                        quantitative_metadata = None
+                    colorbar = create_colorbar(
+                        values=quantitative_metadata["values"],
+                        colormap=quantitative_metadata["colormap"],
+                        bins=quantitative_metadata["bins"],
+                        orientation=(
+                            "horizontal" if legend_position in ["top", "bottom"] else "vertical"
+                        ),
+                    )
+                    page_image = merge_images_with_legend(
+                        page_image, colorbar, position=legend_position
+                    )
+                    logger.debug(
+                        f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' in spec {spec_index}."
+                    )
 
                 if not quantitative_metadata:
                     # Create regular categorical legend
@@ -1430,8 +1406,7 @@ class HighlightingService:
         )
 
         if pixel_bbox[2] <= pixel_bbox[0] or pixel_bbox[3] <= pixel_bbox[1]:
-            logger.warning(f"Invalid crop bounds: {crop_bbox}")
-            return image
+            raise ValueError(f"Invalid crop bounds: {crop_bbox}")
 
         return image.crop(pixel_bbox)
 
@@ -1462,8 +1437,7 @@ class HighlightingService:
             polygon = highlight_dict.get("polygon")
 
             if bbox is None and polygon is None:
-                logger.warning(f"Highlight {idx} has no geometry")
-                continue
+                raise ValueError(f"Highlight {idx} lacks geometry (bbox or polygon required)")
 
             # Get color
             color = highlight_dict.get("color")

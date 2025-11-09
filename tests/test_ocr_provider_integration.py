@@ -56,7 +56,8 @@ def test_page_apply_ocr_uses_provider(monkeypatch):
     provider._entry_points_loaded = True
     monkeypatch.setattr(provider_module, "_PROVIDER", provider)
 
-    provider.register("ocr", "fake", lambda **_: _FakeOCREngine(), replace=True)
+    for capability in ("ocr", "ocr.apply", "ocr.extract"):
+        provider.register(capability, "fake", lambda **_: _FakeOCREngine(), replace=True)
 
     pdf = npdf.PDF("pdfs/tiny-ocr.pdf", text_layer=False)
     page = pdf.pages[0]

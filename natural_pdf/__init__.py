@@ -120,7 +120,7 @@ try:
     __version__ = importlib_metadata.version("natural-pdf")
 except importlib_metadata.PackageNotFoundError:
     try:
-        from setuptools_scm import get_version
+        from setuptools_scm import get_version  # type: ignore[import]
 
         __version__ = get_version(root=Path(__file__).resolve().parents[1])
     except Exception:  # pragma: no cover - SCM fallback is best-effort

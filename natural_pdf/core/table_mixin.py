@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union, cast
 
+from natural_pdf.core.interfaces import SupportsGeometry
 from natural_pdf.tables import TableResult
 from natural_pdf.tables.structure_provider import (
     resolve_structure_engine_name as resolve_table_structure_engine_name,
@@ -15,10 +16,14 @@ from natural_pdf.tables.table_provider import (
 )
 from natural_pdf.tables.utils import build_table_from_cells, select_primary_table
 
+if TYPE_CHECKING:
+    from natural_pdf.elements.element_collection import ElementCollection
+    from natural_pdf.elements.region import Region
+
 logger = logging.getLogger(__name__)
 
 
-class TableExtractionMixin:
+class TableExtractionMixin(SupportsGeometry):
     """Shared table extraction logic for Region-like classes."""
 
     def extract_table(
@@ -91,18 +96,23 @@ class TableExtractionMixin:
         # Auto-detect method if not specified
         if method is None:
             # If this is a TATR-detected region, use TATR method
-            if hasattr(self, "model") and self.model == "tatr" and self.region_type == "table":
+            host_model = getattr(self, "model", None)
+            host_region_type = getattr(self, "region_type", None)
+            if host_model == "tatr" and host_region_type == "table":
                 effective_method = "tatr"
             else:
                 logger.debug(f"Region {self.bbox}: Auto-detecting table extraction method...")
 
                 try:
+                    intersects = cast(
+                        Optional[Callable[[Any], bool]], getattr(self, "intersects", None)
+                    )
                     cell_regions_in_table = [
                         c
                         for c in self.page.find_all(
                             "region[type=table_cell]", apply_exclusions=False
                         )
-                        if self.intersects(c)
+                        if intersects and intersects(c)
                     ]
                 except Exception:
                     cell_regions_in_table = []  # Fallback silently
@@ -186,7 +196,7 @@ class TableExtractionMixin:
         self,
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         """
         Extract all tables from this region using pdfplumber-based methods.
 
@@ -216,7 +226,7 @@ class TableExtractionMixin:
 
     def _extract_table_tatr(
         self, use_ocr=False, ocr_config=None, content_filter=None, apply_exclusions=True
-    ) -> List[List[str]]:
+    ) -> List[List[Optional[str]]]:
         from natural_pdf.tables.engines.tatr import TATRTableEngine
 
         engine = TATRTableEngine()

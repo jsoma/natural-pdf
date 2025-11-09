@@ -3,7 +3,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, List, Optional, Protocol, Sequence, Tuple, TypeGuard, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeGuard,
+    Union,
+    cast,
+)
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,12 +32,35 @@ logger = logging.getLogger(__name__)
 Bounds = Tuple[float, float, float, float]
 BoolArray = NDArray[np.bool_]
 IntArray = NDArray[np.int_]
-GuidesContext = Union["Page", Region, FlowRegion]
 
-try:  # pragma: no cover - typing helper
+
+class SupportsGuidesContext(Protocol):
+    elements: Sequence[Any]
+
+    def find(self, selector: str, **kwargs: Any) -> Any: ...
+
+    def find_all(self, selector: str, **kwargs: Any) -> Any: ...
+
+    def create_region(
+        self, x0: float, top: float, x1: float, bottom: float, **kwargs: Any
+    ) -> Region: ...
+
+    def region(self, x0: float, top: float, x1: float, bottom: float, **kwargs: Any) -> Region: ...
+
+    def extract_table(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    def detect_lines(self, *args: Any, **kwargs: Any) -> Any: ...
+
+    @property
+    def bbox(self) -> Bounds: ...
+
+
+GuidesContext = Union[SupportsGuidesContext, "Page", Region, FlowRegion]
+
+if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-except ImportError:  # pragma: no cover
-    Page = Any  # type: ignore
+else:  # pragma: no cover
+    Page = Any  # type: ignore[misc, assignment]
 
 
 class _SupportsSize(Protocol):  # type: ignore[misc]

@@ -12,6 +12,7 @@ def test_find_with_pdf_exclusions():
     """Test that find() applies PDF-level exclusions even when page has no exclusions."""
     # Create mock PDF with exclusions
     mock_pdf = Mock()
+    mock_pdf._config = {}
     mock_pdf._exclusions = [
         (lambda page: page.find("text:contains(HEADER)").expand(), "header_exclusion")
     ]
@@ -88,6 +89,7 @@ def test_find_all_with_pdf_exclusions():
     """Test that find_all() applies PDF-level exclusions even when page has no exclusions."""
     # Similar setup as above
     mock_pdf = Mock()
+    mock_pdf._config = {}
     mock_pdf._exclusions = [
         (lambda page: page.find("text:contains(FOOTER)").expand(), "footer_exclusion")
     ]

@@ -23,7 +23,14 @@ class Match(Region):
             metadata: Additional metadata about the match
         """
         super().__init__(page, bbox)
-        self.confidence = confidence
+        if confidence is None:
+            parsed_confidence = None
+        else:
+            try:
+                parsed_confidence = float(confidence)
+            except (TypeError, ValueError):
+                parsed_confidence = None
+        self.confidence = parsed_confidence
         self.source_example = source_example
         self.metadata = metadata or {}
 
@@ -34,6 +41,11 @@ class Match(Region):
 
     def __repr__(self):
         return f"<Match page={self.page.number} confidence={self.confidence:.2f} bbox={self.bbox}>"
+
+
+def _confidence_sort_key(match: "Match") -> float:
+    confidence = getattr(match, "confidence", None)
+    return float(confidence) if confidence is not None else 0.0
 
 
 class MatchResults:
@@ -67,7 +79,7 @@ class MatchResults:
         from natural_pdf.elements.element_collection import ElementCollection
 
         # Sort matches by confidence (highest first)
-        sorted_matches = sorted(matches, key=lambda m: m.confidence, reverse=True)
+        sorted_matches = sorted(matches, key=_confidence_sort_key, reverse=True)
 
         # Create a base ElementCollection
         self._collection = ElementCollection(sorted_matches)
@@ -161,7 +173,7 @@ class MatchResults:
 
     def sort_by_confidence(self, descending: bool = True) -> "MatchResults":
         """Sort matches by confidence score"""
-        sorted_matches = sorted(self, key=lambda m: m.confidence, reverse=descending)
+        sorted_matches = sorted(self, key=_confidence_sort_key, reverse=descending)
         return MatchResults(sorted_matches)
 
     def regions(self):
@@ -183,7 +195,8 @@ class MatchResults:
         elif len(self) == 1:
             return "<MatchResults: 1 match>"
         else:
+            confidences = [_confidence_sort_key(m) for m in self]
             conf_range = (
-                f"{min(m.confidence for m in self):.2f}-{max(m.confidence for m in self):.2f}"
+                f"{min(confidences):.2f}-{max(confidences):.2f}" if confidences else "0.00-0.00"
             )
             return f"<MatchResults: {len(self)} matches, confidence {conf_range}>"

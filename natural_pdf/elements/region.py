@@ -30,6 +30,7 @@ from tqdm.auto import tqdm
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
 from natural_pdf.core.capabilities import AnalysisHostMixin, TabularRegionMixin
 from natural_pdf.core.crop_utils import resolve_crop_bbox
+from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.core.interfaces import SupportsGeometry
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -43,6 +44,7 @@ from natural_pdf.ocr.ocr_manager import (
     resolve_ocr_min_confidence,
     run_ocr_apply,
 )
+from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -278,7 +280,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         self._cached_text: Optional[str] = None
         self._cached_elements: Optional[ElementCollection] = None
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
-        self._exclusions: List[Any] = []
+        self._exclusions: List[ExclusionSpec] = []
 
     def _exclusion_element_manager(self):
         return self.page._element_mgr
@@ -317,22 +319,8 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
     def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         return self._normalize_qa_output(result)
 
-    def _qa_blank_result(
-        self, question: QuestionInput
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        def _blank() -> Dict[str, Any]:
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self.page.number,
-                "source_elements": [],
-                "region": self,
-            }
-
-        if isinstance(question, (list, tuple)):
-            return [_blank() for _ in question]
-        return _blank()
+    def _qa_blank_result(self, question: QuestionInput) -> Union[QAResult, List[QAResult]]:
+        return super()._qa_blank_result(question)
 
     def _evaluate_local_exclusions(
         self, include_callable: bool = True, debug: bool = False
@@ -1011,12 +999,8 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         # Get the region image
         # Use render() for clean image without highlights, with cropping
         image = work_region.render(resolution=resolution, crop=True)
-
         if image is None:
-            logger.warning(
-                f"Region {self.bbox}: Could not generate image for trimming. Returning original region."
-            )
-            return self
+            raise RuntimeError(f"Region {self.bbox}: render() returned None during trimming.")
 
         # Convert to grayscale for easier analysis
         import numpy as np
@@ -1026,10 +1010,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         height, width = img_array.shape
 
         if height == 0 or width == 0:
-            logger.warning(
-                f"Region {self.bbox}: Image has zero dimensions. Returning original region."
-            )
-            return self
+            raise ValueError(f"Region {self.bbox}: rendered image has zero dimensions.")
 
         # Normalize pixel values to 0-1 range (255 = white = 1.0, 0 = black = 0.0)
         normalized = img_array.astype(np.float32) / 255.0
@@ -1044,12 +1025,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         content_row_indices = np.where(content_rows)[0]
         if len(content_row_indices) == 0:
             # No content found, return a minimal region at the center
-            logger.warning(
-                f"Region {self.bbox}: No content detected during trimming. Returning center point."
-            )
-            center_x = (self.x0 + self.x1) / 2
-            center_y = (self.top + self.bottom) / 2
-            return Region(self.page, (center_x, center_y, center_x, center_y))
+            raise ValueError(f"Region {self.bbox}: no content detected during trimming.")
 
         top_content_row = max(0, content_row_indices[0] - padding)
         bottom_content_row = min(height - 1, content_row_indices[-1] + padding)
@@ -1061,12 +1037,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         content_col_indices = np.where(content_cols)[0]
         if len(content_col_indices) == 0:
             # No content found in columns either
-            logger.warning(
-                f"Region {self.bbox}: No column content detected during trimming. Returning center point."
-            )
-            center_x = (self.x0 + self.x1) / 2
-            center_y = (self.top + self.bottom) / 2
-            return Region(self.page, (center_x, center_y, center_x, center_y))
+            raise ValueError(f"Region {self.bbox}: no column content detected during trimming.")
 
         left_content_col = max(0, content_col_indices[0] - padding)
         right_content_col = min(width - 1, content_col_indices[-1] + padding)
@@ -1092,18 +1063,18 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
 
         # Ensure valid coordinates (width > 0, height > 0)
         if final_x1 <= final_x0 or final_bottom <= final_top:
-            logger.warning(
-                f"Region {self.bbox}: Trimming resulted in invalid dimensions. Returning original region."
-            )
-            return self
+            raise ValueError(f"Region {self.bbox}: trimming produced invalid dimensions.")
 
         # Create the trimmed region
-        trimmed_region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
+        trimmed_region: Region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
 
         # Expand back by the pre_shrink amount to restore original positioning
         if pre_shrink > 0:
-            trimmed_region = trimmed_region.expand(
-                left=pre_shrink, right=pre_shrink, top=pre_shrink, bottom=pre_shrink
+            trimmed_region = cast(
+                Region,
+                trimmed_region.expand(
+                    left=pre_shrink, right=pre_shrink, top=pre_shrink, bottom=pre_shrink
+                ),
             )
 
         # Copy relevant metadata
@@ -1170,18 +1141,16 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         # Apply object constraints if provided
         if obj is not None:
             obj_bbox = extract_bbox(obj)
-            if obj_bbox is not None:
-                obj_x0, obj_top, obj_x1, obj_bottom = obj_bbox
-                # Constrain to the intersection with the provided object
-                clip_x0 = max(clip_x0, obj_x0)
-                clip_top = max(clip_top, obj_top)
-                clip_x1 = min(clip_x1, obj_x1)
-                clip_bottom = min(clip_bottom, obj_bottom)
-            else:
-                logger.warning(
-                    f"Region {self.bbox}: Cannot extract bbox from clipping object {type(obj)}. "
-                    "Object must have bbox property or x0/top/x1/bottom attributes."
+            if obj_bbox is None:
+                raise TypeError(
+                    f"Region {self.bbox}: cannot extract bbox from clipping object {type(obj)}. "
+                    "Object must expose bbox or x0/top/x1/bottom attributes."
                 )
+            obj_x0, obj_top, obj_x1, obj_bottom = obj_bbox
+            clip_x0 = max(clip_x0, obj_x0)
+            clip_top = max(clip_top, obj_top)
+            clip_x1 = min(clip_x1, obj_x1)
+            clip_bottom = min(clip_bottom, obj_bottom)
 
         # Apply explicit coordinate constraints (these take precedence)
         if left is not None:
@@ -1195,12 +1164,10 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
 
         # Ensure valid coordinates
         if clip_x1 <= clip_x0 or clip_bottom <= clip_top:
-            logger.warning(
-                f"Region {self.bbox}: Clipping resulted in invalid dimensions "
-                f"({clip_x0}, {clip_top}, {clip_x1}, {clip_bottom}). Returning minimal region."
+            raise ValueError(
+                f"Region {self.bbox}: clipping resulted in invalid bounds "
+                f"({clip_x0}, {clip_top}, {clip_x1}, {clip_bottom})."
             )
-            # Return a minimal region at the clip area's top-left
-            return Region(self.page, (clip_x0, clip_top, clip_x0, clip_top))
 
         # Create the clipped region
         clipped_region = Region(self.page, (clip_x0, clip_top, clip_x1, clip_bottom))
@@ -1779,34 +1746,29 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             final_resolution,
         )
 
-        try:
-            ocr_payload = run_ocr_apply(
-                target=self,
-                context=self,
-                engine_name=engine_name,
-                resolution=final_resolution,
-                languages=resolved_languages,
-                min_confidence=resolved_min_conf,
-                device=resolved_device,
-                detect_only=detect_only,
-                options=normalized_options,
-                render_kwargs={"crop": True},
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.error(f"Error rendering region for OCR: {exc}", exc_info=True)
-            return self
+        ocr_payload = run_ocr_apply(
+            target=self,
+            context=self,
+            engine_name=engine_name,
+            resolution=final_resolution,
+            languages=resolved_languages,
+            min_confidence=resolved_min_conf,
+            device=resolved_device,
+            detect_only=detect_only,
+            options=normalized_options,
+            render_kwargs={"crop": True},
+        )
 
         image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.warning(f"Region {self.bbox}: OCR payload missing image dimensions.")
-            return self
 
         valid_results: List[Mapping[str, Any]] = []
         for entry in ocr_payload.results:
             if isinstance(entry, MappingABC):
                 valid_results.append(entry)
             else:
-                logger.warning("Skipping OCR result with unexpected type: %s", type(entry))
+                raise TypeError(
+                    f"Region {self.bbox}: OCR result has unexpected type: {type(entry).__name__}"
+                )
 
         scale_x = self.width / image_width if image_width else 1.0
         scale_y = self.height / image_height if image_height else 1.0
@@ -1918,22 +1880,13 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
                 logger.info(f"Region {self.bbox}: Removed {removed_count} existing OCR elements.")
 
         # Call the custom OCR function
-        try:
-            logger.debug(f"Region {self.bbox}: Calling custom OCR function...")
-            ocr_text = ocr_function(self)
-
-            if ocr_text is not None and not isinstance(ocr_text, str):
-                logger.warning(
-                    f"Custom OCR function returned non-string type ({type(ocr_text)}). "
-                    f"Converting to string."
-                )
-                ocr_text = str(ocr_text)
-
-        except Exception as e:
-            logger.error(
-                f"Error calling custom OCR function for region {self.bbox}: {e}", exc_info=True
+        logger.debug(f"Region {self.bbox}: Calling custom OCR function...")
+        ocr_text = ocr_function(self)
+        if ocr_text is not None and not isinstance(ocr_text, str):
+            raise TypeError(
+                f"Custom OCR function for region {self.bbox} returned {type(ocr_text).__name__}, "
+                "expected str or None."
             )
-            return self
 
         # Create text element if we got text
         if ocr_text is not None:
@@ -1976,13 +1929,8 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         # Get elements only within this region first
         elements = self.get_elements()
 
-        # If no elements, return self or empty region?
         if not elements:
-            logger.warning(
-                f"get_section_between called on region {self.bbox} with no contained elements."
-            )
-            # Return an empty region at the start of the parent region
-            return Region(self.page, (self.x0, self.top, self.x0, self.top))
+            raise ValueError(f"Region {self.bbox}: no elements available for section extraction.")
 
         # Sort elements in reading order
         elements.sort(key=lambda e: (e.top, e.x0))
@@ -2068,6 +2016,13 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
 
             # Fallback: wrap single element-like object
             return [arg]  # type: ignore[list-item]
+
+        # Legacy tolerances (y_threshold/x_threshold) are now handled internally;
+        # accept and ignore them for backward compatibility.
+        legacy_thresholds = {"y_threshold", "x_threshold"}
+        for legacy_key in list(kwargs.keys()):
+            if legacy_key in legacy_thresholds:
+                kwargs.pop(legacy_key, None)
 
         # Use centralized section extraction logic
         sections = extract_sections_from_region(
@@ -2235,8 +2190,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         if isinstance(result, MappingABC):
             return dict(result)
 
-        logger.warning("Unexpected QA result type %s; wrapping in dictionary", type(result))
-        return {"value": result}
+        raise TypeError(f"Unexpected QA result type {type(result).__name__}")
 
     def add_child(self, child):
         """
@@ -2413,17 +2367,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
                 raise ValueError("Cannot classify region with 'text' model: No text content found.")
             return text_content
         elif model_type == "vision":
-            # Get resolution from manager/kwargs if possible, else default
-            # We access manager via the method to ensure it's available
-            manager = self._get_classification_manager()
-            default_resolution = 150  # Manager doesn't store default res, set here
-            # Note: classify() passes resolution via **kwargs if user specifies
-            resolution = (
-                kwargs.get("resolution", default_resolution)
-                if "kwargs" in locals()
-                else default_resolution
-            )
-
+            resolution = kwargs.get("resolution", 150)
             img = self.render(
                 resolution=resolution,
                 crop=True,  # Just the region content
@@ -2483,29 +2427,20 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
                 return float(value)
 
             sanitized_expand: Dict[str, Any] = {}
-            try:
-                if "amount" in expand_bbox and expand_bbox["amount"] is not None:
-                    sanitized_expand["amount"] = float(expand_bbox["amount"])
-                for key in ("left", "right", "top", "bottom"):
-                    if key in expand_bbox and expand_bbox[key] is not None:
-                        sanitized_expand[key] = _coerce_expand_value(expand_bbox[key])
-                if "width_factor" in expand_bbox and expand_bbox["width_factor"] is not None:
-                    sanitized_expand["width_factor"] = float(expand_bbox["width_factor"])
-                if "height_factor" in expand_bbox and expand_bbox["height_factor"] is not None:
-                    sanitized_expand["height_factor"] = float(expand_bbox["height_factor"])
-                if (
-                    "apply_exclusions" in expand_bbox
-                    and expand_bbox["apply_exclusions"] is not None
-                ):
-                    sanitized_expand["apply_exclusions"] = bool(expand_bbox["apply_exclusions"])
+            if "amount" in expand_bbox and expand_bbox["amount"] is not None:
+                sanitized_expand["amount"] = float(expand_bbox["amount"])
+            for key in ("left", "right", "top", "bottom"):
+                if key in expand_bbox and expand_bbox[key] is not None:
+                    sanitized_expand[key] = _coerce_expand_value(expand_bbox[key])
+            if "width_factor" in expand_bbox and expand_bbox["width_factor"] is not None:
+                sanitized_expand["width_factor"] = float(expand_bbox["width_factor"])
+            if "height_factor" in expand_bbox and expand_bbox["height_factor"] is not None:
+                sanitized_expand["height_factor"] = float(expand_bbox["height_factor"])
+            if "apply_exclusions" in expand_bbox and expand_bbox["apply_exclusions"] is not None:
+                sanitized_expand["apply_exclusions"] = bool(expand_bbox["apply_exclusions"])
 
-                search_region = self.expand(**sanitized_expand)
-                logger.debug(
-                    f"Expanded search region for text table analysis to: {search_region.bbox}"
-                )
-            except Exception as e:
-                logger.warning(f"Could not expand region bbox: {e}. Using original region.")
-                search_region = self
+            search_region = self.expand(**sanitized_expand)
+            logger.debug(f"Expanded search region for text table analysis to: {search_region.bbox}")
 
         # Find text elements within the search region
         text_elements = search_region.find_all(
@@ -2596,21 +2531,13 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         # 3. Create temporary Region objects for each cell dictionary
         cell_regions = []
         for cell_data in analysis_results["cells"]:
-            try:
-                # Use page.region to create the region object
-                # It expects left, top, right, bottom keys
-                cell_region = self.page.region(**cell_data)
-
-                # Set metadata on the temporary region
-                cell_region.region_type = "table-cell"
-                cell_region.normalized_type = "table-cell"
-                cell_region.model = "pdfplumber-text"
-                cell_region.source = "volatile"  # Indicate it's not managed/persistent
-                cell_region.parent_region = self  # Link back to the region it came from
-
-                cell_regions.append(cell_region)
-            except Exception as e:
-                logger.warning(f"Could not create Region object for cell data {cell_data}: {e}")
+            cell_region = self.page.region(**cell_data)
+            cell_region.region_type = "table-cell"
+            cell_region.normalized_type = "table-cell"
+            cell_region.model = "pdfplumber-text"
+            cell_region.source = "volatile"
+            cell_region.parent_region = self
+            cell_regions.append(cell_region)
 
         # 4. Return the list wrapped in an ElementCollection
         logger.debug(f"get_text_table_cells: Created {len(cell_regions)} temporary cell regions.")
@@ -2746,10 +2673,8 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
                 page_num_str = (
                     str(self.page.page_number) if hasattr(self.page, "page_number") else "N/A"
                 )
-                logger.warning(
-                    "Cannot add TextElement to page: Page %s for region %s does not expose add_element.",
-                    page_num_str,
-                    self.bbox,
+                raise AttributeError(
+                    f"Cannot add TextElement to page {page_num_str}: page does not expose add_element"
                 )
 
         return text_element
@@ -2963,35 +2888,29 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
 
             elements_json: List[dict] = []
             for idx, el in enumerate(region_elements):
-                try:
-                    # Calculate coordinates relative to region bbox and apply scale
-                    x0 = (el.x0 - self.x0) * scale
-                    y0 = (el.top - self.top) * scale
-                    x1 = (el.x1 - self.x0) * scale
-                    y1 = (el.bottom - self.top) * scale
+                x0 = (el.x0 - self.x0) * scale
+                y0 = (el.top - self.top) * scale
+                x1 = (el.x1 - self.x0) * scale
+                y1 = (el.bottom - self.top) * scale
 
-                    elem_dict = {
-                        "id": idx,
-                        "type": getattr(el, "type", "unknown"),
-                        "x0": round(x0, 2),
-                        "y0": round(y0, 2),
-                        "x1": round(x1, 2),
-                        "y1": round(y1, 2),
-                        "width": round(x1 - x0, 2),
-                        "height": round(y1 - y0, 2),
-                    }
+                elem_dict = {
+                    "id": idx,
+                    "type": getattr(el, "type", "unknown"),
+                    "x0": round(x0, 2),
+                    "y0": round(y0, 2),
+                    "x1": round(x1, 2),
+                    "y1": round(y1, 2),
+                    "width": round(x1 - x0, 2),
+                    "height": round(y1 - y0, 2),
+                }
 
-                    # Add requested / default attributes
-                    for attr_name in default_attrs:
-                        if hasattr(el, attr_name):
-                            val = getattr(el, attr_name)
-                            # Ensure JSON serialisable
-                            if not isinstance(val, (str, int, float, bool, list, dict, type(None))):
-                                val = str(val)
-                            elem_dict[attr_name] = val
-                    elements_json.append(elem_dict)
-                except Exception as e:
-                    logger.warning(f"Error preparing element {idx} for region viewer: {e}")
+                for attr_name in default_attrs:
+                    if hasattr(el, attr_name):
+                        val = getattr(el, attr_name)
+                        if not isinstance(val, (str, int, float, bool, list, dict, type(None))):
+                            val = str(val)
+                        elem_dict[attr_name] = val
+                elements_json.append(elem_dict)
 
             viewer_data = {"page_image": image_uri, "elements": elements_json}
 

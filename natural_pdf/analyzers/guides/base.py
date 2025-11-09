@@ -2,6 +2,7 @@
 
 import logging
 from collections import UserList
+from collections.abc import Iterable as IterableABC
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -39,15 +40,19 @@ from .helpers import (
     Bounds,
     GuidesContext,
     IntArray,
+    SupportsGuidesContext,
     _bounds_from_object,
     _collect_line_elements,
     _constituent_regions,
+    _ensure_bounds_tuple,
+    _has_size,
     _is_flow_region,
     _is_guides_context,
     _label_contiguous_regions,
     _normalize_markers,
     _require_bounds,
     _resolve_single_page,
+    _SupportsSize,
 )
 from .separators import (
     find_min_crossing_separator,
@@ -210,7 +215,7 @@ class GuidesList(UserList[float]):
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
 
             for region in adapter.regions:
                 result = run_guides_detect(
@@ -268,7 +273,7 @@ class GuidesList(UserList[float]):
                 ``min_gap_h`` or ``min_gap_v`` depending on axis (ignored if those
                 keys are already supplied via ``detect_kwargs``).
             outer: Whether to add outer boundary guides
-            detection_method: 'vector' (use existing LineElements) or 'pixels' (detect from image)
+            detection_method: 'vector', 'pixels' (default), or 'auto' for hybrid detection.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel-based detection
                 (e.g., min_gap_h, min_gap_v, binarization_method, etc.)
@@ -310,7 +315,7 @@ class GuidesList(UserList[float]):
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
 
             for region in adapter.regions:
                 result = run_guides_detect(
@@ -355,7 +360,7 @@ class GuidesList(UserList[float]):
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 result = run_guides_detect(
                     axis=self._axis,
@@ -401,7 +406,7 @@ class GuidesList(UserList[float]):
 
         if _is_flow_region(target_obj):
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 region_guides = Guides.divide(obj=region, n=n, axis=axis_literal)
                 axis_values = (
@@ -745,7 +750,7 @@ class GuidesList(UserList[float]):
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 result = run_guides_detect(
                     axis="vertical",
@@ -842,7 +847,7 @@ class GuidesList(UserList[float]):
 
         if self._parent.is_flow_region:
             adapter = FlowGuideAdapter(self._parent)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
 
             for region in adapter.regions:
                 result = run_guides_detect(
@@ -1151,7 +1156,7 @@ class Guides:
         max_lines_h: Optional[int] = None,
         max_lines_v: Optional[int] = None,
         outer: bool = False,
-        detection_method: str = "pixels",
+        detection_method: str = "auto",
         resolution: int = 192,
         **detect_kwargs,
     ) -> "Guides":
@@ -1166,7 +1171,7 @@ class Guides:
             max_lines_h: Maximum number of horizontal lines to keep
             max_lines_v: Maximum number of vertical lines to keep
             outer: Whether to add outer boundary guides
-            detection_method: 'vector' (use existing LineElements) or 'pixels' (detect from image)
+            detection_method: 'vector', 'pixels' (default), or 'auto' for hybrid detection.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel-based detection:
                 - min_gap_h: Minimum gap between horizontal lines (pixels)
@@ -1226,7 +1231,7 @@ class Guides:
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            axis_values: Dict[Any, List[float]] = {}
+            axis_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 result = run_guides_detect(
                     axis=axis,
@@ -1303,7 +1308,7 @@ class Guides:
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            axis_values: Dict[Any, List[float]] = {}
+            axis_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 result = run_guides_detect(
                     axis=axis,
@@ -1353,7 +1358,7 @@ class Guides:
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            axis_values: Dict[Any, List[float]] = {}
+            axis_values: Dict[Any, Sequence[float]] = {}
             for region in adapter.regions:
                 result = run_guides_detect(
                     axis=axis,
@@ -1410,7 +1415,7 @@ class Guides:
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
 
             for region in adapter.regions:
                 result = run_guides_detect(
@@ -1445,16 +1450,17 @@ class Guides:
     ) -> "Guides":
         """Create guides from zebra stripes or colored bands."""
 
-        axis = axis.lower()
-        if axis not in {"vertical", "horizontal"}:
+        axis_lower = axis.lower()
+        if axis_lower not in {"vertical", "horizontal"}:
             raise ValueError("axis must be 'vertical' or 'horizontal'")
+        axis = cast(Literal["vertical", "horizontal"], axis_lower)
 
         options = {"stripes": stripes, "color": color}
 
         if _is_flow_region(obj):
             guides = cls(context=obj)
             adapter = FlowGuideAdapter(guides)
-            region_values: Dict[Any, List[float]] = {}
+            region_values: Dict[Any, Sequence[float]] = {}
 
             for region in adapter.regions:
                 result = run_guides_detect(
@@ -2706,9 +2712,10 @@ class Guides:
         flow_region = self._flow_context()
         flow = flow_region.flow
 
-        physical_tables = [grid.table for grid in region_grids if grid.table is not None]
+        physical_tables: List[Any] = [grid.table for grid in region_grids if grid.table is not None]
+        flattened_tables = adapter._flatten_region_likes(physical_tables)
         multi_page_table = FlowRegion(
-            flow=flow, constituent_regions=physical_tables, source_flow_element=None
+            flow=flow, constituent_regions=flattened_tables, source_flow_element=None
         )
         multi_page_table.source = source
         multi_page_table.region_type = "table"
@@ -2820,15 +2827,19 @@ class Guides:
         row_boundaries = sorted(list(set(row_boundaries)))
         col_boundaries = sorted(list(set(col_boundaries)))
 
-        def _collect_regions_from_page_obj(page_obj):
+        def _collect_regions_from_page_obj(page_obj: Any) -> List[Any]:
             iterator = getattr(page_obj, "iter_regions", None)
-            regions = iterator() if callable(iterator) else iterator
+            regions: Optional[Iterable[Any]]
+            if callable(iterator):
+                regions = cast(Optional[Iterable[Any]], iterator())
+            else:
+                regions = cast(Optional[Iterable[Any]], iterator)
+
             if regions is None:
                 return []
-            try:
-                return list(regions)
-            except TypeError:
+            if not isinstance(regions, IterableABC):
                 return []
+            return list(regions)
 
         # ------------------------------------------------------------------
         # Clean-up: remove any previously created grid regions (table, rows,
@@ -3096,7 +3107,8 @@ class Guides:
             max_lines_h: Maximum horizontal lines to use
             max_lines_v: Maximum vertical lines to use
             outer: Whether to add outer boundary guides
-            detection_method: 'vector' (use existing LineElements) or 'pixels' (detect from image)
+            detection_method: 'vector', 'pixels', or 'auto' (default). 'auto' uses vector line
+                information when available and falls back to pixel detection otherwise.
             resolution: DPI for pixel-based detection (default: 192)
             **detect_kwargs: Additional parameters for pixel detection (see from_lines)
 
@@ -3349,7 +3361,7 @@ class Guides:
                 # Use the first table region for extraction
                 table_region = table_region[0]
 
-            return table_region.extract_table(
+            table_result = table_region.extract_table(
                 method=method,
                 table_settings=table_settings,
                 use_ocr=use_ocr,
@@ -3361,19 +3373,23 @@ class Guides:
                 apply_exclusions=apply_exclusions,
                 structure_engine=structure_engine,
             )
+            self._assign_headers_from_rows(table_result, header)
+            return table_result
 
         finally:
             # Step 4: Clean up all temporary regions created by build_grid
             # This ensures no regions are left behind regardless of success/failure
             iter_regions = getattr(page, "iter_regions", None)
-            existing_regions = iter_regions() if callable(iter_regions) else iter_regions
-            if existing_regions is None:
+            raw_regions: Optional[Iterable[Any]]
+            if callable(iter_regions):
+                raw_regions = cast(Optional[Iterable[Any]], iter_regions())
+            else:
+                raw_regions = cast(Optional[Iterable[Any]], iter_regions)
+
+            if raw_regions is None or not isinstance(raw_regions, IterableABC):
                 existing_regions = []
             else:
-                try:
-                    existing_regions = list(existing_regions)
-                except TypeError:
-                    existing_regions = []
+                existing_regions = list(raw_regions)
 
             regions_to_remove = [
                 r
@@ -3534,16 +3550,49 @@ class Guides:
 
         # Create final TableResult
         if isinstance(header, list):
-            # Custom headers - prepend to data
             final_result = TableResult(all_rows)
+            final_result.headers = header
         elif header_row is not None:
-            # Prepend discovered header
             final_result = TableResult([header_row] + all_rows)
+            final_result.headers = header_row
         else:
-            # No headers
             final_result = TableResult(all_rows)
-
+        self._assign_headers_from_rows(final_result, header)
         return final_result
+
+    @staticmethod
+    def _assign_headers_from_rows(
+        table_result: TableResult, header: Union[str, int, List[str], None]
+    ) -> None:
+        """Normalize headers on a TableResult and drop empty leading rows."""
+
+        def _row_is_blank(row: Sequence[Any]) -> bool:
+            return all(cell is None or (isinstance(cell, str) and not cell.strip()) for cell in row)
+
+        rows = getattr(table_result, "_rows", None)
+        if not isinstance(rows, list) or not rows or header in (None, False):
+            return
+
+        if isinstance(header, list):
+            table_result.headers = header
+            return
+
+        # Remove leading empty rows that can appear due to outer boundaries
+        while rows and _row_is_blank(rows[0]):
+            rows.pop(0)
+
+        if not rows:
+            return
+
+        header_row: Optional[List[Any]] = None
+        if header == "first":
+            header_row = list(rows[0])
+        elif isinstance(header, int):
+            idx = max(0, min(len(rows) - 1, header))
+            header_row = list(rows[idx])
+
+        if header_row:
+            table_result.headers = header_row
 
     def _get_flow_orientation(self) -> Literal["vertical", "horizontal", "unknown"]:
         """Determines if a FlowRegion's constituent parts are arranged vertically or horizontally."""

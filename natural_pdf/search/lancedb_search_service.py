@@ -3,8 +3,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, cast
 
-import lancedb
-import pyarrow as pa
+import lancedb  # type: ignore[import]
+import numpy as np
+import pyarrow as pa  # type: ignore[import]
 
 from .search_options import BaseSearchOptions
 from .search_service_protocol import Indexable, SearchServiceProtocol
@@ -174,15 +175,17 @@ class LanceDBSearchService(SearchServiceProtocol):
         logger.info(
             f"Embedding {len(texts_to_embed)} documents using '{self._embedding_model_name}'..."
         )
-        generated_embeddings = self.embedding_model.encode(
-            texts_to_embed, device=embedder_device, show_progress_bar=len(texts_to_embed) > 10
-        )
+        encode_kwargs: Dict[str, Any] = {"show_progress_bar": len(texts_to_embed) > 10}
+        if embedder_device is not None:
+            encode_kwargs["device"] = embedder_device
+        generated_embeddings = self.embedding_model.encode(texts_to_embed, **encode_kwargs)
 
         for i, item_info in enumerate(original_items_info):
+            vector_array = np.asarray(generated_embeddings[i], dtype=np.float32)
             data_to_add.append(
                 {
                     "id": item_info["id"],
-                    "vector": generated_embeddings[i].tolist(),
+                    "vector": vector_array.tolist(),
                     "text": item_info["text"],
                     "metadata_json": item_info["metadata_json"],
                 }
@@ -235,7 +238,8 @@ class LanceDBSearchService(SearchServiceProtocol):
         else:
             raise TypeError(f"Unsupported query type: {type(query)}")
 
-        query_vector = self.embedding_model.encode(query_text).tolist()
+        query_embedding = self.embedding_model.encode(query_text)
+        query_vector = np.asarray(query_embedding, dtype=np.float32).reshape(-1).tolist()
 
         lancedb_filter = None
         if options.filters:

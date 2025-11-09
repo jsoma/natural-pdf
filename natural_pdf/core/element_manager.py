@@ -257,15 +257,7 @@ class ElementManager:
         # -------------------------------------------------------------
 
         if self._load_text and prepared_char_dicts:
-            try:
-                self._mark_strikethrough_chars(prepared_char_dicts)
-            except (
-                Exception
-            ) as strike_err:  # pragma: no cover – strike detection must never crash loading
-                logger.warning(
-                    f"Page {self._page.number}: Strikethrough detection failed – {strike_err}",
-                    exc_info=True,
-                )
+            self._mark_strikethrough_chars(prepared_char_dicts)
 
         # -------------------------------------------------------------
         # Detect underlines on raw characters (must come after strike so
@@ -273,23 +265,11 @@ class ElementManager:
         # -------------------------------------------------------------
 
         if self._load_text and prepared_char_dicts:
-            try:
-                self._mark_underline_chars(prepared_char_dicts)
-            except Exception as u_err:  # pragma: no cover
-                logger.warning(
-                    f"Page {self._page.number}: Underline detection failed – {u_err}",
-                    exc_info=True,
-                )
+            self._mark_underline_chars(prepared_char_dicts)
 
         # Detect highlights
         if self._load_text and prepared_char_dicts:
-            try:
-                self._mark_highlight_chars(prepared_char_dicts)
-            except Exception as h_err:
-                logger.warning(
-                    f"Page {self._page.number}: Highlight detection failed – {h_err}",
-                    exc_info=True,
-                )
+            self._mark_highlight_chars(prepared_char_dicts)
 
         # Create a mapping from character dict to index for efficient lookup
         if self._load_text:
@@ -359,14 +339,7 @@ class ElementManager:
 
             # Warn users when the page's font size is extremely small –
             # this is often the root cause of merged-row/column issues.
-            if median_size and median_size < 6:  # 6 pt is unusually small
-                logger.warning(
-                    f"Page {self._page.number}: Median font size is only {median_size:.1f} pt; "
-                    f"auto-set x_tolerance={xt:.2f}, y_tolerance={yt:.2f}. "
-                    "If the output looks wrong you can override these values via "
-                    "PDF(..., text_tolerance={'x_tolerance': X, 'y_tolerance': Y}, "
-                    "auto_text_tolerance=False)."
-                )
+            # Extremely small fonts can still be handled; we no longer emit warnings.
 
         # Fallback to pdfplumber defaults if still None
         if xt is None:
@@ -658,9 +631,12 @@ class ElementManager:
         for i, char_dict in enumerate(native_chars):
             # Create a temporary TextElement for analysis ONLY
             # We need to ensure the char_dict has necessary keys first
-            if not all(k in char_dict for k in ["x0", "top", "x1", "bottom", "text"]):
-                logger.warning(f"Skipping native char dict due to missing keys: {char_dict}")
-                continue
+            required_keys = ("x0", "top", "x1", "bottom", "text")
+            missing_keys = [k for k in required_keys if k not in char_dict]
+            if missing_keys:
+                raise KeyError(
+                    f"Page {self._page.number}: native char dict missing keys {missing_keys}: {char_dict}"
+                )
 
             temp_element = TextElement(char_dict, self._page)
 
@@ -1101,8 +1077,7 @@ class ElementManager:
 
         # Check if the collection exists
         if element_type not in store:
-            logger.warning(f"Cannot remove element: collection '{element_type}' does not exist")
-            return False
+            raise KeyError(f"Element collection '{element_type}' does not exist")
 
         # Try to remove the element
         try:

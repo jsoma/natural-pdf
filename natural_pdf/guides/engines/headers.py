@@ -124,12 +124,17 @@ class HeadersGuidesEngine(GuidesEngine):
             try:
                 text_candidates = finder_all("text")
             except Exception:  # pragma: no cover
-                text_candidates = []
-            if hasattr(text_candidates, "elements"):
+                text_candidates = None
+
+            iterable: Sequence[Any]
+            if isinstance(text_candidates, ElementCollection):
                 iterable = text_candidates.elements
-            else:
+            elif isinstance(text_candidates, Sequence):
                 iterable = text_candidates
-            for elem in iterable or []:
+            else:
+                iterable = ()
+
+            for elem in iterable:
                 elem_bounds = _bounds_from_object(elem)
                 if elem_bounds is not None:
                     text_bboxes.append(elem_bounds)

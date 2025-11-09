@@ -91,14 +91,14 @@ def crop_page_to_region(page, bbox):
 
 def process_tables_with_rtl(
     region, tables: Sequence[Sequence[Sequence[Optional[str]]]]
-) -> List[List[List[str]]]:
+) -> List[List[List[Optional[str]]]]:
     """Apply RTL processing to extracted tables."""
 
-    processed: List[List[List[str]]] = []
+    processed: List[List[List[Optional[str]]]] = []
     for table in tables or []:
-        table_rows: List[List[str]] = []
+        table_rows: List[List[Optional[str]]] = []
         for row in table:
-            processed_row: List[str] = []
+            processed_row: List[Optional[str]] = []
             for cell in row:
                 if cell is not None:
                     processed_row.append(region._apply_rtl_processing_to_text(cell))
@@ -114,7 +114,7 @@ def extract_tables_plumber(
     table_settings: Dict[str, Any],
     *,
     apply_exclusions: bool,
-) -> List[List[List[str]]]:
+) -> List[List[List[Optional[str]]]]:
     """Extract tables from a pdfplumber crop using shared helper logic."""
 
     inject_text_tolerances(region, table_settings)

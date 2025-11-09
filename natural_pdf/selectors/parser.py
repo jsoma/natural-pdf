@@ -35,7 +35,7 @@ import logging
 import re
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from colormath2.color_conversions import convert_color  # type: ignore[import-untyped]
 from colormath2.color_diff import delta_e_cie2000  # type: ignore[import-untyped]
@@ -407,13 +407,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     # If we found OR parts, parse each one recursively and return compound selector
     if len(or_parts) > 1:
-        parsed_selectors = []
-        for part in or_parts:
-            try:
-                parsed_selectors.append(parse_selector(part))
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Skipping invalid OR selector part '{part}': {e}")
-                continue
+        parsed_selectors = [parse_selector(part) for part in or_parts]
 
         if len(parsed_selectors) > 1:
             return {"type": "or", "selectors": parsed_selectors}
@@ -421,11 +415,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
             # Only one valid part, return it directly
             return parsed_selectors[0]
         else:
-            # No valid parts, return default
-            logger.warning(
-                f"No valid parts found in OR selector '{original_selector_for_error}', returning default selector"
-            )
-            return result
+            raise ValueError(f"No valid parts found in OR selector '{original_selector_for_error}'")
 
     # --- Continue with single selector parsing (existing logic) ---
 
@@ -494,9 +484,9 @@ def parse_selector(selector: str) -> Dict[str, Any]:
                     parsed_value = safe_parse_value(value_str)  # Handles quotes
                     # If using ~= with a numeric value, warn once during parsing
                     if op == "~=" and isinstance(parsed_value, (int, float)):
-                        logger.warning(
-                            "Using ~= with numeric values. This will match if the absolute difference is <= 2.0. "
-                            "Consider using explicit ranges (e.g., [width>1][width<4]) for more control."
+                        raise ValueError(
+                            "Numeric comparison with '~=' is ambiguous. "
+                            "Use explicit ranges such as [width>1][width<4]."
                         )
                 attributes.append({"name": name, "op": op, "value": parsed_value})
 
@@ -608,6 +598,18 @@ def _is_color_value(value) -> bool:
         return False
 
 
+def _extract_rgb_triplet(value: Any) -> tuple[float, float, float]:
+    """Normalize various color inputs into an RGB triplet."""
+    if isinstance(value, (list, tuple)):
+        if len(value) < 3:
+            raise ValueError("Color tuples must include at least three components.")
+        r, g, b = value[0], value[1], value[2]
+    else:
+        rgb_sequence = cast(Sequence[float], Color(value).rgb)
+        r, g, b = rgb_sequence[0], rgb_sequence[1], rgb_sequence[2]
+    return float(r), float(g), float(b)
+
+
 def _color_distance(color1: Any, color2: Any) -> float:
     """
     Calculate Delta E color difference between two colors.
@@ -618,15 +620,8 @@ def _color_distance(color1: Any, color2: Any) -> float:
     """
     try:
         # Convert to RGB tuples
-        if isinstance(color1, (list, tuple)) and len(color1) >= 3:
-            rgb1 = sRGBColor(*color1[:3])
-        else:
-            rgb1 = sRGBColor(*Color(color1).rgb)
-
-        if isinstance(color2, (list, tuple)) and len(color2) >= 3:
-            rgb2 = sRGBColor(*color2[:3])
-        else:
-            rgb2 = sRGBColor(*Color(color2).rgb)
+        rgb1 = sRGBColor(*_extract_rgb_triplet(color1))
+        rgb2 = sRGBColor(*_extract_rgb_triplet(color2))
 
         lab1 = convert_color(rgb1, LabColor)
         lab2 = convert_color(rgb2, LabColor)
@@ -818,19 +813,15 @@ def _build_filter_list(
                     elif operator == "*":
                         aggregate_value = aggregate_value * operand
                     elif operator == "/":
-                        if operand != 0:
-                            aggregate_value = aggregate_value / operand
-                        else:
-                            # Division by zero, skip this filter
-                            logger.warning(
-                                f"Division by zero in aggregate expression for attribute '{name}'"
+                        if operand == 0:
+                            raise ZeroDivisionError(
+                                f"Division by zero in aggregate expression for '{name}'"
                             )
-                            continue
+                        aggregate_value = aggregate_value / operand
                 except (TypeError, ValueError) as e:
-                    logger.warning(
+                    raise TypeError(
                         f"Could not apply arithmetic operation to aggregate value for '{name}': {e}"
-                    )
-                    continue
+                    ) from e
 
             value = aggregate_value
 
@@ -926,12 +917,26 @@ def _build_filter_list(
 
             compare_func = compare_not_equal
         elif op == "~=":
-            op_desc = f"~= {value!r} (approx)"
+            if isinstance(value, (int, float)):
+                tolerance = abs(value) * 0.1
 
-            def compare_approx(el_val: Any, sel_val: Any) -> bool:
-                return _is_approximate_match(el_val, sel_val)
+                def compare_numeric_tolerance(el_val: Any, sel_val: Any) -> bool:
+                    return (
+                        isinstance(el_val, (int, float))
+                        and isinstance(sel_val, (int, float))
+                        and (sel_val - tolerance) <= el_val <= (sel_val + tolerance)
+                    )
 
-            compare_func = compare_approx
+                compare_func = compare_numeric_tolerance
+                op_desc = f"~= {value!r} (±10%)"
+                value = float(value)
+            else:
+                op_desc = f"~= {value!r} (approx)"
+
+                def compare_approx(el_val: Any, sel_val: Any) -> bool:
+                    return _is_approximate_match(el_val, sel_val)
+
+                compare_func = compare_approx
         elif op == "^=":
 
             def compare_prefix(el_val: Any, sel_val: Any) -> bool:
@@ -1014,12 +1019,7 @@ def _build_filter_list(
 
             compare_func = compare_lt
         else:
-            logger.warning(
-                "Unsupported operator '%s' encountered during filter building for attribute '%s'",
-                op,
-                name,
-            )
-            continue
+            raise ValueError(f"Unsupported operator '{op}' encountered for attribute '{name}'")
 
         filter_label = f"attribute [{name}{op_desc}]"
         filters.append(

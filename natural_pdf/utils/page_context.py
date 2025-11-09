@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, cast
+from collections.abc import Mapping as MappingABC
+from collections.abc import Sequence as SequenceABC
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Tuple, cast
 
 from natural_pdf.core.interfaces import Bounds, HasPages, HasSinglePage, SupportsBBox
 from natural_pdf.elements.base import extract_bbox
@@ -27,6 +29,22 @@ def _ensure_bounds(bounds: Optional[Bounds]) -> Optional[Bounds]:
     if bounds is None:
         return None
     return cast(Bounds, tuple(float(coord) for coord in bounds))  # type: ignore[arg-type]
+
+
+def _maybe_extract_bounds(obj: Any) -> Optional[Bounds]:
+    """Attempt to extract bounds only when the object satisfies extract_bbox requirements."""
+    if isinstance(obj, SupportsBBox):
+        return extract_bbox(obj)
+
+    if isinstance(obj, MappingABC):
+        return extract_bbox(cast(Mapping[str, Any], obj))
+
+    if isinstance(obj, SequenceABC):
+        # Guard sequences that look like coordinate tuples
+        if len(obj) >= 4:
+            return extract_bbox(cast(Sequence[float], obj))
+
+    return None
 
 
 def resolve_page_context(obj: Any) -> Tuple["Page", Optional[Bounds]]:
@@ -57,18 +75,18 @@ def resolve_page_context(obj: Any) -> Tuple["Page", Optional[Bounds]]:
         page = obj.page
         if page is None:
             raise ValueError("Object exposing HasSinglePage does not reference a Page.")
-        return page, _ensure_bounds(extract_bbox(obj))
+        return page, _ensure_bounds(_maybe_extract_bounds(obj))
 
     if isinstance(obj, HasPages):
         page = _unique_page(obj.pages)
-        return page, _ensure_bounds(extract_bbox(obj))
+        return page, _ensure_bounds(_maybe_extract_bounds(obj))
 
     # Duck-typed fallbacks ------------------------------------------------
     page_candidate = getattr(obj, "page", None) or getattr(obj, "_page", None)
     if page_candidate is not None:
         if not isinstance(page_candidate, Page):
             raise ValueError(f"Resolved page attribute is not a Page: {type(page_candidate)}")
-        return page_candidate, _ensure_bounds(extract_bbox(obj))
+        return page_candidate, _ensure_bounds(_maybe_extract_bounds(obj))
 
     if isinstance(obj, SupportsBBox):
         bounds = extract_bbox(obj)

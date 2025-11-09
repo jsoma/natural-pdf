@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Union, overload
+from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Sequence as TypingSequence
+from typing import Union, cast, overload
 
 
 class TableResult(Sequence):
@@ -18,6 +20,7 @@ class TableResult(Sequence):
     def __init__(self, rows: Optional[List[List[Any]]] = None) -> None:
         # Normalise to list of list so that Sequence operations work as expected
         self._rows: List[List[Any]] = list(rows or [])
+        self._headers: Optional[List[Any]] = None
 
     # ---------------------------------------------------------------------
     # Sequence API
@@ -36,6 +39,19 @@ class TableResult(Sequence):
 
     def __iter__(self) -> Iterator[List[Any]]:  # type: ignore[override]
         return iter(self._rows)
+
+    @property
+    def headers(self) -> Optional[List[Any]]:
+        """Return stored header values if available, otherwise fallback to the first row."""
+        if self._headers is not None:
+            return list(self._headers)
+        if not self._rows:
+            return None
+        return list(self._rows[0])
+
+    @headers.setter
+    def headers(self, values: Optional[TypingSequence[Any]]) -> None:
+        self._headers = list(values) if values is not None else None
 
     # ------------------------------------------------------------------
     # Convenience helpers
@@ -206,7 +222,26 @@ class TableResult(Sequence):
         if copy is not None:
             df_kwargs["copy"] = copy
 
-        df = pd.DataFrame(body, columns=hdr, **df_kwargs)
+        columns = None
+        if hdr is not None:
+            if (
+                isinstance(hdr, Sequence)
+                and hdr
+                and isinstance(hdr[0], Sequence)
+                and not isinstance(hdr[0], (str, bytes))
+            ):
+                try:
+                    columns = pd.MultiIndex.from_arrays(
+                        cast(TypingSequence[TypingSequence[Any]], hdr)
+                    )
+                except Exception:
+                    columns = pd.Index(cast(TypingSequence[Any], hdr[0]))
+            elif isinstance(hdr, Sequence):
+                columns = pd.Index(cast(TypingSequence[Any], hdr))
+            else:
+                columns = hdr  # Fallback for already-compatible axes
+
+        df = pd.DataFrame(body, columns=columns, **df_kwargs)
 
         # Convert empty strings to NaN by default
         if not keep_blank:

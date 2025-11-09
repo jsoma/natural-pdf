@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Protocol, Sequence, runtime_checkable
 
 from natural_pdf.classification.classification_provider import (
     get_classification_engine,
@@ -12,7 +12,13 @@ from natural_pdf.classification.mixin import ClassificationMixin
 logger = logging.getLogger(__name__)
 
 
-class ClassificationBatchMixin:
+@runtime_checkable
+class _HasElements(Protocol):
+    @property
+    def elements(self) -> Sequence[Any]: ...
+
+
+class ClassificationBatchMixin(_HasElements):
     def classify_all(
         self,
         labels: List[str],
@@ -38,18 +44,13 @@ class ClassificationBatchMixin:
         original_elements: List[Any] = []
         for element in self.elements:
             if not isinstance(element, ClassificationMixin):
-                logger.warning(f"Skipping element (not ClassificationMixin): {element!r}")
-                continue
-            try:
-                content = element._get_classification_content(model_type=inferred_using, **kwargs)
-                items_to_classify.append(content)
-                original_elements.append(element)
-            except Exception as exc:
-                logger.warning(f"Skipping element {element!r}: {exc}")
+                raise TypeError(f"Element {element!r} does not support classification")
+            content = element._get_classification_content(model_type=inferred_using, **kwargs)
+            items_to_classify.append(content)
+            original_elements.append(element)
 
         if not items_to_classify:
-            logger.warning("No content could be gathered from elements for batch classification.")
-            return self
+            raise ValueError("No content could be gathered from elements for batch classification.")
 
         batch_results = run_classification_batch(
             context=first_element,
@@ -72,11 +73,8 @@ class ClassificationBatchMixin:
             return self
 
         for element, result_obj in zip(original_elements, batch_results):
-            try:
-                if not hasattr(element, "analyses") or element.analyses is None:
-                    element.analyses = {}
-                element.analyses[analysis_key] = result_obj
-            except Exception as exc:
-                logger.warning(f"Failed to store classification result for {element!r}: {exc}")
+            if not hasattr(element, "analyses") or element.analyses is None:
+                element.analyses = {}
+            element.analyses[analysis_key] = result_obj
 
         return self

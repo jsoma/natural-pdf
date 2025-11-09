@@ -47,10 +47,10 @@ class NumpySearchService(SearchServiceProtocol):
         self._embedding_dims = len(self.embedding_model.encode("test"))
 
         # Simple in-memory storage
-        self._vectors = []
-        self._documents = []
-        self._metadata = []
-        self._ids = []
+        self._vectors: List[np.ndarray] = []
+        self._documents: List[str] = []
+        self._metadata: List[Dict[str, Any]] = []
+        self._ids: List[Optional[str]] = []
 
         logger.info(
             f"NumpySearchService initialized for collection '{collection_name}' with model '{embedding_model_name}'"
@@ -118,12 +118,14 @@ class NumpySearchService(SearchServiceProtocol):
         logger.info(
             f"Embedding {len(texts_to_embed)} documents using '{self._embedding_model_name}'..."
         )
-        generated_embeddings = self.embedding_model.encode(
-            texts_to_embed, device=embedder_device, show_progress_bar=len(texts_to_embed) > 10
-        )
+        encode_kwargs: Dict[str, Any] = {"show_progress_bar": len(texts_to_embed) > 10}
+        if embedder_device is not None:
+            encode_kwargs["device"] = embedder_device
+        generated_embeddings = self.embedding_model.encode(texts_to_embed, **encode_kwargs)
 
         for i, item_info in enumerate(items_info):
-            self._vectors.append(generated_embeddings[i])
+            embedding = np.asarray(generated_embeddings[i], dtype=np.float32)
+            self._vectors.append(embedding)
             self._documents.append(item_info["text"])
             self._metadata.append(item_info["metadata"])
             self._ids.append(item_info["id"])
@@ -157,10 +159,11 @@ class NumpySearchService(SearchServiceProtocol):
         )
 
         # Encode query and perform similarity search
-        query_vector = self.embedding_model.encode(query_text)
+        encode_kwargs: Dict[str, Any] = {}
+        query_vector = np.asarray(self.embedding_model.encode(query_text, **encode_kwargs))
 
         # Convert list to numpy array for batch operations
-        vectors_array = np.array(self._vectors)
+        vectors_array = np.stack(self._vectors, axis=0)
 
         # Normalize vectors for cosine similarity
         query_norm = np.linalg.norm(query_vector)
@@ -170,7 +173,10 @@ class NumpySearchService(SearchServiceProtocol):
         # Normalize all vectors (avoid division by zero)
         vector_norms = np.linalg.norm(vectors_array, axis=1, keepdims=True)
         valid_indices = vector_norms.flatten() > 0
-        vectors_array[valid_indices] = vectors_array[valid_indices] / vector_norms[valid_indices]
+        if np.any(valid_indices):
+            vectors_array[valid_indices] = (
+                vectors_array[valid_indices] / vector_norms[valid_indices]
+            )
 
         # Calculate cosine similarities
         similarities = np.dot(vectors_array, query_vector)
@@ -245,9 +251,9 @@ class NumpySearchService(SearchServiceProtocol):
             f"Listing documents for NumPy collection '{self.collection_name}' (include_metadata={include_metadata})..."
         )
 
-        results = []
+        results: List[Dict[str, Any]] = []
         for i, doc_id in enumerate(self._ids):
-            doc_info = {"id": doc_id}
+            doc_info: Dict[str, Any] = {"id": doc_id}
             if include_metadata:
                 doc_info["meta"] = self._metadata[i]
             results.append(doc_info)

@@ -11,6 +11,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Protocol,
     Sequence,
     Tuple,
     TypeGuard,
@@ -26,6 +27,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class _BoundaryLike(Protocol):
+    @property
+    def x0(self) -> float: ...
+
+    @property
+    def x1(self) -> float: ...
+
+    @property
+    def top(self) -> float: ...
+
+    @property
+    def bottom(self) -> float: ...
+
+
 def _is_element(obj: Any) -> TypeGuard["Element"]:
     return hasattr(obj, "bbox") and hasattr(obj, "extract_text")
 
@@ -35,8 +50,8 @@ def _is_element_collection(obj: Any) -> TypeGuard["ElementCollection"]:
 
 
 def calculate_section_bounds(
-    start_element: "Element",
-    end_element: "Element",
+    start_element: _BoundaryLike,
+    end_element: _BoundaryLike,
     include_boundaries: str,
     orientation: str,
     parent_bounds: Tuple[float, float, float, float],
@@ -352,10 +367,18 @@ def extract_sections_from_region(
     start_elements = process_selector_to_elements(start_elements, region)
     end_elements = process_selector_to_elements(end_elements, region) if end_elements else []
 
-    # Validate inputs
+    # Handle legacy "end only" usage by synthesizing implicit starts.
     if not start_elements:
-        logger.debug("No start elements found for section extraction")
-        return []
+        if not end_elements:
+            logger.debug("No start/end elements found for section extraction")
+            return []
+        return _sections_from_end_only(
+            region=region,
+            end_elements=end_elements,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            section_func=get_section_between_func or region.get_section_between,
+        )
 
     # Get all elements in the region and sort by position
     all_elements = region.get_elements()
@@ -432,4 +455,67 @@ def extract_sections_from_region(
             section = section_func(start_elem, None, include_boundaries, orientation)
         sections.append(section)
 
+    return sections
+
+
+class _VirtualBoundary:
+    def __init__(self, x0: float, top: float, x1: float, bottom: float):
+        self.x0 = x0
+        self.top = top
+        self.x1 = x1
+        self.bottom = bottom
+
+
+def _sections_from_end_only(
+    *,
+    region: "Region",
+    end_elements: List["Element"],
+    include_boundaries: str,
+    orientation: str,
+    section_func,
+) -> List["Region"]:
+    """Create sections when only ``end_elements`` are provided."""
+
+    from natural_pdf.elements.region import Region
+
+    sections: List["Region"] = []
+
+    if orientation == "vertical":
+        end_elements = sorted(end_elements, key=lambda e: (e.bottom, e.x0))
+        current_pos = region.top
+        for end_elem in end_elements:
+            start = _VirtualBoundary(region.x0, current_pos, region.x1, current_pos)
+            bounds = calculate_section_bounds(
+                start_element=start,
+                end_element=end_elem,
+                include_boundaries=include_boundaries,
+                orientation=orientation,
+                parent_bounds=region.bbox,
+            )
+            if validate_section_bounds(bounds, orientation):
+                section = Region(region.page, bounds)
+                section.start_element = start  # type: ignore[attr-defined]
+                section.end_element = end_elem  # type: ignore[attr-defined]
+                sections.append(section)
+            current_pos = end_elem.bottom
+        return sections
+
+    # Horizontal orientation
+    end_elements = sorted(end_elements, key=lambda e: (e.x1, e.top))
+    current_pos = region.x0
+    for end_elem in end_elements:
+        start = _VirtualBoundary(current_pos, region.top, current_pos, region.bottom)
+        bounds = calculate_section_bounds(
+            start_element=start,
+            end_element=end_elem,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+            parent_bounds=region.bbox,
+        )
+        if validate_section_bounds(bounds, orientation):
+            section = Region(region.page, bounds)
+            section.start_element = start  # type: ignore[attr-defined]
+            section.end_element = end_elem  # type: ignore[attr-defined]
+            sections.append(section)
+        current_pos = end_elem.x1
     return sections

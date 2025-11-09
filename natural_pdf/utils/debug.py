@@ -4,13 +4,12 @@ OCR debug utilities for natural-pdf.
 
 import base64
 import io
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-# Assuming Page type hint is available or define a placeholder
-try:
+if TYPE_CHECKING:
     from natural_pdf.core.page import Page
-except ImportError:
-    Page = Any  # Placeholder
+else:
+    Page = Any  # type: ignore[assignment]
 
 
 def _get_page_image_base64(page: Page) -> str:

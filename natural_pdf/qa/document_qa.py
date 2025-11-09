@@ -3,7 +3,7 @@ import logging
 import os
 import tempfile
 import warnings
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -90,7 +90,9 @@ class DocumentQA:
         """Check if the QA engine is properly initialized."""
         return self._is_initialized
 
-    def _get_word_boxes_from_elements(self, elements, offset_x=0, offset_y=0) -> List[List]:
+    def _get_word_boxes_from_elements(
+        self, elements: Iterable[Any], offset_x: int = 0, offset_y: int = 0
+    ) -> List[List[Any]]:
         """
         Extract word boxes from text elements.
 
@@ -126,7 +128,7 @@ class DocumentQA:
         self,
         image: Union[str, Image.Image, np.ndarray],
         question: Union[str, List[str], Tuple[str, ...]],
-        word_boxes: List = None,
+        word_boxes: Optional[List[List[Any]]] = None,
         min_confidence: float = 0.1,
         debug: bool = False,
         debug_output_dir: str = "output",
@@ -243,11 +245,17 @@ class DocumentQA:
         # results; each per-question result is itself a list (top-k answers).
         # We keep only the best answer (index 0) to maintain backwards
         # compatibility.
-        raw_results = self.pipe(queries if len(queries) > 1 else queries[0])
+        pipeline_output = self.pipe(queries if len(queries) > 1 else queries[0])
 
-        # Ensure we always have a list aligned with *questions*
         if len(queries) == 1:
-            raw_results = [raw_results]
+            normalized_output = [pipeline_output]
+        else:
+            normalized_output = pipeline_output
+
+        raw_results = cast(
+            List[Union[Dict[str, Any], List[Dict[str, Any]]]],
+            normalized_output,
+        )
 
         processed_results: List[QAResult] = []
 

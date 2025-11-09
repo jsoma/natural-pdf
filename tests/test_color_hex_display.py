@@ -3,10 +3,12 @@ Test that colors are displayed as hex values in group_by operations.
 """
 
 from io import StringIO
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from natural_pdf import PDF
 from natural_pdf.utils.color_utils import format_color_value, is_color_attribute, rgb_to_hex
 
 
@@ -100,25 +102,25 @@ class TestGroupByColorDisplay:
 
     @patch("sys.stdout", new_callable=StringIO)
     def test_page_groupby_hex_display(self, mock_stdout):
-        """Test PageGroupBy shows hex colors."""
+        """Test PageGroupBy.show() formats color labels as hex when grouping by callable."""
         from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.core.page_groupby import PageGroupBy
 
-        # Mock pages with different fill colors
-        mock_pages = []
         colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
-        for i, color in enumerate(colors):
-            page = MagicMock()
-            # PageGroupBy groups by the text content of the element found
-            # So we need to return the color tuple as the extracted text
-            page.find.return_value = MagicMock(extract_text=lambda c=color: c)
-            mock_pages.append(page)
+        sample_pdf = PDF(Path("pdfs/multi-page-table.pdf"))
+        sample_pages = [sample_pdf[i] for i in range(len(colors))]
+        collection = PageCollection(sample_pages)
+        color_map = {page.page_number: colors[idx] for idx, page in enumerate(sample_pages)}
 
-        collection = PageCollection(mock_pages)
-        grouped = PageGroupBy(collection, "fill", show_progress=False)
+        def color_selector(page):
+            return color_map.get(page.page_number)
 
-        # Call show() which should display hex colors
-        grouped.show()
+        grouped = PageGroupBy(collection, color_selector, show_progress=False)
+
+        with patch.object(PageCollection, "show", autospec=True, return_value=None) as mocked_show:
+            grouped.show()
+            assert mocked_show.call_count == len(colors)
+
         output = mock_stdout.getvalue()
 
         # Should show hex values, not RGB tuples
@@ -132,18 +134,17 @@ class TestGroupByColorDisplay:
         from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.core.page_groupby import PageGroupBy
 
-        # Mock pages
-        mock_pages = []
         colors = [(255, 0, 0), (0, 255, 0)]
-        for color in colors:
-            page = MagicMock()
-            page.find.return_value = MagicMock(extract_text=lambda c=color: c)
-            mock_pages.append(page)
+        sample_pdf = PDF(Path("pdfs/multi-page-table.pdf"))
+        sample_pages = [sample_pdf[i] for i in range(len(colors))]
+        collection = PageCollection(sample_pages)
+        color_map = {page.page_number: colors[idx] for idx, page in enumerate(sample_pages)}
 
-        collection = PageCollection(mock_pages)
-        grouped = PageGroupBy(collection, "stroke", show_progress=False)
+        def color_selector(page):
+            return color_map.get(page.page_number)
 
-        # Call info()
+        grouped = PageGroupBy(collection, color_selector, show_progress=False)
+
         grouped.info()
         output = mock_stdout.getvalue()
 

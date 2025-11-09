@@ -16,18 +16,21 @@ from typing import (
     Tuple,
     Union,
     cast,
+    overload,
 )
 
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
 from natural_pdf.core.capabilities import MultiRegionAnalysisMixin
 from natural_pdf.core.crop_utils import resolve_crop_bbox
+from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.mixins import ContextResolverMixin
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
+from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -96,7 +99,7 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         self._cached_text: Optional[str] = None
         self._cached_elements: Optional["ElementCollection"] = None  # Stringized
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
-        self._exclusions: List[Any] = []
+        self._exclusions: List[ExclusionSpec] = []
         self._multi_page_page_warned: bool = False
 
     def _qa_context_page_number(self) -> int:
@@ -111,22 +114,8 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
 
         return Region._normalize_qa_output(result)
 
-    def _qa_blank_result(
-        self, question: QuestionInput
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        def _blank() -> Dict[str, Any]:
-            return {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": self._qa_context_page_number(),
-                "source_elements": [],
-                "region": self,
-            }
-
-        if isinstance(question, (list, tuple)):
-            return [_blank() for _ in question]
-        return _blank()
+    def _qa_blank_result(self, question: QuestionInput) -> Union[QAResult, List[QAResult]]:
+        return super()._qa_blank_result(question)
 
     def _qa_target_region(self):
         if not self.constituent_regions:
@@ -182,7 +171,9 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
             raise RuntimeError("FlowRegion has no constituent regions for exclusions")
         return self.constituent_regions[0].page._element_mgr
 
-    def _element_to_region(self, element: Any, label: Optional[str] = None) -> Optional[Region]:
+    def _element_to_region(
+        self, element: Any, label: Optional[str] = None
+    ) -> Optional["PhysicalRegion"]:
         bbox = extract_bbox(element)
         if not bbox:
             return None
@@ -248,9 +239,11 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         if len(pages) == 0:
             raise AttributeError("FlowRegion has no associated pages")
         if len(pages) > 1 and not self._multi_page_page_warned:
-            logger.warning(
+            warnings.warn(
                 "FlowRegion spans multiple pages; returning the first page for .page access. "
-                "Use .pages to inspect all pages."
+                "Use .pages to inspect all pages.",
+                UserWarning,
+                stacklevel=2,
             )
             self._multi_page_page_warned = True
         return pages[0]
@@ -259,7 +252,7 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         """Resolve a highlighting service from the constituent regions."""
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions to get highlighter from")
-        return resolve_highlighter(self.constituent_regions, self.flow)
+        return cast("HighlightingService", resolve_highlighter(self.constituent_regions, self.flow))
 
     def _get_highlighter(self):
         """Compatibility hook for Visualizable mixin."""
@@ -546,11 +539,10 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
 
         try:
             sorted_physical_elements = sorted(all_physical_elements, key=get_sort_key)
-        except AttributeError:
-            logger.warning(
-                "Could not sort elements in FlowRegion by reading order; some elements might be missing page, top or x0 attributes."
-            )
-            sorted_physical_elements = all_physical_elements
+        except AttributeError as exc:
+            raise AttributeError(
+                "Could not sort elements in FlowRegion; ensure elements expose page, top, and x0"
+            ) from exc
 
         result_collection = ElementCollection(sorted_physical_elements)
         if apply_exclusions:
@@ -726,14 +718,33 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
             f"source_bbox={self.source_flow_element.bbox if self.source_flow_element else 'N/A'}>"
         )
 
+    @overload
+    def expand(self, amount: float, *, apply_exclusions: bool = True) -> "FlowRegion": ...
+
+    @overload
     def expand(
         self,
-        left: float = 0,
-        right: float = 0,
-        top: float = 0,
-        bottom: float = 0,
+        *,
+        left: Union[float, bool, str] = 0,
+        right: Union[float, bool, str] = 0,
+        top: Union[float, bool, str] = 0,
+        bottom: Union[float, bool, str] = 0,
         width_factor: float = 1.0,
         height_factor: float = 1.0,
+        apply_exclusions: bool = True,
+    ) -> "FlowRegion": ...
+
+    def expand(
+        self,
+        amount: Optional[float] = None,
+        *,
+        left: Union[float, bool, str] = 0,
+        right: Union[float, bool, str] = 0,
+        top: Union[float, bool, str] = 0,
+        bottom: Union[float, bool, str] = 0,
+        width_factor: float = 1.0,
+        height_factor: float = 1.0,
+        apply_exclusions: bool = True,
     ) -> "FlowRegion":
         """
         Create a new FlowRegion with all constituent regions expanded.
@@ -751,6 +762,9 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         """
         if not self.constituent_regions:
             return self._spawn_from_regions([])
+
+        if amount is not None:
+            left = right = top = bottom = amount
 
         expanded_regions = []
         for idx, region in enumerate(self.constituent_regions):
@@ -781,10 +795,7 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
 
             # Skip no-op expansion to avoid extra Region objects
             needs_expansion = (
-                any(
-                    v not in (0, 1.0)  # compare width/height factor logically later
-                    for v in (apply_left, apply_right, apply_top, apply_bottom)
-                )
+                any(v not in (0, 1.0) for v in (apply_left, apply_right, apply_top, apply_bottom))
                 or width_factor != 1.0
                 or height_factor != 1.0
             )
@@ -797,6 +808,7 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
                     bottom=apply_bottom,
                     width_factor=width_factor,
                     height_factor=height_factor,
+                    apply_exclusions=apply_exclusions,
                 )
                 if needs_expansion
                 else region

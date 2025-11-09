@@ -5,24 +5,13 @@ from pathlib import Path
 
 from natural_pdf import PDF
 
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
+
 
 def test_exclusion_visualization():
     """Test if we can visualize exclusions."""
 
-    # Find test PDF
-    project_root = Path(__file__).parent.parent
-    pdf_path = project_root / "pdfs/practice.pdf"
-    if not pdf_path.exists():
-        pdf_path = (
-            project_root
-            / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-        )
-
-    if not pdf_path.exists():
-        print("No test PDF found")
-        return
-
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Add some exclusions

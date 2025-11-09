@@ -8,8 +8,8 @@ import unicodedata
 import zlib
 from importlib.resources import files as package_files
 
-from pikepdf import Dictionary, Name, Pdf
-from pikepdf.canvas import Font
+from pikepdf import Dictionary, Name, Pdf  # type: ignore[import]
+from pikepdf.canvas import Font  # type: ignore[import]
 
 log = logging.getLogger(__name__)
 

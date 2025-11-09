@@ -22,7 +22,7 @@ AutoModelForObjectDetection: Any = None
 if torch_spec and torchvision_spec and transformers_spec:
     try:
         import torch
-        from torchvision import transforms
+        from torchvision import transforms  # type: ignore[import]
         from transformers import AutoModelForObjectDetection
     except ImportError as e:
         logger.warning(

@@ -356,8 +356,8 @@ class PaddleOCRRecognitionExporter(FinetuneExporter):
         """Locates, converts (md->ipynb), and copies the guide notebook."""
         try:
             # Try importing conversion library
-            import jupytext
-            from nbformat import write as write_notebook
+            import jupytext  # type: ignore[import]
+            from nbformat import write as write_notebook  # type: ignore[import]
         except ImportError:
             logger.warning(
                 "Could not import 'jupytext' or 'nbformat'. Skipping guide notebook generation. "

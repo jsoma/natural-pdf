@@ -1,0 +1,3 @@
+from typing import Any, Sequence, Tuple
+
+def find_peaks(x: Sequence[float] | Any, **kwargs: Any) -> Tuple[Any, dict[str, Any]]: ...

@@ -282,41 +282,28 @@ class FlowElement:
 
                         if potential_hit:
                             boundary_element_hit = potential_hit  # Set the overall boundary flag
+                            hit = potential_hit
                             # Adjust segment_contribution to stop at this boundary_element_hit.
                             if direction in ["below", "above"]:
                                 if direction == "below":
-                                    edge = (
-                                        boundary_element_hit.bottom
-                                        if include_endpoint
-                                        else (boundary_element_hit.top - 1)
-                                    )
+                                    edge = hit.bottom if include_endpoint else (hit.top - 1)
                                 else:  # direction == "above"
-                                    edge = (
-                                        boundary_element_hit.top
-                                        if include_endpoint
-                                        else (boundary_element_hit.bottom + 1)
+                                    edge = hit.top if include_endpoint else (hit.bottom + 1)
+                                if segment_contribution:
+                                    segment_contribution = segment_contribution.clip(
+                                        bottom=edge if direction == "below" else None,
+                                        top=edge if direction == "above" else None,
                                     )
-                                segment_contribution = segment_contribution.clip(
-                                    bottom=edge if direction == "below" else None,
-                                    top=edge if direction == "above" else None,
-                                )
                             else:  # direction in ["right", "left"]
                                 if direction == "right":
-                                    edge = (
-                                        boundary_element_hit.x1
-                                        if include_endpoint
-                                        else (boundary_element_hit.x0 - 1)
-                                    )
+                                    edge = hit.x1 if include_endpoint else (hit.x0 - 1)
                                 else:  # direction == "left"
-                                    edge = (
-                                        boundary_element_hit.x0
-                                        if include_endpoint
-                                        else (boundary_element_hit.x1 + 1)
+                                    edge = hit.x0 if include_endpoint else (hit.x1 + 1)
+                                if segment_contribution:
+                                    segment_contribution = segment_contribution.clip(
+                                        right=edge if direction == "right" else None,
+                                        left=edge if direction == "left" else None,
                                     )
-                                segment_contribution = segment_contribution.clip(
-                                    right=edge if direction == "right" else None,
-                                    left=edge if direction == "left" else None,
-                                )
             else:
                 candidate_region_in_segment = current_segment
                 if until and not boundary_element_hit:
@@ -338,39 +325,32 @@ class FlowElement:
 
                         if potential_hit:
                             boundary_element_hit = potential_hit
+                            hit = potential_hit
                             if direction in ["below", "above"]:
                                 if direction == "below":
-                                    edge = (
-                                        boundary_element_hit.bottom
-                                        if include_endpoint
-                                        else (boundary_element_hit.top - 1)
-                                    )
+                                    edge = hit.bottom if include_endpoint else (hit.top - 1)
                                 else:  # direction == "above"
-                                    edge = (
-                                        boundary_element_hit.top
-                                        if include_endpoint
-                                        else (boundary_element_hit.bottom + 1)
+                                    edge = hit.top if include_endpoint else (hit.bottom + 1)
+                                candidate_region_in_segment = (
+                                    candidate_region_in_segment.clip(
+                                        bottom=edge if direction == "below" else None,
+                                        top=edge if direction == "above" else None,
                                     )
-                                candidate_region_in_segment = candidate_region_in_segment.clip(
-                                    bottom=edge if direction == "below" else None,
-                                    top=edge if direction == "above" else None,
+                                    if candidate_region_in_segment
+                                    else None
                                 )
                             else:  # direction in ["right", "left"]
                                 if direction == "right":
-                                    edge = (
-                                        boundary_element_hit.x1
-                                        if include_endpoint
-                                        else (boundary_element_hit.x0 - 1)
-                                    )
+                                    edge = hit.x1 if include_endpoint else (hit.x0 - 1)
                                 else:  # direction == "left"
-                                    edge = (
-                                        boundary_element_hit.x0
-                                        if include_endpoint
-                                        else (boundary_element_hit.x1 + 1)
+                                    edge = hit.x0 if include_endpoint else (hit.x1 + 1)
+                                candidate_region_in_segment = (
+                                    candidate_region_in_segment.clip(
+                                        right=edge if direction == "right" else None,
+                                        left=edge if direction == "left" else None,
                                     )
-                                candidate_region_in_segment = candidate_region_in_segment.clip(
-                                    right=edge if direction == "right" else None,
-                                    left=edge if direction == "left" else None,
+                                    if candidate_region_in_segment
+                                    else None
                                 )
                 segment_contribution = candidate_region_in_segment
 

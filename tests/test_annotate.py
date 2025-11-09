@@ -71,7 +71,9 @@ def test_annotate_with_ocr():
     try:
         page.apply_ocr(engine="paddle")  # Use paddle as it's fast
     except RuntimeError as exc:
-        if "Engine 'paddle' is not available" in str(exc):
+        if "OCR engine 'paddle' is not available" in str(
+            exc
+        ) or "Engine 'paddle' is not available" in str(exc):
             pytest.skip("Paddle OCR engine not installed")
         raise
 

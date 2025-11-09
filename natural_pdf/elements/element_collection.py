@@ -30,7 +30,7 @@ from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixi
 
 # Add Visualizable import
 from natural_pdf.core.highlighter_utils import resolve_highlighter
-from natural_pdf.core.interfaces import SupportsBBox, SupportsElement
+from natural_pdf.core.interfaces import SupportsBBox, SupportsElement, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
@@ -43,7 +43,7 @@ from natural_pdf.utils.color_utils import format_color_value
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
-    import pikepdf
+    import pikepdf  # type: ignore[import]
 except ImportError:
     pikepdf = None
 
@@ -71,7 +71,7 @@ if TYPE_CHECKING:
 else:  # pragma: no cover - fallback when ipywidgets is unavailable at runtime
     DOMWidget = Any  # type: ignore[assignment]
 
-T = TypeVar("T", bound=SupportsElement)
+T = TypeVar("T", bound=SupportsGeometry)
 P = TypeVar("P", bound="Page")
 
 
@@ -174,6 +174,16 @@ class ElementCollection(
             with additional natural-pdf functionality for document processing.
         """
         self._elements: List[T] = list(elements)
+
+    def _supports_list(self) -> List[SupportsElement]:
+        """Ensure elements satisfy SupportsElement protocol."""
+        for element in self._elements:
+            if not isinstance(element, SupportsElement):
+                raise TypeError(
+                    f"Element {element!r} does not satisfy SupportsElement protocol; "
+                    "ensure collections are homogeneous before calling this operation."
+                )
+        return cast(List[SupportsElement], self._elements)
 
     def _get_render_specs(
         self,
@@ -536,14 +546,11 @@ class ElementCollection(
         if not self._elements:
             return False
 
-        # Get the page index of the first element
-        if not hasattr(self._elements[0], "page"):
-            return False
-
-        first_page_idx = self._elements[0].page.index
+        typed_elements = self._supports_list()
+        first_page_idx = typed_elements[0].page.index
 
         # Check if any element is on a different page
-        return any(hasattr(e, "page") and e.page.index != first_page_idx for e in self._elements)
+        return any(e.page.index != first_page_idx for e in typed_elements)
 
     def _are_on_multiple_pdfs(self) -> bool:
         """
@@ -555,17 +562,11 @@ class ElementCollection(
         if not self._elements:
             return False
 
-        # Get the PDF of the first element
-        if not hasattr(self._elements[0], "page") or not hasattr(self._elements[0].page, "pdf"):
-            return False
-
-        first_pdf = self._elements[0].page.pdf
+        typed_elements = self._supports_list()
+        first_pdf = typed_elements[0].page.pdf
 
         # Check if any element is from a different PDF
-        return any(
-            hasattr(e, "page") and hasattr(e.page, "pdf") and e.page.pdf is not first_pdf
-            for e in self._elements
-        )
+        return any(e.page.pdf is not first_pdf for e in typed_elements)
 
     def highest(self) -> Optional[T]:
         """
@@ -586,7 +587,8 @@ class ElementCollection(
         if self._are_on_multiple_pages():
             raise ValueError("Cannot determine highest element across multiple pages")
 
-        return min(self._elements, key=lambda e: e.top)
+        typed_elements = self._supports_list()
+        return cast(T, min(typed_elements, key=lambda e: e.top))
 
     def lowest(self) -> Optional[T]:
         """
@@ -607,7 +609,8 @@ class ElementCollection(
         if self._are_on_multiple_pages():
             raise ValueError("Cannot determine lowest element across multiple pages")
 
-        return max(self._elements, key=lambda e: e.bottom)
+        typed_elements = self._supports_list()
+        return cast(T, max(typed_elements, key=lambda e: e.bottom))
 
     def leftmost(self) -> Optional[T]:
         """
@@ -628,7 +631,8 @@ class ElementCollection(
         if self._are_on_multiple_pages():
             raise ValueError("Cannot determine leftmost element across multiple pages")
 
-        return min(self._elements, key=lambda e: e.x0)
+        typed_elements = self._supports_list()
+        return cast(T, min(typed_elements, key=lambda e: e.x0))
 
     def rightmost(self) -> Optional[T]:
         """
@@ -649,7 +653,8 @@ class ElementCollection(
         if self._are_on_multiple_pages():
             raise ValueError("Cannot determine rightmost element across multiple pages")
 
-        return max(self._elements, key=lambda e: e.x1)
+        typed_elements = self._supports_list()
+        return cast(T, max(typed_elements, key=lambda e: e.x1))
 
     def exclude_regions(self, regions: List["Region"]) -> "ElementCollection[T]":
         """
@@ -711,26 +716,28 @@ class ElementCollection(
         if not self._elements:
             return ""
 
+        typed_elements = self._supports_list()
+
         # Check if all elements are TextElements with character data
         text_elements_with_chars = [
             el
-            for el in self._elements
+            for el in typed_elements
             if isinstance(el, TextElement) and hasattr(el, "_char_dicts") and el._char_dicts
         ]
 
         # If we have a mixed collection (Regions, TextElements without chars, etc),
         # use a simpler approach: call extract_text on each element
-        if len(text_elements_with_chars) < len(self._elements):
+        if len(text_elements_with_chars) < len(typed_elements):
             # Mixed collection - extract text from each element
             element_texts = []
 
             # Sort elements by position first
             sorted_elements = sorted(
-                self._elements,
+                typed_elements,
                 key=lambda el: (
-                    el.page.index if hasattr(el, "page") else 0,
-                    el.top if hasattr(el, "top") else 0,
-                    el.x0 if hasattr(el, "x0") else 0,
+                    el.page.index,
+                    el.top,
+                    el.x0,
                 ),
             )
 
@@ -764,11 +771,7 @@ class ElementCollection(
             # Sort elements by position before joining
             sorted_text_elements = sorted(
                 text_elements,
-                key=lambda el: (
-                    el.page.index if hasattr(el, "page") else 0,
-                    el.top if hasattr(el, "top") else 0,
-                    el.x0 if hasattr(el, "x0") else 0,
-                ),
+                key=lambda el: (el.page.index, el.top, el.x0),
             )
             return separator.join(
                 getattr(el, "text", "") for el in sorted_text_elements
@@ -1030,8 +1033,9 @@ class ElementCollection(
         # Get page and highlighter from the first element (assume uniform page)
         first_element = self._elements[0]
         if not hasattr(first_element, "page") or not hasattr(first_element.page, "_highlighter"):
-            logger.warning("Cannot highlight collection: Elements lack page or highlighter access.")
-            return None
+            raise RuntimeError(
+                "Cannot highlight collection: elements lack page/highlighter access."
+            )
 
         page = first_element.page
         highlighter = page._highlighter
@@ -1071,7 +1075,7 @@ class ElementCollection(
                 add_args["bbox"] = data["bbox"]
                 highlighter.add(**add_args)
             else:
-                logger.warning(f"Skipping highlight data, no bbox or polygon found: {data}")
+                raise ValueError(f"Highlight data missing geometry (bbox or polygon): {data}")
 
         return None
 
@@ -1125,10 +1129,9 @@ class ElementCollection(
                     break
 
         if not highlighter:
-            logger.warning(
+            raise RuntimeError(
                 "Cannot determine highlight colors: HighlightingService not accessible from elements."
             )
-            return []
 
         if distinct:
             logger.debug("_prepare: Distinct highlighting strategy.")
@@ -1259,13 +1262,11 @@ class ElementCollection(
                         element_data.update({"color": final_color, "label": auto_label})
                         prepared_data.append(element_data)
             else:
-                # Mixed types: Generate generic label and warn
+                # Mixed types: require explicit guidance
                 type_names_str = ", ".join(sorted(list(element_types)))
-                auto_label = "Mixed Elements"
-                logger.warning(
-                    f"Highlighting collection with mixed element types ({type_names_str}) "
-                    f"using generic label '{auto_label}'. Consider using 'label', 'group_by', "
-                    f"or 'distinct=True' for more specific highlighting."
+                raise ValueError(
+                    f"Cannot auto-highlight mixed element types ({type_names_str}). "
+                    "Provide an explicit label/group_by or distinct=True."
                 )
                 final_color = highlighter._determine_highlight_color(
                     label=auto_label, color_input=color, use_color_cycling=False
@@ -1291,10 +1292,9 @@ class ElementCollection(
     ):
         """Low-level helper to call the appropriate HighlightingService method for an element."""
         if not hasattr(element, "page") or not hasattr(element.page, "_highlighter"):
-            logger.warning(
-                f"Cannot highlight element, missing 'page' attribute or page lacks highlighter access: {element}"
+            raise RuntimeError(
+                f"Cannot highlight element, missing 'page' attribute or page lacks highlighter: {element}"
             )
-            return
 
         page = element.page
         args_for_highlighter = {
@@ -1331,7 +1331,7 @@ class ElementCollection(
                     exc_info=True,
                 )
         elif not geom_data:
-            logger.warning(f"Cannot highlight element, no bbox or polygon found: {element}")
+            raise ValueError(f"Cannot highlight element, no bbox or polygon found: {element}")
 
     def _highlight_as_single_group(
         self,
@@ -1374,22 +1374,14 @@ class ElementCollection(
                 if group_key not in grouped_elements:
                     grouped_elements[group_key] = []
                 grouped_elements[group_key].append(element)
-            except AttributeError:
-                logger.warning(
-                    f"Attribute '{group_by}' not found on element {element}. Skipping grouping."
-                )
-                group_key = f"Error accessing '{group_by}'"
-                if group_key not in grouped_elements:
-                    grouped_elements[group_key] = []
-                grouped_elements[group_key].append(element)
-            except TypeError:  # Handle unhashable types
-                logger.warning(
-                    f"Attribute value for '{group_by}' on {element} is unhashable ({type(group_key)}). Using string representation."
-                )
-                group_key = str(group_key)
-                if group_key not in grouped_elements:
-                    grouped_elements[group_key] = []
-                grouped_elements[group_key].append(element)
+            except AttributeError as exc:
+                raise AttributeError(
+                    f"Attribute '{group_by}' not found on element {element}"
+                ) from exc
+            except TypeError as exc:  # Handle unhashable types
+                raise TypeError(
+                    f"Attribute value for '{group_by}' on {element} is unhashable ({type(group_key)})"
+                ) from exc
 
         # Highlight each group
         for group_key, group_elements in grouped_elements.items():
@@ -1401,23 +1393,17 @@ class ElementCollection(
             group_label = None
             if label_format:
                 try:
-                    # Create a dict of element attributes for formatting
-                    element_attrs = first_element.__dict__.copy()  # Start with element's dict
-                    # Ensure the group_by key itself is present correctly
+                    element_attrs = first_element.__dict__.copy()
                     element_attrs[group_by] = group_key
                     group_label = label_format.format(**element_attrs)
                 except KeyError as e:
-                    logger.warning(
-                        f"Invalid key '{e}' in label_format '{label_format}'. Using group key as label."
-                    )
-                    group_label = str(group_key)
+                    raise KeyError(f"Invalid key '{e}' in label_format '{label_format}'") from e
                 except Exception as format_e:
-                    logger.warning(
-                        f"Error formatting label '{label_format}': {format_e}. Using group key as label."
-                    )
-                    group_label = str(group_key)
+                    raise ValueError(
+                        f"Error formatting label '{label_format}': {format_e}"
+                    ) from format_e
             else:
-                group_label = str(group_key)  # Use the attribute value as label
+                group_label = str(group_key)
 
             logger.debug(f"  Highlighting group '{group_label}' ({len(group_elements)} elements)")
 
@@ -1480,10 +1466,9 @@ class ElementCollection(
 
             # Get highlighter service from the page
             if not hasattr(page, "_highlighter"):
-                logger.warning(
-                    f"Page {getattr(page, 'number', '?')} has no highlighter service, skipping"
+                raise RuntimeError(
+                    f"Page {getattr(page, 'number', '?')} has no highlighter service"
                 )
-                continue
 
             service = page._highlighter
 
@@ -1591,8 +1576,7 @@ class ElementCollection(
                 )
 
         if not page_images:
-            logger.warning("Failed to render any pages")
-            return None
+            raise RuntimeError("Failed to render any pages")
 
         if len(page_images) == 1:
             return page_images[0]
@@ -1685,34 +1669,24 @@ class ElementCollection(
         """Groups elements by the specified attribute."""
         grouped_elements: Dict[Any, List[T]] = {}
         for element in self._elements:
-            group_key: Any = None
+            group_key: Any
             try:
                 group_key = getattr(element, group_by, None)
-                if group_key is None:  # Handle elements missing the attribute
-                    group_key = f"Missing '{group_by}'"
-                # Ensure group_key is hashable (convert list/dict if necessary)
-                if isinstance(group_key, (list, dict)):
-                    group_key = str(group_key)
-
-                if group_key not in grouped_elements:
-                    grouped_elements[group_key] = []
-                grouped_elements[group_key].append(element)
             except AttributeError:
-                logger.warning(
-                    f"Attribute '{group_by}' not found on element {element}. Skipping grouping."
-                )
-                group_key = f"Error accessing '{group_by}'"
-                if group_key not in grouped_elements:
-                    grouped_elements[group_key] = []
-                grouped_elements[group_key].append(element)
-            except TypeError:  # Handle unhashable types
-                logger.warning(
-                    f"Attribute value for '{group_by}' on {element} is unhashable ({type(group_key)}). Using string representation."
-                )
+                group_key = f"Missing '{group_by}'"
+
+            if group_key is None:
+                group_key = f"Missing '{group_by}'"
+
+            if isinstance(group_key, (list, dict)):
                 group_key = str(group_key)
-                if group_key not in grouped_elements:
-                    grouped_elements[group_key] = []
-                grouped_elements[group_key].append(element)
+
+            try:
+                grouped_elements.setdefault(group_key, []).append(element)
+            except TypeError:
+                # Unhashable key, fall back to string repr
+                fallback_key = str(group_key)
+                grouped_elements.setdefault(fallback_key, []).append(element)
 
         return grouped_elements
 
@@ -1730,15 +1704,11 @@ class ElementCollection(
                 element_attrs[group_by_attr] = formatted_key  # Ensure key is present
                 return label_format.format(**element_attrs)
             except KeyError as e:
-                logger.warning(
-                    f"Invalid key '{e}' in label_format '{label_format}'. Using group key as label."
-                )
-                return formatted_key
+                raise KeyError(f"Invalid key '{e}' in label_format '{label_format}'") from e
             except Exception as format_e:
-                logger.warning(
-                    f"Error formatting label '{label_format}': {format_e}. Using group key as label."
-                )
-                return formatted_key
+                raise ValueError(
+                    f"Error formatting label '{label_format}': {format_e}"
+                ) from format_e
         else:
             return formatted_key
 
@@ -1748,20 +1718,17 @@ class ElementCollection(
         """Extracts common parameters needed for highlighting a single element."""
         # For FlowRegions and other complex elements, use highlighting protocol
         get_specs = getattr(element, "get_highlight_specs", None)
+        base_data: Dict[str, Any]
         if callable(get_specs):
             specs = get_specs()
             if not isinstance(specs, Sequence):
-                logger.warning(f"Highlight protocol on {element} returned non-sequence specs")
-                return None
+                raise TypeError(f"Highlight protocol on {element} returned non-sequence specs")
             if not specs:
-                logger.warning(f"Element {element} returned no highlight specs")
-                return None
+                raise ValueError(f"Element {element} returned no highlight specs")
 
             # For now, we'll use the first spec for the prepared data
             # The actual rendering will use all specs
             first_spec = specs[0]
-            page = first_spec["page"]
-
             base_data = {
                 "page_index": first_spec["page_index"],
                 "element": element,
@@ -1772,66 +1739,43 @@ class ElementCollection(
                 "multi_spec": len(specs) > 1,  # Flag to indicate multiple specs
                 "all_specs": specs,  # Store all specs for rendering
             }
-
-            # Extract attributes if requested
-            if annotate:
-                for attr_name in annotate:
-                    try:
-                        attr_value = getattr(element, attr_name, None)
-                        if attr_value is not None:
-                            base_data["attributes_to_draw"][attr_name] = attr_value
-                    except AttributeError:
-                        logger.warning(
-                            f"Attribute '{attr_name}' not found on element {element} for annotate"
-                        )
-
-            return base_data
-
-        # Fallback for regular elements with direct page access
-        if not hasattr(element, "page"):
-            logger.warning(f"Element {element} has no page attribute and no highlighting protocol")
-            return None
-
-        page = element.page
-
-        base_data = {
-            "page_index": page.index,
-            "element": element,
-            "annotate": annotate,
-            "attributes_to_draw": {},
-            "bbox": None,
-            "polygon": None,
-        }
-
-        # Extract geometry
-        is_polygon = getattr(element, "has_polygon", False)
-        geom_data = None
-        if is_polygon:
-            geom_data = getattr(element, "polygon", None)
-            if geom_data:
-                base_data["polygon"] = geom_data
         else:
-            geom_data = getattr(element, "bbox", None)
-            if geom_data:
-                base_data["bbox"] = geom_data
+            page = getattr(element, "page", None)
+            if page is None:
+                raise AttributeError(
+                    f"Element {element} has no page attribute and no highlighting protocol"
+                )
 
-        if not geom_data:
-            logger.warning(
-                f"Cannot prepare highlight, no bbox or polygon found for element: {element}"
-            )
-            return None
+            base_data = {
+                "page_index": page.index,
+                "element": element,
+                "annotate": annotate,
+                "attributes_to_draw": {},
+                "bbox": None,
+                "polygon": None,
+            }
+
+            # Extract geometry
+            is_polygon = getattr(element, "has_polygon", False)
+            geom_data = None
+            if is_polygon:
+                geom_data = getattr(element, "polygon", None)
+                if geom_data:
+                    base_data["polygon"] = geom_data
+            else:
+                geom_data = getattr(element, "bbox", None)
+                if geom_data:
+                    base_data["bbox"] = geom_data
+
+            if not geom_data:
+                raise ValueError(f"Cannot prepare highlight, no bbox or polygon for {element}")
 
         # Extract attributes if requested
         if annotate:
             for attr_name in annotate:
-                try:
-                    attr_value = getattr(element, attr_name, None)
-                    if attr_value is not None:
-                        base_data["attributes_to_draw"][attr_name] = attr_value
-                except AttributeError:
-                    logger.warning(
-                        f"Attribute '{attr_name}' not found on element {element} for annotate"
-                    )
+                attr_value = getattr(element, attr_name, None)
+                if attr_value is not None:
+                    base_data["attributes_to_draw"][attr_name] = attr_value
 
         return base_data
 
@@ -1847,8 +1791,7 @@ class ElementCollection(
             An InteractiveViewerWidget instance or None if elements lack page context.
         """
         if not self.elements:
-            logger.warning("Cannot generate interactive viewer for empty collection.")
-            return None
+            raise ValueError("Cannot generate interactive viewer for empty collection.")
 
         # Assume all elements are on the same page and have .page attribute
         try:
@@ -2205,8 +2148,7 @@ class ElementCollection(
         for element in self._elements:
             page_obj = getattr(element, "page", None)
             if page_obj is None or not hasattr(page_obj, "remove_element"):
-                logger.warning("Element has no page or page lacks remove_element: %s", element)
-                continue
+                raise AttributeError(f"Element {element} has no page or page lacks remove_element")
 
             element_type = getattr(element, "object_type", None)
             if isinstance(element_type, str):
@@ -2256,8 +2198,7 @@ class ElementCollection(
             List of dictionaries containing analysis data
         """
         if not self.elements:
-            logger.warning("No elements found in collection")
-            return []
+            raise ValueError("No elements found in collection")
 
         all_data = []
 
@@ -2285,7 +2226,8 @@ class ElementCollection(
             # Include extracted text if requested
             if include_content and hasattr(element, "extract_text"):
                 try:
-                    element_data["content"] = element.extract_text(preserve_whitespace=True)
+                    extractor = cast(Any, element)
+                    element_data["content"] = extractor.extract_text(preserve_whitespace=True)
                 except Exception as e:
                     logger.error(f"Error extracting text from element {i}: {e}")
                     element_data["content"] = ""
@@ -2312,7 +2254,9 @@ class ElementCollection(
                     if callable(show_method):
                         show_method(path=str(image_path), resolution=image_resolution)
                     else:
-                        logger.warning(f"Element {i} lacks a show() method; skipping image export.")
+                        raise AttributeError(
+                            f"Element {i} lacks a show() method; cannot export image"
+                        )
 
                     # Add relative path to data
                     element_data["image_path"] = str(Path(image_path).relative_to(image_dir.parent))
@@ -2324,8 +2268,7 @@ class ElementCollection(
             if isinstance(analyses, dict):
                 for key in analysis_keys:
                     if key not in analyses:
-                        logger.warning(f"Analysis key '{key}' not found in element {i}")
-                        continue
+                        raise KeyError(f"Analysis key '{key}' not found in element {i}")
 
                     analysis_result = analyses[key]
 
@@ -2383,7 +2326,6 @@ class ElementCollection(
 
         page_context_for_adding: Optional["Page"] = None
         if add_to_page:
-            # Try to determine a consistent page context if adding elements
             first_valid_region_with_page = next(
                 (
                     el
@@ -2392,13 +2334,11 @@ class ElementCollection(
                 ),
                 None,
             )
-            if first_valid_region_with_page:
-                page_context_for_adding = first_valid_region_with_page.page
-            else:
-                logger.warning(
-                    "Cannot add TextElements to page: No valid Region with a page attribute found in collection, or first region's page is None."
+            if not first_valid_region_with_page:
+                raise ValueError(
+                    "Cannot add TextElements to page: no Region in this collection has a page."
                 )
-                add_to_page = False  # Disable adding if no valid page context can be determined
+            page_context_for_adding = first_valid_region_with_page.page
 
         for element in self.elements:  # Accesses self._elements via property/iterator
             if isinstance(element, Region):
@@ -2413,13 +2353,14 @@ class ElementCollection(
                 new_text_elements.append(text_el)
 
                 if add_to_page:
+                    if page_context_for_adding is None:
+                        raise RuntimeError("Page context not initialized for adding TextElements")
                     if not hasattr(text_el, "page") or text_el.page is None:
-                        logger.warning(
-                            f"TextElement created from region {element.bbox} has no page attribute. Cannot add to page."
+                        raise ValueError(
+                            f"TextElement created from region {element.bbox} has no page attribute."
                         )
-                        continue
 
-                    if page_context_for_adding and text_el.page == page_context_for_adding:
+                    if text_el.page == page_context_for_adding:
                         add_as_type = (
                             "words"
                             if object_type == "word"
@@ -2433,13 +2374,10 @@ class ElementCollection(
                                 if hasattr(page_context_for_adding, "page_number")
                                 else "N/A"
                             )
-                            logger.error(
-                                "Page context for region %s (Page %s) does not expose add_element. "
-                                "Cannot add TextElement.",
-                                element.bbox,
-                                page_num_str,
+                            raise AttributeError(
+                                f"Page context (Page {page_num_str}) does not expose add_element"
                             )
-                    elif page_context_for_adding and text_el.page != page_context_for_adding:
+                    else:
                         current_page_num_str = (
                             str(text_el.page.page_number)
                             if hasattr(text_el.page, "page_number")
@@ -2450,16 +2388,14 @@ class ElementCollection(
                             if hasattr(page_context_for_adding, "page_number")
                             else "N/A"
                         )
-                        logger.warning(
-                            f"TextElement for region {element.bbox} from page {current_page_num_str} "
-                            f"not added as it's different from collection's inferred page context {context_page_num_str}."
-                        )
-                    elif not page_context_for_adding:
-                        logger.warning(
-                            f"TextElement for region {element.bbox} created, but no page context was determined for adding."
+                        raise ValueError(
+                            f"TextElement for region {element.bbox} belongs to page {current_page_num_str}, "
+                            f"but collection context is page {context_page_num_str}"
                         )
             else:
-                logger.warning(f"Skipping element {type(element)}, not a Region.")
+                raise TypeError(
+                    f"ElementCollection.to_text_elements only supports Region elements, got {type(element)}"
+                )
 
         if add_to_page and page_context_for_adding:
             page_num_str = (
@@ -2469,10 +2405,6 @@ class ElementCollection(
             )
             logger.info(
                 f"Created and added {len(new_text_elements)} TextElements to page {page_num_str}."
-            )
-        elif add_to_page and not page_context_for_adding:
-            logger.info(
-                f"Created {len(new_text_elements)} TextElements, but could not add to page as page context was not determined or was inconsistent."
             )
         else:  # add_to_page is False
             logger.info(f"Created {len(new_text_elements)} TextElements (not added to page).")
@@ -3337,16 +3269,11 @@ class ElementCollection(
             function = kwargs.pop("ocr_function")
 
         def _process(el):
-            if hasattr(el, "apply_ocr"):
-                if function is not None:
-                    return el.apply_ocr(function=function, **kwargs)
-                else:
-                    return el.apply_ocr(**kwargs)
-            else:
-                logger.warning(
-                    f"Element of type {type(el).__name__} does not support apply_ocr. Skipping."
-                )
-                return el
+            if not hasattr(el, "apply_ocr"):
+                raise TypeError(f"Element of type {type(el).__name__} does not support apply_ocr")
+            if function is not None:
+                return el.apply_ocr(function=function, **kwargs)
+            return el.apply_ocr(**kwargs)
 
         # Use collection's apply helper for optional progress bar
         self.apply(_process, show_progress=show_progress)

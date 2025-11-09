@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, List, Set, Union
 
 # Lazy import for optional dependency
 try:
-    import pikepdf
+    import pikepdf  # type: ignore[import]
 except ImportError:
     pikepdf = None
 

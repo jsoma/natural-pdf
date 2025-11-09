@@ -22,12 +22,12 @@ class _DummyRegion:
         self.extract_table_calls.append(kwargs)
         return TableResult(list(self._rows))
 
-    def extract_tables(self, **kwargs: Any) -> List[List[List[str]]]:
+    def extract_tables(self, **kwargs: Any) -> List[List[List[Optional[str]]]]:
         self.extract_tables_calls.append(kwargs)
         return [list(self._rows)]
 
 
-def _flow_region_with(rows_per_region: List[List[List[str]]]) -> FlowRegion:
+def _flow_region_with(rows_per_region: List[List[List[Optional[str]]]]) -> FlowRegion:
     regions = [
         _DummyRegion(rows=rows, page_number=index + 1) for index, rows in enumerate(rows_per_region)
     ]
@@ -35,7 +35,7 @@ def _flow_region_with(rows_per_region: List[List[List[str]]]) -> FlowRegion:
     return FlowRegion(flow=flow, constituent_regions=regions)
 
 
-def _flow_with_segments(rows_per_segment: List[List[List[str]]]) -> Flow:
+def _flow_with_segments(rows_per_segment: List[List[List[Optional[str]]]]) -> Flow:
     segments = [
         _DummyRegion(rows=rows, page_number=index + 1)
         for index, rows in enumerate(rows_per_segment)
@@ -46,7 +46,7 @@ def _flow_with_segments(rows_per_segment: List[List[List[str]]]) -> Flow:
 
 
 def _flow_region_collection(
-    rows_per_flow_region: List[List[List[List[str]]]],
+    rows_per_flow_region: List[List[List[List[Optional[str]]]]],
 ) -> FlowRegionCollection:
     flow_regions = [_flow_region_with(rows) for rows in rows_per_flow_region]
     return FlowRegionCollection(flow_regions)

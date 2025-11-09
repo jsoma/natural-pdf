@@ -557,8 +557,8 @@ class DirectionalMixin:
         result.includes_source = include_source
         # Optionally store the boundary element if found
         if target:
-            # Boundary elements are typically Element instances; guard to satisfy the type checker.
-            if hasattr(target, "object_type") and getattr(target, "object_type") != "region":
+            target_type = getattr(target, "type", None) or getattr(target, "object_type", None)
+            if target_type != "region":
                 result.boundary_element = cast("Element", target)
             setattr(result, "end_element", target)
 
@@ -979,7 +979,9 @@ class DirectionalMixin:
         return self.expand()
 
     @overload
-    def expand(self, amount: float, *, apply_exclusions: bool = True) -> "Region":
+    def expand(
+        self, amount: float, *, apply_exclusions: bool = True
+    ) -> Union["Region", "FlowRegion"]:
         """Expand in all directions by the same amount."""
         ...
 
@@ -994,7 +996,7 @@ class DirectionalMixin:
         width_factor: float = 1.0,
         height_factor: float = 1.0,
         apply_exclusions: bool = True,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """Expand by different amounts in each direction."""
         ...
 
@@ -1008,7 +1010,7 @@ class DirectionalMixin:
         width_factor: float = 1.0,
         height_factor: float = 1.0,
         apply_exclusions: bool = True,
-    ) -> "Region":
+    ) -> Union["Region", "FlowRegion"]:
         """
         Create a new region expanded from this element/region.
 

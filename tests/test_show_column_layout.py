@@ -3,6 +3,8 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
+
 from natural_pdf.core.render_spec import Visualizable
 
 
@@ -138,8 +140,8 @@ def test_no_specs_returns_none():
 
     # Override to return empty specs
     with patch.object(obj, "_get_render_specs", return_value=[]):
-        result = obj.show()
-        assert result is None
+        with pytest.raises(RuntimeError):
+            obj.show()
 
 
 if __name__ == "__main__":

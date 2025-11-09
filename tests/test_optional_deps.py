@@ -87,6 +87,15 @@ def are_optional_deps_installed():
         return False
 
 
+def _package_available(package_name: str) -> bool:
+    module_name = "surya" if package_name == "surya" else package_name
+    try:
+        importlib.import_module(module_name)
+    except ImportError:
+        return False
+    return True
+
+
 # --- Interactive Viewer (ipywidgets) Tests ---
 
 
@@ -175,6 +184,10 @@ def test_engine_fails_gracefully_when_not_installed(
         with pytest.raises(RuntimeError, match="No client provided"):
             _ = standard_pdf_page.analyze_layout(engine=engine)
     else:
+        if _package_available(package_name):
+            pytest.skip(
+                f"Skipping failure-path check for '{engine}' because {package_name} is installed."
+            )
         with pytest.raises(RuntimeError, match="is not available"):
             if engine in ["easyocr", "paddle", "surya", "doctr"]:
                 _ = needs_ocr_pdf_page.apply_ocr(engine=engine)

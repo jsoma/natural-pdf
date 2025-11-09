@@ -9,23 +9,13 @@ from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 from natural_pdf.elements.region import Region
 
-
-def find_test_pdf():
-    """Find a suitable test PDF file."""
-    project_root = Path(__file__).parent.parent
-    pdf_path = (
-        project_root
-        / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-    )
-    return pdf_path if pdf_path.exists() else None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_extract_table_apply_exclusions_parameter():
     """Test that extract_table accepts apply_exclusions parameter."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Create simple guides for testing
@@ -51,12 +41,10 @@ def test_extract_table_apply_exclusions_parameter():
         pytest.fail(f"Parameter not accepted: {e}")
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_extract_table_exclusions_effect():
     """Test that exclusions actually affect table extraction."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find some text on the page to create a meaningful test
@@ -100,12 +88,10 @@ def test_extract_table_exclusions_effect():
     print("✅ Exclusions properly handled in extract_table")
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_extract_table_methods_support_exclusions():
     """Test that different extraction methods support apply_exclusions."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     guides = Guides(page)
@@ -149,33 +135,18 @@ def test_extract_table_signature():
 
 
 if __name__ == "__main__":
-    # Run a simple test
-    pdf_path = find_test_pdf()
-    if pdf_path:
-        print(f"Found test PDF: {pdf_path}")
+    pdf = PDF(TEST_PDF)
+    page = pdf[0]
 
-        pdf = PDF(pdf_path)
-        page = pdf[0]
+    guides = Guides(page)
+    guides.vertical.divide(3)
+    guides.horizontal.divide(3)
 
-        guides = Guides(page)
-        guides.vertical.divide(3)
-        guides.horizontal.divide(3)
+    try:
+        guides.extract_table(apply_exclusions=True)
+        guides.extract_table(apply_exclusions=False)
+        print("✅ extract_table accepts apply_exclusions parameter")
+    except TypeError as exc:
+        print(f"❌ Parameter not accepted: {exc}")
 
-        # Test parameter acceptance
-        try:
-            table = guides.extract_table(apply_exclusions=True)
-            print("✅ extract_table accepts apply_exclusions=True")
-        except TypeError as e:
-            print(f"❌ Parameter not accepted: {e}")
-
-        try:
-            table = guides.extract_table(apply_exclusions=False)
-            print("✅ extract_table accepts apply_exclusions=False")
-        except TypeError as e:
-            print(f"❌ Parameter not accepted: {e}")
-
-    else:
-        print("❌ No test PDF found")
-
-    # Run pytest
     pytest.main([__file__, "-v"])

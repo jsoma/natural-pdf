@@ -22,7 +22,7 @@ from typing import (
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-from natural_pdf.collections.mixins import ApplyMixin, SectionsCollectionMixin
+from natural_pdf.collections.mixins import ApplyMixin, SectionsCollectionMixin, _SectionHost
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections, SupportsTextElements
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -36,7 +36,7 @@ from natural_pdf.utils.sections import sanitize_sections
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
 try:
-    import pikepdf
+    import pikepdf  # type: ignore[import]
 except ImportError:
     pikepdf = None
 
@@ -55,7 +55,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from natural_pdf.core.highlighting_service import HighlightContext
+    from natural_pdf.core.highlighting_service import HighlightContext, HighlightingService
     from natural_pdf.core.page import Page
     from natural_pdf.core.page_groupby import PageGroupBy
     from natural_pdf.elements.base import Element
@@ -173,9 +173,8 @@ class PageCollection(
 
     def extract_text(
         self,
-        keep_blank_chars: bool = True,
+        separator: str = "\n",
         apply_exclusions: bool = True,
-        strip: Optional[bool] = None,
         **kwargs,
     ) -> str:
         """
@@ -190,11 +189,14 @@ class PageCollection(
         Returns:
             Combined text from all pages
         """
-        texts: List[str] = []
-        extra_kwargs = kwargs.copy()
+        keep_blank_chars = kwargs.pop("keep_blank_chars", True)
+        if keep_blank_chars is None:
+            keep_blank_chars = True
+        strip = kwargs.pop("strip", None)
+        explicit_strip_final = kwargs.pop("strip_final", None)
+        explicit_strip_empty = kwargs.pop("strip_empty", None)
 
-        explicit_strip_final = extra_kwargs.pop("strip_final", None)
-        explicit_strip_empty = extra_kwargs.pop("strip_empty", None)
+        texts: List[str] = []
 
         for page in self.pages:
             text = page.extract_text(
@@ -206,11 +208,11 @@ class PageCollection(
                     else (strip if strip is not None else False)
                 ),
                 strip_empty=explicit_strip_empty if explicit_strip_empty is not None else False,
-                **extra_kwargs,
+                **kwargs,
             )
             texts.append(text)
 
-        return "\n".join(texts)
+        return separator.join(texts)
 
     def apply_ocr(
         self,
@@ -282,8 +284,8 @@ class PageCollection(
 
         return self  # Return self for chaining
 
-    def _iter_sections(self) -> Iterable["SupportsSections"]:
-        return iter(self.pages)
+    def _iter_sections(self) -> Iterable["_SectionHost"]:
+        return cast(Iterable["_SectionHost"], iter(self.pages))
 
     def split(
         self,

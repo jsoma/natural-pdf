@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from natural_pdf.qa.qa_provider import run_document_qa
 from natural_pdf.qa.qa_result import QAResult
 
 logger = logging.getLogger(__name__)
 
-QuestionInput = Union[str, Sequence[str], Tuple[str, ...]]
+QuestionInput = Union[str, List[str], Tuple[str, ...]]
 
 
 class DocumentQAMixin:
@@ -22,8 +22,8 @@ class DocumentQAMixin:
         debug: bool = False,
         **kwargs: Any,
     ) -> Any:
+        target_region = self._qa_target_region()
         try:
-            target_region = self._qa_target_region()
             raw_result = run_document_qa(
                 context=self,
                 region=target_region,
@@ -33,14 +33,12 @@ class DocumentQAMixin:
                 debug=debug,
                 **kwargs,
             )
-        except ImportError:
-            logger.error(
-                "Question answering requires the 'natural_pdf.qa' extras. Install with `pip install \"natural-pdf[ai]\"`."
+        except ImportError as exc:
+            message = (
+                "Question answering requires the 'natural_pdf.qa' extras. "
+                'Install with `pip install "natural-pdf[ai]"`.'
             )
-            return self._qa_blank_result(question)
-        except Exception as exc:
-            logger.error("Error running document QA: %s", exc, exc_info=True)
-            return self._qa_blank_result(question)
+            raise RuntimeError(message) from exc
 
         return self._qa_normalize_result(raw_result)
 

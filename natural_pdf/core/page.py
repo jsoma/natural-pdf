@@ -377,11 +377,21 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             # Add additional highlight groups if provided
             if highlights:
                 for group in highlights:
-                    elements = group.get("elements", [])
+                    raw_elements = group.get("elements")
+                    if not raw_elements:
+                        continue
+
+                    if isinstance(raw_elements, ElementCollection):
+                        elements_iter: Iterable[Any] = raw_elements.elements
+                    elif isinstance(raw_elements, Iterable):
+                        elements_iter = cast(Iterable[Any], raw_elements)
+                    else:
+                        elements_iter = (raw_elements,)
+
                     group_color = group.get("color", color)
                     group_label = group.get("label")
 
-                    for elem in elements:
+                    for elem in elements_iter:
                         spec.add_highlight(element=elem, color=group_color, label=group_label)
 
             # Handle exclusions visualization
@@ -2056,7 +2066,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
         check_tatr: bool = True,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         """
         Extract all tables from this page with enhanced method support.
 
@@ -2076,12 +2086,15 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         def _normalise_table(table: Sequence[Sequence[Optional[str]]]) -> List[List[str]]:
             return [[cell if isinstance(cell, str) else "" for cell in row] for row in table]
 
+        def _as_optional_rows(table: Sequence[Sequence[str]]) -> List[List[Optional[str]]]:
+            return [[cell for cell in row] for row in table]
+
         def _process_pdfplumber_tables(
             raw_tables: Optional[Sequence[Sequence[Sequence[Any]]]],
-        ) -> List[List[List[str]]]:
+        ) -> List[List[List[Optional[str]]]]:
             if not raw_tables:
                 return []
-            processed: List[List[List[str]]] = []
+            processed: List[List[List[Optional[str]]]] = []
             for table in raw_tables:
                 normalized_rows: List[List[str]] = []
                 for row in table:
@@ -2092,7 +2105,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                             text_value = self._apply_rtl_processing_to_text(text_value)
                         normalized_row.append(text_value)
                     normalized_rows.append(normalized_row)
-                processed.append(normalized_rows)
+                processed.append(_as_optional_rows(normalized_rows))
             return processed
 
         def _apply_text_strategy_overrides(settings: Dict[str, Any]) -> None:
@@ -2123,7 +2136,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
 
         def _run_pdfplumber(
             overrides: Optional[Dict[str, Any]] = None, *, force: bool = False
-        ) -> List[List[List[str]]]:
+        ) -> List[List[List[Optional[str]]]]:
             settings = base_settings.copy()
             if overrides:
                 for key, value in overrides.items():
@@ -2133,7 +2146,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             raw_tables = self._page.extract_tables(settings)
             return _process_pdfplumber_tables(raw_tables)
 
-        def _auto_detect_tables() -> List[List[List[str]]]:
+        def _auto_detect_tables() -> List[List[List[Optional[str]]]]:
             strategies = (
                 ("lattice", {"vertical_strategy": "lines", "horizontal_strategy": "lines"}),
                 ("stream", {"vertical_strategy": "text", "horizontal_strategy": "text"}),
@@ -2150,7 +2163,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                     logger.debug(f"Page {self.number}: '{label}' strategy failed: {exc}")
             return []
 
-        def _extract_tables_via_tatr() -> List[List[List[str]]]:
+        def _extract_tables_via_tatr() -> List[List[List[Optional[str]]]]:
             regions = self.find_all("region[type=table][model=tatr]")
             if not regions:
                 logger.debug(
@@ -2158,11 +2171,11 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                 )
                 return []
 
-            extracted: List[List[List[str]]] = []
+            extracted: List[List[List[Optional[str]]]] = []
             for table_region in regions:
                 table_data = table_region.extract_table(method="tatr")
                 if table_data:
-                    extracted.append(_normalise_table(table_data))
+                    extracted.append(_as_optional_rows(_normalise_table(table_data)))
 
             if extracted:
                 logger.debug(
@@ -2194,21 +2207,6 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             return []
 
         settings = table_settings.copy() if table_settings else {}
-
-        def _normalize_table(table: Sequence[Sequence[Optional[str]]]) -> List[List[str]]:
-            return [[cell if isinstance(cell, str) else "" for cell in row] for row in table]
-
-        def _extract_tables_via_tatr() -> List[List[List[str]]]:
-            regions = self.find_all("region[type=table][model=tatr]")
-            if not regions:
-                return []
-
-            extracted: List[List[List[str]]] = []
-            for table_region in regions:
-                table_data = table_region.extract_table(method="tatr")
-                if table_data:
-                    extracted.append(_normalize_table(table_data))
-            return extracted
 
         if check_tatr:
             try:
@@ -2526,7 +2524,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             )
         except Exception as exc:  # pragma: no cover - defensive
             logger.error(f"Page {self.number}: OCR failed: {exc}", exc_info=True)
-            return self
+            raise
 
         image_width, image_height = ocr_payload.image_size
         if not image_width or not image_height:
@@ -2584,22 +2582,18 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         final_resolution = resolution if resolution is not None else 150
         logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
 
-        try:
-            ocr_payload = run_ocr_extract(
-                target=self,
-                context=self,
-                engine_name=engine_name,
-                resolution=final_resolution,
-                languages=resolved_languages,
-                min_confidence=resolved_min_conf,
-                device=resolved_device,
-                detect_only=False,
-                options=normalized_options,
-                render_kwargs={},
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.error(f"  OCR extraction failed on page {self.number}: {exc}", exc_info=True)
-            return []
+        ocr_payload = run_ocr_extract(
+            target=self,
+            context=self,
+            engine_name=engine_name,
+            resolution=final_resolution,
+            languages=resolved_languages,
+            min_confidence=resolved_min_conf,
+            device=resolved_device,
+            detect_only=False,
+            options=normalized_options,
+            render_kwargs={},
+        )
 
         results = ocr_payload.results
         image_width, image_height = ocr_payload.image_size
@@ -2614,35 +2608,30 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         scale_y = self.height / image_height if image_height else 1
         for result in results:
             if not isinstance(result, Mapping):
-                logger.debug(f"  Skipping OCR result with unexpected type: {type(result)}")
-                continue
-            try:
-                bbox_raw = result.get("bbox")
-                text_value = result.get("text", "")
-                confidence = result.get("confidence", 0.0)
-                if not isinstance(bbox_raw, (list, tuple)) or len(bbox_raw) != 4:
-                    raise ValueError("OCR result missing bbox")
-                x0, top, x1, bottom = [float(cast(Union[int, float, str], c)) for c in bbox_raw]
-                elem_data = {
-                    "text": str(text_value),
-                    "confidence": float(confidence) if confidence is not None else 0.0,
-                    "x0": x0 * scale_x,
-                    "top": top * scale_y,
-                    "x1": x1 * scale_x,
-                    "bottom": bottom * scale_y,
-                    "width": (x1 - x0) * scale_x,
-                    "height": (bottom - top) * scale_y,
-                    "object_type": "text",  # Using text for temporary elements
-                    "source": "ocr",
-                    "fontname": "OCR-extract",  # Different name for clarity
-                    "size": 10.0,
-                    "page_number": self.number,
-                }
-                temp_elements.append(TextElement(elem_data, self))
-            except (KeyError, ValueError, TypeError) as convert_err:
-                logger.warning(
-                    f"  Skipping invalid OCR result during conversion: {result}. Error: {convert_err}"
-                )
+                raise TypeError(f"OCR result has unexpected type: {type(result).__name__}")
+
+            bbox_raw = result.get("bbox")
+            text_value = result.get("text", "")
+            confidence = result.get("confidence", 0.0)
+            if not isinstance(bbox_raw, (list, tuple)) or len(bbox_raw) != 4:
+                raise ValueError("OCR result missing bbox")
+            x0, top, x1, bottom = [float(cast(Union[int, float, str], c)) for c in bbox_raw]
+            elem_data = {
+                "text": str(text_value),
+                "confidence": float(confidence) if confidence is not None else 0.0,
+                "x0": x0 * scale_x,
+                "top": top * scale_y,
+                "x1": x1 * scale_x,
+                "bottom": bottom * scale_y,
+                "width": (x1 - x0) * scale_x,
+                "height": (bottom - top) * scale_y,
+                "object_type": "text",  # Using text for temporary elements
+                "source": "ocr",
+                "fontname": "OCR-extract",  # Different name for clarity
+                "size": 10.0,
+                "page_number": self.number,
+            }
+            temp_elements.append(TextElement(elem_data, self))
 
         logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
         return temp_elements
@@ -2653,7 +2642,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         return (self._page.width, self._page.height)
 
     @property
-    def layout_analyzer(self) -> Optional["LayoutAnalyzer"]:
+    def layout_analyzer(self) -> "LayoutAnalyzer":
         """Get or create the layout analyzer for this page."""
         if self._layout_analyzer is None:
             self._layout_analyzer = LayoutAnalyzer(self)
@@ -3135,16 +3124,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                 raise ValueError("Cannot classify page with 'text' model: No text content found.")
             return text_content
         elif model_type == "vision":
-            # Get resolution from manager/kwargs if possible, else default
-            manager = self._get_classification_manager()
-            default_resolution = 150
-            # Access kwargs passed to classify method if needed
-            resolution = (
-                kwargs.get("resolution", default_resolution)
-                if "kwargs" in locals()
-                else default_resolution
-            )
-
+            resolution = kwargs.get("resolution", 150)
             # Use render() for clean image without highlights
             img = self.render(resolution=resolution)
             if img is None:

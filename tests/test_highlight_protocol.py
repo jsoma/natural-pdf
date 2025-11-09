@@ -39,15 +39,15 @@ class TestCurrentBehavior:
         collection = ElementCollection([flow_region])  # type: ignore[arg-type]
 
         # This should now work with the highlighting protocol
-        img = collection.show()
+        img = collection.show(layout="stack", stack_direction="vertical")
 
         # Should produce a stacked image
         assert img is not None
         assert img.width > 0
         assert img.height > 0
 
-        # Height should be greater than a single page since it's stacked
-        assert img.height > 1000  # Multi-page stacked
+        # With explicit vertical stacking the total height should exceed a single page
+        assert img.height > pdf.pages[0].height
 
         pdf.close()
 

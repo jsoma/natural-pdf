@@ -12,42 +12,16 @@ from natural_pdf.analyzers.guides import Guides
 logger = logging.getLogger(__name__)
 pytestmark = [pytest.mark.slow]
 
-
-# Find a test PDF file
-def find_test_pdf():
-    """Find a suitable test PDF file."""
-    project_root = Path(__file__).parent.parent
-
-    # Look for PDFs in common locations
-    pdf_paths = [
-        project_root / "pdfs" / "guides-expenses-sample.pdf",
-        project_root / "pdfs" / "practice.pdf",
-        project_root / "test-files" / "practice.pdf",
-        project_root / "tests" / "practice.pdf",
-    ]
-
-    # Also check bad-pdfs directory for any PDF
-    bad_pdfs_dir = project_root / "bad-pdfs" / "submissions"
-    if bad_pdfs_dir.exists():
-        pdf_files = list(bad_pdfs_dir.glob("*.pdf"))[:3]  # Just use first 3
-        pdf_paths.extend(pdf_files)
-
-    for pdf_path in pdf_paths:
-        if pdf_path.exists():
-            return pdf_path
-
-    return None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/guides-expenses-sample.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_guides_extract_table_real_pdf():
     """Test guides.extract_table() with a real PDF file."""
 
-    pdf_path = find_test_pdf()
-    logger.debug(f"Using test PDF: {pdf_path}")
+    logger.debug(f"Using test PDF: {TEST_PDF}")
 
     # Load the PDF
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     try:
         page = pdf[0]  # Use first page
 
@@ -125,11 +99,7 @@ def test_guides_extract_table_real_pdf():
 def test_guides_extract_table_parameters():
     """Test that guides.extract_table() accepts all the expected parameters."""
 
-    pdf_path = find_test_pdf()
-    if pdf_path is None:
-        pytest.skip("No test PDF file found")
-
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     try:
         page = pdf[0]
 
@@ -171,12 +141,10 @@ def test_guides_extract_table_parameters():
         pdf.close()
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_guides_extract_table_workflow_comparison():
     """Compare the new extract_table() method with the traditional workflow."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     try:
         page = pdf[0]
 

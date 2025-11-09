@@ -6,7 +6,7 @@ import logging
 import threading
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple, cast
 
 try:  # Python 3.10+
     from importlib.metadata import entry_points
@@ -140,14 +140,13 @@ class EngineProvider:
 
             try:
                 groups = entry_points()
-                candidates = []
-                # Python 3.10 returns Mapping, 3.11 returns EntryPoints with .select
                 if hasattr(groups, "select"):
-                    candidates = groups.select(group=self.ENTRY_POINT_GROUP)  # type: ignore[attr-defined]
+                    candidates: Iterable[Any] = groups.select(group=self.ENTRY_POINT_GROUP)  # type: ignore[attr-defined]
                 else:  # pragma: no cover - older importlib_metadata API
-                    candidates = groups.get(self.ENTRY_POINT_GROUP, [])
+                    mapping = cast(Mapping[str, Sequence[Any]], groups)
+                    candidates = mapping.get(self.ENTRY_POINT_GROUP, ())
 
-                for ep in candidates:  # type: ignore[assignment]
+                for ep in candidates:
                     try:
                         logger.debug("Loading natural-pdf engine entry point %s", ep)
                         register_fn = ep.load()

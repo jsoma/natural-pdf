@@ -7,7 +7,7 @@ import re
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
-import jenkspy  # Added import for jenkspy
+import jenkspy  # type: ignore[import]
 
 from natural_pdf.analyzers.text_options import TextStyleOptions
 

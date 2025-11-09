@@ -113,8 +113,8 @@ class SinglePageContextMixin(ContextResolverMixin):
                 return region_value
 
         page = self._context_page()
-        page_cfg = page._config  # Page initialises _config during construction
-        if scope in {"region", "page"} and key in page_cfg:
+        page_cfg = getattr(page, "_config", None)
+        if page_cfg is not None and scope in {"region", "page"} and key in page_cfg:
             return page_cfg[key]
 
         pdf_obj = self._context_pdf()

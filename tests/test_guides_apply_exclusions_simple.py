@@ -8,23 +8,13 @@ import pytest
 from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides
 
-
-def find_test_pdf():
-    """Find a test PDF."""
-    project_root = Path(__file__).parent.parent
-    pdf_path = (
-        project_root
-        / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-    )
-    return pdf_path if pdf_path.exists() else None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_from_content_apply_exclusions_parameter():
     """Test that from_content accepts and uses apply_exclusions parameter."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Test that the parameter is accepted and works

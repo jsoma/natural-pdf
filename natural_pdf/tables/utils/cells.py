@@ -126,8 +126,8 @@ def build_table_from_cells(
                 groups.append([value])
         return [float(np.mean(group)) for group in groups]
 
-    row_centers = _cluster(ys)
-    col_centers = _cluster(xs)
+    row_centers = _cluster(ys.tolist())
+    col_centers = _cluster(xs.tolist())
 
     num_rows = len(row_centers)
     num_cols = len(col_centers)

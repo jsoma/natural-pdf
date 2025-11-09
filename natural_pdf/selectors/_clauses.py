@@ -79,19 +79,9 @@ def _contains_clause(pseudo: Dict[str, Any], ctx: ClauseEvalContext):
         try:
             pattern = re.compile(search_term, re.IGNORECASE if ignore_case else 0)
         except re.error as exc:  # pragma: no cover - defensive logging
-            logger.warning(
-                "Invalid regex '%s' in :contains selector: %s. Falling back to literal search.",
-                search_term,
-                exc,
-            )
-            pattern = None
+            raise ValueError(f"Invalid regex '{search_term}' in :contains selector: {exc}") from exc
 
         def regex_filter(element: Any) -> bool:
-            if pattern is None:
-                text = _element_text(element)
-                haystack = text.lower() if ignore_case else text
-                needle = search_term.lower() if ignore_case else search_term
-                return needle in haystack
             return bool(pattern.search(_element_text(element)))
 
         return {
@@ -119,12 +109,7 @@ def _regex_clause(pseudo: Dict[str, Any], ctx: ClauseEvalContext):
     try:
         compiled = re.compile(pattern, flags)
     except re.error as exc:  # pragma: no cover - defensive logging
-        logger.warning("Invalid regex '%s' in :regex selector: %s", pattern, exc)
-
-        def always_false(_element: Any) -> bool:
-            return False
-
-        return {"name": f"pseudo-class :regex({pattern!r})", "func": always_false}
+        raise ValueError(f"Invalid regex '{pattern}' in :regex selector: {exc}") from exc
 
     def _filter(element: Any) -> bool:
         return bool(compiled.search(_element_text(element)))

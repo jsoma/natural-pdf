@@ -3,6 +3,8 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
+
 from natural_pdf.core.render_spec import Visualizable
 
 
@@ -26,8 +28,8 @@ class MockObject(Visualizable):
 def test_empty_specs_returns_none():
     """Test that empty specs list returns None."""
     obj = MockObject([])
-    result = obj.show()
-    assert result is None
+    with pytest.raises(RuntimeError):
+        obj.show()
 
 
 def test_columns_zero_handled_gracefully():

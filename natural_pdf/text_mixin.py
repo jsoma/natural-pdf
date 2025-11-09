@@ -67,16 +67,15 @@ class TextMixin:  # pylint: disable=too-few-public-methods
 
         # We rely on the presence of *find_all* to obtain elements.  If the
         # subclass does not implement it then it *must* override update_text.
-        if not hasattr(self, "find_all"):
+        finder = getattr(self, "find_all", None)
+        if finder is None:
             raise NotImplementedError(
                 f"{self.__class__.__name__} must implement `update_text` explicitly "
                 "(no `find_all` method found)."
             )
 
         try:
-            elements_collection = self.find_all(
-                selector=selector, apply_exclusions=apply_exclusions
-            )
+            elements_collection = finder(selector=selector, apply_exclusions=apply_exclusions)
         except Exception as exc:  # pragma: no cover – defensive
             raise RuntimeError(
                 f"Failed to gather elements with selector '{selector}': {exc}"

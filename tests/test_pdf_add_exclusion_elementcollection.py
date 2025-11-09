@@ -7,26 +7,13 @@ import pytest
 
 from natural_pdf import PDF
 
-
-def find_test_pdf():
-    """Find a test PDF."""
-    project_root = Path(__file__).parent.parent
-    pdf_path = project_root / "pdfs/practice.pdf"
-    if not pdf_path.exists():
-        # Try alternative location
-        pdf_path = (
-            project_root
-            / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-        )
-    return pdf_path if pdf_path.exists() else None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_pdf_add_exclusion_with_element_list_lambda():
     """Test that pdf.add_exclusion() works when lambda returns a list of elements."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find some text elements to use
@@ -49,12 +36,10 @@ def test_pdf_add_exclusion_with_element_list_lambda():
     ), "List exclusion from lambda should reduce element count"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_pdf_add_exclusion_with_elementcollection_lambda():
     """Test that pdf.add_exclusion() works when lambda returns ElementCollection."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Access first page to initialize it
     page = pdf[0]
@@ -90,12 +75,10 @@ def test_pdf_add_exclusion_with_elementcollection_lambda():
     ), "ElementCollection exclusion from lambda should reduce element count"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_page_add_exclusion_with_elementcollection_lambda():
     """Test that page.add_exclusion() works when lambda returns ElementCollection."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Find some text elements

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypedDict, Union, cast
 
 from PIL import Image
 
@@ -29,6 +29,14 @@ from .ocr_options import (
 logger = logging.getLogger(__name__)
 
 
+EngineProviderValue = Union[Callable[[], OCREngine], Type[OCREngine], OCREngine]
+
+
+class EngineRegistryEntry(TypedDict):
+    provider: EngineProviderValue
+    options_class: Optional[Type[BaseOCROptions]]
+
+
 @dataclass
 class OCRRunResult:
     """Container for OCR execution output."""
@@ -37,15 +45,20 @@ class OCRRunResult:
     image_size: Tuple[int, int]
 
 
-EngineProvider = OCREngine
-
-
-ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
+ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {
     "easyocr": {"provider": EasyOCREngine, "options_class": EasyOCROptions},
     "paddle": {"provider": PaddleOCREngine, "options_class": PaddleOCROptions},
     "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
     "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
 }
+
+
+def _instantiate_engine_provider(provider: EngineProviderValue) -> OCREngine:
+    if isinstance(provider, OCREngine):
+        return provider
+    instance = provider()
+    return cast(OCREngine, instance)
+
 
 _engine_instances: Dict[str, OCREngine] = {}
 _engine_locks: Dict[str, threading.Lock] = {}
@@ -68,9 +81,7 @@ def _get_engine_instance(engine_name: str) -> OCREngine:
             return _engine_instances[engine_name]
 
         registry_entry = ENGINE_REGISTRY[engine_name]
-        provider = registry_entry["provider"]
-
-        engine_instance = provider() if callable(provider) else provider
+        engine_instance = _instantiate_engine_provider(registry_entry["provider"])
         if not engine_instance.is_available():
             raise RuntimeError(
                 f"OCR engine '{engine_name}' is not available. "
@@ -406,6 +417,10 @@ def _render_target(target: Any, *, resolution: int, render_kwargs: Dict[str, Any
         image = render_fn(resolution=resolution, **render_kwargs)
     if image is None:
         raise RuntimeError("Render call returned None for OCR input.")
+    if not isinstance(image, Image.Image):
+        raise TypeError(
+            f"Expected render() to return a PIL Image, received {type(image).__name__} instead."
+        )
     return image
 
 

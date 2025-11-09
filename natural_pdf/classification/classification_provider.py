@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, List, Optional, Sequence, Union
 
+from PIL import Image
+
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.engine_registry import register_builtin, register_classification_engine
 

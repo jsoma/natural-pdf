@@ -5,12 +5,15 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Optional,
     Protocol,
     Sequence,
+    Tuple,
     TypeVar,
+    Union,
     cast,
 )
 
@@ -32,6 +35,47 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class _SupportsApply(Protocol):
     def apply(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any: ...
+
+
+class _SectionHost(Protocol):
+    def find(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ) -> Optional["Element"]: ...
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ) -> "ElementCollection": ...
+
+    def extract_text(
+        self,
+        separator: str = "\n",
+        apply_exclusions: bool = True,
+        **kwargs: Any,
+    ) -> str: ...
 
 
 class DirectionalCollectionMixin:
@@ -56,7 +100,7 @@ class DirectionalCollectionMixin:
 class SectionsCollectionMixin:
     """Shared helpers for collections of objects implementing SupportsSections."""
 
-    def _iter_sections(self) -> Iterable["SupportsSections"]:
+    def _iter_sections(self) -> Iterable["_SectionHost"]:
         raise NotImplementedError
 
     def find(

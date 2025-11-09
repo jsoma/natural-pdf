@@ -334,7 +334,7 @@ class LayoutAnalyzer:
             logger.error(
                 "Layout engine '%s' failed via provider: %s", engine_name, exc, exc_info=True
             )
-            return None
+            raise
 
     def _default_engine_name(self) -> str:
         config_engine = self._page.get_config("layout_engine", None, scope="page")

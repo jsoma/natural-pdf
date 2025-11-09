@@ -20,7 +20,7 @@ from typing import (
 
 from PIL import Image  # Single import for PIL.Image module
 
-from natural_pdf.collections.mixins import SectionsCollectionMixin
+from natural_pdf.collections.mixins import SectionsCollectionMixin, _SectionHost
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.tables import TableResult
@@ -456,13 +456,14 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
 
         specs_by_page: Dict[Any, RenderSpec] = {}
         ordered_pages: List[Any] = []
+        normalized_crop = self._normalize_crop_mode(crop)
 
         for fr in self._flow_regions:
             fr_specs = fr._get_render_specs(
                 mode=mode,
                 color=color,
                 highlights=highlights,
-                crop=crop,
+                crop=normalized_crop,
                 crop_bbox=crop_bbox,
                 **fr_kwargs,
             )
@@ -583,17 +584,17 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
                 aggregated.extend(region_tables)
         return aggregated
 
-    def _iter_sections(self) -> Iterable["FlowRegion"]:
-        return iter(self._flow_regions)
+    def _iter_sections(self) -> Iterable["_SectionHost"]:
+        return cast(Iterable["_SectionHost"], iter(self._flow_regions))
 
     def highlight(
         self,
         label_prefix: Optional[str] = "FRC",
         color: Optional[Union[Tuple, str]] = None,
         **kwargs,
-    ) -> "FlowRegionCollection":
+    ) -> Optional[Image.Image]:
         if not self._flow_regions:
-            return self
+            return None
 
         num_flow_regions = len(self._flow_regions)
         for i, fr in enumerate(self._flow_regions):
@@ -604,7 +605,7 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
             # Pass the specific color to each FlowRegion's highlight method.
             # FlowRegion.highlight will then pass it to its constituent regions.
             fr.highlight(label=current_label, color=color, **kwargs)
-        return self
+        return None
 
     def show(
         self,
@@ -614,7 +615,7 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
         default_color: Optional[Union[Tuple, str]] = "darkviolet",  # A distinct color for FRC show
         label_prefix: Optional[str] = "FRC_Part",
         width: Optional[int] = None,
-        stack_direction: str = "vertical",  # New: "vertical" or "horizontal"
+        stack_direction: Literal["vertical", "horizontal"] = "vertical",  # New
         stack_gap: int = 5,  # New: Gap between stacked page images
         stack_background_color: Tuple[int, int, int] = (
             255,
@@ -650,3 +651,11 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
 
     def apply(self, func: Callable[["FlowRegion"], Any]) -> List[Any]:
         return [func(fr) for fr in self._flow_regions]
+
+    @staticmethod
+    def _normalize_crop_mode(
+        value: Union[bool, int, Literal["content", "wide"]]
+    ) -> Union[bool, Literal["content"]]:
+        if value == "content":
+            return "content"
+        return bool(value)

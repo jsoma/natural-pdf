@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union, cast
 
 from natural_pdf.flows.region import FlowRegion
 
-if True:  # pragma: no cover - circular imports avoided at runtime
-    try:
-        from natural_pdf.elements.region import Region
-    except ImportError:  # pragma: no cover
-        Region = Any  # type: ignore
+if TYPE_CHECKING:
+    from natural_pdf.elements.region import Region
+else:  # pragma: no cover
+    Region = Any  # type: ignore[misc, assignment]
+
+RegionLike = Union["Region", FlowRegion]
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,10 @@ class RegionGrid:
     """Container tracking a region and the grid fragments built inside it."""
 
     region: Region
-    table: Region | None
-    rows: List[Region]
-    columns: List[Region]
-    cells: List[Region]
+    table: RegionLike | None
+    rows: List[RegionLike]
+    columns: List[RegionLike]
+    cells: List[RegionLike]
 
 
 class FlowGuideAdapter:
@@ -92,7 +93,7 @@ class FlowGuideAdapter:
         region_grids: Sequence[RegionGrid],
         orientation: str,
         source: str,
-    ) -> Tuple[List[FlowRegion], List[FlowRegion], List[FlowRegion]]:
+    ) -> Tuple[List[RegionLike], List[RegionLike], List[RegionLike]]:
         """Combine per-region fragments into logical FlowRegion rows/columns/cells."""
         if not region_grids:
             return [], [], []
@@ -102,9 +103,9 @@ class FlowGuideAdapter:
         if orientation == "horizontal":
             return self._stitch_horizontal(region_grids, source)
 
-        rows = [row for grid in region_grids for row in grid.rows]
-        columns = [col for grid in region_grids for col in grid.columns]
-        cells = [cell for grid in region_grids for cell in grid.cells]
+        rows: List[RegionLike] = [row for grid in region_grids for row in grid.rows]
+        columns: List[RegionLike] = [col for grid in region_grids for col in grid.columns]
+        cells: List[RegionLike] = [cell for grid in region_grids for cell in grid.cells]
         return rows, columns, cells
 
     @property
@@ -114,7 +115,7 @@ class FlowGuideAdapter:
     def update_axis_from_regions(
         self,
         axis: str,
-        region_values: Dict[Any, Sequence[float]],
+        region_values: Mapping[Any, Sequence[float]],
         *,
         append: bool = False,
     ) -> None:
@@ -219,9 +220,9 @@ class FlowGuideAdapter:
         self,
         region_grids: Sequence[RegionGrid],
         source: str,
-    ) -> Tuple[List[FlowRegion], List[FlowRegion], List[FlowRegion]]:
-        page_rows = [list(grid.rows) for grid in region_grids]
-        page_cells = [list(grid.cells) for grid in region_grids]
+    ) -> Tuple[List[RegionLike], List[RegionLike], List[RegionLike]]:
+        page_rows: List[List[RegionLike]] = [list(grid.rows) for grid in region_grids]
+        page_cells: List[List[RegionLike]] = [list(grid.cells) for grid in region_grids]
 
         for idx in range(len(region_grids) - 1):
             region_a = region_grids[idx].region
@@ -238,8 +239,8 @@ class FlowGuideAdapter:
                 source,
             )
 
-        final_rows = [row for rows in page_rows for row in rows]
-        final_cells = [cell for cells in page_cells for cell in cells]
+        final_rows: List[RegionLike] = [row for rows in page_rows for row in rows]
+        final_cells: List[RegionLike] = [cell for cells in page_cells for cell in cells]
         final_columns = self._stitch_columns_across_pages(region_grids, source)
         return final_rows, final_columns, final_cells
 
@@ -247,9 +248,9 @@ class FlowGuideAdapter:
         self,
         region_grids: Sequence[RegionGrid],
         source: str,
-    ) -> Tuple[List[FlowRegion], List[FlowRegion], List[FlowRegion]]:
-        page_columns = [list(grid.columns) for grid in region_grids]
-        page_cells = [list(grid.cells) for grid in region_grids]
+    ) -> Tuple[List[RegionLike], List[RegionLike], List[RegionLike]]:
+        page_columns: List[List[RegionLike]] = [list(grid.columns) for grid in region_grids]
+        page_cells: List[List[RegionLike]] = [list(grid.cells) for grid in region_grids]
 
         for idx in range(len(region_grids) - 1):
             region_a = region_grids[idx].region
@@ -259,15 +260,15 @@ class FlowGuideAdapter:
                 continue
             self._merge_column_boundary(page_columns, page_cells, idx, source)
 
-        final_columns = [col for columns in page_columns for col in columns]
-        final_cells = [cell for cells in page_cells for cell in cells]
+        final_columns: List[RegionLike] = [col for columns in page_columns for col in columns]
+        final_cells: List[RegionLike] = [cell for cells in page_cells for cell in cells]
         final_rows = self._stitch_rows_across_pages(region_grids, source)
         return final_rows, final_columns, final_cells
 
     def _merge_row_boundary(
         self,
-        page_rows: List[List[Region]],
-        page_cells: List[List[Region]],
+        page_rows: List[List[RegionLike]],
+        page_cells: List[List[RegionLike]],
         index: int,
         source: str,
     ) -> None:
@@ -278,7 +279,9 @@ class FlowGuideAdapter:
         last_row = region_rows_a.pop(-1)
         first_row = region_rows_b.pop(0)
 
-        merged_row = FlowRegion(flow, [last_row, first_row], source_flow_element=None)
+        merged_row = FlowRegion(
+            flow, self._flatten_region_likes([last_row, first_row]), source_flow_element=None
+        )
         merged_row.source = source
         merged_row.region_type = "table_row"
         merged_row.metadata.update(
@@ -314,7 +317,9 @@ class FlowGuideAdapter:
         next_cells.sort(key=lambda cell: cell.metadata.get("col_index", 0))
 
         for cell_a, cell_b in zip(last_cells, next_cells):
-            merged_cell = FlowRegion(flow, [cell_a, cell_b], source_flow_element=None)
+            merged_cell = FlowRegion(
+                flow, self._flatten_region_likes([cell_a, cell_b]), source_flow_element=None
+            )
             merged_cell.source = source
             merged_cell.region_type = "table_cell"
             merged_cell.metadata.update(
@@ -328,8 +333,8 @@ class FlowGuideAdapter:
 
     def _merge_column_boundary(
         self,
-        page_columns: List[List[Region]],
-        page_cells: List[List[Region]],
+        page_columns: List[List[RegionLike]],
+        page_cells: List[List[RegionLike]],
         index: int,
         source: str,
     ) -> None:
@@ -340,7 +345,9 @@ class FlowGuideAdapter:
         last_col = columns_a.pop(-1)
         first_col = columns_b.pop(0)
 
-        merged_col = FlowRegion(flow, [last_col, first_col], source_flow_element=None)
+        merged_col = FlowRegion(
+            flow, self._flatten_region_likes([last_col, first_col]), source_flow_element=None
+        )
         merged_col.source = source
         merged_col.region_type = "table_column"
         merged_col.metadata.update(
@@ -376,7 +383,9 @@ class FlowGuideAdapter:
         col_cells_b.sort(key=lambda cell: cell.metadata.get("row_index", 0))
 
         for cell_a, cell_b in zip(col_cells_a, col_cells_b):
-            merged_cell = FlowRegion(flow, [cell_a, cell_b], source_flow_element=None)
+            merged_cell = FlowRegion(
+                flow, self._flatten_region_likes([cell_a, cell_b]), source_flow_element=None
+            )
             merged_cell.source = source
             merged_cell.region_type = "table_cell"
             merged_cell.metadata.update(
@@ -392,8 +401,8 @@ class FlowGuideAdapter:
         self,
         region_grids: Sequence[RegionGrid],
         source: str,
-    ) -> List[FlowRegion]:
-        stitched_columns: List[FlowRegion] = []
+    ) -> List[RegionLike]:
+        stitched_columns: List[RegionLike] = []
         flow = self.flow
         physical_columns = zip(*(grid.columns for grid in region_grids))
 
@@ -401,7 +410,9 @@ class FlowGuideAdapter:
             column_regions = list(column_group)
             if not column_regions:
                 continue
-            column = FlowRegion(flow, column_regions, source_flow_element=None)
+            column = FlowRegion(
+                flow, self._flatten_region_likes(column_regions), source_flow_element=None
+            )
             column.source = source
             column.region_type = "table_column"
             column.metadata.update({"col_index": col_index, "is_multi_page": True})
@@ -413,8 +424,8 @@ class FlowGuideAdapter:
         self,
         region_grids: Sequence[RegionGrid],
         source: str,
-    ) -> List[FlowRegion]:
-        stitched_rows: List[FlowRegion] = []
+    ) -> List[RegionLike]:
+        stitched_rows: List[RegionLike] = []
         flow = self.flow
         physical_rows = zip(*(grid.rows for grid in region_grids))
 
@@ -422,13 +433,24 @@ class FlowGuideAdapter:
             row_regions = list(row_group)
             if not row_regions:
                 continue
-            row = FlowRegion(flow, row_regions, source_flow_element=None)
+            row = FlowRegion(
+                flow, self._flatten_region_likes(row_regions), source_flow_element=None
+            )
             row.source = source
             row.region_type = "table_row"
             row.metadata.update({"row_index": row_index, "is_multi_page": True})
             stitched_rows.append(row)
 
         return stitched_rows
+
+    def _flatten_region_likes(self, items: Sequence[RegionLike]) -> List["Region"]:
+        flattened: List["Region"] = []
+        for item in items:
+            if isinstance(item, FlowRegion):
+                flattened.extend(item.constituent_regions)
+            else:
+                flattened.append(cast("Region", item))
+        return flattened
 
     @staticmethod
     def _has_boundary(coords: Sequence[float], boundary: float) -> bool:

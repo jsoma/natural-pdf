@@ -18,7 +18,7 @@ except ImportError:
     Image = None  # type: ignore
 
 try:
-    import pikepdf
+    import pikepdf  # type: ignore[import]
 except ImportError:
     pikepdf = None  # type: ignore
 

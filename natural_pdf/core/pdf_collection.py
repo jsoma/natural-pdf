@@ -23,13 +23,18 @@ from typing import (
 from PIL import Image
 from tqdm.auto import tqdm
 
-# Need to import this utility
+from natural_pdf.classification.classification_provider import (
+    get_classification_engine,
+    run_classification_batch,
+)
+from natural_pdf.classification.manager import ClassificationError
 
 # Set up logger early
 # Configure logging to include thread information
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
@@ -306,7 +311,7 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
                     continue
 
                 # Get the highlighter and render without displaying
-                highlighter = pdf._get_highlighter()
+                highlighter = cast("HighlightingService", pdf._get_highlighter())
                 pdf_image = highlighter.unified_render(
                     specs=render_specs,
                     layout="grid" if len(render_specs) > 1 else "single",

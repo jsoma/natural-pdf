@@ -210,9 +210,8 @@ def create_correction_task_package(
                     corrected_text = elem.text
                     if suggest is not None:
                         try:
-                            suggestion = suggest(
-                                elem.to_region(), getattr(elem, "confidence", None)
-                            )
+                            element_region = cast(Region, elem.to_region())
+                            suggestion = suggest(element_region, getattr(elem, "confidence", None))
                         except (
                             Exception
                         ) as suggest_error:  # pragma: no cover - user supplied callback

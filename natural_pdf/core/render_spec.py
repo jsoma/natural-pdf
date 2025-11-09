@@ -281,8 +281,7 @@ class Visualizable:
         )
 
         if not specs:
-            logger.warning(f"{self.__class__.__name__}.show() generated no render specs")
-            return None
+            raise RuntimeError(f"{self.__class__.__name__}.show() generated no render specs")
 
         # Determine default layout based on content and parameters
         if layout is None:
@@ -292,7 +291,7 @@ class Visualizable:
             else:
                 layout = "single"
 
-        highlighter = self._get_highlighter()
+        highlighter = cast("HighlightingService", self._get_highlighter())
         effective_resolution = self._resolve_image_resolution(resolution)
         return highlighter.unified_render(
             specs=specs,
@@ -351,10 +350,9 @@ class Visualizable:
         specs = self._get_render_specs(mode="render", crop=crop, crop_bbox=crop_bbox, **kwargs)
 
         if not specs:
-            logger.warning(f"{self.__class__.__name__}.render() generated no render specs")
-            return None
+            raise RuntimeError(f"{self.__class__.__name__}.render() generated no render specs")
 
-        highlighter = self._get_highlighter()
+        highlighter = cast("HighlightingService", self._get_highlighter())
         effective_resolution = self._resolve_image_resolution(resolution)
         return highlighter.unified_render(
             specs=specs,

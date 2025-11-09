@@ -32,7 +32,7 @@ class LinesGuidesEngine(GuidesEngine):
         max_lines_h = options.get("max_lines_h")
         max_lines_v = options.get("max_lines_v")
         outer = options.get("outer", False)
-        detection_method = options.get("detection_method", "pixels")
+        detection_method = options.get("detection_method", "auto")
         resolution = options.get("resolution", 192)
         detect_kwargs = {
             k: v
@@ -58,7 +58,20 @@ class LinesGuidesEngine(GuidesEngine):
         verticals: List[float] = []
         horizontals: List[float] = []
 
-        if detection_method == "pixels":
+        lines: List[Any] = []
+        method = detection_method
+
+        if method in ("vector", "auto"):
+            lines = _collect_line_elements(context)
+            if source_label:
+                lines = [line for line in lines if getattr(line, "source", None) == source_label]
+            if method == "auto":
+                if lines:
+                    method = "vector"
+                else:
+                    method = "pixels"
+
+        if method == "pixels":
             if not hasattr(context, "detect_lines"):
                 raise ValueError(f"Object {context} does not support pixel-based line detection")
 
@@ -105,12 +118,13 @@ class LinesGuidesEngine(GuidesEngine):
                 for line in _collect_line_elements(context)
                 if getattr(line, "source", None) == detect_params["source_label"]
             ]
-        else:
-            lines = _collect_line_elements(context)
-            if not lines and not hasattr(context, "lines") and not hasattr(context, "find_all"):
-                logger.warning(f"Object {context} has no lines or find_all method")
-            if source_label:
-                lines = [line for line in lines if getattr(line, "source", None) == source_label]
+        elif method != "vector":
+            raise ValueError(
+                f"Unsupported detection method '{detection_method}'. Use 'pixels', 'vector', or 'auto'."
+            )
+
+        if not lines and not hasattr(context, "lines") and not hasattr(context, "find_all"):
+            logger.warning(f"Object {context} has no lines or find_all method")
 
         h_line_data: List[tuple[float, float, Any]] = []
         v_line_data: List[tuple[float, float, Any]] = []

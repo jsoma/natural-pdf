@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Tuple, Union
 
 from natural_pdf.core.interfaces import SupportsBBox
 from natural_pdf.elements.base import extract_bbox
@@ -30,7 +30,16 @@ def resolve_crop_bbox(
     *,
     width: float,
     height: float,
-    crop: Union[bool, int, float, str, SupportsBBox, None] = False,
+    crop: Union[
+        bool,
+        int,
+        float,
+        SupportsBBox,
+        Sequence[float],
+        Mapping[str, Any],
+        Literal["content", "wide"],
+        None,
+    ] = False,
     crop_bbox: Optional[Bounds] = None,
     content_bbox_fn: Optional[Callable[[], Optional[Bounds]]] = None,
 ) -> Optional[Bounds]:
@@ -40,6 +49,13 @@ def resolve_crop_bbox(
         return _clamp_bbox(crop_bbox, width, height)
 
     content_bbox = content_bbox_fn() if content_bbox_fn else None
+
+    if isinstance(crop, bool):
+        if crop:
+            if content_bbox:
+                return _clamp_bbox(content_bbox, width, height)
+            return (0.0, 0.0, width, height)
+        return None
 
     if isinstance(crop, (int, float)):
         if content_bbox:
@@ -61,8 +77,5 @@ def resolve_crop_bbox(
         bbox = extract_bbox(crop)
         if bbox:
             return _clamp_bbox(bbox, width, height)
-
-    if crop is True:
-        return (0.0, 0.0, width, height)
 
     return None

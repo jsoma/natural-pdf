@@ -7,25 +7,13 @@ import pytest
 
 from natural_pdf import PDF
 
-
-def find_test_pdf():
-    """Find a test PDF."""
-    project_root = Path(__file__).parent.parent
-    pdf_path = project_root / "pdfs/practice.pdf"
-    if not pdf_path.exists():
-        pdf_path = (
-            project_root
-            / "bad-pdfs/submissions/Doc 06 - Approved Expenses 07.01.2022-06.30.2023 Marketplace Transactions - REDACTED.pdf"
-        )
-    return pdf_path if pdf_path.exists() else None
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_show_exclusions_parameter():
     """Test that show(exclusions='red') visualizes exclusions."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Add some exclusions
@@ -45,12 +33,10 @@ def test_show_exclusions_parameter():
     assert result3 is not None, "show() should work with exclusions=True"
 
 
-@pytest.mark.skipif(find_test_pdf() is None, reason="No test PDF file found")
 def test_pdf_show_exclusions():
     """Test that PDF-level show() also supports exclusions parameter."""
 
-    pdf_path = find_test_pdf()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Add exclusions at PDF level
     pdf.add_exclusion(lambda page: page.region(0, 0, page.width, 30), label="pdf_header")
@@ -63,14 +49,9 @@ def test_pdf_show_exclusions():
 def demo_exclusions_visualization():
     """Demonstrate the exclusions visualization feature."""
 
-    pdf_path = find_test_pdf()
-    if not pdf_path:
-        print("No test PDF found")
-        return
+    print(f"📄 Using PDF: {TEST_PDF.name}")
 
-    print(f"📄 Using PDF: {pdf_path.name}")
-
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
     page = pdf[0]
 
     # Add various exclusions

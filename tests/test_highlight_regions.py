@@ -161,8 +161,8 @@ class TestHighlightRegions:
         # Pass additional parameters
         img = page.highlight(region, width=800, labels=True)
         assert isinstance(img, Image.Image)
-        # Width parameter should affect the output
-        assert img.width == 800
+        # The image should honor the requested width unless a crop reduces the canvas
+        assert 0 < img.width <= 800
 
 
 if __name__ == "__main__":

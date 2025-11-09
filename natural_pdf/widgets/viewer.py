@@ -1,7 +1,7 @@
 # natural_pdf/widgets/viewer.py
 
 import logging
-from typing import Any, Optional, Type
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
 
 from natural_pdf.utils.visualization import render_plain_page
 
@@ -31,6 +31,8 @@ try:
 
     # --- Define Widget Class ---
     class _InteractiveViewerWidget(widgets.DOMWidget):
+        _on_element_click_callback: ClassVar[Optional[Callable[[Dict[str, Any]], None]]] = None
+
         def __init__(self, pdf_data=None, **kwargs):
             """
             Create an interactive PDF viewer widget.
@@ -383,7 +385,12 @@ try:
             return None
 
         @classmethod
-        def from_page(cls, page, on_element_click=None, include_attributes=None):
+        def from_page(
+            cls,
+            page,
+            on_element_click: Optional[Callable[[Dict[str, Any]], None]] = None,
+            include_attributes: Optional[List[str]] = None,
+        ):
             """
             Factory method to create a viewer from a Page object.
 
@@ -488,7 +495,7 @@ try:
                 # --- End of restored logic ---
 
                 # Set the callback if provided
-                if on_element_click:
+                if on_element_click is not None:
                     cls._on_element_click_callback = on_element_click
 
                 return cls(pdf_data=viewer_data)
@@ -498,14 +505,13 @@ try:
                 return None
 
         # Static callback storage and handler
-        _on_element_click_callback = None
-
         @staticmethod
-        def _handle_element_click(element_data):
+        def _handle_element_click(element_data: Dict[str, Any]) -> None:
             """Static method to handle element click events from JavaScript."""
-            if InteractiveViewerWidget._on_element_click_callback:
+            callback = _InteractiveViewerWidget._on_element_click_callback
+            if callback is not None:
                 try:
-                    InteractiveViewerWidget._on_element_click_callback(element_data)
+                    callback(element_data)
                 except Exception as e:
                     logger.error(f"Error in element click callback: {e}", exc_info=True)
 

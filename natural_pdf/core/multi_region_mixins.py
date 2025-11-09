@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, cast
 
-from natural_pdf.core.exclusion_mixin import ExclusionMixin
+from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionMixin, ExclusionSpec
 from natural_pdf.core.ocr_mixin import OCRMixin
 from natural_pdf.elements.base import DirectionalMixin
 
@@ -40,6 +40,11 @@ class MultiRegionDirectionalMixin(DirectionalMixin):
         include_source: bool = False,
         until: str | None = None,
         include_endpoint: bool = True,
+        offset: float | None = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
         **kwargs,
     ):
         regions = list(self._directional_regions())
@@ -59,9 +64,14 @@ class MultiRegionDirectionalMixin(DirectionalMixin):
                         include_source=include_source,
                         until=until,
                         include_endpoint=include_endpoint,
+                        offset=offset,
+                        apply_exclusions=apply_exclusions,
+                        multipage=multipage,
+                        within=within,
+                        anchor=anchor,
                         **kwargs,
                     )
-                    new_regions.append(above_region)
+                    new_regions.append(cast("Region", above_region))
                 elif include_source:
                     new_regions.append(region)
         else:
@@ -72,9 +82,194 @@ class MultiRegionDirectionalMixin(DirectionalMixin):
                     include_source=include_source,
                     until=until,
                     include_endpoint=include_endpoint,
+                    offset=offset,
+                    apply_exclusions=apply_exclusions,
+                    multipage=multipage,
+                    within=within,
+                    anchor=anchor,
                     **kwargs,
                 )
-                new_regions.append(above_region)
+                new_regions.append(cast("Region", above_region))
+
+        return self._spawn_from_regions(new_regions)
+
+    def below(
+        self,
+        height: float | None = None,
+        width: str = "full",
+        include_source: bool = False,
+        until: str | None = None,
+        include_endpoint: bool = True,
+        offset: float | None = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
+        **kwargs,
+    ):
+        regions = list(self._directional_regions())
+        if not regions:
+            return self._spawn_from_regions([])
+
+        flow = self._directional_flow()
+        arrangement = getattr(flow, "arrangement", "vertical")
+        new_regions: List["Region"] = []
+
+        if arrangement == "vertical":
+            for idx, region in enumerate(regions):
+                if idx == len(regions) - 1:
+                    below_region = region.below(
+                        height=height,
+                        width="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        offset=offset,
+                        apply_exclusions=apply_exclusions,
+                        multipage=multipage,
+                        within=within,
+                        anchor=anchor,
+                        **kwargs,
+                    )
+                    new_regions.append(cast("Region", below_region))
+                elif include_source:
+                    new_regions.append(region)
+        else:
+            for region in regions:
+                below_region = region.below(
+                    height=height,
+                    width=width,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    offset=offset,
+                    apply_exclusions=apply_exclusions,
+                    multipage=multipage,
+                    within=within,
+                    anchor=anchor,
+                    **kwargs,
+                )
+                new_regions.append(cast("Region", below_region))
+
+        return self._spawn_from_regions(new_regions)
+
+    def left(
+        self,
+        width: float | None = None,
+        height: str = "element",
+        include_source: bool = False,
+        until: str | None = None,
+        include_endpoint: bool = True,
+        offset: float | None = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
+        **kwargs,
+    ):
+        regions = list(self._directional_regions())
+        if not regions:
+            return self._spawn_from_regions([])
+
+        flow = self._directional_flow()
+        arrangement = getattr(flow, "arrangement", "vertical")
+        new_regions: List["Region"] = []
+
+        if arrangement == "horizontal":
+            for idx, region in enumerate(regions):
+                if idx == 0:
+                    left_region = region.left(
+                        width=width,
+                        height="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        offset=offset,
+                        apply_exclusions=apply_exclusions,
+                        multipage=multipage,
+                        within=within,
+                        anchor=anchor,
+                        **kwargs,
+                    )
+                    new_regions.append(cast("Region", left_region))
+                elif include_source:
+                    new_regions.append(region)
+        else:
+            for region in regions:
+                left_region = region.left(
+                    width=width,
+                    height=height,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    offset=offset,
+                    apply_exclusions=apply_exclusions,
+                    multipage=multipage,
+                    within=within,
+                    anchor=anchor,
+                    **kwargs,
+                )
+                new_regions.append(cast("Region", left_region))
+
+        return self._spawn_from_regions(new_regions)
+
+    def right(
+        self,
+        width: float | None = None,
+        height: str = "element",
+        include_source: bool = False,
+        until: str | None = None,
+        include_endpoint: bool = True,
+        offset: float | None = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["Region"] = None,
+        anchor: str = "start",
+        **kwargs,
+    ):
+        regions = list(self._directional_regions())
+        if not regions:
+            return self._spawn_from_regions([])
+
+        flow = self._directional_flow()
+        arrangement = getattr(flow, "arrangement", "vertical")
+        new_regions: List["Region"] = []
+
+        if arrangement == "horizontal":
+            for idx, region in enumerate(regions):
+                if idx == len(regions) - 1:
+                    right_region = region.right(
+                        width=width,
+                        height="element",
+                        include_source=include_source,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        offset=offset,
+                        apply_exclusions=apply_exclusions,
+                        multipage=multipage,
+                        within=within,
+                        anchor=anchor,
+                        **kwargs,
+                    )
+                    new_regions.append(cast("Region", right_region))
+                elif include_source:
+                    new_regions.append(region)
+        else:
+            for region in regions:
+                right_region = region.right(
+                    width=width,
+                    height=height,
+                    include_source=include_source,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    offset=offset,
+                    apply_exclusions=apply_exclusions,
+                    multipage=multipage,
+                    within=within,
+                    anchor=anchor,
+                    **kwargs,
+                )
+                new_regions.append(cast("Region", right_region))
 
         return self._spawn_from_regions(new_regions)
 
@@ -107,8 +302,9 @@ class MultiRegionExclusionMixin(ExclusionMixin):
         self, include_callable: bool = True, debug: bool = False
     ) -> List["Region"]:
         local: List["Region"] = []
-        if getattr(self, "_exclusions", None):
-            local = self._evaluate_exclusion_entries(self._exclusions, include_callable, debug)
+        entries = cast(List[ExclusionSpec], getattr(self, "_exclusions", []))
+        if entries:
+            local = self._evaluate_exclusion_entries(entries, include_callable, debug)
 
         aggregated: List["Region"] = []
         for region in self._iter_exclusion_regions():
@@ -129,141 +325,3 @@ class MultiRegionExclusionMixin(ExclusionMixin):
             seen.add(marker)
             deduped.append(region)
         return deduped
-
-    def below(
-        self,
-        height: float | None = None,
-        width: str = "full",
-        include_source: bool = False,
-        until: str | None = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ):
-        regions = list(self._directional_regions())
-        if not regions:
-            return self._spawn_from_regions([])
-
-        flow = self._directional_flow()
-        arrangement = getattr(flow, "arrangement", "vertical")
-        new_regions: List["Region"] = []
-
-        if arrangement == "vertical":
-            last_idx = len(regions) - 1
-            for idx, region in enumerate(regions):
-                if idx == last_idx:
-                    below_region = region.below(
-                        height=height,
-                        width="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(below_region)
-                elif include_source:
-                    new_regions.append(region)
-        else:
-            for region in regions:
-                below_region = region.below(
-                    height=height,
-                    width=width,
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(below_region)
-
-        return self._spawn_from_regions(new_regions)
-
-    def left(
-        self,
-        width: float | None = None,
-        height: str = "full",
-        include_source: bool = False,
-        until: str | None = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ):
-        regions = list(self._directional_regions())
-        if not regions:
-            return self._spawn_from_regions([])
-
-        flow = self._directional_flow()
-        arrangement = getattr(flow, "arrangement", "vertical")
-        new_regions: List["Region"] = []
-
-        if arrangement == "vertical":
-            for region in regions:
-                left_region = region.left(
-                    width=width,
-                    height=height,
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(left_region)
-        else:
-            leftmost_region = min(regions, key=lambda r: r.x0)
-            for region in regions:
-                if region == leftmost_region:
-                    left_region = region.left(
-                        width=width,
-                        height="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(left_region)
-                elif include_source:
-                    new_regions.append(region)
-
-        return self._spawn_from_regions(new_regions)
-
-    def right(
-        self,
-        width: float | None = None,
-        height: str = "element",
-        include_source: bool = False,
-        until: str | None = None,
-        include_endpoint: bool = True,
-        **kwargs,
-    ):
-        regions = list(self._directional_regions())
-        if not regions:
-            return self._spawn_from_regions([])
-
-        flow = self._directional_flow()
-        arrangement = getattr(flow, "arrangement", "vertical")
-        new_regions: List["Region"] = []
-
-        if arrangement == "vertical":
-            for region in regions:
-                right_region = region.right(
-                    width=width,
-                    height=height,
-                    include_source=include_source,
-                    until=until,
-                    include_endpoint=include_endpoint,
-                    **kwargs,
-                )
-                new_regions.append(right_region)
-        else:
-            rightmost_region = max(regions, key=lambda r: r.x1)
-            for region in regions:
-                if region == rightmost_region:
-                    right_region = region.right(
-                        width=width,
-                        height="element",
-                        include_source=include_source,
-                        until=until,
-                        include_endpoint=include_endpoint,
-                        **kwargs,
-                    )
-                    new_regions.append(right_region)
-                elif include_source:
-                    new_regions.append(region)
-
-        return self._spawn_from_regions(new_regions)

@@ -12,6 +12,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
     overload,
 )
 
@@ -28,12 +29,14 @@ if TYPE_CHECKING:
 
     from .collections import FlowElementCollection
     from .element import FlowElement
+    from .region import FlowRegion
 
 # Import required classes for the new methods
 # For runtime image manipulation
 
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.tables import TableResult
@@ -343,7 +346,7 @@ class Flow(Visualizable, SelectorHostMixin):
 
     def ask(
         self,
-        question: Union[str, Sequence[str], Tuple[str, ...]],
+        question: QuestionInput,
         min_confidence: float = 0.1,
         model: Optional[str] = None,
         debug: bool = False,
@@ -439,9 +442,7 @@ class Flow(Visualizable, SelectorHostMixin):
         segments_by_page = {}  # Dict[Page, List[Segment]]
 
         for i, segment in enumerate(self.segments):
-            # Determine the page for this segment - fix type detection
             if hasattr(segment, "page") and hasattr(segment.page, "find_all"):
-                # It's a Region object (has a parent page)
                 page_obj = segment.page
                 segment_type = "region"
             elif (
@@ -450,20 +451,17 @@ class Flow(Visualizable, SelectorHostMixin):
                 and hasattr(segment, "height")
                 and not hasattr(segment, "page")
             ):
-                # It's a Page object (has find_all but no parent page)
                 page_obj = segment
                 segment_type = "page"
             else:
-                logger.warning(f"Segment {i+1} does not support find_all, skipping")
-                continue
+                raise TypeError(f"Segment {i+1} does not support find_all: {segment!r}")
 
             if page_obj not in segments_by_page:
                 segments_by_page[page_obj] = []
             segments_by_page[page_obj].append((segment, segment_type))
 
         if not segments_by_page:
-            logger.warning("No segments with searchable pages found")
-            return FlowElementCollection([])
+            raise ValueError("No segments with searchable pages found")
 
         # Step 2: Search each unique page only once
         all_flow_elements: List["FlowElement"] = []
@@ -550,6 +548,7 @@ class Flow(Visualizable, SelectorHostMixin):
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
         stitch_rows: Optional[Callable[[List[Optional[str]]], bool]] = None,
+        merge_headers: Optional[bool] = None,
         structure_engine: Optional[str] = None,
     ) -> TableResult: ...
 
@@ -570,6 +569,7 @@ class Flow(Visualizable, SelectorHostMixin):
                 bool,
             ]
         ] = None,
+        merge_headers: Optional[bool] = None,
         structure_engine: Optional[str] = None,
     ) -> TableResult: ...
 
@@ -662,8 +662,7 @@ class Flow(Visualizable, SelectorHostMixin):
         )
 
         if not self.segments:
-            logger.warning("Flow has no segments, returning empty table")
-            return TableResult([])
+            raise ValueError("Flow has no segments; cannot extract table")
 
         # Resolve predicate and determine its signature
         predicate: Optional[Callable] = None
@@ -682,11 +681,9 @@ class Flow(Visualizable, SelectorHostMixin):
                 predicate = stitch_rows
                 predicate_type = "full_params"
             else:
-                logger.warning(
-                    f"stitch_rows function has {param_count} parameters, expected 1 or 4. Ignoring."
+                raise TypeError(
+                    f"stitch_rows function must accept 1 or 4 parameters, got {param_count}"
                 )
-                predicate = None
-                predicate_type = "none"
 
         def _default_merge(
             prev_row: List[Optional[str]], cur_row: List[Optional[str]]
@@ -873,10 +870,13 @@ class Flow(Visualizable, SelectorHostMixin):
 
         for segment in self.segments:
             segment_settings = base_settings.copy() if base_settings else None
-            tables = segment.extract_tables(
-                method=method,
-                table_settings=segment_settings,
-                **kwargs,
+            tables = cast(
+                List[List[List[Optional[str]]]],
+                segment.extract_tables(
+                    method=method,
+                    table_settings=segment_settings,
+                    **kwargs,
+                ),
             )
             if tables:
                 all_tables.extend(tables)
@@ -941,33 +941,27 @@ class Flow(Visualizable, SelectorHostMixin):
         )
 
         if not self.segments:
-            logger.warning("Flow has no segments, returning empty collection")
-            return ElementCollection([])
+            raise ValueError("Flow has no segments; cannot analyze layout")
 
         # Step 1: Group segments by their parent pages to avoid redundant analysis
         segments_by_page = {}  # Dict[Page, List[Segment]]
 
         for i, segment in enumerate(self.segments):
-            # Determine the page for this segment
             if hasattr(segment, "analyze_layout"):
-                # It's a Page object
                 page_obj = segment
                 segment_type = "page"
             elif hasattr(segment, "page") and hasattr(segment.page, "analyze_layout"):
-                # It's a Region object
                 page_obj = segment.page
                 segment_type = "region"
             else:
-                logger.warning(f"Segment {i+1} does not support layout analysis, skipping")
-                continue
+                raise TypeError(f"Segment {i+1} does not support layout analysis: {segment!r}")
 
             if page_obj not in segments_by_page:
                 segments_by_page[page_obj] = []
             segments_by_page[page_obj].append((segment, segment_type))
 
         if not segments_by_page:
-            logger.warning("No segments with analyzable pages found")
-            return ElementCollection([])
+            raise ValueError("No segments with analyzable pages found")
 
         logger.debug(
             f"  Grouped {len(self.segments)} segments into {len(segments_by_page)} unique pages"
@@ -1004,10 +998,9 @@ class Flow(Visualizable, SelectorHostMixin):
                     # It's a list of regions
                     page_regions = page_results
                 else:
-                    logger.warning(
+                    raise TypeError(
                         f"Page {getattr(page_obj, 'number', '?')} returned unexpected layout analysis result type: {type(page_results)}"
                     )
-                    continue
 
                 if not page_regions:
                     logger.debug(
@@ -1148,7 +1141,9 @@ class Flow(Visualizable, SelectorHostMixin):
         for page_idx, page_obj in enumerate(sorted_pages):
             segments_on_this_page = segments_by_page[page_obj]
             if not segments_on_this_page:
-                continue
+                raise RuntimeError(
+                    f"No segments recorded for page {getattr(page_obj, 'number', '?')}"
+                )
 
             spec = RenderSpec(page=page_obj)
 
@@ -1283,11 +1278,11 @@ class Flow(Visualizable, SelectorHostMixin):
                     f"Segment {i+1} has no identifiable page. Segment type: {type(segment)}, attributes: {dir(segment)}"
                 )
 
-            if segment_image is not None:
-                segment_images.append(segment_image)
-                segment_pages.append(segment_page)
-            else:
-                logger.warning(f"Segment {i+1} render() returned None, skipping")
+            if segment_image is None:
+                raise RuntimeError(f"Segment {i+1} render() returned None")
+
+            segment_images.append(segment_image)
+            segment_pages.append(segment_page)
 
         # Check if we have any valid images
         if not segment_images:

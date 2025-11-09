@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
 from natural_pdf.selectors.registry import (
     ClauseEvalContext,
@@ -54,7 +55,7 @@ def execute_selector_query(
     reading_order: bool = True,
     near_threshold: Optional[float] = None,
     engine: Optional[str] = None,
-) -> "ElementCollection":
+) -> ElementCollection:
     """Execute a selector query using either the native engine or provider-backed engines."""
     from natural_pdf.selectors.selector_provider import (
         NATIVE_SELECTOR_ENGINE,
@@ -115,7 +116,7 @@ def _run_native_selector(
     near_threshold: Optional[float] = None,
     selector_obj: Optional[Dict[str, Any]] = None,
     selector_kwargs: Optional[Dict[str, Any]] = None,
-) -> "ElementCollection":
+) -> ElementCollection:
     selector_kwargs = selector_kwargs or {
         "regex": regex,
         "case": case,

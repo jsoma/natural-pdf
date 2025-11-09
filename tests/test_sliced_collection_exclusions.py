@@ -3,35 +3,14 @@
 
 from pathlib import Path
 
-import pytest
-
 from natural_pdf import PDF
 
-
-def get_test_pdf_path():
-    """Find a test PDF file."""
-    project_root = Path(__file__).parent.parent
-
-    # Try multiple possible locations
-    possible_paths = [
-        project_root / "pdfs/practice.pdf",
-        project_root / "bad-pdfs/submissions/nara_book1_sample.pdf",
-        project_root
-        / "bad-pdfs/submissions/K046682-111320-OPA-LEA-Database-Install_1-Requestor-Copy---sample.pdf",
-    ]
-
-    for path in possible_paths:
-        if path.exists():
-            return path
-
-    # If no test PDF found, skip the test
-    pytest.skip("No test PDF found")
+TEST_PDF = Path(__file__).parent.parent / "pdfs/01-practice.pdf"
 
 
 def test_page_specific_exclusions_preserved_in_slices():
     """Test that page-specific exclusions are preserved when accessing pages through slices."""
-    pdf_path = get_test_pdf_path()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Add a page-specific exclusion
     page0 = pdf[0]
@@ -58,8 +37,7 @@ def test_page_specific_exclusions_preserved_in_slices():
 
 def test_pdf_and_page_exclusions_in_slices():
     """Test that both PDF-level and page-specific exclusions work in sliced collections."""
-    pdf_path = get_test_pdf_path()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Add PDF-level exclusion
     pdf.add_exclusion(lambda page: page.region(0, 0, page.width, 50), label="pdf-header")
@@ -89,8 +67,7 @@ def test_pdf_and_page_exclusions_in_slices():
 
 def test_exclusions_no_duplication():
     """Test that exclusions are not duplicated when accessing pages through slices."""
-    pdf_path = get_test_pdf_path()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Add PDF-level exclusion
     pdf.add_exclusion(lambda page: page.region(0, 0, page.width, 50), label="pdf-header")
@@ -121,8 +98,7 @@ def test_exclusions_no_duplication():
 
 def test_exclusions_visualization_in_slices():
     """Test that exclusions can be visualized in sliced collections."""
-    pdf_path = get_test_pdf_path()
-    pdf = PDF(pdf_path)
+    pdf = PDF(TEST_PDF)
 
     # Add exclusions
     pdf.add_exclusion(lambda page: page.region(0, 0, page.width, 50), label="pdf-header")

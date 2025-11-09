@@ -101,13 +101,33 @@ class SupportsElement(SupportsGeometry, Protocol):
     def find(
         self,
         selector: Optional[str] = None,
-        **kwargs: Any,
-    ) -> "ElementCollection": ...
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = "full",
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ) -> Optional["Element"]: ...
 
     def find_all(
         self,
         selector: Optional[str] = None,
-        **kwargs: Any,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = "full",
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
 

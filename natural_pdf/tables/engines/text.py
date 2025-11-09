@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from tqdm.auto import tqdm
 
@@ -22,7 +22,7 @@ class TextTablesEngine:
         content_filter: Optional[Any] = None,
         apply_exclusions: bool = True,
         **_: Any,
-    ) -> List[List[List[Any]]]:
+    ) -> List[List[List[Optional[str]]]]:
         table = self._extract_table(
             region,
             text_options=text_options or {},
@@ -66,7 +66,7 @@ class TextTablesEngine:
         unique_tops = self._cluster_coords(tops, coord_tolerance)
         unique_lefts = self._cluster_coords(lefts, coord_tolerance)
 
-        cell_iterator: Sequence[Dict[str, float]]
+        cell_iterator: Iterable[Dict[str, float]]
         cell_iterator = (
             tqdm(
                 cell_dicts,
@@ -107,7 +107,7 @@ class TextTablesEngine:
         for row_top in unique_tops:
             row_data = []
             for col_left in unique_lefts:
-                best_match_key = None
+                best_match_key: Optional[Tuple[int, int]] = None
                 min_dist_sq = float("inf")
                 for map_top, map_left in cell_text_map.keys():
                     if (
@@ -118,7 +118,7 @@ class TextTablesEngine:
                         if dist_sq < min_dist_sq:
                             min_dist_sq = dist_sq
                             best_match_key = (map_top, map_left)
-                cell_value = cell_text_map.get(best_match_key)
+                cell_value = cell_text_map.get(best_match_key) if best_match_key else None
                 row_data.append(cell_value)
             final_table.append(row_data)
 

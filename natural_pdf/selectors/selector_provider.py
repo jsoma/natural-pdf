@@ -109,12 +109,14 @@ def resolve_selector_engine_name(host: Any, requested: Optional[str]) -> Optiona
         return candidate
 
     getter = getattr(host, "get_config", None)
-    config_value = None
+    config_value: Optional[str] = None
     if callable(getter):
         try:
-            config_value = getter("selector_engine", None, scope="region")
+            maybe_value = getter("selector_engine", None, scope="region")
         except TypeError:
-            config_value = getter("selector_engine", None)
+            maybe_value = getter("selector_engine", None)
+        if isinstance(maybe_value, str):
+            config_value = maybe_value
 
     candidate = _normalize_name(config_value)
     if candidate:
@@ -123,7 +125,8 @@ def resolve_selector_engine_name(host: Any, requested: Optional[str]) -> Optiona
     try:
         from natural_pdf import options as npdf_options
 
-        candidate = _normalize_name(getattr(npdf_options.selectors, "engine", None))
+        engine_value = getattr(npdf_options.selectors, "engine", None)
+        candidate = _normalize_name(engine_value if isinstance(engine_value, str) else None)
         if candidate:
             return candidate
     except Exception:  # pragma: no cover - best effort fallback

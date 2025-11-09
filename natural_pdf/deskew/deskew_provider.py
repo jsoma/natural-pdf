@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
 from natural_pdf.engine_provider import get_provider
@@ -104,14 +105,17 @@ class _DefaultDeskewEngine:
                 "Deskew library not found. Install with: pip install natural-pdf[deskew]"
             )
         image = _render_target(target, resolution=resolution, grayscale=grayscale)
-        img_np = np.array(image)
+        img_np: NDArray[Any] = np.array(image)
         if grayscale and img_np.ndim == 3 and img_np.shape[2] >= 3:
-            gray_np = np.mean(img_np[:, :, :3], axis=2).astype(np.uint8)
+            gray_np: NDArray[np.uint8] = np.mean(img_np[:, :, :3], axis=2).astype(np.uint8)
         elif grayscale and img_np.ndim == 2:
-            gray_np = img_np
+            gray_np = cast(NDArray[np.uint8], img_np)
         else:
-            gray_np = img_np
-        return float(determine_skew(gray_np, **deskew_kwargs))
+            gray_np = cast(NDArray[np.uint8], img_np)
+        raw_angle = cast(Optional[float], determine_skew(cast(Any, gray_np), **deskew_kwargs))
+        if raw_angle is None:
+            return None
+        return float(raw_angle)
 
     def apply(
         self,
@@ -133,7 +137,7 @@ class _DefaultDeskewEngine:
                 grayscale=grayscale,
                 deskew_kwargs=deskew_kwargs,
             )
-        image = _render_target(target, resolution=resolution, grayscale=False)
+        image: Image.Image = _render_target(target, resolution=resolution, grayscale=False)
         if rotation_angle is None or abs(rotation_angle) <= 0.05:
             return DeskewApplyResult(image=image, angle=rotation_angle)
         fill = (255, 255, 255) if image.mode == "RGB" else 255
@@ -154,6 +158,8 @@ def _render_target(target: Any, *, resolution: int, grayscale: bool) -> Image.Im
         image = render_fn(resolution=resolution)
     if image is None:
         raise RuntimeError("Render call returned None for deskew operation.")
+    if not isinstance(image, Image.Image):
+        raise TypeError(f"Render call returned unsupported type {type(image)!r}")
     if grayscale and image.mode not in ("L", "I"):
         return image.convert("L")
     return image

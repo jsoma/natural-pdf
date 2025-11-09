@@ -21,7 +21,7 @@ class TATRTableEngine:
         content_filter: Optional[Any] = None,
         apply_exclusions: bool = True,
         **_: Any,
-    ) -> List[List[List[str]]]:
+    ) -> List[List[List[Optional[str]]]]:
         table = self._extract_table(
             region,
             use_ocr=use_ocr,

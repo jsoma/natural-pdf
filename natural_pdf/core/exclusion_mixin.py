@@ -2,7 +2,20 @@ from __future__ import annotations
 
 import logging
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
+
+from natural_pdf.elements.base import extract_bbox
 
 if TYPE_CHECKING:
     from natural_pdf.elements.element_collection import ElementCollection
@@ -11,8 +24,28 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+ExclusionEntry = Tuple[Any, Optional[str], str]
+ExclusionSpec = Union[ExclusionEntry, Tuple[Any, Optional[str]]]
+
+
+class _ExclusionSelectorHost(Protocol):
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[dict] = None,
+        auto_text_tolerance: Optional[Union[bool, dict]] = None,
+        reading_order: bool = True,
+    ) -> "ElementCollection": ...
+
 
 class ExclusionMixin:
+    _exclusions: List[ExclusionSpec]
+
     def _exclusion_element_manager(self):
         raise NotImplementedError
 
@@ -35,7 +68,8 @@ class ExclusionMixin:
             raise ValueError("Exclusion method must be 'region' or 'element'.")
 
         if isinstance(exclusion, str):
-            matches = self.find_all(exclusion, apply_exclusions=False)
+            selector_host = cast(_ExclusionSelectorHost, self)
+            matches = selector_host.find_all(exclusion, apply_exclusions=False)
             self._store_exclusion_matches(matches, label, method)
             return self
 
@@ -57,6 +91,15 @@ class ExclusionMixin:
                 self.add_exclusion(item, label=label, method=method)
             return self
 
+        if method == "element":
+            if extract_bbox(exclusion) is None:
+                raise TypeError(
+                    "Exclusion items must expose a bbox when method='element'. "
+                    f"Received: {type(exclusion)!r}"
+                )
+            self._append_exclusion((exclusion, label, method))
+            return self
+
         region = self._element_to_region(exclusion, label)
         if region is None:
             raise TypeError(
@@ -73,23 +116,36 @@ class ExclusionMixin:
     ) -> None:
         from natural_pdf.elements.element_collection import ElementCollection
 
-        for match in matches:
+        iterable: Iterable[Any]
+        if isinstance(matches, ElementCollection):
+            iterable = matches.elements
+        else:
+            iterable = matches
+
+        for match in iterable:
             if method == "element":
+                if extract_bbox(match) is None:
+                    raise TypeError(
+                        "Exclusion items must expose a bbox when method='element'. "
+                        f"Received: {type(match)!r}"
+                    )
                 self._append_exclusion((match, label, method))
             else:
                 region = self._element_to_region(match, label)
                 if region is None:
-                    continue
+                    raise TypeError(
+                        f"Invalid exclusion type: {type(match)}. Must be callable, Region, collection, or expose bbox."
+                    )
                 self._append_exclusion((region, label, method))
 
-    def _append_exclusion(self, data: Tuple[Any, Optional[str], str]) -> None:
-        exclusions = getattr(self, "_exclusions", [])
+    def _append_exclusion(self, data: ExclusionEntry) -> None:
+        exclusions = cast(List[ExclusionSpec], getattr(self, "_exclusions", []))
         exclusions.append(data)
         self._exclusions = exclusions
         self._invalidate_exclusion_cache()
 
     def _evaluate_exclusion_entries(
-        self, entries: Sequence[Tuple[Any, Optional[str], str]], include_callable: bool, debug: bool
+        self, entries: Sequence[ExclusionSpec], include_callable: bool, debug: bool
     ) -> List[Region]:
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
@@ -117,7 +173,7 @@ class ExclusionMixin:
                     result.label = label
                     regions.append(result)
                 elif isinstance(result, ElementCollection):
-                    for elem in result:
+                    for elem in result.elements:
                         region = self._element_to_region(elem, label)
                         if region is not None:
                             regions.append(region)
@@ -128,7 +184,7 @@ class ExclusionMixin:
                 continue
 
             if isinstance(exclusion_item, ElementCollection):
-                for elem in exclusion_item:
+                for elem in exclusion_item.elements:
                     region = self._element_to_region(elem, label)
                     if region is not None:
                         regions.append(region)

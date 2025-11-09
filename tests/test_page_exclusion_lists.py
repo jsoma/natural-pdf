@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test Page.add_exclusion() with lists and tuples of regions/elements."""
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -9,24 +10,40 @@ from natural_pdf.core.page import Page
 from natural_pdf.elements.region import Region
 
 
-def test_add_exclusion_list_of_elements():
-    """Test add_exclusion with a list of elements (region method)."""
-    # Create mock page
+def _make_page_stub():
+    """Return a mock Page wired up with the real exclusion helpers."""
     page = Mock(spec=Page)
     page.index = 0
-    page._exclusions = []
     page.width = 612
     page.height = 792
+    page._exclusions = []
+    page._element_mgr = Mock()
+    page._element_mgr.invalidate_cache = Mock()
 
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    # Bind the concrete helper implementations we rely on
+    bound_methods = [
+        "add_exclusion",
+        "_element_to_region",
+        "_store_exclusion_matches",
+        "_append_exclusion",
+        "_evaluate_exclusion_entries",
+        "_invalidate_exclusion_cache",
+    ]
+    for name in bound_methods:
+        setattr(page, name, getattr(Page, name).__get__(page, Page))
+
+    # Most tests never hit find_all, but wire a safe default anyway
+    page.find_all = Mock(return_value=[])
+    return page
+
+
+def test_add_exclusion_list_of_elements():
+    """Test add_exclusion with a list of elements (region method)."""
+    page = _make_page_stub()
 
     # Create mock elements
-    element1 = Mock()
-    element1.bbox = (100, 100, 200, 150)
-
-    element2 = Mock()
-    element2.bbox = (300, 200, 400, 250)
+    element1 = SimpleNamespace(bbox=(100, 100, 200, 150))
+    element2 = SimpleNamespace(bbox=(300, 200, 400, 250))
 
     elements = [element1, element2]
 
@@ -49,20 +66,11 @@ def test_add_exclusion_list_of_elements():
 
 def test_add_exclusion_list_of_elements_element_method():
     """Test add_exclusion with a list of elements (element method)."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Create mock elements
-    element1 = Mock()
-    element1.bbox = (100, 100, 200, 150)
-
-    element2 = Mock()
-    element2.bbox = (300, 200, 400, 250)
+    element1 = SimpleNamespace(bbox=(100, 100, 200, 150))
+    element2 = SimpleNamespace(bbox=(300, 200, 400, 250))
 
     elements = [element1, element2]
 
@@ -82,13 +90,7 @@ def test_add_exclusion_list_of_elements_element_method():
 
 def test_add_exclusion_list_of_regions():
     """Test add_exclusion with a list of Region objects."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Create Region objects
     region1 = Region(page, (100, 100, 200, 150))
@@ -112,22 +114,11 @@ def test_add_exclusion_list_of_regions():
 
 def test_add_exclusion_tuple():
     """Test add_exclusion with a tuple of elements."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-    page.width = 612
-    page.height = 792
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Create tuple of mock elements
-    element1 = Mock()
-    element1.bbox = (100, 100, 200, 150)
-
-    element2 = Mock()
-    element2.bbox = (300, 200, 400, 250)
+    element1 = SimpleNamespace(bbox=(100, 100, 200, 150))
+    element2 = SimpleNamespace(bbox=(300, 200, 400, 250))
 
     elements = (element1, element2)  # Tuple instead of list
 
@@ -140,13 +131,7 @@ def test_add_exclusion_tuple():
 
 def test_add_exclusion_empty_list():
     """Test add_exclusion with an empty list."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Should handle empty list gracefully
     result = page.add_exclusion([], label="empty")
@@ -157,47 +142,27 @@ def test_add_exclusion_empty_list():
 
 def test_add_exclusion_list_with_invalid_items():
     """Test add_exclusion with list containing items without bbox."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Create mix of valid and invalid elements
-    valid_element = Mock()
-    valid_element.bbox = (100, 100, 200, 150)
-
-    invalid_element = Mock()  # No bbox attribute
+    valid_element = SimpleNamespace(bbox=(100, 100, 200, 150))
+    invalid_element = object()  # No bbox attribute
 
     elements = [valid_element, invalid_element]
 
-    # Should work but skip invalid elements
-    result = page.add_exclusion(elements, label="mixed")
-
-    assert result is page
-    # Only the valid element should be added
-    assert len(page._exclusions) == 1
+    # Should error when an item lacks bbox
+    with pytest.raises(TypeError):
+        page.add_exclusion(elements, label="mixed")
 
 
 def test_add_exclusion_mixed_regions_and_elements():
     """Test add_exclusion with list containing both regions and elements."""
-    # Create mock page
-    page = Mock(spec=Page)
-    page.index = 0
-    page._exclusions = []
-    page.width = 612
-    page.height = 792
-
-    # Bind the actual method
-    page.add_exclusion = Page.add_exclusion.__get__(page, Page)
+    page = _make_page_stub()
 
     # Create mix of region and element
     region = Region(page, (100, 100, 200, 150))
 
-    element = Mock()
-    element.bbox = (300, 200, 400, 250)
+    element = SimpleNamespace(bbox=(300, 200, 400, 250))
 
     mixed_list = [region, element]
 
