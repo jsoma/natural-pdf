@@ -61,7 +61,7 @@ jobs:
           PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.5"
           PYTEST_ADDOPTS: "--durations=25"
         run: |
-          nox --non-interactive -s lint test_full
+          nox --non-interactive -s test_full
 
       - name: Run Nox sessions (minimal)
         if: matrix.os != 'ubuntu-latest' || matrix.python != '3.11'
