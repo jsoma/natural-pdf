@@ -73,72 +73,71 @@ def test_slice_reuses_cached_pages_with_exclusions():
         pdf_path = f.name
 
     try:
-        # Load PDF
-        pdf = npdf.PDF(pdf_path)
+        with npdf.PDF(pdf_path) as pdf:
 
-        # Step 1: Create a slice and ACCESS pages BEFORE adding exclusions
-        early_slice = pdf.pages[:2]
-        # IMPORTANT: Access the pages NOW, before adding exclusions
-        early_page0 = early_slice[0]
-        early_page1 = early_slice[1]
+            # Step 1: Create a slice and ACCESS pages BEFORE adding exclusions
+            early_slice = pdf.pages[:2]
+            # IMPORTANT: Access the pages NOW, before adding exclusions
+            early_page0 = early_slice[0]
+            early_page1 = early_slice[1]
 
-        # Verify pages are cached and have no exclusions
-        assert early_page0 is not None
-        assert early_page1 is not None
-        initial_exclusions = len(early_page0._exclusions)
-        assert (
-            initial_exclusions == 0
-        ), f"Expected no exclusions initially, got {initial_exclusions}"
+            # Verify pages are cached and have no exclusions
+            assert early_page0 is not None
+            assert early_page1 is not None
+            initial_exclusions = len(early_page0._exclusions)
+            assert (
+                initial_exclusions == 0
+            ), f"Expected no exclusions initially, got {initial_exclusions}"
 
-        # Step 2: NOW add exclusion to PDF (after pages are already cached)
-        def test_exclusion(page):
-            # Simple exclusion that returns a region
-            return page.region(0, 0, 100, 100)
+            # Step 2: NOW add exclusion to PDF (after pages are already cached)
+            def test_exclusion(page):
+                # Simple exclusion that returns a region
+                return page.region(0, 0, 100, 100)
 
-        pdf.add_exclusion(test_exclusion, label="test_exclusion")
+            pdf.add_exclusion(test_exclusion, label="test_exclusion")
 
-        # Step 3: Access pages from the early slice again
-        # These should be the same cached pages (without the new exclusion)
-        slice_page0 = early_slice[0]
-        slice_page1 = early_slice[1]
+            # Step 3: Access pages from the early slice again
+            # These should be the same cached pages (without the new exclusion)
+            slice_page0 = early_slice[0]
+            slice_page1 = early_slice[1]
 
-        # They should be the same objects (reused from cache)
-        assert slice_page0 is early_page0
-        assert slice_page1 is early_page1
+            # They should be the same objects (reused from cache)
+            assert slice_page0 is early_page0
+            assert slice_page1 is early_page1
 
-        # Step 4: Direct access should return the same cached pages
-        direct_page0 = pdf.pages[0]
-        direct_page1 = pdf.pages[1]
+            # Step 4: Direct access should return the same cached pages
+            direct_page0 = pdf.pages[0]
+            direct_page1 = pdf.pages[1]
 
-        # Should return the same cached pages
-        assert direct_page0 is early_page0
-        assert direct_page1 is early_page1
+            # Should return the same cached pages
+            assert direct_page0 is early_page0
+            assert direct_page1 is early_page1
 
-        # The page's _exclusions list doesn't change, but _get_exclusion_regions
-        # dynamically includes PDF-level exclusions
-        assert len(direct_page0._exclusions) == initial_exclusions
-        assert len(direct_page1._exclusions) == initial_exclusions
+            # The page's _exclusions list doesn't change, but _get_exclusion_regions
+            # dynamically includes PDF-level exclusions
+            assert len(direct_page0._exclusions) == initial_exclusions
+            assert len(direct_page1._exclusions) == initial_exclusions
 
-        # But when we get the actual exclusion regions, it includes PDF-level exclusions
-        regions0 = direct_page0._get_exclusion_regions(include_callable=True)
-        regions1 = direct_page1._get_exclusion_regions(include_callable=True)
-        assert len(regions0) > initial_exclusions
-        assert len(regions1) > initial_exclusions
+            # But when we get the actual exclusion regions, it includes PDF-level exclusions
+            regions0 = direct_page0._get_exclusion_regions(include_callable=True)
+            regions1 = direct_page1._get_exclusion_regions(include_callable=True)
+            assert len(regions0) > initial_exclusions
+            assert len(regions1) > initial_exclusions
 
-        # Step 5: Create a new slice - should reuse cached pages
-        new_slice = pdf.pages[:2]
-        new_page0 = new_slice[0]
-        new_page1 = new_slice[1]
+            # Step 5: Create a new slice - should reuse cached pages
+            new_slice = pdf.pages[:2]
+            new_page0 = new_slice[0]
+            new_page1 = new_slice[1]
 
-        # Should be the same cached objects
-        assert new_page0 is direct_page0
-        assert new_page1 is direct_page1
+            # Should be the same cached objects
+            assert new_page0 is direct_page0
+            assert new_page1 is direct_page1
 
-        # And they also have access to PDF-level exclusions dynamically
-        new_regions0 = new_page0._get_exclusion_regions(include_callable=True)
-        new_regions1 = new_page1._get_exclusion_regions(include_callable=True)
-        assert len(new_regions0) > initial_exclusions
-        assert len(new_regions1) > initial_exclusions
+            # And they also have access to PDF-level exclusions dynamically
+            new_regions0 = new_page0._get_exclusion_regions(include_callable=True)
+            new_regions1 = new_page1._get_exclusion_regions(include_callable=True)
+            assert len(new_regions0) > initial_exclusions
+            assert len(new_regions1) > initial_exclusions
 
     finally:
         # Clean up
@@ -153,24 +152,22 @@ def test_lazy_page_list_checks_parent_cache():
         pdf_path = f.name
 
     try:
-        # Load PDF
-        pdf = npdf.PDF(pdf_path)
+        with npdf.PDF(pdf_path) as pdf:
+            # Access a page to cache it
+            main_page = pdf.pages[0]
+            assert main_page is not None
 
-        # Access a page to cache it
-        main_page = pdf.pages[0]
-        assert main_page is not None
+            # Add a marker to the cached page
+            main_page._test_marker = "cached_from_main"
 
-        # Add a marker to the cached page
-        main_page._test_marker = "cached_from_main"
+            # Create a slice - it should reuse the cached page
+            slice_pages = pdf.pages[:1]
+            slice_page = slice_pages[0]
 
-        # Create a slice - it should reuse the cached page
-        slice_pages = pdf.pages[:1]
-        slice_page = slice_pages[0]
-
-        # Verify it's the same object with our marker
-        assert slice_page is main_page
-        assert hasattr(slice_page, "_test_marker")
-        assert slice_page._test_marker == "cached_from_main"
+            # Verify it's the same object with our marker
+            assert slice_page is main_page
+            assert hasattr(slice_page, "_test_marker")
+            assert slice_page._test_marker == "cached_from_main"
 
     finally:
         # Clean up
@@ -185,27 +182,25 @@ def test_exclusions_applied_to_new_pages_in_slice():
         pdf_path = f.name
 
     try:
-        # Load PDF
-        pdf = npdf.PDF(pdf_path)
+        with npdf.PDF(pdf_path) as pdf:
+            # Add exclusion BEFORE accessing any pages
+            def test_exclusion(page):
+                return page.region(0, 0, 100, 100)
 
-        # Add exclusion BEFORE accessing any pages
-        def test_exclusion(page):
-            return page.region(0, 0, 100, 100)
+            pdf.add_exclusion(test_exclusion, label="early_exclusion")
 
-        pdf.add_exclusion(test_exclusion, label="early_exclusion")
+            # Create a slice and access pages
+            slice_pages = pdf.pages[:2]
+            page0 = slice_pages[0]
+            page1 = slice_pages[1]
 
-        # Create a slice and access pages
-        slice_pages = pdf.pages[:2]
-        page0 = slice_pages[0]
-        page1 = slice_pages[1]
+            # Pages should have the exclusion
+            assert len(page0._exclusions) > 0
+            assert len(page1._exclusions) > 0
 
-        # Pages should have the exclusion
-        assert len(page0._exclusions) > 0
-        assert len(page1._exclusions) > 0
-
-        # Verify the exclusion label
-        assert any(exc[1] == "early_exclusion" for exc in page0._exclusions)
-        assert any(exc[1] == "early_exclusion" for exc in page1._exclusions)
+            # Verify the exclusion label
+            assert any(exc[1] == "early_exclusion" for exc in page0._exclusions)
+            assert any(exc[1] == "early_exclusion" for exc in page1._exclusions)
 
     finally:
         # Clean up
