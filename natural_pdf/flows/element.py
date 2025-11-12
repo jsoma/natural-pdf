@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page as PhysicalPage  # For type checking physical_object.page
@@ -97,6 +97,54 @@ class FlowElement:
                 f"'{type(self).__name__}' object has no attribute '{name}' "
                 f"(also not found on underlying {type(self.physical_object).__name__})"
             )
+
+    def _clip_region_until(
+        self,
+        region: Optional["PhysicalRegion"],
+        *,
+        direction: str,
+        until: Optional[str],
+        include_endpoint: bool,
+        search_kwargs: Dict[str, Any],
+    ) -> Tuple[Optional["PhysicalRegion"], Optional["PhysicalElement"]]:
+        """Apply an :param:`until` selector to a candidate region and return the clipped result."""
+        if not until or region is None or region.width <= 0 or region.height <= 0:
+            return region, None
+
+        until_matches = region.find_all(until, **search_kwargs)
+        if not until_matches:
+            return region, None
+
+        hit: Optional["PhysicalElement"] = None
+        if direction == "below":
+            hit = until_matches.sort(key=lambda match: match.top).first
+        elif direction == "above":
+            hit = until_matches.sort(key=lambda match: match.bottom, reverse=True).first
+        elif direction == "right":
+            hit = until_matches.sort(key=lambda match: match.x0).first
+        elif direction == "left":
+            hit = until_matches.sort(key=lambda match: match.x1, reverse=True).first
+
+        if not hit:
+            return region, None
+
+        clip_kwargs: Dict[str, float] = {}
+        if direction == "below":
+            clip_kwargs["bottom"] = hit.bottom if include_endpoint else hit.top - 1
+        elif direction == "above":
+            clip_kwargs["top"] = hit.top if include_endpoint else hit.bottom + 1
+        elif direction == "right":
+            clip_kwargs["right"] = hit.x1 if include_endpoint else hit.x0 - 1
+        else:  # direction == "left"
+            clip_kwargs["left"] = hit.x0 if include_endpoint else hit.x1 + 1
+
+        try:
+            clipped_region = region.clip(**clip_kwargs)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug("Failed to clip region using until=%s: %s", until, exc)
+            return region, hit
+
+        return clipped_region, hit
 
     def _flow_direction(
         self,
@@ -255,103 +303,30 @@ class FlowElement:
                 clipped_search_area = current_segment.clip(initial_region_from_op)
                 segment_contribution = clipped_search_area  # Default contribution
 
-                # 3. If 'until' is specified, search for it *within* the clipped_search_area.
-                if (
-                    until
-                    and clipped_search_area
-                    and clipped_search_area.width > 0
-                    and clipped_search_area.height > 0
-                ):
-                    # kwargs for find_all are the general kwargs passed to _flow_direction
-                    until_matches = clipped_search_area.find_all(until, **kwargs)
-
-                    if until_matches:
-                        potential_hit: Optional["PhysicalElement"] = None
-                        if direction == "below":
-                            potential_hit = until_matches.sort(key=lambda m: m.top).first
-                        elif direction == "above":
-                            potential_hit = until_matches.sort(
-                                key=lambda m: m.bottom, reverse=True
-                            ).first
-                        elif direction == "right":
-                            potential_hit = until_matches.sort(key=lambda m: m.x0).first
-                        elif direction == "left":
-                            potential_hit = until_matches.sort(
-                                key=lambda m: m.x1, reverse=True
-                            ).first
-
-                        if potential_hit:
-                            boundary_element_hit = potential_hit  # Set the overall boundary flag
-                            hit = potential_hit
-                            # Adjust segment_contribution to stop at this boundary_element_hit.
-                            if direction in ["below", "above"]:
-                                if direction == "below":
-                                    edge = hit.bottom if include_endpoint else (hit.top - 1)
-                                else:  # direction == "above"
-                                    edge = hit.top if include_endpoint else (hit.bottom + 1)
-                                if segment_contribution:
-                                    segment_contribution = segment_contribution.clip(
-                                        bottom=edge if direction == "below" else None,
-                                        top=edge if direction == "above" else None,
-                                    )
-                            else:  # direction in ["right", "left"]
-                                if direction == "right":
-                                    edge = hit.x1 if include_endpoint else (hit.x0 - 1)
-                                else:  # direction == "left"
-                                    edge = hit.x0 if include_endpoint else (hit.x1 + 1)
-                                if segment_contribution:
-                                    segment_contribution = segment_contribution.clip(
-                                        right=edge if direction == "right" else None,
-                                        left=edge if direction == "left" else None,
-                                    )
+                segment_contribution, hit = self._clip_region_until(
+                    clipped_search_area,
+                    direction=direction,
+                    until=until,
+                    include_endpoint=include_endpoint,
+                    search_kwargs=kwargs,
+                )
+                if hit:
+                    boundary_element_hit = hit
             else:
                 candidate_region_in_segment = current_segment
-                if until and not boundary_element_hit:
-                    until_matches = candidate_region_in_segment.find_all(until, **kwargs)
-                    if until_matches:
-                        potential_hit = None
-                        if direction == "below":
-                            potential_hit = until_matches.sort(key=lambda m: m.top).first
-                        elif direction == "above":
-                            potential_hit = until_matches.sort(
-                                key=lambda m: m.bottom, reverse=True
-                            ).first
-                        elif direction == "right":
-                            potential_hit = until_matches.sort(key=lambda m: m.x0).first
-                        elif direction == "left":
-                            potential_hit = until_matches.sort(
-                                key=lambda m: m.x1, reverse=True
-                            ).first
-
-                        if potential_hit:
-                            boundary_element_hit = potential_hit
-                            hit = potential_hit
-                            if direction in ["below", "above"]:
-                                if direction == "below":
-                                    edge = hit.bottom if include_endpoint else (hit.top - 1)
-                                else:  # direction == "above"
-                                    edge = hit.top if include_endpoint else (hit.bottom + 1)
-                                candidate_region_in_segment = (
-                                    candidate_region_in_segment.clip(
-                                        bottom=edge if direction == "below" else None,
-                                        top=edge if direction == "above" else None,
-                                    )
-                                    if candidate_region_in_segment
-                                    else None
-                                )
-                            else:  # direction in ["right", "left"]
-                                if direction == "right":
-                                    edge = hit.x1 if include_endpoint else (hit.x0 - 1)
-                                else:  # direction == "left"
-                                    edge = hit.x0 if include_endpoint else (hit.x1 + 1)
-                                candidate_region_in_segment = (
-                                    candidate_region_in_segment.clip(
-                                        right=edge if direction == "right" else None,
-                                        left=edge if direction == "left" else None,
-                                    )
-                                    if candidate_region_in_segment
-                                    else None
-                                )
+                if not boundary_element_hit:
+                    (
+                        candidate_region_in_segment,
+                        hit,
+                    ) = self._clip_region_until(
+                        candidate_region_in_segment,
+                        direction=direction,
+                        until=until,
+                        include_endpoint=include_endpoint,
+                        search_kwargs=kwargs,
+                    )
+                    if hit:
+                        boundary_element_hit = hit
                 segment_contribution = candidate_region_in_segment
 
             if (

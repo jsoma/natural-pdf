@@ -230,7 +230,8 @@ class PageCollection(
         """
         Applies OCR to all pages within this collection using batch processing.
 
-        This delegates the work to the parent PDF object's `apply_ocr` method.
+        Each page receives the same OCR parameters, ensuring the per-page logic in
+        :meth:`natural_pdf.core.page.Page.apply_ocr` is reused directly.
 
         Args:
             engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr').
@@ -249,38 +250,24 @@ class PageCollection(
 
         Returns:
             Self for method chaining.
-
-        Raises:
-            RuntimeError: If pages lack a parent PDF or parent lacks `apply_ocr`.
-            (Propagates exceptions from PDF.apply_ocr)
         """
         if not self.pages:
             logger.warning("Cannot apply OCR to an empty PageCollection.")
             return self
 
-        parent_pdf = self._resolve_parent_pdf()
-
-        if not hasattr(parent_pdf, "apply_ocr") or not callable(parent_pdf.apply_ocr):
-            raise RuntimeError("Parent PDF object does not have the required 'apply_ocr' method.")
-
-        # Get the 0-based indices of the pages in this collection
-        page_indices = self._get_page_indices()
-
-        logger.info(f"Applying OCR via parent PDF to page indices: {page_indices} in collection.")
-
-        # Delegate the batch call to the parent PDF object, passing direct args and apply_exclusions
-        parent_pdf.apply_ocr(
-            pages=page_indices,
-            engine=engine,
-            languages=languages,
-            min_confidence=min_confidence,  # Pass the renamed parameter
-            device=device,
-            resolution=resolution,
-            apply_exclusions=apply_exclusions,  # Pass down
-            replace=replace,  # Pass the replace parameter
-            options=options,
-        )
-        # The PDF method modifies the Page objects directly by adding elements.
+        logger.info("Applying OCR to %d page(s) directly from PageCollection.", len(self.pages))
+        for page in self.pages:
+            page.apply_ocr(
+                engine=engine,
+                options=options,
+                languages=languages,
+                min_confidence=min_confidence,
+                device=device,
+                resolution=resolution,
+                detect_only=detect_only,
+                apply_exclusions=apply_exclusions,
+                replace=replace,
+            )
 
         return self  # Return self for chaining
 
