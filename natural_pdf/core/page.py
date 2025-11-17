@@ -1,5 +1,6 @@
 import concurrent.futures  # Added import
 import contextlib
+import functools
 import hashlib
 import logging
 import os
@@ -27,7 +28,7 @@ from tqdm.auto import tqdm  # Added tqdm import
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.tables.result import TableResult
 
@@ -1045,102 +1046,13 @@ class Page(
             if restore_invalidated:
                 self._element_mgr.invalidate_cache()
 
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional[Element]:
-        """Return the first match for a selector/text query on this page.
+    @delegate_signature(SelectorHostMixin.find)
+    def find(self, *args, **kwargs) -> Optional[Element]:
+        return resolve_service(self, "selector").find(self, *args, **kwargs)
 
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``. Accepts a string or a
-                sequence of candidate strings.
-            overlap: Present for API parity; ignored for full-page searches.
-            apply_exclusions: Whether page-level exclusion regions should be honoured.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches are returned using the page's reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            The first matching :class:`natural_pdf.elements.base.Element`, if any.
-        """
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection":
-        """Return every element on this page that matches a selector/text query.
-
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: Present for API parity; ignored for full-page searches.
-            apply_exclusions: Whether exclusion regions should be honoured.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches are returned using the page's reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
-        """
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(SelectorHostMixin.find_all)
+    def find_all(self, *args, **kwargs) -> ElementCollection:
+        return resolve_service(self, "selector").find_all(self, *args, **kwargs)
 
     def _apply_selector(
         self, selector_obj: Dict[str, Any], **kwargs: Any
