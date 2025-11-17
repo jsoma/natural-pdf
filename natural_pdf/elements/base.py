@@ -27,6 +27,7 @@ from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 # Import selector parsing functions
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
@@ -2146,25 +2147,6 @@ class Element(
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["Element"]:
-        """Return the first element overlapping this element that matches selector/text filters.
-
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: Determines containment mode relative to this element: ``"full"`` (default),
-                ``"partial"``, or ``"center"``.
-            apply_exclusions: Whether exclusion regions are honoured while evaluating.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches use the host page's natural reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            The first matching :class:`natural_pdf.elements.base.Element`, if any.
-        """
         return resolve_service(self, "selector").find(
             self,
             selector=selector,
@@ -2228,25 +2210,6 @@ class Element(
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """Return every element overlapping this element that matches selector/text filters.
-
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: Determines containment mode relative to this element: ``"full"`` (default),
-                ``"partial"``, or ``"center"``.
-            apply_exclusions: Whether exclusion regions are honoured while evaluating.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches use the host page's natural reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
-        """
         return resolve_service(self, "selector").find_all(
             self,
             selector=selector,
@@ -2312,3 +2275,7 @@ _ELEMENT_NAV_FALLBACK = {
 attach_capability(Element, "navigation", _ELEMENT_NAV_FALLBACK)
 attach_capability(Element, "describe")
 attach_capability(Element, "classification")
+
+# Reuse canonical selector docstrings from SelectorHostMixin.
+Element.find.__doc__ = SelectorHostMixin.find.__doc__
+Element.find_all.__doc__ = SelectorHostMixin.find_all.__doc__

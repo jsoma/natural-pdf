@@ -2878,3 +2878,7 @@ attach_capability(Page, "checkbox")
 attach_capability(Page, "classification")
 attach_capability(Page, "extraction")
 attach_capability(Page, "guides")
+
+# Reuse canonical selector docstrings from SelectorHostMixin.
+Page.find.__doc__ = SelectorHostMixin.find.__doc__
+Page.find_all.__doc__ = SelectorHostMixin.find_all.__doc__

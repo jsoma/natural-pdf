@@ -461,24 +461,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["SelectorElement"]:
-        """Return the first FlowElement-like object matching selector/text filters.
 
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: Present for API parity; ignored for flows.
-            apply_exclusions: Whether constituent regions honour their exclusion zones.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches use flow reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            The first matching flow-wrapped element, if any.
-        """
         physical = resolve_service(self, "selector").find(
             self,
             selector=selector,
@@ -512,13 +495,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "SelectorCollection":
-        """Return every FlowElement-like object matching selector/text filters.
 
-        The selector service fans out the query per page, filters intersections with each segment,
-        and wraps results back into a :class:`FlowElementCollection` anchored to this flow.
-
-        Args follow :meth:`find`; ``engine`` is forwarded to page-level queries when provided.
-        """
         collection = resolve_service(self, "selector").find_all(
             self,
             selector=selector,

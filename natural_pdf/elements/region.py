@@ -1593,26 +1593,7 @@ class Region(
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["Element"]:
-        """Return the first element inside this region that matches selector/text filters.
 
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``. Accepts a string or a
-                sequence of candidates.
-            overlap: Determines containment mode: ``"full"`` (default), ``"partial"``, or
-                ``"center"``.
-            apply_exclusions: Whether exclusion regions are honoured when gathering elements.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches use the region's natural reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            The first matching :class:`natural_pdf.elements.base.Element`, if any.
-        """
         return resolve_service(self, "selector").find(
             self,
             selector=selector,
@@ -1643,26 +1624,6 @@ class Region(
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """Return every element in this region that satisfies a selector/text query.
-
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: Determines containment mode: ``"full"`` (default), ``"partial"``, or
-                ``"center"``.
-            apply_exclusions: Whether exclusion regions are honoured when gathering elements.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches respect the region's natural reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine registered with the provider.
-
-        Returns:
-            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
-        """
-        from natural_pdf.elements.element_collection import ElementCollection
 
         return resolve_service(self, "selector").find_all(
             self,
