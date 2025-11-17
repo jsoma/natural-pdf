@@ -15,6 +15,13 @@ from natural_pdf.services.registry import register_delegate
 
 SearchTarget = Union[RenderablePage, RenderableRegion]
 
+if TYPE_CHECKING:  # pragma: no cover
+    from natural_pdf.elements.base import Element
+    from natural_pdf.elements.region import Region
+    from natural_pdf.vision.results import MatchResults
+else:  # Runtime import for annotations/results
+    from natural_pdf.vision.results import MatchResults
+
 
 class VisualSearchService:
     """Service powering visual template matching helpers."""

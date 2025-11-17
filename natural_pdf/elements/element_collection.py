@@ -55,6 +55,7 @@ try:
 except ImportError:
     create_original_pdf = None
 # <--- END ADDED
+from natural_pdf.services.base import resolve_service
 from natural_pdf.services.delegates import attach_capability
 
 logger = logging.getLogger(__name__)
@@ -3358,6 +3359,19 @@ class ElementCollection(
             geometry=geometry,
             group_by=group_by,
         )
+
+    # ------------------------------------------------------------------
+    # Describe/inspect helpers
+    # ------------------------------------------------------------------
+    def describe(self) -> Any:
+        """Summarize this collection via the describe service."""
+
+        return resolve_service(self, "describe").describe(self)
+
+    def inspect(self, limit: int = 30) -> Any:
+        """Return an inspection summary via the describe service."""
+
+        return resolve_service(self, "describe").inspect(self, limit=limit)
 
 
 attach_capability(ElementCollection, "describe")

@@ -45,6 +45,7 @@ else:  # pragma: no cover - runtime typing helper
 
 # # Deskew Imports (Conditional)
 
+from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
@@ -55,6 +56,7 @@ from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
 from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
 from natural_pdf.core.mixins import SinglePageContextMixin
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.core.selector_utils import _apply_relational_post_pseudos
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
@@ -504,6 +506,22 @@ class Page(
         self._exclusions = []
         return self
 
+    def add_exclusion(
+        self,
+        exclusion: Any,
+        label: Optional[str] = None,
+        method: str = "region",
+    ) -> "Page":
+        """Delegate exclusion registration to the shared exclusion service."""
+
+        resolve_service(self, "exclusion").add_exclusion(
+            self,
+            exclusion,
+            label=label,
+            method=method,
+        )
+        return self
+
     @contextlib.contextmanager
     def without_exclusions(self):
         """
@@ -663,6 +681,53 @@ class Page(
 
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
         return {"apply_exclusions": apply_exclusions}
+
+    def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Page":
+        """Apply OCR to the entire page via the shared OCR service."""
+
+        custom_func = ocr_params.pop("function", None) or ocr_params.pop("ocr_function", None)
+        if callable(custom_func):
+            region = self._full_page_region()
+            region.apply_ocr(
+                replace=replace,
+                function=custom_func,
+                **ocr_params,
+            )
+            return self
+
+        service = resolve_service(self, "ocr")
+        service.apply_ocr(self, replace=replace, **ocr_params)
+        return self
+
+    def extract_ocr_elements(self, **ocr_params: Any):
+        """Extract OCR results without mutating the page."""
+
+        service = resolve_service(self, "ocr")
+        return service.extract_ocr_elements(self, **ocr_params)
+
+    def remove_ocr_elements(self) -> int:
+        """Remove OCR-derived elements from the backing element manager."""
+
+        return int(self._element_mgr.remove_ocr_elements())
+
+    def clear_text_layer(self) -> Tuple[int, int]:
+        """Clear the underlying word/char layers for this page."""
+
+        return self._element_mgr.clear_text_layer()
+
+    def create_text_elements_from_ocr(
+        self,
+        ocr_results: Any,
+        scale_x: Optional[float] = None,
+        scale_y: Optional[float] = None,
+    ):
+        """Proxy for ElementManager.create_text_elements_from_ocr."""
+
+        return self._element_mgr.create_text_elements_from_ocr(
+            ocr_results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+        )
 
     def iter_regions(self) -> List["Region"]:
         """Return a list of regions currently registered with the page."""
@@ -1283,6 +1348,11 @@ class Page(
 
         return Region(self, (x0, top, x1, bottom))
 
+    def _full_page_region(self) -> "Region":
+        """Convenience helper that returns a Region covering the entire page."""
+
+        return self.create_region(0, 0, self.width, self.height)
+
     def region(
         self,
         left: Optional[float] = None,
@@ -1785,35 +1855,9 @@ class Page(
         horizontals: Optional[List[float]] = None,
         structure_engine: Optional[str] = None,
     ) -> TableResult:
-        """
-        Extract the largest table from this page using enhanced region-based extraction.
-
-        Args:
-            method: Method to use: 'tatr', 'pdfplumber', 'text', 'stream', 'lattice', or None (auto-detect).
-            table_settings: Settings for pdfplumber table extraction.
-            use_ocr: Whether to use OCR for text extraction (currently only applicable with 'tatr' method).
-            ocr_config: OCR configuration parameters.
-            text_options: Dictionary of options for the 'text' method.
-            cell_extraction_func: Optional callable function that takes a cell Region object
-                                    and returns its string content. For 'text' method only.
-            show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
-            content_filter: Optional content filter to apply during cell text extraction. Can be:
-                - A regex pattern string (characters matching the pattern are EXCLUDED)
-                - A callable that takes text and returns True to KEEP the character
-                - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            apply_exclusions: Whether exclusion regions should be honoured inside the page region.
-            verticals: Optional list of x-coordinates for explicit vertical table lines.
-            horizontals: Optional list of y-coordinates for explicit horizontal table lines.
-            structure_engine: Optional structure detection engine forwarded to the underlying
-                region so provider-backed engines (e.g., TATR structure consumers) can be leveraged
-                before falling back to standard extraction methods.
-
-        Returns:
-            TableResult: A sequence-like object containing table rows that also provides .to_df() for pandas conversion.
-        """
-        # Create a full-page region and delegate to its enhanced extract_table method
-        page_region = self.create_region(0, 0, self.width, self.height)
-        return page_region.extract_table(
+        """Delegates to :func:`natural_pdf.services.methods.table_methods.extract_table`."""
+        region = self._full_page_region()
+        return region.extract_table(
             method=method,
             table_settings=table_settings,
             use_ocr=use_ocr,
@@ -1834,166 +1878,18 @@ class Page(
         table_settings: Optional[dict] = None,
         check_tatr: bool = True,
     ) -> List[List[List[Optional[str]]]]:
-        """
-        Extract all tables from this page with enhanced method support.
-
-        Args:
-            method: Method to use: 'pdfplumber', 'stream', 'lattice', or None (auto-detect).
-                    'stream' uses text-based strategies, 'lattice' uses line-based strategies.
-                    Note: 'tatr' and 'text' methods are not supported for extract_tables.
-            table_settings: Settings for pdfplumber table extraction.
-            check_tatr: If True (default), first check for TATR-detected table regions
-                        and extract from those before falling back to pdfplumber methods.
-
-        Returns:
-            List of tables, where each table is a list of rows, and each row is a list of cell values.
-        """
-        base_settings = table_settings.copy() if table_settings else {}
-
-        def _normalise_table(table: Sequence[Sequence[Optional[str]]]) -> List[List[str]]:
-            return [[cell if isinstance(cell, str) else "" for cell in row] for row in table]
-
-        def _as_optional_rows(table: Sequence[Sequence[str]]) -> List[List[Optional[str]]]:
-            return [[cell for cell in row] for row in table]
-
-        def _process_pdfplumber_tables(
-            raw_tables: Optional[Sequence[Sequence[Sequence[Any]]]],
-        ) -> List[List[List[Optional[str]]]]:
-            if not raw_tables:
-                return []
-            processed: List[List[List[Optional[str]]]] = []
-            for table in raw_tables:
-                normalized_rows: List[List[str]] = []
-                for row in table:
-                    normalized_row: List[str] = []
-                    for cell in row:
-                        text_value = "" if cell is None else str(cell)
-                        if text_value:
-                            text_value = self._apply_rtl_processing_to_text(text_value)
-                        normalized_row.append(text_value)
-                    normalized_rows.append(normalized_row)
-                processed.append(_as_optional_rows(normalized_rows))
-            return processed
-
-        def _apply_text_strategy_overrides(settings: Dict[str, Any]) -> None:
-            if "text" not in (
-                settings.get("vertical_strategy"),
-                settings.get("horizontal_strategy"),
-            ):
-                return
-
-            if "text_x_tolerance" not in settings and "x_tolerance" not in settings:
-                x_tol = self.get_config("x_tolerance", None, scope="page")
-                if x_tol is not None:
-                    settings.setdefault("text_x_tolerance", x_tol)
-            if "text_y_tolerance" not in settings and "y_tolerance" not in settings:
-                y_tol = self.get_config("y_tolerance", None, scope="page")
-                if y_tol is not None:
-                    settings.setdefault("text_y_tolerance", y_tol)
-
-            if "snap_tolerance" not in settings and "snap_x_tolerance" not in settings:
-                y_tol = self.get_config("y_tolerance", 1, scope="page")
-                snap = max(1, round(float(y_tol) * 0.9))
-                settings.setdefault("snap_tolerance", snap)
-            if "join_tolerance" not in settings and "join_x_tolerance" not in settings:
-                join = settings.get("snap_tolerance", 1)
-                settings.setdefault("join_tolerance", join)
-                settings.setdefault("join_x_tolerance", join)
-                settings.setdefault("join_y_tolerance", join)
-
-        def _run_pdfplumber(
-            overrides: Optional[Dict[str, Any]] = None, *, force: bool = False
-        ) -> List[List[List[Optional[str]]]]:
-            settings = base_settings.copy()
-            if overrides:
-                for key, value in overrides.items():
-                    if force or key not in settings:
-                        settings[key] = value
-            _apply_text_strategy_overrides(settings)
-            raw_tables = self._page.extract_tables(settings)
-            return _process_pdfplumber_tables(raw_tables)
-
-        def _auto_detect_tables() -> List[List[List[Optional[str]]]]:
-            strategies = (
-                ("lattice", {"vertical_strategy": "lines", "horizontal_strategy": "lines"}),
-                ("stream", {"vertical_strategy": "text", "horizontal_strategy": "text"}),
-            )
-            for label, overrides in strategies:
-                try:
-                    tables = _run_pdfplumber(overrides, force=True)
-                    if tables:
-                        logger.debug(
-                            f"Page {self.number}: '{label}' strategy found {len(tables)} tables"
-                        )
-                        return tables
-                except Exception as exc:
-                    logger.debug(f"Page {self.number}: '{label}' strategy failed: {exc}")
-            return []
-
-        def _extract_tables_via_tatr() -> List[List[List[Optional[str]]]]:
-            regions = self.find_all("region[type=table][model=tatr]")
-            if not regions:
-                logger.debug(
-                    f"Page {self.number}: No TATR table regions found, using pdfplumber methods"
-                )
-                return []
-
-            extracted: List[List[List[Optional[str]]]] = []
-            for table_region in regions:
-                table_data = table_region.extract_table(method="tatr")
-                if table_data:
-                    extracted.append(_as_optional_rows(_normalise_table(table_data)))
-
-            if extracted:
-                logger.debug(
-                    f"Page {self.number}: Successfully extracted {len(extracted)} tables from TATR regions"
-                )
-            else:
-                logger.debug(
-                    f"Page {self.number}: TATR regions found but no tables extracted, falling back to pdfplumber"
-                )
-            return extracted
-
-        if check_tatr:
-            try:
-                tatr_tables = _extract_tables_via_tatr()
-                if tatr_tables:
-                    return tatr_tables
-            except Exception as exc:
-                logger.debug(
-                    f"Page {self.number}: Error checking TATR regions: {exc}, falling back to pdfplumber"
-                )
-
-        if method is None:
-            auto_tables = _auto_detect_tables()
-            if auto_tables:
-                return auto_tables
+        """Delegates to :func:`natural_pdf.services.methods.table_methods.extract_tables`."""
+        if not check_tatr:
             logger.debug(
-                f"Page {self.number}: Auto-detection failed to find tables. Returning empty list."
+                "Page %d: check_tatr is deprecated; table extraction is provider-driven.",
+                self.number,
             )
-            return []
 
-        settings = table_settings.copy() if table_settings else {}
-
-        if check_tatr:
-            try:
-                tatr_matches = _extract_tables_via_tatr()
-                if tatr_matches:
-                    logger.debug(
-                        f"Page {self.number}: Returning {len(tatr_matches)} tables from TATR regions."
-                    )
-                    return tatr_matches
-            except Exception as exc:
-                logger.debug(
-                    f"Page {self.number}: Error checking TATR regions: {exc}; falling back to pdfplumber."
-                )
-
-        page_region = self.to_region()
-        try:
-            return page_region.extract_tables(method=method, table_settings=settings)
-        except Exception as exc:
-            logger.debug(f"Page {self.number}: Table extraction failed: {exc}")
-            return []
+        region = self._full_page_region()
+        return region.extract_tables(
+            method=method,
+            table_settings=table_settings,
+        )
 
     def _load_elements(self):
         """Load all elements from the page via ElementManager."""
@@ -2838,6 +2734,26 @@ class Page(
         """
         return self.find_all("*").inspect(limit=limit)
 
+    def ask(
+        self,
+        question: QuestionInput,
+        min_confidence: float = 0.1,
+        model: Optional[str] = None,
+        debug: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        """Delegate QA prompts for this page to the QA service."""
+
+        qa_service = resolve_service(self, "qa")
+        return qa_service.ask(
+            self,
+            question=question,
+            min_confidence=min_confidence,
+            model=model,
+            debug=debug,
+            **kwargs,
+        )
+
     def remove_text_layer(self) -> "Page":
         """
         Remove all text elements from this page.
@@ -2943,6 +2859,12 @@ class Page(
         from natural_pdf.core.highlighting_service import HighlightContext
 
         return HighlightContext(self, show_on_exit=show)
+
+    def detect_lines(self, **kwargs: Any) -> "Page":
+        """Expose shape-detection through the shared service."""
+
+        resolve_service(self, "shapes").detect_lines(self, **kwargs)
+        return self
 
 
 attach_capability(Page, "text")

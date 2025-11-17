@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Iterable as IterableABC
+from contextlib import AbstractContextManager, nullcontext
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, Tuple, Union, cast
+
+if TYPE_CHECKING:  # pragma: no cover
+    from natural_pdf.elements.region import Region
 
 from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
 from natural_pdf.elements.base import extract_bbox
@@ -96,7 +100,11 @@ class ExclusionService:
 
             if callable(exclusion_item) and include_callable:
                 ctx_factory = getattr(host, "without_exclusions", None)
-                context_mgr = ctx_factory() if callable(ctx_factory) else nullcontext()
+                context_candidate = ctx_factory() if callable(ctx_factory) else None
+                if isinstance(context_candidate, AbstractContextManager):
+                    context_mgr: AbstractContextManager[Any] = context_candidate
+                else:
+                    context_mgr = nullcontext()
                 try:
                     with context_mgr:
                         result = exclusion_item(host)
@@ -130,7 +138,11 @@ class ExclusionService:
                 regions.extend(self._elements_to_regions(host, matches, label, debug))
                 continue
 
-            if hasattr(exclusion_item, "bbox") and hasattr(exclusion_item, "expand"):
+            if (
+                not callable(exclusion_item)
+                and hasattr(exclusion_item, "bbox")
+                and hasattr(exclusion_item, "expand")
+            ):
                 if method == "element":
                     continue
                 try:
@@ -151,14 +163,16 @@ class ExclusionService:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _store_matches(self, host: Any, matches: Iterable[Any], label: Optional[str], method: str):
+    def _store_matches(self, host: Any, matches: Any, label: Optional[str], method: str):
         from natural_pdf.elements.element_collection import ElementCollection
 
         iterable: Iterable[Any]
         if isinstance(matches, ElementCollection):
             iterable = matches.elements
-        else:
+        elif isinstance(matches, IterableABC):
             iterable = matches
+        else:
+            raise TypeError(f"Exclusion matches must be iterable; received {type(matches)!r}")
 
         for match in iterable:
             if method == "element":
@@ -186,21 +200,46 @@ class ExclusionService:
         if callable(invalidator):
             invalidator()
 
-    def _element_to_region(self, host: Any, element: Any, label: Optional[str]):
+    def _element_to_region(
+        self, host: Any, element: Any, label: Optional[str]
+    ) -> Optional["Region"]:
+        from natural_pdf.elements.region import Region
+
         converter = getattr(host, "_element_to_region", None)
         if callable(converter):
-            return converter(element, label=label)
-        return None
+            candidate = converter(element, label=label)
+            if isinstance(candidate, Region):
+                return candidate
+        bbox = extract_bbox(element)
+        if bbox is None:
+            return None
+        page = getattr(element, "page", None) or getattr(host, "page", None)
+        if page is None and hasattr(host, "width"):
+            page = host
+        if page is None:
+            return None
+        region = Region(page, bbox)
+        region.label = label
+        return region
 
     def _elements_to_regions(
         self,
         host: Any,
-        elements: Iterable[Any],
+        elements: Any,
         label: Optional[str],
         debug: bool,
-    ) -> List[Any]:
-        results: List[Any] = []
-        for elem in elements:
+    ) -> List["Region"]:
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        if isinstance(elements, ElementCollection):
+            iterable: Iterable[Any] = elements.elements
+        elif isinstance(elements, IterableABC):
+            iterable = elements
+        else:
+            raise TypeError(f"Element source must be iterable, got {type(elements)!r}")
+
+        results: List["Region"] = []
+        for elem in iterable:
             region = self._element_to_region(host, elem, label)
             if region is not None:
                 results.append(region)
@@ -215,7 +254,7 @@ class ExclusionService:
         label: Optional[str],
         *,
         debug: bool,
-    ) -> List[Any]:
+    ) -> List["Region"]:
         from natural_pdf.elements.element_collection import ElementCollection
         from natural_pdf.elements.region import Region
 

@@ -1,6 +1,6 @@
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 
 from pydantic import BaseModel
 
@@ -235,3 +235,4 @@ class ExtractionMixin(ABC):
 
     # ------------------------------------------------------------------
     # Internal helper methods now live inside ExtractionService
+    analyses: Optional[Dict[str, Any]] = None

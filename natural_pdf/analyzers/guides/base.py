@@ -985,18 +985,17 @@ class Guides:
 
     def _extract_with_table_service(self, host, **kwargs) -> TableResult:
         """Helper to route all table extraction through the table service."""
-        from natural_pdf.core.page import Page
-
-        region_host = host
-        if isinstance(host, Page):
-            region_host = host.create_region(0, 0, host.width, host.height)
-
-        extractor = getattr(region_host, "extract_table", None)
+        extractor = getattr(host, "extract_table", None)
         if callable(extractor):
-            return extractor(**kwargs)
+            extracted = extractor(**kwargs)
+            if isinstance(extracted, TableResult):
+                return extracted
+            rows_iter = cast(Optional[Iterable[List[Any]]], extracted)
+            rows: List[List[Any]] = list(rows_iter or [])
+            return TableResult(rows)
 
-        table_service = resolve_service(region_host, "table")
-        return table_service.extract_table(region_host, **kwargs)
+        table_service = resolve_service(host, "table")
+        return table_service.extract_table(host, **kwargs)
 
     def _flow_context(self) -> FlowRegion:
         if not _is_flow_region(self.context):

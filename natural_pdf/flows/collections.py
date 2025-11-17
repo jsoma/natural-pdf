@@ -20,7 +20,7 @@ from typing import (
 
 from PIL import Image  # Single import for PIL.Image module
 
-from natural_pdf.collections.mixins import SectionsCollectionMixin, _SectionHost
+from natural_pdf.collections.mixins import QACollectionMixin, SectionsCollectionMixin, _SectionHost
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -371,7 +371,11 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
 
 
 class FlowRegionCollection(
-    ServiceHostMixin, Visualizable, SectionsCollectionMixin, MutableSequence["FlowRegion"]
+    ServiceHostMixin,
+    Visualizable,
+    SectionsCollectionMixin,
+    QACollectionMixin,
+    MutableSequence["FlowRegion"],
 ):
     """
     A collection of FlowRegion objects, typically the result of directional
@@ -808,8 +812,8 @@ class FlowRegionCollection(
     # ------------------------------------------------------------------
     # QA service hooks
     # ------------------------------------------------------------------
-    def _qa_segments(self) -> Sequence["FlowRegion"]:
-        return tuple(self._flow_regions)
+    def _qa_segment_iterable(self) -> Sequence["FlowRegion"]:
+        return self._flow_regions
 
     def _qa_target_region(self):
         if not self._flow_regions:
@@ -824,37 +828,29 @@ class FlowRegionCollection(
         getter = getattr(first_region, "_qa_context_page_number", None)
         if callable(getter):
             try:
-                return int(getter())
+                value = getter()
+                if isinstance(value, (int, float, str)):
+                    return int(value)
+                return -1
             except Exception:
                 return -1
         return -1
 
     def _qa_source_elements(self):
+        from natural_pdf.elements.element_collection import ElementCollection
+
         first_region = self.first
         if first_region is None:
-            from natural_pdf.elements.element_collection import ElementCollection
-
             return ElementCollection([])
         getter = getattr(first_region, "_qa_source_elements", None)
         if callable(getter):
             try:
-                return getter()
+                result = getter()
+                if isinstance(result, ElementCollection):
+                    return result
             except Exception:
                 pass
-        from natural_pdf.elements.element_collection import ElementCollection
-
         return ElementCollection([])
-
-    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        from natural_pdf.elements.region import Region
-
-        return Region._normalize_qa_output(result)
-
-    @staticmethod
-    def _qa_confidence(candidate: Any) -> float:
-        from natural_pdf.flows.region import FlowRegion
-
-        return FlowRegion._qa_confidence(candidate)
 
     @staticmethod
     def _normalize_crop_mode(

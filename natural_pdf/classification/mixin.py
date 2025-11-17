@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from PIL import Image
 
@@ -85,3 +85,5 @@ class ClassificationMixin:
             )
             return None
         return result
+
+    analyses: Optional[Dict[str, Any]] = None

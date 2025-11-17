@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Mapping as MappingABC
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -170,24 +171,31 @@ class FlowRegion(
         """Best-effort confidence extraction from normalized QA results."""
         if isinstance(candidate, list) and candidate:
             return FlowRegion._qa_confidence(candidate[0])
-        if isinstance(candidate, dict):
+        if isinstance(candidate, MappingABC):
             value = candidate.get("confidence")
+            if isinstance(value, (int, float, str)):
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return float("-inf")
+            return float("-inf")
+        value = getattr(candidate, "confidence", None)
+        if isinstance(value, (int, float, str)):
             try:
                 return float(value)
             except (TypeError, ValueError):
                 return float("-inf")
-        try:
-            value = getattr(candidate, "confidence", None)
-            if value is None:
-                value = candidate.get("confidence")
-            return float(value)
-        except Exception:
-            return float("-inf")
+        return float("-inf")
 
     def _ocr_element_manager(self):
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no regions for OCR operations")
-        return self.constituent_regions[0].page._element_mgr
+        for region in self.constituent_regions:
+            page = getattr(region, "page", None)
+            mgr = getattr(page, "_element_mgr", None) if page is not None else None
+            if mgr is not None:
+                return mgr
+        raise RuntimeError("FlowRegion has no pages with OCR element managers")
 
     def remove_ocr_elements(self) -> int:
         removed = 0
@@ -200,7 +208,9 @@ class FlowRegion(
         total_words = 0
         seen_pages: Set[int] = set()
         for region in self.constituent_regions:
-            page = region.page
+            page = getattr(region, "page", None)
+            if page is None:
+                continue
             marker = id(page)
             if marker in seen_pages:
                 continue
@@ -215,9 +225,21 @@ class FlowRegion(
     ) -> List[Any]:
         if not self.constituent_regions:
             return []
-        return self.constituent_regions[0].page.create_text_elements_from_ocr(
-            ocr_results, scale_x=scale_x, scale_y=scale_y
-        )
+        for region in self.constituent_regions:
+            page = getattr(region, "page", None)
+            if page is None:
+                continue
+            creator = getattr(page, "create_text_elements_from_ocr", None)
+            if callable(creator):
+                created = creator(ocr_results, scale_x=scale_x, scale_y=scale_y)
+                if isinstance(created, list):
+                    return created
+                if created is None:
+                    return []
+                if isinstance(created, Iterable):
+                    return list(created)
+                return [created]
+        return []
 
     def _iter_ocr_regions(self) -> Iterable[Any]:
         return tuple(self.constituent_regions)
@@ -1095,6 +1117,7 @@ class FlowRegion(
         new_section_on_page_break: bool = False,
         include_boundaries: str = "both",
         orientation: str = "vertical",
+        **kwargs: Any,
     ) -> "ElementCollection":
         """
         Extract logical sections from this FlowRegion based on start/end boundary elements.
@@ -1134,6 +1157,7 @@ class FlowRegion(
             new_section_on_page_break=new_section_on_page_break,
             include_boundaries=include_boundaries,
             orientation=orientation,
+            **kwargs,
         )
 
     def split(
@@ -1224,3 +1248,6 @@ attach_capability(FlowRegion, "navigation")
 attach_capability(FlowRegion, "qa")
 attach_capability(FlowRegion, "exclusion")
 attach_capability(FlowRegion, "guides")
+
+FlowRegion.extract_table.__doc__ = _flow_table_methods.flowregion_extract_table.__doc__
+FlowRegion.extract_tables.__doc__ = _flow_table_methods.flowregion_extract_tables.__doc__

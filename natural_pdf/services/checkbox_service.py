@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, Sequence, cast
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
@@ -30,13 +31,12 @@ class CheckboxDetectionService:
     def detect_checkboxes(self, host: Any, **kwargs) -> ElementCollection:
         pdfs = getattr(host, "pdfs", None)
         if pdfs is not None:
-            combined = []
+            combined: list[Any] = []
             for pdf in cast(Sequence[Any], pdfs):
                 detector = getattr(pdf, "detect_checkboxes", None)
                 if callable(detector):
                     result = detector(**kwargs)
-                    if result:
-                        combined.extend(getattr(result, "elements", result))
+                    self._extend_matches(combined, result)
             return ElementCollection(combined)
 
         pages = getattr(host, "pages", None)
@@ -57,10 +57,25 @@ class CheckboxDetectionService:
                 detector = getattr(page, "detect_checkboxes", None)
                 if callable(detector):
                     result = detector(**per_page_kwargs)
-                    if result:
-                        combined.extend(getattr(result, "elements", result))
+                    self._extend_matches(combined, result)
             return ElementCollection(combined)
 
         proxy = _CheckboxProxy(host)
         result = CheckboxDetectionMixin.detect_checkboxes(proxy, **kwargs)
         return result
+
+    @staticmethod
+    def _extend_matches(destination: list[Any], result: Any) -> None:
+        if result is None:
+            return
+        if isinstance(result, ElementCollection):
+            destination.extend(result.elements)
+            return
+        elements_attr = getattr(result, "elements", None)
+        if isinstance(elements_attr, list):
+            destination.extend(elements_attr)
+            return
+        if isinstance(result, Iterable):
+            destination.extend(result)
+            return
+        destination.append(result)

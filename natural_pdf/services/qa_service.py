@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable as IterableABC
+from collections.abc import Mapping
+from collections.abc import Sequence as SequenceABC
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from natural_pdf.core.qa_mixin import QuestionInput
@@ -150,9 +153,11 @@ class QAService:
                 return None
             if segments is None:
                 return None
-            if isinstance(segments, Sequence):
+            if isinstance(segments, SequenceABC):
                 return segments
-            return tuple(segments)
+            if isinstance(segments, IterableABC):
+                return tuple(segments)
+            return None
         return None
 
     def _target_region(self, host: Any) -> Any:
@@ -165,7 +170,13 @@ class QAService:
         getter = getattr(host, "_qa_context_page_number", None)
         if callable(getter):
             try:
-                return int(getter())
+                value = getter()
+                if isinstance(value, (int, float, str)):
+                    try:
+                        return int(value)
+                    except (TypeError, ValueError):
+                        return -1
+                return -1
             except Exception:
                 pass
         page = getattr(host, "page", None)
@@ -221,7 +232,10 @@ class QAService:
         getter = getattr(host, "_qa_confidence", None)
         if callable(getter):
             try:
-                return float(getter(candidate))
+                value = getter(candidate)
+                if isinstance(value, (int, float, str)):
+                    return float(value)
+                return float("-inf")
             except Exception:
                 return float("-inf")
         return self._default_confidence(candidate)
@@ -229,22 +243,21 @@ class QAService:
     def _default_confidence(self, candidate: Any) -> float:
         if isinstance(candidate, list) and candidate:
             return self._default_confidence(candidate[0])
-        if isinstance(candidate, dict):
+        if isinstance(candidate, Mapping):
             value = candidate.get("confidence")
+            if isinstance(value, (int, float, str)):
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return float("-inf")
+            return float("-inf")
+        value = getattr(candidate, "confidence", None)
+        if isinstance(value, (int, float, str)):
             try:
                 return float(value)
             except (TypeError, ValueError):
                 return float("-inf")
-        value = getattr(candidate, "confidence", None)
-        if value is None and hasattr(candidate, "get"):
-            try:
-                value = candidate.get("confidence")
-            except Exception:
-                value = None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return float("-inf")
+        return float("-inf")
 
     @staticmethod
     def _coerce_questions(question: QuestionInput) -> Tuple[List[str], bool]:

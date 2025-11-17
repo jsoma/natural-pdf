@@ -54,6 +54,7 @@ from natural_pdf.services import table_service as _table_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import table_methods as _table_methods
+from natural_pdf.tables.result import TableResult
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
@@ -1527,6 +1528,56 @@ class Region(
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result
 
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict[str, Any]] = None,
+        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
+        show_progress: bool = False,
+        content_filter: Optional[Union[str, Sequence[str], Callable[[str], bool]]] = None,
+        apply_exclusions: bool = True,
+        verticals: Optional[Sequence[float]] = None,
+        horizontals: Optional[Sequence[float]] = None,
+        structure_engine: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableResult:
+        """Delegate to the shared table service and return the primary table."""
+
+        return _table_methods.extract_table(
+            self,
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            show_progress=show_progress,
+            content_filter=content_filter,
+            apply_exclusions=apply_exclusions,
+            verticals=verticals,
+            horizontals=horizontals,
+            structure_engine=structure_engine,
+            **kwargs,
+        )
+
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> List[List[List[Optional[str]]]]:
+        """Delegate to the shared table service and return every detected table."""
+
+        return _table_methods.extract_tables(
+            self,
+            method=method,
+            table_settings=table_settings,
+            **kwargs,
+        )
+
     def find(
         self,
         selector: Optional[str] = None,
@@ -1646,6 +1697,12 @@ class Region(
         # overlap_mode == "center"
         return [el for el in elements if self.is_element_center_inside(el)]
 
+    def detect_lines(self, **kwargs: Any) -> "Region":
+        """Expose line detection on regions via the shape detection service."""
+
+        resolve_service(self, "shapes").detect_lines(self, **kwargs)
+        return self
+
     def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
@@ -1764,125 +1821,15 @@ class Region(
         confidence: Optional[float] = None,
         add_to_page: bool = True,
     ) -> "Region":
-        """
-        Apply a custom OCR function to this region and create text elements from the results.
-
-        This is useful when you want to use a custom OCR method (e.g., an LLM API,
-        specialized OCR service, or any custom logic) instead of the built-in OCR engines.
-
-        Args:
-            ocr_function: A callable that takes a Region and returns the OCR'd text (or None).
-                          The function receives this region as its argument and should return
-                          the extracted text as a string, or None if no text was found.
-            source_label: Label to identify the source of these text elements (default: "custom-ocr").
-                          This will be set as the 'source' attribute on created elements.
-            replace: If True (default), removes existing OCR elements in this region before
-                     adding new ones. If False, adds new OCR elements alongside existing ones.
-            confidence: Optional confidence score for the OCR result (0.0-1.0).
-                        If None, defaults to 1.0 if text is returned, 0.0 if None is returned.
-            add_to_page: If True (default), adds the created text element to the page.
-                         If False, creates the element but doesn't add it to the page.
-
-        Returns:
-            Self for method chaining.
-
-        Example:
-            # Using with an LLM
-            def ocr_with_llm(region):
-                image = region.render(resolution=300, crop=True)
-                # Call your LLM API here
-                return llm_client.ocr(image)
-
-            region.apply_custom_ocr(ocr_with_llm)
-
-            # Using with a custom OCR service
-            def ocr_with_service(region):
-                img_bytes = region.render(crop=True).tobytes()
-                response = ocr_service.process(img_bytes)
-                return response.text
-
-            region.apply_custom_ocr(ocr_with_service, source_label="my-ocr-service")
-        """
-        # If replace is True, remove existing OCR elements in this region
-        if replace:
-            logger.info(
-                f"Region {self.bbox}: Removing existing OCR elements before applying custom OCR."
-            )
-
-            removed_count = 0
-
-            # Helper to remove a single element safely
-            def _safe_remove(elem):
-                nonlocal removed_count
-                page_obj = getattr(elem, "page", None)
-                if page_obj is None or not hasattr(page_obj, "remove_element"):
-                    return
-                etype = getattr(elem, "object_type", None)
-                success = bool(page_obj.remove_element(elem, element_type=etype))
-                if success:
-                    removed_count += 1
-
-            # Remove ALL OCR elements overlapping this region
-            # Remove elements with source=="ocr" (built-in OCR) or matching the source_label (previous custom OCR)
-            for word in list(self.page.get_elements_by_type("words")):
-                word_source = getattr(word, "source", "")
-                # Match built-in OCR behavior: remove elements with source "ocr" exactly
-                # Also remove elements with the same source_label to avoid duplicates
-                if (word_source == "ocr" or word_source == source_label) and self.intersects(word):
-                    _safe_remove(word)
-
-            # Also remove char dicts if needed (matching built-in OCR)
-            for char in list(self.page.get_elements_by_type("chars")):
-                # char can be dict or TextElement; normalize
-                char_src = (
-                    char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
-                )
-                if char_src == "ocr" or char_src == source_label:
-                    # Rough bbox for dicts
-                    if isinstance(char, dict):
-                        cx0, ctop, cx1, cbottom = (
-                            char.get("x0", 0),
-                            char.get("top", 0),
-                            char.get("x1", 0),
-                            char.get("bottom", 0),
-                        )
-                    else:
-                        cx0, ctop, cx1, cbottom = char.x0, char.top, char.x1, char.bottom
-                    # Quick overlap check
-                    if not (
-                        cx1 < self.x0 or cx0 > self.x1 or cbottom < self.top or ctop > self.bottom
-                    ):
-                        _safe_remove(char)
-
-            if removed_count > 0:
-                logger.info(f"Region {self.bbox}: Removed {removed_count} existing OCR elements.")
-
-        # Call the custom OCR function
-        logger.debug(f"Region {self.bbox}: Calling custom OCR function...")
-        ocr_text = ocr_function(self)
-        if ocr_text is not None and not isinstance(ocr_text, str):
-            raise TypeError(
-                f"Custom OCR function for region {self.bbox} returned {type(ocr_text).__name__}, "
-                "expected str or None."
-            )
-
-        # Create text element if we got text
-        if ocr_text is not None:
-            # Use the to_text_element method to create the element
-            self.to_text_element(
-                text_content=ocr_text,
-                source_label=source_label,
-                confidence=confidence,
-                add_to_page=add_to_page,
-            )
-
-            logger.info(
-                f"Region {self.bbox}: Created text element with {len(ocr_text)} chars"
-                f"{' and added to page' if add_to_page else ''}"
-            )
-        else:
-            logger.debug(f"Region {self.bbox}: Custom OCR function returned None (no text found)")
-
+        service = resolve_service(self, "ocr")
+        service.apply_custom_ocr(
+            self,
+            ocr_function=ocr_function,
+            source_label=source_label,
+            replace=replace,
+            confidence=confidence,
+            add_to_page=add_to_page,
+        )
         return self
 
     def get_section_between(
@@ -2910,8 +2857,8 @@ class Region(
         return RegionContext(self)
 
 
-Region.extract_table = _table_methods.extract_table
-Region.extract_tables = _table_methods.extract_tables
+Region.extract_table.__doc__ = _table_methods.extract_table.__doc__
+Region.extract_tables.__doc__ = _table_methods.extract_tables.__doc__
 
 attach_capability(Region, "text")
 attach_capability(Region, "qa")

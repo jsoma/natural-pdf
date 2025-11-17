@@ -1,10 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
-if TYPE_CHECKING:  # pragma: no cover - imported only for typing
-    from natural_pdf.analyzers.guides.base import Guides, GuidesContext
 from natural_pdf.services.registry import register_delegate
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from natural_pdf.analyzers.guides.base import Guides, GuidesContext
+
+_GUIDES_CLASS: Optional[Type["Guides"]] = None
+
+
+def _load_guides_class() -> Type["Guides"]:
+    global _GUIDES_CLASS
+    if _GUIDES_CLASS is None:
+        from natural_pdf.analyzers.guides.base import Guides
+
+        _GUIDES_CLASS = Guides
+    return _GUIDES_CLASS
 
 
 class GuidesService:
@@ -23,8 +35,7 @@ class GuidesService:
         context=None,
         **kwargs,
     ) -> "Guides":
-        from natural_pdf.analyzers.guides.base import Guides
-
+        Guides = _load_guides_class()
         effective_context = context if context is not None else host
         return Guides(
             verticals=verticals,

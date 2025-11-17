@@ -13,7 +13,6 @@ from typing import (
     Tuple,
     Union,
     cast,
-    overload,
 )
 
 if TYPE_CHECKING:
@@ -27,10 +26,6 @@ if TYPE_CHECKING:
     )
     from natural_pdf.elements.region import Region as PhysicalRegion
 
-    from .collections import FlowElementCollection
-    from .element import FlowElement
-    from .region import FlowRegion
-
 # Import required classes for the new methods
 # For runtime image manipulation
 
@@ -39,12 +34,22 @@ from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.flows.collections import FlowElementCollection
+from natural_pdf.flows.element import FlowElement
+from natural_pdf.flows.region import FlowRegion
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from natural_pdf.elements.base import Element as SelectorElement
+    from natural_pdf.elements.element_collection import ElementCollection as SelectorCollection
+else:  # pragma: no cover - runtime aliases for flow-specific selectors
+    SelectorElement = FlowElement  # type: ignore[assignment]
+    SelectorCollection = FlowElementCollection  # type: ignore[assignment]
 
 
 class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
@@ -419,6 +424,28 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             **kwargs,
         )
 
+    def _as_flow_element(self, element: Any) -> FlowElement:
+        if isinstance(element, FlowElement):
+            if getattr(element, "flow", None) is self:
+                return element
+            physical_candidate = getattr(element, "physical_object", element)
+        else:
+            physical_candidate = element
+        physical = cast(Any, physical_candidate)
+        return FlowElement(physical_object=physical, flow=self)
+
+    def _as_flow_collection(self, collection: Any) -> FlowElementCollection:
+        if isinstance(collection, FlowElementCollection):
+            return collection
+        elements_attr = getattr(collection, "elements", None)
+        iterable = elements_attr if elements_attr is not None else collection
+        flow_elements = []
+        for element in iterable:
+            if element is None:
+                continue
+            flow_elements.append(self._as_flow_element(element))
+        return FlowElementCollection(flow_elements)
+
     def find(
         self,
         selector: Optional[str] = None,
@@ -433,8 +460,8 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
-    ) -> Optional["FlowElement"]:
-        """Return the first FlowElement whose underlying element matches selector/text filters.
+    ) -> Optional["SelectorElement"]:
+        """Return the first FlowElement-like object matching selector/text filters.
 
         Args:
             selector: CSS-like selector string.
@@ -450,9 +477,9 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             engine: Optional selector engine registered with the provider.
 
         Returns:
-            The first matching :class:`natural_pdf.flows.element.FlowElement`, if any.
+            The first matching flow-wrapped element, if any.
         """
-        return resolve_service(self, "selector").find(
+        physical = resolve_service(self, "selector").find(
             self,
             selector=selector,
             text=text,
@@ -466,6 +493,9 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             near_threshold=near_threshold,
             engine=engine,
         )
+        if physical is None:
+            return None
+        return cast("SelectorElement", self._as_flow_element(physical))
 
     def find_all(
         self,
@@ -481,15 +511,15 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
-    ) -> "FlowElementCollection":
-        """Return every FlowElement whose underlying element matches selector/text filters.
+    ) -> "SelectorCollection":
+        """Return every FlowElement-like object matching selector/text filters.
 
         The selector service fans out the query per page, filters intersections with each segment,
         and wraps results back into a :class:`FlowElementCollection` anchored to this flow.
 
         Args follow :meth:`find`; ``engine`` is forwarded to page-level queries when provided.
         """
-        return resolve_service(self, "selector").find_all(
+        collection = resolve_service(self, "selector").find_all(
             self,
             selector=selector,
             text=text,
@@ -503,6 +533,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             near_threshold=near_threshold,
             engine=engine,
         )
+        return cast("SelectorCollection", self._as_flow_collection(collection))
 
     def __repr__(self) -> str:
         return (
@@ -510,7 +541,6 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             f"arrangement='{self.arrangement}', alignment='{self.alignment}', gap={self.segment_gap}>"
         )
 
-    @overload
     def extract_table(
         self,
         method: Optional[str] = None,

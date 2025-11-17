@@ -49,6 +49,11 @@
    - As part of each service migration, note duplicated or redundant protocols and merge them (e.g., unify “has pages” traits, collapse multiple text/section interfaces).
    - Update type hints so services rely on the consolidated protocols.
 
+### Recent Decisions / Work in Flight
+- **Exclusion ergonomics**: the service will fall back to creating regions from any object that exposes a bbox (using `extract_bbox`) if the host doesn’t implement `_element_to_region`. We’ll also consolidate the accepted-type documentation inside the service so callers get a single, authoritative error message.
+- **Guides/table UX**: since every host now exposes `extract_table`, the guides helper will simply delegate to that method (or the table service) without special-casing pages vs. regions. This keeps the logic in one place and surfaces a single error when a host lacks table capability.
+- **Shared docstrings for table helpers**: we’ll keep the canonical docstrings next to the shared helper functions (e.g., `table_methods.extract_table`). Host methods should point to those helpers or copy their `__doc__` so edits happen in one place. If we find ourselves touching the signatures often, we can generate the wrappers automatically from the delegate registry later.
+
 ### Open Questions / Items to Clarify
 1. **Context Object Scope**
    - ✅ Decision: introduce `PDFContext` as part of this refactor. While we’re already touching every host to wire services, we’ll also thread a context that carries engine registries, config, caches, and shared resources. This lets us dismantle globals immediately instead of planning another disruptive sweep later.

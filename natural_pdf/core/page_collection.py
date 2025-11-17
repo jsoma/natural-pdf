@@ -20,10 +20,16 @@ from typing import (
     runtime_checkable,
 )
 
-from natural_pdf.collections.mixins import ApplyMixin, SectionsCollectionMixin, _SectionHost
+from natural_pdf.collections.mixins import (
+    ApplyMixin,
+    QACollectionMixin,
+    SectionsCollectionMixin,
+    _SectionHost,
+)
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.pdf import PDF
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
@@ -78,6 +84,7 @@ class PageCollection(
     ServiceHostMixin,
     ApplyMixin,
     SectionsCollectionMixin,
+    QACollectionMixin,
     Visualizable,
     Sequence["Page"],
 ):
@@ -236,6 +243,7 @@ class PageCollection(
         min_confidence: Optional[float] = None,  # Min confidence threshold
         device: Optional[str] = None,
         resolution: Optional[int] = None,  # DPI for rendering
+        detect_only: bool = False,
         apply_exclusions: bool = True,  # New parameter
         replace: bool = True,  # Whether to replace existing OCR elements
         # --- Engine-Specific Options ---
@@ -255,6 +263,7 @@ class PageCollection(
             min_confidence: Minimum confidence threshold for detected text (0.0 to 1.0).
             device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps').
             resolution: DPI resolution to render page images before OCR (e.g., 150, 300).
+            detect_only: When True, only detect bounding boxes without creating text elements.
             apply_exclusions: If True (default), render page images for OCR with
                               excluded areas masked (whited out). If False, OCR
                               the raw page images without masking exclusions.
@@ -291,41 +300,28 @@ class PageCollection(
     # ------------------------------------------------------------------
     # QA service hooks
     # ------------------------------------------------------------------
-    def _qa_segments(self) -> Sequence["Page"]:
-        return tuple(self.pages)
+    def _qa_segment_iterable(self) -> Sequence["Page"]:
+        return self.pages
 
-    def _qa_target_region(self):
-        if not self.pages:
-            raise RuntimeError("PageCollection has no pages available for QA.")
-        first_page = self.pages[0]
-        to_region = getattr(first_page, "to_region", None)
-        if callable(to_region):
-            return to_region()
-        raise RuntimeError("PageCollection pages must expose to_region() for QA operations.")
+    def ask(
+        self,
+        question: QuestionInput,
+        min_confidence: float = 0.1,
+        model: Optional[str] = None,
+        debug: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        """Delegate QA execution across the collection via QAService."""
 
-    def _qa_context_page_number(self) -> int:
-        if not self.pages:
-            return -1
-        first_page = self.pages[0]
-        number = getattr(first_page, "number", None)
-        try:
-            return int(number)
-        except (TypeError, ValueError):
-            return -1
-
-    def _qa_source_elements(self) -> ElementCollection:
-        return ElementCollection([])
-
-    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        from natural_pdf.elements.region import Region
-
-        return Region._normalize_qa_output(result)
-
-    @staticmethod
-    def _qa_confidence(candidate: Any) -> float:
-        from natural_pdf.flows.region import FlowRegion
-
-        return FlowRegion._qa_confidence(candidate)
+        qa_service = resolve_service(self, "qa")
+        return qa_service.ask(
+            self,
+            question=question,
+            min_confidence=min_confidence,
+            model=model,
+            debug=debug,
+            **kwargs,
+        )
 
     def split(
         self,

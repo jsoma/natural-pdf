@@ -747,6 +747,7 @@ class PDFCollection(ServiceHostMixin, ApplyMixin, ExportMixin):
         if skipped_count > 0:
             final_message += f", Skipped: {skipped_count}"
         logger.info(final_message + ".")
+        return self
 
     # ------------------------------------------------------------------
     # QA service hooks

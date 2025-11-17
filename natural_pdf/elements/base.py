@@ -28,7 +28,7 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 # Import selector parsing functions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
-from natural_pdf.services.base import ServiceHostMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 
 if TYPE_CHECKING:

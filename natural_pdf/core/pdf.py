@@ -1218,15 +1218,6 @@ class PDF(
             elements = self.find_all(
                 selector,
                 apply_exclusions=use_exclusions,
-                layout=layout,
-                x_density=x_density,
-                y_density=y_density,
-                x_tolerance=x_tolerance,
-                y_tolerance=y_tolerance,
-                line_dir=line_dir,
-                char_dir=char_dir,
-                strip_final=strip_final,
-                strip_empty=strip_empty,
             )
             return elements.extract_text(
                 preserve_whitespace=preserve_whitespace,

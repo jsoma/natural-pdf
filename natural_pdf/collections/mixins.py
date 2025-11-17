@@ -210,6 +210,56 @@ class SectionsCollectionMixin:
         ]
 
 
+class QACollectionMixin:
+    """Shared QA hook defaults for collection-style hosts."""
+
+    def _qa_segment_iterable(self) -> Iterable[Any]:
+        raise NotImplementedError
+
+    def _qa_segments(self) -> Sequence[Any]:
+        return tuple(self._qa_segment_iterable())
+
+    def _qa_first_segment(self):
+        segments = self._qa_segments()
+        return segments[0] if segments else None
+
+    def _qa_target_region(self):
+        first = self._qa_first_segment()
+        if first is None:
+            raise RuntimeError("QA host has no segments to evaluate.")
+        to_region = getattr(first, "to_region", None)
+        if callable(to_region):
+            return to_region()
+        raise RuntimeError("QA segments must expose to_region() or override _qa_target_region.")
+
+    def _qa_context_page_number(self) -> int:
+        first = self._qa_first_segment()
+        if first is None:
+            return -1
+        page_candidate = getattr(first, "page", first)
+        number = getattr(page_candidate, "number", None)
+        try:
+            return int(number) if number is not None else -1
+        except (TypeError, ValueError):
+            return -1
+
+    def _qa_source_elements(self):
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        return ElementCollection([])
+
+    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        from natural_pdf.elements.region import Region
+
+        return Region._normalize_qa_output(result)
+
+    @staticmethod
+    def _qa_confidence(candidate: Any) -> float:
+        from natural_pdf.flows.region import FlowRegion
+
+        return FlowRegion._qa_confidence(candidate)
+
+
 class ApplyMixin:
     """Provide ``apply``/``map``/``attr`` utilities for element collections."""
 
