@@ -7,7 +7,6 @@ from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
 )
-from natural_pdf.classification.mixin import ClassificationMixin
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class ClassificationBatchMixin(_HasElements):
         items_to_classify: List[Any] = []
         original_elements: List[Any] = []
         for element in self.elements:
-            if not isinstance(element, ClassificationMixin):
+            if not hasattr(element, "_get_classification_content"):
                 raise TypeError(f"Element {element!r} does not support classification")
             content = element._get_classification_content(model_type=inferred_using, **kwargs)
             items_to_classify.append(content)

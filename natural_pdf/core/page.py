@@ -28,7 +28,7 @@ from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
+from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.tables.result import TableResult
 
 if TYPE_CHECKING:
@@ -45,28 +45,21 @@ else:  # pragma: no cover - runtime typing helper
 
 # # Deskew Imports (Conditional)
 
-from natural_pdf.analyzers.layout.layout_analyzer import LayoutAnalyzer
 from natural_pdf.analyzers.layout.layout_options import LayoutOptions
 from natural_pdf.analyzers.text_options import TextStyleOptions
 from natural_pdf.analyzers.text_structure import TextStyleAnalyzer
-from natural_pdf.core.capabilities import AnalysisHostMixin
+from natural_pdf.core.context import PDFContext
 
 # Add new import
 from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.element_manager import ElementManager
-from natural_pdf.core.interfaces import Bounds, SupportsGeometry
+from natural_pdf.core.interfaces import Bounds, SupportsGeometry, SupportsSections
+from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.core.selector_utils import (
-    _apply_relational_post_pseudos,
-    execute_selector_query,
-    normalize_selector_input,
-)
-from natural_pdf.describe.mixin import DescribeMixin  # Import describe mixin
+from natural_pdf.core.selector_utils import _apply_relational_post_pseudos
 from natural_pdf.deskew import run_deskew_apply, run_deskew_detect
 from natural_pdf.elements.base import Element  # Import base element
 from natural_pdf.elements.text import TextElement
-from natural_pdf.extraction.mixin import ExtractionMixin  # Import extraction mixin
-from natural_pdf.ocr import OCROptions
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
@@ -77,11 +70,16 @@ from natural_pdf.ocr.ocr_manager import (
     run_ocr_extract,
 )
 from natural_pdf.qa.qa_result import QAResult
-from natural_pdf.text_mixin import TextMixin
+from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
+from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
+from natural_pdf.services import guides_service as _guides_service  # noqa: F401
+from natural_pdf.services import ocr_service as _ocr_service  # noqa: F401
+from natural_pdf.services import qa_service as _qa_service  # noqa: F401
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
 
 # # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
-from natural_pdf.vision.mixin import VisualSearchMixin
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # End Deskew Imports
@@ -158,7 +156,13 @@ def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> fl
     return max(0.0, min(1.0, jaro_winkler))
 
 
-class Page(TextMixin, AnalysisHostMixin, Visualizable):
+class Page(
+    ServiceHostMixin,
+    SinglePageContextMixin,
+    SupportsSections,
+    SelectorHostMixin,
+    Visualizable,
+):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
 
     This class provides a fluent interface for working with PDF pages,
@@ -227,6 +231,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         index: int,
         font_attrs=None,
         load_text: bool = True,
+        context: Optional[PDFContext] = None,
     ):
         """Initialize a page wrapper.
 
@@ -261,6 +266,9 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                 page = Page(plumber_page, pdf, 0, load_text=True)
             ```
         """
+        resolved_context = context or getattr(parent, "_context", PDFContext.with_defaults())
+        self._init_service_host(resolved_context)
+
         self._page = page
         self._parent = parent
         self._index = index
@@ -650,6 +658,12 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
     def _ocr_element_manager(self) -> ElementManager:
         return self._element_mgr
 
+    def _ocr_scope(self) -> str:
+        return "page"
+
+    def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
+        return {"apply_exclusions": apply_exclusions}
+
     def iter_regions(self) -> List["Region"]:
         """Return a list of regions currently registered with the page."""
         return list(self._element_mgr.regions)
@@ -727,256 +741,31 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         Returns:
             List of Region objects to exclude, with labels assigned.
         """
-        regions = []
+        all_exclusions: List[Tuple[Any, Optional[str], str]] = [
+            (spec[0], spec[1], spec[2]) if len(spec) == 3 else (spec[0], spec[1], "region")
+            for spec in self._exclusions
+        ]
 
-        # Combine page-specific exclusions with PDF-level exclusions
-        all_exclusions = list(self._exclusions)  # Start with page-specific
-
-        # Add PDF-level exclusions if we have a parent PDF
         if hasattr(self, "_parent") and self._parent and hasattr(self._parent, "_exclusions"):
-            # Get existing labels to check for duplicates
-            existing_labels = set()
-            for exc in all_exclusions:
-                if len(exc) >= 2 and exc[1]:  # Has a label
-                    existing_labels.add(exc[1])
-
+            existing_labels = {label for _, label, _ in all_exclusions if label}
             for pdf_exclusion in self._parent._exclusions:
-                # Check if this exclusion label is already in our list (avoid duplicates)
                 label = pdf_exclusion[1] if len(pdf_exclusion) >= 2 else None
                 if label and label in existing_labels:
-                    continue  # Skip this exclusion as it's already been applied
-
-                # Ensure consistent format (PDF exclusions might be 2-tuples, need to be 3-tuples)
+                    continue
                 if len(pdf_exclusion) == 2:
-                    # Convert to 3-tuple format with default method
-                    pdf_exclusion = (pdf_exclusion[0], pdf_exclusion[1], "region")
-                all_exclusions.append(pdf_exclusion)
+                    all_exclusions.append((pdf_exclusion[0], pdf_exclusion[1], "region"))
+                else:
+                    all_exclusions.append(cast(Tuple[Any, Optional[str], str], pdf_exclusion))
 
         if debug:
             print(
                 f"\nPage {self.index}: Evaluating {len(all_exclusions)} exclusions ({len(self._exclusions)} page-specific, {len(all_exclusions) - len(self._exclusions)} from PDF)"
             )
 
-        for i, exclusion_data in enumerate(all_exclusions):
-            # Handle both old format (2-tuple) and new format (3-tuple) for backward compatibility
-            if len(exclusion_data) == 2:
-                # Old format: (exclusion_item, label)
-                exclusion_item, label = exclusion_data
-                method = "region"  # Default to region for old format
-            else:
-                # New format: (exclusion_item, label, method)
-                exclusion_item, label, method = exclusion_data
-
-            exclusion_label = label if label else f"exclusion {i}"
-
-            # Process callable exclusion functions
-            if callable(exclusion_item) and include_callable:
-                try:
-                    if debug:
-                        print(f"  - Evaluating callable '{exclusion_label}'...")
-
-                    # Use context manager to prevent infinite recursion
-                    with self.without_exclusions():
-                        # Call the function - Expects it to return a Region or None
-                        region_result = exclusion_item(self)
-
-                    if isinstance(region_result, Region):
-                        # Assign the label to the returned region
-                        region_result.label = label
-                        regions.append(region_result)
-                        if debug:
-                            print(f"    ✓ Added region from callable '{label}': {region_result}")
-                    elif isinstance(region_result, ElementCollection):
-                        elements_iter: Iterable[Any] = region_result.elements
-                        if debug:
-                            print(
-                                f"    Converting ElementCollection with {len(region_result.elements)} elements to regions..."
-                            )
-
-                        for elem in elements_iter:
-                            try:
-                                bbox_candidate = getattr(elem, "bbox", None)
-                                if (
-                                    isinstance(bbox_candidate, (tuple, list))
-                                    and len(bbox_candidate) == 4
-                                ):
-                                    bbox_coords = cast(
-                                        Tuple[float, float, float, float],
-                                        tuple(
-                                            float(v) for v in cast(Sequence[float], bbox_candidate)
-                                        ),
-                                    )
-                                    region = Region(self, bbox_coords, label=label)
-                                    regions.append(region)
-                                    if debug:
-                                        print(f"      ✓ Added region from element: {bbox_coords}")
-                                else:
-                                    if debug:
-                                        print(
-                                            f"      ✗ Skipping element without valid bbox: {elem}"
-                                        )
-                            except Exception as e:
-                                if debug:
-                                    print(f"      ✗ Failed to convert element to region: {e}")
-                                continue
-
-                        if debug and region_result.elements:
-                            print(
-                                f"    ✓ Converted {len(region_result.elements)} elements from callable '{label}'"
-                            )
-                    elif isinstance(region_result, Iterable):
-                        materialised = list(cast(Iterable[Any], region_result))
-                        if not materialised:
-                            if debug:
-                                print(f"    ✗ Empty iterable returned from callable '{label}'")
-                        else:
-                            if debug:
-                                print(
-                                    f"    Converting iterable {type(region_result)} with {len(materialised)} elements to regions..."
-                                )
-                            for elem in materialised:
-                                try:
-                                    bbox_candidate = getattr(elem, "bbox", None)
-                                    if (
-                                        isinstance(bbox_candidate, (tuple, list))
-                                        and len(bbox_candidate) == 4
-                                    ):
-                                        bbox_coords = cast(
-                                            Tuple[float, float, float, float],
-                                            tuple(
-                                                float(v)
-                                                for v in cast(Sequence[float], bbox_candidate)
-                                            ),
-                                        )
-                                        region = Region(self, bbox_coords, label=label)
-                                        regions.append(region)
-                                        if debug:
-                                            print(
-                                                f"      ✓ Added region from iterable element: {bbox_coords}"
-                                            )
-                                    else:
-                                        if debug:
-                                            print(
-                                                f"      ✗ Skipping iterable element without valid bbox: {elem}"
-                                            )
-                                except Exception as e:
-                                    if debug:
-                                        print(
-                                            f"      ✗ Failed to convert iterable element to region: {e}"
-                                        )
-                                    continue
-                    elif region_result:
-                        # Check if it's a single Element that can be converted to a Region
-                        from natural_pdf.elements.base import Element
-
-                        if isinstance(region_result, Element) or (
-                            hasattr(region_result, "bbox") and hasattr(region_result, "expand")
-                        ):
-                            try:
-                                # Convert Element to Region using expand()
-                                expanded_region = cast(Any, region_result).expand()
-                                if isinstance(expanded_region, Region):
-                                    expanded_region.label = label
-                                    regions.append(expanded_region)
-                                    if debug:
-                                        print(
-                                            f"    ✓ Converted Element to Region from callable '{label}': {expanded_region}"
-                                        )
-                                else:
-                                    if debug:
-                                        print(
-                                            f"    ✗ Element.expand() did not return a Region: {type(expanded_region)}"
-                                        )
-                            except Exception as e:
-                                if debug:
-                                    print(f"    ✗ Failed to convert Element to Region: {e}")
-                        else:
-                            logger.warning(
-                                f"Callable exclusion '{exclusion_label}' returned non-Region object: {type(region_result)}. Skipping."
-                            )
-                            if debug:
-                                print(
-                                    f"    ✗ Callable returned non-Region/None: {type(region_result)}"
-                                )
-                    else:
-                        if debug:
-                            print(
-                                f"    ✗ Callable '{exclusion_label}' returned None, no region added"
-                            )
-
-                except Exception as e:
-                    error_msg = f"Error evaluating callable exclusion '{exclusion_label}' for page {self.index}: {e}"
-                    print(error_msg)
-                    import traceback
-
-                    print(f"    Traceback: {traceback.format_exc().splitlines()[-3:]}")
-
-            # Process direct Region objects (label was assigned in add_exclusion)
-            elif isinstance(exclusion_item, Region):
-                regions.append(exclusion_item)  # Label is already on the Region object
-                if debug:
-                    print(f"  - Added direct region '{label}': {exclusion_item}")
-
-            # Process direct Element objects - only convert to Region if method is "region"
-            elif hasattr(exclusion_item, "bbox") and hasattr(exclusion_item, "expand"):
-                if method == "region":
-                    try:
-                        # Convert Element to Region using expand()
-                        expanded_region = cast(Any, exclusion_item).expand()
-                        if isinstance(expanded_region, Region):
-                            expanded_region.label = label
-                            regions.append(expanded_region)
-                            if debug:
-                                print(
-                                    f"  - Converted direct Element to Region '{label}': {expanded_region}"
-                                )
-                        else:
-                            if debug:
-                                print(
-                                    f"  - Element.expand() did not return a Region: {type(expanded_region)}"
-                                )
-                    except Exception as e:
-                        if debug:
-                            print(f"  - Failed to convert Element to Region: {e}")
-                else:
-                    # method == "element" - will be handled in _filter_elements_by_exclusions
-                    if debug:
-                        print(
-                            f"  - Skipping element '{label}' (will be handled as element-based exclusion)"
-                        )
-
-            # Process string selectors (from PDF-level exclusions)
-            elif isinstance(exclusion_item, str):
-                selector_str = exclusion_item
-                matching_elements = self.find_all(selector_str, apply_exclusions=False)
-
-                if debug:
-                    print(
-                        f"  - Evaluating selector '{exclusion_label}': found {len(matching_elements)} elements"
-                    )
-
-                if method == "region":
-                    # Convert each matching element to a region
-                    for el in matching_elements:
-                        try:
-                            bbox_coords = (
-                                float(el.x0),
-                                float(el.top),
-                                float(el.x1),
-                                float(el.bottom),
-                            )
-                            region = Region(self, bbox_coords, label=label)
-                            regions.append(region)
-                            if debug:
-                                print(f"    ✓ Added region from selector match: {bbox_coords}")
-                        except Exception as e:
-                            if debug:
-                                print(f"    ✗ Failed to create region from element: {e}")
-                # If method is "element", it will be handled in _filter_elements_by_exclusions
-
-            # Element-based exclusions are not converted to regions here
-            # They will be handled separately in _filter_elements_by_exclusions
-
+        service = resolve_service(self, "exclusion")
+        regions = service.evaluate_entries(
+            self, all_exclusions, include_callable=include_callable, debug=debug
+        )
         if debug:
             print(f"Page {self.index}: Found {len(regions)} valid exclusion regions to apply")
 
@@ -1206,51 +995,39 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional[Element]:
-        """
-        Find first element on this page matching selector OR text content.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return the first match for a selector/text query on this page.
 
         Args:
             selector: CSS-like selector string.
-            text: Optional text shortcut (equivalent to ``text:contains(...)``).
-            overlap: Reserved for compatibility with region APIs; ignored for pages.
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional dict of tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
-            reading_order: Whether to sort matches in reading order when applicable (default: True).
-            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
-            engine: Optional selector engine name registered via :mod:`natural_pdf.engine_provider`.
+            text: Text shortcut equivalent to ``text:contains(...)``. Accepts a string or a
+                sequence of candidate strings.
+            overlap: Present for API parity; ignored for full-page searches.
+            apply_exclusions: Whether page-level exclusion regions should be honoured.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches are returned using the page's reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            Element object or None if not found.
+            The first matching :class:`natural_pdf.elements.base.Element`, if any.
         """
-        effective_selector = normalize_selector_input(
-            selector,
-            text,
-            logger=logger,
-            context="Page.find",
-        )
-
-        results_collection = execute_selector_query(
+        return resolve_service(self, "selector").find(
             self,
-            effective_selector,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
             near_threshold=near_threshold,
             engine=engine,
         )
-
-        elements: List[Element] = list(results_collection.elements) if results_collection else []
-        if apply_exclusions and elements:
-            elements = self._filter_elements_by_exclusions(elements)
-
-        return cast(Optional[Element], elements[0] if elements else None)
 
     def find_all(
         self,
@@ -1267,51 +1044,38 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """
-        Find all elements on this page matching selector OR text content.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return every element on this page that matches a selector/text query.
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: Reserved for compatibility with region APIs; ignored for pages.
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional dict of tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides controlling automatic tolerance calculation.
-            reading_order: Whether to sort matches in reading order (default: True).
-            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
-            engine: Optional selector engine name registered with the selector provider.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Present for API parity; ignored for full-page searches.
+            apply_exclusions: Whether exclusion regions should be honoured.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches are returned using the page's reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            ElementCollection with matching elements.
+            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
         """
-        effective_selector = normalize_selector_input(
-            selector,
-            text,
-            logger=logger,
-            context="Page.find_all",
-        )
-
-        results_collection = execute_selector_query(
+        return resolve_service(self, "selector").find_all(
             self,
-            effective_selector,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
             near_threshold=near_threshold,
             engine=engine,
         )
-
-        if apply_exclusions and results_collection:
-            filtered_elements = self._filter_elements_by_exclusions(results_collection.elements)
-            return ElementCollection(filtered_elements)
-        return results_collection
 
     def _apply_selector(
         self, selector_obj: Dict[str, Any], **kwargs: Any
@@ -2016,6 +1780,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
         show_progress: bool = False,
         content_filter=None,
+        apply_exclusions: bool = True,
         verticals: Optional[List[float]] = None,
         horizontals: Optional[List[float]] = None,
         structure_engine: Optional[str] = None,
@@ -2036,6 +1801,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
+            apply_exclusions: Whether exclusion regions should be honoured inside the page region.
             verticals: Optional list of x-coordinates for explicit vertical table lines.
             horizontals: Optional list of y-coordinates for explicit horizontal table lines.
             structure_engine: Optional structure detection engine forwarded to the underlying
@@ -2056,6 +1822,7 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             cell_extraction_func=cell_extraction_func,
             show_progress=show_progress,
             content_filter=content_filter,
+            apply_exclusions=apply_exclusions,
             verticals=verticals,
             horizontals=horizontals,
             structure_engine=structure_engine,
@@ -2472,170 +2239,6 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             ocr_results, image_width, image_height
         )
 
-    def apply_ocr(
-        self,
-        engine: Optional[str] = None,
-        options: Optional["OCROptions"] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-        detect_only: bool = False,
-        apply_exclusions: bool = True,
-        replace: bool = True,
-    ) -> "Page":
-        """Apply OCR directly to this page."""
-        normalized_options = normalize_ocr_options(options)
-        engine_name = resolve_ocr_engine_name(
-            context=self,
-            requested=engine,
-            options=normalized_options,
-            scope="page",
-        )
-        resolved_languages = resolve_ocr_languages(self, languages, scope="page")
-        resolved_min_conf = resolve_ocr_min_confidence(self, min_confidence, scope="page")
-        resolved_device = resolve_ocr_device(self, device, scope="page")
-
-        if replace:
-            removed = self.remove_ocr_elements()
-            if removed:
-                logger.info(
-                    f"Page {self.number}: Removed {removed} OCR elements before new OCR run."
-                )
-
-        final_resolution = (
-            resolution
-            if resolution is not None
-            else getattr(getattr(self, "_parent", None), "_config", {}).get("resolution", 150)
-        )
-
-        try:
-            ocr_payload = run_ocr_apply(
-                target=self,
-                context=self,
-                engine_name=engine_name,
-                resolution=final_resolution,
-                languages=resolved_languages,
-                min_confidence=resolved_min_conf,
-                device=resolved_device,
-                detect_only=detect_only,
-                options=normalized_options,
-                render_kwargs={},
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.error(f"Page {self.number}: OCR failed: {exc}", exc_info=True)
-            raise
-
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error(f"Page {self.number}: OCR payload missing image dimensions.")
-            return self
-
-        scale_x = self.width / image_width if image_width else 1.0
-        scale_y = self.height / image_height if image_height else 1.0
-        created_elements = self.create_text_elements_from_ocr(
-            ocr_payload.results, scale_x=scale_x, scale_y=scale_y
-        )
-
-        logger.info(
-            f"Page {self.number}: Added {len(created_elements)} OCR elements using '{engine_name}'."
-        )
-        return self
-
-    def extract_ocr_elements(
-        self,
-        engine: Optional[str] = None,
-        options: Optional["OCROptions"] = None,
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,
-    ) -> List["TextElement"]:
-        """
-        Extract text elements using OCR *without* mutating this page's element store.
-
-        Args:
-            engine: Name of the OCR engine.
-            options: Engine-specific options object or dict.
-            languages: List of engine-specific language codes.
-            min_confidence: Minimum confidence threshold.
-            device: Device to run OCR on.
-            resolution: DPI resolution for rendering page image before OCR.
-
-        Returns:
-            List of created TextElement objects derived from OCR results for this page.
-        """
-
-        logger.info(f"Page {self.number}: Extracting OCR elements (extract only)...")
-
-        normalized_options = normalize_ocr_options(options)
-        engine_name = resolve_ocr_engine_name(
-            context=self,
-            requested=engine,
-            options=normalized_options,
-            scope="page",
-        )
-        resolved_languages = resolve_ocr_languages(self, languages, scope="page")
-        resolved_min_conf = resolve_ocr_min_confidence(self, min_confidence, scope="page")
-        resolved_device = resolve_ocr_device(self, device, scope="page")
-
-        final_resolution = resolution if resolution is not None else 150
-        logger.debug(f"  Using rendering resolution: {final_resolution} DPI")
-
-        ocr_payload = run_ocr_extract(
-            target=self,
-            context=self,
-            engine_name=engine_name,
-            resolution=final_resolution,
-            languages=resolved_languages,
-            min_confidence=resolved_min_conf,
-            device=resolved_device,
-            detect_only=False,
-            options=normalized_options,
-            render_kwargs={},
-        )
-
-        results = ocr_payload.results
-        image_width, image_height = ocr_payload.image_size
-        if not image_width or not image_height:
-            logger.error("  OCR payload missing image dimensions; aborting extraction.")
-            return []
-
-        # Convert results but DO NOT add to ElementManager
-        logger.debug("  Converting OCR results to TextElements (extract only)...")
-        temp_elements = []
-        scale_x = self.width / image_width if image_width else 1
-        scale_y = self.height / image_height if image_height else 1
-        for result in results:
-            if not isinstance(result, Mapping):
-                raise TypeError(f"OCR result has unexpected type: {type(result).__name__}")
-
-            bbox_raw = result.get("bbox")
-            text_value = result.get("text", "")
-            confidence = result.get("confidence", 0.0)
-            if not isinstance(bbox_raw, (list, tuple)) or len(bbox_raw) != 4:
-                raise ValueError("OCR result missing bbox")
-            x0, top, x1, bottom = [float(cast(Union[int, float, str], c)) for c in bbox_raw]
-            elem_data = {
-                "text": str(text_value),
-                "confidence": float(confidence) if confidence is not None else 0.0,
-                "x0": x0 * scale_x,
-                "top": top * scale_y,
-                "x1": x1 * scale_x,
-                "bottom": bottom * scale_y,
-                "width": (x1 - x0) * scale_x,
-                "height": (bottom - top) * scale_y,
-                "object_type": "text",  # Using text for temporary elements
-                "source": "ocr",
-                "fontname": "OCR-extract",  # Different name for clarity
-                "size": 10.0,
-                "page_number": self.number,
-            }
-            temp_elements.append(TextElement(elem_data, self))
-
-        logger.info(f"  Created {len(temp_elements)} TextElements from OCR (extract only).")
-        return temp_elements
-
     @property
     def size(self) -> Tuple[float, float]:
         """Get the size of the page in points."""
@@ -2644,9 +2247,10 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
     @property
     def layout_analyzer(self) -> "LayoutAnalyzer":
         """Get or create the layout analyzer for this page."""
-        if self._layout_analyzer is None:
-            self._layout_analyzer = LayoutAnalyzer(self)
-        return self._layout_analyzer
+        service = resolve_service(self, "layout")
+        analyzer = service.layout_analyzer(self)
+        self._layout_analyzer = analyzer
+        return analyzer
 
     def analyze_layout(
         self,
@@ -2667,15 +2271,8 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         Returns:
             ElementCollection containing the detected Region objects.
         """
-        analyzer = self.layout_analyzer
-
-        # Clear existing detected regions if 'replace' is specified
-        if existing == "replace":
-            self.clear_detected_layout_regions()
-
-        # The analyzer's analyze_layout method already adds regions to the page
-        # and its element manager. We just need to retrieve them.
-        analyzer.analyze_layout(
+        return resolve_service(self, "layout").analyze_layout(
+            self,
             engine=engine,
             options=options,
             confidence=confidence,
@@ -2684,18 +2281,8 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
             device=device,
             existing=existing,
             model_name=model_name,
-            client=client,  # Pass client down
+            client=client,
         )
-
-        # Retrieve the detected regions from the element manager
-        # Filter regions based on source='detected' and potentially the model used if available
-        detected_regions = [
-            r
-            for r in self._element_mgr.regions
-            if r.source == "detected" and (not engine or getattr(r, "model", None) == engine)
-        ]
-
-        return ElementCollection(detected_regions)
 
     def clear_detected_layout_regions(self) -> "Page":
         """
@@ -3356,3 +2943,16 @@ class Page(TextMixin, AnalysisHostMixin, Visualizable):
         from natural_pdf.core.highlighting_service import HighlightContext
 
         return HighlightContext(self, show_on_exit=show)
+
+
+attach_capability(Page, "text")
+attach_capability(Page, "ocr")
+attach_capability(Page, "qa")
+attach_capability(Page, "exclusion")
+attach_capability(Page, "describe")
+attach_capability(Page, "vision")
+attach_capability(Page, "shapes")
+attach_capability(Page, "checkbox")
+attach_capability(Page, "classification")
+attach_capability(Page, "extraction")
+attach_capability(Page, "guides")

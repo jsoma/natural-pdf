@@ -32,6 +32,7 @@ from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.guides.guides_provider import run_guides_detect
+from natural_pdf.services.base import resolve_service
 
 from .flow_adapter import FlowGuideAdapter
 from .grid_helpers import collect_constituent_pages, register_regions_with_pages
@@ -981,6 +982,21 @@ class Guides:
             self._vertical.data = [x0 + float(v) * width for v in self._vertical]
             self._horizontal.data = [top + float(h) * height for h in self._horizontal]
             self.relative = False
+
+    def _extract_with_table_service(self, host, **kwargs) -> TableResult:
+        """Helper to route all table extraction through the table service."""
+        from natural_pdf.core.page import Page
+
+        region_host = host
+        if isinstance(host, Page):
+            region_host = host.create_region(0, 0, host.width, host.height)
+
+        extractor = getattr(region_host, "extract_table", None)
+        if callable(extractor):
+            return extractor(**kwargs)
+
+        table_service = resolve_service(region_host, "table")
+        return table_service.extract_table(region_host, **kwargs)
 
     def _flow_context(self) -> FlowRegion:
         if not _is_flow_region(self.context):
@@ -3318,23 +3334,21 @@ class Guides:
                 f"Partial guides detected - using direct extraction (v={has_verticals}, h={has_horizontals})"
             )
 
-            # Extract directly from the target using explicit lines
-            if hasattr(target_obj, "extract_table"):
-                return target_obj.extract_table(
-                    method=method,  # Let auto-detection work when None
-                    table_settings=table_settings,
-                    use_ocr=use_ocr,
-                    ocr_config=ocr_config,
-                    text_options=text_options,
-                    cell_extraction_func=cell_extraction_func,
-                    show_progress=show_progress,
-                    content_filter=content_filter,
-                    verticals=list(self.vertical) if has_verticals else None,
-                    horizontals=list(self.horizontal) if has_horizontals else None,
-                    structure_engine=structure_engine,
-                )
-            else:
-                raise ValueError(f"Target object {type(target_obj)} does not support extract_table")
+            return self._extract_with_table_service(
+                target_obj,
+                method=method,  # Let auto-detection work when None
+                table_settings=table_settings,
+                use_ocr=use_ocr,
+                ocr_config=ocr_config,
+                text_options=text_options,
+                cell_extraction_func=cell_extraction_func,
+                show_progress=show_progress,
+                content_filter=content_filter,
+                apply_exclusions=apply_exclusions,
+                verticals=list(self.vertical) if has_verticals else None,
+                horizontals=list(self.horizontal) if has_horizontals else None,
+                structure_engine=structure_engine,
+            )
 
         # Both dimensions have guides - use normal grid-based extraction
         try:
@@ -3361,7 +3375,8 @@ class Guides:
                 # Use the first table region for extraction
                 table_region = table_region[0]
 
-            table_result = table_region.extract_table(
+            table_result = self._extract_with_table_service(
+                table_region,
                 method=method,
                 table_settings=table_settings,
                 use_ocr=use_ocr,

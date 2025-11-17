@@ -20,15 +20,15 @@ from typing import (
     runtime_checkable,
 )
 
-from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
 from natural_pdf.collections.mixins import ApplyMixin, SectionsCollectionMixin, _SectionHost
-from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections, SupportsTextElements
+from natural_pdf.core.context import PDFContext
+from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.text_mixin import TextMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
 from natural_pdf.utils.sections import sanitize_sections
 
 # New Imports
@@ -75,11 +75,9 @@ BoundarySource = Union[str, ElementsProvider, Iterable[SupportsGeometry], Iterab
 
 
 class PageCollection(
-    TextMixin,
+    ServiceHostMixin,
     ApplyMixin,
     SectionsCollectionMixin,
-    ShapeDetectionMixin,
-    CheckboxDetectionMixin,
     Visualizable,
     Sequence["Page"],
 ):
@@ -88,7 +86,12 @@ class PageCollection(
     Provides methods for batch operations on these pages.
     """
 
-    def __init__(self, pages: Sequence["Page"] | Iterable["Page"]):
+    def __init__(
+        self,
+        pages: Sequence["Page"] | Iterable["Page"],
+        *,
+        context: Optional[PDFContext] = None,
+    ):
         """
         Initialize a page collection.
 
@@ -103,6 +106,9 @@ class PageCollection(
             # Fallback for non-sequence types – materialise to preserve ordering
             self.pages = list(pages)
 
+        resolved_context = context or self._derive_context(self.pages)
+        self._init_service_host(resolved_context)
+
     def __len__(self) -> int:
         """Return the number of pages in the collection."""
         return len(self.pages)
@@ -111,12 +117,12 @@ class PageCollection(
     def __getitem__(self, idx: int) -> "Page": ...
 
     @overload
-    def __getitem__(self, idx: slice) -> Sequence["Page"]: ...
+    def __getitem__(self, idx: slice) -> "PageCollection": ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union["Page", Sequence["Page"]]:
+    def __getitem__(self, idx: Union[int, slice]) -> Union["Page", "PageCollection"]:
         """Support indexing and slicing."""
         if isinstance(idx, slice):
-            return PageCollection(self.pages[idx])
+            return PageCollection(self.pages[idx], context=self._context)
         return self.pages[idx]
 
     def __iter__(self) -> Iterator["Page"]:
@@ -140,6 +146,14 @@ class PageCollection(
         all pages at once, maintaining the lazy loading behavior.
         """
         return iter(self.pages)
+
+    def _derive_context(self, pages: Sequence["Page"]) -> PDFContext:
+        if pages:
+            first = pages[0]
+            context = getattr(first, "_context", None)
+            if context is not None:
+                return cast(PDFContext, context)
+        return PDFContext.with_defaults()
 
     def _get_page_indices(self) -> List[int]:
         """
@@ -273,6 +287,45 @@ class PageCollection(
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self.pages))
+
+    # ------------------------------------------------------------------
+    # QA service hooks
+    # ------------------------------------------------------------------
+    def _qa_segments(self) -> Sequence["Page"]:
+        return tuple(self.pages)
+
+    def _qa_target_region(self):
+        if not self.pages:
+            raise RuntimeError("PageCollection has no pages available for QA.")
+        first_page = self.pages[0]
+        to_region = getattr(first_page, "to_region", None)
+        if callable(to_region):
+            return to_region()
+        raise RuntimeError("PageCollection pages must expose to_region() for QA operations.")
+
+    def _qa_context_page_number(self) -> int:
+        if not self.pages:
+            return -1
+        first_page = self.pages[0]
+        number = getattr(first_page, "number", None)
+        try:
+            return int(number)
+        except (TypeError, ValueError):
+            return -1
+
+    def _qa_source_elements(self) -> ElementCollection:
+        return ElementCollection([])
+
+    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        from natural_pdf.elements.region import Region
+
+        return Region._normalize_qa_output(result)
+
+    @staticmethod
+    def _qa_confidence(candidate: Any) -> float:
+        from natural_pdf.flows.region import FlowRegion
+
+        return FlowRegion._qa_confidence(candidate)
 
     def split(
         self,
@@ -806,79 +859,70 @@ class PageCollection(
             segment_gap=segment_gap,
         )
 
+    def find(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ):
+        """Return the first element across this collection of pages matching selector/text filters."""
+        return resolve_service(self, "selector").find(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
+
+    def find_all(
+        self,
+        selector: Optional[str] = None,
+        *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
+        apply_exclusions: bool = True,
+        regex: bool = False,
+        case: bool = True,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ):
+        """Return every element across this collection of pages matching selector/text filters."""
+        return resolve_service(self, "selector").find_all(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
+
     def analyze_layout(self, *args, **kwargs) -> "ElementCollection[Region]":
-        """
-        Analyzes the layout of each page in the collection.
-
-        This method iterates through each page, calls its analyze_layout method,
-        and returns a single ElementCollection containing all the detected layout
-        regions from all pages.
-
-        Args:
-            *args: Positional arguments to pass to each page's analyze_layout method.
-            **kwargs: Keyword arguments to pass to each page's analyze_layout method.
-                      A 'show_progress' kwarg can be included to show a progress bar.
-
-        Returns:
-            An ElementCollection of all detected Region objects.
-        """
-        all_regions = []
-
-        show_progress = kwargs.pop("show_progress", True)
-
-        iterator = self.pages
-        if show_progress:
-            try:
-                from tqdm.auto import tqdm
-
-                iterator = tqdm(self.pages, desc="Analyzing layout")
-            except ImportError:
-                pass  # tqdm not installed
-
-        for page in iterator:
-            # Each page's analyze_layout method returns an ElementCollection
-            regions_collection = page.analyze_layout(*args, **kwargs)
-            if regions_collection:
-                all_regions.extend(regions_collection.elements)
-
-        return ElementCollection(all_regions)
-
-    def detect_checkboxes(self, *args, **kwargs) -> "ElementCollection[Region]":
-        """
-        Detects checkboxes on each page in the collection.
-
-        This method iterates through each page, calls its detect_checkboxes method,
-        and returns a single ElementCollection containing all detected checkbox
-        regions from all pages.
-
-        Args:
-            *args: Positional arguments to pass to each page's detect_checkboxes method.
-            **kwargs: Keyword arguments to pass to each page's detect_checkboxes method.
-                      A 'show_progress' kwarg can be included to show a progress bar.
-
-        Returns:
-            An ElementCollection of all detected checkbox Region objects.
-        """
-        all_checkboxes = []
-
-        show_progress = kwargs.pop("show_progress", True)
-
-        iterator = self.pages
-        if show_progress:
-            try:
-                from tqdm.auto import tqdm
-
-                iterator = tqdm(self.pages, desc="Detecting checkboxes")
-            except ImportError:
-                pass  # tqdm not installed
-
-        for page in iterator:
-            # Each page's detect_checkboxes method returns an ElementCollection
-            checkbox_collection = page.detect_checkboxes(*args, **kwargs)
-            if checkbox_collection:
-                all_checkboxes.extend(checkbox_collection.elements)
-
-        return ElementCollection(all_checkboxes)
+        return resolve_service(self, "layout").analyze_layout(self, *args, **kwargs)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """
@@ -944,3 +988,11 @@ class PageCollection(
         from natural_pdf.core.page_groupby import PageGroupBy
 
         return PageGroupBy(self, by, show_progress=show_progress)
+
+
+attach_capability(PageCollection, "text")
+attach_capability(PageCollection, "describe")
+attach_capability(PageCollection, "shapes")
+attach_capability(PageCollection, "checkbox")
+attach_capability(PageCollection, "vision")
+attach_capability(PageCollection, "qa")

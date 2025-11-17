@@ -22,13 +22,14 @@ from typing import (
 
 # Import global options
 import natural_pdf
-from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.describe.mixin import DescribeMixin
 
 # Import selector parsing functions
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
+from natural_pdf.services.base import ServiceHostMixin
+from natural_pdf.services.delegates import attach_capability
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -1338,7 +1339,10 @@ class HighlightableMixin:
 
 
 class Element(
-    DirectionalMixin, ClassificationMixin, DescribeMixin, HighlightableMixin, Visualizable
+    ServiceHostMixin,
+    DirectionalMixin,
+    HighlightableMixin,
+    Visualizable,
 ):
     """Base class for all PDF elements.
 
@@ -1425,6 +1429,8 @@ class Element(
         """
         self._obj = obj
         self._page = page
+        context = getattr(page, "_context", PDFContext.with_defaults())
+        self._init_service_host(context)
 
         # Containers for per-element metadata and analysis results (e.g., classification)
         self.metadata: Dict[str, Any] = {}
@@ -2044,8 +2050,6 @@ class Element(
         )
         return self
 
-    # Note: save_image method removed in favor of save()
-
     def __add__(self, other: Union["Element", "ElementCollection"]) -> "ElementCollection":
         """Add elements together to create an ElementCollection.
 
@@ -2099,11 +2103,15 @@ class Element(
         self,
         *,
         text: Union[str, Sequence[str]],
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional["Element"]: ...
 
     @overload
@@ -2111,11 +2119,16 @@ class Element(
         self,
         selector: str,
         *,
-        overlap: str = "full",
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional["Element"]: ...
 
     def find(
@@ -2123,46 +2136,48 @@ class Element(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional["Element"]:
-        """
-        Find first element within this element's bounds matching the selector OR text.
-        Creates a temporary region to perform the search.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return the first element overlapping this element that matches selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap with this element: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to apply exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional parameters for element filtering.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Determines containment mode relative to this element: ``"full"`` (default),
+                ``"partial"``, or ``"center"``.
+            apply_exclusions: Whether exclusion regions are honoured while evaluating.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use the host page's natural reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            First matching element or None.
+            The first matching :class:`natural_pdf.elements.base.Element`, if any.
         """
-        from natural_pdf.elements.region import Region
-
-        # Create a temporary region from this element's bounds
-        temp_region = Region(self.page, self.bbox)
-        # Delegate to the region's find method
-        return temp_region.find(
+        return resolve_service(self, "selector").find(
+            self,
             selector=selector,
             text=text,
             overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
         )
 
     @overload
@@ -2170,11 +2185,15 @@ class Element(
         self,
         *,
         text: Union[str, Sequence[str]],
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
     @overload
@@ -2182,11 +2201,16 @@ class Element(
         self,
         selector: str,
         *,
-        overlap: str = "full",
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
     def find_all(
@@ -2194,46 +2218,48 @@ class Element(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """
-        Find all elements within this element's bounds matching the selector OR text.
-        Creates a temporary region to perform the search.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return every element overlapping this element that matches selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap with this element: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to apply exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional parameters for element filtering.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Determines containment mode relative to this element: ``"full"`` (default),
+                ``"partial"``, or ``"center"``.
+            apply_exclusions: Whether exclusion regions are honoured while evaluating.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use the host page's natural reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            ElementCollection with matching elements.
+            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
         """
-        from natural_pdf.elements.region import Region
-
-        # Create a temporary region from this element's bounds
-        temp_region = Region(self.page, self.bbox)
-        # Delegate to the region's find_all method
-        return temp_region.find_all(
+        return resolve_service(self, "selector").find_all(
+            self,
             selector=selector,
             text=text,
             overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
-            **kwargs,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
         )
 
     # ------------------------------------------------------------------
@@ -2278,3 +2304,11 @@ class Element(
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value
+
+
+_ELEMENT_NAV_FALLBACK = {
+    name: getattr(DirectionalMixin, name) for name in ("above", "below", "left", "right")
+}
+attach_capability(Element, "navigation", _ELEMENT_NAV_FALLBACK)
+attach_capability(Element, "describe")
+attach_capability(Element, "classification")

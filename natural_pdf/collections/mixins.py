@@ -108,12 +108,15 @@ class SectionsCollectionMixin:
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ):
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
@@ -124,12 +127,15 @@ class SectionsCollectionMixin:
             found = section.find(
                 selector=selector,
                 text=text,
+                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
                 text_tolerance=text_tolerance,
                 auto_text_tolerance=auto_text_tolerance,
                 reading_order=reading_order,
+                near_threshold=near_threshold,
+                engine=engine,
             )
             if found:
                 return found
@@ -140,12 +146,15 @@ class SectionsCollectionMixin:
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ):
         if selector is not None and text is not None:
             raise ValueError("Provide either 'selector' or 'text', not both.")
@@ -159,12 +168,15 @@ class SectionsCollectionMixin:
             collection = section.find_all(
                 selector=selector,
                 text=text,
+                overlap=overlap,
                 apply_exclusions=apply_exclusions,
                 regex=regex,
                 case=case,
                 text_tolerance=text_tolerance,
                 auto_text_tolerance=auto_text_tolerance,
                 reading_order=reading_order,
+                near_threshold=near_threshold,
+                engine=engine,
             )
             if collection:
                 elements.extend(collection.elements)

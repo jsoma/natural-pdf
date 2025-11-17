@@ -28,23 +28,17 @@ from pdfplumber.utils.geometry import get_bbox_overlap
 from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
-from natural_pdf.core.capabilities import AnalysisHostMixin, TabularRegionMixin
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
-from natural_pdf.core.interfaces import SupportsGeometry
-from natural_pdf.core.qa_mixin import QuestionInput
+from natural_pdf.core.geometry_mixin import RegionGeometryMixin
+from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
+from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.elements.base import extract_bbox
+from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
-from natural_pdf.ocr.ocr_manager import (
-    normalize_ocr_options,
-    resolve_ocr_device,
-    resolve_ocr_engine_name,
-    resolve_ocr_languages,
-    resolve_ocr_min_confidence,
-    run_ocr_apply,
-)
 from natural_pdf.qa.qa_result import QAResult
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -52,7 +46,14 @@ from natural_pdf.selectors.parser import (
 )
 
 # Table utilities
-from natural_pdf.text_mixin import TextMixin
+from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
+from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
+from natural_pdf.services import guides_service as _guides_service  # noqa: F401
+from natural_pdf.services import qa_service as _qa_service  # noqa: F401
+from natural_pdf.services import table_service as _table_service  # noqa: F401
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import table_methods as _table_methods
 
 # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
@@ -127,7 +128,15 @@ class RegionContext:
         return False  # Don't suppress exceptions
 
 
-class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
+class Region(
+    DirectionalMixin,
+    ServiceHostMixin,
+    SinglePageContextMixin,
+    SupportsSections,
+    SelectorHostMixin,
+    RegionGeometryMixin,
+    Visualizable,
+):
     """Represents a rectangular region on a page.
 
     Regions are fundamental building blocks in natural-pdf that define rectangular
@@ -237,6 +246,8 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             used mainly for advanced workflows or layout analysis integration.
         """
         self._page: "Page" = page
+        resolved_context = getattr(page, "_context", PDFContext.with_defaults())
+        self._init_service_host(resolved_context)
         self._bbox: Tuple[float, float, float, float] = bbox
         self._polygon: Optional[List[Tuple[float, float]]] = polygon
 
@@ -305,6 +316,12 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
     def _ocr_element_manager(self):
         return self.page._element_mgr
 
+    def _ocr_scope(self) -> str:
+        return "region"
+
+    def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
+        return {"crop": True}
+
     def _qa_context_page_number(self) -> int:
         return self.page.number
 
@@ -319,8 +336,13 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
     def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         return self._normalize_qa_output(result)
 
-    def _qa_blank_result(self, question: QuestionInput) -> Union[QAResult, List[QAResult]]:
-        return super()._qa_blank_result(question)
+    def _evaluate_exclusion_entries(
+        self, entries: Sequence[ExclusionSpec], include_callable: bool, debug: bool
+    ) -> List["Region"]:
+        if not entries:
+            return []
+        service = resolve_service(self, "exclusion")
+        return service.evaluate_entries(self, entries, include_callable, debug)
 
     def _evaluate_local_exclusions(
         self, include_callable: bool = True, debug: bool = False
@@ -1510,7 +1532,7 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1520,33 +1542,28 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["Element"]:
-        """
-        Find the first element in this region matching the selector OR text content.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return the first element inside this region that matches selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap with the region: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional mapping of pdfplumber-style tolerance overrides applied
-                temporarily while evaluating the selector.
-            auto_text_tolerance: Optional overrides for automatic tolerance calculation.
-            reading_order: Whether to return the first match according to natural reading order
-                (default: True). When False the raw selector ordering is preserved.
-            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
-            engine: Optional selector engine name registered with the selector provider.
+            text: Text shortcut equivalent to ``text:contains(...)``. Accepts a string or a
+                sequence of candidates.
+            overlap: Determines containment mode: ``"full"`` (default), ``"partial"``, or
+                ``"center"``.
+            apply_exclusions: Whether exclusion regions are honoured when gathering elements.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use the region's natural reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
+
         Returns:
-            First matching element or None.
+            The first matching :class:`natural_pdf.elements.base.Element`, if any.
         """
-        # Delegate validation and selector construction to find_all
-        elements = self.find_all(
+        return resolve_service(self, "selector").find(
+            self,
             selector=selector,
             text=text,
             overlap=overlap,
@@ -1559,14 +1576,13 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             near_threshold=near_threshold,
             engine=engine,
         )
-        return elements.first if elements else None
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -1576,41 +1592,32 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """
-        Find all elements in this region matching the selector OR text content.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return every element in this region that satisfies a selector/text query.
 
         Args:
             selector: CSS-like selector string.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            overlap: How to determine if elements overlap with the region: 'full' (fully inside),
-                     'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional mapping of pdfplumber-style tolerance overrides applied
-                temporarily while evaluating the selector.
-            auto_text_tolerance: Optional overrides for automatic tolerance calculation.
-            reading_order: Whether to sort matches according to natural reading order (default: True).
-            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
-            engine: Optional selector engine name registered with the selector provider.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Determines containment mode: ``"full"`` (default), ``"partial"``, or
+                ``"center"``.
+            apply_exclusions: Whether exclusion regions are honoured when gathering elements.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches respect the region's natural reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
+
         Returns:
-            ElementCollection with matching elements.
+            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
         """
         from natural_pdf.elements.element_collection import ElementCollection
 
-        overlap_mode = (overlap or "full").lower()
-        if overlap_mode not in {"full", "partial", "center"}:
-            raise ValueError(
-                f"Invalid overlap value: {overlap_mode}. Must be 'full', 'partial', or 'center'"
-            )
-
-        page_results = self.page.find_all(
+        return resolve_service(self, "selector").find_all(
+            self,
             selector=selector,
             text=text,
+            overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
@@ -1620,25 +1627,6 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             near_threshold=near_threshold,
             engine=engine,
         )
-
-        if not page_results:
-            return ElementCollection([])
-
-        filtered = self._filter_elements_by_overlap_mode(
-            page_results.elements,
-            overlap_mode,
-        )
-
-        unique: List["Element"] = []
-        seen_ids: set[int] = set()
-        for element in filtered:
-            marker = id(element)
-            if marker in seen_ids:
-                continue
-            seen_ids.add(marker)
-            unique.append(element)
-
-        return ElementCollection(unique)
 
     def _filter_elements_by_overlap_mode(
         self,
@@ -1715,68 +1703,58 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
                     f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
                 )
 
-        normalized_options = normalize_ocr_options(ocr_params.get("options"))
-        engine_name = resolve_ocr_engine_name(
-            context=self,
-            requested=ocr_params.get("engine"),
-            options=normalized_options,
-            scope="region",
+        custom_func_candidate = ocr_params.pop("function", None) or ocr_params.pop(
+            "ocr_function", None
         )
-        resolved_languages = resolve_ocr_languages(
-            self, ocr_params.get("languages"), scope="region"
-        )
-        resolved_min_conf = resolve_ocr_min_confidence(
-            self, ocr_params.get("min_confidence"), scope="region"
-        )
-        resolved_device = resolve_ocr_device(self, ocr_params.get("device"), scope="region")
-        detect_only = bool(ocr_params.get("detect_only", False))
+        if callable(custom_func_candidate):
+            custom_func = cast(CustomOCRCallable, custom_func_candidate)
+            return self.apply_custom_ocr(
+                ocr_function=custom_func,
+                source_label=ocr_params.pop("source_label", "custom-ocr"),
+                replace=replace,
+                confidence=ocr_params.pop("confidence", None),
+                add_to_page=ocr_params.pop("add_to_page", True),
+            )
 
-        # Determine rendering resolution from parameters
-        final_resolution = ocr_params.get("resolution")
-        if final_resolution is None:
-            parent_pdf = getattr(self.page, "_parent", None)
-            if parent_pdf is not None:
-                final_resolution = parent_pdf._config.get("resolution", 150)
-            else:
-                final_resolution = 150
-        logger.debug(
-            "Region %s: Applying OCR via '%s' at %s DPI",
-            self.bbox,
-            engine_name,
-            final_resolution,
-        )
-
-        ocr_payload = run_ocr_apply(
-            target=self,
-            context=self,
-            engine_name=engine_name,
-            resolution=final_resolution,
-            languages=resolved_languages,
-            min_confidence=resolved_min_conf,
-            device=resolved_device,
-            detect_only=detect_only,
-            options=normalized_options,
-            render_kwargs={"crop": True},
-        )
-
-        image_width, image_height = ocr_payload.image_size
-
-        valid_results: List[Mapping[str, Any]] = []
-        for entry in ocr_payload.results:
-            if isinstance(entry, MappingABC):
-                valid_results.append(entry)
-            else:
-                raise TypeError(
-                    f"Region {self.bbox}: OCR result has unexpected type: {type(entry).__name__}"
-                )
-
-        scale_x = self.width / image_width if image_width else 1.0
-        scale_y = self.height / image_height if image_height else 1.0
-        created_elements = self.page.create_text_elements_from_ocr(
-            valid_results, scale_x=scale_x, scale_y=scale_y
-        )
-        logger.info(f"Region {self.bbox}: Added {len(created_elements)} elements from OCR.")
+        service = resolve_service(self, "ocr")
+        service.apply_ocr(self, replace=replace, **ocr_params)
         return self
+
+    def extract_ocr_elements(
+        self,
+        *,
+        engine: Optional[str] = None,
+        options: Optional[Any] = None,
+        languages: Optional[List[str]] = None,
+        min_confidence: Optional[float] = None,
+        device: Optional[str] = None,
+        resolution: Optional[int] = None,
+    ) -> List[Any]:
+        """
+        Run OCR and return the resulting text elements without mutating this region.
+
+        Args:
+            engine: OCR engine name (defaults follow the scope configuration).
+            options: Engine-specific options payload or dataclass.
+            languages: Optional list of language codes.
+            min_confidence: Optional minimum confidence threshold.
+            device: Preferred execution device.
+            resolution: Explicit render DPI; falls back to config/context when omitted.
+
+        Returns:
+            List of text elements created from OCR (not added to the page).
+        """
+
+        service = resolve_service(self, "ocr")
+        return service.extract_ocr_elements(
+            self,
+            engine=engine,
+            options=options,
+            languages=languages,
+            min_confidence=min_confidence,
+            device=device,
+            resolution=resolution,
+        )
 
     def apply_custom_ocr(
         self,
@@ -2341,22 +2319,6 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             checkbox_info = f" [{state}]"
 
         return f"<Region{name_info}{type_info}{source_info}{checkbox_info} bbox={self.bbox}{poly_info}>"
-
-    def update_text(
-        self,
-        transform: Callable[[Any], Optional[str]],
-        *,
-        selector: str = "text",
-        apply_exclusions: bool = False,
-    ) -> "Region":
-        """Apply *transform* to every text element matched by *selector* inside this region.
-
-        The heavy lifting is delegated to :py:meth:`TextMixin.update_text`; this
-        override simply ensures the search is scoped to the region.
-        """
-
-        TextMixin.update_text(self, transform, selector=selector, apply_exclusions=apply_exclusions)
-        return self
 
     def _get_classification_content(
         self, model_type: str, **kwargs
@@ -2946,3 +2908,25 @@ class Region(TextMixin, TabularRegionMixin, AnalysisHostMixin, Visualizable):
             ```
         """
         return RegionContext(self)
+
+
+Region.extract_table = _table_methods.extract_table
+Region.extract_tables = _table_methods.extract_tables
+
+attach_capability(Region, "text")
+attach_capability(Region, "qa")
+attach_capability(Region, "exclusion")
+attach_capability(Region, "describe")
+attach_capability(Region, "shapes")
+attach_capability(Region, "checkbox")
+attach_capability(Region, "classification")
+attach_capability(Region, "extraction")
+attach_capability(Region, "guides")
+
+# Flow navigation fallback uses Region directional helpers
+from natural_pdf.elements.base import DirectionalMixin as _DirectionalMixin
+
+_REGION_NAV_FALLBACK = {
+    name: getattr(_DirectionalMixin, name) for name in ("above", "below", "left", "right")
+}
+attach_capability(Region, "navigation", _REGION_NAV_FALLBACK)

@@ -24,15 +24,12 @@ from pdfplumber.utils.geometry import get_bbox_overlap, objects_to_bbox
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 from PIL import Image
 
-from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
-from natural_pdf.classification.mixin import ClassificationMixin
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 
 # Add Visualizable import
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsBBox, SupportsElement, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.describe.mixin import DescribeMixin, InspectMixin
 from natural_pdf.elements.base import Element
 from natural_pdf.elements.mixins.classification_batch_mixin import ClassificationBatchMixin
 from natural_pdf.elements.region import Region
@@ -58,6 +55,7 @@ try:
 except ImportError:
     create_original_pdf = None
 # <--- END ADDED
+from natural_pdf.services.delegates import attach_capability
 
 logger = logging.getLogger(__name__)
 
@@ -79,12 +77,8 @@ class ElementCollection(
     Generic[T],
     ApplyMixin,
     ExportMixin,
-    ClassificationMixin,
     ClassificationBatchMixin,
-    CheckboxDetectionMixin,
     DirectionalCollectionMixin,
-    DescribeMixin,
-    InspectMixin,
     Visualizable,
     MutableSequence[T],
 ):
@@ -1834,8 +1828,10 @@ class ElementCollection(
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
         """
         Find the first matching element below each item in the collection.
@@ -1853,6 +1849,8 @@ class ElementCollection(
                 resolving matches.
             auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
             reading_order: Whether matches are resolved in natural reading order (default: True).
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered with the selector provider.
 
         Returns:
             An ElementCollection built from the first match (if any) discovered beneath each element.
@@ -1877,6 +1875,8 @@ class ElementCollection(
                 "text_tolerance": text_tolerance,
                 "auto_text_tolerance": auto_text_tolerance,
                 "reading_order": reading_order,
+                "near_threshold": near_threshold,
+                "engine": engine,
             }
 
             if overlap is not None:
@@ -1913,13 +1913,15 @@ class ElementCollection(
         self,
         *,
         text: Union[str, Sequence[str]],
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
     @overload
@@ -1927,13 +1929,15 @@ class ElementCollection(
         self,
         selector: str,
         *,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
     def find_all(
@@ -1941,13 +1945,15 @@ class ElementCollection(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
         """
         Find all matching elements for every item in the collection and flatten the results.
@@ -1960,13 +1966,15 @@ class ElementCollection(
                   single string or an iterable of strings (matches any value).
             overlap: How to determine if elements overlap: 'full' (fully inside),
                      'partial' (any overlap), or 'center' (center point inside).
-                     (default: "full")
+                     Defaults to "full" when omitted.
             apply_exclusions: Whether to apply exclusion regions (default: True).
             regex: Whether to use regex for text search (`selector` or `text`) (default: False).
             case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
             text_tolerance: Optional mapping of tolerance overrides applied during selection.
             auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
             reading_order: Whether to order results according to natural reading order (default: True).
+            near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
+            engine: Optional selector engine name registered with the selector provider.
 
         Returns:
             A new ElementCollection containing all matching sub-elements from all elements
@@ -1983,21 +1991,25 @@ class ElementCollection(
             call_kwargs: Dict[str, Any] = {
                 "selector": selector,
                 "text": text,
-                "overlap": overlap,
                 "apply_exclusions": apply_exclusions,
                 "regex": regex,
                 "case": case,
                 "text_tolerance": text_tolerance,
                 "auto_text_tolerance": auto_text_tolerance,
                 "reading_order": reading_order,
+                "near_threshold": near_threshold,
+                "engine": engine,
             }
+
+            if overlap is not None:
+                call_kwargs["overlap"] = overlap
 
             # Remove optional entries that are None to satisfy varying signatures
             filtered_kwargs = {
                 key: value
                 for key, value in call_kwargs.items()
                 if value is not None
-                or key in {"apply_exclusions", "regex", "case", "overlap", "reading_order"}
+                or key in {"apply_exclusions", "regex", "case", "reading_order"}
             }
 
             try:
@@ -3346,3 +3358,6 @@ class ElementCollection(
             geometry=geometry,
             group_by=group_by,
         )
+
+
+attach_capability(ElementCollection, "describe")

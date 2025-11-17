@@ -118,7 +118,6 @@ class DebugSelectorEngine:
 register_selector_engine("debug", lambda **_: DebugSelectorEngine())
 ```
 
-Internally, page- and region-like objects already mix in a shared “analysis” capability bundle (covering OCR, selectors, QA, etc.), so custom hosts can usually inherit `AnalysisHostMixin` instead of wiring a dozen mixins by hand.
 
 ## Best friends
 

@@ -1,5 +1,8 @@
+from typing import Any, Dict
+
 import natural_pdf as npdf
 from natural_pdf.flows.flow import Flow
+from natural_pdf.qa.qa_result import QAResult
 
 
 class _StubAnalysisRegion:
@@ -25,10 +28,6 @@ class _StubAnalysisRegion:
         self.calls.append(("create_text_elements_from_ocr", args, kwargs))
         return ["text"]
 
-    def ask(self, *args, **kwargs):
-        self.calls.append(("ask", args, kwargs))
-        return "answer"
-
 
 def _make_flow():
     pdf = npdf.PDF("pdfs/01-practice.pdf")
@@ -47,7 +46,6 @@ def test_flow_analysis_methods_delegate(monkeypatch):
         assert flow.remove_ocr_elements() == 3
         assert flow.clear_text_layer() == (1, 2)
         assert flow.create_text_elements_from_ocr("results") == ["text"]
-        assert flow.ask("Question?") == "answer"
     finally:
         pdf.close()
 
@@ -58,5 +56,28 @@ def test_flow_analysis_methods_delegate(monkeypatch):
         "remove_ocr_elements",
         "clear_text_layer",
         "create_text_elements_from_ocr",
-        "ask",
     ]
+
+
+def test_flow_ask_uses_qa_service(monkeypatch):
+    pdf, flow = _make_flow()
+    capture: Dict[str, Any] = {}
+
+    def fake_run_document_qa(*, context, region, question, **kwargs):
+        capture["region"] = region
+        capture["question"] = question
+        return QAResult(question=question, answer="flow", confidence=0.42, found=True)
+
+    monkeypatch.setattr(
+        "natural_pdf.services.qa_service.run_document_qa",
+        fake_run_document_qa,
+    )
+
+    try:
+        result = flow.ask("What?", min_confidence=0.0)
+    finally:
+        pdf.close()
+
+    assert result["answer"] == "flow"
+    assert result["found"] is True
+    assert capture["region"] is flow._analysis_region().constituent_regions[0]

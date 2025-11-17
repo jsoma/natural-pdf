@@ -22,15 +22,23 @@ from typing import (
 from pdfplumber.utils.geometry import merge_bboxes  # Import merge_bboxes directly
 
 from natural_pdf.core.capabilities import MultiRegionAnalysisMixin
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.crop_utils import resolve_crop_bbox
-from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
+from natural_pdf.core.exclusion_mixin import ExclusionSpec
 from natural_pdf.core.highlighter_utils import resolve_highlighter
+from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.mixins import ContextResolverMixin
-from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.qa.qa_result import QAResult
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
+from natural_pdf.services import guides_service as _guides_service  # noqa: F401
+from natural_pdf.services import navigation_service as _navigation_service  # noqa: F401
+from natural_pdf.services import qa_service as _qa_service  # noqa: F401
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -51,7 +59,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
+class FlowRegion(
+    ServiceHostMixin,
+    SupportsSections,
+    SelectorHostMixin,
+    Visualizable,
+    MultiRegionAnalysisMixin,
+    ContextResolverMixin,
+):
     """
     Represents a selected area within a Flow, potentially composed of multiple
     physical Region objects (constituent_regions) that might span across
@@ -81,6 +96,8 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         """
         self.flow: "Flow" = flow
         self.constituent_regions: List["PhysicalRegion"] = constituent_regions
+        context = self._resolve_service_context(flow, constituent_regions)
+        self._init_service_host(context)
         self.source_flow_element: Optional["FlowElement"] = source_flow_element
         self.boundary_element_found: Optional[Union["PhysicalElement", "PhysicalRegion"]] = (
             boundary_element_found
@@ -102,6 +119,26 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         self._exclusions: List[ExclusionSpec] = []
         self._multi_page_page_warned: bool = False
 
+    @staticmethod
+    def _resolve_service_context(
+        flow: Optional["Flow"], regions: Sequence["PhysicalRegion"]
+    ) -> PDFContext:
+        candidates: List[Any] = []
+        if flow is not None:
+            candidates.append(getattr(flow, "_context", None))
+        for region in regions:
+            candidates.append(getattr(region, "_context", None))
+            page = getattr(region, "page", None)
+            if page is not None:
+                candidates.append(getattr(page, "_context", None))
+                pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
+                if pdf_obj is not None:
+                    candidates.append(getattr(pdf_obj, "_context", None))
+        for candidate in candidates:
+            if candidate is not None:
+                return candidate
+        return PDFContext.with_defaults()
+
     def _qa_context_page_number(self) -> int:
         pages = self.pages
         return pages[0].number if pages else -1
@@ -109,24 +146,43 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
     def _qa_source_elements(self) -> ElementCollection:
         return ElementCollection([])
 
+    def _qa_segments(self) -> Sequence["PhysicalRegion"]:
+        return self.constituent_regions
+
     def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         from natural_pdf.elements.region import Region
 
         return Region._normalize_qa_output(result)
 
-    def _qa_blank_result(self, question: QuestionInput) -> Union[QAResult, List[QAResult]]:
-        return super()._qa_blank_result(question)
-
     def _qa_target_region(self):
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions for QA.")
 
-        if len(self.constituent_regions) > 1:
-            logger.info(
-                "FlowRegion spans multiple regions; Document QA will evaluate the first region only."
-            )
-
         return self.constituent_regions[0]
+
+    def to_region(self):
+        if not self.constituent_regions:
+            raise RuntimeError("FlowRegion has no constituent regions to convert into a Region.")
+        return self.constituent_regions[0]
+
+    @staticmethod
+    def _qa_confidence(candidate: Any) -> float:
+        """Best-effort confidence extraction from normalized QA results."""
+        if isinstance(candidate, list) and candidate:
+            return FlowRegion._qa_confidence(candidate[0])
+        if isinstance(candidate, dict):
+            value = candidate.get("confidence")
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return float("-inf")
+        try:
+            value = getattr(candidate, "confidence", None)
+            if value is None:
+                value = candidate.get("confidence")
+            return float(value)
+        except Exception:
+            return float("-inf")
 
     def _ocr_element_manager(self):
         if not self.constituent_regions:
@@ -166,10 +222,73 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
     def _iter_ocr_regions(self) -> Iterable[Any]:
         return tuple(self.constituent_regions)
 
+    def apply_ocr(self, *args: Any, **kwargs: Any) -> "FlowRegion":
+        """
+        Apply OCR across all constituent regions using their native implementations.
+        """
+        for region in self.constituent_regions:
+            apply_fn = getattr(region, "apply_ocr", None)
+            if callable(apply_fn):
+                apply_fn(*args, **kwargs)
+        return self
+
+    def extract_ocr_elements(self, *args: Any, **kwargs: Any) -> List[Any]:
+        """
+        Extract OCR elements from each constituent region and flatten the results.
+        """
+        extracted: List[Any] = []
+        for region in self.constituent_regions:
+            extract_fn = getattr(region, "extract_ocr_elements", None)
+            if callable(extract_fn):
+                result = extract_fn(*args, **kwargs)
+                if isinstance(result, list):
+                    extracted.extend(result)
+                elif result is not None:
+                    extracted.append(result)
+        return extracted
+
     def _exclusion_element_manager(self):
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions for exclusions")
         return self.constituent_regions[0].page._element_mgr
+
+    def _evaluate_exclusion_entries(
+        self,
+        entries: Sequence[ExclusionSpec],
+        include_callable: bool = True,
+        debug: bool = False,
+    ):
+        if not entries:
+            return []
+        service = resolve_service(self, "exclusion")
+        return service.evaluate_entries(self, entries, include_callable, debug)
+
+    def _get_exclusion_regions(
+        self,
+        include_callable: bool = True,
+        debug: bool = False,
+    ):
+        entries = cast(List[ExclusionSpec], getattr(self, "_exclusions", []))
+        local = self._evaluate_exclusion_entries(entries, include_callable, debug)
+
+        aggregated: List["PhysicalRegion"] = []
+        for region in self.constituent_regions:
+            aggregated.extend(
+                region._get_exclusion_regions(include_callable=include_callable, debug=debug)
+            )
+        return self._dedupe_regions((*local, *aggregated))
+
+    @staticmethod
+    def _dedupe_regions(regions: Iterable["PhysicalRegion"]) -> List["PhysicalRegion"]:
+        deduped: List["PhysicalRegion"] = []
+        seen: set[int] = set()
+        for region in regions:
+            marker = id(region)
+            if marker in seen:
+                continue
+            seen.add(marker)
+            deduped.append(region)
+        return deduped
 
     def _element_to_region(
         self, element: Any, label: Optional[str] = None
@@ -554,88 +673,86 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["PhysicalElement"]:
-        """Find the first matching element in flow order.
+        """Return the first physical element across constituent regions matching selector/text.
 
         Args:
-            engine: Optional selector engine name forwarded to each constituent region.
+            selector: CSS-like selector string.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: How constituent regions determine containment (defaults to ``"full"``).
+            apply_exclusions: Whether exclusion zones within each region are honoured.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use flow reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine forwarded to constituent regions.
+
+        Returns:
+            The first matching physical element, if any.
         """
 
-        if not self.constituent_regions:
-            return None
-
-        for region in self.constituent_regions:
-            result = region.find(
-                selector=selector,
-                text=text,
-                overlap=overlap,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-                engine=engine,
-            )
-            if result is not None:
-                return result
-        return None
+        return resolve_service(self, "selector").find(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: str = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """Find all matching elements across constituent regions.
+        """Return every physical element across constituent regions matching selector/text.
 
-        Args:
-            engine: Optional selector engine name forwarded to each constituent region.
+        Args mirror :meth:`find`; ``engine`` is forwarded to constituent regions when provided.
         """
 
         from natural_pdf.elements.element_collection import ElementCollection
 
-        combined: List["PhysicalElement"] = []
-        for region in self.constituent_regions:
-            collection = region.find_all(
-                selector=selector,
-                text=text,
-                overlap=overlap,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-                engine=engine,
-            )
-            if collection:
-                combined.extend(collection.elements)
-
-        unique: List["PhysicalElement"] = []
-        seen: Set["PhysicalElement"] = set()
-        for el in combined:
-            if el not in seen:
-                unique.append(el)
-                seen.add(el)
-
-        return ElementCollection(unique)
+        return resolve_service(self, "selector").find_all(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
 
     def highlight(
         self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs
@@ -837,9 +954,85 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         new_flow_region._cached_bbox = None
         return new_flow_region
 
-    # Directional methods are provided by MultiRegionDirectionalMixin.
+    def _direction(
+        self,
+        direction: str,
+        size: Optional[float] = None,
+        cross_size: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: float = 0.0,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional["PhysicalRegion"] = None,
+        anchor: str = "start",
+        **kwargs,
+    ) -> "FlowRegion":
+        """Shared directional helper used by the navigation service."""
 
-    # (remaining directional helpers inherited)
+        regions = list(self.constituent_regions)
+        if not regions:
+            return self._spawn_from_regions([])
+
+        arrangement = getattr(self.flow, "arrangement", "vertical") or "vertical"
+        normalized = direction.lower()
+        base_kwargs: Dict[str, Any] = {
+            "include_source": include_source,
+            "until": until,
+            "include_endpoint": include_endpoint,
+            "offset": offset,
+            "apply_exclusions": apply_exclusions,
+            "multipage": multipage,
+            "within": within,
+            "anchor": anchor,
+        }
+        base_kwargs.update(kwargs)
+
+        def _call(region: "PhysicalRegion", **specific_kwargs) -> "PhysicalRegion":
+            params = dict(base_kwargs)
+            params.update(specific_kwargs)
+            nav_fn = getattr(region, normalized)
+            return cast("PhysicalRegion", nav_fn(**params))
+
+        new_regions: List["PhysicalRegion"] = []
+
+        if normalized in {"above", "below"}:
+            target_index = 0 if normalized == "above" else len(regions) - 1
+            width_arg = "element" if arrangement == "vertical" else cross_size
+
+            def _vertical(region: "PhysicalRegion"):
+                return _call(region, height=size, width=width_arg)
+
+            if arrangement == "vertical":
+                for idx, region in enumerate(regions):
+                    if idx == target_index:
+                        new_regions.append(_vertical(region))
+                    elif include_source:
+                        new_regions.append(region)
+            else:
+                for region in regions:
+                    new_regions.append(_vertical(region))
+        elif normalized in {"left", "right"}:
+            target_index = 0 if normalized == "left" else len(regions) - 1
+            height_arg = "element" if arrangement == "horizontal" else cross_size
+
+            def _horizontal(region: "PhysicalRegion"):
+                return _call(region, width=size, height=height_arg)
+
+            if arrangement == "horizontal":
+                for idx, region in enumerate(regions):
+                    if idx == target_index:
+                        new_regions.append(_horizontal(region))
+                    elif include_source:
+                        new_regions.append(region)
+            else:
+                for region in regions:
+                    new_regions.append(_horizontal(region))
+        else:
+            raise ValueError(f"Unsupported direction '{direction}' for FlowRegion navigation.")
+
+        return self._spawn_from_regions(new_regions)
 
     # Table extraction helpers (delegates to underlying physical regions)
 
@@ -856,9 +1049,6 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         apply_exclusions: bool = True,
         verticals: Optional[List[float]] = None,
         horizontals: Optional[List[float]] = None,
-        # Optional row-level merge predicate. If provided, it decides whether
-        # the current row (first row of a segment/page) should be merged with
-        # the previous one (to handle multi-page spill-overs).
         stitch_rows: Optional[
             Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
         ] = None,
@@ -866,190 +1056,24 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         structure_engine: Optional[str] = None,
         **kwargs,
     ) -> TableResult:
-        """Extracts a single logical table from the FlowRegion.
-
-        This is a convenience wrapper that iterates through the constituent
-        physical regions **in flow order**, calls their ``extract_table``
-        method, and concatenates the resulting rows.  It mirrors the public
-        interface of :pymeth:`natural_pdf.elements.region.Region.extract_table`.
-
-        Args:
-            method, table_settings, use_ocr, ocr_config, text_options, cell_extraction_func, show_progress:
-                Same as in :pymeth:`Region.extract_table` and are forwarded as-is
-                to each physical region.
-            content_filter: Optional content filter applied via the underlying Region extraction.
-            apply_exclusions: Whether exclusions should be applied inside each physical region.
-            verticals, horizontals: Explicit guide coordinates forwarded to each Region.
-            merge_headers: Whether to merge tables by removing repeated headers from subsequent
-                pages/segments. If None (default), auto-detects by checking if the first row
-                of each segment matches the first row of the first segment. If segments have
-                inconsistent header patterns (some repeat, others don't), raises ValueError.
-                Useful for multi-page tables where headers repeat on each page.
-            structure_engine: Optional structure detection engine forwarded to constituent regions.
-            **kwargs: Additional keyword arguments forwarded to the underlying
-                ``Region.extract_table`` implementation.
-
-        Returns:
-            A TableResult object containing the aggregated table data.  Rows returned from
-            consecutive constituent regions are appended in document order.  If
-            no tables are detected in any region, an empty TableResult is returned.
-
-        stitch_rows parameter:
-            Controls whether the first rows of subsequent segments/regions should be merged
-            into the previous row (to handle spill-over across page breaks).
-            Applied AFTER header removal if merge_headers is enabled.
-
-            • None (default) – no merging (behaviour identical to previous versions).
-            • Callable – custom predicate taking
-                   (prev_row, cur_row, row_idx_in_segment, segment_object) → bool.
-               Return True to merge `cur_row` into `prev_row` (default column-wise merge is used).
-        """
-
-        if table_settings is None:
-            table_settings = {}
-        if text_options is None:
-            text_options = {}
-
-        if not self.constituent_regions:
-            return TableResult([])
-
-        # Resolve stitch_rows predicate -------------------------------------------------------
-        predicate: Optional[
-            Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
-        ] = (stitch_rows if callable(stitch_rows) else None)
-
-        def _default_merge(
-            prev_row: List[Optional[str]], cur_row: List[Optional[str]]
-        ) -> List[Optional[str]]:
-            """Column-wise merge – concatenates non-empty strings with a space."""
-            from itertools import zip_longest
-
-            merged: List[Optional[str]] = []
-            for p, c in zip_longest(prev_row, cur_row, fillvalue=""):
-                if (p or "").strip() and (c or "").strip():
-                    merged.append(f"{p} {c}".strip())
-                else:
-                    merged.append((p or "") + (c or ""))
-            return merged
-
-        aggregated_rows: List[List[Optional[str]]] = []
-        header_row: Optional[List[Optional[str]]] = None
-        merge_headers_enabled = False
-        headers_warned = False  # Track if we've already warned about dropping headers
-        segment_has_repeated_header = []  # Track which segments have repeated headers
-
-        for region_idx, region in enumerate(self.constituent_regions):
-            region_result = region.extract_table(
-                method=method,
-                table_settings=table_settings.copy(),  # Avoid side-effects
-                use_ocr=use_ocr,
-                ocr_config=ocr_config,
-                text_options=text_options.copy(),
-                cell_extraction_func=cell_extraction_func,
-                show_progress=show_progress,
-                content_filter=content_filter,
-                apply_exclusions=apply_exclusions,
-                verticals=verticals,
-                horizontals=horizontals,
-                structure_engine=structure_engine,
-                **kwargs,
-            )
-
-            # Convert result to list of rows
-            if not region_result:
-                continue
-
-            segment_rows = (
-                list(region_result)
-                if isinstance(region_result, TableResult)
-                else list(region_result)
-            )
-
-            # Handle header detection and merging for multi-page tables
-            if region_idx == 0:
-                # First segment: capture potential header row
-                if segment_rows:
-                    header_row = segment_rows[0]
-                    # Determine if we should merge headers
-                    if merge_headers is None:
-                        # Auto-detect: we'll check all subsequent segments
-                        merge_headers_enabled = False  # Will be determined later
-                    else:
-                        merge_headers_enabled = merge_headers
-                    # Track that first segment exists (for consistency checking)
-                    segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
-            elif region_idx == 1 and merge_headers is None:
-                # Auto-detection: check if first row of second segment matches header
-                has_header = segment_rows and header_row and segment_rows[0] == header_row
-                segment_has_repeated_header.append(has_header)
-
-                if has_header:
-                    merge_headers_enabled = True
-                    # Remove the detected repeated header from this segment
-                    segment_rows = segment_rows[1:]
-                    if not headers_warned:
-                        warnings.warn(
-                            "Detected repeated headers in multi-page table. Merging by removing "
-                            "repeated headers from subsequent pages.",
-                            UserWarning,
-                            stacklevel=2,
-                        )
-                        headers_warned = True
-                else:
-                    merge_headers_enabled = False
-            elif region_idx > 1:
-                # Check consistency: all segments should have same pattern
-                has_header = segment_rows and header_row and segment_rows[0] == header_row
-                segment_has_repeated_header.append(has_header)
-
-                # Remove header if merging is enabled and header is present
-                if merge_headers_enabled and has_header:
-                    segment_rows = segment_rows[1:]
-            elif region_idx > 0 and merge_headers_enabled:
-                # Explicit merge_headers=True: remove headers from subsequent segments
-                if segment_rows and header_row and segment_rows[0] == header_row:
-                    segment_rows = segment_rows[1:]
-                    if not headers_warned:
-                        warnings.warn(
-                            "Removing repeated headers from multi-page table during merge.",
-                            UserWarning,
-                            stacklevel=2,
-                        )
-                        headers_warned = True
-
-            # Process remaining rows with stitch_rows logic
-            for row_idx, row in enumerate(segment_rows):
-                if (
-                    predicate is not None
-                    and aggregated_rows
-                    and predicate(aggregated_rows[-1], row, row_idx, region)
-                ):
-                    # Merge with previous row
-                    aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
-                else:
-                    aggregated_rows.append(row)
-
-        # Check for inconsistent header patterns after processing all segments
-        if merge_headers is None and len(segment_has_repeated_header) > 2:
-            # During auto-detection, check for consistency across all segments
-            expected_pattern = segment_has_repeated_header[1]  # Pattern from second segment
-            for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
-                if has_header != expected_pattern:
-                    # Inconsistent pattern detected
-                    segments_with_headers = [
-                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h
-                    ]
-                    segments_without_headers = [
-                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h
-                    ]
-                    raise ValueError(
-                        f"Inconsistent header pattern in multi-page table: "
-                        f"segments {segments_with_headers} have repeated headers, "
-                        f"but segments {segments_without_headers} do not. "
-                        f"All segments must have the same header pattern for reliable merging."
-                    )
-
-        return TableResult(aggregated_rows)
+        return _flow_table_methods.flowregion_extract_table(
+            self,
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            show_progress=show_progress,
+            content_filter=content_filter,
+            apply_exclusions=apply_exclusions,
+            verticals=verticals,
+            horizontals=horizontals,
+            stitch_rows=stitch_rows,
+            merge_headers=merge_headers,
+            structure_engine=structure_engine,
+            **kwargs,
+        )
 
     def extract_tables(
         self,
@@ -1057,42 +1081,12 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
         table_settings: Optional[dict] = None,
         **kwargs,
     ) -> List[List[List[Optional[str]]]]:
-        """Extract **all** tables from the FlowRegion.
-
-        This simply chains :pymeth:`Region.extract_tables` over each physical
-        region and concatenates their results, preserving flow order.
-
-        Args:
-            method, table_settings: Forwarded to underlying ``Region.extract_tables``.
-            **kwargs: Additional keyword arguments forwarded.
-
-        Returns:
-            A list where each item is a full table (list of rows).  The order of
-            tables follows the order of the constituent regions in the flow.
-        """
-
-        if table_settings is None:
-            table_settings = {}
-
-        if not self.constituent_regions:
-            return []
-
-        all_tables: List[List[List[Optional[str]]]] = []
-
-        for region in self.constituent_regions:
-            region_tables = cast(
-                List[List[List[Optional[str]]]],
-                region.extract_tables(
-                    method=method,
-                    table_settings=table_settings.copy(),
-                    **kwargs,
-                ),
-            )
-            # ``region_tables`` is a list (possibly empty).
-            if region_tables:
-                all_tables.extend(region_tables)
-
-        return all_tables
+        return _flow_table_methods.flowregion_extract_tables(
+            self,
+            method=method,
+            table_settings=table_settings,
+            **kwargs,
+        )
 
     def get_sections(
         self,
@@ -1224,3 +1218,9 @@ class FlowRegion(Visualizable, MultiRegionAnalysisMixin, ContextResolverMixin):
             specs.append(spec)
 
         return specs
+
+
+attach_capability(FlowRegion, "navigation")
+attach_capability(FlowRegion, "qa")
+attach_capability(FlowRegion, "exclusion")
+attach_capability(FlowRegion, "guides")

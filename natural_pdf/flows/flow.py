@@ -34,17 +34,20 @@ if TYPE_CHECKING:
 # Import required classes for the new methods
 # For runtime image manipulation
 
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
 
 
-class Flow(Visualizable, SelectorHostMixin):
+class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
     """Defines a logical flow or sequence of physical Page or Region objects.
 
     A Flow represents a continuous logical document structure that spans across
@@ -158,6 +161,8 @@ class Flow(Visualizable, SelectorHostMixin):
         self.segment_gap: float = segment_gap
         self._analysis_region_cache: Optional["FlowRegion"] = None
 
+        self._bind_service_context(self.segments)
+
         self._validate_alignment()
 
         # TODO: Pre-calculate segment offsets for faster lookups if needed
@@ -206,6 +211,54 @@ class Flow(Visualizable, SelectorHostMixin):
                 constituent_regions=list(self.segments),
             )
         return self._analysis_region_cache
+
+    # ------------------------------------------------------------------
+    # Context + capability helpers
+    # ------------------------------------------------------------------
+    def _bind_service_context(self, segments: Sequence["PhysicalRegion"]) -> None:
+        context = self._resolve_service_context(segments)
+        self._init_service_host(context)
+
+    def _resolve_service_context(self, segments: Sequence["PhysicalRegion"]) -> PDFContext:
+        for segment in segments:
+            context = getattr(segment, "_context", None)
+            if context is not None:
+                return context
+            page = getattr(segment, "page", None)
+            if page is not None:
+                page_context = getattr(page, "_context", None)
+                if page_context is not None:
+                    return page_context
+                pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
+                if pdf_obj is not None:
+                    pdf_context = getattr(pdf_obj, "_context", None)
+                    if pdf_context is not None:
+                        return pdf_context
+        return PDFContext.with_defaults()
+
+    def _analysis_region_host(self):
+        return self._analysis_region()
+
+    def _ocr_element_manager(self):
+        return self._analysis_region_host()._ocr_element_manager()
+
+    def _qa_segments(self):
+        return self._analysis_region_host()._qa_segments()
+
+    def _qa_target_region(self):
+        return self._analysis_region_host()._qa_target_region()
+
+    def _qa_context_page_number(self) -> int:
+        return self._analysis_region_host()._qa_context_page_number()
+
+    def _qa_source_elements(self):
+        return self._analysis_region_host()._qa_source_elements()
+
+    def _qa_normalize_result(self, result: Any):
+        return self._analysis_region_host()._qa_normalize_result(result)
+
+    def _qa_confidence(self, candidate: Any) -> float:
+        return self._analysis_region_host()._qa_confidence(candidate)
 
     def _get_highlighter(self):
         """Get the highlighting service from the first segment."""
@@ -356,8 +409,10 @@ class Flow(Visualizable, SelectorHostMixin):
         Run document QA across the flow by delegating to a FlowRegion.
         """
 
-        return self._analysis_region().ask(
-            question,
+        qa_service = resolve_service(self, "qa")
+        return qa_service.ask(
+            self,
+            question=question,
             min_confidence=min_confidence,
             model=model,
             debug=debug,
@@ -369,166 +424,85 @@ class Flow(Visualizable, SelectorHostMixin):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> Optional["FlowElement"]:
-        """
-        Finds the first element within the flow that matches the given selector or text criteria.
-
-        Elements found are wrapped as FlowElement objects, anchored to this Flow.
+        """Return the first FlowElement whose underlying element matches selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Optional text shortcut (equivalent to ``text:contains(...)``).
-            apply_exclusions: Whether to respect exclusion zones on the original pages/regions.
-            regex: Whether the text search uses regex.
-            case: Whether the text search is case-sensitive.
-            text_tolerance: Optional dict of text tolerance overrides.
-            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
-            reading_order: Whether to sort matches in reading order when applicable (default: True).
-            engine: Optional selector engine name registered via the selector provider.
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Present for API parity; ignored for flows.
+            apply_exclusions: Whether constituent regions honour their exclusion zones.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use flow reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            A FlowElement if a match is found, otherwise None.
+            The first matching :class:`natural_pdf.flows.element.FlowElement`, if any.
         """
-        results = self.find_all(
+        return resolve_service(self, "selector").find(
+            self,
             selector=selector,
             text=text,
+            overlap=overlap,
             apply_exclusions=apply_exclusions,
             regex=regex,
             case=case,
             text_tolerance=text_tolerance,
             auto_text_tolerance=auto_text_tolerance,
             reading_order=reading_order,
+            near_threshold=near_threshold,
             engine=engine,
         )
-        return results.first if results else None
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
+        near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
     ) -> "FlowElementCollection":
+        """Return every FlowElement whose underlying element matches selector/text filters.
+
+        The selector service fans out the query per page, filters intersections with each segment,
+        and wraps results back into a :class:`FlowElementCollection` anchored to this flow.
+
+        Args follow :meth:`find`; ``engine`` is forwarded to page-level queries when provided.
         """
-        Finds all elements within the flow that match the given selector or text criteria.
-
-        This method efficiently groups segments by their parent pages, searches at the page level,
-        then filters results appropriately for each segment. This ensures elements that intersect
-        with flow segments (but aren't fully contained) are still found.
-
-        Elements found are wrapped as FlowElement objects, anchored to this Flow,
-        and returned in a FlowElementCollection.
-
-        Args:
-            engine: Optional selector engine name forwarded to page-level queries.
-        """
-        from .collections import FlowElementCollection
-        from .element import FlowElement
-
-        # Step 1: Group segments by their parent pages (like in analyze_layout)
-        segments_by_page = {}  # Dict[Page, List[Segment]]
-
-        for i, segment in enumerate(self.segments):
-            if hasattr(segment, "page") and hasattr(segment.page, "find_all"):
-                page_obj = segment.page
-                segment_type = "region"
-            elif (
-                hasattr(segment, "find_all")
-                and hasattr(segment, "width")
-                and hasattr(segment, "height")
-                and not hasattr(segment, "page")
-            ):
-                page_obj = segment
-                segment_type = "page"
-            else:
-                raise TypeError(f"Segment {i+1} does not support find_all: {segment!r}")
-
-            if page_obj not in segments_by_page:
-                segments_by_page[page_obj] = []
-            segments_by_page[page_obj].append((segment, segment_type))
-
-        if not segments_by_page:
-            raise ValueError("No segments with searchable pages found")
-
-        # Step 2: Search each unique page only once
-        all_flow_elements: List["FlowElement"] = []
-
-        for page_obj, page_segments in segments_by_page.items():
-            # Find all matching elements on this page
-            page_matches = page_obj.find_all(
-                selector=selector,
-                text=text,
-                apply_exclusions=apply_exclusions,
-                regex=regex,
-                case=case,
-                text_tolerance=text_tolerance,
-                auto_text_tolerance=auto_text_tolerance,
-                reading_order=reading_order,
-                engine=engine,
-            )
-
-            if not page_matches:
-                continue
-
-            # Step 3: For each segment on this page, collect relevant elements
-            for segment, segment_type in page_segments:
-                if segment_type == "page":
-                    # Full page segment: include all elements
-                    for phys_elem in page_matches.elements:
-                        all_flow_elements.append(FlowElement(physical_object=phys_elem, flow=self))
-
-                elif segment_type == "region":
-                    # Region segment: filter to only intersecting elements
-                    for phys_elem in page_matches.elements:
-                        try:
-                            # Check if element intersects with this flow segment
-                            if segment.intersects(phys_elem):
-                                all_flow_elements.append(
-                                    FlowElement(physical_object=phys_elem, flow=self)
-                                )
-                        except Exception as intersect_error:
-                            logger.debug(
-                                f"Error checking intersection for element: {intersect_error}"
-                            )
-                            # Include the element anyway if intersection check fails
-                            all_flow_elements.append(
-                                FlowElement(physical_object=phys_elem, flow=self)
-                            )
-
-        # Step 4: Remove duplicates (can happen if multiple segments intersect the same element)
-        unique_flow_elements = []
-        seen_element_ids = set()
-
-        for flow_elem in all_flow_elements:
-            # Create a unique identifier for the underlying physical element
-            phys_elem = flow_elem.physical_object
-            elem_id = (
-                (
-                    getattr(phys_elem.page, "index", id(phys_elem.page))
-                    if hasattr(phys_elem, "page")
-                    else id(phys_elem)
-                ),
-                phys_elem.bbox if hasattr(phys_elem, "bbox") else id(phys_elem),
-            )
-
-            if elem_id not in seen_element_ids:
-                unique_flow_elements.append(flow_elem)
-                seen_element_ids.add(elem_id)
-
-        return FlowElementCollection(unique_flow_elements)
+        return resolve_service(self, "selector").find_all(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
 
     def __repr__(self) -> str:
         return (
@@ -547,301 +521,26 @@ class Flow(Visualizable, SelectorHostMixin):
         cell_extraction_func: Optional[Any] = None,
         show_progress: bool = False,
         content_filter: Optional[Any] = None,
-        stitch_rows: Optional[Callable[[List[Optional[str]]], bool]] = None,
-        merge_headers: Optional[bool] = None,
-        structure_engine: Optional[str] = None,
-    ) -> TableResult: ...
-
-    @overload
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,
-        text_options: Optional[dict] = None,
-        cell_extraction_func: Optional[Any] = None,
-        show_progress: bool = False,
-        content_filter: Optional[Any] = None,
-        stitch_rows: Optional[
-            Callable[
-                [List[Optional[str]], List[Optional[str]], int, Union["Page", "PhysicalRegion"]],
-                bool,
-            ]
-        ] = None,
-        merge_headers: Optional[bool] = None,
-        structure_engine: Optional[str] = None,
-    ) -> TableResult: ...
-
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,
-        text_options: Optional[dict] = None,
-        cell_extraction_func: Optional[Any] = None,
-        show_progress: bool = False,
-        content_filter: Optional[Any] = None,
         stitch_rows: Optional[Callable[..., bool]] = None,
         merge_headers: Optional[bool] = None,
         structure_engine: Optional[str] = None,
+        **kwargs,
     ) -> TableResult:
-        """
-        Extract table data from all segments in the flow, combining results sequentially.
-
-        This method extracts table data from each segment in flow order and combines
-        the results into a single logical table. This is particularly useful for
-        multi-page tables or tables that span across columns.
-
-        Args:
-            method: Method to use: 'tatr', 'pdfplumber', 'text', 'stream', 'lattice', or None (auto-detect).
-            table_settings: Settings for pdfplumber table extraction.
-            use_ocr: Whether to use OCR for text extraction (currently only applicable with 'tatr' method).
-            ocr_config: OCR configuration parameters.
-            text_options: Dictionary of options for the 'text' method.
-            cell_extraction_func: Optional callable function that takes a cell Region object
-                                  and returns its string content. For 'text' method only.
-            show_progress: If True, display a progress bar during cell text extraction for the 'text' method.
-            content_filter: Optional content filter to apply during cell text extraction.
-            merge_headers: Whether to merge tables by removing repeated headers from subsequent
-                segments. If None (default), auto-detects by checking if the first row
-                of each segment matches the first row of the first segment. If segments have
-                inconsistent header patterns (some repeat, others don't), raises ValueError.
-                Useful for multi-page tables where headers repeat on each page.
-            stitch_rows: Optional callable to determine when rows should be merged across
-                         segment boundaries. Applied AFTER header removal if merge_headers
-                         is enabled. Two overloaded signatures are supported:
-
-                         • func(current_row) -> bool
-                           Called only on the first row of each segment (after the first).
-                           Return True to merge this first row with the last row from
-                           the previous segment.
-
-                         • func(prev_row, current_row, row_index, segment) -> bool
-                           Called for every row. Return True to merge current_row with
-                           the previous row in the aggregated results.
-
-                         When True is returned, rows are concatenated cell-by-cell.
-                         This is useful for handling table rows split across page
-                         boundaries or segments. If None, rows are never merged.
-            structure_engine: Optional structure detection engine forwarded to each segment's
-                ``extract_table`` implementation before falling back to traditional engines.
-
-        Returns:
-            TableResult object containing the aggregated table data from all segments.
-
-        Example:
-            Multi-page table extraction:
-            ```python
-            pdf = npdf.PDF("multi_page_table.pdf")
-
-            # Create flow for table spanning pages 2-4
-            table_flow = Flow(
-                segments=[pdf.pages[1], pdf.pages[2], pdf.pages[3]],
-                arrangement='vertical'
-            )
-
-            # Extract table as if it were continuous
-            table_data = table_flow.extract_table()
-            df = table_data.df  # Convert to pandas DataFrame
-
-            # Custom row stitching - single parameter (simple case)
-            table_data = table_flow.extract_table(
-                stitch_rows=lambda row: row and not (row[0] or "").strip()
-            )
-
-            # Custom row stitching - full parameters (advanced case)
-            table_data = table_flow.extract_table(
-                stitch_rows=lambda prev, curr, idx, seg: idx == 0 and curr and not (curr[0] or "").strip()
-            )
-            ```
-        """
-        logger.info(
-            f"Extracting table from Flow with {len(self.segments)} segments (method: {method or 'auto'})"
+        return _flow_table_methods.flow_extract_table(
+            self,
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            show_progress=show_progress,
+            content_filter=content_filter,
+            stitch_rows=stitch_rows,
+            merge_headers=merge_headers,
+            structure_engine=structure_engine,
+            **kwargs,
         )
-
-        if not self.segments:
-            raise ValueError("Flow has no segments; cannot extract table")
-
-        # Resolve predicate and determine its signature
-        predicate: Optional[Callable] = None
-        predicate_type: str = "none"
-
-        if callable(stitch_rows):
-            import inspect
-
-            sig = inspect.signature(stitch_rows)
-            param_count = len(sig.parameters)
-
-            if param_count == 1:
-                predicate = stitch_rows
-                predicate_type = "single_param"
-            elif param_count == 4:
-                predicate = stitch_rows
-                predicate_type = "full_params"
-            else:
-                raise TypeError(
-                    f"stitch_rows function must accept 1 or 4 parameters, got {param_count}"
-                )
-
-        def _default_merge(
-            prev_row: List[Optional[str]], cur_row: List[Optional[str]]
-        ) -> List[Optional[str]]:
-            from itertools import zip_longest
-
-            merged: List[Optional[str]] = []
-            for p, c in zip_longest(prev_row, cur_row, fillvalue=""):
-                if (p or "").strip() and (c or "").strip():
-                    merged.append(f"{p} {c}".strip())
-                else:
-                    merged.append((p or "") + (c or ""))
-            return merged
-
-        aggregated_rows: List[List[Optional[str]]] = []
-        processed_segments = 0
-        header_row: Optional[List[Optional[str]]] = None
-        merge_headers_enabled = False
-        headers_warned = False  # Track if we've already warned about dropping headers
-        segment_has_repeated_header = []  # Track which segments have repeated headers
-
-        for seg_idx, segment in enumerate(self.segments):
-            try:
-                logger.debug(f"  Extracting table from segment {seg_idx+1}/{len(self.segments)}")
-
-                segment_result = segment.extract_table(
-                    method=method,
-                    table_settings=table_settings.copy() if table_settings else None,
-                    use_ocr=use_ocr,
-                    ocr_config=ocr_config,
-                    text_options=text_options.copy() if text_options else None,
-                    cell_extraction_func=cell_extraction_func,
-                    show_progress=show_progress,
-                    content_filter=content_filter,
-                    structure_engine=structure_engine,
-                )
-
-                if not segment_result:
-                    continue
-
-                if hasattr(segment_result, "_rows"):
-                    segment_rows = list(segment_result._rows)
-                else:
-                    segment_rows = list(segment_result)
-
-                if not segment_rows:
-                    logger.debug(f"    No table data found in segment {seg_idx+1}")
-                    continue
-
-                # Handle header detection and merging for multi-page tables
-                if seg_idx == 0:
-                    # First segment: capture potential header row
-                    if segment_rows:
-                        header_row = segment_rows[0]
-                        # Determine if we should merge headers
-                        if merge_headers is None:
-                            # Auto-detect: we'll check all subsequent segments
-                            merge_headers_enabled = False  # Will be determined later
-                        else:
-                            merge_headers_enabled = merge_headers
-                        # Track that first segment exists (for consistency checking)
-                        segment_has_repeated_header.append(False)  # First segment doesn't "repeat"
-                elif seg_idx == 1 and merge_headers is None:
-                    # Auto-detection: check if first row of second segment matches header
-                    has_header = segment_rows and header_row and segment_rows[0] == header_row
-                    segment_has_repeated_header.append(has_header)
-
-                    if has_header:
-                        merge_headers_enabled = True
-                        # Remove the detected repeated header from this segment
-                        segment_rows = segment_rows[1:]
-                        logger.debug(
-                            f"    Auto-detected repeated header in segment {seg_idx+1}, removed"
-                        )
-                        if not headers_warned:
-                            warnings.warn(
-                                "Detected repeated headers in multi-page table. Merging by removing "
-                                "repeated headers from subsequent pages.",
-                                UserWarning,
-                                stacklevel=2,
-                            )
-                            headers_warned = True
-                    else:
-                        merge_headers_enabled = False
-                        logger.debug(f"    No repeated header detected in segment {seg_idx+1}")
-                elif seg_idx > 1:
-                    # Check consistency: all segments should have same pattern
-                    has_header = segment_rows and header_row and segment_rows[0] == header_row
-                    segment_has_repeated_header.append(has_header)
-
-                    # Remove header if merging is enabled and header is present
-                    if merge_headers_enabled and has_header:
-                        segment_rows = segment_rows[1:]
-                        logger.debug(f"    Removed repeated header from segment {seg_idx+1}")
-                elif seg_idx > 0 and merge_headers_enabled:
-                    # Explicit merge_headers=True: remove headers from subsequent segments
-                    if segment_rows and header_row and segment_rows[0] == header_row:
-                        segment_rows = segment_rows[1:]
-                        logger.debug(f"    Removed repeated header from segment {seg_idx+1}")
-                        if not headers_warned:
-                            warnings.warn(
-                                "Removing repeated headers from multi-page table during merge.",
-                                UserWarning,
-                                stacklevel=2,
-                            )
-                            headers_warned = True
-
-                for row_idx, row in enumerate(segment_rows):
-                    should_merge = False
-
-                    if predicate is not None and aggregated_rows:
-                        if predicate_type == "single_param":
-                            # For single param: only call on first row of segment (row_idx == 0)
-                            # and pass the current row
-                            if row_idx == 0:
-                                should_merge = predicate(row)
-                        elif predicate_type == "full_params":
-                            # For full params: call with all arguments
-                            should_merge = predicate(aggregated_rows[-1], row, row_idx, segment)
-
-                    if should_merge:
-                        aggregated_rows[-1] = _default_merge(aggregated_rows[-1], row)
-                    else:
-                        aggregated_rows.append(row)
-
-                processed_segments += 1
-                logger.debug(
-                    f"    Added {len(segment_rows)} rows (post-merge) from segment {seg_idx+1}"
-                )
-
-            except Exception as e:
-                logger.error(f"Error extracting table from segment {seg_idx+1}: {e}", exc_info=True)
-                continue
-
-        # Check for inconsistent header patterns after processing all segments
-        if merge_headers is None and len(segment_has_repeated_header) > 2:
-            # During auto-detection, check for consistency across all segments
-            expected_pattern = segment_has_repeated_header[1]  # Pattern from second segment
-            for seg_idx, has_header in enumerate(segment_has_repeated_header[2:], 2):
-                if has_header != expected_pattern:
-                    # Inconsistent pattern detected
-                    segments_with_headers = [
-                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if has_h
-                    ]
-                    segments_without_headers = [
-                        i for i, has_h in enumerate(segment_has_repeated_header[1:], 1) if not has_h
-                    ]
-                    raise ValueError(
-                        f"Inconsistent header pattern in multi-page table: "
-                        f"segments {segments_with_headers} have repeated headers, "
-                        f"but segments {segments_without_headers} do not. "
-                        f"All segments must have the same header pattern for reliable merging."
-                    )
-
-        logger.info(
-            f"Flow table extraction complete: {len(aggregated_rows)} total rows from {processed_segments}/{len(self.segments)} segments"
-        )
-        return TableResult(aggregated_rows)
 
     def extract_tables(
         self,
@@ -849,39 +548,12 @@ class Flow(Visualizable, SelectorHostMixin):
         table_settings: Optional[dict] = None,
         **kwargs,
     ) -> List[List[List[Optional[str]]]]:
-        """Extract every table across all segments in reading order.
-
-        Args:
-            method: Optional table engine name. Mirrors :meth:`Flow.extract_table`.
-            table_settings: Base pdfplumber settings (copied per segment).
-            **kwargs: Additional keyword arguments forwarded to each segment's
-                :meth:`extract_tables` implementation (e.g., ``content_filter``).
-
-        Returns:
-            List of tables, where each table is represented as a list of rows.
-            The order matches the order of ``self.segments``.
-        """
-
-        if not self.segments:
-            return []
-
-        base_settings = table_settings.copy() if table_settings else None
-        all_tables: List[List[List[Optional[str]]]] = []
-
-        for segment in self.segments:
-            segment_settings = base_settings.copy() if base_settings else None
-            tables = cast(
-                List[List[List[Optional[str]]]],
-                segment.extract_tables(
-                    method=method,
-                    table_settings=segment_settings,
-                    **kwargs,
-                ),
-            )
-            if tables:
-                all_tables.extend(tables)
-
-        return all_tables
+        return _flow_table_methods.flow_extract_tables(
+            self,
+            method=method,
+            table_settings=table_settings,
+            **kwargs,
+        )
 
     def analyze_layout(
         self,
@@ -895,183 +567,18 @@ class Flow(Visualizable, SelectorHostMixin):
         model_name: Optional[str] = None,
         client: Optional[Any] = None,
     ) -> "PhysicalElementCollection":
-        """
-        Analyze layout across all segments in the flow.
-
-        This method efficiently groups segments by their parent pages, runs layout analysis
-        only once per unique page, then filters results appropriately for each segment.
-        This avoids redundant analysis when multiple flow segments come from the same page.
-
-        Args:
-            engine: Name of the layout engine (e.g., 'yolo', 'tatr'). Uses manager's default if None.
-            options: Specific LayoutOptions object for advanced configuration.
-            confidence: Minimum confidence threshold.
-            classes: Specific classes to detect.
-            exclude_classes: Classes to exclude.
-            device: Device for inference.
-            existing: How to handle existing detected regions: 'replace' (default) or 'append'.
-            model_name: Optional model name for the engine.
-            client: Optional client for API-based engines.
-
-        Returns:
-            ElementCollection containing all detected Region objects from all segments.
-
-        Example:
-            Multi-page layout analysis:
-            ```python
-            pdf = npdf.PDF("document.pdf")
-
-            # Create flow for first 3 pages
-            page_flow = Flow(
-                segments=pdf.pages[:3],
-                arrangement='vertical'
-            )
-
-            # Analyze layout across all pages (efficiently)
-            all_regions = page_flow.analyze_layout(engine='yolo')
-
-            # Find all tables across the flow
-            tables = all_regions.filter('region[type=table]')
-            ```
-        """
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        logger.info(
-            f"Analyzing layout across Flow with {len(self.segments)} segments (engine: {engine or 'default'})"
+        return resolve_service(self, "layout").analyze_layout(
+            self,
+            engine=engine,
+            options=options,
+            confidence=confidence,
+            classes=classes,
+            exclude_classes=exclude_classes,
+            device=device,
+            existing=existing,
+            model_name=model_name,
+            client=client,
         )
-
-        if not self.segments:
-            raise ValueError("Flow has no segments; cannot analyze layout")
-
-        # Step 1: Group segments by their parent pages to avoid redundant analysis
-        segments_by_page = {}  # Dict[Page, List[Segment]]
-
-        for i, segment in enumerate(self.segments):
-            if hasattr(segment, "analyze_layout"):
-                page_obj = segment
-                segment_type = "page"
-            elif hasattr(segment, "page") and hasattr(segment.page, "analyze_layout"):
-                page_obj = segment.page
-                segment_type = "region"
-            else:
-                raise TypeError(f"Segment {i+1} does not support layout analysis: {segment!r}")
-
-            if page_obj not in segments_by_page:
-                segments_by_page[page_obj] = []
-            segments_by_page[page_obj].append((segment, segment_type))
-
-        if not segments_by_page:
-            raise ValueError("No segments with analyzable pages found")
-
-        logger.debug(
-            f"  Grouped {len(self.segments)} segments into {len(segments_by_page)} unique pages"
-        )
-
-        # Step 2: Analyze each unique page only once
-        all_detected_regions: List["PhysicalRegion"] = []
-        processed_pages = 0
-
-        for page_obj, page_segments in segments_by_page.items():
-            try:
-                logger.debug(
-                    f"  Analyzing layout for page {getattr(page_obj, 'number', '?')} with {len(page_segments)} segments"
-                )
-
-                # Run layout analysis once for this page
-                page_results = page_obj.analyze_layout(
-                    engine=engine,
-                    options=options,
-                    confidence=confidence,
-                    classes=classes,
-                    exclude_classes=exclude_classes,
-                    device=device,
-                    existing=existing,
-                    model_name=model_name,
-                    client=client,
-                )
-
-                # Extract regions from results
-                if hasattr(page_results, "elements"):
-                    # It's an ElementCollection
-                    page_regions = page_results.elements
-                elif isinstance(page_results, list):
-                    # It's a list of regions
-                    page_regions = page_results
-                else:
-                    raise TypeError(
-                        f"Page {getattr(page_obj, 'number', '?')} returned unexpected layout analysis result type: {type(page_results)}"
-                    )
-
-                if not page_regions:
-                    logger.debug(
-                        f"    No layout regions found on page {getattr(page_obj, 'number', '?')}"
-                    )
-                    continue
-
-                # Step 3: For each segment on this page, collect relevant regions
-                segments_processed_on_page = 0
-                for segment, segment_type in page_segments:
-                    if segment_type == "page":
-                        # Full page segment: include all detected regions
-                        all_detected_regions.extend(page_regions)
-                        segments_processed_on_page += 1
-                        logger.debug(f"    Added {len(page_regions)} regions for full-page segment")
-
-                    elif segment_type == "region":
-                        # Region segment: filter to only intersecting regions
-                        intersecting_regions = []
-                        for region in page_regions:
-                            try:
-                                if segment.intersects(region):
-                                    intersecting_regions.append(region)
-                            except Exception as intersect_error:
-                                logger.debug(
-                                    f"Error checking intersection for region: {intersect_error}"
-                                )
-                                # Include the region anyway if intersection check fails
-                                intersecting_regions.append(region)
-
-                        all_detected_regions.extend(intersecting_regions)
-                        segments_processed_on_page += 1
-                        logger.debug(
-                            f"    Added {len(intersecting_regions)} intersecting regions for region segment {segment.bbox}"
-                        )
-
-                processed_pages += 1
-                logger.debug(
-                    f"    Processed {segments_processed_on_page} segments on page {getattr(page_obj, 'number', '?')}"
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error analyzing layout for page {getattr(page_obj, 'number', '?')}: {e}",
-                    exc_info=True,
-                )
-                continue
-
-        # Step 4: Remove duplicates (can happen if multiple segments intersect the same region)
-        unique_regions = []
-        seen_region_ids = set()
-
-        for region in all_detected_regions:
-            # Create a unique identifier for this region (page + bbox)
-            region_id = (
-                getattr(region.page, "index", id(region.page)),
-                region.bbox if hasattr(region, "bbox") else id(region),
-            )
-
-            if region_id not in seen_region_ids:
-                unique_regions.append(region)
-                seen_region_ids.add(region_id)
-
-        dedupe_removed = len(all_detected_regions) - len(unique_regions)
-        if dedupe_removed > 0:
-            logger.debug(f"  Removed {dedupe_removed} duplicate regions")
-
-        logger.info(
-            f"Flow layout analysis complete: {len(unique_regions)} unique regions from {processed_pages} pages"
-        )
-        return ElementCollection(unique_regions)
 
     def _get_render_specs(
         self,

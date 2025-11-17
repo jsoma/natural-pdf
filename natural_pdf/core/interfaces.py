@@ -47,6 +47,7 @@ class SupportsSections(ABC):
         auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
         """Locate elements relative to the object."""
 
@@ -103,7 +104,7 @@ class SupportsElement(SupportsGeometry, Protocol):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -119,7 +120,7 @@ class SupportsElement(SupportsGeometry, Protocol):
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = "full",
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
@@ -170,67 +171,6 @@ class HasConfig(Protocol):
     """Objects that can resolve configuration values."""
 
     def get_config(self, key: str, default: Any = None, *, scope: str = "region") -> Any: ...
-
-
-@runtime_checkable
-class HasManager(Protocol):
-    """Objects that can provide service managers by name."""
-
-    def get_manager(self, name: str) -> Any: ...
-
-
-@runtime_checkable
-class SupportsTextElements(Protocol):
-    """Objects exposing section utilities plus word/char collections."""
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        **kwargs: Any,
-    ) -> "ElementCollection": ...
-
-    def get_sections(
-        self,
-        start_elements: Union[str, Sequence["Element"], "ElementCollection", None] = None,
-        end_elements: Union[str, Sequence["Element"], "ElementCollection", None] = None,
-        **kwargs: Any,
-    ) -> "ElementCollection": ...
-
-    def to_region(self) -> "Region": ...
-
-    @property
-    def words(self) -> Sequence["Element"]: ...
-
-    @property
-    def chars(self) -> Sequence["Element"]: ...
-
-    def add_exclusion(
-        self, exclusion: Callable[["Page"], Optional["ElementCollection"]]
-    ) -> "SupportsTextElements": ...
-
-    def get_all_elements_raw(self) -> Sequence["Element"]: ...
-
-    def get_elements_by_type(self, element_type: str) -> Sequence[Any]: ...
-
-    def add_element(self, element: Any, element_type: str = "words") -> bool: ...
-
-    def remove_element(self, element: Any, element_type: Optional[str] = None) -> bool: ...
-
-    def remove_elements_by_source(self, element_type: str, source: str) -> int: ...
-
-    def remove_ocr_elements(self) -> int: ...
-
-    def clear_text_layer(self) -> Tuple[int, int]: ...
-
-    def create_text_elements_from_ocr(
-        self, ocr_results: Any, scale_x: Optional[float] = None, scale_y: Optional[float] = None
-    ) -> Sequence[Any]: ...
-
-    def iter_regions(self) -> Sequence["Region"]: ...
-
-    def remove_regions_by_source(self, source: str) -> int: ...
 
 
 @runtime_checkable

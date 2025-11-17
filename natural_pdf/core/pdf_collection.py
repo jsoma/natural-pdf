@@ -34,23 +34,23 @@ from natural_pdf.classification.manager import ClassificationError
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.vision.mixin import VisualSearchMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
 
 Indexable = Any
 SearchOptions = Any
 SearchServiceProtocol = Any
 
-from natural_pdf.analyzers.shape_detection_mixin import ShapeDetectionMixin
-
 # Import the ApplyMixin
 from natural_pdf.collections.mixins import ApplyMixin
 
 
-class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMixin):
+class PDFCollection(ServiceHostMixin, ApplyMixin, ExportMixin):
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -99,6 +99,8 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
 
         # Initialize internal search service reference (available when search extras installed)
         self._search_service: Optional[Any] = None
+
+        self._bind_service_context()
 
     @staticmethod
     def _get_pdf_class():
@@ -203,6 +205,20 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
         """Creates a PDFCollection explicitly from a list of glob patterns."""
         # __init__ can handle List[str] containing globs directly
         return cls(patterns, recursive=recursive, **pdf_options)
+
+    # ------------------------------------------------------------------
+    # Service context helpers
+    # ------------------------------------------------------------------
+    def _bind_service_context(self) -> None:
+        context = self._resolve_service_context()
+        self._init_service_host(context)
+
+    def _resolve_service_context(self) -> PDFContext:
+        for pdf in self._pdfs:
+            context = getattr(pdf, "_context", None)
+            if context is not None:
+                return context
+        return PDFContext.with_defaults()
 
     @classmethod
     def from_directory(
@@ -383,78 +399,67 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
         # Return the combined image (Jupyter will display it automatically)
         return combined
 
-    @overload
-    def find_all(
+    def find(
         self,
+        selector: Optional[str] = None,
         *,
-        text: Union[str, Sequence[str]],
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ):
+        """Return the first element across every PDF in the collection matching selector/text."""
+        return resolve_service(self, "selector").find(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
 
-    @overload
     def find_all(
         self,
-        selector: str,
+        selector: Optional[str] = None,
         *,
+        text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection": ...
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,  # Now optional
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,  # New text parameter
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        **kwargs,
-    ) -> "ElementCollection":
-        """
-        Find all elements matching the selector OR text across all PDFs in the collection.
-
-        Provide EITHER `selector` OR `text`, but not both.
-
-        This creates an ElementCollection that can span multiple PDFs. Note that
-        some ElementCollection methods have limitations when spanning PDFs.
-
-        Args:
-            selector: CSS-like selector string to query elements.
-            text: Text content to search for (equivalent to 'text:contains(...)'). Accepts a
-                  single string or an iterable of strings (matches any value).
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            **kwargs: Additional keyword arguments passed to the find_all method of each PDF.
-
-        Returns:
-            ElementCollection containing all matching elements across all PDFs.
-        """
-        # Validation happens within pdf.find_all
-
-        # Collect elements from all PDFs
-        all_elements = []
-        for pdf in self._pdfs:
-            try:
-                # Pass the relevant arguments down to each PDF's find_all
-                elements = pdf.find_all(
-                    selector=selector,
-                    text=text,
-                    apply_exclusions=apply_exclusions,
-                    regex=regex,
-                    case=case,
-                    **kwargs,
-                )
-                all_elements.extend(elements.elements)
-            except Exception as e:
-                logger.error(f"Error finding elements in {pdf.path}: {e}", exc_info=True)
-
-        return ElementCollection(all_elements)
+        text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
+        reading_order: bool = True,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
+    ) -> ElementCollection:
+        """Return every element across every PDF in the collection matching selector/text."""
+        return resolve_service(self, "selector").find_all(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
+        )
 
     def apply_ocr(
         self,
@@ -743,6 +748,61 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
             final_message += f", Skipped: {skipped_count}"
         logger.info(final_message + ".")
 
+    # ------------------------------------------------------------------
+    # QA service hooks
+    # ------------------------------------------------------------------
+    def _qa_segments(self):
+        segments = []
+        for pdf in self._pdfs:
+            pages = getattr(pdf, "pages", None)
+            if not pages:
+                continue
+            try:
+                segments.extend(list(pages))
+            except Exception:
+                continue
+        return tuple(segments)
+
+    def _qa_target_region(self):
+        for pdf in self._pdfs:
+            pages = getattr(pdf, "pages", None)
+            if not pages:
+                continue
+            try:
+                first_page = pages[0]
+            except Exception:
+                continue
+            to_region = getattr(first_page, "to_region", None)
+            if callable(to_region):
+                return to_region()
+        raise RuntimeError("PDFCollection has no pages available for QA.")
+
+    def _qa_context_page_number(self) -> int:
+        for pdf in self._pdfs:
+            pages = getattr(pdf, "pages", None)
+            if not pages:
+                continue
+            try:
+                first_page = pages[0]
+                return int(getattr(first_page, "number", -1))
+            except Exception:
+                continue
+        return -1
+
+    def _qa_source_elements(self) -> ElementCollection:
+        return ElementCollection([])
+
+    def _qa_normalize_result(self, result: Any):
+        from natural_pdf.elements.region import Region
+
+        return Region._normalize_qa_output(result)
+
+    @staticmethod
+    def _qa_confidence(candidate: Any) -> float:
+        from natural_pdf.flows.region import FlowRegion
+
+        return FlowRegion._qa_confidence(candidate)
+
         return self
 
     # --- End Classification Method --- #
@@ -793,3 +853,9 @@ class PDFCollection(ApplyMixin, ExportMixin, ShapeDetectionMixin, VisualSearchMi
             all_data.append(pdf_data)
 
         return all_data
+
+
+attach_capability(PDFCollection, "vision")
+attach_capability(PDFCollection, "shapes")
+attach_capability(PDFCollection, "checkbox")
+attach_capability(PDFCollection, "qa")

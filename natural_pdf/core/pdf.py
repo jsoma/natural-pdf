@@ -39,19 +39,17 @@ else:
 
     PdfPlumberPDF = Any  # type: ignore[assignment]
 
-from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
 from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
 )
 from natural_pdf.classification.manager import ClassificationError
-from natural_pdf.classification.mixin import ClassificationMixin
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.extraction.manager import StructuredDataManager
-from natural_pdf.extraction.mixin import ExtractionMixin
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
@@ -67,9 +65,8 @@ from natural_pdf.search import (
     get_search_service,
 )
 from natural_pdf.search.search_service_protocol import SearchServiceProtocol
-from natural_pdf.selectors.parser import build_text_contains_selector, parse_selector
-from natural_pdf.text_mixin import TextMixin
-from natural_pdf.vision.mixin import VisualSearchMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
@@ -225,6 +222,7 @@ class _LazyPageList(Sequence["Page"]):
                 index=actual_page_index,
                 font_attrs=self._font_attrs,
                 load_text=self._load_text,
+                context=self._parent_pdf._context,
             )
 
             # Apply any stored exclusions to the newly created page
@@ -326,12 +324,8 @@ class _LazyPageList(Sequence["Page"]):
 
 
 class PDF(
-    TextMixin,
-    ExtractionMixin,
+    ServiceHostMixin,
     ExportMixin,
-    ClassificationMixin,
-    CheckboxDetectionMixin,
-    VisualSearchMixin,
     Visualizable,
 ):
     """Enhanced PDF wrapper built on top of pdfplumber.
@@ -493,6 +487,7 @@ class PDF(
         text_tolerance: Optional[dict] = None,
         auto_text_tolerance: bool = True,
         text_layer: bool = True,
+        context: Optional[PDFContext] = None,
     ):
         """Initialize the enhanced PDF object.
 
@@ -537,6 +532,9 @@ class PDF(
                           font_attrs=['fontname', 'size', 'flags'])
             ```
         """
+        self._context = context or PDFContext.with_defaults()
+        self._init_service_host(self._context)
+
         self._original_path_or_stream = path_or_url_or_stream
         self._temp_file = None
         self._resolved_path = None
@@ -806,7 +804,7 @@ class PDF(
 
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
-        return PageCollection(cast(Sequence["Page"], self._pages))
+        return PageCollection(cast(Sequence["Page"], self._pages), context=self._context)
 
     def clear_exclusions(self) -> "PDF":
         """Clear all exclusion functions from the PDF.
@@ -1077,147 +1075,96 @@ class PDF(
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
-        **extra_kwargs: Any,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> Optional[Any]:
-        """
-        Find the first element matching the selector OR text content across all pages.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return the first element across all pages that matches selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Optional text shortcut (equivalent to ``text:contains(...)``).
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional dict of tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
-            reading_order: Whether to sort matches in reading order when applicable (default: True).
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Present for API parity; ignored for full-document searches.
+            apply_exclusions: Whether exclusion regions should be honoured.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use document reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            Element object or None if not found.
+            The first matching :class:`natural_pdf.elements.base.Element`, if any.
         """
-        if not hasattr(self, "_pages"):
-            raise AttributeError("PDF pages not yet initialized.")
-
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        # Construct selector if 'text' is provided
-        effective_selector = ""
-        if text is not None:
-            effective_selector = build_text_contains_selector(text)
-            logger.debug(
-                f"Using text shortcut: find(text={text!r}) -> find('{effective_selector}')"
-            )
-        elif selector is not None:
-            effective_selector = selector
-        else:
-            raise ValueError("Internal error: No selector or text provided.")
-
-        _ = parse_selector(effective_selector)  # Parse once to fail fast on invalid selectors
-
-        selector_kwargs: Dict[str, Any] = dict(extra_kwargs)
-        selector_kwargs.update(
-            {
-                "apply_exclusions": apply_exclusions,
-                "regex": regex,
-                "case": case,
-                "text_tolerance": text_tolerance,
-                "auto_text_tolerance": auto_text_tolerance,
-                "reading_order": reading_order,
-            }
+        return resolve_service(self, "selector").find(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
         )
-
-        for page in self.pages:
-            element = page.find(selector=effective_selector, **selector_kwargs)
-            if element is not None:
-                return element
-
-        return None
 
     def find_all(
         self,
         selector: Optional[str] = None,
         *,
         text: Optional[Union[str, Sequence[str]]] = None,
+        overlap: Optional[str] = None,
         apply_exclusions: bool = True,
         regex: bool = False,
         case: bool = True,
         text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Dict[str, Any]] = None,
+        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
         reading_order: bool = True,
-        **extra_kwargs: Any,
+        near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> "ElementCollection":
-        """
-        Find all elements matching the selector OR text content across all pages.
-
-        Provide EITHER `selector` OR `text`, but not both.
+        """Return every element across all pages that satisfies selector/text filters.
 
         Args:
             selector: CSS-like selector string.
-            text: Optional text shortcut (equivalent to ``text:contains(...)``).
-            apply_exclusions: Whether to exclude elements in exclusion regions (default: True).
-            regex: Whether to use regex for text search (`selector` or `text`) (default: False).
-            case: Whether to do case-sensitive text search (`selector` or `text`) (default: True).
-            text_tolerance: Optional dict of tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides controlling automatic tolerance logic.
-            reading_order: Whether to sort matches in reading order when applicable (default: True).
+            text: Text shortcut equivalent to ``text:contains(...)``.
+            overlap: Present for API parity; ignored for full-document searches.
+            apply_exclusions: Whether exclusion regions should be honoured.
+            regex: Whether selector/text filters use regular expressions.
+            case: Whether text comparisons are case-sensitive.
+            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
+            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
+            reading_order: Whether matches use document reading order.
+            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
+            engine: Optional selector engine registered with the provider.
 
         Returns:
-            ElementCollection with matching elements.
+            :class:`natural_pdf.elements.element_collection.ElementCollection` of matches.
         """
-        if not hasattr(self, "_pages"):
-            raise AttributeError("PDF pages not yet initialized.")
-
-        if selector is not None and text is not None:
-            raise ValueError("Provide either 'selector' or 'text', not both.")
-        if selector is None and text is None:
-            raise ValueError("Provide either 'selector' or 'text'.")
-
-        # Construct selector if 'text' is provided
-        effective_selector = ""
-        if text is not None:
-            effective_selector = build_text_contains_selector(text)
-            logger.debug(
-                f"Using text shortcut: find_all(text={text!r}) -> find_all('{effective_selector}')"
-            )
-        elif selector is not None:
-            effective_selector = selector
-        else:
-            raise ValueError("Internal error: No selector or text provided.")
-
-        _ = parse_selector(effective_selector)  # Validate selector once
-
-        selector_kwargs: Dict[str, Any] = dict(extra_kwargs)
-        selector_kwargs.update(
-            {
-                "apply_exclusions": apply_exclusions,
-                "regex": regex,
-                "case": case,
-                "text_tolerance": text_tolerance,
-                "auto_text_tolerance": auto_text_tolerance,
-                "reading_order": reading_order,
-            }
+        return resolve_service(self, "selector").find_all(
+            self,
+            selector=selector,
+            text=text,
+            overlap=overlap,
+            apply_exclusions=apply_exclusions,
+            regex=regex,
+            case=case,
+            text_tolerance=text_tolerance,
+            auto_text_tolerance=auto_text_tolerance,
+            reading_order=reading_order,
+            near_threshold=near_threshold,
+            engine=engine,
         )
-
-        all_elements: List = []
-        for page in self.pages:
-            page_elements = page.find_all(selector=effective_selector, **selector_kwargs)
-            if page_elements:
-                all_elements.extend(page_elements.elements)
-
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        return ElementCollection(all_elements)
 
     def extract_text(
         self,
@@ -1809,123 +1756,25 @@ class PDF(
                 top_p=top_p,
             )
 
-        from natural_pdf.qa import get_qa_engine
+        if temperature is not None or top_p is not None:
+            logger.info(
+                "temperature/top_p parameters are only honored in generative mode; ignoring them for extractive QA."
+            )
 
-        qa_engine = get_qa_engine() if model is None else get_qa_engine(model_name=model)
+        from natural_pdf.core.page_collection import PageCollection
 
-        if temperature is not None:
-            set_temp = getattr(qa_engine, "set_temperature", None)
-            if callable(set_temp):
-                try:
-                    set_temp(temperature)
-                except Exception:
-                    logger.debug("QA engine rejected temperature override; ignoring.")
-
-        if top_p is not None:
-            set_top_p = getattr(qa_engine, "set_top_p", None)
-            if callable(set_top_p):
-                try:
-                    set_top_p(top_p)
-                except Exception:
-                    logger.debug("QA engine rejected top_p override; ignoring.")
-
-        logger.info(
-            f"Processing {len(questions)} question(s) across {len(target_pages)} page(s) using batch QA..."
+        page_collection = PageCollection(target_pages, context=self._context)
+        qa_result = page_collection.ask(
+            questions,
+            min_confidence=min_confidence,
+            model=model,
         )
 
-        # Collect all page images and metadata for batch processing
-        page_images: List[Image.Image] = []
-        page_word_boxes: List[Any] = []
-        page_metadata: List[Dict[str, Any]] = []
-
-        for page in target_pages:
-            # Get page image
-            try:
-                # Use render() for clean image without highlights
-                page_image = page.render(resolution=150)
-                if page_image is None:
-                    logger.warning(f"Failed to render image for page {page.number}, skipping")
-                    continue
-
-                # Get text elements for word boxes
-                elements = page.find_all("text")
-                if not elements:
-                    logger.warning(f"No text elements found on page {page.number}")
-                    word_boxes = []
-                else:
-                    word_boxes = qa_engine._get_word_boxes_from_elements(
-                        elements, offset_x=0, offset_y=0
-                    )
-
-                page_images.append(page_image)
-                page_word_boxes.append(word_boxes)
-                page_metadata.append({"page_number": page.number, "page_object": page})
-
-            except Exception as e:
-                logger.warning(f"Error processing page {page.number}: {e}")
-                continue
-
-        if not page_images:
-            logger.warning("No page images could be processed for QA.")
-            return [_empty_result() for _ in questions]
-
-        # Process all questions against all pages in batch
-        all_results: List[QAResult] = []
-
-        for question_text in questions:
-            question_results: List[QAResult] = []
-
-            # Ask this question against each page (but in batch per page)
-            for i, (page_image, word_boxes, page_meta) in enumerate(
-                zip(page_images, page_word_boxes, page_metadata)
-            ):
-                try:
-                    # Use the DocumentQA batch interface
-                    raw_result = qa_engine.ask(
-                        image=page_image,
-                        question=question_text,
-                        word_boxes=word_boxes,
-                        min_confidence=min_confidence,
-                    )
-
-                    page_result: Optional[QAResult]
-                    if isinstance(raw_result, QAResult):
-                        page_result = raw_result
-                    elif isinstance(raw_result, list) and raw_result:
-                        page_result = raw_result[0]
-                    else:
-                        page_result = None
-
-                    if page_result and page_result.found:
-                        qa_result = QAResult(
-                            {
-                                "answer": page_result.answer,
-                                "confidence": page_result.confidence,
-                                "found": page_result.found,
-                                "page_num": page_meta["page_number"],
-                                "source_elements": getattr(page_result, "source_elements", []),
-                                "start": getattr(page_result, "start", -1),
-                                "end": getattr(page_result, "end", -1),
-                            }
-                        )
-                        question_results.append(qa_result)
-
-                except Exception as e:
-                    logger.warning(
-                        f"Error processing question '{question_text}' on page {page_meta['page_number']}: {e}"
-                    )
-                    continue
-
-            # Sort results by confidence and take the best one for this question
-            question_results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
-
-            if question_results:
-                all_results.append(question_results[0])
-            else:
-                # No results found for this question
-                all_results.append(_empty_result())
-
-        return all_results
+        normalized = qa_result if isinstance(qa_result, list) else [qa_result]
+        return [
+            QAResult(result) if not isinstance(result, QAResult) else result
+            for result in normalized
+        ]
 
     def _ask_batch_generative(
         self,
@@ -2907,23 +2756,7 @@ class PDF(
         Returns:
             An ElementCollection of all detected Region objects.
         """
-        return self.pages.analyze_layout(*args, **kwargs)
-
-    def detect_checkboxes(self, *args, **kwargs) -> "ElementCollection[Region]":
-        """
-        Detects checkboxes on all pages in the PDF.
-
-        This is a convenience method that calls detect_checkboxes on the PDF's
-        page collection.
-
-        Args:
-            *args: Positional arguments passed to pages.detect_checkboxes().
-            **kwargs: Keyword arguments passed to pages.detect_checkboxes().
-
-        Returns:
-            An ElementCollection of all detected checkbox Region objects.
-        """
-        return self.pages.detect_checkboxes(*args, **kwargs)
+        return resolve_service(self, "layout").analyze_layout(self, *args, **kwargs)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """
@@ -2952,3 +2785,11 @@ class PDF(
         from natural_pdf.core.highlighting_service import HighlightContext
 
         return HighlightContext(self, show_on_exit=show)
+
+
+attach_capability(PDF, "text")
+attach_capability(PDF, "vision")
+attach_capability(PDF, "shapes")
+attach_capability(PDF, "checkbox")
+attach_capability(PDF, "classification")
+attach_capability(PDF, "extraction")

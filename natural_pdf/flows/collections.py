@@ -21,8 +21,12 @@ from typing import (
 from PIL import Image  # Single import for PIL.Image module
 
 from natural_pdf.collections.mixins import SectionsCollectionMixin, _SectionHost
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -30,6 +34,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page as PhysicalPage
     from natural_pdf.elements.base import Element as PhysicalElement
     from natural_pdf.elements.element_collection import ElementCollection
+    from natural_pdf.elements.region import Region
 
     from .element import FlowElement
     from .region import FlowRegion
@@ -99,19 +104,14 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         return f"<FlowElementCollection(count={len(self)})>"
 
     def _execute_directional_on_all(self, method_name: str, **kwargs) -> "FlowRegionCollection":
-        results: List["FlowRegion"] = []
         if not self._flow_elements:
-            return FlowRegionCollection([])  # Return empty FlowRegionCollection
+            return FlowRegionCollection([])
 
-        # Assuming all flow_elements share the same flow context
-        # (which should be true if they came from the same Flow.find_all())
-
-        for fe in self._flow_elements:
-            method_to_call = getattr(fe, method_name)
-            flow_region_result: "FlowRegion" = method_to_call(**kwargs)
-            # FlowElement directional methods always return a FlowRegion (even if empty)
-            results.append(flow_region_result)
-        return FlowRegionCollection(results)
+        service_host = (
+            getattr(self._flow_elements[0], "physical_object", None) or self._flow_elements[0]
+        )
+        navigation = resolve_service(service_host, "navigation")
+        return navigation.flow_element_collection(self, method_name, **kwargs)
 
     def above(
         self,
@@ -370,7 +370,9 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             )
 
 
-class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequence["FlowRegion"]):
+class FlowRegionCollection(
+    ServiceHostMixin, Visualizable, SectionsCollectionMixin, MutableSequence["FlowRegion"]
+):
     """
     A collection of FlowRegion objects, typically the result of directional
     operations on a FlowElementCollection.
@@ -381,6 +383,8 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
         self._flow_regions: List["FlowRegion"] = (
             list(flow_regions) if flow_regions is not None else []
         )
+        self._context_placeholder: bool = False
+        self._bind_initial_context(self._flow_regions)
 
     def __getitem__(self, index: Union[int, slice, SupportsIndex]) -> Any:
         if isinstance(index, slice):
@@ -398,8 +402,12 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
                     "Slice assignment requires a FlowRegionCollection or sequence of FlowRegion instances."
                 )
             self._flow_regions[index] = replacement
+            for region in replacement:
+                self._maybe_update_context_from(region)
         else:
-            self._flow_regions[int(index)] = cast("FlowRegion", value)
+            region_value = cast("FlowRegion", value)
+            self._flow_regions[int(index)] = region_value
+            self._maybe_update_context_from(region_value)
 
     def __delitem__(self, index: Union[int, slice, SupportsIndex]) -> None:
         if isinstance(index, slice):
@@ -412,9 +420,183 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
 
     def insert(self, index: int, value: "FlowRegion") -> None:
         self._flow_regions.insert(index, value)
+        self._maybe_update_context_from(value)
 
     def __repr__(self) -> str:
         return f"<FlowRegionCollection(count={len(self)})>"
+
+    # ------------------------------------------------------------------
+    # Service context helpers
+    # ------------------------------------------------------------------
+    def _bind_initial_context(self, regions: Sequence["FlowRegion"]) -> None:
+        context = self._find_context(regions)
+        if context is None:
+            self._context_placeholder = True
+            context = PDFContext.with_defaults()
+        else:
+            self._context_placeholder = False
+        self._init_service_host(context)
+
+    def _maybe_update_context_from(self, region: "FlowRegion") -> None:
+        if not self._context_placeholder:
+            return
+        context = getattr(region, "_context", None)
+        if context is None:
+            return
+        self._init_service_host(context)
+        self._context_placeholder = False
+
+    @staticmethod
+    def _find_context(regions: Sequence["FlowRegion"]):
+        for region in regions:
+            context = getattr(region, "_context", None)
+            if context is not None:
+                return context
+        return None
+
+    def _normalize_within(self, within: Optional[Any]) -> Optional["Region"]:
+        if within is None:
+            return None
+        from natural_pdf.elements.region import Region
+        from natural_pdf.flows.region import FlowRegion
+
+        if isinstance(within, Region):
+            return within
+        if isinstance(within, FlowRegion):
+            raise TypeError(
+                "FlowRegionCollection directional 'within' expects a Region; FlowRegion is not supported. "
+                "TODO: support FlowRegion-to-FlowRegion constraints by intersecting constituent pages."
+            )
+        raise TypeError(
+            f"Unsupported within argument type '{type(within).__name__}' for FlowRegionCollection."
+        )
+
+    def _execute_directional_on_regions(
+        self, method_name: str, within: Optional[Any], **kwargs
+    ) -> "FlowRegionCollection":
+        if not self._flow_regions:
+            return FlowRegionCollection([])
+        navigation = resolve_service(self._flow_regions[0], "navigation")
+        normalized_within = self._normalize_within(within)
+        return navigation.flow_region_collection(
+            self, method_name, within=normalized_within, **kwargs
+        )
+
+    def above(
+        self,
+        height: Optional[float] = None,
+        width: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional[Any] = None,
+        anchor: str = "start",
+        **kwargs,
+    ) -> "FlowRegionCollection":
+        return self._execute_directional_on_regions(
+            "above",
+            within=within,
+            height=height,
+            width=width,
+            include_source=include_source,
+            until=until,
+            include_endpoint=include_endpoint,
+            offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            anchor=anchor,
+            **kwargs,
+        )
+
+    def below(
+        self,
+        height: Optional[float] = None,
+        width: str = "full",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional[Any] = None,
+        anchor: str = "start",
+        **kwargs,
+    ) -> "FlowRegionCollection":
+        return self._execute_directional_on_regions(
+            "below",
+            within=within,
+            height=height,
+            width=width,
+            include_source=include_source,
+            until=until,
+            include_endpoint=include_endpoint,
+            offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            anchor=anchor,
+            **kwargs,
+        )
+
+    def left(
+        self,
+        width: Optional[float] = None,
+        height: str = "element",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional[Any] = None,
+        anchor: str = "start",
+        **kwargs,
+    ) -> "FlowRegionCollection":
+        return self._execute_directional_on_regions(
+            "left",
+            within=within,
+            width=width,
+            height=height,
+            include_source=include_source,
+            until=until,
+            include_endpoint=include_endpoint,
+            offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            anchor=anchor,
+            **kwargs,
+        )
+
+    def right(
+        self,
+        width: Optional[float] = None,
+        height: str = "element",
+        include_source: bool = False,
+        until: Optional[str] = None,
+        include_endpoint: bool = True,
+        offset: Optional[float] = None,
+        apply_exclusions: bool = True,
+        multipage: Optional[bool] = None,
+        within: Optional[Any] = None,
+        anchor: str = "start",
+        **kwargs,
+    ) -> "FlowRegionCollection":
+        return self._execute_directional_on_regions(
+            "right",
+            within=within,
+            width=width,
+            height=height,
+            include_source=include_source,
+            until=until,
+            include_endpoint=include_endpoint,
+            offset=offset,
+            apply_exclusions=apply_exclusions,
+            multipage=multipage,
+            anchor=anchor,
+            **kwargs,
+        )
 
     def _get_highlighter(self):
         if not self._flow_regions:
@@ -528,33 +710,19 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
     # ------------------------------------------------------------------
     # Table extraction helpers
     # ------------------------------------------------------------------
+
     def extract_table(
         self,
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
         **kwargs,
     ) -> List[TableResult]:
-        """Extract a table from every FlowRegion and return the per-region results.
-
-        Args:
-            method: Table engine name to forward to :meth:`FlowRegion.extract_table`.
-            table_settings: Optional pdfplumber settings applied to every region.
-            **kwargs: Additional keyword arguments forwarded verbatim to each region.
-
-        Returns:
-            List of :class:`TableResult` objects matching the order of this collection.
-        """
-
-        results: List[TableResult] = []
-        for flow_region in self._flow_regions:
-            results.append(
-                flow_region.extract_table(
-                    method=method,
-                    table_settings=table_settings.copy() if table_settings else None,
-                    **kwargs,
-                )
-            )
-        return results
+        return _flow_table_methods.flow_collection_extract_table(
+            self,
+            method=method,
+            table_settings=table_settings,
+            **kwargs,
+        )
 
     def extract_tables(
         self,
@@ -562,27 +730,12 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
         table_settings: Optional[dict] = None,
         **kwargs,
     ) -> List[List[List[Optional[str]]]]:
-        """Extract every table across all FlowRegions in the collection.
-
-        Args:
-            method: Table engine name (forwarded to :meth:`FlowRegion.extract_tables`).
-            table_settings: Optional pdfplumber settings copied before each call.
-            **kwargs: Additional keyword arguments forwarded verbatim.
-
-        Returns:
-            Flattened list of tables (each table is a list of rows) in collection order.
-        """
-
-        aggregated: List[List[List[Optional[str]]]] = []
-        for flow_region in self._flow_regions:
-            region_tables = flow_region.extract_tables(
-                method=method,
-                table_settings=table_settings.copy() if table_settings else None,
-                **kwargs,
-            )
-            if region_tables:
-                aggregated.extend(region_tables)
-        return aggregated
+        return _flow_table_methods.flow_collection_extract_tables(
+            self,
+            method=method,
+            table_settings=table_settings,
+            **kwargs,
+        )
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self._flow_regions))
@@ -652,6 +805,57 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
     def apply(self, func: Callable[["FlowRegion"], Any]) -> List[Any]:
         return [func(fr) for fr in self._flow_regions]
 
+    # ------------------------------------------------------------------
+    # QA service hooks
+    # ------------------------------------------------------------------
+    def _qa_segments(self) -> Sequence["FlowRegion"]:
+        return tuple(self._flow_regions)
+
+    def _qa_target_region(self):
+        if not self._flow_regions:
+            raise RuntimeError("FlowRegionCollection has no FlowRegion data for QA.")
+        first_region = self._flow_regions[0]
+        return first_region._qa_target_region()
+
+    def _qa_context_page_number(self) -> int:
+        first_region = self.first
+        if first_region is None:
+            return -1
+        getter = getattr(first_region, "_qa_context_page_number", None)
+        if callable(getter):
+            try:
+                return int(getter())
+            except Exception:
+                return -1
+        return -1
+
+    def _qa_source_elements(self):
+        first_region = self.first
+        if first_region is None:
+            from natural_pdf.elements.element_collection import ElementCollection
+
+            return ElementCollection([])
+        getter = getattr(first_region, "_qa_source_elements", None)
+        if callable(getter):
+            try:
+                return getter()
+            except Exception:
+                pass
+        from natural_pdf.elements.element_collection import ElementCollection
+
+        return ElementCollection([])
+
+    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        from natural_pdf.elements.region import Region
+
+        return Region._normalize_qa_output(result)
+
+    @staticmethod
+    def _qa_confidence(candidate: Any) -> float:
+        from natural_pdf.flows.region import FlowRegion
+
+        return FlowRegion._qa_confidence(candidate)
+
     @staticmethod
     def _normalize_crop_mode(
         value: Union[bool, int, Literal["content", "wide"]]
@@ -659,3 +863,6 @@ class FlowRegionCollection(Visualizable, SectionsCollectionMixin, MutableSequenc
         if value == "content":
             return "content"
         return bool(value)
+
+
+attach_capability(FlowRegionCollection, "qa")

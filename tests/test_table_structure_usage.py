@@ -34,15 +34,15 @@ def test_region_extract_table_uses_structure_engine(monkeypatch, structure_engin
     structure_result = StructureDetectionResult(capabilities={"cells"}, cells=cells)
 
     monkeypatch.setattr(
-        "natural_pdf.core.table_mixin.resolve_table_structure_engine_name",
+        "natural_pdf.services.table_service.resolve_table_structure_engine_name",
         lambda ctx, requested=None, scope="region": structure_engine or "tatr",
     )
     monkeypatch.setattr(
-        "natural_pdf.core.table_mixin.run_table_structure_engine",
+        "natural_pdf.services.table_service.run_table_structure_engine",
         lambda **kwargs: structure_result,
     )
     monkeypatch.setattr(
-        "natural_pdf.core.table_mixin.run_table_engine",
+        "natural_pdf.services.table_service.run_table_engine",
         lambda **_: (_ for _ in ()).throw(AssertionError("table engine should not run")),
     )
 
@@ -62,11 +62,11 @@ def test_region_extract_table_strict_structure_failure(monkeypatch):
     monkeypatch.setattr(region.page, "find_all", lambda *args, **kwargs: [])
 
     monkeypatch.setattr(
-        "natural_pdf.core.table_mixin.resolve_table_structure_engine_name",
+        "natural_pdf.services.table_service.resolve_table_structure_engine_name",
         lambda ctx, requested=None, scope="region": requested,
     )
     monkeypatch.setattr(
-        "natural_pdf.core.table_mixin.run_table_structure_engine",
+        "natural_pdf.services.table_service.run_table_structure_engine",
         lambda **kwargs: None,
     )
 

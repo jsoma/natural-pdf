@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import natural_pdf as npdf
+from natural_pdf.core.context import PDFContext
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.flows.flow import Flow
 from natural_pdf.selectors import register_pseudo, unregister_pseudo
@@ -110,6 +111,26 @@ def test_first_post_pseudo_returns_single_result():
 
 
 def test_above_relational_pseudo_executes():
+    pdf = npdf.PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        matches = page.find_all("text:above(text:last)")
+        assert matches is not None
+    finally:
+        pdf.close()
+
+
+def test_context_default_selector_engine():
+    stub_engine = _register_stub_engine("context-selectors")
+    context = PDFContext(options={"selector": {"engine": "context-selectors"}})
+    pdf = npdf.PDF("pdfs/01-practice.pdf", context=context)
+    try:
+        page = pdf.pages[0]
+        page.find_all("text")
+    finally:
+        pdf.close()
+
+    assert stub_engine.calls == 1
     pdf = npdf.PDF("pdfs/01-practice.pdf")
     try:
         page = pdf.pages[0]

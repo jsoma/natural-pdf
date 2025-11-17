@@ -11,7 +11,6 @@ from .base import (
     describe_region,
     inspect_collection,
 )
-from .mixin import DescribeMixin, InspectMixin
 from .summary import ElementSummary, InspectionSummary
 
 __all__ = [
@@ -22,6 +21,4 @@ __all__ = [
     "describe_element",
     "ElementSummary",
     "InspectionSummary",
-    "DescribeMixin",
-    "InspectMixin",
 ]
