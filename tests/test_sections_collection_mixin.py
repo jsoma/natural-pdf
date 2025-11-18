@@ -33,6 +33,7 @@ class FakeSection(SupportsSections):
         auto_text_tolerance: Optional[Union[bool, dict]] = None,
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
     ) -> ElementCollection:
         # ignore selector args for test purposes
         return ElementCollection(list(self._elements))

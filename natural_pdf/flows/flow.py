@@ -38,6 +38,7 @@ from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.services.methods import flow_selector_methods as _flow_selector_methods
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.services.methods import layout_methods as _layout_methods
 from natural_pdf.services.methods import qa_methods as _qa_methods
@@ -406,94 +407,6 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
     @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
         return _qa_methods.ask(self, *args, **kwargs)
-
-    def _as_flow_element(self, element: Any) -> FlowElement:
-        if isinstance(element, FlowElement):
-            if getattr(element, "flow", None) is self:
-                return element
-            physical_candidate = getattr(element, "physical_object", element)
-        else:
-            physical_candidate = element
-        physical = cast(Any, physical_candidate)
-        return FlowElement(physical_object=physical, flow=self)
-
-    def _as_flow_collection(self, collection: Any) -> FlowElementCollection:
-        if isinstance(collection, FlowElementCollection):
-            return collection
-        elements_attr = getattr(collection, "elements", None)
-        iterable = elements_attr if elements_attr is not None else collection
-        flow_elements = []
-        for element in iterable:
-            if element is None:
-                continue
-            flow_elements.append(self._as_flow_element(element))
-        return FlowElementCollection(flow_elements)
-
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["SelectorElement"]:
-
-        physical = resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-        if physical is None:
-            return None
-        return cast("SelectorElement", self._as_flow_element(physical))
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "SelectorCollection":
-
-        collection = resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-        return cast("SelectorCollection", self._as_flow_collection(collection))
 
     def __repr__(self) -> str:
         return (

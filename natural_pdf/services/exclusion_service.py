@@ -157,6 +157,19 @@ class ExclusionService:
             region = self._element_to_region(host, exclusion_item, label)
             if region is not None:
                 regions.append(region)
+                continue
+
+            if not callable(exclusion_item):
+                bbox = extract_bbox(exclusion_item)
+                if bbox is not None and method != "element":
+                    fallback_region = self._region_from_bbox(
+                        host,
+                        bbox,
+                        label,
+                        exclusion_item,
+                    )
+                    if fallback_region is not None:
+                        regions.append(fallback_region)
 
         return regions
 
@@ -213,7 +226,18 @@ class ExclusionService:
         bbox = extract_bbox(element)
         if bbox is None:
             return None
-        page = getattr(element, "page", None) or getattr(host, "page", None)
+        return self._region_from_bbox(host, bbox, label, element)
+
+    def _region_from_bbox(
+        self,
+        host: Any,
+        bbox: Tuple[float, float, float, float],
+        label: Optional[str],
+        origin: Any = None,
+    ) -> Optional["Region"]:
+        from natural_pdf.elements.region import Region
+
+        page = getattr(origin, "page", None) or getattr(host, "page", None)
         if page is None and hasattr(host, "width"):
             page = host
         if page is None:

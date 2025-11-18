@@ -26,7 +26,7 @@ class ExtractionService:
     def extract(
         self,
         host,
-        schema: Type[BaseModel],
+        schema: Union[Type[BaseModel], Sequence[str]],
         client: Any = None,
         analysis_key: str = DEFAULT_STRUCTURED_KEY,
         prompt: Optional[str] = None,
@@ -362,12 +362,14 @@ class ExtractionService:
         if field_name is None:
             return result.data
 
-        if field_name not in result.data:
+        data_mapping = self._coerce_data_mapping(result.data)
+
+        if field_name not in data_mapping:
             raise KeyError(
                 f"Field '{field_name}' not found in extraction result '{target_key}'. "
-                f"Available fields: {list(result.data.keys())}"
+                f"Available fields: {list(data_mapping.keys())}"
             )
-        return result.data[field_name]
+        return data_mapping[field_name]
 
     def _default_extraction_content(self, host, using: str = "text", **kwargs) -> Any:
         try:
@@ -393,3 +395,15 @@ class ExtractionService:
                 RuntimeWarning,
             )
             raise
+
+    @staticmethod
+    def _coerce_data_mapping(data: Any) -> Dict[str, Any]:
+        if isinstance(data, BaseModel):
+            if hasattr(data, "model_dump"):
+                return data.model_dump(by_alias=True)
+            return data.dict(by_alias=True)
+        if isinstance(data, dict):
+            return data
+        if hasattr(data, "keys") and hasattr(data, "__getitem__"):
+            return {key: data[key] for key in data.keys()}  # type: ignore[index]
+        raise TypeError(f"Extraction returned unsupported data type {type(data).__name__}")

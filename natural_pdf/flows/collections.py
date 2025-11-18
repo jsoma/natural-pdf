@@ -29,6 +29,7 @@ from natural_pdf.services.base import ServiceHostMixin
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.services.methods import navigation_methods as _navigation_methods
+from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from natural_pdf.elements.region import Region
 
     from .element import FlowElement
+    from .flow import Flow
     from .region import FlowRegion
 
 
@@ -56,6 +58,28 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         self._flow_elements: List["FlowElement"] = (
             list(flow_elements) if flow_elements is not None else []
         )
+
+    @property
+    def elements(self) -> List["FlowElement"]:
+        """Expose the underlying FlowElements for service helpers."""
+        return self._flow_elements
+
+    @classmethod
+    def from_physical(cls, flow: "Flow", elements: Sequence[Any]) -> "FlowElementCollection":
+        from natural_pdf.flows.element import FlowElement
+
+        flow_elements: List[FlowElement] = []
+        for el in elements:
+            if el is None:
+                continue
+            if isinstance(el, FlowElement):
+                if getattr(el, "flow", None) is flow:
+                    flow_elements.append(el)
+                else:
+                    flow_elements.append(FlowElement(el.physical_object, flow))
+            else:
+                flow_elements.append(FlowElement(el, flow))
+        return cls(flow_elements)
 
     def __getitem__(self, index: Union[int, slice, SupportsIndex]) -> Any:
         if isinstance(index, slice):
@@ -105,6 +129,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
     def __repr__(self) -> str:
         return f"<FlowElementCollection(count={len(self)})>"
 
+    @delegate_signature(_navigation_methods.above)
+    @delegate_signature(_navigation_methods.above)
     def above(
         self,
         height: Optional[float] = None,
@@ -126,6 +152,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
+    @delegate_signature(_navigation_methods.below)
+    @delegate_signature(_navigation_methods.below)
     def below(
         self,
         height: Optional[float] = None,
@@ -147,6 +175,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
+    @delegate_signature(_navigation_methods.left)
+    @delegate_signature(_navigation_methods.left)
     def left(
         self,
         width: Optional[float] = None,
@@ -168,6 +198,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
+    @delegate_signature(_navigation_methods.right)
+    @delegate_signature(_navigation_methods.right)
     def right(
         self,
         width: Optional[float] = None,
@@ -420,6 +452,10 @@ class FlowRegionCollection(
 
     def __repr__(self) -> str:
         return f"<FlowRegionCollection(count={len(self)})>"
+
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Service context helpers

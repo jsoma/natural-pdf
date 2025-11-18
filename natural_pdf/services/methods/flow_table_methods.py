@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 from natural_pdf.tables import TableResult
@@ -59,9 +60,9 @@ def flowregion_extract_table(
 
     aggregated_rows: List[List[Optional[str]]] = []
     header_row: Optional[List[Optional[str]]] = None
-    merge_headers_enabled = False
-    headers_warned = False
-    segment_has_repeated_header: List[bool] = []
+    auto_warning_pending = False
+    explicit_warning_pending = False
+    auto_repeat_states: List[bool] = []
 
     def _detect_repeated_header(rows: List[List[Optional[str]]]) -> bool:
         if not rows:
@@ -98,23 +99,22 @@ def flowregion_extract_table(
         if not rows:
             continue
 
-        if merge_headers is None and idx == 0:
-            header_row = list(rows[0])
-        elif merge_headers is None and idx > 0 and header_row is not None:
-            repeated = _detect_repeated_header(rows)
-            segment_has_repeated_header.append(repeated)
-            merge_headers_enabled = all(segment_has_repeated_header)
-            if repeated and merge_headers_enabled:
-                rows = rows[1:]
-            elif repeated and not headers_warned:
-                logger.warning(
-                    "FlowRegion detected inconsistent header repetition; merge_headers=False enforced."
-                )
-                headers_warned = True
+        if merge_headers is None:
+            if idx == 0:
+                header_row = list(rows[0])
+            elif header_row is not None:
+                repeated = _detect_repeated_header(rows)
+                auto_repeat_states.append(repeated)
+                if repeated:
+                    auto_warning_pending = True
+                    rows = rows[1:]
+                if True in auto_repeat_states and False in auto_repeat_states:
+                    raise ValueError("Inconsistent header pattern detected across segments.")
         elif merge_headers:
             if idx == 0:
                 header_row = list(rows[0])
             else:
+                explicit_warning_pending = True
                 rows = rows[1:]
 
         if predicate is not None and aggregated_rows:
@@ -125,6 +125,19 @@ def flowregion_extract_table(
                 rows = rows[1:]
 
         aggregated_rows.extend(rows)
+
+    if auto_warning_pending:
+        warnings.warn(
+            "Detected repeated headers across FlowRegion segments; removing duplicates.",
+            UserWarning,
+            stacklevel=2,
+        )
+    if explicit_warning_pending:
+        warnings.warn(
+            "Removing repeated headers across FlowRegion segments.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     return TableResult(aggregated_rows)
 

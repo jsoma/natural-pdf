@@ -24,9 +24,6 @@ def _make_page_stub():
     bound_methods = [
         "add_exclusion",
         "_element_to_region",
-        "_store_exclusion_matches",
-        "_append_exclusion",
-        "_evaluate_exclusion_entries",
         "_invalidate_exclusion_cache",
     ]
     for name in bound_methods:

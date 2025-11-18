@@ -32,5 +32,7 @@ def attach_capability(cls, capability: str, fallback_map: FallbackMap = None):
         return method
 
     for method_name, func in iter_delegates(capability):
+        if method_name in cls.__dict__:
+            continue
         setattr(cls, method_name, _make_method(method_name, func))
     return cls

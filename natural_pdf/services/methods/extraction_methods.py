@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type
+from typing import Any, Optional, Sequence, Type, Union
 
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ from natural_pdf.services.base import resolve_service
 
 def extract(
     self,
-    schema: Type[BaseModel],
+    schema: Union[Type[BaseModel], Sequence[str]],
     client: Any = None,
     analysis_key: str = "structured",
     prompt: Optional[str] = None,

@@ -41,6 +41,8 @@ from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
 from natural_pdf.services.methods import navigation_methods as _navigation_methods
+from natural_pdf.services.methods import ocr_methods as _ocr_methods
+from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -62,9 +64,9 @@ logger = logging.getLogger(__name__)
 
 
 class FlowRegion(
+    SelectorHostMixin,
     ServiceHostMixin,
     SupportsSections,
-    SelectorHostMixin,
     Visualizable,
     MultiRegionAnalysisMixin,
     ContextResolverMixin,
@@ -197,12 +199,6 @@ class FlowRegion(
             if mgr is not None:
                 return mgr
         raise RuntimeError("FlowRegion has no pages with OCR element managers")
-
-    def remove_ocr_elements(self) -> int:
-        removed = 0
-        for region in self.constituent_regions:
-            removed += region.remove_ocr_elements()
-        return removed
 
     def clear_text_layer(self) -> Tuple[int, int]:
         total_chars = 0
@@ -691,92 +687,6 @@ class FlowRegion(
             self._cached_elements = result_collection
         return result_collection
 
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["PhysicalElement"]:
-        """Return the first physical element across constituent regions matching selector/text.
-
-        Args:
-            selector: CSS-like selector string.
-            text: Text shortcut equivalent to ``text:contains(...)``.
-            overlap: How constituent regions determine containment (defaults to ``"full"``).
-            apply_exclusions: Whether exclusion zones within each region are honoured.
-            regex: Whether selector/text filters use regular expressions.
-            case: Whether text comparisons are case-sensitive.
-            text_tolerance: Optional pdfplumber-style tolerance overrides applied temporarily.
-            auto_text_tolerance: Optional overrides for automatic tolerance behaviour.
-            reading_order: Whether matches use flow reading order.
-            near_threshold: Maximum distance (in points) used by ``:near`` selectors.
-            engine: Optional selector engine forwarded to constituent regions.
-
-        Returns:
-            The first matching physical element, if any.
-        """
-
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection":
-        """Return every physical element across constituent regions matching selector/text.
-
-        Args mirror :meth:`find`; ``engine`` is forwarded to constituent regions when provided.
-        """
-
-        from natural_pdf.elements.element_collection import ElementCollection
-
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
     def highlight(
         self, label: Optional[str] = None, color: Optional[Union[Tuple, str]] = None, **kwargs
     ) -> Optional["PIL_Image"]:
@@ -1066,6 +976,10 @@ class FlowRegion(
     @delegate_signature(_flow_table_methods.flowregion_extract_tables)
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
         return _flow_table_methods.flowregion_extract_tables(self, *args, **kwargs)
+
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     def get_sections(
         self,

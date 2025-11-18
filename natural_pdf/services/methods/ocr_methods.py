@@ -7,11 +7,36 @@ from typing import Any, List, Optional, Tuple
 from natural_pdf.services.base import resolve_service
 
 
-def apply_ocr(self, *, replace: bool = True, **ocr_params: Any):
+def apply_ocr(
+    self,
+    *,
+    replace: bool = True,
+    engine: Optional[str] = None,
+    options: Optional[Any] = None,
+    languages: Optional[List[str]] = None,
+    min_confidence: Optional[float] = None,
+    device: Optional[str] = None,
+    resolution: Optional[int] = None,
+    detect_only: bool = False,
+    apply_exclusions: bool = True,
+    **kwargs: Any,
+):
     """Apply OCR through the configured service and return the host for chaining."""
 
     service = resolve_service(self, "ocr")
-    service.apply_ocr(self, replace=replace, **ocr_params)
+    service.apply_ocr(
+        self,
+        engine=engine,
+        options=options,
+        languages=languages,
+        min_confidence=min_confidence,
+        device=device,
+        resolution=resolution,
+        detect_only=detect_only,
+        apply_exclusions=apply_exclusions,
+        replace=replace,
+        **kwargs,
+    )
     return self
 
 

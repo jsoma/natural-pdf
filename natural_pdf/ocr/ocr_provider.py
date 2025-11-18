@@ -291,6 +291,7 @@ def resolve_ocr_device(
         context=context,
         scope=scope,
         explicit=device,
+        capability="ocr",
         config_key="ocr_device",
         global_key="device",
     )

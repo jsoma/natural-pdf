@@ -27,11 +27,7 @@ from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 # Import selector parsing functions
-from natural_pdf.selectors.host_mixin import (
-    SelectorHostMixin,
-    _merge_selector_args,
-    delegate_signature,
-)
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
@@ -1347,6 +1343,7 @@ class HighlightableMixin:
 
 class Element(
     ServiceHostMixin,
+    SelectorHostMixin,
     DirectionalMixin,
     HighlightableMixin,
     Visualizable,
@@ -2105,82 +2102,6 @@ class Element(
         """String representation of the element."""
         return f"<{self.__class__.__name__} bbox={self.bbox}>"
 
-    @overload
-    def find(
-        self,
-        *,
-        text: Union[str, Sequence[str]],
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["Element"]: ...
-
-    @overload
-    def find(
-        self,
-        selector: str,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["Element"]: ...
-
-    @delegate_signature(SelectorHostMixin.find)
-    def find(self, *args, **kwargs) -> Optional["Element"]:
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find(self, **merged)
-
-    @overload
-    def find_all(
-        self,
-        *,
-        text: Union[str, Sequence[str]],
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection": ...
-
-    @overload
-    def find_all(
-        self,
-        selector: str,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection": ...
-
-    @delegate_signature(SelectorHostMixin.find_all)
-    def find_all(self, *args, **kwargs) -> "ElementCollection":
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find_all(self, **merged)
-
     # ------------------------------------------------------------------
     # ClassificationMixin requirements
     # ------------------------------------------------------------------
@@ -2243,7 +2164,3 @@ _ELEMENT_NAV_FALLBACK = {
 attach_capability(Element, "navigation", _ELEMENT_NAV_FALLBACK)
 attach_capability(Element, "describe")
 attach_capability(Element, "classification")
-
-# Reuse canonical selector docstrings from SelectorHostMixin.
-Element.find.__doc__ = SelectorHostMixin.find.__doc__
-Element.find_all.__doc__ = SelectorHostMixin.find_all.__doc__

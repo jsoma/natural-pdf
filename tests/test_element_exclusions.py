@@ -41,9 +41,9 @@ def test_callable_exclusion_returning_element():
 
     # Verify the element was converted to a region
     assert len(regions) == 1
-    assert regions[0] == mock_region
-    assert mock_element.expand.called
-    assert mock_region.label == "test_exclusion"
+    result_region = regions[0]
+    assert getattr(result_region, "bbox", None) == mock_element.bbox
+    assert getattr(result_region, "label", None) == "test_exclusion"
 
 
 def test_direct_element_exclusion():
@@ -70,9 +70,9 @@ def test_direct_element_exclusion():
 
     # Verify the element was converted to a region
     assert len(regions) == 1
-    assert regions[0] == mock_region
-    assert mock_element.expand.called
-    assert mock_region.label == "direct_element"
+    result_region = regions[0]
+    assert getattr(result_region, "bbox", None) == mock_element.bbox
+    assert getattr(result_region, "label", None) == "direct_element"
 
 
 def test_element_collection_handling():
@@ -83,20 +83,12 @@ def test_element_collection_handling():
 
     import inspect
 
-    from natural_pdf.core.page import Page
+    from natural_pdf.services.exclusion_service import ExclusionService
 
-    # Get the source of _get_exclusion_regions
-    source = inspect.getsource(Page._get_exclusion_regions)
-
-    # Verify it handles ElementCollection (exact implementation may evolve, so we
-    # only assert the helper acknowledges the type).
+    source = inspect.getsource(ExclusionService.evaluate_entries)
     assert "ElementCollection" in source
-
-    # Verify it still references Element handling paths
-    assert "isinstance(region_result, Element)" in source
-
-    # Verify it handles direct Elements (not from callables)
-    assert 'hasattr(exclusion_item, "bbox") and hasattr(exclusion_item, "expand")' in source
+    assert "extract_bbox" in source
+    assert "_element_to_region" in source
 
 
 def test_pdf_level_element_exclusions():
@@ -136,9 +128,9 @@ def test_pdf_level_element_exclusions():
 
     # Verify the PDF-level element exclusion was converted
     assert len(regions) == 1
-    assert regions[0] == mock_region
-    assert mock_element.expand.called
-    assert mock_region.label == "pdf_element_exclusion"
+    result_region = regions[0]
+    assert getattr(result_region, "bbox", None) == mock_element.bbox
+    assert getattr(result_region, "label", None) == "pdf_element_exclusion"
 
 
 if __name__ == "__main__":

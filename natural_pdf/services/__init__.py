@@ -1,1 +1,1 @@
-"""Service helpers for composition-based architecture."""
+"""Service helpers for the composition-based architecture."""

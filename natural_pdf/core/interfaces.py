@@ -49,6 +49,7 @@ class SupportsSections(Protocol):
         engine: Optional[str] = None,
     ) -> "ElementCollection":
         """Locate elements relative to the object."""
+        ...
 
     def get_sections(
         self,
@@ -57,9 +58,11 @@ class SupportsSections(Protocol):
         **kwargs,
     ) -> "ElementCollection":
         """Extract logical sections bounded by the supplied markers."""
+        ...
 
     def to_region(self) -> Union["Region", "FlowRegion"]:
         """Return a region-like object suitable for flow-based operations."""
+        ...
 
 
 @runtime_checkable

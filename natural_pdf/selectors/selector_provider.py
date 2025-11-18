@@ -162,6 +162,8 @@ def run_selector_engine(
 
 
 def _normalize_name(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
     if not value:
         return None
     normalized = value.strip().lower()

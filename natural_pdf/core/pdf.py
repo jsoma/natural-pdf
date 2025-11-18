@@ -18,6 +18,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    Type,
     Union,
     cast,
     overload,
@@ -25,7 +26,7 @@ from typing import (
 
 import pdfplumber
 from PIL import Image
-from pydantic import Field, create_model
+from pydantic import BaseModel, Field, create_model
 
 if TYPE_CHECKING:
     from typing import Any as _Any
@@ -46,6 +47,7 @@ from natural_pdf.classification.classification_provider import (
 from natural_pdf.classification.manager import ClassificationError
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
+from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
@@ -69,6 +71,7 @@ from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signatu
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import classification_methods as _classification_methods
+from natural_pdf.services.methods import vision_methods as _vision_methods
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
@@ -325,11 +328,7 @@ class _LazyPageList(Sequence["Page"]):
 # --- End Lazy Page List Helper --- #
 
 
-class PDF(
-    ServiceHostMixin,
-    ExportMixin,
-    Visualizable,
-):
+class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,
@@ -1071,66 +1070,6 @@ class PDF(
                 logger.error(f"Error adding region for page {cached_page.number}: {e}")
 
         return self
-
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional[Any]:
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection":
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
 
     def extract_text(
         self,
@@ -2456,7 +2395,69 @@ class PDF(
             logger.error(f"Unsupported value for 'using': {using}")
             return None
 
-    # --- End Extraction Support --- #
+    def extract_pages(
+        self,
+        schema: Union[Type[BaseModel], Sequence[str]],
+        *,
+        client: Any = None,
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        analysis_key: str = "structured",
+        overwrite: bool = True,
+        **kwargs,
+    ) -> "PDF":
+        """Run structured extraction across multiple pages."""
+
+        target_pages = self._get_target_pages(pages)
+        if not target_pages:
+            logger.warning("No pages selected for structured extraction.")
+            return self
+
+        for page in target_pages:
+            try:
+                page.extract(
+                    schema,
+                    client=client,
+                    analysis_key=analysis_key,
+                    overwrite=overwrite,
+                    **kwargs,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Structured extraction failed on page %s (%s)",
+                    getattr(page, "number", "?"),
+                    exc,
+                )
+        return self
+
+    def ask_pages(
+        self,
+        question: QuestionInput,
+        *,
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        min_confidence: float = 0.1,
+        model: Optional[str] = None,
+        **kwargs,
+    ) -> List[QAResult]:
+        """Ask a question across a set of pages and return per-page responses."""
+
+        target_pages = self._get_target_pages(pages)
+        if not target_pages:
+            logger.warning("No pages selected for QA.")
+            return []
+
+        responses: List[QAResult] = []
+        for page in target_pages:
+            try:
+                result = page.ask(
+                    question=question,
+                    min_confidence=min_confidence,
+                    model=model,
+                    **kwargs,
+                )
+                responses.append(result if isinstance(result, QAResult) else QAResult(result))
+            except Exception as exc:
+                logger.warning("QA failed on page %s (%s)", getattr(page, "number", "?"), exc)
+        return responses
 
     def _gather_analysis_data(
         self,
@@ -2744,6 +2745,14 @@ class PDF(
 
         return HighlightContext(self, show_on_exit=show)
 
+    @delegate_signature(_vision_methods.match_template)
+    def match_template(self, *args, **kwargs):
+        return _vision_methods.match_template(self, *args, **kwargs)
+
+    @delegate_signature(_vision_methods.find_similar)
+    def find_similar(self, *args, **kwargs):
+        return _vision_methods.find_similar(self, *args, **kwargs)
+
 
 attach_capability(PDF, "text")
 attach_capability(PDF, "vision")
@@ -2751,7 +2760,3 @@ attach_capability(PDF, "shapes")
 attach_capability(PDF, "checkbox")
 attach_capability(PDF, "classification")
 attach_capability(PDF, "extraction")
-
-# Align selector docstrings with SelectorHostMixin.
-PDF.find.__doc__ = SelectorHostMixin.find.__doc__
-PDF.find_all.__doc__ = SelectorHostMixin.find_all.__doc__

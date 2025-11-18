@@ -38,11 +38,7 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.qa.qa_result import QAResult
-from natural_pdf.selectors.host_mixin import (
-    SelectorHostMixin,
-    _merge_selector_args,
-    delegate_signature,
-)
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -59,6 +55,8 @@ from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import classification_methods as _classification_methods
 from natural_pdf.services.methods import extraction_methods as _extraction_methods
+from natural_pdf.services.methods import ocr_methods as _ocr_methods
+from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.services.methods import shape_methods as _shape_methods
 from natural_pdf.services.methods import table_methods as _table_methods
 from natural_pdf.services.methods import text_methods as _text_methods
@@ -138,13 +136,13 @@ class RegionContext:
 
 
 class Region(
+    SelectorHostMixin,
     DirectionalMixin,
     ServiceHostMixin,
     SinglePageContextMixin,
-    SupportsSections,
-    SelectorHostMixin,
     RegionGeometryMixin,
     Visualizable,
+    SupportsSections,
 ):
     """Represents a rectangular region on a page.
 
@@ -368,43 +366,6 @@ class Region(
             include_callable=include_callable, debug=debug
         )
         return local + page_regions
-
-    def remove_ocr_elements(self) -> int:
-        if not hasattr(self.page, "get_elements_by_type"):
-            return 0
-
-        removed_count = 0
-
-        def _safe_remove(elem, element_type: Optional[str] = None):
-            nonlocal removed_count
-            if self.page.remove_element(elem, element_type=element_type):
-                removed_count += 1
-
-        for word in list(self.page.get_elements_by_type("words")):
-            if getattr(word, "source", None) == "ocr" and self.intersects(word):
-                _safe_remove(word, element_type="words")
-
-        for char in list(self.page.get_elements_by_type("chars")):
-            char_source = (
-                char.get("source") if isinstance(char, dict) else getattr(char, "source", None)
-            )
-            if char_source != "ocr":
-                continue
-            if isinstance(char, dict):
-                bbox_tuple = (
-                    float(char.get("x0", 0.0)),
-                    float(char.get("top", 0.0)),
-                    float(char.get("x1", 0.0)),
-                    float(char.get("bottom", 0.0)),
-                )
-            else:
-                bbox_tuple = getattr(char, "bbox", None)
-            if not bbox_tuple:
-                continue
-            if get_bbox_overlap(self.bbox, bbox_tuple) is not None:
-                _safe_remove(char, element_type="chars")
-
-        return removed_count
 
     def to_region(self) -> "Region":
         """Regions already satisfy the section surface; return self."""
@@ -1544,16 +1505,6 @@ class Region(
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
         return _table_methods.extract_tables(self, *args, **kwargs)
 
-    @delegate_signature(SelectorHostMixin.find)
-    def find(self, *args, **kwargs) -> Optional["Element"]:
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find(self, **merged)
-
-    @delegate_signature(SelectorHostMixin.find_all)
-    def find_all(self, *args, **kwargs) -> "ElementCollection":
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find_all(self, **merged)
-
     def _filter_elements_by_overlap_mode(
         self,
         elements: Sequence["Element"],
@@ -1576,7 +1527,8 @@ class Region(
     def detect_lines(self, *args, **kwargs):
         return _shape_methods.detect_lines(self, *args, **kwargs)
 
-    def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Region":
+    @delegate_signature(_ocr_methods.apply_ocr)
+    def apply_ocr(self, *args, **kwargs) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
 
@@ -1608,18 +1560,24 @@ class Region(
         -------
             Self – for chaining.
         """
-        custom_func_candidate = ocr_params.pop("function", None) or ocr_params.pop(
-            "ocr_function", None
-        )
+        params = dict(kwargs)
+        if args and len(args) > 0:
+            if len(args) > 1:
+                raise TypeError("apply_ocr accepts at most one positional argument (replace).")
+            params.setdefault("replace", args[0])
+
+        replace = params.get("replace", True)
+
+        custom_func_candidate = params.pop("function", None) or params.pop("ocr_function", None)
         if callable(custom_func_candidate):
             custom_func = cast(CustomOCRCallable, custom_func_candidate)
             # Delegate to the specialised helper while preserving key kwargs
             return self.apply_custom_ocr(
                 ocr_function=custom_func,
-                source_label=ocr_params.pop("source_label", "custom-ocr"),
+                source_label=params.pop("source_label", "custom-ocr"),
                 replace=replace,
-                confidence=ocr_params.pop("confidence", None),
-                add_to_page=ocr_params.pop("add_to_page", True),
+                confidence=params.pop("confidence", None),
+                add_to_page=params.pop("add_to_page", True),
             )
 
         if replace:
@@ -1633,23 +1591,9 @@ class Region(
                     f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
                 )
 
-        custom_func_candidate = ocr_params.pop("function", None) or ocr_params.pop(
-            "ocr_function", None
-        )
-        if callable(custom_func_candidate):
-            custom_func = cast(CustomOCRCallable, custom_func_candidate)
-            return self.apply_custom_ocr(
-                ocr_function=custom_func,
-                source_label=ocr_params.pop("source_label", "custom-ocr"),
-                replace=replace,
-                confidence=ocr_params.pop("confidence", None),
-                add_to_page=ocr_params.pop("add_to_page", True),
-            )
+        return _ocr_methods.apply_ocr(self, replace=replace, **params)
 
-        service = resolve_service(self, "ocr")
-        service.apply_ocr(self, replace=replace, **ocr_params)
-        return self
-
+    @delegate_signature(_ocr_methods.extract_ocr_elements)
     def extract_ocr_elements(
         self,
         *,
@@ -1675,8 +1619,7 @@ class Region(
             List of text elements created from OCR (not added to the page).
         """
 
-        service = resolve_service(self, "ocr")
-        return service.extract_ocr_elements(
+        return _ocr_methods.extract_ocr_elements(
             self,
             engine=engine,
             options=options,
@@ -1705,6 +1648,24 @@ class Region(
         )
         return self
 
+    @delegate_signature(_ocr_methods.remove_ocr_elements)
+    def remove_ocr_elements(self, *args, **kwargs) -> int:
+        """Remove OCR text from constituent regions."""
+
+        return _ocr_methods.remove_ocr_elements(self, *args, **kwargs)
+
+    @delegate_signature(_ocr_methods.clear_text_layer)
+    def clear_text_layer(self, *args, **kwargs) -> Tuple[int, int]:
+        """Clear OCR results from the underlying managers and return totals."""
+
+        return _ocr_methods.clear_text_layer(self, *args, **kwargs)
+
+    @delegate_signature(_ocr_methods.create_text_elements_from_ocr)
+    def create_text_elements_from_ocr(self, *args, **kwargs):
+        """Delegate to the OCR service for text element creation."""
+
+        return _ocr_methods.create_text_elements_from_ocr(self, *args, **kwargs)
+
     @delegate_signature(_extraction_methods.extract)
     def extract(self, *args, **kwargs):
         return _extraction_methods.extract(self, *args, **kwargs)
@@ -1728,6 +1689,10 @@ class Region(
     @delegate_signature(_classification_methods.classify)
     def classify(self, *args, **kwargs):
         return _classification_methods.classify(self, *args, **kwargs)
+
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     def get_section_between(
         self,

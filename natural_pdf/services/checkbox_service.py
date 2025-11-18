@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 from natural_pdf.analyzers.checkbox.mixin import CheckboxDetectionMixin
-from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.services.registry import register_delegate
+
+if TYPE_CHECKING:  # pragma: no cover
+    from natural_pdf.elements.element_collection import ElementCollection
 
 
 class _CheckboxProxy(CheckboxDetectionMixin):
@@ -28,7 +30,9 @@ class CheckboxDetectionService:
         self._context = context
 
     @register_delegate("checkbox", "detect_checkboxes")
-    def detect_checkboxes(self, host: Any, **kwargs) -> ElementCollection:
+    def detect_checkboxes(self, host: Any, **kwargs) -> "ElementCollection":
+        from natural_pdf.elements.element_collection import ElementCollection
+
         pdfs = getattr(host, "pdfs", None)
         if pdfs is not None:
             combined: list[Any] = []
@@ -66,6 +70,8 @@ class CheckboxDetectionService:
 
     @staticmethod
     def _extend_matches(destination: list[Any], result: Any) -> None:
+        from natural_pdf.elements.element_collection import ElementCollection
+
         if result is None:
             return
         if isinstance(result, ElementCollection):

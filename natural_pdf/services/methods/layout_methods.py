@@ -20,6 +20,7 @@ def analyze_layout(
     existing: str = "replace",
     model_name: Optional[str] = None,
     client: Optional[Any] = None,
+    show_progress: Optional[bool] = None,
 ) -> Any:
     """Delegate layout analysis to the configured layout service."""
 
@@ -35,6 +36,7 @@ def analyze_layout(
         existing=existing,
         model_name=model_name,
         client=client,
+        show_progress=show_progress,
     )
 
 

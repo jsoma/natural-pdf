@@ -39,8 +39,11 @@ from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import qa_methods as _qa_methods
+from natural_pdf.services.methods import vision_methods as _vision_methods
 
 Indexable = Any
 SearchOptions = Any
@@ -50,7 +53,7 @@ SearchServiceProtocol = Any
 from natural_pdf.collections.mixins import ApplyMixin
 
 
-class PDFCollection(ServiceHostMixin, ApplyMixin, ExportMixin):
+class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin):
     def __init__(
         self,
         source: Union[str, Iterable[Union[str, "PDF"]]],
@@ -399,67 +402,17 @@ class PDFCollection(ServiceHostMixin, ApplyMixin, ExportMixin):
         # Return the combined image (Jupyter will display it automatically)
         return combined
 
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ):
-        """Return the first element across every PDF in the collection matching selector/text."""
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(_vision_methods.match_template)
+    def match_template(self, *args, **kwargs):
+        return _vision_methods.match_template(self, *args, **kwargs)
 
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> ElementCollection:
-        """Return every element across every PDF in the collection matching selector/text."""
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(_vision_methods.find_similar)
+    def find_similar(self, *args, **kwargs):
+        return _vision_methods.find_similar(self, *args, **kwargs)
+
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     def apply_ocr(
         self,

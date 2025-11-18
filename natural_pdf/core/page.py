@@ -28,11 +28,7 @@ from tqdm.auto import tqdm  # Added tqdm import
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.host_mixin import (
-    SelectorHostMixin,
-    _merge_selector_args,
-    delegate_signature,
-)
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.tables.result import TableResult
 
@@ -91,6 +87,7 @@ from natural_pdf.services.methods import ocr_methods as _ocr_methods
 from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.services.methods import shape_methods as _shape_methods
 from natural_pdf.services.methods import table_methods as _table_methods
+from natural_pdf.services.methods import vision_methods as _vision_methods
 
 # # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
@@ -172,9 +169,9 @@ def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> fl
 
 class Page(
     ServiceHostMixin,
+    SelectorHostMixin,
     SinglePageContextMixin,
     SupportsSections,
-    SelectorHostMixin,
     Visualizable,
 ):
     """Enhanced Page wrapper built on top of pdfplumber.Page.
@@ -682,52 +679,52 @@ class Page(
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
         return {"apply_exclusions": apply_exclusions}
 
-    def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Page":
+    @delegate_signature(_ocr_methods.apply_ocr)
+    def apply_ocr(self, *args, **kwargs) -> "Page":
         """Apply OCR to the entire page via the shared OCR service."""
 
-        custom_func = ocr_params.pop("function", None) or ocr_params.pop("ocr_function", None)
+        params = dict(kwargs)
+        if args and len(args) > 0:
+            if len(args) > 1:
+                raise TypeError("apply_ocr accepts at most one positional argument (replace).")
+            params.setdefault("replace", args[0])
+
+        replace = params.get("replace", True)
+        custom_func = params.pop("function", None) or params.pop("ocr_function", None)
         if callable(custom_func):
             region = self._full_page_region()
             region.apply_ocr(
                 replace=replace,
                 function=custom_func,
-                **ocr_params,
+                **params,
             )
             return self
 
-        service = resolve_service(self, "ocr")
-        service.apply_ocr(self, replace=replace, **ocr_params)
-        return self
+        return _ocr_methods.apply_ocr(self, **params)
 
-    def extract_ocr_elements(self, **ocr_params: Any):
+    @delegate_signature(_ocr_methods.extract_ocr_elements)
+    def extract_ocr_elements(self, *args, **kwargs):
         """Extract OCR results without mutating the page."""
 
-        service = resolve_service(self, "ocr")
-        return service.extract_ocr_elements(self, **ocr_params)
+        return _ocr_methods.extract_ocr_elements(self, *args, **kwargs)
 
-    def remove_ocr_elements(self) -> int:
+    @delegate_signature(_ocr_methods.remove_ocr_elements)
+    def remove_ocr_elements(self, *args, **kwargs) -> int:
         """Remove OCR-derived elements from the backing element manager."""
 
-        return int(self._element_mgr.remove_ocr_elements())
+        return _ocr_methods.remove_ocr_elements(self, *args, **kwargs)
 
-    def clear_text_layer(self) -> Tuple[int, int]:
+    @delegate_signature(_ocr_methods.clear_text_layer)
+    def clear_text_layer(self, *args, **kwargs) -> Tuple[int, int]:
         """Clear the underlying word/char layers for this page."""
 
-        return self._element_mgr.clear_text_layer()
+        return _ocr_methods.clear_text_layer(self, *args, **kwargs)
 
-    def create_text_elements_from_ocr(
-        self,
-        ocr_results: Any,
-        scale_x: Optional[float] = None,
-        scale_y: Optional[float] = None,
-    ):
+    @delegate_signature(_ocr_methods.create_text_elements_from_ocr)
+    def create_text_elements_from_ocr(self, *args, **kwargs):
         """Proxy for ElementManager.create_text_elements_from_ocr."""
 
-        return self._element_mgr.create_text_elements_from_ocr(
-            ocr_results,
-            scale_x=scale_x,
-            scale_y=scale_y,
-        )
+        return _ocr_methods.create_text_elements_from_ocr(self, *args, **kwargs)
 
     def iter_regions(self) -> List["Region"]:
         """Return a list of regions currently registered with the page."""
@@ -1044,16 +1041,6 @@ class Page(
 
             if restore_invalidated:
                 self._element_mgr.invalidate_cache()
-
-    @delegate_signature(SelectorHostMixin.find)
-    def find(self, *args, **kwargs) -> Optional[Element]:
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find(self, **merged)
-
-    @delegate_signature(SelectorHostMixin.find_all)
-    def find_all(self, *args, **kwargs) -> ElementCollection:
-        merged = _merge_selector_args(args, kwargs)
-        return resolve_service(self, "selector").find_all(self, **merged)
 
     def _apply_selector(
         self, selector_obj: Dict[str, Any], **kwargs: Any
@@ -2594,6 +2581,43 @@ class Page(
     def extracted(self, *args, **kwargs):
         return _extraction_methods.extracted(self, *args, **kwargs)
 
+    def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
+        """Internal helper for ExtractionService to gather page content."""
+
+        if using == "text":
+            layout = kwargs.pop("layout", True)
+            try:
+                return self.extract_text(layout=layout, **kwargs)
+            except Exception as exc:  # pragma: no cover - logging aid
+                logger.error(
+                    "Page %s: Error extracting text content for structured extraction: %s",
+                    self.number,
+                    exc,
+                )
+                return None
+
+        if using == "vision":
+            resolution = kwargs.pop("resolution", 96)
+            kwargs.pop("include_highlights", None)
+            kwargs.pop("labels", None)
+            try:
+                return self.render(
+                    resolution=resolution,
+                    include_highlights=False,
+                    labels=False,
+                    **kwargs,
+                )
+            except Exception as exc:  # pragma: no cover - logging aid
+                logger.error(
+                    "Page %s: Error rendering image content for structured extraction: %s",
+                    self.number,
+                    exc,
+                )
+                return None
+
+        logger.error("Unsupported extraction content mode '%s'", using)
+        return None
+
     @delegate_signature(_classification_methods.classify)
     def classify(self, *args, **kwargs):
         return _classification_methods.classify(self, *args, **kwargs)
@@ -2704,6 +2728,14 @@ class Page(
 
         return HighlightContext(self, show_on_exit=show)
 
+    @delegate_signature(_vision_methods.match_template)
+    def match_template(self, *args, **kwargs):
+        return _vision_methods.match_template(self, *args, **kwargs)
+
+    @delegate_signature(_vision_methods.find_similar)
+    def find_similar(self, *args, **kwargs):
+        return _vision_methods.find_similar(self, *args, **kwargs)
+
     @delegate_signature(_shape_methods.detect_lines)
     def detect_lines(self, *args, **kwargs):
         return _shape_methods.detect_lines(self, *args, **kwargs)
@@ -2720,7 +2752,3 @@ attach_capability(Page, "checkbox")
 attach_capability(Page, "classification")
 attach_capability(Page, "extraction")
 attach_capability(Page, "guides")
-
-# Reuse canonical selector docstrings from SelectorHostMixin.
-Page.find.__doc__ = SelectorHostMixin.find.__doc__
-Page.find_all.__doc__ = SelectorHostMixin.find_all.__doc__

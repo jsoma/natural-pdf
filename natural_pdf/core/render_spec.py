@@ -347,6 +347,9 @@ class Visualizable:
             columns = kwargs.pop("cols")
             logger.info(f"Using 'cols' parameter as alias for 'columns': {columns}")
 
+        # Ignore conflicting highlight kwargs (e.g., labels) that callers may provide.
+        kwargs.pop("labels", None)
+
         specs = self._get_render_specs(mode="render", crop=crop, crop_bbox=crop_bbox, **kwargs)
 
         if not specs:

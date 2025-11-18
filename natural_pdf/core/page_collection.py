@@ -32,13 +32,14 @@ from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.host_mixin import delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import layout_methods as _layout_methods
 from natural_pdf.services.methods import ocr_methods as _ocr_methods
 from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.services.methods import text_methods as _text_methods
+from natural_pdf.services.methods import vision_methods as _vision_methods
 from natural_pdf.utils.sections import sanitize_sections
 
 # New Imports
@@ -86,6 +87,7 @@ BoundarySource = Union[str, ElementsProvider, Iterable[SupportsGeometry], Iterab
 
 class PageCollection(
     ServiceHostMixin,
+    SelectorHostMixin,
     ApplyMixin,
     SectionsCollectionMixin,
     QACollectionMixin,
@@ -415,6 +417,17 @@ class PageCollection(
 
         if len(self) == 0:
             return ElementCollection([])
+
+        def _resolve_boundary(boundary: BoundarySource) -> BoundarySource:
+            if isinstance(boundary, str):
+                try:
+                    return self.find_all(boundary)
+                except Exception:
+                    return boundary
+            return boundary
+
+        start_elements = _resolve_boundary(start_elements)
+        end_elements = _resolve_boundary(end_elements)
 
         arrangement = "vertical" if orientation == "vertical" else "horizontal"
 
@@ -846,68 +859,6 @@ class PageCollection(
             segment_gap=segment_gap,
         )
 
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ):
-        """Return the first element across this collection of pages matching selector/text filters."""
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ):
-        """Return every element across this collection of pages matching selector/text filters."""
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
     @delegate_signature(_layout_methods.analyze_layout)
     def analyze_layout(self, *args, **kwargs):
         return _layout_methods.analyze_layout(self, *args, **kwargs)
@@ -939,6 +890,14 @@ class PageCollection(
         from natural_pdf.core.highlighting_service import HighlightContext
 
         return HighlightContext(self, show_on_exit=show)
+
+    @delegate_signature(_vision_methods.match_template)
+    def match_template(self, *args, **kwargs):
+        return _vision_methods.match_template(self, *args, **kwargs)
+
+    @delegate_signature(_vision_methods.find_similar)
+    def find_similar(self, *args, **kwargs):
+        return _vision_methods.find_similar(self, *args, **kwargs)
 
     def groupby(self, by: Union[str, Callable], *, show_progress: bool = True) -> "PageGroupBy":
         """
