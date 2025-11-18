@@ -31,6 +31,11 @@ def _shape_proxy_factory(host: Any):
             def __setattr__(self, name: str, value: Any) -> None:
                 setattr(self._host, name, value)
 
+            @property
+            def page(self):
+                host = object.__getattribute__(self, "_host")
+                return getattr(host, "page", host)
+
         _SHAPE_PROXY_CLASS = _Proxy
     return _SHAPE_PROXY_CLASS(host)
 

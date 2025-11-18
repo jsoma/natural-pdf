@@ -758,7 +758,10 @@ class ElementCollection(
             for el in sorted_elements:
                 if hasattr(el, "extract_text"):
                     # Call extract_text on the element (works for TextElement, Region, etc)
-                    text = el.extract_text(**kwargs)
+                    element_kwargs = dict(kwargs)
+                    element_kwargs.pop("preserve_whitespace", None)
+                    element_kwargs.pop("use_exclusions", None)
+                    text = el.extract_text(**element_kwargs)
                     if text:
                         element_texts.append(text)
                 elif hasattr(el, "text"):

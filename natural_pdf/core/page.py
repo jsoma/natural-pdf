@@ -1579,7 +1579,7 @@ class Page(
         debug_exclusions: bool = False,
         content_filter=None,
         *,
-        layout: bool = True,
+        layout: bool = False,
         x_density: Optional[float] = None,
         y_density: Optional[float] = None,
         x_tolerance: Optional[float] = None,
@@ -1603,7 +1603,7 @@ class Page(
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
                 - A callable that takes text and returns True to KEEP the character
                 - A list of regex patterns (characters matching ANY pattern are EXCLUDED)
-            layout: Whether to enable layout-aware spacing (default: True).
+            layout: Whether to enable layout-aware spacing (default: False).
             x_density: Horizontal character density override.
             y_density: Vertical line density override.
             x_tolerance: Horizontal clustering tolerance.
