@@ -1078,6 +1078,22 @@ class FlowRegion(
         """
         return self.normalized_type
 
+    @delegate_signature(_navigation_methods.above)
+    def above(self, *args, **kwargs):
+        return _navigation_methods.above(self, *args, **kwargs)
+
+    @delegate_signature(_navigation_methods.below)
+    def below(self, *args, **kwargs):
+        return _navigation_methods.below(self, *args, **kwargs)
+
+    @delegate_signature(_navigation_methods.left)
+    def left(self, *args, **kwargs):
+        return _navigation_methods.left(self, *args, **kwargs)
+
+    @delegate_signature(_navigation_methods.right)
+    def right(self, *args, **kwargs):
+        return _navigation_methods.right(self, *args, **kwargs)
+
     def get_highlight_specs(self) -> List[Dict[str, Any]]:
         """
         Get highlight specifications for all constituent regions.
@@ -1119,23 +1135,3 @@ attach_capability(FlowRegion, "navigation")
 attach_capability(FlowRegion, "qa")
 attach_capability(FlowRegion, "exclusion")
 attach_capability(FlowRegion, "guides")
-
-
-@delegate_signature(_navigation_methods.above)
-def _flowregion_above(self, *args, **kwargs):
-    return _navigation_methods.above(self, *args, **kwargs)
-
-
-@delegate_signature(_navigation_methods.below)
-def _flowregion_below(self, *args, **kwargs):
-    return _navigation_methods.below(self, *args, **kwargs)
-
-
-@delegate_signature(_navigation_methods.left)
-def _flowregion_left(self, *args, **kwargs):
-    return _navigation_methods.left(self, *args, **kwargs)
-
-
-@delegate_signature(_navigation_methods.right)
-def _flowregion_right(self, *args, **kwargs):
-    return _navigation_methods.right(self, *args, **kwargs)

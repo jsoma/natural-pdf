@@ -726,6 +726,27 @@ class Page(
 
         return _ocr_methods.create_text_elements_from_ocr(self, *args, **kwargs)
 
+    @delegate_signature(_ocr_methods.apply_custom_ocr)
+    def apply_custom_ocr(
+        self,
+        *,
+        ocr_function,
+        source_label: str = "custom-ocr",
+        replace: bool = True,
+        confidence: Optional[float] = None,
+        add_to_page: bool = True,
+    ) -> "Page":
+        """Apply a custom OCR function via the shared OCR service."""
+
+        return _ocr_methods.apply_custom_ocr(
+            self,
+            ocr_function=ocr_function,
+            source_label=source_label,
+            replace=replace,
+            confidence=confidence,
+            add_to_page=add_to_page,
+        )
+
     def iter_regions(self) -> List["Region"]:
         """Return a list of regions currently registered with the page."""
         return list(self._element_mgr.regions)
