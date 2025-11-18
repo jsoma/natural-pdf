@@ -27,10 +27,16 @@ from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 # Import selector parsing functions
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import (
+    SelectorHostMixin,
+    _merge_selector_args,
+    delegate_signature,
+)
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import classification_methods as _classification_methods
+from natural_pdf.services.methods import text_methods as _text_methods
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -2132,35 +2138,10 @@ class Element(
         engine: Optional[str] = None,
     ) -> Optional["Element"]: ...
 
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["Element"]:
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(SelectorHostMixin.find)
+    def find(self, *args, **kwargs) -> Optional["Element"]:
+        merged = _merge_selector_args(args, kwargs)
+        return resolve_service(self, "selector").find(self, **merged)
 
     @overload
     def find_all(
@@ -2195,35 +2176,10 @@ class Element(
         engine: Optional[str] = None,
     ) -> "ElementCollection": ...
 
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection":
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(SelectorHostMixin.find_all)
+    def find_all(self, *args, **kwargs) -> "ElementCollection":
+        merged = _merge_selector_args(args, kwargs)
+        return resolve_service(self, "selector").find_all(self, **merged)
 
     # ------------------------------------------------------------------
     # ClassificationMixin requirements
@@ -2250,6 +2206,18 @@ class Element(
             )
         else:
             raise ValueError(f"Unsupported model_type for classification: {model_type}")
+
+    @delegate_signature(_text_methods.update_text)
+    def update_text(self, *args, **kwargs):
+        return _text_methods.update_text(self, *args, **kwargs)
+
+    @delegate_signature(_text_methods.correct_ocr)
+    def correct_ocr(self, *args, **kwargs):
+        return _text_methods.correct_ocr(self, *args, **kwargs)
+
+    @delegate_signature(_classification_methods.classify)
+    def classify(self, *args, **kwargs):
+        return _classification_methods.classify(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Unified analysis storage (maps to metadata["analysis"])

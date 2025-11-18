@@ -98,7 +98,7 @@ def resolve_table_engine_name(
 
     candidates = (
         _normalize_engine_name(requested),
-        _normalize_engine_name(_context_config_value(context, "table_engine", scope)),
+        _normalize_engine_name(_context_option(context, "tables", "table_engine", scope)),
         _normalize_engine_name(_global_table_option("engine")),
         "pdfplumber_auto",
     )
@@ -128,10 +128,16 @@ def _alias_engine_name(name: Optional[str]) -> Optional[str]:
     return name
 
 
-def _context_config_value(context: Any, key: str, scope: str) -> Any:
-    sentinel = object()
-    getter = getattr(context, "get_config", None)
+def _context_option(host: Any, capability: str, key: str, scope: str) -> Any:
+    context = getattr(host, "_context", None)
+    if context is not None and hasattr(context, "get_option"):
+        value = context.get_option(capability, key, host=host, scope=scope)
+        if value is not None:
+            return value
+
+    getter = getattr(host, "get_config", None)
     if callable(getter):
+        sentinel = object()
         try:
             value = getter(key, sentinel, scope=scope)
         except TypeError:
@@ -141,7 +147,8 @@ def _context_config_value(context: Any, key: str, scope: str) -> Any:
                 value = sentinel
         if value is not sentinel:
             return value
-    cfg = getattr(context, "_config", None)
+
+    cfg = getattr(host, "_config", None)
     if isinstance(cfg, dict):
         return cfg.get(key)
     return None

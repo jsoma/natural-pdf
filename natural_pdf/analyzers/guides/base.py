@@ -32,7 +32,7 @@ from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.region import Region
 from natural_pdf.flows.region import FlowRegion
 from natural_pdf.guides.guides_provider import run_guides_detect
-from natural_pdf.services.base import resolve_service
+from natural_pdf.services.methods import table_methods as _table_methods
 
 from .flow_adapter import FlowGuideAdapter
 from .grid_helpers import collect_constituent_pages, register_regions_with_pages
@@ -984,7 +984,7 @@ class Guides:
             self.relative = False
 
     def _extract_with_table_service(self, host, **kwargs) -> TableResult:
-        """Helper to route all table extraction through the table service."""
+        """Helper to route all table extraction through host helpers when possible."""
         extractor = getattr(host, "extract_table", None)
         if callable(extractor):
             extracted = extractor(**kwargs)
@@ -994,8 +994,7 @@ class Guides:
             rows: List[List[Any]] = list(rows_iter or [])
             return TableResult(rows)
 
-        table_service = resolve_service(host, "table")
-        return table_service.extract_table(host, **kwargs)
+        return _table_methods.extract_table(host, **kwargs)
 
     def _flow_context(self) -> FlowRegion:
         if not _is_flow_region(self.context):

@@ -38,7 +38,11 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.qa.qa_result import QAResult
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import (
+    SelectorHostMixin,
+    _merge_selector_args,
+    delegate_signature,
+)
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -53,7 +57,11 @@ from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services import table_service as _table_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import classification_methods as _classification_methods
+from natural_pdf.services.methods import extraction_methods as _extraction_methods
+from natural_pdf.services.methods import shape_methods as _shape_methods
 from natural_pdf.services.methods import table_methods as _table_methods
+from natural_pdf.services.methods import text_methods as _text_methods
 from natural_pdf.tables.result import TableResult
 
 # Import new utils
@@ -1528,117 +1536,23 @@ class Region(
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result
 
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,
-        text_options: Optional[Dict[str, Any]] = None,
-        cell_extraction_func: Optional[Callable[["Region"], Optional[str]]] = None,
-        show_progress: bool = False,
-        content_filter: Optional[Union[str, Sequence[str], Callable[[str], bool]]] = None,
-        apply_exclusions: bool = True,
-        verticals: Optional[Sequence[float]] = None,
-        horizontals: Optional[Sequence[float]] = None,
-        structure_engine: Optional[str] = None,
-        **kwargs: Any,
-    ) -> TableResult:
-        """Delegate to the shared table service and return the primary table."""
+    @delegate_signature(_table_methods.extract_table)
+    def extract_table(self, *args, **kwargs) -> TableResult:
+        return _table_methods.extract_table(self, *args, **kwargs)
 
-        return _table_methods.extract_table(
-            self,
-            method=method,
-            table_settings=table_settings,
-            use_ocr=use_ocr,
-            ocr_config=ocr_config,
-            text_options=text_options,
-            cell_extraction_func=cell_extraction_func,
-            show_progress=show_progress,
-            content_filter=content_filter,
-            apply_exclusions=apply_exclusions,
-            verticals=verticals,
-            horizontals=horizontals,
-            structure_engine=structure_engine,
-            **kwargs,
-        )
+    @delegate_signature(_table_methods.extract_tables)
+    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+        return _table_methods.extract_tables(self, *args, **kwargs)
 
-    def extract_tables(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        **kwargs: Any,
-    ) -> List[List[List[Optional[str]]]]:
-        """Delegate to the shared table service and return every detected table."""
+    @delegate_signature(SelectorHostMixin.find)
+    def find(self, *args, **kwargs) -> Optional["Element"]:
+        merged = _merge_selector_args(args, kwargs)
+        return resolve_service(self, "selector").find(self, **merged)
 
-        return _table_methods.extract_tables(
-            self,
-            method=method,
-            table_settings=table_settings,
-            **kwargs,
-        )
-
-    def find(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> Optional["Element"]:
-
-        return resolve_service(self, "selector").find(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
-
-    def find_all(
-        self,
-        selector: Optional[str] = None,
-        *,
-        text: Optional[Union[str, Sequence[str]]] = None,
-        overlap: Optional[str] = None,
-        apply_exclusions: bool = True,
-        regex: bool = False,
-        case: bool = True,
-        text_tolerance: Optional[Dict[str, Any]] = None,
-        auto_text_tolerance: Optional[Union[bool, Dict[str, Any]]] = None,
-        reading_order: bool = True,
-        near_threshold: Optional[float] = None,
-        engine: Optional[str] = None,
-    ) -> "ElementCollection":
-
-        return resolve_service(self, "selector").find_all(
-            self,
-            selector=selector,
-            text=text,
-            overlap=overlap,
-            apply_exclusions=apply_exclusions,
-            regex=regex,
-            case=case,
-            text_tolerance=text_tolerance,
-            auto_text_tolerance=auto_text_tolerance,
-            reading_order=reading_order,
-            near_threshold=near_threshold,
-            engine=engine,
-        )
+    @delegate_signature(SelectorHostMixin.find_all)
+    def find_all(self, *args, **kwargs) -> "ElementCollection":
+        merged = _merge_selector_args(args, kwargs)
+        return resolve_service(self, "selector").find_all(self, **merged)
 
     def _filter_elements_by_overlap_mode(
         self,
@@ -1658,11 +1572,9 @@ class Region(
         # overlap_mode == "center"
         return [el for el in elements if self.is_element_center_inside(el)]
 
-    def detect_lines(self, **kwargs: Any) -> "Region":
-        """Expose line detection on regions via the shape detection service."""
-
-        resolve_service(self, "shapes").detect_lines(self, **kwargs)
-        return self
+    @delegate_signature(_shape_methods.detect_lines)
+    def detect_lines(self, *args, **kwargs):
+        return _shape_methods.detect_lines(self, *args, **kwargs)
 
     def apply_ocr(self, replace: bool = True, **ocr_params: Any) -> "Region":
         """
@@ -1792,6 +1704,30 @@ class Region(
             add_to_page=add_to_page,
         )
         return self
+
+    @delegate_signature(_extraction_methods.extract)
+    def extract(self, *args, **kwargs):
+        return _extraction_methods.extract(self, *args, **kwargs)
+
+    @delegate_signature(_extraction_methods.extract)
+    def extract_structured_data(self, *args, **kwargs):
+        return _extraction_methods.extract(self, *args, **kwargs)
+
+    @delegate_signature(_extraction_methods.extracted)
+    def extracted(self, *args, **kwargs):
+        return _extraction_methods.extracted(self, *args, **kwargs)
+
+    @delegate_signature(_text_methods.update_text)
+    def update_text(self, *args, **kwargs):
+        return _text_methods.update_text(self, *args, **kwargs)
+
+    @delegate_signature(_text_methods.correct_ocr)
+    def correct_ocr(self, *args, **kwargs):
+        return _text_methods.correct_ocr(self, *args, **kwargs)
+
+    @delegate_signature(_classification_methods.classify)
+    def classify(self, *args, **kwargs):
+        return _classification_methods.classify(self, *args, **kwargs)
 
     def get_section_between(
         self,

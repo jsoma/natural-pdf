@@ -98,7 +98,7 @@
 - `PDFCollection` inherits `ServiceHostMixin`, wires the QA hooks, and forwards to `QAService` as well, so `pdfs.ask()` works just like `PageCollection.ask()` (segmenting by constituent pages) without bespoke loops.
 - Guides go through `GuidesService`; `Page`, `Region`, and `FlowRegion` expose a `.guides()` helper that instantiates analyzer instances via the shared context instead of manual imports.
 - Layout analysis is handled by `LayoutService`; `Page`, `Flow`, `PageCollection`, and `PDF` delegate `analyze_layout` via the service, which wraps `LayoutAnalyzer`, de-duplicates flow segments, and honors the existing caching semantics.
-- Table extraction is entirely service-driven now; Region hosts attach the `"table"` capability directly, so the old `TableExtractionMixin` is no longer part of the capability bundle (it remains as a shim for third-party subclasses).
+- Table extraction is entirely service-driven now; Region hosts attach the `"table"` capability directly, so the old `TableExtractionMixin` has been removed.
 - Selector, single-page context, and table responsibilities are explicit on the host classes; the old `AnalysisHostMixin`/`TabularRegionMixin` shims have been removed.
 - Exclusions now flow through `ExclusionService`, so `Page`/`Region`/`FlowRegion` share the same `add_exclusion`/evaluation logic and the old mixins have been removed from `AnalysisHostMixin`. FlowRegion performs local+constituent aggregation with service-provided helpers.
 - `PDFContext` exposes per-capability options via `get_option`, so services (starting with selectors) no longer reach into host configs directly.

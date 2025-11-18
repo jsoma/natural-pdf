@@ -15,7 +15,7 @@ StitchPredicate = Optional[Callable[[List[Optional[str]], List[Optional[str]], i
 
 
 def flowregion_extract_table(
-    host,
+    self,
     method: Optional[str] = None,
     table_settings: Optional[dict] = None,
     use_ocr: bool = False,
@@ -39,7 +39,7 @@ def flowregion_extract_table(
     if text_options is None:
         text_options = {}
 
-    if not host.constituent_regions:
+    if not self.constituent_regions:
         return TableResult([])
 
     predicate: StitchPredicate = stitch_rows if callable(stitch_rows) else None
@@ -76,7 +76,7 @@ def flowregion_extract_table(
             for cell, header_cell in zip(first_row, header_row)
         )
 
-    for idx, region in enumerate(host.constituent_regions):
+    for idx, region in enumerate(self.constituent_regions):
         settings_copy = dict(table_settings)
         text_copy = dict(text_options)
         table_result = region.extract_table(
@@ -130,17 +130,17 @@ def flowregion_extract_table(
 
 
 def flowregion_extract_tables(
-    host,
+    self,
     method: Optional[str] = None,
     table_settings: Optional[dict] = None,
     **kwargs,
 ) -> List[List[List[Optional[str]]]]:
     if table_settings is None:
         table_settings = {}
-    if not host.constituent_regions:
+    if not self.constituent_regions:
         return []
     result: List[List[List[Optional[str]]]] = []
-    for region in host.constituent_regions:
+    for region in self.constituent_regions:
         tables = region.extract_tables(
             method=method,
             table_settings=table_settings.copy(),
@@ -151,20 +151,20 @@ def flowregion_extract_tables(
     return result
 
 
-def flow_extract_table(host, **kwargs) -> TableResult:
+def flow_extract_table(self, **kwargs) -> TableResult:
     """Flow.extract_table simply routes through the FlowRegion helper."""
 
-    if not host.segments:
+    if not self.segments:
         return TableResult([])
-    combined_region = host._analysis_region()
+    combined_region = self._analysis_region()
     return flowregion_extract_table(combined_region, **kwargs)
 
 
-def flow_extract_tables(host, **kwargs) -> List[List[List[Optional[str]]]]:
-    if not host.segments:
+def flow_extract_tables(self, **kwargs) -> List[List[List[Optional[str]]]]:
+    if not self.segments:
         return []
     tables: List[List[List[Optional[str]]]] = []
-    for segment in host.segments:
+    for segment in self.segments:
         segment_kwargs = dict(kwargs)
         settings = segment_kwargs.get("table_settings")
         if settings is not None:
@@ -173,9 +173,9 @@ def flow_extract_tables(host, **kwargs) -> List[List[List[Optional[str]]]]:
     return tables
 
 
-def flow_collection_extract_table(host, **kwargs) -> List[TableResult]:
+def flow_collection_extract_table(self, **kwargs) -> List[TableResult]:
     results: List[TableResult] = []
-    for fr in host._flow_regions:
+    for fr in self._flow_regions:
         fr_kwargs = dict(kwargs)
         settings = fr_kwargs.get("table_settings")
         if settings is not None:
@@ -184,9 +184,9 @@ def flow_collection_extract_table(host, **kwargs) -> List[TableResult]:
     return results
 
 
-def flow_collection_extract_tables(host, **kwargs) -> List[List[List[Optional[str]]]]:
+def flow_collection_extract_tables(self, **kwargs) -> List[List[List[Optional[str]]]]:
     tables: List[List[List[Optional[str]]]] = []
-    for fr in host._flow_regions:
+    for fr in self._flow_regions:
         fr_kwargs = dict(kwargs)
         settings = fr_kwargs.get("table_settings")
         if settings is not None:

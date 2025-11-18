@@ -65,9 +65,10 @@ from natural_pdf.search import (
     get_search_service,
 )
 from natural_pdf.search.search_service_protocol import SearchServiceProtocol
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import classification_methods as _classification_methods
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
@@ -1234,7 +1235,6 @@ class PDF(
         merge_across_pages: bool = False,
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
-        check_tatr: bool = True,
     ) -> List[Any]:
         """
         Extract tables from the document or matching elements.
@@ -1244,7 +1244,6 @@ class PDF(
             merge_across_pages: Whether to merge tables that span across pages (not yet implemented).
             method: Extraction strategy to prefer. Mirrors ``Page.extract_tables``.
             table_settings: Per-method configuration forwarded to ``Page.extract_tables``.
-            check_tatr: When True, visit TATR table regions before falling back to page extraction.
 
         Returns:
             List of extracted tables
@@ -1261,7 +1260,6 @@ class PDF(
                     page.extract_tables(
                         method=method,
                         table_settings=table_settings,
-                        check_tatr=check_tatr,
                     )
                 )
             else:
@@ -1639,6 +1637,10 @@ class PDF(
                 "source_elements": [],
             }
         )
+
+    @delegate_signature(_classification_methods.classify)
+    def classify(self, *args, **kwargs):
+        return _classification_methods.classify(self, *args, **kwargs)
 
     def ask_batch(
         self,

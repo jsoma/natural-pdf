@@ -108,17 +108,8 @@ def resolve_selector_engine_name(host: Any, requested: Optional[str]) -> Optiona
     if candidate:
         return candidate
 
-    getter = getattr(host, "get_config", None)
-    config_value: Optional[str] = None
-    if callable(getter):
-        try:
-            maybe_value = getter("selector_engine", None, scope="region")
-        except TypeError:
-            maybe_value = getter("selector_engine", None)
-        if isinstance(maybe_value, str):
-            config_value = maybe_value
-
-    candidate = _normalize_name(config_value)
+    config_value = _context_option(host, "selector", "selector_engine", scope="region")
+    candidate = _normalize_name(config_value if isinstance(config_value, str) else None)
     if candidate:
         return candidate
 
@@ -175,6 +166,25 @@ def _normalize_name(value: Optional[str]) -> Optional[str]:
         return None
     normalized = value.strip().lower()
     return normalized or None
+
+
+def _context_option(host: Any, capability: str, key: str, *, scope: str) -> Any:
+    context = getattr(host, "_context", None)
+    if context is not None and hasattr(context, "get_option"):
+        value = context.get_option(capability, key, host=host, scope=scope)
+        if value is not None:
+            return value
+
+    getter = getattr(host, "get_config", None)
+    if callable(getter):
+        try:
+            return getter(key, None, scope=scope)
+        except TypeError:
+            try:
+                return getter(key, None)
+            except TypeError:
+                return None
+    return None
 
 
 try:  # Register on import

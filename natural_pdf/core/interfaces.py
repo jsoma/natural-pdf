@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -30,10 +29,10 @@ if TYPE_CHECKING:
 Bounds = Tuple[float, float, float, float]
 
 
-class SupportsSections(ABC):
+@runtime_checkable
+class SupportsSections(Protocol):
     """Minimal contract for objects that participate in section extraction pipelines."""
 
-    @abstractmethod
     def find_all(
         self,
         selector: Optional[str] = None,
@@ -51,7 +50,6 @@ class SupportsSections(ABC):
     ) -> "ElementCollection":
         """Locate elements relative to the object."""
 
-    @abstractmethod
     def get_sections(
         self,
         start_elements: Union[str, Sequence["Element"], "ElementCollection", None] = None,
@@ -60,7 +58,6 @@ class SupportsSections(ABC):
     ) -> "ElementCollection":
         """Extract logical sections bounded by the supplied markers."""
 
-    @abstractmethod
     def to_region(self) -> Union["Region", "FlowRegion"]:
         """Return a region-like object suitable for flow-based operations."""
 

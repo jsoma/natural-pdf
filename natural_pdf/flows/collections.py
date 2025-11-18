@@ -24,9 +24,11 @@ from natural_pdf.collections.mixins import QACollectionMixin, SectionsCollection
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.services.base import ServiceHostMixin, resolve_service
+from natural_pdf.selectors.host_mixin import delegate_signature
+from natural_pdf.services.base import ServiceHostMixin
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
+from natural_pdf.services.methods import navigation_methods as _navigation_methods
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -103,16 +105,6 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
     def __repr__(self) -> str:
         return f"<FlowElementCollection(count={len(self)})>"
 
-    def _execute_directional_on_all(self, method_name: str, **kwargs) -> "FlowRegionCollection":
-        if not self._flow_elements:
-            return FlowRegionCollection([])
-
-        service_host = (
-            getattr(self._flow_elements[0], "physical_object", None) or self._flow_elements[0]
-        )
-        navigation = resolve_service(service_host, "navigation")
-        return navigation.flow_element_collection(self, method_name, **kwargs)
-
     def above(
         self,
         height: Optional[float] = None,
@@ -123,8 +115,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_all(
-            "above",
+        return _navigation_methods.flow_element_collection_above(
+            self,
             height=height,
             width_ratio=width_ratio,
             width_absolute=width_absolute,
@@ -144,8 +136,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_all(
-            "below",
+        return _navigation_methods.flow_element_collection_below(
+            self,
             height=height,
             width_ratio=width_ratio,
             width_absolute=width_absolute,
@@ -165,8 +157,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_all(
-            "left",
+        return _navigation_methods.flow_element_collection_left(
+            self,
             width=width,
             height_ratio=height_ratio,
             height_absolute=height_absolute,
@@ -186,8 +178,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_all(
-            "right",
+        return _navigation_methods.flow_element_collection_right(
+            self,
             width=width,
             height_ratio=height_ratio,
             height_absolute=height_absolute,
@@ -475,17 +467,6 @@ class FlowRegionCollection(
             f"Unsupported within argument type '{type(within).__name__}' for FlowRegionCollection."
         )
 
-    def _execute_directional_on_regions(
-        self, method_name: str, within: Optional[Any], **kwargs
-    ) -> "FlowRegionCollection":
-        if not self._flow_regions:
-            return FlowRegionCollection([])
-        navigation = resolve_service(self._flow_regions[0], "navigation")
-        normalized_within = self._normalize_within(within)
-        return navigation.flow_region_collection(
-            self, method_name, within=normalized_within, **kwargs
-        )
-
     def above(
         self,
         height: Optional[float] = None,
@@ -500,9 +481,10 @@ class FlowRegionCollection(
         anchor: str = "start",
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_regions(
-            "above",
-            within=within,
+        normalized_within = self._normalize_within(within)
+        return _navigation_methods.flow_region_collection_above(
+            self,
+            within=normalized_within,
             height=height,
             width=width,
             include_source=include_source,
@@ -529,9 +511,10 @@ class FlowRegionCollection(
         anchor: str = "start",
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_regions(
-            "below",
-            within=within,
+        normalized_within = self._normalize_within(within)
+        return _navigation_methods.flow_region_collection_below(
+            self,
+            within=normalized_within,
             height=height,
             width=width,
             include_source=include_source,
@@ -558,9 +541,10 @@ class FlowRegionCollection(
         anchor: str = "start",
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_regions(
-            "left",
-            within=within,
+        normalized_within = self._normalize_within(within)
+        return _navigation_methods.flow_region_collection_left(
+            self,
+            within=normalized_within,
             width=width,
             height=height,
             include_source=include_source,
@@ -587,9 +571,10 @@ class FlowRegionCollection(
         anchor: str = "start",
         **kwargs,
     ) -> "FlowRegionCollection":
-        return self._execute_directional_on_regions(
-            "right",
-            within=within,
+        normalized_within = self._normalize_within(within)
+        return _navigation_methods.flow_region_collection_right(
+            self,
+            within=normalized_within,
             width=width,
             height=height,
             include_source=include_source,
@@ -715,31 +700,13 @@ class FlowRegionCollection(
     # Table extraction helpers
     # ------------------------------------------------------------------
 
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        **kwargs,
-    ) -> List[TableResult]:
-        return _flow_table_methods.flow_collection_extract_table(
-            self,
-            method=method,
-            table_settings=table_settings,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flow_collection_extract_table)
+    def extract_table(self, *args, **kwargs) -> List[TableResult]:
+        return _flow_table_methods.flow_collection_extract_table(self, *args, **kwargs)
 
-    def extract_tables(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        **kwargs,
-    ) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flow_collection_extract_tables(
-            self,
-            method=method,
-            table_settings=table_settings,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flow_collection_extract_tables)
+    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+        return _flow_table_methods.flow_collection_extract_tables(self, *args, **kwargs)
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self._flow_regions))

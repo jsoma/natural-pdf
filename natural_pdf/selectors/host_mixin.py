@@ -36,6 +36,20 @@ def delegate_signature(template: Callable[P, R]) -> Callable[[Callable[..., R]],
     return decorator
 
 
+def _merge_selector_args(args: tuple[Any, ...], kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize positional selector arguments into keyword form."""
+
+    if not args:
+        return kwargs
+    if len(args) > 1:
+        raise TypeError("selector helpers accept at most one positional argument.")
+    if "selector" in kwargs:
+        raise TypeError("selector argument provided both positionally and via keyword.")
+    merged = dict(kwargs)
+    merged["selector"] = args[0]
+    return merged
+
+
 class SelectorFindMethod(Protocol):
     """Shared signature for ``find`` across selector-capable hosts."""
 

@@ -64,45 +64,21 @@ class OCRService:
                 return kwargs
         return {"apply_exclusions": apply_exclusions}
 
-    @staticmethod
-    @staticmethod
-    def _resolve_resolution(host, requested: Optional[int], scope: str) -> int:
+    def _resolve_resolution(self, host, requested: Optional[int], scope: str) -> int:
         if requested is not None:
             return requested
 
-        getter = getattr(host, "get_config", None)
-        if callable(getter):
-            sentinel = object()
-            value = sentinel
-            try:
-                value = getter("resolution", sentinel, scope=scope)
-            except TypeError:
-                try:
-                    value = getter("resolution", sentinel)
-                except TypeError:
-                    value = sentinel
-            if value is not sentinel:
-                coerced = OCRService._coerce_int(value)
-                if coerced is not None:
-                    return coerced
-
-        pdf_obj = getattr(host, "pdf", getattr(host, "_parent", None))
-        if pdf_obj is not None:
-            cfg = getattr(pdf_obj, "_config", None)
-            if isinstance(cfg, dict):
-                pdf_resolution = cfg.get("resolution")
-                coerced = OCRService._coerce_int(pdf_resolution)
-                if coerced is not None:
-                    return coerced
-
-        page_obj = getattr(host, "page", None)
-        if page_obj is not None:
-            cfg = getattr(page_obj, "_config", None)
-            if isinstance(cfg, dict):
-                page_resolution = cfg.get("resolution")
-                coerced = OCRService._coerce_int(page_resolution)
-                if coerced is not None:
-                    return coerced
+        option_value = self._context.get_option(
+            "ocr",
+            "resolution",
+            host=host,
+            default=None,
+            scope=scope,
+        )
+        if option_value is not None:
+            coerced = self._coerce_int(option_value)
+            if coerced is not None:
+                return coerced
 
         return 150
 

@@ -145,7 +145,7 @@ def resolve_ocr_engine_name(
     candidates = (
         _normalize_engine_name(requested),
         _normalize_engine_name(infer_engine_from_options(options)),
-        _normalize_engine_name(_context_config_value(context, "ocr_engine", scope)),
+        _normalize_engine_name(_context_option(context, "ocr", "ocr_engine", scope)),
         _normalize_engine_name(_global_ocr_option("engine")),
     )
 
@@ -168,10 +168,16 @@ def _normalize_engine_name(name: Optional[Any]) -> Optional[str]:
     return None
 
 
-def _context_config_value(context: Any, key: str, scope: str) -> Any:
-    sentinel = object()
-    getter = getattr(context, "get_config", None)
+def _context_option(host: Any, capability: str, key: str, scope: str) -> Any:
+    ctx = getattr(host, "_context", None)
+    if ctx is not None and hasattr(ctx, "get_option"):
+        value = ctx.get_option(capability, key, host=host, scope=scope)
+        if value is not None:
+            return value
+
+    getter = getattr(host, "get_config", None)
     if callable(getter):
+        sentinel = object()
         try:
             value = getter(key, sentinel, scope=scope)
         except TypeError:
@@ -182,7 +188,7 @@ def _context_config_value(context: Any, key: str, scope: str) -> Any:
         if value is not sentinel:
             return value
 
-    cfg = getattr(context, "_config", None)
+    cfg = getattr(host, "_config", None)
     if isinstance(cfg, dict):
         return cfg.get(key)
     return None
@@ -208,13 +214,14 @@ def _resolve_with_fallback(
     context: Any,
     scope: str,
     explicit: Optional[Any],
+    capability: str,
     config_key: str,
     global_key: str,
 ) -> Optional[Any]:
     if explicit is not None:
         return explicit
 
-    cfg_value = _context_config_value(context, config_key, scope)
+    cfg_value = _context_option(context, capability=capability, key=config_key, scope=scope)
     if cfg_value is not None:
         return cfg_value
 
@@ -234,6 +241,7 @@ def resolve_ocr_languages(
         context=context,
         scope=scope,
         explicit=languages,
+        capability="ocr",
         config_key="ocr_languages",
         global_key="languages",
     )
@@ -261,6 +269,7 @@ def resolve_ocr_min_confidence(
         context=context,
         scope=scope,
         explicit=min_confidence,
+        capability="ocr",
         config_key="ocr_min_confidence",
         global_key="min_confidence",
     )

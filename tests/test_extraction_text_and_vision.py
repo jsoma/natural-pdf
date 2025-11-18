@@ -8,6 +8,10 @@ import pytest
 from PIL import Image
 from pydantic import BaseModel
 
+from natural_pdf.core.context import PDFContext
+from natural_pdf.extraction.result import StructuredDataResult
+from natural_pdf.services.extraction_service import ExtractionService
+
 
 class InspectionData(BaseModel):
     """Schema for inspection data extraction."""
@@ -156,6 +160,8 @@ def test_vision_extraction_with_custom_resolution(practice_pdf):
 def test_extraction_without_render_method_fails_for_vision():
     """Test that vision extraction fails gracefully without render method."""
 
+    service = ExtractionService(PDFContext.with_defaults())
+
     class PageWithoutRender:
         """Mock page without render method."""
 
@@ -165,19 +171,14 @@ def test_extraction_without_render_method_fails_for_vision():
         def extract_text(self, **kwargs):
             return "Some text"
 
-        def _get_extraction_content(self, using="text", **kwargs):
-            from natural_pdf.extraction.mixin import ExtractionMixin
-
-            return ExtractionMixin._get_extraction_content(self, using, **kwargs)
-
     page = PageWithoutRender()
 
     # Text extraction should work
-    content = page._get_extraction_content(using="text")
+    content = service._default_extraction_content(page, using="text")
     assert content == "Some text"
 
     # Vision extraction should return None
-    content = page._get_extraction_content(using="vision")
+    content = service._default_extraction_content(page, using="vision")
     assert content is None
 
 
@@ -198,3 +199,80 @@ def test_api_error_propagates(practice_pdf):
         )
 
     assert "Invalid API key" in str(exc_info.value)
+
+
+class _MockExtractionHost:
+    """Lightweight host that mimics Page/Region for extraction service tests."""
+
+    def __init__(self):
+        self.analyses = {}
+        self._text_content = "Sample text content for testing"
+
+    def extract_text(self, layout=True, **kwargs):
+        return self._text_content if not layout else f"   {self._text_content}   "
+
+    def render(self, resolution=72, **kwargs):
+        mock_image = Mock()
+        mock_image.size = (612, 792)
+        return mock_image
+
+    @property
+    def pdf(self):
+        if not hasattr(self, "_pdf"):
+            self._pdf = Mock()
+        return self._pdf
+
+
+def test_extraction_service_default_content_helpers():
+    """Ensure the extraction service content helpers handle text and vision safely."""
+
+    service = ExtractionService(PDFContext.with_defaults())
+    host = _MockExtractionHost()
+
+    text_content = service._default_extraction_content(host, using="text")
+    assert "Sample text content" in text_content
+
+    vision_content = service._default_extraction_content(host, using="vision")
+    assert vision_content is not None
+
+    # Remove extract_text to force failure
+    host.extract_text = None
+    assert service._default_extraction_content(host, using="text") is None
+
+    # Remove render to force failure
+    host.render = None
+    assert service._default_extraction_content(host, using="vision") is None
+
+
+def test_extraction_service_with_mock_client():
+    """Ensure ExtractionService integrates with structured data managers."""
+
+    service = ExtractionService(PDFContext.with_defaults())
+    host = _MockExtractionHost()
+
+    mock_client = create_mock_client(
+        InspectionData(site="value1", date="value2", violation_count="value3")
+    )
+    mock_manager = Mock()
+    mock_manager.is_available.return_value = True
+    mock_manager.extract.return_value = StructuredDataResult(
+        data=InspectionData(site="value1", date="value2", violation_count="value3"),
+        success=True,
+        error_message=None,
+        model_used="test-model",
+    )
+    host.pdf.get_manager = Mock(return_value=mock_manager)
+
+    service.extract(
+        host,
+        schema=["site", "violation_count"],
+        client=mock_client,
+        model="test-model",
+        using="text",
+    )
+
+    result = host.analyses["structured"]
+    assert result.data.site == "value1"
+    assert result.data.violation_count == "value3"
+
+    assert mock_manager.extract.called

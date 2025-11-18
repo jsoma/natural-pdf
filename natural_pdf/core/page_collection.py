@@ -29,12 +29,16 @@ from natural_pdf.collections.mixins import (
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import SupportsGeometry, SupportsSections
 from natural_pdf.core.pdf import PDF
-from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
+from natural_pdf.selectors.host_mixin import delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
+from natural_pdf.services.methods import layout_methods as _layout_methods
+from natural_pdf.services.methods import ocr_methods as _ocr_methods
+from natural_pdf.services.methods import qa_methods as _qa_methods
+from natural_pdf.services.methods import text_methods as _text_methods
 from natural_pdf.utils.sections import sanitize_sections
 
 # New Imports
@@ -235,67 +239,70 @@ class PageCollection(
 
         return separator.join(texts)
 
-    def apply_ocr(
+    @delegate_signature(_text_methods.update_text)
+    def update_text(
         self,
-        engine: Optional[str] = None,
-        # --- Common OCR Parameters (Direct Arguments) ---
-        languages: Optional[List[str]] = None,
-        min_confidence: Optional[float] = None,  # Min confidence threshold
-        device: Optional[str] = None,
-        resolution: Optional[int] = None,  # DPI for rendering
-        detect_only: bool = False,
-        apply_exclusions: bool = True,  # New parameter
-        replace: bool = True,  # Whether to replace existing OCR elements
-        # --- Engine-Specific Options ---
-        options: Optional[Any] = None,  # e.g., EasyOCROptions(...)
-    ) -> "PageCollection":
-        """
-        Applies OCR to all pages within this collection using batch processing.
+        transform: Callable[[Any], Optional[str]],
+        *,
+        selector: str = "text",
+        apply_exclusions: bool = False,
+        **kwargs: Any,
+    ):
+        """Apply text corrections across every page in the collection."""
 
-        Each page receives the same OCR parameters, ensuring the per-page logic in
-        :meth:`natural_pdf.core.page.Page.apply_ocr` is reused directly.
+        pages_param = kwargs.pop("pages", None)
+        max_workers = kwargs.pop("max_workers", None)
+        progress_callback = kwargs.pop("progress_callback", None)
 
-        Args:
-            engine: Name of the OCR engine (e.g., 'easyocr', 'paddleocr').
-            languages: List of language codes (e.g., ['en', 'fr'], ['en', 'ch']).
-                       **Must be codes understood by the specific selected engine.**
-                       No mapping is performed.
-            min_confidence: Minimum confidence threshold for detected text (0.0 to 1.0).
-            device: Device to run OCR on (e.g., 'cpu', 'cuda', 'mps').
-            resolution: DPI resolution to render page images before OCR (e.g., 150, 300).
-            detect_only: When True, only detect bounding boxes without creating text elements.
-            apply_exclusions: If True (default), render page images for OCR with
-                              excluded areas masked (whited out). If False, OCR
-                              the raw page images without masking exclusions.
-            replace: If True (default), remove any existing OCR elements before
-                    adding new ones. If False, add new OCR elements to existing ones.
-            options: An engine-specific options object (e.g., EasyOCROptions) or dict.
+        if pages_param is None:
+            target_pages = list(self.pages)
+        else:
+            target_pages = self._select_pages_subset(pages_param)
 
-        Returns:
-            Self for method chaining.
-        """
+        if not target_pages:
+            logger.warning("PageCollection.update_text: no pages selected for update.")
+            return self
+
+        for page in target_pages:
+            page.update_text(
+                transform=transform,
+                selector=selector,
+                apply_exclusions=apply_exclusions,
+                max_workers=max_workers,
+                progress_callback=progress_callback,
+            )
+        return self
+
+    @delegate_signature(_ocr_methods.apply_ocr)
+    def apply_ocr(self, *, replace: bool = True, **ocr_params):
+        """Apply OCR uniformly across all pages in the collection."""
+
         if not self.pages:
             logger.warning("Cannot apply OCR to an empty PageCollection.")
             return self
 
         logger.info("Applying OCR to %d page(s) directly from PageCollection.", len(self.pages))
         for page in self.pages:
-            page.apply_ocr(
-                engine=engine,
-                options=options,
-                languages=languages,
-                min_confidence=min_confidence,
-                device=device,
-                resolution=resolution,
-                detect_only=detect_only,
-                apply_exclusions=apply_exclusions,
-                replace=replace,
-            )
-
-        return self  # Return self for chaining
+            _ocr_methods.apply_ocr(page, replace=replace, **ocr_params)
+        return self  # chaining helper
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self.pages))
+
+    def _select_pages_subset(self, pages: Union[Iterable[int], range, slice]) -> List["Page"]:
+        """Coerce a pages argument into concrete page instances."""
+
+        if isinstance(pages, slice):
+            indices = range(*pages.indices(len(self.pages)))
+        else:
+            indices = pages
+        selected: List["Page"] = []
+        for idx in indices:
+            try:
+                selected.append(self.pages[idx])
+            except (IndexError, TypeError):
+                logger.warning("PageCollection.update_text: page index %s invalid, skipping.", idx)
+        return selected
 
     # ------------------------------------------------------------------
     # QA service hooks
@@ -303,25 +310,9 @@ class PageCollection(
     def _qa_segment_iterable(self) -> Sequence["Page"]:
         return self.pages
 
-    def ask(
-        self,
-        question: QuestionInput,
-        min_confidence: float = 0.1,
-        model: Optional[str] = None,
-        debug: bool = False,
-        **kwargs: Any,
-    ) -> Any:
-        """Delegate QA execution across the collection via QAService."""
-
-        qa_service = resolve_service(self, "qa")
-        return qa_service.ask(
-            self,
-            question=question,
-            min_confidence=min_confidence,
-            model=model,
-            debug=debug,
-            **kwargs,
-        )
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     def split(
         self,
@@ -917,8 +908,9 @@ class PageCollection(
             engine=engine,
         )
 
-    def analyze_layout(self, *args, **kwargs) -> "ElementCollection[Region]":
-        return resolve_service(self, "layout").analyze_layout(self, *args, **kwargs)
+    @delegate_signature(_layout_methods.analyze_layout)
+    def analyze_layout(self, *args, **kwargs):
+        return _layout_methods.analyze_layout(self, *args, **kwargs)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """

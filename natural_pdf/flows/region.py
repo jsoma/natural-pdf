@@ -32,7 +32,7 @@ from natural_pdf.core.mixins import ContextResolverMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
 from natural_pdf.services import guides_service as _guides_service  # noqa: F401
 from natural_pdf.services import navigation_service as _navigation_service  # noqa: F401
@@ -40,6 +40,7 @@ from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.delegates import attach_capability
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
+from natural_pdf.services.methods import navigation_methods as _navigation_methods
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -1058,57 +1059,13 @@ class FlowRegion(
 
     # Table extraction helpers (delegates to underlying physical regions)
 
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,
-        text_options: Optional[Dict] = None,
-        cell_extraction_func: Optional[Callable[["PhysicalRegion"], Optional[str]]] = None,
-        show_progress: bool = False,
-        content_filter: Optional[Union[str, Callable[[str], bool], List[str]]] = None,
-        apply_exclusions: bool = True,
-        verticals: Optional[List[float]] = None,
-        horizontals: Optional[List[float]] = None,
-        stitch_rows: Optional[
-            Callable[[List[Optional[str]], List[Optional[str]], int, "PhysicalRegion"], bool]
-        ] = None,
-        merge_headers: Optional[bool] = None,
-        structure_engine: Optional[str] = None,
-        **kwargs,
-    ) -> TableResult:
-        return _flow_table_methods.flowregion_extract_table(
-            self,
-            method=method,
-            table_settings=table_settings,
-            use_ocr=use_ocr,
-            ocr_config=ocr_config,
-            text_options=text_options,
-            cell_extraction_func=cell_extraction_func,
-            show_progress=show_progress,
-            content_filter=content_filter,
-            apply_exclusions=apply_exclusions,
-            verticals=verticals,
-            horizontals=horizontals,
-            stitch_rows=stitch_rows,
-            merge_headers=merge_headers,
-            structure_engine=structure_engine,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flowregion_extract_table)
+    def extract_table(self, *args, **kwargs) -> TableResult:
+        return _flow_table_methods.flowregion_extract_table(self, *args, **kwargs)
 
-    def extract_tables(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        **kwargs,
-    ) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flowregion_extract_tables(
-            self,
-            method=method,
-            table_settings=table_settings,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flowregion_extract_tables)
+    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+        return _flow_table_methods.flowregion_extract_tables(self, *args, **kwargs)
 
     def get_sections(
         self,
@@ -1249,5 +1206,22 @@ attach_capability(FlowRegion, "qa")
 attach_capability(FlowRegion, "exclusion")
 attach_capability(FlowRegion, "guides")
 
-FlowRegion.extract_table.__doc__ = _flow_table_methods.flowregion_extract_table.__doc__
-FlowRegion.extract_tables.__doc__ = _flow_table_methods.flowregion_extract_tables.__doc__
+
+@delegate_signature(_navigation_methods.above)
+def _flowregion_above(self, *args, **kwargs):
+    return _navigation_methods.above(self, *args, **kwargs)
+
+
+@delegate_signature(_navigation_methods.below)
+def _flowregion_below(self, *args, **kwargs):
+    return _navigation_methods.below(self, *args, **kwargs)
+
+
+@delegate_signature(_navigation_methods.left)
+def _flowregion_left(self, *args, **kwargs):
+    return _navigation_methods.left(self, *args, **kwargs)
+
+
+@delegate_signature(_navigation_methods.right)
+def _flowregion_right(self, *args, **kwargs):
+    return _navigation_methods.right(self, *args, **kwargs)

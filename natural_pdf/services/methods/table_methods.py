@@ -11,7 +11,7 @@ ContentFilter = Optional[Union[str, Sequence[str], Callable[[str], bool]]]
 
 
 def extract_table(
-    host,
+    self,
     method: Optional[str] = None,
     table_settings: Optional[dict] = None,
     use_ocr: bool = False,
@@ -27,9 +27,9 @@ def extract_table(
 ) -> TableResult:
     """Call the table service with the canonical extract_table signature."""
 
-    service = resolve_service(host, "table")
+    service = resolve_service(self, "table")
     return service.extract_table(
-        host,
+        self,
         method=method,
         table_settings=table_settings,
         use_ocr=use_ocr,
@@ -46,15 +46,15 @@ def extract_table(
 
 
 def extract_tables(
-    host,
+    self,
     method: Optional[str] = None,
     table_settings: Optional[dict] = None,
 ) -> List[List[List[Optional[str]]]]:
     """Call the table service to extract every table for the host."""
 
-    service = resolve_service(host, "table")
+    service = resolve_service(self, "table")
     return service.extract_tables(
-        host,
+        self,
         method=method,
         table_settings=table_settings,
     )

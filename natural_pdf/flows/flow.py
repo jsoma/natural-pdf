@@ -32,14 +32,15 @@ if TYPE_CHECKING:
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsSections
-from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.flows.collections import FlowElementCollection
 from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.region import FlowRegion
-from natural_pdf.selectors.host_mixin import SelectorHostMixin
+from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
+from natural_pdf.services.methods import layout_methods as _layout_methods
+from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
@@ -402,27 +403,9 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             scale_y=scale_y,
         )
 
-    def ask(
-        self,
-        question: QuestionInput,
-        min_confidence: float = 0.1,
-        model: Optional[str] = None,
-        debug: bool = False,
-        **kwargs: Any,
-    ) -> Any:
-        """
-        Run document QA across the flow by delegating to a FlowRegion.
-        """
-
-        qa_service = resolve_service(self, "qa")
-        return qa_service.ask(
-            self,
-            question=question,
-            min_confidence=min_confidence,
-            model=model,
-            debug=debug,
-            **kwargs,
-        )
+    @delegate_signature(_qa_methods.ask)
+    def ask(self, *args, **kwargs):
+        return _qa_methods.ask(self, *args, **kwargs)
 
     def _as_flow_element(self, element: Any) -> FlowElement:
         if isinstance(element, FlowElement):
@@ -518,74 +501,17 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             f"arrangement='{self.arrangement}', alignment='{self.alignment}', gap={self.segment_gap}>"
         )
 
-    def extract_table(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        use_ocr: bool = False,
-        ocr_config: Optional[dict] = None,
-        text_options: Optional[dict] = None,
-        cell_extraction_func: Optional[Any] = None,
-        show_progress: bool = False,
-        content_filter: Optional[Any] = None,
-        stitch_rows: Optional[Callable[..., bool]] = None,
-        merge_headers: Optional[bool] = None,
-        structure_engine: Optional[str] = None,
-        **kwargs,
-    ) -> TableResult:
-        return _flow_table_methods.flow_extract_table(
-            self,
-            method=method,
-            table_settings=table_settings,
-            use_ocr=use_ocr,
-            ocr_config=ocr_config,
-            text_options=text_options,
-            cell_extraction_func=cell_extraction_func,
-            show_progress=show_progress,
-            content_filter=content_filter,
-            stitch_rows=stitch_rows,
-            merge_headers=merge_headers,
-            structure_engine=structure_engine,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flow_extract_table)
+    def extract_table(self, *args, **kwargs) -> TableResult:
+        return _flow_table_methods.flow_extract_table(self, *args, **kwargs)
 
-    def extract_tables(
-        self,
-        method: Optional[str] = None,
-        table_settings: Optional[dict] = None,
-        **kwargs,
-    ) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flow_extract_tables(
-            self,
-            method=method,
-            table_settings=table_settings,
-            **kwargs,
-        )
+    @delegate_signature(_flow_table_methods.flow_extract_tables)
+    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+        return _flow_table_methods.flow_extract_tables(self, *args, **kwargs)
 
-    def analyze_layout(
-        self,
-        engine: Optional[str] = None,
-        options: Optional[Any] = None,
-        confidence: Optional[float] = None,
-        classes: Optional[List[str]] = None,
-        exclude_classes: Optional[List[str]] = None,
-        device: Optional[str] = None,
-        existing: str = "replace",
-        model_name: Optional[str] = None,
-        client: Optional[Any] = None,
-    ) -> "PhysicalElementCollection":
-        return resolve_service(self, "layout").analyze_layout(
-            self,
-            engine=engine,
-            options=options,
-            confidence=confidence,
-            classes=classes,
-            exclude_classes=exclude_classes,
-            device=device,
-            existing=existing,
-            model_name=model_name,
-            client=client,
-        )
+    @delegate_signature(_layout_methods.analyze_layout)
+    def analyze_layout(self, *args, **kwargs):
+        return _layout_methods.analyze_layout(self, *args, **kwargs)
 
     def _get_render_specs(
         self,
