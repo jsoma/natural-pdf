@@ -11,6 +11,14 @@ class ServiceHostMixin:
     _context: PDFContext
     _service_cache: Dict[str, Any]
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        try:
+            from natural_pdf.services.delegates import _register_host_for_custom_capabilities
+        except ImportError:  # pragma: no cover - during bootstrap
+            return
+        _register_host_for_custom_capabilities(cls)
+
     def _init_service_host(self, context: PDFContext) -> None:
         self._context = context
         self._service_cache = {}

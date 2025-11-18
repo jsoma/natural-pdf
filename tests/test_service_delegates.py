@@ -52,3 +52,35 @@ def test_navigation_delegates_use_helpers():
     _assert_delegate(FlowRegion, "below", navigation_methods.below)
     _assert_delegate(FlowRegion, "left", navigation_methods.left)
     _assert_delegate(FlowRegion, "right", navigation_methods.right)
+
+
+def test_register_capability_applies_to_hosts_and_subclasses(monkeypatch):
+    from natural_pdf.services import delegates
+    from natural_pdf.services.base import ServiceHostMixin
+
+    saved_entries = list(delegates._REGISTERED_CUSTOM_CAPABILITIES)
+    try:
+
+        class BaseHost(ServiceHostMixin):
+            def extract_text(self):
+                return "BASE"
+
+        # Limit registration to this host to avoid mutating real classes.
+        monkeypatch.setattr(delegates, "_iter_service_hosts", lambda: [BaseHost])
+
+        def summarize(self, prefix=""):
+            return prefix + self.extract_text()
+
+        delegates.register_capability("unit_summary", summarize)
+
+        assert hasattr(BaseHost, "summarize")
+        assert BaseHost().summarize(prefix=">") == ">BASE"
+
+        class ChildHost(BaseHost):
+            def extract_text(self):
+                return "CHILD"
+
+        assert hasattr(ChildHost, "summarize")
+        assert ChildHost().summarize(prefix="<") == "<CHILD"
+    finally:
+        delegates._REGISTERED_CUSTOM_CAPABILITIES[:] = saved_entries
