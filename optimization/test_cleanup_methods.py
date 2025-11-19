@@ -14,7 +14,8 @@ import threading
 import pytest
 
 import natural_pdf.ocr.ocr_manager as ocr_registry
-from natural_pdf.classification.manager import ClassificationManager
+import natural_pdf.ocr.ocr_provider as ocr_provider
+from natural_pdf.classification.pipelines import cleanup_models, is_classification_available
 from natural_pdf.ocr.ocr_manager import cleanup_engine
 
 
@@ -23,28 +24,24 @@ class TestCleanupMethods:
 
     def test_ocr_cleanup_empty(self, monkeypatch):
         """Test OCR cleanup helpers when no engines are loaded"""
-        monkeypatch.setattr(ocr_registry, "_engine_instances", {})
-        monkeypatch.setattr(ocr_registry, "_engine_locks", {})
-        monkeypatch.setattr(ocr_registry, "_engine_inference_locks", {})
+        monkeypatch.setattr(ocr_provider, "_engine_instances", {})
+        monkeypatch.setattr(ocr_provider, "_engine_locks", {})
+        monkeypatch.setattr(ocr_provider, "_engine_inference_locks", {})
 
         assert cleanup_engine() == 0, "Should return 0 when no engines loaded"
         assert cleanup_engine("nonexistent") == 0, "Should return 0 when engine doesn't exist"
 
-    def test_classification_manager_cleanup_empty(self):
-        """Test Classification manager cleanup when no models are loaded"""
-        try:
-            manager = ClassificationManager()
-
-            # Test cleanup when nothing is loaded
-            count = manager.cleanup_models()
-            assert count == 0, "Should return 0 when no models loaded"
-
-            # Test cleanup of specific non-existent model
-            count = manager.cleanup_models("nonexistent/model")
-            assert count == 0, "Should return 0 when model doesn't exist"
-
-        except ImportError:
+    def test_classification_cleanup_empty(self):
+        """Test classification cleanup when no models are loaded"""
+        if not is_classification_available():
             pytest.skip("Classification dependencies not available")
+
+        # Cleanup when nothing cached
+        count = cleanup_models()
+        assert count == 0, "Should return 0 when no models loaded"
+
+        count = cleanup_models("nonexistent/model")
+        assert count == 0, "Should return 0 when model doesn't exist"
 
     def test_ocr_cleanup_with_engine(self, monkeypatch):
         """Test OCR cleanup after manually caching an engine"""
@@ -59,9 +56,9 @@ class TestCleanupMethods:
         instances = {}
         locks = {}
         inference_locks = {}
-        monkeypatch.setattr(ocr_registry, "_engine_instances", instances)
-        monkeypatch.setattr(ocr_registry, "_engine_locks", locks)
-        monkeypatch.setattr(ocr_registry, "_engine_inference_locks", inference_locks)
+        monkeypatch.setattr(ocr_provider, "_engine_instances", instances)
+        monkeypatch.setattr(ocr_provider, "_engine_locks", locks)
+        monkeypatch.setattr(ocr_provider, "_engine_inference_locks", inference_locks)
 
         dummy_name = "__test_engine__"
         dummy_engine = _DummyEngine()
@@ -79,17 +76,7 @@ class TestCleanupMethods:
         # Test OCR cleanup helper existence
         assert callable(cleanup_engine), "cleanup_engine helper should be callable"
 
-        # Test ClassificationManager (if available)
-        try:
-            classification_manager = ClassificationManager()
-            assert hasattr(
-                classification_manager, "cleanup_models"
-            ), "ClassificationManager should have cleanup_models method"
-            assert callable(
-                classification_manager.cleanup_models
-            ), "cleanup_models should be callable"
-        except ImportError:
-            print("Classification dependencies not available, skipping ClassificationManager test")
+        assert callable(cleanup_models), "cleanup_models helper should be callable"
 
 
 def main():

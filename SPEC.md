@@ -85,7 +85,7 @@ Each capability must document its method signature and return shape so Page/Regi
 - **Registration**: `natural_pdf.deskew.register_deskew_engine("my-deskew", lambda **_: MyDeskewEngine())`.
 
 ### Classification
-- **Capability**: `classification` engines receive content (text or image) plus label/mode metadata and return a `ClassificationResult`. Built-ins wrap the existing `ClassificationManager`, but everything is routed through `provider.get('classification', …)` so external engines can drop in.
+- **Capability**: `classification` engines receive content (text or image) plus label/mode metadata and return a `ClassificationResult`. The built-in engine wraps Hugging Face zero-shot pipelines via the service layer, and everything is routed through `provider.get('classification', …)` so external engines can drop in.
 - **Engine interface**:
   - `infer_using(model_id: Optional[str], using: Optional[str]) -> str`
   - `default_model(using: str) -> str`

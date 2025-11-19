@@ -27,7 +27,7 @@ from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
 )
-from natural_pdf.classification.manager import ClassificationError
+from natural_pdf.classification.pipelines import ClassificationError
 
 # Set up logger early
 # Configure logging to include thread information

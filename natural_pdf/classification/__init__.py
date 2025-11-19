@@ -7,12 +7,24 @@ from .classification_provider import (
     run_classification_batch,
     run_classification_item,
 )
-from .manager import ClassificationManager
+from .pipelines import (
+    ClassificationError,
+    classify_batch_contents,
+    classify_single,
+    cleanup_models,
+    infer_using,
+    is_classification_available,
+)
 from .results import ClassificationResult
 
 __all__ = [
-    "ClassificationManager",
+    "ClassificationError",
     "ClassificationResult",
+    "classify_batch_contents",
+    "classify_single",
+    "cleanup_models",
+    "infer_using",
+    "is_classification_available",
     "register_classification_engine",
     "register_classification_engines",
     "run_classification_item",

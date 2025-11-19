@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from natural_pdf.elements.region import Region
 
-from .checkbox_manager import CheckboxManager
 from .checkbox_options import CheckboxOptions
+from .registry import get_detector, prepare_checkbox_options
 
 logger = logging.getLogger(__name__)
 
@@ -17,16 +17,14 @@ class CheckboxAnalyzer:
     coordinate scaling, region creation, and result storage.
     """
 
-    def __init__(self, element, checkbox_manager: Optional[CheckboxManager] = None):
+    def __init__(self, element):
         """
         Initialize the checkbox analyzer.
 
         Args:
             element: The Page or Region object to analyze
-            checkbox_manager: Optional CheckboxManager instance. If None, creates a new one.
         """
         self._element = element
-        self._checkbox_manager = checkbox_manager or CheckboxManager()
 
         # Determine if element is a page or region
         self._is_page = hasattr(element, "number") and hasattr(element, "_parent")
@@ -73,7 +71,7 @@ class CheckboxAnalyzer:
         if device is not None:
             option_kwargs["device"] = device
 
-        engine_name, final_options = self._checkbox_manager.prepare_options(
+        engine_name, final_options = prepare_checkbox_options(
             engine, options, overrides=option_kwargs
         )
 
@@ -143,9 +141,8 @@ class CheckboxAnalyzer:
 
         # Run detection
         try:
-            detections = self._checkbox_manager.detect_checkboxes(
-                image=image, engine=engine_name, options=final_options
-            )
+            detector = get_detector(engine_name)
+            detections = detector.detect(image, final_options)
             logger.info(f"Detected {len(detections)} checkboxes")
         except Exception as e:
             logger.error(f"Checkbox detection failed: {e}", exc_info=True)

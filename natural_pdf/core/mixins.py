@@ -61,15 +61,6 @@ class ContextResolverMixin:
                     return value
         return default
 
-    def get_manager(self, name: str) -> Any:
-        for context in self._context_resolution_chain():
-            if context is self:
-                continue
-            manager_getter = getattr(context, "get_manager", None)
-            if callable(manager_getter):
-                return manager_getter(name)
-        raise AttributeError(f"Cannot resolve manager '{name}' for {self.__class__.__name__}")
-
 
 class SinglePageContextMixin(ContextResolverMixin):
     """Shared helpers for objects tied to a single PDF page."""
@@ -124,9 +115,3 @@ class SinglePageContextMixin(ContextResolverMixin):
                 return pdf_cfg[key]
 
         return super().get_config(key, default, scope=scope)
-
-    def get_manager(self, name: str):
-        pdf_obj = self._context_pdf()
-        if pdf_obj is None:
-            raise AttributeError(f"Cannot resolve manager '{name}' without PDF context")
-        return pdf_obj.get_manager(name)

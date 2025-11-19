@@ -10,7 +10,15 @@ from PIL import Image
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.engine_registry import register_builtin, register_classification_engine
 
-from .manager import ClassificationManager, ClassificationResult
+from .pipelines import (
+    DEFAULT_TEXT_MODEL,
+    DEFAULT_VISION_MODEL,
+    classify_batch_contents,
+    classify_single,
+    infer_using,
+    is_classification_available,
+)
+from .results import ClassificationResult
 
 logger = logging.getLogger(__name__)
 
@@ -55,24 +63,25 @@ class ClassificationEngine:
 
 class _DefaultClassificationEngine(ClassificationEngine):
     def __init__(self) -> None:
-        self._manager = ClassificationManager()
+        if not is_classification_available():
+            raise ImportError(
+                "Classification dependencies missing. "
+                'Install with: pip install "natural-pdf[ai]"'
+            )
+        self._device: Optional[str] = None
 
     def infer_using(self, model_id: Optional[str], using: Optional[str]) -> str:
-        candidate = model_id or self._manager.DEFAULT_TEXT_MODEL
-        return self._manager.infer_using(candidate, using)
+        candidate = model_id or DEFAULT_TEXT_MODEL
+        return infer_using(candidate, using, device=self._device)
 
     def default_model(self, using: str) -> str:
-        return (
-            self._manager.DEFAULT_TEXT_MODEL
-            if using == "text"
-            else self._manager.DEFAULT_VISION_MODEL
-        )
+        return DEFAULT_TEXT_MODEL if using == "text" else DEFAULT_VISION_MODEL
 
     def classify_item(self, **kwargs):
-        return self._manager.classify_item(**kwargs)
+        return classify_single(device=self._device, **kwargs)
 
     def classify_batch(self, **kwargs):
-        return self._manager.classify_batch(**kwargs)
+        return classify_batch_contents(device=self._device, **kwargs)
 
 
 def register_classification_engines(provider=None) -> None:

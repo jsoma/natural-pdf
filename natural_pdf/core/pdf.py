@@ -5,6 +5,7 @@ import logging
 import os
 import ssl
 import urllib.request
+import warnings
 import weakref
 from collections.abc import Iterator, Sequence
 from pathlib import Path
@@ -44,14 +45,17 @@ from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
 )
-from natural_pdf.classification.manager import ClassificationError
+from natural_pdf.classification.pipelines import ClassificationError
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.extraction.manager import StructuredDataManager
+from natural_pdf.extraction.structured_ops import (
+    extract_structured_data,
+    structured_data_is_available,
+)
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
@@ -106,16 +110,9 @@ create_original_pdf: Optional[CreateOriginalPdfFn] = cast(
 logger = logging.getLogger("natural_pdf.core.pdf")
 
 
-ManagerFactory = Union[Callable[[], Any], type[Any]]
-ManagerFactories = Dict[str, ManagerFactory]
-ManagerCache = Dict[str, Any]
 ExclusionSpec = Tuple[Any, Optional[str]]
 RegionFactory = Callable[["Page"], Optional["Region"]]
 RegionRegistry = List[Tuple[RegionFactory, Optional[str]]]
-
-DEFAULT_MANAGERS: ManagerFactories = {
-    "structured_data": StructuredDataManager,
-}
 
 DEFAULT_GENERATIVE_QA_PROMPT = (
     "You answer questions about the supplied document content. "
@@ -630,8 +627,6 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
         self._source_metadata: Optional[Dict[str, Any]] = None
 
         logger.info(f"PDF '{self.source_path}' initialized with {len(self._pages)} pages.")
-
-        self._initialize_managers()
         self._initialize_highlighter()
 
         # Remove text layer if requested
@@ -669,67 +664,6 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
             for k, v in text_tolerance.items():
                 if k in allowed:
                     self._config[k] = v
-
-    def _initialize_managers(self) -> None:
-        """Set up manager factories for lazy instantiation."""
-        # Store factories/classes for each manager key
-        self._manager_factories = dict(DEFAULT_MANAGERS)
-        self._managers = {}
-
-    def get_manager(self, key: str) -> Any:
-        """Retrieve a manager instance by its key, instantiating it lazily if needed.
-
-        Managers are specialized components that handle specific functionality like
-        classification, structured data extraction, or OCR processing. They are
-        instantiated on-demand to minimize memory usage and startup time.
-
-        Args:
-            key: The manager key to retrieve. Common keys include 'classification'
-                and 'structured_data'.
-
-        Returns:
-            The manager instance for the specified key.
-
-        Raises:
-            KeyError: If no manager is registered for the given key.
-            RuntimeError: If the manager failed to initialize.
-
-        Example:
-            ```python
-            pdf = npdf.PDF("document.pdf")
-            classification_mgr = pdf.get_manager('classification')
-            structured_data_mgr = pdf.get_manager('structured_data')
-            ```
-        """
-        # Check if already instantiated
-        if key in self._managers:
-            manager_instance = self._managers[key]
-            if manager_instance is None:
-                raise RuntimeError(f"Manager '{key}' failed to initialize previously.")
-            return manager_instance
-
-        # Not instantiated yet: get factory/class
-        if not hasattr(self, "_manager_factories") or key not in self._manager_factories:
-            raise KeyError(
-                f"No manager registered for key '{key}'. Available: {list(getattr(self, '_manager_factories', {}).keys())}"
-            )
-        factory_or_class = self._manager_factories[key]
-        try:
-            resolved = factory_or_class
-            # If it's a callable that's not a class, call it to get the class/instance
-            if not isinstance(resolved, type) and callable(resolved):
-                resolved = resolved()
-            # If it's a class, instantiate it
-            if isinstance(resolved, type):
-                instance = resolved()
-            else:
-                instance = resolved  # Already an instance
-            self._managers[key] = instance
-            return instance
-        except Exception as e:
-            logger.error(f"Failed to initialize manager for key '{key}': {e}")
-            self._managers[key] = None
-            raise RuntimeError(f"Manager '{key}' failed to initialize: {e}") from e
 
     def _initialize_highlighter(self):
         pass
@@ -1722,15 +1656,10 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
         if llm_client is None:
             raise ValueError("Generative QA requires 'llm_client' to be provided.")
 
-        try:
-            manager = self.get_manager("structured_data")
-        except (KeyError, RuntimeError) as exc:
+        if not structured_data_is_available():
             raise RuntimeError(
-                "StructuredDataManager is not available; cannot run generative QA."
-            ) from exc
-
-        if manager is None or not manager.is_available():
-            raise RuntimeError("StructuredDataManager is not available for generative QA.")
+                "Structured data extraction is not available; install pydantic to enable generative QA."
+            )
 
         # Compile text content from selected pages
         page_sections: List[str] = []
@@ -1804,7 +1733,7 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
             )
 
             try:
-                extraction_result = manager.extract(
+                extraction_result = extract_structured_data(
                     content=payload,
                     schema=GenerativeQAResponse,
                     client=llm_client,
@@ -2283,7 +2212,7 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
             pages: Page indices, slice, or None for all pages
             analysis_key: Key to store results in page's analyses dict
             using: Processing mode ('text' or 'vision')
-            **kwargs: Additional arguments for the ClassificationManager
+            **kwargs: Additional arguments forwarded to the classification engine
 
         Returns:
             Self for method chaining

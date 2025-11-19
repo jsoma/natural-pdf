@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from natural_pdf.core.context import PDFContext
 from natural_pdf.extraction.result import StructuredDataResult
+from natural_pdf.services import extraction_service
 from natural_pdf.services.extraction_service import ExtractionService
 
 
@@ -244,7 +245,7 @@ def test_extraction_service_default_content_helpers():
     assert service._default_extraction_content(host, using="vision") is None
 
 
-def test_extraction_service_with_mock_client():
+def test_extraction_service_with_mock_client(monkeypatch):
     """Ensure ExtractionService integrates with structured data managers."""
 
     service = ExtractionService(PDFContext.with_defaults())
@@ -253,15 +254,15 @@ def test_extraction_service_with_mock_client():
     mock_client = create_mock_client(
         InspectionData(site="value1", date="value2", violation_count="value3")
     )
-    mock_manager = Mock()
-    mock_manager.is_available.return_value = True
-    mock_manager.extract.return_value = StructuredDataResult(
+    mock_result = StructuredDataResult(
         data=InspectionData(site="value1", date="value2", violation_count="value3"),
         success=True,
         error_message=None,
         model_used="test-model",
     )
-    host.pdf.get_manager = Mock(return_value=mock_manager)
+    monkeypatch.setattr(extraction_service, "structured_data_is_available", lambda: True)
+    mock_extract = Mock(return_value=mock_result)
+    monkeypatch.setattr(extraction_service, "extract_structured_data", mock_extract)
 
     service.extract(
         host,
@@ -275,4 +276,4 @@ def test_extraction_service_with_mock_client():
     assert result.data.site == "value1"
     assert result.data.violation_count == "value3"
 
-    assert mock_manager.extract.called
+    mock_extract.assert_called_once()

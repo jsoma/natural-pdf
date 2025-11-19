@@ -8,6 +8,10 @@ from typing import Any, Dict, List, Optional, Sequence, Type, Union, cast
 from pydantic import BaseModel, Field, create_model
 
 from natural_pdf.extraction.result import StructuredDataResult
+from natural_pdf.extraction.structured_ops import (
+    extract_structured_data,
+    structured_data_is_available,
+)
 from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.services.registry import register_delegate
 
@@ -267,23 +271,8 @@ class ExtractionService:
         overwrite: bool,
         **kwargs,
     ) -> None:
-        pdf_instance = None
-        if hasattr(host, "get_manager") and callable(host.get_manager):
-            pdf_instance = host
-        elif hasattr(host, "pdf") and hasattr(host.pdf, "get_manager"):
-            pdf_instance = host.pdf
-        elif (
-            hasattr(host, "page")
-            and hasattr(host.page, "pdf")
-            and hasattr(host.page.pdf, "get_manager")
-        ):
-            pdf_instance = host.page.pdf
-        else:
-            raise RuntimeError("Cannot access PDF manager to perform LLM extraction.")
-
-        manager = pdf_instance.get_manager("structured_data")
-        if not manager or not manager.is_available():
-            raise RuntimeError("StructuredDataManager is not available")
+        if not structured_data_is_available():
+            raise RuntimeError("Structured data extraction requires Pydantic; please install it.")
 
         content_getter = getattr(host, "_get_extraction_content", None)
         if callable(content_getter):
@@ -311,7 +300,7 @@ class ExtractionService:
                 model_used=model,
             )
         else:
-            result = manager.extract(
+            result = extract_structured_data(
                 content=content,
                 schema=schema,
                 client=client,
