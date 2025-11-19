@@ -36,12 +36,8 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.flows.collections import FlowElementCollection
 from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.region import FlowRegion
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.methods import flow_selector_methods as _flow_selector_methods
-from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
-from natural_pdf.services.methods import layout_methods as _layout_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 logger = logging.getLogger(__name__)
@@ -404,9 +400,8 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             scale_y=scale_y,
         )
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
 
     def __repr__(self) -> str:
         return (
@@ -414,17 +409,22 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             f"arrangement='{self.arrangement}', alignment='{self.alignment}', gap={self.segment_gap}>"
         )
 
-    @delegate_signature(_flow_table_methods.flow_extract_table)
     def extract_table(self, *args, **kwargs) -> TableResult:
-        return _flow_table_methods.flow_extract_table(self, *args, **kwargs)
+        """Extract table from the flow, delegating to the analysis region."""
+        if not self.segments:
+            return TableResult([])
+        # Delegate to the analysis region which will use TableService
+        return self._analysis_region().extract_table(*args, **kwargs)
 
-    @delegate_signature(_flow_table_methods.flow_extract_tables)
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flow_extract_tables(self, *args, **kwargs)
+        """Extract tables from the flow, delegating to the analysis region."""
+        if not self.segments:
+            return []
+        # Delegate to the analysis region which will use TableService
+        return self._analysis_region().extract_tables(*args, **kwargs)
 
-    @delegate_signature(_layout_methods.analyze_layout)
     def analyze_layout(self, *args, **kwargs):
-        return _layout_methods.analyze_layout(self, *args, **kwargs)
+        return self.services.layout.analyze_layout(self, *args, **kwargs)
 
     def _get_render_specs(
         self,

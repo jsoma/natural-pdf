@@ -24,12 +24,7 @@ from natural_pdf.collections.mixins import QACollectionMixin, SectionsCollection
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.selectors.host_mixin import delegate_signature
 from natural_pdf.services.base import ServiceHostMixin
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
-from natural_pdf.services.methods import navigation_methods as _navigation_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -129,8 +124,6 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
     def __repr__(self) -> str:
         return f"<FlowElementCollection(count={len(self)})>"
 
-    @delegate_signature(_navigation_methods.above)
-    @delegate_signature(_navigation_methods.above)
     def above(
         self,
         height: Optional[float] = None,
@@ -141,8 +134,12 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return _navigation_methods.flow_element_collection_above(
+        if not self._flow_elements:
+            return FlowRegionCollection([])
+        assert self.first is not None
+        return self.first.flow.services.navigation.flow_element_collection(
             self,
+            "above",
             height=height,
             width_ratio=width_ratio,
             width_absolute=width_absolute,
@@ -152,8 +149,6 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
-    @delegate_signature(_navigation_methods.below)
-    @delegate_signature(_navigation_methods.below)
     def below(
         self,
         height: Optional[float] = None,
@@ -164,8 +159,12 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return _navigation_methods.flow_element_collection_below(
+        if not self._flow_elements:
+            return FlowRegionCollection([])
+        assert self.first is not None
+        return self.first.flow.services.navigation.flow_element_collection(
             self,
+            "below",
             height=height,
             width_ratio=width_ratio,
             width_absolute=width_absolute,
@@ -175,8 +174,6 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
-    @delegate_signature(_navigation_methods.left)
-    @delegate_signature(_navigation_methods.left)
     def left(
         self,
         width: Optional[float] = None,
@@ -187,8 +184,12 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return _navigation_methods.flow_element_collection_left(
+        if not self._flow_elements:
+            return FlowRegionCollection([])
+        assert self.first is not None
+        return self.first.flow.services.navigation.flow_element_collection(
             self,
+            "left",
             width=width,
             height_ratio=height_ratio,
             height_absolute=height_absolute,
@@ -198,8 +199,6 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             **kwargs,
         )
 
-    @delegate_signature(_navigation_methods.right)
-    @delegate_signature(_navigation_methods.right)
     def right(
         self,
         width: Optional[float] = None,
@@ -210,8 +209,12 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
         include_endpoint: bool = True,
         **kwargs,
     ) -> "FlowRegionCollection":
-        return _navigation_methods.flow_element_collection_right(
+        if not self._flow_elements:
+            return FlowRegionCollection([])
+        assert self.first is not None
+        return self.first.flow.services.navigation.flow_element_collection(
             self,
+            "right",
             width=width,
             height_ratio=height_ratio,
             height_absolute=height_absolute,
@@ -453,9 +456,8 @@ class FlowRegionCollection(
     def __repr__(self) -> str:
         return f"<FlowRegionCollection(count={len(self)})>"
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Service context helpers
@@ -518,8 +520,9 @@ class FlowRegionCollection(
         **kwargs,
     ) -> "FlowRegionCollection":
         normalized_within = self._normalize_within(within)
-        return _navigation_methods.flow_region_collection_above(
+        return self.services.navigation.flow_region_collection(
             self,
+            "above",
             within=normalized_within,
             height=height,
             width=width,
@@ -548,8 +551,9 @@ class FlowRegionCollection(
         **kwargs,
     ) -> "FlowRegionCollection":
         normalized_within = self._normalize_within(within)
-        return _navigation_methods.flow_region_collection_below(
+        return self.services.navigation.flow_region_collection(
             self,
+            "below",
             within=normalized_within,
             height=height,
             width=width,
@@ -578,8 +582,9 @@ class FlowRegionCollection(
         **kwargs,
     ) -> "FlowRegionCollection":
         normalized_within = self._normalize_within(within)
-        return _navigation_methods.flow_region_collection_left(
+        return self.services.navigation.flow_region_collection(
             self,
+            "left",
             within=normalized_within,
             width=width,
             height=height,
@@ -608,8 +613,9 @@ class FlowRegionCollection(
         **kwargs,
     ) -> "FlowRegionCollection":
         normalized_within = self._normalize_within(within)
-        return _navigation_methods.flow_region_collection_right(
+        return self.services.navigation.flow_region_collection(
             self,
+            "right",
             within=normalized_within,
             width=width,
             height=height,
@@ -736,13 +742,25 @@ class FlowRegionCollection(
     # Table extraction helpers
     # ------------------------------------------------------------------
 
-    @delegate_signature(_flow_table_methods.flow_collection_extract_table)
     def extract_table(self, *args, **kwargs) -> List[TableResult]:
-        return _flow_table_methods.flow_collection_extract_table(self, *args, **kwargs)
+        results: List[TableResult] = []
+        for fr in self._flow_regions:
+            fr_kwargs = dict(kwargs)
+            settings = fr_kwargs.get("table_settings")
+            if settings is not None:
+                fr_kwargs["table_settings"] = dict(settings)
+            results.append(fr.extract_table(**fr_kwargs))
+        return results
 
-    @delegate_signature(_flow_table_methods.flow_collection_extract_tables)
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flow_collection_extract_tables(self, *args, **kwargs)
+        tables: List[List[List[Optional[str]]]] = []
+        for fr in self._flow_regions:
+            fr_kwargs = dict(kwargs)
+            settings = fr_kwargs.get("table_settings")
+            if settings is not None:
+                fr_kwargs["table_settings"] = dict(settings)
+            tables.extend(fr.extract_tables(**fr_kwargs) or [])
+        return tables
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
         return cast(Iterable["_SectionHost"], iter(self._flow_regions))
@@ -862,6 +880,3 @@ class FlowRegionCollection(
         if value == "content":
             return "content"
         return bool(value)
-
-
-attach_capability(FlowRegionCollection, "qa")

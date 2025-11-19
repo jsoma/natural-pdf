@@ -17,6 +17,7 @@ from typing import (  # Added overload
     Optional,
     Sequence,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -28,7 +29,7 @@ from tqdm.auto import tqdm  # Added tqdm import
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import parse_selector
 from natural_pdf.tables.result import TableResult
 
@@ -78,16 +79,6 @@ from natural_pdf.services import guides_service as _guides_service  # noqa: F401
 from natural_pdf.services import ocr_service as _ocr_service  # noqa: F401
 from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import classification_methods as _classification_methods
-from natural_pdf.services.methods import exclusion_methods as _exclusion_methods
-from natural_pdf.services.methods import extraction_methods as _extraction_methods
-from natural_pdf.services.methods import layout_methods as _layout_methods
-from natural_pdf.services.methods import ocr_methods as _ocr_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
-from natural_pdf.services.methods import shape_methods as _shape_methods
-from natural_pdf.services.methods import table_methods as _table_methods
-from natural_pdf.services.methods import vision_methods as _vision_methods
 
 # # Import new utils
 from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
@@ -515,9 +506,16 @@ class Page(
         self._exclusions = []
         return self
 
-    @delegate_signature(_exclusion_methods.add_exclusion)
-    def add_exclusion(self, *args, **kwargs):
-        return _exclusion_methods.add_exclusion(self, *args, **kwargs)
+    def add_exclusion(
+        self,
+        exclusion: Any,
+        label: Optional[str] = None,
+        method: str = "region",
+    ):
+        """Register an exclusion on the host via the exclusion service."""
+
+        self.services.exclusion.add_exclusion(self, exclusion, label=label, method=method)
+        return self
 
     @contextlib.contextmanager
     def without_exclusions(self):
@@ -679,7 +677,6 @@ class Page(
     def _ocr_render_kwargs(self, *, apply_exclusions: bool = True) -> Dict[str, Any]:
         return {"apply_exclusions": apply_exclusions}
 
-    @delegate_signature(_ocr_methods.apply_ocr)
     def apply_ocr(self, *args, **kwargs) -> "Page":
         """Apply OCR to the entire page via the shared OCR service."""
 
@@ -700,33 +697,29 @@ class Page(
             )
             return self
 
-        return _ocr_methods.apply_ocr(self, **params)
+        self.services.ocr.apply_ocr(self, **params)
+        return self
 
-    @delegate_signature(_ocr_methods.extract_ocr_elements)
     def extract_ocr_elements(self, *args, **kwargs):
         """Extract OCR results without mutating the page."""
 
-        return _ocr_methods.extract_ocr_elements(self, *args, **kwargs)
+        return self.services.ocr.extract_ocr_elements(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.remove_ocr_elements)
     def remove_ocr_elements(self, *args, **kwargs) -> int:
         """Remove OCR-derived elements from the backing element manager."""
 
-        return _ocr_methods.remove_ocr_elements(self, *args, **kwargs)
+        return self.services.ocr.remove_ocr_elements(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.clear_text_layer)
     def clear_text_layer(self, *args, **kwargs) -> Tuple[int, int]:
         """Clear the underlying word/char layers for this page."""
 
-        return _ocr_methods.clear_text_layer(self, *args, **kwargs)
+        return self.services.ocr.clear_text_layer(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.create_text_elements_from_ocr)
     def create_text_elements_from_ocr(self, *args, **kwargs):
         """Proxy for ElementManager.create_text_elements_from_ocr."""
 
-        return _ocr_methods.create_text_elements_from_ocr(self, *args, **kwargs)
+        return self.services.ocr.create_text_elements_from_ocr(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.apply_custom_ocr)
     def apply_custom_ocr(
         self,
         *,
@@ -738,7 +731,7 @@ class Page(
     ) -> "Page":
         """Apply a custom OCR function via the shared OCR service."""
 
-        return _ocr_methods.apply_custom_ocr(
+        self.services.ocr.apply_custom_ocr(
             self,
             ocr_function=ocr_function,
             source_label=source_label,
@@ -746,6 +739,7 @@ class Page(
             confidence=confidence,
             add_to_page=add_to_page,
         )
+        return self
 
     def iter_regions(self) -> List["Region"]:
         """Return a list of regions currently registered with the page."""
@@ -1761,15 +1755,53 @@ class Page(
         logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
         return result
 
-    @delegate_signature(_table_methods.extract_table)
-    def extract_table(self, *args, **kwargs) -> TableResult:
-        region = self._full_page_region()
-        return _table_methods.extract_table(region, *args, **kwargs)
+    def extract_table(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+        use_ocr: bool = False,
+        ocr_config: Optional[dict] = None,
+        text_options: Optional[Dict[str, Any]] = None,
+        cell_extraction_func: Optional[Callable[[Any], Optional[str]]] = None,
+        show_progress: bool = False,
+        content_filter: Optional[Union[str, Sequence[str], Callable[[str], bool]]] = None,
+        apply_exclusions: bool = True,
+        verticals: Optional[Sequence[float]] = None,
+        horizontals: Optional[Sequence[float]] = None,
+        structure_engine: Optional[str] = None,
+    ) -> TableResult:
+        """Call the table service with the canonical extract_table signature."""
 
-    @delegate_signature(_table_methods.extract_tables)
-    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
         region = self._full_page_region()
-        return _table_methods.extract_tables(region, *args, **kwargs)
+        return self.services.table.extract_table(
+            region,
+            method=method,
+            table_settings=table_settings,
+            use_ocr=use_ocr,
+            ocr_config=ocr_config,
+            text_options=text_options,
+            cell_extraction_func=cell_extraction_func,
+            show_progress=show_progress,
+            content_filter=content_filter,
+            apply_exclusions=apply_exclusions,
+            verticals=verticals,
+            horizontals=horizontals,
+            structure_engine=structure_engine,
+        )
+
+    def extract_tables(
+        self,
+        method: Optional[str] = None,
+        table_settings: Optional[dict] = None,
+    ) -> List[List[List[Optional[str]]]]:
+        """Call the table service to extract every table for the host."""
+
+        region = self._full_page_region()
+        return self.services.table.extract_tables(
+            region,
+            method=method,
+            table_settings=table_settings,
+        )
 
     def _load_elements(self):
         """Load all elements from the page via ElementManager."""
@@ -2028,9 +2060,35 @@ class Page(
         self._layout_analyzer = analyzer
         return analyzer
 
-    @delegate_signature(_layout_methods.analyze_layout)
-    def analyze_layout(self, *args, **kwargs):
-        return _layout_methods.analyze_layout(self, *args, **kwargs)
+    def analyze_layout(
+        self,
+        *,
+        engine: Optional[str] = None,
+        options: Optional[Any] = None,  # Typed as Any to avoid circular import of LayoutOptions
+        confidence: Optional[float] = None,
+        classes: Optional[List[str]] = None,
+        exclude_classes: Optional[List[str]] = None,
+        device: Optional[str] = None,
+        existing: str = "replace",
+        model_name: Optional[str] = None,
+        client: Optional[Any] = None,
+        show_progress: Optional[bool] = None,
+    ) -> Any:
+        """Delegate layout analysis to the configured layout service."""
+
+        return self.services.layout.analyze_layout(
+            self,
+            engine=engine,
+            options=options,
+            confidence=confidence,
+            classes=classes,
+            exclude_classes=exclude_classes,
+            device=device,
+            existing=existing,
+            model_name=model_name,
+            client=client,
+            show_progress=show_progress,
+        )
 
     def clear_detected_layout_regions(self) -> "Page":
         """
@@ -2586,21 +2644,77 @@ class Page(
         """
         return self.find_all("*").inspect(limit=limit)
 
-    @delegate_signature(_qa_methods.ask)
-    def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+    def ask(
+        self,
+        question: Any,  # Typed as Any to avoid circular import of QuestionInput
+        min_confidence: float = 0.1,
+        model: Optional[str] = None,
+        debug: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        """Delegate QA execution to the shared QA service."""
 
-    @delegate_signature(_extraction_methods.extract)
-    def extract(self, *args, **kwargs):
-        return _extraction_methods.extract(self, *args, **kwargs)
+        return self.services.qa.ask(
+            self,
+            question=question,
+            min_confidence=min_confidence,
+            model=model,
+            debug=debug,
+            **kwargs,
+        )
 
-    @delegate_signature(_extraction_methods.extract)
+    def extract(
+        self,
+        schema: Union[Type[Any], Sequence[str]],  # Type[BaseModel] -> Type[Any]
+        client: Any = None,
+        analysis_key: str = "structured",
+        prompt: Optional[str] = None,
+        using: str = "text",
+        model: Optional[str] = None,
+        engine: Optional[str] = None,
+        overwrite: bool = True,
+        **kwargs: Any,
+    ) -> Any:
+        """Run structured extraction through the extraction service."""
+
+        self.services.extraction.extract(
+            self,
+            schema=schema,
+            client=client,
+            analysis_key=analysis_key,
+            prompt=prompt,
+            using=using,
+            model=model,
+            engine=engine,
+            overwrite=overwrite,
+            **kwargs,
+        )
+        return self
+
     def extract_structured_data(self, *args, **kwargs):
-        return _extraction_methods.extract(self, *args, **kwargs)
+        return self.services.extraction.extract(self, *args, **kwargs)
 
-    @delegate_signature(_extraction_methods.extracted)
-    def extracted(self, *args, **kwargs):
-        return _extraction_methods.extracted(self, *args, **kwargs)
+    def detect_lines(self, *args, **kwargs):
+        return self.services.shapes.detect_lines(self, *args, **kwargs)
+
+    def detect_checkboxes(self, *args, **kwargs):
+        return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
+
+    def guides(self, *args, **kwargs):
+        return self.services.guides.guides(self, *args, **kwargs)
+
+    def extracted(
+        self,
+        field_name: Optional[str] = None,
+        analysis_key: Optional[str] = None,
+    ) -> Any:
+        """Fetch a previously stored extraction result via the extraction service."""
+
+        return self.services.extraction.extracted(
+            self,
+            field_name=field_name,
+            analysis_key=analysis_key,
+        )
 
     def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
         """Internal helper for ExtractionService to gather page content."""
@@ -2639,9 +2753,28 @@ class Page(
         logger.error("Unsupported extraction content mode '%s'", using)
         return None
 
-    @delegate_signature(_classification_methods.classify)
-    def classify(self, *args, **kwargs):
-        return _classification_methods.classify(self, *args, **kwargs)
+    def classify(
+        self,
+        labels: List[str],
+        model: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        analysis_key: str = "classification",
+        multi_label: bool = False,
+        **kwargs: Any,
+    ):
+        """Delegate classification to the classification service and return the result."""
+
+        return self.services.classification.classify(
+            self,
+            labels=labels,
+            model=model,
+            using=using,
+            min_confidence=min_confidence,
+            analysis_key=analysis_key,
+            multi_label=multi_label,
+            **kwargs,
+        )
 
     def remove_text_layer(self) -> "Page":
         """
@@ -2749,27 +2882,62 @@ class Page(
 
         return HighlightContext(self, show_on_exit=show)
 
-    @delegate_signature(_vision_methods.match_template)
-    def match_template(self, *args, **kwargs):
-        return _vision_methods.match_template(self, *args, **kwargs)
+    def match_template(
+        self,
+        examples: Union[Any, Sequence[Any]],  # Avoid circular imports
+        confidence: float = 0.6,
+        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
+        resolution: int = 72,
+        hash_size: int = 20,
+        step: Optional[int] = None,
+        method: str = "phash",
+        max_per_page: Optional[int] = None,
+        show_progress: bool = True,
+        mask_threshold: Optional[float] = None,
+    ) -> Any:
+        """Run visual template matching through the vision service."""
 
-    @delegate_signature(_vision_methods.find_similar)
-    def find_similar(self, *args, **kwargs):
-        return _vision_methods.find_similar(self, *args, **kwargs)
+        return self.services.vision.match_template(
+            self,
+            examples=examples,
+            confidence=confidence,
+            sizes=sizes,
+            resolution=resolution,
+            hash_size=hash_size,
+            step=step,
+            method=method,
+            max_per_page=max_per_page,
+            show_progress=show_progress,
+            mask_threshold=mask_threshold,
+        )
 
-    @delegate_signature(_shape_methods.detect_lines)
-    def detect_lines(self, *args, **kwargs):
-        return _shape_methods.detect_lines(self, *args, **kwargs)
+    def find_similar(
+        self,
+        examples: Union[Any, Sequence[Any]],
+        using: str = "vision",
+        confidence: float = 0.6,
+        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
+        resolution: int = 72,
+        hash_size: int = 20,
+        step: Optional[int] = None,
+        method: str = "phash",
+        max_per_page: Optional[int] = None,
+        show_progress: bool = True,
+        mask_threshold: Optional[float] = None,
+    ) -> Any:
+        """Backward-compatible wrapper for the deprecated find_similar API."""
 
-
-attach_capability(Page, "text")
-attach_capability(Page, "ocr")
-attach_capability(Page, "qa")
-attach_capability(Page, "exclusion")
-attach_capability(Page, "describe")
-attach_capability(Page, "vision")
-attach_capability(Page, "shapes")
-attach_capability(Page, "checkbox")
-attach_capability(Page, "classification")
-attach_capability(Page, "extraction")
-attach_capability(Page, "guides")
+        return self.services.vision.find_similar(
+            self,
+            examples=examples,
+            using=using,
+            confidence=confidence,
+            sizes=sizes,
+            resolution=resolution,
+            hash_size=hash_size,
+            step=step,
+            method=method,
+            max_per_page=max_per_page,
+            show_progress=show_progress,
+            mask_threshold=mask_threshold,
+        )

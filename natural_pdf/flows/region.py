@@ -32,17 +32,12 @@ from natural_pdf.core.mixins import ContextResolverMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
 from natural_pdf.services import guides_service as _guides_service  # noqa: F401
 from natural_pdf.services import navigation_service as _navigation_service  # noqa: F401
 from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import flow_table_methods as _flow_table_methods
-from natural_pdf.services.methods import navigation_methods as _navigation_methods
-from natural_pdf.services.methods import ocr_methods as _ocr_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
 from natural_pdf.tables import TableResult
 
 # For runtime image manipulation
@@ -969,17 +964,14 @@ class FlowRegion(
 
     # Table extraction helpers (delegates to underlying physical regions)
 
-    @delegate_signature(_flow_table_methods.flowregion_extract_table)
     def extract_table(self, *args, **kwargs) -> TableResult:
-        return _flow_table_methods.flowregion_extract_table(self, *args, **kwargs)
+        return self.services.table.extract_table(self, *args, **kwargs)
 
-    @delegate_signature(_flow_table_methods.flowregion_extract_tables)
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
-        return _flow_table_methods.flowregion_extract_tables(self, *args, **kwargs)
+        return self.services.table.extract_tables(self, *args, **kwargs)
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
 
     def get_sections(
         self,
@@ -1078,21 +1070,23 @@ class FlowRegion(
         """
         return self.normalized_type
 
-    @delegate_signature(_navigation_methods.above)
     def above(self, *args, **kwargs):
-        return _navigation_methods.above(self, *args, **kwargs)
+        return self.services.navigation.above(self, *args, **kwargs)
 
-    @delegate_signature(_navigation_methods.below)
     def below(self, *args, **kwargs):
-        return _navigation_methods.below(self, *args, **kwargs)
+        return self.services.navigation.below(self, *args, **kwargs)
 
-    @delegate_signature(_navigation_methods.left)
     def left(self, *args, **kwargs):
-        return _navigation_methods.left(self, *args, **kwargs)
+        return self.services.navigation.left(self, *args, **kwargs)
 
-    @delegate_signature(_navigation_methods.right)
     def right(self, *args, **kwargs):
-        return _navigation_methods.right(self, *args, **kwargs)
+        return self.services.navigation.right(self, *args, **kwargs)
+
+    def add_exclusion(self, *args, **kwargs):
+        return self.services.exclusion.add_exclusion(self, *args, **kwargs)
+
+    def guides(self, *args, **kwargs):
+        return self.services.guides.guides(self, *args, **kwargs)
 
     def get_highlight_specs(self) -> List[Dict[str, Any]]:
         """
@@ -1129,9 +1123,3 @@ class FlowRegion(
             specs.append(spec)
 
         return specs
-
-
-attach_capability(FlowRegion, "navigation")
-attach_capability(FlowRegion, "qa")
-attach_capability(FlowRegion, "exclusion")
-attach_capability(FlowRegion, "guides")

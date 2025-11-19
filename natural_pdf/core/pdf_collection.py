@@ -39,11 +39,8 @@ from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.pdf import PDF
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import qa_methods as _qa_methods
-from natural_pdf.services.methods import vision_methods as _vision_methods
 
 Indexable = Any
 SearchOptions = Any
@@ -87,6 +84,7 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
                 if all(isinstance(item, PDF) for item in source_list):
                     self._pdfs = [cast("PDF", item) for item in source_list]
                     # Don't adopt search context anymore
+                    self._bind_service_context()
                     return
                 else:
                     raise TypeError("Iterable source has mixed PDF/non-PDF objects.")
@@ -402,17 +400,20 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         # Return the combined image (Jupyter will display it automatically)
         return combined
 
-    @delegate_signature(_vision_methods.match_template)
     def match_template(self, *args, **kwargs):
-        return _vision_methods.match_template(self, *args, **kwargs)
+        return self.services.vision.match_template(self, *args, **kwargs)
 
-    @delegate_signature(_vision_methods.find_similar)
     def find_similar(self, *args, **kwargs):
-        return _vision_methods.find_similar(self, *args, **kwargs)
+        return self.services.vision.find_similar(self, *args, **kwargs)
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
+
+    def detect_lines(self, *args, **kwargs):
+        return self.services.shapes.detect_lines(self, *args, **kwargs)
+
+    def detect_checkboxes(self, *args, **kwargs):
+        return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
     def apply_ocr(
         self,
@@ -807,9 +808,3 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
             all_data.append(pdf_data)
 
         return all_data
-
-
-attach_capability(PDFCollection, "vision")
-attach_capability(PDFCollection, "shapes")
-attach_capability(PDFCollection, "checkbox")
-attach_capability(PDFCollection, "qa")

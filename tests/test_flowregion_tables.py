@@ -42,6 +42,7 @@ def _flow_with_segments(rows_per_segment: List[List[List[Optional[str]]]]) -> Fl
     ]
     flow = Flow.__new__(Flow)
     flow.segments = segments  # type: ignore[attr-defined]
+    flow._analysis_region_cache = None
     return flow
 
 

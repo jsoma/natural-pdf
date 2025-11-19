@@ -11,8 +11,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
-from natural_pdf.services.methods import flow_selector_methods as _flow_selector_methods
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 
 
 class FlowElement:

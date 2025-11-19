@@ -67,11 +67,8 @@ from natural_pdf.search import (
     get_search_service,
 )
 from natural_pdf.search.search_service_protocol import SearchServiceProtocol
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import classification_methods as _classification_methods
-from natural_pdf.services.methods import vision_methods as _vision_methods
 
 if TYPE_CHECKING:
     from natural_pdf.core.highlighting_service import HighlightContext
@@ -1034,6 +1031,12 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
 
         return self
 
+    def detect_lines(self, *args, **kwargs):
+        return self.services.shapes.detect_lines(self, *args, **kwargs)
+
+    def detect_checkboxes(self, *args, **kwargs):
+        return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
+
     def add_region(
         self, region_func: Callable[["Page"], Optional["Region"]], name: Optional[str] = None
     ) -> "PDF":
@@ -1577,9 +1580,28 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
             }
         )
 
-    @delegate_signature(_classification_methods.classify)
-    def classify(self, *args, **kwargs):
-        return _classification_methods.classify(self, *args, **kwargs)
+    def classify(
+        self,
+        labels: List[str],
+        model: Optional[str] = None,
+        using: Optional[str] = None,
+        min_confidence: float = 0.0,
+        analysis_key: str = "classification",
+        multi_label: bool = False,
+        **kwargs: Any,
+    ):
+        """Delegate classification to the classification service and return the result."""
+
+        return self.services.classification.classify(
+            self,
+            labels=labels,
+            model=model,
+            using=using,
+            min_confidence=min_confidence,
+            analysis_key=analysis_key,
+            multi_label=multi_label,
+            **kwargs,
+        )
 
     def ask_batch(
         self,
@@ -2745,18 +2767,62 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
 
         return HighlightContext(self, show_on_exit=show)
 
-    @delegate_signature(_vision_methods.match_template)
-    def match_template(self, *args, **kwargs):
-        return _vision_methods.match_template(self, *args, **kwargs)
+    def match_template(
+        self,
+        examples: Union[Any, Sequence[Any]],  # Avoid circular imports
+        confidence: float = 0.6,
+        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
+        resolution: int = 72,
+        hash_size: int = 20,
+        step: Optional[int] = None,
+        method: str = "phash",
+        max_per_page: Optional[int] = None,
+        show_progress: bool = True,
+        mask_threshold: Optional[float] = None,
+    ) -> Any:
+        """Run visual template matching through the vision service."""
 
-    @delegate_signature(_vision_methods.find_similar)
-    def find_similar(self, *args, **kwargs):
-        return _vision_methods.find_similar(self, *args, **kwargs)
+        return self.services.vision.match_template(
+            self,
+            examples=examples,
+            confidence=confidence,
+            sizes=sizes,
+            resolution=resolution,
+            hash_size=hash_size,
+            step=step,
+            method=method,
+            max_per_page=max_per_page,
+            show_progress=show_progress,
+            mask_threshold=mask_threshold,
+        )
 
+    def find_similar(
+        self,
+        examples: Union[Any, Sequence[Any]],
+        using: str = "vision",
+        confidence: float = 0.6,
+        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
+        resolution: int = 72,
+        hash_size: int = 20,
+        step: Optional[int] = None,
+        method: str = "phash",
+        max_per_page: Optional[int] = None,
+        show_progress: bool = True,
+        mask_threshold: Optional[float] = None,
+    ) -> Any:
+        """Backward-compatible wrapper for the deprecated find_similar API."""
 
-attach_capability(PDF, "text")
-attach_capability(PDF, "vision")
-attach_capability(PDF, "shapes")
-attach_capability(PDF, "checkbox")
-attach_capability(PDF, "classification")
-attach_capability(PDF, "extraction")
+        return self.services.vision.find_similar(
+            self,
+            examples=examples,
+            using=using,
+            confidence=confidence,
+            sizes=sizes,
+            resolution=resolution,
+            hash_size=hash_size,
+            step=step,
+            method=method,
+            max_per_page=max_per_page,
+            show_progress=show_progress,
+            mask_threshold=mask_threshold,
+        )

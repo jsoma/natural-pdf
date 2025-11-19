@@ -27,12 +27,9 @@ from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 
 # Import selector parsing functions
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import parse_selector, selector_to_filter_func
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import classification_methods as _classification_methods
-from natural_pdf.services.methods import text_methods as _text_methods
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -2128,17 +2125,20 @@ class Element(
         else:
             raise ValueError(f"Unsupported model_type for classification: {model_type}")
 
-    @delegate_signature(_text_methods.update_text)
     def update_text(self, *args, **kwargs):
-        return _text_methods.update_text(self, *args, **kwargs)
+        return self.services.text.update_text(self, *args, **kwargs)
 
-    @delegate_signature(_text_methods.correct_ocr)
     def correct_ocr(self, *args, **kwargs):
-        return _text_methods.correct_ocr(self, *args, **kwargs)
+        return self.services.text.correct_ocr(self, *args, **kwargs)
 
-    @delegate_signature(_classification_methods.classify)
     def classify(self, *args, **kwargs):
-        return _classification_methods.classify(self, *args, **kwargs)
+        return self.services.classification.classify(self, *args, **kwargs)
+
+    def describe(self, *args, **kwargs):
+        return self.services.describe.describe(self, *args, **kwargs)
+
+    def inspect(self, *args, **kwargs):
+        return self.services.describe.inspect(self, *args, **kwargs)
 
     # ------------------------------------------------------------------
     # Unified analysis storage (maps to metadata["analysis"])
@@ -2156,11 +2156,3 @@ class Element(
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value
-
-
-_ELEMENT_NAV_FALLBACK = {
-    name: getattr(DirectionalMixin, name) for name in ("above", "below", "left", "right")
-}
-attach_capability(Element, "navigation", _ELEMENT_NAV_FALLBACK)
-attach_capability(Element, "describe")
-attach_capability(Element, "classification")

@@ -8,6 +8,7 @@ import pytest
 
 from natural_pdf.core.page import Page
 from natural_pdf.elements.region import Region
+from natural_pdf.services.exclusion_service import ExclusionService
 
 
 def _make_page_stub():
@@ -31,6 +32,11 @@ def _make_page_stub():
 
     # Most tests never hit find_all, but wire a safe default anyway
     page.find_all = Mock(return_value=[])
+
+    # Inject real ExclusionService
+    page.services = Mock()
+    page.services.exclusion = ExclusionService(context=Mock())
+
     return page
 
 

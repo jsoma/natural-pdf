@@ -38,7 +38,7 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
 from natural_pdf.qa.qa_result import QAResult
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
     parse_selector,
@@ -52,14 +52,6 @@ from natural_pdf.services import guides_service as _guides_service  # noqa: F401
 from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services import table_service as _table_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import classification_methods as _classification_methods
-from natural_pdf.services.methods import extraction_methods as _extraction_methods
-from natural_pdf.services.methods import ocr_methods as _ocr_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
-from natural_pdf.services.methods import shape_methods as _shape_methods
-from natural_pdf.services.methods import table_methods as _table_methods
-from natural_pdf.services.methods import text_methods as _text_methods
 from natural_pdf.tables.result import TableResult
 
 # Import new utils
@@ -1497,13 +1489,11 @@ class Region(
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result
 
-    @delegate_signature(_table_methods.extract_table)
     def extract_table(self, *args, **kwargs) -> TableResult:
-        return _table_methods.extract_table(self, *args, **kwargs)
+        return self.services.table.extract_table(self, *args, **kwargs)
 
-    @delegate_signature(_table_methods.extract_tables)
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
-        return _table_methods.extract_tables(self, *args, **kwargs)
+        return self.services.table.extract_tables(self, *args, **kwargs)
 
     def _filter_elements_by_overlap_mode(
         self,
@@ -1523,11 +1513,6 @@ class Region(
         # overlap_mode == "center"
         return [el for el in elements if self.is_element_center_inside(el)]
 
-    @delegate_signature(_shape_methods.detect_lines)
-    def detect_lines(self, *args, **kwargs):
-        return _shape_methods.detect_lines(self, *args, **kwargs)
-
-    @delegate_signature(_ocr_methods.apply_ocr)
     def apply_ocr(self, *args, **kwargs) -> "Region":
         """
         Apply OCR to this region and return the created text elements.
@@ -1591,9 +1576,9 @@ class Region(
                     f"Region {self.bbox}: No overlapping OCR elements found before applying new OCR."
                 )
 
-        return _ocr_methods.apply_ocr(self, replace=replace, **params)
+        self.services.ocr.apply_ocr(self, replace=replace, **params)
+        return self
 
-    @delegate_signature(_ocr_methods.extract_ocr_elements)
     def extract_ocr_elements(
         self,
         *,
@@ -1619,7 +1604,7 @@ class Region(
             List of text elements created from OCR (not added to the page).
         """
 
-        return _ocr_methods.extract_ocr_elements(
+        return self.services.ocr.extract_ocr_elements(
             self,
             engine=engine,
             options=options,
@@ -1648,51 +1633,43 @@ class Region(
         )
         return self
 
-    @delegate_signature(_ocr_methods.remove_ocr_elements)
     def remove_ocr_elements(self, *args, **kwargs) -> int:
         """Remove OCR text from constituent regions."""
 
-        return _ocr_methods.remove_ocr_elements(self, *args, **kwargs)
+        return self.services.ocr.remove_ocr_elements(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.clear_text_layer)
     def clear_text_layer(self, *args, **kwargs) -> Tuple[int, int]:
         """Clear OCR results from the underlying managers and return totals."""
 
-        return _ocr_methods.clear_text_layer(self, *args, **kwargs)
+        return self.services.ocr.clear_text_layer(self, *args, **kwargs)
 
-    @delegate_signature(_ocr_methods.create_text_elements_from_ocr)
     def create_text_elements_from_ocr(self, *args, **kwargs):
         """Delegate to the OCR service for text element creation."""
 
-        return _ocr_methods.create_text_elements_from_ocr(self, *args, **kwargs)
+        return self.services.ocr.create_text_elements_from_ocr(self, *args, **kwargs)
 
-    @delegate_signature(_extraction_methods.extract)
     def extract(self, *args, **kwargs):
-        return _extraction_methods.extract(self, *args, **kwargs)
+        self.services.extraction.extract(self, *args, **kwargs)
+        return self
 
-    @delegate_signature(_extraction_methods.extract)
     def extract_structured_data(self, *args, **kwargs):
-        return _extraction_methods.extract(self, *args, **kwargs)
+        self.services.extraction.extract(self, *args, **kwargs)
+        return self
 
-    @delegate_signature(_extraction_methods.extracted)
     def extracted(self, *args, **kwargs):
-        return _extraction_methods.extracted(self, *args, **kwargs)
+        return self.services.extraction.extracted(self, *args, **kwargs)
 
-    @delegate_signature(_text_methods.update_text)
     def update_text(self, *args, **kwargs):
-        return _text_methods.update_text(self, *args, **kwargs)
+        return self.services.text.update_text(self, *args, **kwargs)
 
-    @delegate_signature(_text_methods.correct_ocr)
     def correct_ocr(self, *args, **kwargs):
-        return _text_methods.correct_ocr(self, *args, **kwargs)
+        return self.services.text.correct_ocr(self, *args, **kwargs)
 
-    @delegate_signature(_classification_methods.classify)
     def classify(self, *args, **kwargs):
-        return _classification_methods.classify(self, *args, **kwargs)
+        return self.services.classification.classify(self, *args, **kwargs)
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
 
     def get_section_between(
         self,
@@ -2718,19 +2695,15 @@ class Region(
         """
         return RegionContext(self)
 
+    def detect_lines(self, *args, **kwargs):
+        return self.services.shapes.detect_lines(self, *args, **kwargs)
 
-Region.extract_table.__doc__ = _table_methods.extract_table.__doc__
-Region.extract_tables.__doc__ = _table_methods.extract_tables.__doc__
+    def detect_checkboxes(self, *args, **kwargs):
+        return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
-attach_capability(Region, "text")
-attach_capability(Region, "qa")
-attach_capability(Region, "exclusion")
-attach_capability(Region, "describe")
-attach_capability(Region, "shapes")
-attach_capability(Region, "checkbox")
-attach_capability(Region, "classification")
-attach_capability(Region, "extraction")
-attach_capability(Region, "guides")
+    def guides(self, *args, **kwargs):
+        return self.services.guides.guides(self, *args, **kwargs)
+
 
 # Flow navigation fallback uses Region directional helpers
 from natural_pdf.elements.base import DirectionalMixin as _DirectionalMixin
@@ -2738,4 +2711,3 @@ from natural_pdf.elements.base import DirectionalMixin as _DirectionalMixin
 _REGION_NAV_FALLBACK = {
     name: getattr(_DirectionalMixin, name) for name in ("above", "below", "left", "right")
 }
-attach_capability(Region, "navigation", _REGION_NAV_FALLBACK)

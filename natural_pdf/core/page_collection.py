@@ -32,14 +32,8 @@ from natural_pdf.core.pdf import PDF
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
-from natural_pdf.selectors.host_mixin import SelectorHostMixin, delegate_signature
+from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import layout_methods as _layout_methods
-from natural_pdf.services.methods import ocr_methods as _ocr_methods
-from natural_pdf.services.methods import qa_methods as _qa_methods
-from natural_pdf.services.methods import text_methods as _text_methods
-from natural_pdf.services.methods import vision_methods as _vision_methods
 from natural_pdf.utils.sections import sanitize_sections
 
 # New Imports
@@ -241,7 +235,6 @@ class PageCollection(
 
         return separator.join(texts)
 
-    @delegate_signature(_text_methods.update_text)
     def update_text(
         self,
         transform: Callable[[Any], Optional[str]],
@@ -275,7 +268,6 @@ class PageCollection(
             )
         return self
 
-    @delegate_signature(_ocr_methods.apply_ocr)
     def apply_ocr(self, *, replace: bool = True, **ocr_params):
         """Apply OCR uniformly across all pages in the collection."""
 
@@ -285,7 +277,7 @@ class PageCollection(
 
         logger.info("Applying OCR to %d page(s) directly from PageCollection.", len(self.pages))
         for page in self.pages:
-            _ocr_methods.apply_ocr(page, replace=replace, **ocr_params)
+            page.apply_ocr(replace=replace, **ocr_params)
         return self  # chaining helper
 
     def _iter_sections(self) -> Iterable["_SectionHost"]:
@@ -312,9 +304,20 @@ class PageCollection(
     def _qa_segment_iterable(self) -> Sequence["Page"]:
         return self.pages
 
-    @delegate_signature(_qa_methods.ask)
     def ask(self, *args, **kwargs):
-        return _qa_methods.ask(self, *args, **kwargs)
+        return self.services.qa.ask(self, *args, **kwargs)
+
+    def detect_lines(self, *args, **kwargs):
+        return self.services.shapes.detect_lines(self, *args, **kwargs)
+
+    def detect_checkboxes(self, *args, **kwargs):
+        return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
+
+    def describe(self, *args, **kwargs):
+        return self.services.describe.describe(self, *args, **kwargs)
+
+    def inspect(self, *args, **kwargs):
+        return self.services.describe.inspect(self, *args, **kwargs)
 
     def split(
         self,
@@ -859,9 +862,8 @@ class PageCollection(
             segment_gap=segment_gap,
         )
 
-    @delegate_signature(_layout_methods.analyze_layout)
     def analyze_layout(self, *args, **kwargs):
-        return _layout_methods.analyze_layout(self, *args, **kwargs)
+        return self.services.layout.analyze_layout(self, *args, **kwargs)
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """
@@ -891,13 +893,11 @@ class PageCollection(
 
         return HighlightContext(self, show_on_exit=show)
 
-    @delegate_signature(_vision_methods.match_template)
     def match_template(self, *args, **kwargs):
-        return _vision_methods.match_template(self, *args, **kwargs)
+        return self.services.vision.match_template(self, *args, **kwargs)
 
-    @delegate_signature(_vision_methods.find_similar)
     def find_similar(self, *args, **kwargs):
-        return _vision_methods.find_similar(self, *args, **kwargs)
+        return self.services.vision.find_similar(self, *args, **kwargs)
 
     def groupby(self, by: Union[str, Callable], *, show_progress: bool = True) -> "PageGroupBy":
         """
@@ -935,11 +935,3 @@ class PageCollection(
         from natural_pdf.core.page_groupby import PageGroupBy
 
         return PageGroupBy(self, by, show_progress=show_progress)
-
-
-attach_capability(PageCollection, "text")
-attach_capability(PageCollection, "describe")
-attach_capability(PageCollection, "shapes")
-attach_capability(PageCollection, "checkbox")
-attach_capability(PageCollection, "vision")
-attach_capability(PageCollection, "qa")

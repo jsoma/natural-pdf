@@ -36,7 +36,6 @@ from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
-from natural_pdf.selectors.host_mixin import delegate_signature
 from natural_pdf.utils.color_utils import format_color_value
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
@@ -57,9 +56,6 @@ except ImportError:
     create_original_pdf = None
 # <--- END ADDED
 from natural_pdf.services.base import resolve_service
-from natural_pdf.services.delegates import attach_capability
-from natural_pdf.services.methods import describe_methods as _describe_methods
-from natural_pdf.services.methods import navigation_methods as _navigation_methods
 
 logger = logging.getLogger(__name__)
 
@@ -173,19 +169,15 @@ class ElementCollection(
         """
         self._elements: List[T] = list(elements)
 
-    @delegate_signature(_navigation_methods.below)
     def below(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.below(*args, **kwargs))
 
-    @delegate_signature(_navigation_methods.above)
     def above(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.above(*args, **kwargs))
 
-    @delegate_signature(_navigation_methods.left)
     def left(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.left(*args, **kwargs))
 
-    @delegate_signature(_navigation_methods.right)
     def right(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.right(*args, **kwargs))
 
@@ -3385,13 +3377,8 @@ class ElementCollection(
     # ------------------------------------------------------------------
     # Describe/inspect helpers
     # ------------------------------------------------------------------
-    @delegate_signature(_describe_methods.describe)
-    def describe(self, **kwargs) -> Any:
-        return _describe_methods.describe(self, **kwargs)
+    def describe(self, *args, **kwargs):
+        return resolve_service(self, "describe").describe(self, *args, **kwargs)
 
-    @delegate_signature(_describe_methods.inspect)
-    def inspect(self, limit: int = 30, **kwargs) -> Any:
-        return _describe_methods.inspect(self, limit=limit, **kwargs)
-
-
-attach_capability(ElementCollection, "describe")
+    def inspect(self, *args, **kwargs):
+        return resolve_service(self, "describe").inspect(self, *args, **kwargs)

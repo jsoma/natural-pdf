@@ -7,7 +7,20 @@ from unittest.mock import Mock
 import pytest
 
 from natural_pdf.flows.region import FlowRegion
+from natural_pdf.services.table_service import TableService
 from natural_pdf.tables import TableResult
+
+
+def _create_flow_region(flow, constituent_regions):
+    fr = FlowRegion(
+        flow=flow,
+        constituent_regions=constituent_regions,
+        source_flow_element=None,
+    )
+    # Inject real TableService to test logic
+    fr.services = Mock()
+    fr.services.table = TableService(context=Mock())
+    return fr
 
 
 def test_merge_headers_auto_detection():
@@ -46,10 +59,9 @@ def test_merge_headers_auto_detection():
 
     # Create a mock FlowRegion
     mock_flow = Mock()
-    flow_region = FlowRegion(
+    flow_region = _create_flow_region(
         flow=mock_flow,
         constituent_regions=[mock_segment1, mock_segment2, mock_segment3],
-        source_flow_element=None,
     )
 
     # Test auto-detection (default behavior) - should emit warning
@@ -97,8 +109,9 @@ def test_merge_headers_explicit_control():
     mock_segment2.extract_table.return_value = TableResult(page2_data)
 
     mock_flow = Mock()
-    flow_region = FlowRegion(
-        flow=mock_flow, constituent_regions=[mock_segment1, mock_segment2], source_flow_element=None
+    mock_flow = Mock()
+    flow_region = _create_flow_region(
+        flow=mock_flow, constituent_regions=[mock_segment1, mock_segment2]
     )
 
     # Test with merge_headers=False (keep all rows)
@@ -163,8 +176,9 @@ def test_no_repeated_headers():
     mock_segment2.extract_table.return_value = TableResult(page2_data)
 
     mock_flow = Mock()
-    flow_region = FlowRegion(
-        flow=mock_flow, constituent_regions=[mock_segment1, mock_segment2], source_flow_element=None
+    mock_flow = Mock()
+    flow_region = _create_flow_region(
+        flow=mock_flow, constituent_regions=[mock_segment1, mock_segment2]
     )
 
     # Auto-detection should detect no repeating headers (no warning expected)
@@ -213,10 +227,10 @@ def test_inconsistent_header_pattern_error():
     mock_segment3.extract_table.return_value = TableResult(page3_data)
 
     mock_flow = Mock()
-    flow_region = FlowRegion(
+    mock_flow = Mock()
+    flow_region = _create_flow_region(
         flow=mock_flow,
         constituent_regions=[mock_segment1, mock_segment2, mock_segment3],
-        source_flow_element=None,
     )
 
     # Should raise ValueError due to inconsistent pattern
@@ -245,10 +259,10 @@ def test_inconsistent_header_pattern_error_reverse():
     mock_segment3.extract_table.return_value = TableResult(page3_data)
 
     mock_flow = Mock()
-    flow_region = FlowRegion(
+    mock_flow = Mock()
+    flow_region = _create_flow_region(
         flow=mock_flow,
         constituent_regions=[mock_segment1, mock_segment2, mock_segment3],
-        source_flow_element=None,
     )
 
     # Should raise ValueError due to inconsistent pattern
@@ -275,10 +289,10 @@ def test_warning_only_once():
     mock_segment3.extract_table.return_value = TableResult(page3_data)
 
     mock_flow = Mock()
-    flow_region = FlowRegion(
+    mock_flow = Mock()
+    flow_region = _create_flow_region(
         flow=mock_flow,
         constituent_regions=[mock_segment1, mock_segment2, mock_segment3],
-        source_flow_element=None,
     )
 
     # Should only emit one warning despite multiple headers being removed

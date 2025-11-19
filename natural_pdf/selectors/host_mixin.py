@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Optional,
-    ParamSpec,
     Protocol,
     Sequence,
     TypeVar,
@@ -23,17 +21,6 @@ from natural_pdf.services.base import resolve_service
 if TYPE_CHECKING:  # pragma: no cover
     from natural_pdf.elements.base import Element
     from natural_pdf.elements.element_collection import ElementCollection
-
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def delegate_signature(template: Callable[P, R]) -> Callable[[Callable[..., R]], Callable[P, R]]:
-    def decorator(func: Callable[..., R]) -> Callable[P, R]:
-        return cast(Callable[P, R], wraps(template)(func))
-
-    return decorator
 
 
 class SelectorFindMethod(Protocol):
