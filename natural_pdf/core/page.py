@@ -81,7 +81,7 @@ from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
 # # Import new utils
-from natural_pdf.utils.text_extraction import filter_chars_spatially, generate_text_layout
+from natural_pdf.text.operations import filter_chars_spatially, generate_text_layout
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # End Deskew Imports
@@ -2368,145 +2368,16 @@ class Page(
         max_workers: Optional[int] = None,
         progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
     ) -> "Page":  # Return self for chaining
-        """
-        Applies corrections to text elements on this page
-        using a user-provided callback function, potentially in parallel.
-
-        Finds text elements on this page matching the *selector* argument and
-        calls the ``transform`` for each, passing the element itself.
-        Updates the element's text if the callback returns a new string.
-
-        Args:
-            transform: A function accepting an element and returning
-                        `Optional[str]` (new text or None).
-            selector: CSS-like selector string to match text elements.
-            apply_exclusions: Whether exclusion regions should be honoured (default: False to
-                maintain backward compatibility with the base mixin behaviour).
-            max_workers: The maximum number of threads to use for parallel execution.
-                            If None or 0 or 1, runs sequentially.
-            progress_callback: Optional callback function to call after processing each element.
-
-        Returns:
-            Self for method chaining.
-        """
-        logger.info(
-            f"Page {self.number}: Starting text update with callback '{transform.__name__}' (max_workers={max_workers}) and selector='{selector}'"
+        self.services.text.update_text(
+            self,
+            transform=transform,
+            selector=selector,
+            apply_exclusions=apply_exclusions,
+            max_workers=max_workers,
+            progress_callback=progress_callback,
+            show_progress=True,
         )
-
-        target_elements_collection = self.find_all(
-            selector=selector, apply_exclusions=apply_exclusions
-        )
-        target_elements = target_elements_collection.elements  # Get the list
-
-        if not target_elements:
-            logger.info(f"Page {self.number}: No text elements found to update.")
-            return self
-
-        element_pbar = None
-        try:
-            element_pbar = tqdm(
-                total=len(target_elements),
-                desc=f"Updating text Page {self.number}",
-                unit="element",
-                leave=False,
-            )
-
-            processed_count = 0
-            updated_count = 0
-            error_count = 0
-
-            # Define the task to be run by the worker thread or sequentially
-            def _process_element_task(element):
-                try:
-                    # Call the user-provided callback
-                    corrected_text = transform(element)
-
-                    # Validate result type
-                    if corrected_text is not None and not isinstance(corrected_text, str):
-                        logger.warning(
-                            f"Page {self.number}: Correction callback for element '{getattr(element, 'text', '')[:20]}...' returned non-string, non-None type: {type(corrected_text)}. Skipping update."
-                        )
-                        return element, None, None  # Treat as no correction
-
-                    return element, corrected_text, None  # Return element, result, no error
-                except Exception as e:
-                    logger.error(
-                        f"Page {self.number}: Error applying correction callback to element '{getattr(element, 'text', '')[:30]}...' ({element.bbox}): {e}",
-                        exc_info=False,  # Keep log concise
-                    )
-                    return element, None, e  # Return element, no result, error
-                finally:
-                    if element_pbar:
-                        element_pbar.update(1)
-                    if progress_callback:
-                        try:
-                            progress_callback()
-                        except Exception as cb_e:
-                            # Log error in callback itself, but don't stop processing
-                            logger.error(
-                                f"Page {self.number}: Error executing progress_callback: {cb_e}",
-                                exc_info=False,
-                            )
-
-            # Choose execution strategy based on max_workers
-            if max_workers is not None and max_workers > 1:
-                logger.info(
-                    f"Page {self.number}: Running text update in parallel with {max_workers} workers."
-                )
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    # Submit all tasks
-                    future_to_element = {
-                        executor.submit(_process_element_task, element): element
-                        for element in target_elements
-                    }
-
-                    # Process results as they complete (progress_callback called by worker)
-                    for future in concurrent.futures.as_completed(future_to_element):
-                        processed_count += 1
-                        try:
-                            element, corrected_text, error = future.result()
-                            if error:
-                                error_count += 1
-                                # Error already logged in worker
-                            elif corrected_text is not None:
-                                # Apply correction if text changed
-                                current_text = getattr(element, "text", None)
-                                if corrected_text != current_text:
-                                    element.text = corrected_text
-                                    updated_count += 1
-                        except Exception as exc:
-                            # Catch errors from future.result() itself
-                            element = future_to_element[future]  # Find original element
-                            logger.error(
-                                f"Page {self.number}: Internal error retrieving correction result for element {element.bbox}: {exc}",
-                                exc_info=True,
-                            )
-                            error_count += 1
-                            # Note: progress_callback was already called in the worker's finally block
-
-            else:
-                logger.info(f"Page {self.number}: Running text update sequentially.")
-                for element in target_elements:
-                    # Call the task function directly (it handles progress_callback)
-                    processed_count += 1
-                    _element, corrected_text, error = _process_element_task(element)
-                    if error:
-                        error_count += 1
-                    elif corrected_text is not None:
-                        # Apply correction if text changed
-                        current_text = getattr(_element, "text", None)
-                        if corrected_text != current_text:
-                            _element.text = corrected_text
-                            updated_count += 1
-
-            logger.info(
-                f"Page {self.number}: Text update finished. Processed: {processed_count}/{len(target_elements)}, Updated: {updated_count}, Errors: {error_count}."
-            )
-
-            return self  # Return self for chaining
-        finally:
-            if element_pbar:
-                element_pbar.close()
+        return self
 
     def _get_classification_content(self, model_type: str, **kwargs) -> Union[str, Image.Image]:
         if model_type == "text":

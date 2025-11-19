@@ -37,6 +37,7 @@ from natural_pdf.elements.region import Region
 from natural_pdf.elements.text import TextElement
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
+from natural_pdf.text.operations import apply_content_filter
 from natural_pdf.utils.color_utils import format_color_value
 
 # Potentially lazy imports for optional dependencies needed in save_pdf
@@ -814,9 +815,7 @@ class ElementCollection(
 
         # Apply content filtering if provided
         if content_filter is not None:
-            from natural_pdf.utils.text_extraction import _apply_content_filter
-
-            all_char_dicts = _apply_content_filter(all_char_dicts, content_filter)
+            all_char_dicts = apply_content_filter(all_char_dicts, content_filter)
 
         # Check if layout is requested
         use_layout = kwargs.get("layout", False)
