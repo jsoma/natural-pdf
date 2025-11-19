@@ -2644,6 +2644,19 @@ class Page(
         """
         return self.find_all("*").inspect(limit=limit)
 
+    def describe(self, **kwargs):
+        """
+        Describe the page content using the describe service.
+        """
+        return self.services.describe.describe(self, **kwargs)
+
+    def inspect(self, limit: int = 30, **kwargs):
+        """
+        Inspect the page content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.inspect(collection, limit=limit, **kwargs)
+
     def ask(
         self,
         question: Any,  # Typed as Any to avoid circular import of QuestionInput

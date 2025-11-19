@@ -2810,7 +2810,7 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
         show_progress: bool = True,
         mask_threshold: Optional[float] = None,
     ) -> Any:
-        """Backward-compatible wrapper for the deprecated find_similar API."""
+        """Run visual template matching through the vision service."""
 
         return self.services.vision.find_similar(
             self,
@@ -2826,3 +2826,17 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
             show_progress=show_progress,
             mask_threshold=mask_threshold,
         )
+
+    def describe(self, **kwargs):
+        """
+        Describe the PDF content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.describe(collection, **kwargs)
+
+    def inspect(self, limit: int = 30, **kwargs):
+        """
+        Inspect the PDF content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.inspect(collection, limit=limit, **kwargs)

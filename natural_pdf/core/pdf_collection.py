@@ -409,6 +409,20 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
     def ask(self, *args, **kwargs):
         return self.services.qa.ask(self, *args, **kwargs)
 
+    def describe(self, **kwargs):
+        """
+        Describe the PDF collection content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.describe(collection, **kwargs)
+
+    def inspect(self, limit: int = 30, **kwargs):
+        """
+        Inspect the PDF collection content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.inspect(collection, limit=limit, **kwargs)
+
     def detect_lines(self, *args, **kwargs):
         return self.services.shapes.detect_lines(self, *args, **kwargs)
 

@@ -2704,6 +2704,19 @@ class Region(
     def guides(self, *args, **kwargs):
         return self.services.guides.guides(self, *args, **kwargs)
 
+    def describe(self, **kwargs):
+        """
+        Describe the region content using the describe service.
+        """
+        return self.services.describe.describe(self, **kwargs)
+
+    def inspect(self, limit: int = 30, **kwargs):
+        """
+        Inspect the region content using the describe service.
+        """
+        collection = self.find_all("*")
+        return self.services.describe.inspect(collection, limit=limit, **kwargs)
+
 
 # Flow navigation fallback uses Region directional helpers
 from natural_pdf.elements.base import DirectionalMixin as _DirectionalMixin

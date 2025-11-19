@@ -27,6 +27,7 @@ from PIL import Image
 from natural_pdf.collections.mixins import ApplyMixin, DirectionalCollectionMixin
 
 # Add Visualizable import
+from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.interfaces import SupportsBBox, SupportsElement, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -55,7 +56,7 @@ try:
 except ImportError:
     create_original_pdf = None
 # <--- END ADDED
-from natural_pdf.services.base import resolve_service
+from natural_pdf.services.base import ServiceHostMixin
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ P = TypeVar("P", bound="Page")
 
 class ElementCollection(
     Generic[T],
+    ServiceHostMixin,
     ApplyMixin,
     ExportMixin,
     ClassificationBatchMixin,
@@ -143,7 +145,7 @@ class ElementCollection(
         or by filtering existing collections. Direct instantiation is less common.
     """
 
-    def __init__(self, elements: List[T]):
+    def __init__(self, elements: List[T], *, context: Optional[PDFContext] = None):
         """Initialize a collection of elements.
 
         Creates an ElementCollection that wraps a list of PDF elements and provides
@@ -168,6 +170,30 @@ class ElementCollection(
             with additional natural-pdf functionality for document processing.
         """
         self._elements: List[T] = list(elements)
+        resolved_context = context or self._derive_context(self._elements)
+        self._init_service_host(resolved_context)
+
+    @staticmethod
+    def _derive_context(elements: List[T]) -> PDFContext:
+        for element in elements:
+            ctx = getattr(element, "_context", None)
+            if ctx is not None:
+                return ctx
+            page = getattr(element, "page", None)
+            if page is not None:
+                page_ctx = getattr(page, "_context", None)
+                if page_ctx is not None:
+                    return page_ctx
+                pdf_obj = getattr(page, "pdf", getattr(page, "_parent", None))
+                if pdf_obj is not None:
+                    pdf_ctx = getattr(pdf_obj, "_context", None)
+                    if pdf_ctx is not None:
+                        return pdf_ctx
+        return PDFContext.with_defaults()
+
+    def _spawn(self, elements: List[T]) -> "ElementCollection[T]":
+        ctx = getattr(self, "_context", PDFContext.with_defaults())
+        return self.__class__(list(elements), context=ctx)
 
     def below(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.below(*args, **kwargs))
@@ -492,7 +518,7 @@ class ElementCollection(
         """Get an element by index or a collection by slice."""
         if isinstance(index, slice):
             # Return a new ElementCollection for slices
-            return ElementCollection(self._elements[index])
+            return self._spawn(self._elements[index])
         else:
             # Return the element for integer indices
             return self._elements[index]
@@ -509,8 +535,8 @@ class ElementCollection(
     def __add__(self, other: Union["ElementCollection[T]", T]) -> "ElementCollection[T]":
         if isinstance(other, ElementCollection):
             merged_elements = list(self._elements) + list(other)
-            return ElementCollection(merged_elements)
-        return ElementCollection(list(self._elements) + [other])
+            return self._spawn(merged_elements)
+        return self._spawn(list(self._elements) + [other])
 
     @overload
     def __setitem__(self, index: int, value: T) -> None: ...
@@ -673,7 +699,7 @@ class ElementCollection(
             New ElementCollection with filtered elements
         """
         if not regions:
-            return ElementCollection(self._elements)
+            return self._spawn(self._elements)
 
         filtered = []
         for element in self._elements:
@@ -685,7 +711,7 @@ class ElementCollection(
             if not exclude:
                 filtered.append(element)
 
-        return ElementCollection(filtered)
+        return self._spawn(filtered)
 
     def extract_text(
         self,
@@ -1921,7 +1947,7 @@ class ElementCollection(
                     matches.append(found)
 
         typed_matches = cast(List[SupportsElement], matches)
-        return ElementCollection(typed_matches)
+        return self._spawn(typed_matches)
 
     @overload
     def find_all(
@@ -2044,7 +2070,7 @@ class ElementCollection(
             # or a more specific check/handling could be added here if needed.
 
         typed_elements = cast(List[SupportsElement], all_found_elements)
-        return ElementCollection(typed_elements)
+        return self._spawn(typed_elements)
 
     def extract_each_text(
         self,
@@ -2348,7 +2374,7 @@ class ElementCollection(
 
         new_text_elements: List[TextElement] = []
         if not self.elements:  # Accesses self._elements via property
-            empty_collection = ElementCollection(cast(List[SupportsElement], new_text_elements))
+            empty_collection = self._spawn(cast(List[SupportsElement], new_text_elements))
             return cast(ElementCollection[TextElement], empty_collection)
 
         page_context_for_adding: Optional["Page"] = None
@@ -2436,7 +2462,7 @@ class ElementCollection(
         else:  # add_to_page is False
             logger.info(f"Created {len(new_text_elements)} TextElements (not added to page).")
 
-        typed_collection = ElementCollection(cast(List[SupportsElement], new_text_elements))
+        typed_collection = self._spawn(cast(List[SupportsElement], new_text_elements))
         return cast(ElementCollection[TextElement], typed_collection)
 
     def trim(
@@ -2481,7 +2507,7 @@ class ElementCollection(
         trimmed = self.apply(_trim_element, show_progress=show_progress)
         if isinstance(trimmed, ElementCollection):
             return trimmed
-        return ElementCollection(cast(List[SupportsElement], trimmed))
+        return self._spawn(cast(List[SupportsElement], trimmed))
 
     def clip(
         self,
@@ -2546,7 +2572,7 @@ class ElementCollection(
                         bottom=bottom,
                     )
                     clipped_elements.append(cast(SupportsElement, clipped))
-            return ElementCollection(clipped_elements)
+            return self._spawn(clipped_elements)
 
         # Fallback to original behaviour: apply same clipping parameters to all elements
         def _clip_single(element: SupportsElement) -> SupportsElement:
@@ -2561,7 +2587,7 @@ class ElementCollection(
         clipped = self.apply(_clip_single)
         if isinstance(clipped, ElementCollection):
             return clipped
-        return ElementCollection(cast(List[SupportsElement], clipped))
+        return self._spawn(cast(List[SupportsElement], clipped))
 
     def merge_connected(
         self,
@@ -2620,7 +2646,7 @@ class ElementCollection(
             - Original metadata is preserved from the first region in each group
         """
         if not self._elements:
-            return ElementCollection([])
+            return self._spawn([])
 
         from natural_pdf.elements.region import Region
 
@@ -2640,7 +2666,7 @@ class ElementCollection(
 
         if not regions:
             # No regions to merge
-            return ElementCollection(self._elements)
+            return self._spawn(self._elements)
 
         # Group regions by page if not merging across pages
         page_groups = {}
@@ -2722,7 +2748,7 @@ class ElementCollection(
             # A more sophisticated approach would maintain relative ordering
             result_elements = all_merged_regions + non_regions
 
-        return ElementCollection(result_elements)
+        return self._spawn(result_elements)
 
     def _are_regions_connected(
         self, region1: "Region", region2: "Region", threshold: float
@@ -2931,7 +2957,7 @@ class ElementCollection(
 
         if not elements_with_bbox:
             logger.debug("No elements with bbox found in collection for dissolve()")
-            return ElementCollection([])
+            return self._spawn([])
 
         # Group elements by specified attributes
         if group_by:
@@ -2977,7 +3003,7 @@ class ElementCollection(
             f"Dissolved {len(elements_with_bbox)} elements into {len(all_dissolved_regions)} regions"
         )
 
-        return ElementCollection(cast(List[SupportsElement], all_dissolved_regions))
+        return self._spawn(cast(List[SupportsElement], all_dissolved_regions))
 
     def _group_elements_by_attributes(
         self, elements: Sequence[SupportsElement], group_by: Optional[List[str]]
@@ -3343,7 +3369,7 @@ class ElementCollection(
         # Use collection's apply helper for optional progress bar
         self.apply(_process, show_progress=show_progress, desc="Detecting checkboxes")
 
-        return ElementCollection(all_checkboxes)
+        return self._spawn(all_checkboxes)
 
     # ------------------------------------------------------------------
 
@@ -3378,7 +3404,7 @@ class ElementCollection(
     # Describe/inspect helpers
     # ------------------------------------------------------------------
     def describe(self, *args, **kwargs):
-        return resolve_service(self, "describe").describe(self, *args, **kwargs)
+        return self.services.describe.describe(self, *args, **kwargs)
 
     def inspect(self, *args, **kwargs):
-        return resolve_service(self, "describe").inspect(self, *args, **kwargs)
+        return self.services.describe.inspect(self, *args, **kwargs)
