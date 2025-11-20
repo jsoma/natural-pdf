@@ -2444,56 +2444,7 @@ class Region(
     # New helper: build table from pre-computed table_cell regions
 
     def _apply_rtl_processing_to_text(self, text: str) -> str:
-        """
-        Apply RTL (Right-to-Left) text processing to a string.
-
-        This converts visual order text (as stored in PDFs) to logical order
-        for proper display of Arabic, Hebrew, and other RTL scripts.
-
-        Args:
-            text: Input text string in visual order
-
-        Returns:
-            Text string in logical order
-        """
-        if not text or not text.strip():
-            return text
-
-        # Quick check for RTL characters - if none found, return as-is
-        import unicodedata
-
-        def _contains_rtl(s):
-            return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
-
-        if not _contains_rtl(text):
-            return text
-
-        try:
-            from bidi.algorithm import get_display  # type: ignore
-
-            from natural_pdf.utils.bidi_mirror import mirror_brackets
-
-            # Apply BiDi algorithm to convert from visual to logical order
-            # Process line by line to handle mixed content properly
-            processed_lines = []
-            for line in text.split("\n"):
-                if line.strip():
-                    # Determine base direction for this line
-                    base_dir = "R" if _contains_rtl(line) else "L"
-                    logical_line = get_display(line, base_dir=base_dir)
-                    logical_line_str = (
-                        logical_line if isinstance(logical_line, str) else str(logical_line)
-                    )
-                    # Apply bracket mirroring for correct logical order
-                    processed_lines.append(mirror_brackets(logical_line_str))
-                else:
-                    processed_lines.append(line)
-
-            return "\n".join(processed_lines)
-
-        except (ImportError, Exception):
-            # If bidi library is not available or fails, return original text
-            return text
+        return apply_bidi_processing(text)
 
     def _apply_content_filter_to_text(self, text: str, content_filter) -> str:
         """

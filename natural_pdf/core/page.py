@@ -1,4 +1,3 @@
-import concurrent.futures  # Added import
 import contextlib
 import functools
 import hashlib
@@ -24,7 +23,6 @@ from typing import (  # Added overload
 
 import pdfplumber
 from PIL import Image
-from tqdm.auto import tqdm  # Added tqdm import
 
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
@@ -81,7 +79,11 @@ from natural_pdf.services import qa_service as _qa_service  # noqa: F401
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
 # # Import new utils
-from natural_pdf.text.operations import filter_chars_spatially, generate_text_layout
+from natural_pdf.text.operations import (
+    apply_bidi_processing,
+    filter_chars_spatially,
+    generate_text_layout,
+)
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
 
 # End Deskew Imports
@@ -1981,18 +1983,12 @@ class Page(
                 if width is not None and width > 0 and img.width > 0:
                     aspect_ratio = img.height / img.width
                     height = int(width * aspect_ratio)
-                    try:
-                        img = img.resize((width, height), Image.Resampling.LANCZOS)
-                    except Exception as e:
-                        logger.warning(f"Could not resize image: {e}")
+                    img = img.resize((width, height), Image.Resampling.LANCZOS)
 
                 # Save the image
-                try:
-                    if os.path.dirname(filename):
-                        os.makedirs(os.path.dirname(filename), exist_ok=True)
-                    img.save(filename)
-                except Exception as e:
-                    logger.error(f"Failed to save image to {filename}: {e}")
+                if os.path.dirname(filename):
+                    os.makedirs(os.path.dirname(filename), exist_ok=True)
+                img.save(filename)
 
         return self
 
@@ -2114,7 +2110,7 @@ class Page(
         end_element=None,
         include_boundaries="both",
         orientation="vertical",
-    ) -> Optional["Region"]:  # Return Optional
+    ) -> "Region":
         """
         Get a section between two elements on this page.
 
@@ -2126,23 +2122,20 @@ class Page(
 
         Returns:
             Region representing the section
+
+        Raises:
+            ValueError: Propagated from Region.get_section_between for invalid inputs.
         """
         # Create a full-page region to operate within
         page_region = self.create_region(0, 0, self.width, self.height)
 
         # Delegate to the region's method
-        try:
-            return page_region.get_section_between(
-                start_element=start_element,
-                end_element=end_element,
-                include_boundaries=include_boundaries,
-                orientation=orientation,
-            )
-        except Exception as e:
-            logger.error(
-                f"Error getting section between elements on page {self.index}: {e}", exc_info=True
-            )
-            return None
+        return page_region.get_section_between(
+            start_element=start_element,
+            end_element=end_element,
+            include_boundaries=include_boundaries,
+            orientation=orientation,
+        )
 
     def split(self, divider, **kwargs: Any) -> "ElementCollection[Region]":
         """Divide the page into sections based on the provided divider elements."""
@@ -2205,25 +2198,15 @@ class Page(
         Returns:
             PIL Image object of the preview, or None if rendering fails.
         """
-        try:
-            # Delegate rendering to the highlighter service's preview method
-            img = self._highlighter.render_preview(
-                page_index=self.index,
-                temporary_highlights=temporary_highlights,
-                resolution=resolution,
-                labels=labels,
-                legend_position=legend_position,
-                render_ocr=render_ocr,
-            )
-        except AttributeError:
-            logger.error("HighlightingService does not have the required 'render_preview' method.")
-            return None
-        except Exception as e:
-            logger.error(
-                f"Error calling highlighter.render_preview for page {self.index}: {e}",
-                exc_info=True,
-            )
-            return None
+        # Delegate rendering to the highlighter service's preview method
+        img = self._highlighter.render_preview(
+            page_index=self.index,
+            temporary_highlights=temporary_highlights,
+            resolution=resolution,
+            labels=labels,
+            legend_position=legend_position,
+            render_ocr=render_ocr,
+        )
 
         # Return the rendered image directly
         return img
@@ -2266,41 +2249,28 @@ class Page(
         self,
         # elements_to_render: Optional[List['Element']] = None, # No longer needed, from_page handles it
         # include_source_types: List[str] = ['word', 'line', 'rect', 'region'] # No longer needed
-    ) -> Optional[Any]:
+    ) -> Any:
         """
         Creates and returns an interactive ipywidget for exploring elements on this page.
 
         Uses InteractiveViewerWidget.from_page() to create the viewer.
 
         Returns:
-            A InteractiveViewerWidget instance ready for display in Jupyter,
-            or None if ipywidgets is not installed or widget creation fails.
+            An InteractiveViewerWidget instance ready for display in Jupyter.
 
         Raises:
-            # Optional: Could raise ImportError instead of returning None
-            # ImportError: If required dependencies (ipywidgets) are missing.
+            ImportError: If required dependencies (ipywidgets) are missing.
             ValueError: If image rendering or data preparation fails within from_page.
         """
         # Check for availability using the imported flag and class variable
         if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
-            logger.error(
+            raise ImportError(
                 "Interactive viewer requires 'ipywidgets'. "
                 'Please install with: pip install "ipywidgets>=7.0.0,<10.0.0"'
             )
-            # raise ImportError("ipywidgets not found.") # Option 1: Raise error
-            return None  # Option 2: Return None gracefully
 
-        # If we reach here, InteractiveViewerWidget should be the actual class
-        try:
-            # Pass self (the Page object) to the factory method
-            return InteractiveViewerWidget.from_page(self)
-        except Exception as e:
-            # Catch potential errors during widget creation (e.g., image rendering)
-            logger.error(
-                f"Error creating viewer widget from page {self.number}: {e}", exc_info=True
-            )
-            # raise # Option 1: Re-raise error (might include ValueError from from_page)
-            return None  # Option 2: Return None on creation error
+        # Pass self (the Page object) to the factory method
+        return InteractiveViewerWidget.from_page(self)
 
     def get_id(self) -> str:
         """Returns a unique identifier for the page (required by Indexable protocol)."""
@@ -2366,7 +2336,8 @@ class Page(
         selector: str = "text",
         apply_exclusions: bool = False,
         max_workers: Optional[int] = None,
-        progress_callback: Optional[Callable[[], None]] = None,  # Added progress callback
+        progress_callback: Optional[Callable[[], None]] = None,
+        show_progress: bool = True,
     ) -> "Page":  # Return self for chaining
         self.services.text.update_text(
             self,
@@ -2375,7 +2346,7 @@ class Page(
             apply_exclusions=apply_exclusions,
             max_workers=max_workers,
             progress_callback=progress_callback,
-            show_progress=True,
+            show_progress=show_progress,
         )
         return self
 
@@ -2435,7 +2406,7 @@ class Page(
         except Exception as exc:
             logger.warning(f"Page {self.number}: Skew detection failed: {exc}", exc_info=True)
             self._skew_angle = None
-            return None
+            raise
 
         self._skew_angle = angle
         return angle
@@ -2461,29 +2432,21 @@ class Page(
                                 if automatic detection is performed.
 
         Returns:
-            A deskewed PIL.Image.Image object, or None if rendering/rotation fails.
+            A deskewed PIL.Image.Image object.
 
         Raises:
             ImportError: If the 'deskew' library is not installed.
+            Exception: Any errors raised by the configured deskew provider.
         """
-        try:
-            result = run_deskew_apply(
-                target=self,
-                context=self,
-                resolution=resolution,
-                angle=angle,
-                detection_resolution=detection_resolution,
-                grayscale=True,
-                deskew_kwargs=deskew_kwargs,
-            )
-        except ImportError:
-            raise
-        except Exception as exc:
-            logger.error(
-                f"Page {self.number}: Error during deskewing image generation: {exc}",
-                exc_info=True,
-            )
-            return None
+        result = run_deskew_apply(
+            target=self,
+            context=self,
+            resolution=resolution,
+            angle=angle,
+            detection_resolution=detection_resolution,
+            grayscale=True,
+            deskew_kwargs=deskew_kwargs,
+        )
 
         return result.image
 
@@ -2605,37 +2568,20 @@ class Page(
 
         if using == "text":
             layout = kwargs.pop("layout", True)
-            try:
-                return self.extract_text(layout=layout, **kwargs)
-            except Exception as exc:  # pragma: no cover - logging aid
-                logger.error(
-                    "Page %s: Error extracting text content for structured extraction: %s",
-                    self.number,
-                    exc,
-                )
-                return None
+            return self.extract_text(layout=layout, **kwargs)
 
         if using == "vision":
             resolution = kwargs.pop("resolution", 96)
             kwargs.pop("include_highlights", None)
             kwargs.pop("labels", None)
-            try:
-                return self.render(
-                    resolution=resolution,
-                    include_highlights=False,
-                    labels=False,
-                    **kwargs,
-                )
-            except Exception as exc:  # pragma: no cover - logging aid
-                logger.error(
-                    "Page %s: Error rendering image content for structured extraction: %s",
-                    self.number,
-                    exc,
-                )
-                return None
+            return self.render(
+                resolution=resolution,
+                include_highlights=False,
+                labels=False,
+                **kwargs,
+            )
 
-        logger.error("Unsupported extraction content mode '%s'", using)
-        return None
+        raise ValueError(f"Unsupported extraction content mode '{using}'")
 
     def classify(
         self,
@@ -2680,58 +2626,8 @@ class Page(
         return self
 
     def _apply_rtl_processing_to_text(self, text: str) -> str:
-        """
-        Apply RTL (Right-to-Left) text processing to a string.
-
-        This converts visual order text (as stored in PDFs) to logical order
-        for proper display of Arabic, Hebrew, and other RTL scripts.
-
-        Args:
-            text: Input text string in visual order
-
-        Returns:
-            Text string in logical order
-        """
-        if not text or not text.strip():
-            return text
-
-        # Quick check for RTL characters - if none found, return as-is
-        import unicodedata
-
-        def _contains_rtl(s):
-            return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
-
-        if not _contains_rtl(text):
-            return text
-
-        try:
-            from bidi.algorithm import get_display  # type: ignore
-
-            from natural_pdf.utils.bidi_mirror import mirror_brackets
-
-            # Apply BiDi algorithm to convert from visual to logical order
-            # Process line by line to handle mixed content properly
-            processed_lines = []
-            for line in text.split("\n"):
-                if line.strip():
-                    # Determine base direction for this line
-                    base_dir = "R" if _contains_rtl(line) else "L"
-                    logical_line = get_display(line, base_dir=base_dir)
-                    if isinstance(logical_line, bytes):
-                        try:
-                            logical_line = logical_line.decode("utf-8")
-                        except UnicodeDecodeError:
-                            logical_line = logical_line.decode("utf-8", "ignore")
-                    # Apply bracket mirroring for correct logical order
-                    processed_lines.append(mirror_brackets(logical_line))
-                else:
-                    processed_lines.append(line)
-
-            return "\n".join(processed_lines)
-
-        except (ImportError, Exception):
-            # If bidi library is not available or fails, return original text
-            return text
+        """Delegate to shared BiDi helper."""
+        return apply_bidi_processing(text)
 
     @property
     def images(self) -> List[Any]:

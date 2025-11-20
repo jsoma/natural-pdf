@@ -138,30 +138,34 @@ class TextService:
                             exc_info=False,
                         )
 
+        def _apply_result(element, corrected_text, error):
+            if error:
+                return False, True
+            if corrected_text is not None and corrected_text != getattr(element, "text", None):
+                element.text = corrected_text
+                return True, False
+            return False, False
+
         if max_workers and max_workers > 1:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_map = {executor.submit(_process, element): element for element in elements}
                 for future in concurrent.futures.as_completed(future_map):
                     processed_count += 1
                     element, corrected_text, error = future.result()
-                    if error:
-                        error_count += 1
-                        continue
-                    if corrected_text is not None and corrected_text != getattr(
-                        element, "text", None
-                    ):
-                        element.text = corrected_text
+                    updated, errored = _apply_result(element, corrected_text, error)
+                    if updated:
                         updated_count += 1
+                    if errored:
+                        error_count += 1
         else:
             for element in elements:
                 processed_count += 1
                 element, corrected_text, error = _process(element)
-                if error:
-                    error_count += 1
-                    continue
-                if corrected_text is not None and corrected_text != getattr(element, "text", None):
-                    element.text = corrected_text
+                updated, errored = _apply_result(element, corrected_text, error)
+                if updated:
                     updated_count += 1
+                if errored:
+                    error_count += 1
 
         if element_pbar:
             element_pbar.close()
