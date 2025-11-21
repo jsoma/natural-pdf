@@ -52,7 +52,7 @@ OPTIONAL_PACKAGES = [
 ]
 
 
-@nox.session(python=PYTHON_VERSIONS)
+@nox.session
 def lint(session):
     """Run linters."""
     session.install("black", "isort")
@@ -62,7 +62,7 @@ def lint(session):
     # session.run("mypy", "src", "tests") # Adjust paths as needed
 
 
-@nox.session(python=PYTHON_VERSIONS)
+@nox.session
 def test_minimal(session):
     """Run tests with only core dependencies, expecting failures for optional features."""
     session.install(".[test]")
@@ -77,7 +77,7 @@ def test_minimal(session):
     )
 
 
-@nox.session(python=PYTHON_VERSIONS)
+@nox.session
 def test_full(session):
     """Run tests with all optional dependencies installed."""
     # Install the main package with test dependencies first
