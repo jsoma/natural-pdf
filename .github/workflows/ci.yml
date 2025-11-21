@@ -21,10 +21,10 @@ jobs:
       TORCH_DEVICE: cpu  # Force Surya to use CPU
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 1  # Limited due to high RAM usage from AI models
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ['3.10', '3.11']
+        python: ['3.10', '3.11', '3.12']
 
     steps:
       - name: Checkout repository
