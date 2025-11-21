@@ -88,7 +88,7 @@ def capture_case(case: RealPDFCase) -> Dict[str, Any]:
             "images": manager.images,
         }
         summary = {
-            "pdf": str(case.path),
+            "pdf": case.path.as_posix(),  # Use forward slashes for cross-platform compatibility
             "page_index": case.page_index,
             "page_bbox": [
                 _round_number(0.0),
