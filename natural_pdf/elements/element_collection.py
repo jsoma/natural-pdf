@@ -40,12 +40,6 @@ from natural_pdf.ocr.utils import _apply_ocr_correction_to_elements
 from natural_pdf.text.operations import apply_content_filter
 from natural_pdf.utils.color_utils import format_color_value
 
-# Potentially lazy imports for optional dependencies needed in save_pdf
-try:
-    import pikepdf  # type: ignore[import]
-except ImportError:
-    pikepdf = None
-
 try:
     from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 except ImportError:

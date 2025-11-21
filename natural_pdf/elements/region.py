@@ -55,7 +55,11 @@ from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables.result import TableResult
 
 # Import new utils
-from natural_pdf.text.operations import filter_chars_spatially, generate_text_layout
+from natural_pdf.text.operations import (
+    apply_bidi_processing,
+    filter_chars_spatially,
+    generate_text_layout,
+)
 
 # Import viewer widget support
 from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget

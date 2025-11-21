@@ -36,15 +36,6 @@ from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.utils.sections import sanitize_sections
 
-# New Imports
-
-
-# Potentially lazy imports for optional dependencies needed in save_pdf
-try:
-    import pikepdf  # type: ignore[import]
-except ImportError:
-    pikepdf = None
-
 try:
     from natural_pdf.exporters.searchable_pdf import create_searchable_pdf
 except ImportError:
@@ -158,8 +149,8 @@ class PageCollection(
         if pages:
             first = pages[0]
             context = getattr(first, "_context", None)
-            if context is not None:
-                return cast(PDFContext, context)
+            if isinstance(context, PDFContext):
+                return context
         return PDFContext.with_defaults()
 
     def _get_page_indices(self) -> List[int]:

@@ -45,6 +45,7 @@ test = [
     "pytest",
     "pytest-xdist",
     "setuptools",
+    "tomli",
 ]
 
 dev = [
@@ -85,7 +86,7 @@ deskew = [
 search = [
     "lancedb",
     "pyarrow",
-    "natural-pdf[embeddings]",
+    "sentence-transformers",
 ]
 
 ocr-export = [

@@ -1,6 +1,7 @@
 # natural_pdf/utils/text_extraction.py
 import logging
 import re
+import unicodedata
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes

@@ -86,6 +86,15 @@ class RenderingService:
 
         self._ensure_specs(host, specs, "show")
 
+        if limit is not None and len(specs) > limit:
+            logger.debug(
+                "Limiting render specs for %s.show() to %s entries from %s",
+                host.__class__.__name__,
+                limit,
+                len(specs),
+            )
+            specs = specs[:limit]
+
         if layout is None:
             layout = "grid" if len(specs) > 1 else "single"
 

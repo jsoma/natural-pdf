@@ -73,6 +73,11 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         ('pip install "natural-pdf[search]"',),
         "Vector database backend for semantic search.",
     ),
+    "pyarrow": OptionalDependency(
+        "pyarrow",
+        ('pip install "natural-pdf[search]"',),
+        "Columnar storage format required by LanceDB search backend.",
+    ),
     # ML Core
     "torch": OptionalDependency(
         "torch",
@@ -92,11 +97,37 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
         ),
         "Hugging Face transformers for QA/classification.",
     ),
+    "torchvision": OptionalDependency(
+        "torchvision",
+        ('pip install "natural-pdf[ai-core]"',),
+        "TorchVision models/utilities used by perception pipelines.",
+    ),
+    "huggingface_hub": OptionalDependency(
+        "huggingface_hub",
+        ('pip install "natural-pdf[ai-core]"',),
+        "Model hub utilities required by AI engines.",
+    ),
     # Layout
     "doclayout_yolo": OptionalDependency(
         "doclayout_yolo",
         ('pip install "natural-pdf[layout-ai]"', "npdf install yolo"),
         "YOLO-based layout detection models.",
+    ),
+    "timm": OptionalDependency(
+        "timm",
+        ('pip install "natural-pdf[layout-ai]"',),
+        "Required backbone models for layout detectors.",
+    ),
+    # OCR/export helpers
+    "img2pdf": OptionalDependency(
+        "img2pdf",
+        ('pip install "natural-pdf[deskew]"',),
+        "Image to PDF conversion helper used by deskew/save routines.",
+    ),
+    "openai": OptionalDependency(
+        "openai",
+        ('pip install "natural-pdf[ai-api]"', "npdf install ai"),
+        "Client library for API-driven layout/QA engines.",
     ),
 }
 

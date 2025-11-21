@@ -212,6 +212,14 @@ class Visualizable:
 
         return resolve_service(self, "rendering")
 
+    def get_rendering_service(self):
+        """Public accessor for the rendering service (primarily for tests)."""
+        cls = getattr(self, "__class__", type(self))
+        method = getattr(cls, "_get_rendering_service", None)
+        if method is None:
+            method = Visualizable._get_rendering_service
+        return method(self)
+
     def show(
         self,
         *,
@@ -263,7 +271,7 @@ class Visualizable:
         Returns:
             PIL Image object or None if nothing to render
         """
-        return self._get_rendering_service().show(
+        return self.get_rendering_service().show(
             self,
             resolution=resolution,
             width=width,
@@ -315,7 +323,7 @@ class Visualizable:
         Returns:
             PIL Image object or None if nothing to render
         """
-        return self._get_rendering_service().render(
+        return self.get_rendering_service().render(
             self,
             resolution=resolution,
             width=width,
@@ -360,7 +368,7 @@ class Visualizable:
             format: Image format (inferred from path if not specified)
             **kwargs: Additional parameters passed to rendering
         """
-        self._get_rendering_service().export(
+        self.get_rendering_service().export(
             self,
             path=path,
             resolution=resolution,
