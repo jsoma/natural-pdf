@@ -85,7 +85,7 @@ def _get_engine_instance(engine_name: str) -> OCREngine:
         if not engine_instance.is_available():
             raise RuntimeError(
                 f"OCR engine '{engine_name}' is not available. "
-                "Install optional dependencies with 'pip install natural-pdf[ocr]'."
+                "Install optional dependencies with 'pip install \"natural-pdf[ocr-ai]\"'."
             )
         _engine_instances[engine_name] = engine_instance
         return engine_instance

@@ -13,13 +13,9 @@ from PIL import Image
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.engine_registry import register_builtin, register_deskew_engine
 from natural_pdf.utils.locks import pdf_render_lock
+from natural_pdf.utils.optional_imports import require
 
 logger = logging.getLogger(__name__)
-
-try:  # Optional dependency
-    from deskew import determine_skew  # type: ignore[import]
-except ImportError:  # pragma: no cover
-    determine_skew = None
 
 
 @dataclass
@@ -100,10 +96,10 @@ class _DefaultDeskewEngine:
         grayscale: bool,
         deskew_kwargs: Dict[str, Any],
     ) -> Optional[float]:
+        deskew_module = require("deskew")
+        determine_skew = getattr(deskew_module, "determine_skew", None)
         if determine_skew is None:
-            raise ImportError(
-                "Deskew library not found. Install with: pip install natural-pdf[deskew]"
-            )
+            raise ImportError("Deskew module does not expose determine_skew().")
         image = _render_target(target, resolution=resolution, grayscale=grayscale)
         img_np: NDArray[Any] = np.array(image)
         if grayscale and img_np.ndim == 3 and img_np.shape[2] >= 3:

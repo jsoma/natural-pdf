@@ -4,6 +4,8 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 
+from natural_pdf.utils.optional_imports import require
+
 from .search_options import BaseSearchOptions
 from .search_service_protocol import Indexable, SearchServiceProtocol
 
@@ -18,8 +20,8 @@ DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 def _get_sentence_transformer(model_name: str):
     """Lazy import and instantiation of SentenceTransformer."""
-    from sentence_transformers import SentenceTransformer
-
+    sentence_tx = require("sentence_transformers")
+    SentenceTransformer = getattr(sentence_tx, "SentenceTransformer")
     return SentenceTransformer(model_name)
 
 

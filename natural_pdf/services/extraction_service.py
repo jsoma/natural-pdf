@@ -144,7 +144,7 @@ class ExtractionService:
             from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError as exc:
             raise RuntimeError(
-                "Document-QA dependencies missing. Install with `pip install natural-pdf[ai]`."
+                'Document-QA dependencies missing. Install with `pip install "natural-pdf[qa]"`.'
             ) from exc
 
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()

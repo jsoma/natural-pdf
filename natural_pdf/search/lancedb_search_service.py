@@ -7,6 +7,8 @@ import lancedb  # type: ignore[import]
 import numpy as np
 import pyarrow as pa  # type: ignore[import]
 
+from natural_pdf.utils.optional_imports import require
+
 from .search_options import BaseSearchOptions
 from .search_service_protocol import Indexable, SearchServiceProtocol
 
@@ -22,8 +24,8 @@ DEFAULT_LANCEDB_PERSIST_PATH = "./lancedb_data"
 
 def _get_sentence_transformer(model_name: str):
     """Lazy import and instantiation of SentenceTransformer."""
-    from sentence_transformers import SentenceTransformer
-
+    sentence_tx = require("sentence_transformers")
+    SentenceTransformer = getattr(sentence_tx, "SentenceTransformer")
     return SentenceTransformer(model_name)
 
 

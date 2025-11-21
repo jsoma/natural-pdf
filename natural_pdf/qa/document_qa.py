@@ -8,6 +8,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 import numpy as np
 from PIL import Image, ImageDraw
 
+from natural_pdf.utils.optional_imports import require
+
 from .qa_result import QAResult
 
 logger = logging.getLogger("natural_pdf.qa.document_qa")
@@ -56,13 +58,13 @@ class DocumentQA:
             device: Device to run the model on ('cuda' or 'cpu'). If None, will use cuda if available.
         """
         try:
-            import torch  # type: ignore
-            from transformers import pipeline  # type: ignore
+            torch = require("torch")
+            transformers_mod = require("transformers")
+            pipeline = getattr(transformers_mod, "pipeline")
         except ImportError as exc:
             self._is_initialized = False
             raise ImportError(
-                "DocumentQA requires transformers and torch to be installed. "
-                "Install with pip install transformers torch"
+                'DocumentQA requires torch and transformers. Install with: pip install "natural-pdf[qa]"'
             ) from exc
 
         logger.info(f"Initializing DocumentQA with model {model_name} on {device}")

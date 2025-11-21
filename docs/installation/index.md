@@ -15,14 +15,23 @@ But! If you want to recognize text, do page layout analysis, document q-and-a or
 Natural PDF has modular dependencies for different features. Install them based on your needs:
 
 ```bash
-# Full ML / QA / semantic-search stack
-pip install natural-pdf[ai]
+# Document QA + extraction helpers
+pip install natural-pdf[qa]
+
+# Zero-shot/vision classification
+pip install natural-pdf[classification]
+
+# OCR engines (EasyOCR, Surya, etc.)
+pip install natural-pdf[ocr-ai]
 
 # Deskewing
 pip install natural-pdf[deskew]
 
-# Semantic search
+# Semantic search (LanceDB + embeddings)
 pip install natural-pdf[search]
+
+# Or install the full ML stack
+pip install natural-pdf[ai]
 ```
 
 Other OCR and layout analysis engines like `surya`, `easyocr`, `paddle`, `doctr`, and `docling` can be installed via `pip` as needed. The library will provide you with an error message and installation command if you try to use an engine that isn't installed.
@@ -55,10 +64,17 @@ version pins like `paddleocr → paddlex==3.0.1` while still upgrading to
 # Full AI/ML stack
 pip install "natural-pdf[ai]"
 
-# Deskewing
-pip install "natural-pdf[deskew]"
+# Document QA
+pip install "natural-pdf[qa]"
 
-# Semantic search service
+# Classification helpers
+pip install "natural-pdf[classification]"
+
+# OCR engines
+pip install "natural-pdf[ocr-ai]"
+
+# Deskewing / semantic search
+pip install "natural-pdf[deskew]"
 pip install "natural-pdf[search]"
 ```
 

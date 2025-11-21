@@ -53,7 +53,7 @@ Compare `rows_text` with the earlier `rows` list—if your PDF omits the grid, t
 
 * **How it works** – runs Microsoft's Table Transformer (LayoutLM-based) to detect tables, rows and cells visually, then reads the text inside each cell.
 * **Best for** – scanned or camera-based documents, or born-digital files where ruling lines are missing/irregular.
-* **Dependencies** – requires the **AI** extra (`pip install "natural-pdf[ai]"`) because it needs `torch`, `transformers`, and `torchvision`.
+* **Dependencies** – requires the **QA** extra (`pip install "natural-pdf[qa]"`) because it needs `torch`, `transformers`, and `torchvision`.
 
 ### Example
 

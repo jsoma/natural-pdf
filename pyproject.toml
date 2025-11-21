@@ -85,6 +85,7 @@ deskew = [
 search = [
     "lancedb",
     "pyarrow",
+    "natural-pdf[embeddings]",
 ]
 
 ocr-export = [
@@ -96,16 +97,58 @@ export-extras = [
     "nbformat",
 ]
 
-ai = [
-    "sentence-transformers",
+ai-core = [
     "torch",
     "torchvision",
     "transformers[sentencepiece]",
     "huggingface_hub>=0.29.3",
+]
+
+qa = [
+    "natural-pdf[ai-core]",
+]
+
+classification = [
+    "natural-pdf[ai-core]",
+]
+
+embeddings = [
+    "natural-pdf[ai-core]",
+    "sentence-transformers",
+]
+
+ocr-ai = [
+    "natural-pdf[ai-core]",
+    "easyocr",
+]
+
+layout-ai = [
+    "natural-pdf[ai-core]",
     "timm",
     "doclayout_yolo",
-    "easyocr",
+]
+
+ai-api = [
     "openai",
+]
+
+ai-vision = [
+    "natural-pdf[ocr-ai]",
+    "natural-pdf[layout-ai]",
+]
+
+ai-nlp = [
+    "natural-pdf[qa]",
+    "natural-pdf[classification]",
+    "natural-pdf[embeddings]",
+]
+
+ai = [
+    "natural-pdf[ai-core]",
+    "natural-pdf[embeddings]",
+    "natural-pdf[ocr-ai]",
+    "natural-pdf[layout-ai]",
+    "natural-pdf[ai-api]",
 ]
 
 [project.urls]

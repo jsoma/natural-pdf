@@ -7,7 +7,7 @@ Sometimes, instead of searching for specific text patterns, you just want to ask
 Let's ask our `01-practice.pdf` a few questions.
 
 ```python
-#%pip install "natural-pdf[ai]"  # DocumentQA relies on torch + transformers
+#%pip install "natural-pdf[qa]"  # DocumentQA relies on torch + transformers
 ```
 
 ```python

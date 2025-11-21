@@ -3,7 +3,7 @@
 When working with a collection of PDFs, you might need to automatically categorize pages of PDFs or entire collections of PDFs.
 
 ```python
-#%pip install "natural-pdf[ai]"
+#%pip install "natural-pdf[classification]"
 ```
 
 ```python

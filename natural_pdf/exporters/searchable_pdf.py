@@ -11,16 +11,13 @@ from typing import TYPE_CHECKING, List, Sequence, Union
 from xml.etree.ElementTree import Element as ETElement
 from xml.etree.ElementTree import SubElement
 
+from natural_pdf.utils.optional_imports import require
+
 # Lazy imports for optional dependencies
 try:
     from PIL import Image
 except ImportError:
     Image = None  # type: ignore
-
-try:
-    import pikepdf  # type: ignore[import]
-except ImportError:
-    pikepdf = None  # type: ignore
 
 try:
     from natural_pdf.exporters.hocr import HocrTransform
@@ -319,10 +316,7 @@ def create_searchable_pdf(
         dpi: The resolution (dots per inch) for rendering page images and hOCR.
     """
 
-    if pikepdf is None:
-        raise ImportError(
-            "create_searchable_pdf requires 'pikepdf'. Install with: pip install \"natural-pdf[ocr-export]\""
-        )
+    pikepdf = require("pikepdf")
     if Image is None:
         raise ImportError("create_searchable_pdf requires Pillow to render images.")
     if HocrTransform is None:

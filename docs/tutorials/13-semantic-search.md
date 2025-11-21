@@ -68,15 +68,15 @@ if results:
         print(f"     Page: {result['page_number']} (Score: {result['score']:.4f})")
         # Display a snippet of the content
         snippet = result.get('content_snippet', '')
-        print(f"     Snippet: {snippet}...") 
+        print(f"     Snippet: {snippet}...")
 else:
     print("  No relevant results found.")
 
-# You can access the full content if needed via the result object, 
+# You can access the full content if needed via the result object,
 # though 'content_snippet' is usually sufficient for display.
 ```
 
-Semantic search allows you to efficiently query large sets of documents to find the most relevant information without needing exact keyword matches, leveraging the meaning and context of your query. 
+Semantic search allows you to efficiently query large sets of documents to find the most relevant information without needing exact keyword matches, leveraging the meaning and context of your query.
 
 ## TODO
 
@@ -84,4 +84,4 @@ Semantic search allows you to efficiently query large sets of documents to find 
 * Show how to override the embedding model (e.g. `embedding_model="all-MiniLM-L12-v2"`).
 * Mention `top_k` and filtering options available through `SearchOptions` when calling `find_relevant`.
 * Provide a short snippet on visualising matched pages/elements once highlighting support lands (future feature).
-* Clarify that installing the AI stack (`natural-pdf[ai]`) also pulls in `sentence-transformers`, which is needed for in-memory NumPy fallback. 
+* Clarify that installing the search/embedding extras (e.g., `natural-pdf[search]` or `natural-pdf[embeddings]`) also installs `sentence-transformers`, which is needed for the NumPy fallback.

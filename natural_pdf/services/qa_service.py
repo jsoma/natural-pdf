@@ -75,7 +75,7 @@ class QAService:
         except ImportError as exc:
             message = (
                 "Question answering requires the 'natural_pdf.qa' extras. "
-                'Install with `pip install "natural-pdf[ai]"`.'
+                'Install with `pip install "natural-pdf[qa]"`.'
             )
             raise RuntimeError(message) from exc
         return self._normalize(host, raw_result)

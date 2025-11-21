@@ -2275,7 +2275,7 @@ class Page(
         """
         Saves the PDF page with an OCR text layer, making content searchable.
 
-        Requires optional dependencies. Install with: pip install "natural-pdf[ocr-save]"
+        Requires optional dependencies. Install with: pip install "natural-pdf[ocr-export]"
 
         Note: OCR must have been applied to the pages beforehand
                 (e.g., pdf.apply_ocr()).

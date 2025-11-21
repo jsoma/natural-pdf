@@ -75,7 +75,7 @@ page.find('region[type=table]').extract_text(layout=True)
 
 Natural PDF supports multiple engines (`yolo`, `paddle`, `tatr`). Specify the engine when calling `analyze_layout`.
 
-*Note: Using different engines requires installing the corresponding extras (e.g., `natural-pdf[layout_paddle]`).* `yolo` is the default.
+*Note: You may need to install optional dependencies for specific engines (e.g., run `npdf install paddle`).* `yolo` is the default.
 
 ```python
 page.clear_detected_layout_regions()

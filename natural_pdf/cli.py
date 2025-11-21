@@ -7,6 +7,8 @@ from typing import Dict
 
 from packaging.requirements import Requirement
 
+from natural_pdf.utils.optional_imports import list_optional_dependencies
+
 
 # ---------------------------------------------------------------------------
 # Mapping: sub-command name -> list of pip requirement specifiers to install
@@ -28,6 +30,15 @@ INSTALL_RECIPES: Dict[str, list[str]] = {
     "deskew": [f"{_package_prefix()}[deskew]"],
     "search": [f"{_package_prefix()}[search]"],
     "easyocr": ["easyocr"],
+    "ai-core": [f"{_package_prefix()}[ai-core]"],
+    "qa": [f"{_package_prefix()}[qa]"],
+    "classification": [f"{_package_prefix()}[classification]"],
+    "embeddings": [f"{_package_prefix()}[embeddings]"],
+    "ocr-ai": [f"{_package_prefix()}[ocr-ai]"],
+    "layout-ai": [f"{_package_prefix()}[layout-ai]"],
+    "ai-vision": [f"{_package_prefix()}[ai-vision]"],
+    "ai-nlp": [f"{_package_prefix()}[ai-nlp]"],
+    "ai-api": [f"{_package_prefix()}[ai-api]"],
     "ai": [f"{_package_prefix()}[ai]"],
 }
 
@@ -119,6 +130,17 @@ def cmd_list(args):
         status = "✓" if installed_all else "✗"
         print(f"{status} {extra:<8} -> " + ", ".join(pieces))
     print("\nLegend: ✓ group fully installed, ✗ some packages missing\n")
+
+    print("Optional dependency modules:\n")
+    dep_info = list_optional_dependencies()
+    for name, payload in sorted(dep_info.items()):
+        status = "✓" if payload["available"] else "✗"
+        hints = " or ".join(payload["install_hints"]) or "pip install"
+        desc = payload.get("description") or ""
+        print(f"{status} {name:<20} -> {desc}")
+        if not payload["available"]:
+            print(f"   install: {hints}")
+    print()
 
 
 if __name__ == "__main__":

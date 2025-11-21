@@ -175,7 +175,7 @@ Use the `save_searchable()` method on the `PDF`
 
 ## TODO
 
-* Add guidance on installing only the OCR engines you need (e.g. `pip install "natural-pdf[ai] easyocr"`) instead of the heavy `[all]` extra.
+* Add guidance on installing only the OCR engines you need (e.g. `pip install "natural-pdf[ocr-ai]"`) instead of the heavy `[all]` extra.
 * Show how to use `detect_only=True` to combine OCR detection with external recognition for higher accuracy (ties into fine-tuning tutorial).
 * Include an example of saving a searchable PDF via `pdf.save_searchable("output.pdf")` after OCR.
 * Mention `resolution` parameter trade-offs (speed vs accuracy) when calling `apply_ocr`.

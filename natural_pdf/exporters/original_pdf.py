@@ -9,11 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Set, Union
 
-# Lazy import for optional dependency
-try:
-    import pikepdf  # type: ignore[import]
-except ImportError:
-    pikepdf = None
+from natural_pdf.utils.optional_imports import require
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -43,11 +39,7 @@ def create_original_pdf(
         RuntimeError: If pikepdf fails to open the source or save the output.
         pikepdf.PasswordError: If the source PDF is password-protected.
     """
-    if pikepdf is None:
-        raise ImportError(
-            "Saving original PDF pages requires 'pikepdf'. "
-            'Install with: pip install "natural-pdf[ocr-export]"'
-        )
+    pikepdf = require("pikepdf")
 
     output_path_str = str(output_path)
     pages_to_extract: List["Page"] = []

@@ -39,6 +39,10 @@ classic `pip install`:
 ```bash
 pip install "natural-pdf[deskew]"
 pip install "natural-pdf[search]"
+pip install "natural-pdf[qa]"            # Document QA + extraction helpers
+pip install "natural-pdf[classification]" # Zero-shot classification stack
+pip install "natural-pdf[ocr-ai]"         # EasyOCR and other OCR engines
+# or install the whole thing
 pip install "natural-pdf[ai]"
 ```
 

@@ -5,13 +5,13 @@ Extracting key-value pairs from documents can be tackled in two complementary wa
 * **Rule-based / spatial heuristics** – look for label text, navigate rightward or downward, group elements into rows, etc.
 * **Extractive Document QA** – feed the page image and its words to a fine-tuned LayoutLM model and ask natural-language questions such as *"What is the invoice total?"*. The model returns the answer span **exactly as it appears** in the document along with a confidence score.
 
-This tutorial starts with classical heuristics and then upgrades to the LayoutLM-based **DocumentQA** engine built into `natural-pdf`. Because DocumentQA relies on `torch`, `transformers`, and `vision` extras, install the **AI** optional dependencies first:
+This tutorial starts with classical heuristics and then upgrades to the LayoutLM-based **DocumentQA** engine built into `natural-pdf`. Because DocumentQA relies on `torch`, `transformers`, and `vision` extras, install the **QA** optional dependencies first:
 
 ```python
-#%pip install "natural-pdf[ai]"
+#%pip install "natural-pdf[qa]"
 ```
 
-If you already have the core library, simply run `npdf install ai` to add the extra ML packages.
+If you already have the core library, simply run `npdf install qa` (or `npdf install ai` for the full stack) to add the extra ML packages.
 
 ---
 

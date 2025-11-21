@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence,
 from PIL import Image
 from tqdm.auto import tqdm
 
+from natural_pdf.utils.optional_imports import is_available, require
+
 from .results import CategoryScore, ClassificationResult
 
 if TYPE_CHECKING:  # pragma: no cover - optional dependency types
@@ -17,7 +19,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_TEXT_MODEL = "facebook/bart-large-mnli"
 DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch16"
 
-_CLASSIFICATION_AVAILABLE: Optional[bool] = None
 _PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
 _CACHE_LOCK = threading.RLock()
 
@@ -27,16 +28,7 @@ class ClassificationError(Exception):
 
 
 def _check_classification_dependencies() -> bool:
-    global _CLASSIFICATION_AVAILABLE
-    if _CLASSIFICATION_AVAILABLE is None:
-        try:
-            import torch  # noqa: F401
-            import transformers  # noqa: F401
-
-            _CLASSIFICATION_AVAILABLE = True
-        except ImportError:
-            _CLASSIFICATION_AVAILABLE = False
-    return bool(_CLASSIFICATION_AVAILABLE)
+    return is_available("torch") and is_available("transformers")
 
 
 def is_classification_available() -> bool:
@@ -45,26 +37,20 @@ def is_classification_available() -> bool:
 
 
 def _get_torch():
-    import torch
-
-    return torch
+    return require("torch")
 
 
 def _get_transformers_components():
-    from transformers import (
-        AutoModelForSequenceClassification as _AutoModelForSequenceClassification,
-    )
-    from transformers import (
-        AutoModelForZeroShotImageClassification as _AutoModelForZeroShotImageClassification,
-    )
-    from transformers import AutoTokenizer as _AutoTokenizer
-    from transformers import pipeline as _pipeline
-
+    transformers_mod = require("transformers")
     return {
-        "AutoModelForSequenceClassification": _AutoModelForSequenceClassification,
-        "AutoModelForZeroShotImageClassification": _AutoModelForZeroShotImageClassification,
-        "AutoTokenizer": _AutoTokenizer,
-        "pipeline": _pipeline,
+        "AutoModelForSequenceClassification": getattr(
+            transformers_mod, "AutoModelForSequenceClassification"
+        ),
+        "AutoModelForZeroShotImageClassification": getattr(
+            transformers_mod, "AutoModelForZeroShotImageClassification"
+        ),
+        "AutoTokenizer": getattr(transformers_mod, "AutoTokenizer"),
+        "pipeline": getattr(transformers_mod, "pipeline"),
     }
 
 
@@ -155,7 +141,7 @@ def classify_single(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
+            'Classification dependencies missing. Install with `pip install "natural-pdf[classification]"`.'
         )
 
     if not labels:
@@ -273,7 +259,7 @@ def classify_batch_contents(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
+            'Classification dependencies missing. Install with `pip install "natural-pdf[classification]"`.'
         )
 
     if not labels:

@@ -66,7 +66,7 @@ class _DefaultClassificationEngine(ClassificationEngine):
         if not is_classification_available():
             raise ImportError(
                 "Classification dependencies missing. "
-                'Install with: pip install "natural-pdf[ai]"'
+                'Install with: pip install "natural-pdf[classification]"'
             )
         self._device: Optional[str] = None
 
