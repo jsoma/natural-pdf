@@ -332,6 +332,49 @@ class Region(
     def _qa_target_region(self) -> "Region":
         return self
 
+    def _resolve_element_loader(self):
+        """Best-effort lookup for the shared ElementLoader."""
+        page = getattr(self, "page", None)
+        if page is None:
+            return None
+        loader_getter = getattr(page, "_get_element_loader", None)
+        if callable(loader_getter):
+            try:
+                return loader_getter()
+            except Exception:  # pragma: no cover - defensive guard
+                logger.debug("Region %s: ElementLoader lookup failed.", self.bbox, exc_info=True)
+        return None
+
+    def _resolve_decoration_detector(self):
+        """Best-effort lookup for the shared DecorationDetector."""
+        page = getattr(self, "page", None)
+        if page is None:
+            return None
+        detector_getter = getattr(page, "_get_decoration_detector", None)
+        if callable(detector_getter):
+            try:
+                return detector_getter()
+            except Exception:  # pragma: no cover - defensive guard
+                logger.debug(
+                    "Region %s: DecorationDetector lookup failed.", self.bbox, exc_info=True
+                )
+        return None
+
+    def _prepare_char_dicts_with_loader(
+        self, char_dicts: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        loader = self._resolve_element_loader()
+        if loader and char_dicts:
+            try:
+                return loader.prepare_native_chars(char_dicts)
+            except Exception:  # pragma: no cover - defensive guard
+                logger.debug(
+                    "Region %s: ElementLoader errored while preparing chars; using raw dicts.",
+                    self.bbox,
+                    exc_info=True,
+                )
+        return char_dicts
+
     def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         return self._normalize_qa_output(result)
 
@@ -2351,7 +2394,7 @@ class Region(
             raise ValueError("Region must have a valid 'page' attribute to create a TextElement.")
 
         # Create character dictionaries for the text
-        char_dicts = []
+        char_dicts: List[Dict[str, Any]] = []
         if actual_text:
             # Create a single character dict that spans the entire region
             # This is a simplified approach - OCR engines typically create one per character
@@ -2377,6 +2420,11 @@ class Region(
             }
             char_dicts.append(char_dict)
 
+        prepared_char_dicts = self._prepare_char_dicts_with_loader(char_dicts)
+        detector = self._resolve_decoration_detector()
+        if detector and prepared_char_dicts:
+            detector.annotate_chars(prepared_char_dicts)
+
         elem_data = {
             "text": actual_text,
             "x0": self.x0,
@@ -2396,9 +2444,11 @@ class Region(
             "adv": self.width,
             "source": source_label,
             "confidence": final_confidence,
-            "_char_dicts": char_dicts,
+            "_char_dicts": prepared_char_dicts,
         }
         text_element = TextElement(elem_data, self.page)
+        if detector and prepared_char_dicts:
+            detector.propagate_to_words([text_element], prepared_char_dicts)
 
         if add_to_page:
             add_as_type = (
@@ -2414,9 +2464,11 @@ class Region(
                     getattr(self.page, "page_number", "N/A"),
                     add_as_type,
                 )
-                if char_dicts and object_type == "word":
-                    for char_dict in char_dicts:
-                        self.page.add_element(char_dict, element_type="chars")
+                if prepared_char_dicts and object_type == "word":
+                    for char_dict in prepared_char_dicts:
+                        self.page.add_element(
+                            TextElement(char_dict, self.page), element_type="chars"
+                        )
             else:
                 page_num_str = (
                     str(self.page.page_number) if hasattr(self.page, "page_number") else "N/A"

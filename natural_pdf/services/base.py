@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from natural_pdf.services.navigation_service import NavigationService
     from natural_pdf.services.ocr_service import OCRService
     from natural_pdf.services.qa_service import QAService
+    from natural_pdf.services.rendering_service import RenderingService
     from natural_pdf.services.selector_service import SelectorService
     from natural_pdf.services.shape_detection_service import ShapeDetectionService
     from natural_pdf.services.table_service import TableService
@@ -67,6 +68,10 @@ class ServiceNamespace:
     @property
     def qa(self) -> QAService:
         return self._context.get_service("qa")
+
+    @property
+    def rendering(self) -> RenderingService:
+        return self._context.get_service("rendering")
 
     @property
     def selector(self) -> SelectorService:

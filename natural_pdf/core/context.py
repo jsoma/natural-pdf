@@ -46,6 +46,8 @@ class PDFContext:
             factories["guides"] = self._default_guides_factory()
         if "layout" not in factories:
             factories["layout"] = self._default_layout_factory()
+        if "rendering" not in factories:
+            factories["rendering"] = self._default_rendering_factory()
         self._service_factories: Dict[str, ServiceFactory] = factories
         self._options: Dict[str, Mapping[str, Any]] = dict(self.options or {})
 
@@ -217,5 +219,14 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> LayoutService:
             return LayoutService(context)
+
+        return factory
+
+    @staticmethod
+    def _default_rendering_factory() -> ServiceFactory:
+        from natural_pdf.services.rendering_service import RenderingService
+
+        def factory(context: "PDFContext") -> RenderingService:
+            return RenderingService(context)
 
         return factory

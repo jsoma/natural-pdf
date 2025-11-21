@@ -1,0 +1,586 @@
+{
+  "arabic_page_0": {
+    "elements": {
+      "chars": {
+        "count": 1306,
+        "digest": "314e3d7652c0460d3db9aefa406505d41600387bb9a988a8de40d9e39b4e4720",
+        "samples": [
+          {
+            "bbox": [
+              394.119,
+              59.6554,
+              397.745,
+              73.6554
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": " "
+          },
+          {
+            "bbox": [
+              397.745,
+              59.6554,
+              404.465,
+              73.6554
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "2"
+          },
+          {
+            "bbox": [
+              404.465,
+              59.6554,
+              408.091,
+              73.6554
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": " "
+          },
+          {
+            "bbox": [
+              122.2559,
+              59.137,
+              128.9759,
+              73.137
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "2"
+          },
+          {
+            "bbox": [
+              128.9759,
+              59.137,
+              135.6959,
+              73.137
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "0"
+          }
+        ]
+      },
+      "images": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "lines": {
+        "count": 1,
+        "digest": "99ac2badcf1677cdc2c12f1457aa8c653c54e62d4732ec3c122534da8c1d276c",
+        "samples": [
+          {
+            "bbox": [
+              63.7795,
+              75.6137,
+              418.1105,
+              75.6137
+            ]
+          }
+        ]
+      },
+      "rects": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "words": {
+        "count": 27,
+        "digest": "0ea72a0c1e9a48c5a74397e185703647ce92acd82a5276a9f68544e748a045f0",
+        "samples": [
+          {
+            "bbox": [
+              122.2559,
+              59.137,
+              359.6399,
+              73.137
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "2022 \u0627\u062c\u0644\u0631\u064a\u062f\u0629 \u0627\u0644\u0631\u0633\u0645\u064a\u0629 - \u0627\u0644\u0639\u062f\u062f 9 (\u0645\u0643\u0631\u0631) \u0641\u0649 6 \u0645\u0627\u0631\u0633 \u0633\u0646\u0629"
+          },
+          {
+            "bbox": [
+              394.119,
+              59.6554,
+              408.091,
+              73.6554
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "2"
+          },
+          {
+            "bbox": [
+              159.2859,
+              93.3833,
+              322.6059,
+              113.3833
+            ],
+            "size": 20.0,
+            "source": "native",
+            "text": "2022 \u0642\u0627\u0646\u0648\u0646 \u0631\u0642\u0645 8 \u0644\u0633\u0646\u0629"
+          },
+          {
+            "bbox": [
+              135.357,
+              120.9273,
+              346.449,
+              134.9273
+            ],
+            "size": 14.0,
+            "source": "native",
+            "text": "\u0628\u0634\u0623\u0646 \u0625\u0635\u062f\u0627\u0631 \u0642\u0627\u0646\u0648\u0646 \u0627\u0644\u0645\u0646\u0634\u0622\u062a \u0627\u0644\u0641\u0646\u062f\u0642\u064a\u0629 \u0648\u0627\u0644\u0633\u064a\u0627\u062d\u064a\u0629"
+          },
+          {
+            "bbox": [
+              354.634,
+              143.5783,
+              418.099,
+              158.5783
+            ],
+            "size": 15.0,
+            "source": "native",
+            "text": "\u0628\u0627\u0633\u0645 \u0627\u0644\u0634\u0639\u0628"
+          }
+        ]
+      }
+    },
+    "page_bbox": [
+      0.0,
+      0.0,
+      481.89,
+      680.315
+    ],
+    "page_index": 0,
+    "pdf": "pdfs/arabic.pdf"
+  },
+  "needs_ocr_page_0": {
+    "elements": {
+      "chars": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "images": {
+        "count": 1,
+        "digest": "fa9ea6f83f46e90aa7d628a596801d384caf56958b45bdbfec2694722a26c6d6",
+        "samples": [
+          {
+            "bbox": [
+              0.0,
+              0.0,
+              1275.0,
+              1651.0
+            ]
+          }
+        ]
+      },
+      "lines": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "rects": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "words": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      }
+    },
+    "page_bbox": [
+      0.0,
+      0.0,
+      1275.0,
+      1651.0
+    ],
+    "page_index": 0,
+    "pdf": "pdfs/needs-ocr.pdf"
+  },
+  "practice_page_0": {
+    "elements": {
+      "chars": {
+        "count": 1222,
+        "digest": "1a522109906fdd3df51999c9e4f44f0c68421e27094558d0f01ab71958c6b9a9",
+        "samples": [
+          {
+            "bbox": [
+              385.0,
+              35.656,
+              389.0,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "J"
+          },
+          {
+            "bbox": [
+              389.0,
+              35.656,
+              393.448,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "u"
+          },
+          {
+            "bbox": [
+              393.448,
+              35.656,
+              397.896,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "n"
+          },
+          {
+            "bbox": [
+              397.896,
+              35.656,
+              402.344,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "g"
+          },
+          {
+            "bbox": [
+              402.344,
+              35.656,
+              404.12,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "l"
+          }
+        ]
+      },
+      "images": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "lines": {
+        "count": 21,
+        "digest": "8960105c51377a683f238a630fd6221b8f01ab541eca0a6d343cc93920c269a7",
+        "samples": [
+          {
+            "bbox": [
+              50.0,
+              352.0,
+              550.0,
+              352.0
+            ]
+          },
+          {
+            "bbox": [
+              50.0,
+              392.0,
+              550.0,
+              392.0
+            ]
+          },
+          {
+            "bbox": [
+              50.0,
+              412.0,
+              550.0,
+              412.0
+            ]
+          },
+          {
+            "bbox": [
+              50.0,
+              432.0,
+              550.0,
+              432.0
+            ]
+          },
+          {
+            "bbox": [
+              50.0,
+              452.0,
+              550.0,
+              452.0
+            ]
+          }
+        ]
+      },
+      "rects": {
+        "count": 8,
+        "digest": "85c36669e5c1cc3a8a425bb0c935f0a4ddcab8fb17b35f8b5b68f26b3ed82d85",
+        "samples": [
+          {
+            "bbox": [
+              375.0,
+              27.0,
+              555.0,
+              62.0
+            ]
+          },
+          {
+            "bbox": [
+              520.0,
+              418.0,
+              528.0,
+              426.0
+            ]
+          },
+          {
+            "bbox": [
+              520.0,
+              438.0,
+              528.0,
+              446.0
+            ]
+          },
+          {
+            "bbox": [
+              520.0,
+              458.0,
+              528.0,
+              466.0
+            ]
+          },
+          {
+            "bbox": [
+              520.0,
+              478.0,
+              528.0,
+              486.0
+            ]
+          }
+        ]
+      },
+      "words": {
+        "count": 44,
+        "digest": "1437fd3ec672bc8cb2fd43b962731d4efaf5b3877e6d557512e0a55ba88546f5",
+        "samples": [
+          {
+            "bbox": [
+              385.0,
+              35.656,
+              541.968,
+              43.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "Jungle Health and Safety Inspection Service"
+          },
+          {
+            "bbox": [
+              385.0,
+              45.656,
+              466.352,
+              53.656
+            ],
+            "size": 8.0,
+            "source": "native",
+            "text": "INS-UP70N51NCL41R"
+          },
+          {
+            "bbox": [
+              50.0,
+              84.07,
+              74.45,
+              94.07
+            ],
+            "size": 10.0,
+            "source": "native",
+            "text": "Site:"
+          },
+          {
+            "bbox": [
+              74.45,
+              84.07,
+              182.26,
+              94.07
+            ],
+            "size": 10.0,
+            "source": "native",
+            "text": "Durham\u2019s Meatpacking"
+          },
+          {
+            "bbox": [
+              182.26,
+              84.07,
+              234.5,
+              94.07
+            ],
+            "size": 10.0,
+            "source": "native",
+            "text": "Chicago, Ill."
+          }
+        ]
+      }
+    },
+    "page_bbox": [
+      0.0,
+      0.0,
+      612.0,
+      792.0
+    ],
+    "page_index": 0,
+    "pdf": "pdfs/01-practice.pdf"
+  },
+  "shapes_page_0": {
+    "elements": {
+      "chars": {
+        "count": 18,
+        "digest": "a71d2ae3fb283dcbb230c9b4d43fc970d5371badd7b65eba4c219cab1b84d974",
+        "samples": [
+          {
+            "bbox": [
+              36.0,
+              38.664,
+              38.436,
+              50.664
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": " "
+          },
+          {
+            "bbox": [
+              279.36,
+              85.704,
+              287.844,
+              97.704
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": "H"
+          },
+          {
+            "bbox": [
+              287.76,
+              85.704,
+              294.432,
+              97.704
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": "E"
+          },
+          {
+            "bbox": [
+              294.48,
+              85.704,
+              300.48,
+              97.704
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": "L"
+          },
+          {
+            "bbox": [
+              300.48,
+              85.704,
+              306.48,
+              97.704
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": "L"
+          }
+        ]
+      },
+      "images": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "lines": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "rects": {
+        "count": 0,
+        "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "samples": []
+      },
+      "words": {
+        "count": 5,
+        "digest": "ac19f0ef9dd5c006e6b2fb9cb66d0218cd420bccb6415e90a78930961cf5382c",
+        "samples": [
+          {
+            "bbox": [
+              36.0,
+              38.664,
+              38.436,
+              50.664
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": " "
+          },
+          {
+            "bbox": [
+              279.36,
+              85.704,
+              317.316,
+              97.704
+            ],
+            "size": 12.0,
+            "source": "native",
+            "text": "HELLO"
+          },
+          {
+            "bbox": [
+              379.44,
+              135.84,
+              439.44,
+              165.84
+            ],
+            "size": 30.0,
+            "source": "native",
+            "text": "\u4f60\u597d"
+          },
+          {
+            "bbox": [
+              439.44,
+              137.34,
+              445.53,
+              167.34
+            ],
+            "size": 30.0,
+            "source": "native",
+            "text": " "
+          },
+          {
+            "bbox": [
+              124.3201,
+              157.1174,
+              301.5437,
+              207.0374
+            ],
+            "size": 49.92,
+            "source": "native",
+            "text": "bonjour"
+          }
+        ]
+      }
+    },
+    "page_bbox": [
+      0.0,
+      0.0,
+      684.0,
+      297.0
+    ],
+    "page_index": 0,
+    "pdf": "pdfs/shapes-and-text.pdf"
+  }
+}

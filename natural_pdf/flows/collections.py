@@ -24,7 +24,7 @@ from natural_pdf.collections.mixins import QACollectionMixin, SectionsCollection
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighter_utils import resolve_highlighter
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
-from natural_pdf.services.base import ServiceHostMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
 
 if TYPE_CHECKING:
@@ -262,16 +262,18 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             )
             return None
 
-        # Get a highlighter service from the first page
+        # Resolve the rendering service using the first available page
         first_page_with_elements = next(iter(elements_by_page.keys()), None)
-        highlighter_service = None
-        if first_page_with_elements and hasattr(first_page_with_elements, "_highlighter"):
-            highlighter_service = first_page_with_elements._highlighter
+        rendering_service = (
+            resolve_service(first_page_with_elements, "rendering")
+            if first_page_with_elements is not None
+            else None
+        )
 
-        if not highlighter_service:
+        if rendering_service is None:
             raise ValueError(
-                "Cannot get highlighter service for FlowElementCollection.show(). "
-                "Ensure flow elements' pages are initialized with a highlighter."
+                "Cannot resolve rendering service for FlowElementCollection.show(). "
+                "Ensure flow elements' pages share a PDF context."
             )
 
         output_page_images: List[Image.Image] = []
@@ -330,7 +332,8 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
 
             effective_resolution = float(resolution) if resolution is not None else 150.0
 
-            page_image = highlighter_service.render_preview(
+            page_image = rendering_service.render_preview(
+                page_obj,
                 page_index=(
                     page_obj.index
                     if hasattr(page_obj, "index")

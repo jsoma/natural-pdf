@@ -57,7 +57,7 @@ try:
 except ImportError:
     create_original_pdf = None
 # <--- END ADDED
-from natural_pdf.services.base import ServiceHostMixin
+from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
 logger = logging.getLogger(__name__)
 
@@ -1452,20 +1452,6 @@ class ElementCollection(
                     existing=existing,
                 )
 
-    def _highlight_distinctly(self, annotate: Optional[List[str]], existing: str):
-        """DEPRECATED: Logic moved to _prepare_highlight_data. Kept for reference/potential reuse."""
-        # This method is no longer called directly by the main highlight path.
-        # The distinct logic is handled within _prepare_highlight_data.
-        for element in self._elements:
-            self._call_element_highlighter(
-                element=element,
-                color=None,  # Let ColorManager cycle
-                label=None,  # No label for distinct elements
-                use_color_cycling=True,  # Force cycling
-                annotate=annotate,
-                existing=existing,
-            )
-
     def _render_multipage_highlights(
         self,
         specs_by_page,
@@ -1495,16 +1481,10 @@ class ElementCollection(
 
         page_images = []
 
+        rendering_service = resolve_service(self, "rendering")
+
         for page in sorted_pages:
             element_specs = specs_by_page[page]
-
-            # Get highlighter service from the page
-            if not hasattr(page, "_highlighter"):
-                raise RuntimeError(
-                    f"Page {getattr(page, 'number', '?')} has no highlighter service"
-                )
-
-            service = page._highlighter
 
             # Prepare highlight data for this page
             highlight_data_list = []
@@ -1591,7 +1571,8 @@ class ElementCollection(
 
             # Render this page
             try:
-                img = service.render_preview(
+                img = rendering_service.render_preview(
+                    page,
                     page_index=page.index,
                     temporary_highlights=highlight_data_list,
                     resolution=resolution,

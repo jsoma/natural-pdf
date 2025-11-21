@@ -1,0 +1,12 @@
+PDF: pdfs/01-practice.pdf (page 0)
+Iterations: 5
+Mean:   0.0520s
+Median: 0.0445s
+Best:   0.0421s
+Worst:  0.0861s
+PDF: pdfs/01-practice.pdf (page 0)
+Iterations: 5
+Mean:   0.0348s
+Median: 0.0277s
+Best:   0.0266s
+Worst:  0.0648s

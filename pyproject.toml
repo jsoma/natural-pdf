@@ -151,6 +151,7 @@ markers = [
     "qa_remote: QA tests that rely on hosted LLM endpoints",
     "qa_local: QA tests that require large local QA models or embeddings",
     "optional_deps: tests that require optional or extra dependencies",
+    "realpdf: tests that execute against real PDF fixtures and snapshots",
 ]
 
 [tool.setuptools]

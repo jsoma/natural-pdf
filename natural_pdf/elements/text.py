@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pdfplumber.utils.text import chars_to_textmap
 
 from natural_pdf.elements.base import Element
+from natural_pdf.text.font_style import detect_bold_style, detect_italic_style, resolve_fontname
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -163,11 +164,7 @@ class TextElement(Element):
     @property
     def fontname(self) -> str:
         """Get the font name."""
-        # First check if we have a real fontname from PDF resources
-        if "real_fontname" in self._obj:
-            return self._obj["real_fontname"]
-        # Otherwise use standard fontname
-        return self._obj.get("fontname", "") or self._obj.get("font", "")
+        return resolve_fontname(self._obj)
 
     @property
     def font_family(self) -> str:
@@ -412,38 +409,7 @@ class TextElement(Element):
         5. Text rendering mode 2 (fill and stroke)
         """
         # Check font name (original method)
-        fontname = self.fontname.lower()
-        if "bold" in fontname or "black" in fontname or self.fontname.endswith("-B"):
-            return True
-
-        # Check font descriptor flags if available (bit 2 = bold)
-        flags = self._obj.get("flags")
-        if flags is not None and (flags & 4) != 0:  # Check if bit 2 is set
-            return True
-
-        # Check StemV (vertical stem width) if available
-        # Higher StemV values indicate bolder fonts
-        stemv = self._obj.get("stemv") or self._obj.get("StemV")
-        if stemv is not None and isinstance(stemv, (int, float)) and stemv > 120:
-            return True
-
-        # Check font weight if available (700+ is typically bold)
-        weight = self._obj.get("weight") or self._obj.get("FontWeight")
-        if weight is not None and isinstance(weight, (int, float)) and weight >= 700:
-            return True
-
-        # Check text rendering mode (mode 2 = fill and stroke, can make text appear bold)
-        render_mode = self._obj.get("render_mode")
-        if render_mode is not None and render_mode == 2:
-            return True
-
-        # Additional check: if we have text with the same font but different paths/strokes
-        # Path widths or stroke widths can indicate boldness
-        stroke_width = self._obj.get("stroke_width") or self._obj.get("lineWidth")
-        if stroke_width is not None and isinstance(stroke_width, (int, float)) and stroke_width > 0:
-            return True
-
-        return False
+        return detect_bold_style(self._obj)
 
     @property
     def italic(self) -> bool:
@@ -456,26 +422,7 @@ class TextElement(Element):
         3. Text with non-zero slant angle
         """
         # Check font name (original method)
-        fontname = self.fontname.lower()
-        if "italic" in fontname or "oblique" in fontname or self.fontname.endswith("-I"):
-            return True
-
-        # Check font descriptor flags if available (bit 6 = italic)
-        flags = self._obj.get("flags")
-        if flags is not None and (flags & 64) != 0:  # Check if bit 6 is set
-            return True
-
-        # Check italic angle if available
-        # Non-zero italic angle indicates italic font
-        italic_angle = self._obj.get("italic_angle") or self._obj.get("ItalicAngle")
-        if (
-            italic_angle is not None
-            and isinstance(italic_angle, (int, float))
-            and italic_angle != 0
-        ):
-            return True
-
-        return False
+        return detect_italic_style(self._obj)
 
     @property
     def strike(self) -> bool:  # alias: struck

@@ -452,6 +452,14 @@ class Page(
     def _exclusion_element_manager(self) -> ElementManager:
         return self._element_mgr
 
+    def _get_element_loader(self):
+        """Internal accessor for the ElementLoader shared across regions/collections."""
+        return self._element_mgr.element_loader
+
+    def _get_decoration_detector(self):
+        """Internal accessor for the DecorationDetector used during element loading."""
+        return self._element_mgr._decorations
+
     def _invalidate_exclusion_cache(self) -> None:
         if self._element_mgr:
             self._element_mgr.invalidate_cache()
@@ -1809,37 +1817,6 @@ class Page(
         """Load all elements from the page via ElementManager."""
         self._element_mgr.load_elements()
 
-    def _create_char_elements(self):
-        """DEPRECATED: Use self._element_mgr.chars"""
-        logger.warning("_create_char_elements is deprecated. Access via self._element_mgr.chars.")
-        return self._element_mgr.chars  # Delegate
-
-    def _process_font_information(self, char_dict):
-        """DEPRECATED: Handled by ElementManager"""
-        logger.warning("_process_font_information is deprecated. Handled by ElementManager.")
-        # ElementManager handles this internally
-        pass
-
-    def _group_chars_into_words(self, keep_spaces=True, font_attrs=None):
-        """DEPRECATED: Use self._element_mgr.words"""
-        logger.warning("_group_chars_into_words is deprecated. Access via self._element_mgr.words.")
-        return self._element_mgr.words  # Delegate
-
-    def _process_line_into_words(self, line_chars, keep_spaces, font_attrs):
-        """DEPRECATED: Handled by ElementManager"""
-        logger.warning("_process_line_into_words is deprecated. Handled by ElementManager.")
-        pass
-
-    def _check_font_attributes_match(self, char, prev_char, font_attrs):
-        """DEPRECATED: Handled by ElementManager"""
-        logger.warning("_check_font_attributes_match is deprecated. Handled by ElementManager.")
-        pass
-
-    def _create_word_element(self, chars, font_attrs):
-        """DEPRECATED: Handled by ElementManager"""
-        logger.warning("_create_word_element is deprecated. Handled by ElementManager.")
-        pass
-
     @property
     def chars(self) -> List[Any]:
         """Get all character elements on this page."""
@@ -2032,17 +2009,6 @@ class Page(
 
         return processed_elements_collection
 
-    def _create_text_elements_from_ocr(
-        self, ocr_results: List[Dict[str, Any]], image_width=None, image_height=None
-    ) -> List["TextElement"]:
-        """DEPRECATED: Use self._element_mgr.create_text_elements_from_ocr"""
-        logger.warning(
-            "_create_text_elements_from_ocr is deprecated. Use self._element_mgr version."
-        )
-        return self._element_mgr.create_text_elements_from_ocr(
-            ocr_results, image_width, image_height
-        )
-
     @property
     def size(self) -> Tuple[float, float]:
         """Get the size of the page in points."""
@@ -2198,18 +2164,16 @@ class Page(
         Returns:
             PIL Image object of the preview, or None if rendering fails.
         """
-        # Delegate rendering to the highlighter service's preview method
-        img = self._highlighter.render_preview(
+        return self.services.rendering.render_preview(
+            self,
             page_index=self.index,
             temporary_highlights=temporary_highlights,
             resolution=resolution,
+            width=width,
             labels=labels,
             legend_position=legend_position,
             render_ocr=render_ocr,
         )
-
-        # Return the rendered image directly
-        return img
 
     @property
     def text_style_labels(self) -> List[str]:

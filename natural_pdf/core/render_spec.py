@@ -202,26 +202,32 @@ class Visualizable:
                 "Override _get_highlighter() to provide access."
             ) from exc
 
+    def _get_rendering_service(self):
+        """Resolve the RenderingService for hosts that mix in Visualizable."""
+        services = getattr(self, "services", None)
+        rendering = getattr(services, "rendering", None) if services else None
+        if rendering is not None:
+            return rendering
+        from natural_pdf.services.base import resolve_service  # Local import to avoid cycles
+
+        return resolve_service(self, "rendering")
+
     def show(
         self,
         *,
-        # Basic rendering options
         resolution: Optional[float] = None,
         width: Optional[int] = None,
-        # Highlight options
         color: Optional[Union[str, Tuple[int, int, int]]] = None,
         labels: bool = True,
         label_format: Optional[str] = None,
         highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         legend_position: str = "right",
         annotate: Optional[Union[str, List[str]]] = None,
-        # Layout options for multi-page/region
         layout: Optional[Literal["stack", "grid", "single"]] = None,
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
-        columns: Optional[int] = 6,  # For grid layout, defaults to 6 columns
-        limit: Optional[int] = 30,  # Max pages to show (default 30)
-        # Cropping options
+        columns: Optional[int] = 6,
+        limit: Optional[int] = 30,
         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
@@ -257,68 +263,35 @@ class Visualizable:
         Returns:
             PIL Image object or None if nothing to render
         """
-        # Convert string to list if needed
-        if isinstance(annotate, str):
-            annotate = [annotate]
-
-        # Handle 'cols' as an alias for 'columns' for backward compatibility
-        if "cols" in kwargs and columns == 6:  # Only use cols if columns wasn't explicitly set
-            columns = kwargs.pop("cols")
-            logger.info(f"Using 'cols' parameter as alias for 'columns': {columns}")
-
-        # Pass limit as max_pages to _get_render_specs
-        if limit is not None:
-            kwargs["max_pages"] = limit
-
-        specs = self._get_render_specs(
-            mode="show",
-            color=color,
-            highlights=highlights,
-            crop=crop,
-            crop_bbox=crop_bbox,
-            annotate=annotate,
-            **kwargs,
-        )
-
-        if not specs:
-            raise RuntimeError(f"{self.__class__.__name__}.show() generated no render specs")
-
-        # Determine default layout based on content and parameters
-        if layout is None:
-            # For PDFs and multi-page collections, default to grid with 6 columns
-            if len(specs) > 1:
-                layout = "grid"
-            else:
-                layout = "single"
-
-        highlighter = cast("HighlightingService", self._get_highlighter())
-        effective_resolution = self._resolve_image_resolution(resolution)
-        return highlighter.unified_render(
-            specs=specs,
-            resolution=effective_resolution,
+        return self._get_rendering_service().show(
+            self,
+            resolution=resolution,
             width=width,
+            color=color,
             labels=labels,
             label_format=label_format,
+            highlights=highlights,
             legend_position=legend_position,
+            annotate=annotate,
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,
             columns=columns,
+            limit=limit,
+            crop=crop,
+            crop_bbox=crop_bbox,
             **kwargs,
         )
 
     def render(
         self,
         *,
-        # Basic rendering options
         resolution: Optional[float] = None,
         width: Optional[int] = None,
-        # Layout options for multi-page/region
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
         columns: Optional[int] = None,
-        # Cropping options
         crop: Union[bool, int, str, "Region", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
         **kwargs,
@@ -342,30 +315,16 @@ class Visualizable:
         Returns:
             PIL Image object or None if nothing to render
         """
-        # Handle 'cols' as an alias for 'columns' for backward compatibility
-        if "cols" in kwargs and columns is None:  # Only use cols if columns wasn't explicitly set
-            columns = kwargs.pop("cols")
-            logger.info(f"Using 'cols' parameter as alias for 'columns': {columns}")
-
-        # Ignore conflicting highlight kwargs (e.g., labels) that callers may provide.
-        kwargs.pop("labels", None)
-
-        specs = self._get_render_specs(mode="render", crop=crop, crop_bbox=crop_bbox, **kwargs)
-
-        if not specs:
-            raise RuntimeError(f"{self.__class__.__name__}.render() generated no render specs")
-
-        highlighter = cast("HighlightingService", self._get_highlighter())
-        effective_resolution = self._resolve_image_resolution(resolution)
-        return highlighter.unified_render(
-            specs=specs,
-            resolution=effective_resolution,
+        return self._get_rendering_service().render(
+            self,
+            resolution=resolution,
             width=width,
-            labels=False,  # Never show labels in render mode
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,
             columns=columns,
+            crop=crop,
+            crop_bbox=crop_bbox,
             **kwargs,
         )
 
@@ -373,7 +332,6 @@ class Visualizable:
         self,
         path: Union[str, Path],
         *,
-        # All the same options as render()
         resolution: Optional[float] = None,
         width: Optional[int] = None,
         layout: Literal["stack", "grid", "single"] = "stack",
@@ -402,7 +360,9 @@ class Visualizable:
             format: Image format (inferred from path if not specified)
             **kwargs: Additional parameters passed to rendering
         """
-        image = self.render(
+        self._get_rendering_service().export(
+            self,
+            path=path,
             resolution=resolution,
             width=width,
             layout=layout,
@@ -411,30 +371,9 @@ class Visualizable:
             columns=columns,
             crop=crop,
             crop_bbox=crop_bbox,
+            format=format,
             **kwargs,
         )
-
-        if image is None:
-            raise ValueError(f"No image generated by {self.__class__.__name__}.render()")
-
-        # Ensure path is a Path object
-        path = Path(path)
-
-        # Determine format
-        if format is None:
-            format = path.suffix.lstrip(".").upper()
-            if format == "JPG":
-                format = "JPEG"
-
-        # Save image
-        save_kwargs = {}
-        if format == "JPEG":
-            save_kwargs["quality"] = kwargs.get("quality", 95)
-        elif format == "PNG":
-            save_kwargs["compress_level"] = kwargs.get("compress_level", 6)
-
-        image.save(path, format=format, **save_kwargs)
-        logger.info(f"Exported {self.__class__.__name__} to {path}")
 
     def _resolve_image_resolution(self, requested: Optional[float]) -> float:
         """Resolve an explicit resolution or fall back to configured defaults."""

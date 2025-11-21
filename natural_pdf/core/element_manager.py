@@ -14,11 +14,15 @@ The module includes:
 """
 
 import logging
+import statistics
 from contextlib import contextmanager
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from pdfplumber.utils.text import WordExtractor
-
+from natural_pdf.core.decoration_detector import DecorationDetector
+from natural_pdf.core.element_loader import ElementLoader
+from natural_pdf.core.element_store import ElementStore
+from natural_pdf.core.ocr_converter import OCRConverter
+from natural_pdf.core.word_engine import WordEngine, WordEngineOptions
 from natural_pdf.elements.image import ImageElement
 from natural_pdf.elements.line import LineElement
 from natural_pdf.elements.rect import RectangleElement
@@ -111,94 +115,6 @@ def disable_text_sync():
         setattr(TextElement, "text", original_property)
 
 
-class NaturalWordExtractor(WordExtractor):
-    """Custom WordExtractor that splits words based on specified character attributes.
-
-    This class extends pdfplumber's WordExtractor to provide more intelligent word
-    segmentation that respects font boundaries and other character attributes.
-    It prevents words from spanning across different fonts, sizes, or styles,
-    which is essential for maintaining semantic meaning in document analysis.
-
-    The extractor considers multiple character attributes when determining word
-    boundaries, ensuring that visually distinct text elements (like bold headers
-    mixed with regular text) are properly separated into distinct words.
-
-    Attributes:
-        font_attrs: List of character attributes to consider for word boundaries.
-            Common attributes include 'fontname', 'size', 'flags', etc.
-
-    Example:
-        ```python
-        # Create extractor that splits on font and size changes
-        extractor = NaturalWordExtractor(['fontname', 'size'])
-
-        # Extract words with font-aware boundaries
-        words = extractor.extract_words(page_chars)
-
-        # Each word will have consistent font properties
-        for word in words:
-            print(f"'{word['text']}' in {word['fontname']} size {word['size']}")
-        ```
-    in addition to pdfplumber's default spatial logic.
-    """
-
-    def __init__(self, word_split_attributes: List[str], extra_attrs: List[str], *args, **kwargs):
-        """
-        Initialize the extractor.
-
-        Args:
-            word_split_attributes: List of character attributes (keys in char dict)
-                                   that should trigger a word split if they differ
-                                   between adjacent characters.
-            extra_attrs: List of character attributes (keys in char dict)
-                         to copy from the first char of a word into the
-                         resulting word dictionary.
-            *args: Positional arguments passed to WordExtractor parent.
-            **kwargs: Keyword arguments passed to WordExtractor parent.
-        """
-        self.word_split_attributes = word_split_attributes or []
-        # Remove our custom arg before passing to parent
-        # (Though WordExtractor likely ignores unknown kwargs)
-        # Ensure it's removed if it exists in kwargs
-        if "word_split_attributes" in kwargs:
-            del kwargs["word_split_attributes"]
-        # Pass extra_attrs to the parent constructor
-        kwargs["extra_attrs"] = extra_attrs
-        super().__init__(*args, **kwargs)
-
-    def char_begins_new_word(
-        self,
-        prev_char: Dict[str, Any],
-        curr_char: Dict[str, Any],
-        direction: CharDirection,
-        x_tolerance: float,
-        y_tolerance: float,
-    ) -> bool:
-        """
-        Determine if curr_char begins a new word, considering spatial and
-        attribute differences.
-        """
-        # 1. Check pdfplumber's spatial logic first
-        spatial_split = super().char_begins_new_word(
-            prev_char, curr_char, direction, x_tolerance, y_tolerance
-        )
-        if spatial_split:
-            return True
-
-        # 2. Check for differences in specified attributes
-        if self.word_split_attributes:
-            for attr in self.word_split_attributes:
-                # Use .get() for safety, although _prepare_char_dicts should ensure presence
-                if prev_char.get(attr) != curr_char.get(attr):
-                    logger.debug(
-                        f"Splitting word due to attribute mismatch on '{attr}': {prev_char.get(attr)} != {curr_char.get(attr)}"
-                    )
-                    return True  # Attribute mismatch forces a new word
-
-        # If both spatial and attribute checks pass, it's the same word
-        return False
-
-
 class ElementManager:
     """
     Manages the loading, creation, and retrieval of elements from a PDF page.
@@ -220,355 +136,59 @@ class ElementManager:
             load_text: Whether to load text elements from the PDF (default: True).
         """
         self._page = page
-        self._elements: Optional[Dict[str, List[Any]]] = None  # Lazy-loaded cache
+        self._store = ElementStore()
         self._load_text = load_text
         # Default to splitting by fontname, size, bold, italic if not specified
         # Renamed internal variable for clarity
         self._word_split_attributes = (
             ["fontname", "size", "bold", "italic"] if font_attrs is None else font_attrs
         )
+        self._word_engine = WordEngine(
+            self._word_split_attributes,
+            load_text=self._load_text,
+        )
+        self._element_loader = ElementLoader(page_number=page.number)
+        self._decorations = DecorationDetector(page)
+        self._ocr_converter = OCRConverter(page)
 
     def load_elements(self):
         """
         Load all elements from the page (lazy loading).
-        Uses NaturalWordExtractor for word grouping.
+        Uses WordEngine for word grouping.
         """
-        if self._elements is not None:
+        if self._store.is_populated():
             return
+        with self._store.transaction():
+            if self._store.is_populated():
+                return
+            self._populate_store()
 
+    def _populate_store(self) -> None:
         logger.debug(f"Page {self._page.number}: Loading elements...")
 
         # 1. Prepare character dictionaries only if loading text
         if self._load_text:
-            prepared_char_dicts = self._prepare_char_dicts()
-            logger.debug(
-                f"Page {self._page.number}: Prepared {len(prepared_char_dicts)} character dictionaries."
-            )
+            native_chars = getattr(self._page._page, "chars", []) or []
+            prepared_char_dicts = self._element_loader.prepare_native_chars(native_chars)
         else:
             prepared_char_dicts = []
             logger.debug(f"Page {self._page.number}: Skipping text loading (load_text=False)")
 
-        # -------------------------------------------------------------
-        # Detect strikethrough (horizontal strike-out lines) on raw
-        # characters BEFORE we run any word-grouping.  This way the
-        # NaturalWordExtractor can use the presence/absence of a
-        # "strike" attribute to decide whether two neighbouring chars
-        # belong to the same word.
-        # -------------------------------------------------------------
-
         if self._load_text and prepared_char_dicts:
-            self._mark_strikethrough_chars(prepared_char_dicts)
+            self._decorations.annotate_chars(prepared_char_dicts)
 
-        # -------------------------------------------------------------
-        # Detect underlines on raw characters (must come after strike so
-        # both attributes are present before word grouping).
-        # -------------------------------------------------------------
-
-        if self._load_text and prepared_char_dicts:
-            self._mark_underline_chars(prepared_char_dicts)
-
-        # Detect highlights
-        if self._load_text and prepared_char_dicts:
-            self._mark_highlight_chars(prepared_char_dicts)
-
-        # Create a mapping from character dict to index for efficient lookup
-        if self._load_text:
-            char_to_index = {}
-            for idx, char_dict in enumerate(prepared_char_dicts):
-                key = (
-                    char_dict.get("x0", 0),
-                    char_dict.get("top", 0),
-                    char_dict.get("text", ""),
-                )
-                char_to_index[key] = idx
-        else:
-            char_to_index = {}
-
-        # 2. Instantiate the custom word extractor
-        # Prefer page-level config over PDF-level for tolerance lookup
-        word_elements: List[TextElement] = []
-
-        # Get config objects (needed for auto_text_tolerance check)
-        page_config = self._page._config
-        pdf_config = self._page._parent._config
-
-        auto_text_tolerance = page_config.get("auto_text_tolerance")
-        if auto_text_tolerance is None:
-            auto_text_tolerance = pdf_config.get("auto_text_tolerance", True)
-
-        keep_blank_chars = page_config.get("keep_blank_chars")
-        if keep_blank_chars is None:
-            keep_blank_chars = pdf_config.get("keep_blank_chars", True)
-
-        x_tolerance_ratio = page_config.get("x_tolerance_ratio")
-        if x_tolerance_ratio is None:
-            x_tolerance_ratio = pdf_config.get("x_tolerance_ratio")
-
-        y_tolerance_ratio = page_config.get("y_tolerance_ratio")
-        if y_tolerance_ratio is None:
-            y_tolerance_ratio = pdf_config.get("y_tolerance_ratio")
-
-        # Initialize tolerance variables
-        xt = None
-        yt = None
-        use_flow = pdf_config.get("use_text_flow", False)
-
-        if self._load_text and prepared_char_dicts:
-            # Start with any explicitly supplied tolerances (may be None)
-            xt = page_config.get("x_tolerance", pdf_config.get("x_tolerance"))
-            yt = page_config.get("y_tolerance", pdf_config.get("y_tolerance"))
-
-        # ------------------------------------------------------------------
-        # Auto-adaptive tolerance: scale based on median character size when
-        # requested and explicit values are absent.
-        # ------------------------------------------------------------------
-        if self._load_text and auto_text_tolerance:
-            import statistics
-
-            sizes = [c.get("size", 0) for c in prepared_char_dicts if c.get("size")]
-            median_size = None
-            if sizes:
-                median_size = statistics.median(sizes)
-                if xt is None:
-                    xt = 0.25 * median_size  # ~kerning width
-                    # Record back to page config for downstream users
-                    page_config["x_tolerance"] = xt
-                if yt is None:
-                    yt = 0.6 * median_size  # ~line spacing fraction
-                    page_config["y_tolerance"] = yt
-
-            # Warn users when the page's font size is extremely small –
-            # this is often the root cause of merged-row/column issues.
-            # Extremely small fonts can still be handled; we no longer emit warnings.
-
-        # Fallback to pdfplumber defaults if still None
-        if xt is None:
-            xt = 3
-        if yt is None:
-            yt = 3
-
-        # List of attributes to preserve on word objects
-        attributes_to_preserve = list(
-            set(
-                self._word_split_attributes
-                + [
-                    "non_stroking_color",
-                    "strike",
-                    "underline",
-                    "highlight",
-                    "highlight_color",
-                ]
-            )
-        )
-
-        # ------------------------------------------------------------------
-        # NEW: Detect direction (LTR vs RTL) per visual line and feed
-        #       pdfplumber's WordExtractor with the correct settings.
-        # -------------------------------------------------------------
-        import unicodedata
-
-        def _is_rtl_char(ch: str) -> bool:
-            """Return True if the character has an RTL bidi class."""
-            if not ch:
-                return False
-            # If string has more than one character take first (works for most PDFs)
-            first = ch[0]
-            try:
-                return unicodedata.bidirectional(first) in ("R", "AL", "AN")
-            except Exception:
-                return False
-
-        # Helper: group characters into visual lines using y-tolerance
-        sorted_chars_for_line_grouping = sorted(
+        word_options = self._build_word_engine_options(prepared_char_dicts)
+        generated_words = self._word_engine.generate_words(
             prepared_char_dicts,
-            key=lambda c: (round(c.get("top", 0) / max(yt, 1)) * yt, c.get("x0", 0)),
+            options=word_options,
+            create_word_element=self._create_word_element,
+            propagate_decorations=self._decorations.propagate_to_words,
+            disable_text_sync=disable_text_sync,
         )
-
-        lines: List[List[Dict[str, Any]]] = []
-        current_line_key = None
-        for char_dict in sorted_chars_for_line_grouping:
-            top_val = char_dict.get("top", 0)
-            line_key = round(top_val / max(yt, 1))  # bucket index
-            if current_line_key is None or line_key != current_line_key:
-                # start new line bucket
-                lines.append([])
-                current_line_key = line_key
-            lines[-1].append(char_dict)
-
-        # Process each line separately with direction detection
-        for line_chars in lines:
-            if not line_chars:
-                continue
-            # Determine RTL ratio
-            rtl_count = sum(1 for ch in line_chars if _is_rtl_char(ch.get("text", "")))
-            ltr_count = len(line_chars) - rtl_count
-            # Consider RTL if it has strictly more RTL than LTR strong characters
-            is_rtl_line = rtl_count > ltr_count
-
-            # Build a WordExtractor tailored for this line's direction
-            if is_rtl_line:
-                line_dir = "ttb"  # horizontal lines stacked top→bottom
-                # Feed characters in right→left x-order; extractor can then treat
-                # them as left-to-right so that resulting text stays logical.
-                char_dir = "ltr"
-            else:
-                line_dir = "ttb"
-                char_dir = "ltr"
-
-            extractor = NaturalWordExtractor(
-                word_split_attributes=self._word_split_attributes
-                + ["strike", "underline", "highlight"],
-                extra_attrs=attributes_to_preserve,
-                x_tolerance=xt,
-                y_tolerance=yt,
-                x_tolerance_ratio=x_tolerance_ratio,
-                y_tolerance_ratio=y_tolerance_ratio,
-                keep_blank_chars=keep_blank_chars,
-                use_text_flow=use_flow,
-                line_dir=line_dir,
-                char_dir=char_dir,
-            )
-
-            # Prepare character sequence for the extractor:
-            # Always feed characters in spatial order (x0 ascending)
-            # PDF stores glyphs in visual order, so this gives us the visual sequence
-            line_chars_for_extractor = sorted(line_chars, key=lambda c: c.get("x0", 0))
-
-            try:
-                word_tuples = extractor.iter_extract_tuples(line_chars_for_extractor)
-            except Exception as e:  # pragma: no cover
-                logger.error(
-                    f"Word extraction failed on line (rtl={is_rtl_line}) of page {self._page.number}: {e}",
-                    exc_info=True,
-                )
-                word_tuples = []
-
-            for word_dict, char_list in word_tuples:
-                # Memory optimisation for char indices
-                char_indices = []
-                for char_dict in char_list:
-                    key = (
-                        char_dict.get("x0", 0),
-                        char_dict.get("top", 0),
-                        char_dict.get("text", ""),
-                    )
-                    # char_to_index dict built earlier in load_elements
-                    if key in char_to_index:
-                        char_indices.append(char_to_index[key])
-                word_dict["_char_indices"] = char_indices
-                word_dict["_char_dicts"] = char_list  # keep for back-compat
-                # Create and append TextElement
-                word_element = self._create_word_element(word_dict)
-                word_elements.append(word_element)
-
-                # Decide if this individual word contains RTL characters; safer than relying
-                # on the whole-line heuristic.
-                rtl_in_word = any(_is_rtl_char(ch.get("text", "")) for ch in char_list)
-                if rtl_in_word:
-                    # Convert from visual order (from PDF) to logical order using bidi
-                    try:
-                        from bidi.algorithm import get_display  # type: ignore
-
-                        from natural_pdf.utils.bidi_mirror import mirror_brackets
-
-                        with disable_text_sync():
-                            # word_element.text is currently in visual order (from PDF)
-                            # Convert to logical order using bidi with auto direction detection
-                            element_text_obj = word_element.text
-                            if isinstance(element_text_obj, bytes):
-                                element_text = element_text_obj.decode("utf-8", errors="ignore")
-                            else:
-                                element_text = str(element_text_obj)
-                            logical_text = get_display(element_text, base_dir="L")
-                            logical_text = str(logical_text)
-                            # Apply bracket mirroring for logical order
-                            word_element.text = mirror_brackets(logical_text)
-                    except Exception:
-                        pass
-
-        # ------------------------------------------------------------------
-        #  Propagate per-char strikethrough info up to word level.
-        # ------------------------------------------------------------------
-
-        if prepared_char_dicts:
-            for w in word_elements:
-                strike_chars = 0
-                total_chars = 0
-                if getattr(w, "_char_indices", None):
-                    for idx in w._char_indices:
-                        if 0 <= idx < len(prepared_char_dicts):
-                            total_chars += 1
-                            if prepared_char_dicts[idx].get("strike"):
-                                strike_chars += 1
-                elif getattr(w, "_char_dicts", None):
-                    for ch in w._char_dicts:
-                        total_chars += 1
-                        if ch.get("strike"):
-                            strike_chars += 1
-
-                if total_chars:
-                    w._obj["strike"] = (strike_chars / total_chars) >= 0.6
-                else:
-                    w._obj["strike"] = False
-
-                # underline propagation
-                ul_chars = 0
-                if getattr(w, "_char_indices", None):
-                    for idx in w._char_indices:
-                        if 0 <= idx < len(prepared_char_dicts):
-                            if prepared_char_dicts[idx].get("underline"):
-                                ul_chars += 1
-                elif getattr(w, "_char_dicts", None):
-                    ul_chars = sum(1 for ch in w._char_dicts if ch.get("underline"))
-
-                if total_chars:
-                    w._obj["underline"] = (ul_chars / total_chars) >= 0.6
-                else:
-                    w._obj["underline"] = False
-
-                # highlight propagation
-                hl_chars = 0
-                if getattr(w, "_char_indices", None):
-                    for idx in w._char_indices:
-                        if 0 <= idx < len(prepared_char_dicts):
-                            if prepared_char_dicts[idx].get("highlight"):
-                                hl_chars += 1
-                elif getattr(w, "_char_dicts", None):
-                    hl_chars = sum(1 for ch in w._char_dicts if ch.get("highlight"))
-
-                if total_chars:
-                    w._obj["highlight"] = (hl_chars / total_chars) >= 0.6
-                else:
-                    w._obj["highlight"] = False
-
-                # Determine dominant highlight color among chars
-                if w._obj.get("highlight"):
-                    color_counts = {}
-                    source_iter = (
-                        (prepared_char_dicts[idx] for idx in w._char_indices)
-                        if getattr(w, "_char_indices", None)
-                        else w._char_dicts if getattr(w, "_char_dicts", None) else []
-                    )
-                    for chd in source_iter:
-                        if chd.get("highlight") and chd.get("highlight_color") is not None:
-                            col = chd["highlight_color"]
-                            color_counts[col] = color_counts.get(col, 0) + 1
-
-                    if color_counts:
-                        dominant_color = max(color_counts.items(), key=lambda t: t[1])[0]
-                        try:
-                            w._obj["highlight_color"] = (
-                                tuple(dominant_color)
-                                if isinstance(dominant_color, (list, tuple))
-                                else dominant_color
-                            )
-                        except Exception:
-                            w._obj["highlight_color"] = dominant_color
-
-        # generated_words defaults to empty list if text loading is disabled
-        generated_words = word_elements if self._load_text else []
         logger.debug(
-            f"Page {self._page.number}: Generated {len(generated_words)} words using NaturalWordExtractor."
+            "Page %s: Generated %d words using WordEngine.",
+            self._page.number,
+            len(generated_words),
         )
 
         # 4. Load other elements (rects, lines)
@@ -579,10 +199,7 @@ class ElementManager:
             f"Page {self._page.number}: Loaded {len(rect_elements)} rects, {len(line_elements)} lines, {len(image_elements)} images."
         )
 
-        # 5. Create the final elements dictionary
-        self._elements = {
-            # Store original char elements if needed (e.g., for visualization/debugging)
-            # We re-create them here from the prepared dicts
+        elements_data = {
             "chars": [TextElement(c_dict, self._page) for c_dict in prepared_char_dicts],
             "words": generated_words,
             "rects": rect_elements,
@@ -590,7 +207,6 @@ class ElementManager:
             "images": image_elements,
         }
 
-        # Add regions if they exist
         if hasattr(self._page, "_regions") and (
             "detected" in self._page._regions
             or "named" in self._page._regions
@@ -603,73 +219,90 @@ class ElementManager:
                 regions.extend(self._page._regions["named"].values())
             if "checkbox" in self._page._regions:
                 regions.extend(self._page._regions["checkbox"])
-            self._elements["regions"] = regions
+            elements_data["regions"] = regions
             logger.debug(f"Page {self._page.number}: Added {len(regions)} regions.")
         else:
-            self._elements["regions"] = []  # Ensure key exists
+            elements_data["regions"] = []
 
         logger.debug(f"Page {self._page.number}: Element loading complete.")
+        self._store.replace(elements_data)
 
-        # If per-word BiDi was skipped, generated_words already stay in logical order.
+    @property
+    def element_loader(self) -> ElementLoader:
+        """Expose the ElementLoader instance for hosts that need native char enrichment."""
+        return self._element_loader
 
-    def _prepare_char_dicts(self) -> List[Dict[str, Any]]:
-        """
-        Prepares a list of character dictionaries from native PDF characters,
-        augmenting them with necessary attributes like bold/italic flags.
-        This method focuses ONLY on native characters. OCR results are
-        handled separately by create_text_elements_from_ocr.
+    def _build_word_engine_options(
+        self, prepared_char_dicts: List[Dict[str, Any]]
+    ) -> WordEngineOptions:
+        page_config = self._page._config
+        pdf_config = getattr(self._page, "_parent")._config
 
-        Returns:
-            List of augmented native character dictionaries.
-        """
-        prepared_dicts = []
-        processed_native_ids = set()  # To track processed native chars
+        def _resolve_bool(key: str, default: bool) -> bool:
+            value = page_config.get(key)
+            if value is None:
+                value = pdf_config.get(key, default)
+            return bool(value) if value is not None else default
 
-        # 1. Process Native PDF Characters
-        native_chars = self._page._page.chars or []
-        logger.debug(f"Page {self._page.number}: Preparing {len(native_chars)} native char dicts.")
-        for i, char_dict in enumerate(native_chars):
-            # Create a temporary TextElement for analysis ONLY
-            # We need to ensure the char_dict has necessary keys first
-            required_keys = ("x0", "top", "x1", "bottom", "text")
-            missing_keys = [k for k in required_keys if k not in char_dict]
-            if missing_keys:
-                raise KeyError(
-                    f"Page {self._page.number}: native char dict missing keys {missing_keys}: {char_dict}"
-                )
+        def _resolve_numeric(key: str) -> Optional[float]:
+            value = page_config.get(key)
+            if value is None:
+                value = pdf_config.get(key)
+            if isinstance(value, (int, float)):
+                return float(value)
+            return None
 
-            temp_element = TextElement(char_dict, self._page)
+        auto_text_tolerance = page_config.get("auto_text_tolerance")
+        if auto_text_tolerance is None:
+            auto_text_tolerance = pdf_config.get("auto_text_tolerance", True)
+        auto_text_tolerance = bool(auto_text_tolerance)
 
-            # Augment the original dictionary
-            augmented_dict = char_dict.copy()  # Work on a copy
-            augmented_dict["bold"] = temp_element.bold
-            augmented_dict["italic"] = temp_element.italic
-            augmented_dict["source"] = "native"
-            # Copy color if it exists
-            if "non_stroking_color" in char_dict:
-                augmented_dict["non_stroking_color"] = char_dict["non_stroking_color"]
-            # Ensure basic required keys are present
-            augmented_dict.setdefault("upright", True)
-            augmented_dict.setdefault("fontname", "Unknown")
-            augmented_dict.setdefault("size", 0)
-            augmented_dict.setdefault("highlight_color", None)
-            # Ensure decoration keys exist for safe grouping
-            augmented_dict.setdefault("strike", False)
-            augmented_dict.setdefault("underline", False)
-            augmented_dict.setdefault("highlight", False)
+        xt = page_config.get("x_tolerance")
+        if xt is None:
+            xt = pdf_config.get("x_tolerance")
+        if isinstance(xt, (int, float)):
+            xt = float(xt)
+        else:
+            xt = None
 
-            prepared_dicts.append(augmented_dict)
-            # Use a unique identifier if available (e.g., tuple of key properties)
-            # Simple approach: use index for now, assuming list order is stable here
-            processed_native_ids.add(i)
+        yt = page_config.get("y_tolerance")
+        if yt is None:
+            yt = pdf_config.get("y_tolerance")
+        if isinstance(yt, (int, float)):
+            yt = float(yt)
+        else:
+            yt = None
 
-        # 2. Remove OCR Processing from this method
-        # OCR results will be added later via create_text_elements_from_ocr
+        if auto_text_tolerance and prepared_char_dicts:
+            sizes = [
+                c.get("size")
+                for c in prepared_char_dicts
+                if isinstance(c.get("size"), (int, float))
+            ]
+            if sizes:
+                median_size = statistics.median(sizes)
+                if xt is None:
+                    xt = 0.25 * median_size
+                    page_config["x_tolerance"] = xt
+                if yt is None:
+                    yt = 0.6 * median_size
+                    page_config["y_tolerance"] = yt
 
-        logger.debug(
-            f"Page {self._page.number}: Total prepared native char dicts: {len(prepared_dicts)}"
+        if xt is None:
+            xt = 3.0
+        if yt is None:
+            yt = 3.0
+
+        options = WordEngineOptions(
+            page_number=self._page.number,
+            x_tolerance=xt,
+            y_tolerance=yt,
+            x_tolerance_ratio=_resolve_numeric("x_tolerance_ratio"),
+            y_tolerance_ratio=_resolve_numeric("y_tolerance_ratio"),
+            keep_blank_chars=_resolve_bool("keep_blank_chars", True),
+            use_text_flow=bool(pdf_config.get("use_text_flow", False)),
         )
-        return prepared_dicts
+        return options
 
     def _create_word_element(self, word_dict: Dict[str, Any]) -> TextElement:
         """
@@ -738,15 +371,9 @@ class ElementManager:
         Returns:
             List of created TextElement word objects that were added.
         """
-        added_word_elements = []
-        if self._elements is None:
-            # Trigger loading of native elements if not already done
-            logger.debug(
-                f"Page {self._page.number}: create_text_elements_from_ocr triggering initial load_elements."
-            )
-            self.load_elements()
+        self.load_elements()
+        store = self._element_store()
 
-        # Ensure scales are valid numbers
         scale_x = float(scale_x) if scale_x is not None else 1.0
         scale_y = float(scale_y) if scale_y is not None else 1.0
 
@@ -754,114 +381,28 @@ class ElementManager:
             f"Page {self._page.number}: Adding {len(ocr_results)} OCR results as elements. Scale: x={scale_x:.2f}, y={scale_y:.2f}"
         )
 
-        # Ensure the target lists exist in the _elements dict
-        if self._elements is None:
-            logger.error(
-                f"Page {self._page.number}: _elements dictionary is None after load_elements call in create_text_elements_from_ocr. Cannot add OCR elements."
-            )
-            return []  # Cannot proceed
+        word_elements, char_elements = self._ocr_converter.convert(
+            ocr_results, scale_x=scale_x, scale_y=scale_y
+        )
 
-        if "words" not in self._elements:
-            self._elements["words"] = []
-        if "chars" not in self._elements:
-            self._elements["chars"] = []
-
-        for result in ocr_results:
-            try:
-                x0_img, top_img, x1_img, bottom_img = map(float, result["bbox"])
-                height_img = bottom_img - top_img
-                pdf_x0 = x0_img * scale_x
-                pdf_top = top_img * scale_y
-                pdf_x1 = x1_img * scale_x
-                pdf_bottom = bottom_img * scale_y
-                pdf_height = (bottom_img - top_img) * scale_y
-
-                # Handle potential None confidence
-                raw_confidence = result.get("confidence")
-                confidence_value = (
-                    float(raw_confidence) if raw_confidence is not None else None
-                )  # Keep None if it was None
-                ocr_text = result.get("text")  # Get text, will be None if detect_only
-
-                # Create the TextElement for the word
-                word_element_data = {
-                    "text": ocr_text,
-                    "x0": pdf_x0,
-                    "top": pdf_top,
-                    "x1": pdf_x1,
-                    "bottom": pdf_bottom,
-                    "width": (x1_img - x0_img) * scale_x,
-                    "height": pdf_height,
-                    "object_type": "word",  # Treat OCR results as whole words
-                    "source": "ocr",
-                    "confidence": confidence_value,  # Use the handled confidence
-                    "fontname": "OCR",  # Use consistent OCR fontname
-                    "size": (
-                        round(pdf_height) if pdf_height > 0 else 10.0
-                    ),  # Use calculated PDF height for size
-                    "page_number": self._page.number,
-                    "bold": False,
-                    "italic": False,
-                    "upright": True,
-                    "doctop": pdf_top + self._page._page.initial_doctop,
-                    "strike": False,
-                    "underline": False,
-                    "highlight": False,
-                    "highlight_color": None,
-                }
-
-                # Create the representative char dict for this OCR word
-                ocr_char_dict = word_element_data.copy()
-                ocr_char_dict["object_type"] = "char"
-                ocr_char_dict.setdefault("adv", ocr_char_dict.get("width", 0))
-                # Ensure decoration keys
-                ocr_char_dict.setdefault("strike", False)
-                ocr_char_dict.setdefault("underline", False)
-                ocr_char_dict.setdefault("highlight", False)
-                ocr_char_dict.setdefault("highlight_color", None)
-
-                # Add the char dict list to the word data before creating TextElement
-                word_element_data["_char_dicts"] = [ocr_char_dict]  # Store itself as its only char
-
-                word_elem = TextElement(word_element_data, self._page)
-                added_word_elements.append(word_elem)
-
-                # Append the word element to the manager's list
-                self._elements["words"].append(word_elem)
-
-                # Only add a representative char dict if text actually exists
-                if ocr_text is not None:
-                    # This char dict represents the entire OCR word as a single 'char'.
-                    char_dict_data = ocr_char_dict  # Use the one we already created
-                    char_dict_data["object_type"] = "char"  # Mark as char type
-                    char_dict_data.setdefault("adv", char_dict_data.get("width", 0))
-
-                    # Create a TextElement for the char representation
-                    # Ensure _char_dicts is handled correctly by TextElement constructor
-                    # For an OCR word represented as a char, its _char_dicts can be a list containing its own data
-                    char_element_specific_data = char_dict_data.copy()
-                    char_element_specific_data["_char_dicts"] = [char_dict_data.copy()]
-
-                    ocr_char_as_element = TextElement(char_element_specific_data, self._page)
-                    self._elements["chars"].append(
-                        ocr_char_as_element
-                    )  # Append TextElement instance
-
-            except (KeyError, ValueError, TypeError) as e:
-                logger.error(f"Failed to process OCR result: {result}. Error: {e}", exc_info=True)
-                continue
+        if word_elements:
+            words = list(store.get("words", []))
+            words.extend(word_elements)
+            self._store.set("words", words)
+        if char_elements:
+            chars = list(store.get("chars", []))
+            chars.extend(char_elements)
+            self._store.set("chars", chars)
 
         logger.info(
-            f"Page {self._page.number}: Appended {len(added_word_elements)} TextElements (words) and corresponding char dicts from OCR results."
+            f"Page {self._page.number}: Appended {len(word_elements)} OCR TextElements (words) and corresponding char entries."
         )
-        return added_word_elements
+        return list(word_elements)
 
     def _element_store(self) -> Dict[str, List[Any]]:
         """Return the cached element mapping, ensuring it is populated."""
         self.load_elements()
-        if self._elements is None:
-            raise RuntimeError("Element storage was not initialised")
-        return self._elements
+        return self._store.data_view()
 
     def add_element(self, element, element_type="words"):
         """
@@ -876,15 +417,13 @@ class ElementManager:
         """
         # Load elements if not already loaded
         # Add to the appropriate list
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return False
+        store = self._element_store()
 
         if element_type in store:
             # Avoid adding duplicates
             if element not in store[element_type]:
                 store[element_type].append(element)
+                self._store.mark_dirty([element_type])
                 return True
             else:
                 # logger.debug(f"Element already exists in {element_type}: {element}")
@@ -903,19 +442,14 @@ class ElementManager:
         Returns:
             True if added successfully, False otherwise
         """
-        # Load elements if not already loaded
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return False
+        store = self._element_store()
 
         # Make sure regions is in _elements
-        if "regions" not in store:
-            store["regions"] = []
-
         # Add to elements for selector queries
-        if region not in store["regions"]:
-            store["regions"].append(region)
+        regions = list(store.get("regions", []))
+        if region not in regions:
+            regions.append(region)
+            self._store.set("regions", regions)
             return True
 
         return False
@@ -937,7 +471,7 @@ class ElementManager:
             return []
 
         if element_type:
-            return store.get(element_type, [])
+            return list(store.get(element_type, []))
 
         # Combine all element types
         all_elements: List[Any] = []
@@ -966,61 +500,43 @@ class ElementManager:
     @property
     def chars(self):
         """Get all character elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("chars", [])
+        store = self._element_store()
+        return list(store.get("chars", []))
 
     def invalidate_cache(self):
         """Invalidate the cached elements, forcing a reload on next access."""
-        self._elements = None
+        self._store.clear()
         logger.debug(f"Page {self._page.number}: ElementManager cache invalidated")
 
     @property
     def words(self):
         """Get all word elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("words", [])
+        store = self._element_store()
+        return list(store.get("words", []))
 
     @property
     def rects(self):
         """Get all rectangle elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("rects", [])
+        store = self._element_store()
+        return list(store.get("rects", []))
 
     @property
     def lines(self):
         """Get all line elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("lines", [])
+        store = self._element_store()
+        return list(store.get("lines", []))
 
     @property
     def regions(self):
         """Get all region elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("regions", [])
+        store = self._element_store()
+        return list(store.get("regions", []))
 
     @property
     def images(self):
         """Get all image elements."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return []
-        return store.get("images", [])
+        store = self._element_store()
+        return list(store.get("images", []))
 
     def remove_ocr_elements(self):
         """
@@ -1030,31 +546,34 @@ class ElementManager:
         Returns:
             int: Number of OCR elements removed
         """
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return 0
+        store = self._element_store()
 
         removed_count = 0
 
         # Filter out OCR elements from words
         if "words" in store:
-            original_len = len(store["words"])
-            store["words"] = [
-                word for word in store["words"] if getattr(word, "source", None) != "ocr"
+            original_words = store["words"]
+            filtered_words = [
+                word for word in original_words if getattr(word, "source", None) != "ocr"
             ]
-            removed_count += original_len - len(store["words"])
+            word_diff = len(original_words) - len(filtered_words)
+            if word_diff:
+                self._store.set("words", filtered_words)
+                removed_count += word_diff
 
         # Filter out OCR elements from chars
         if "chars" in store:
-            original_len = len(store["chars"])
-            store["chars"] = [
+            original_chars = store["chars"]
+            filtered_chars = [
                 char
-                for char in store["chars"]
+                for char in original_chars
                 if (isinstance(char, dict) and char.get("source") != "ocr")
                 or (not isinstance(char, dict) and getattr(char, "source", None) != "ocr")
             ]
-            removed_count += original_len - len(store["chars"])
+            diff = len(original_chars) - len(filtered_chars)
+            if diff:
+                self._store.set("chars", filtered_chars)
+                removed_count += diff
 
         logger.info(f"Page {self._page.number}: Removed {removed_count} OCR elements.")
         return removed_count
@@ -1070,10 +589,7 @@ class ElementManager:
         Returns:
             bool: True if removed successfully, False otherwise
         """
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return False
+        store = self._element_store()
 
         # Check if the collection exists
         if element_type not in store:
@@ -1084,6 +600,7 @@ class ElementManager:
             if element in store[element_type]:
                 store[element_type].remove(element)
                 logger.debug(f"Removed element from {element_type}: {element}")
+                self._store.mark_dirty([element_type])
                 return True
             else:
                 logger.debug(f"Element not found in {element_type}: {element}")
@@ -1094,22 +611,16 @@ class ElementManager:
 
     def remove_elements_by_source(self, element_type: str, source: str) -> int:
         """Remove all elements of ``element_type`` whose ``source`` attribute matches ``source``."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return 0
+        store = self._element_store()
 
         if element_type not in store:
             return 0
 
         elements = store[element_type]
-        original_len = len(elements)
-        store[element_type] = [
-            element for element in elements if getattr(element, "source", None) != source
-        ]
-
-        removed = original_len - len(store[element_type])
+        filtered = [element for element in elements if getattr(element, "source", None) != source]
+        removed = len(elements) - len(filtered)
         if removed:
+            self._store.set(element_type, filtered)
             logger.info(
                 "Page %s: Removed %d '%s' element(s) with source '%s'.",
                 getattr(self._page, "number", "?"),
@@ -1121,19 +632,16 @@ class ElementManager:
 
     def clear_text_layer(self) -> tuple[int, int]:
         """Remove all word and character elements tracked by this manager."""
-        try:
-            store = self._element_store()
-        except RuntimeError:
-            return 0, 0
+        store = self._element_store()
 
         removed_words = len(store.get("words", []))
         removed_chars = len(store.get("chars", []))
 
         if "words" in store:
-            store["words"] = []
+            self._store.set("words", [])
 
         if "chars" in store:
-            store["chars"] = []
+            self._store.set("chars", [])
 
         return removed_words, removed_chars
 
@@ -1155,284 +663,3 @@ class ElementManager:
                 return True
 
         return False
-
-    # ------------------------------------------------------------------
-    #  Strikethrough detection (horizontal strike-out lines)
-    # ------------------------------------------------------------------
-
-    def _mark_strikethrough_chars(
-        self,
-        char_dicts: List[Dict[str, Any]],
-        *,
-        thickness_tol: float = 1.5,
-        horiz_tol: float = 1.0,
-        coverage_ratio: float = 0.7,
-        band_top: float = 0.35,
-        band_bottom: float = 0.65,
-    ) -> None:
-        """Annotate character dictionaries with a boolean ``strike`` flag.
-
-        Args
-        ----
-        char_dicts : list
-            The list that _prepare_char_dicts() returned – *modified in place*.
-        thickness_tol : float
-            Maximum height (in PDF pts) for a path to be considered a strike.
-        horiz_tol : float
-            Vertical tolerance when deciding if a pdfplumber ``line`` object
-            is horizontal (|y0-y1| ≤ horiz_tol).
-        coverage_ratio : float
-            Minimum proportion of the glyph's width that must be overlapped
-            by a candidate line.
-        band_top, band_bottom : float
-            Fractions of the glyph's height that define the central band in
-            which a line must fall to count as a strikethrough.  Defaults to
-            35–65 %.
-        """
-
-        # -------------------------------------------------------------
-        # Collect candidate horizontal primitives (lines + skinny rects)
-        # -------------------------------------------------------------
-        raw_lines = list(getattr(self._page._page, "lines", []))
-        raw_rects = list(getattr(self._page._page, "rects", []))
-
-        candidates: List[Tuple[float, float, float, float]] = []  # (x0, y0, x1, y1)
-
-        # pdfplumber line objects – treat those whose angle ≈ 0°
-        for ln in raw_lines:
-            y0 = min(ln.get("y0", 0), ln.get("y1", 0))
-            y1 = max(ln.get("y0", 0), ln.get("y1", 0))
-            if abs(y1 - y0) <= horiz_tol:  # horizontal
-                candidates.append((ln.get("x0", 0), y0, ln.get("x1", 0), y1))
-
-        # Thin rectangles that act as drawn lines
-        pg_height = self._page.height
-        for rc in raw_rects:
-            rb0 = rc.get("y0", 0)
-            rb1 = rc.get("y1", 0)
-            y0_raw = min(rb0, rb1)
-            y1_raw = max(rb0, rb1)
-            if (y1_raw - y0_raw) <= thickness_tol:
-                # Convert from PDF (origin bottom-left) to top-based coords used by chars
-                y0 = pg_height - y1_raw  # upper edge distance from top
-                y1 = pg_height - y0_raw  # lower edge distance from top
-                candidates.append((rc.get("x0", 0), y0, rc.get("x1", 0), y1))
-
-        if not candidates:
-            return  # nothing to mark
-
-        # -------------------------------------------------------------
-        # Walk through characters and flag those crossed by a candidate
-        # -------------------------------------------------------------
-        for ch in char_dicts:
-            ch.setdefault("strike", False)  # default value
-            try:
-                x0, top, x1, bottom = ch["x0"], ch["top"], ch["x1"], ch["bottom"]
-            except KeyError:
-                continue  # skip malformed char dict
-
-            width = x1 - x0
-            height = bottom - top
-            if width <= 0 or height <= 0:
-                continue
-
-            mid_y0 = top + band_top * height
-            mid_y1 = top + band_bottom * height
-
-            # Check each candidate line for overlap
-            for lx0, ly0, lx1, ly1 in candidates:
-                if (ly0 >= (mid_y0 - 1.0)) and (ly1 <= (mid_y1 + 1.0)):  # lies inside central band
-                    overlap = min(x1, lx1) - max(x0, lx0)
-                    if overlap > 0 and (overlap / width) >= coverage_ratio:
-                        ch["strike"] = True
-                        break  # no need to check further lines
-
-        # Done – char_dicts mutated in place
-
-    # ------------------------------------------------------------------
-    #  Underline detection
-    # ------------------------------------------------------------------
-
-    def _mark_underline_chars(
-        self,
-        char_dicts: List[Dict[str, Any]],
-        *,
-        thickness_tol: Optional[float] = None,
-        horiz_tol: Optional[float] = None,
-        coverage_ratio: Optional[float] = None,
-        band_frac: Optional[float] = None,
-        below_pad: Optional[float] = None,
-    ) -> None:
-        """Annotate character dicts with ``underline`` flag."""
-
-        # Allow user overrides via PDF._config["underline_detection"]
-        pdf_cfg = self._page._parent._config.get("underline_detection", {})
-
-        thickness_tol = (
-            thickness_tol
-            if thickness_tol is not None
-            else pdf_cfg.get("thickness_tol", UNDERLINE_DEFAULTS["thickness_tol"])
-        )
-        horiz_tol = (
-            horiz_tol
-            if horiz_tol is not None
-            else pdf_cfg.get("horiz_tol", UNDERLINE_DEFAULTS["horiz_tol"])
-        )
-        coverage_ratio = (
-            coverage_ratio
-            if coverage_ratio is not None
-            else pdf_cfg.get("coverage_ratio", UNDERLINE_DEFAULTS["coverage_ratio"])
-        )
-        band_frac = (
-            band_frac
-            if band_frac is not None
-            else pdf_cfg.get("band_frac", UNDERLINE_DEFAULTS["band_frac"])
-        )
-        below_pad = (
-            below_pad
-            if below_pad is not None
-            else pdf_cfg.get("below_pad", UNDERLINE_DEFAULTS["below_pad"])
-        )
-
-        raw_lines = list(getattr(self._page._page, "lines", []))
-        raw_rects = list(getattr(self._page._page, "rects", []))
-
-        candidates: List[Tuple[float, float, float, float]] = []
-
-        for ln in raw_lines:
-            y0 = min(ln.get("y0", 0), ln.get("y1", 0))
-            y1 = max(ln.get("y0", 0), ln.get("y1", 0))
-            if abs(y1 - y0) <= horiz_tol and (
-                (ln.get("x1", 0) - ln.get("x0", 0)) < self._page.width * 0.95
-            ):  # ignore full-width rules
-                candidates.append((ln.get("x0", 0), y0, ln.get("x1", 0), y1))
-
-        pg_height = self._page.height
-        for rc in raw_rects:
-            rb0 = rc.get("y0", 0)
-            rb1 = rc.get("y1", 0)
-            y0_raw = min(rb0, rb1)
-            y1_raw = max(rb0, rb1)
-            if (y1_raw - y0_raw) <= thickness_tol and (
-                (rc.get("x1", 0) - rc.get("x0", 0)) < self._page.width * 0.95
-            ):
-                y0 = pg_height - y1_raw
-                y1 = pg_height - y0_raw
-                candidates.append((rc.get("x0", 0), y0, rc.get("x1", 0), y1))
-
-        if not candidates:
-            for ch in char_dicts:
-                ch.setdefault("underline", False)
-            return
-
-        # group candidates by y within tolerance 0.5 to detect repeating table borders
-        y_groups: Dict[int, int] = {}
-        for _, y0, _, y1 in candidates:
-            key = int((y0 + y1) / 2)
-            y_groups[key] = y_groups.get(key, 0) + 1
-
-        table_y = {k for k, v in y_groups.items() if v >= 3}
-
-        # filter out candidates on those y values
-        filtered_candidates = [c for c in candidates if int((c[1] + c[3]) / 2) not in table_y]
-
-        # annotate chars
-        for ch in char_dicts:
-            ch.setdefault("underline", False)
-            try:
-                x0, top, x1, bottom = ch["x0"], ch["top"], ch["x1"], ch["bottom"]
-            except KeyError:
-                continue
-
-            width = x1 - x0
-            height = bottom - top
-            if width <= 0 or height <= 0:
-                continue
-
-            band_top = bottom - band_frac * height
-            band_bottom = bottom + below_pad  # allow some distance below baseline
-
-            for lx0, ly0, lx1, ly1 in filtered_candidates:
-                if (ly0 >= band_top - 1) and (ly1 <= band_bottom + 1):
-                    overlap = min(x1, lx1) - max(x0, lx0)
-                    if overlap > 0 and (overlap / width) >= coverage_ratio:
-                        ch["underline"] = True
-                        break
-
-    # ------------------------------------------------------------------
-    #  Highlight detection
-    # ------------------------------------------------------------------
-
-    def _mark_highlight_chars(self, char_dicts: List[Dict[str, Any]]) -> None:
-        """Detect PDF marker-style highlights and set ``highlight`` on char dicts."""
-
-        cfg = self._page._parent._config.get("highlight_detection", {})
-
-        height_min_ratio = cfg.get("height_min_ratio", HIGHLIGHT_DEFAULTS["height_min_ratio"])
-        height_max_ratio = cfg.get("height_max_ratio", HIGHLIGHT_DEFAULTS["height_max_ratio"])
-        coverage_ratio = cfg.get("coverage_ratio", HIGHLIGHT_DEFAULTS["coverage_ratio"])
-
-        raw_rects = list(getattr(self._page._page, "rects", []))
-        pg_height = self._page.height
-
-        # Build list of candidate highlight rectangles (convert to top-based coords)
-        highlight_rects = []
-        for rc in raw_rects:
-            if rc.get("stroke", False):
-                continue  # border stroke, not fill-only
-            if not rc.get("fill", False):
-                continue
-
-            fill_col = rc.get("non_stroking_color")
-            # We keep colour as metadata but no longer filter on it
-            # Note: pdfminer.six has a bug where it may report incorrect colors
-            # when no explicit color space is set. E.g., '1 1 0 sc' (RGB yellow)
-            # is parsed as 0.0 (grayscale black) because pdfminer defaults to
-            # DeviceGray and only reads 1 component from the stack.
-            if fill_col is None:
-                continue
-
-            y0_rect = min(rc.get("y0", 0), rc.get("y1", 0))
-            y1_rect = max(rc.get("y0", 0), rc.get("y1", 0))
-            rheight = y1_rect - y0_rect
-            highlight_rects.append(
-                (rc.get("x0", 0), y0_rect, rc.get("x1", 0), y1_rect, rheight, fill_col)
-            )
-
-        if not highlight_rects:
-            for ch in char_dicts:
-                ch.setdefault("highlight", False)
-            return
-
-        for ch in char_dicts:
-            ch.setdefault("highlight", False)
-            try:
-                x0_raw, y0_raw, x1_raw, y1_raw = ch["x0"], ch["y0"], ch["x1"], ch["y1"]
-            except KeyError:
-                continue
-
-            width = x1_raw - x0_raw
-            height = y1_raw - y0_raw
-            if width <= 0 or height <= 0:
-                continue
-
-            for rx0, ry0, rx1, ry1, rheight, rcolor in highlight_rects:
-                # height ratio check relative to char
-                ratio = rheight / height if height else 0
-                if ratio < height_min_ratio or ratio > height_max_ratio:
-                    continue
-
-                # vertical containment in raw coords
-                if not (y0_raw + 1 >= ry0 and y1_raw - 1 <= ry1):
-                    continue
-
-                overlap = min(x1_raw, rx1) - max(x0_raw, rx0)
-                if overlap > 0 and (overlap / width) >= coverage_ratio:
-                    ch["highlight"] = True
-                    try:
-                        ch["highlight_color"] = (
-                            tuple(rcolor) if isinstance(rcolor, (list, tuple)) else rcolor
-                        )
-                    except Exception:
-                        ch["highlight_color"] = rcolor
-                    break

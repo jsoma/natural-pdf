@@ -483,11 +483,74 @@ def import_ocr_from_manifest(pdf: "PDF", manifest_path: str) -> Dict[str, int]:
                     "bottom": pdf_bottom,
                     "bbox": (pdf_x0, pdf_top, pdf_x1, pdf_bottom),
                     "source": "manifest-import",
+                    "object_type": "word",
+                    "page_number": page.page_number,
+                    "fontname": "ManifestImport",
+                    "size": max(pdf_bottom - pdf_top, 0.0),
+                    "upright": True,
                 }
                 if confidence is not None:
                     element_payload["confidence"] = confidence
 
+                loader_getter = getattr(page, "_get_element_loader", None)
+                detector_getter = getattr(page, "_get_decoration_detector", None)
+                char_dicts: List[Dict[str, Any]] = [
+                    {
+                        "text": text_to_import_str,
+                        "x0": pdf_x0,
+                        "top": pdf_top,
+                        "x1": pdf_x1,
+                        "bottom": pdf_bottom,
+                        "width": pdf_x1 - pdf_x0,
+                        "height": pdf_bottom - pdf_top,
+                        "object_type": "char",
+                        "page_number": page.page_number,
+                        "fontname": "ManifestImport",
+                        "size": max(pdf_bottom - pdf_top, 0.0),
+                        "upright": True,
+                        "source": "manifest-import",
+                    }
+                ]
+                if callable(loader_getter):
+                    try:
+                        loader = loader_getter()
+                        if loader:
+                            char_dicts = loader.prepare_native_chars(char_dicts)
+                    except Exception:
+                        logger.debug(
+                            "Packaging import: failed to prepare char dicts via loader; continuing.",
+                            exc_info=True,
+                        )
+                decoration = None
+                if callable(detector_getter):
+                    try:
+                        decoration = detector_getter()
+                    except Exception:
+                        logger.debug(
+                            "Packaging import: failed to resolve DecorationDetector.", exc_info=True
+                        )
+
+                if decoration and char_dicts:
+                    try:
+                        decoration.annotate_chars(char_dicts)
+                    except Exception:
+                        logger.debug(
+                            "Packaging import: decoration annotation failed; continuing.",
+                            exc_info=True,
+                        )
+
+                if char_dicts:
+                    element_payload["_char_dicts"] = char_dicts
+
                 new_element = TextElement(element_payload, page)
+                if decoration and char_dicts:
+                    try:
+                        decoration.propagate_to_words([new_element], char_dicts)
+                    except Exception:
+                        logger.debug(
+                            "Packaging import: decoration propagation failed; ignoring.",
+                            exc_info=True,
+                        )
                 original_ocr = region_data.get("ocr_text")
                 if original_ocr and original_ocr != text_to_import_str:
                     new_element.metadata["original_ocr"] = original_ocr
