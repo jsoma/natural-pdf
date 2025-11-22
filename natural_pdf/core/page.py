@@ -24,6 +24,7 @@ from typing import (  # Added overload
 import pdfplumber
 from PIL import Image
 
+from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.elements.region import Region
@@ -161,6 +162,7 @@ def _jaro_winkler_similarity(s1: str, s2: str, prefix_weight: float = 0.1) -> fl
 
 
 class Page(
+    ClassificationResultAccessorMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     SinglePageContextMixin,
@@ -2024,8 +2026,8 @@ class Page(
 
     def analyze_layout(
         self,
-        *,
         engine: Optional[str] = None,
+        *,
         options: Optional[Any] = None,  # Typed as Any to avoid circular import of LayoutOptions
         confidence: Optional[float] = None,
         classes: Optional[List[str]] = None,
@@ -2038,9 +2040,7 @@ class Page(
     ) -> Any:
         """Delegate layout analysis to the configured layout service."""
 
-        return self.services.layout.analyze_layout(
-            self,
-            engine=engine,
+        kwargs = dict(
             options=options,
             confidence=confidence,
             classes=classes,
@@ -2051,6 +2051,10 @@ class Page(
             client=client,
             show_progress=show_progress,
         )
+        if engine is not None:
+            kwargs["engine"] = engine
+
+        return self.services.layout.analyze_layout(self, **kwargs)
 
     def clear_detected_layout_regions(self) -> "Page":
         """
@@ -2307,6 +2311,25 @@ class Page(
             self,
             transform=transform,
             selector=selector,
+            apply_exclusions=apply_exclusions,
+            max_workers=max_workers,
+            progress_callback=progress_callback,
+            show_progress=show_progress,
+        )
+        return self
+
+    def update_ocr(
+        self,
+        transform: Callable[[Any], Optional[str]],
+        *,
+        apply_exclusions: bool = False,
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None,
+        show_progress: bool = True,
+    ) -> "Page":
+        self.services.text.update_ocr(
+            self,
+            transform=transform,
             apply_exclusions=apply_exclusions,
             max_workers=max_workers,
             progress_callback=progress_callback,

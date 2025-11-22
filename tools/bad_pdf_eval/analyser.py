@@ -136,7 +136,7 @@ class BadPDFAnalyzer:
 
             # ---------------- layout TATR for tables
             try:
-                tatr_layout = page.analyze_layout("tatr", existing="append")
+                tatr_layout = page.analyze_layout("tatr")
                 page_result["layout_tatr_count"] = len(tatr_layout)
                 page_result["layout_tatr_regions"] = [
                     {

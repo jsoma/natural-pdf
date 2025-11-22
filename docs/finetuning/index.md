@@ -38,11 +38,11 @@ import openai # Or your preferred LLM client library
 import os
 
 # Ensure your LLM API key is set (using environment variables is recommended)
-# os.environ["OPENAI_API_KEY"] = "sk-..." 
-# os.environ["ANTHROPIC_API_KEY"] = "sk-..." 
+# os.environ["OPENAI_API_KEY"] = "sk-..."
+# os.environ["ANTHROPIC_API_KEY"] = "sk-..."
 
-# pdf_path = "path/to/your/document.pdf" 
-pdf_path = "path/to/your/document.pdf" 
+# pdf_path = "path/to/your/document.pdf"
+pdf_path = "path/to/your/document.pdf"
 # For demonstration we use a public sample PDF; replace with your own.
 pdf_path = "https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/needs-ocr.pdf"
 pdf = PDF(pdf_path)
@@ -60,22 +60,22 @@ print("Detecting text regions...")
 # Process only a subset of pages for demonstration if needed
 for page in pdf.pages[:10]:
     # Use a moderate resolution for detection; higher res used for LLM correction later
-    page.apply_ocr(engine='surya', resolution=120, detect_only=True) 
+    page.apply_ocr(engine='surya', resolution=120, detect_only=True)
 print(f"Detection complete for {num_pages_to_process} pages.")
 
 # (Optional) Visualize detected boxes on a sample page
-# pdf.pages[9].find_all('text[source=ocr]').show() 
+# pdf.pages[9].find_all('text[source=ocr]').show()
 
 # --- 4. Correct with LLM ---
 # Configure your LLM client (example using OpenAI client, adaptable for others)
 # For Anthropic: client = openai.OpenAI(base_url="https://api.anthropic.com/v1/", api_key=os.environ.get("ANTHROPIC_API_KEY"))
-client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY")) 
+client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # Craft a clear prompt for the LLM
 # Be as specific as possible! If it's in a specific language, what kinds
 # of characters, etc.
-prompt = """OCR this image patch. Return only the exact text content visible in the image. 
-Preserve original spelling, capitalization, punctuation, and symbols. 
+prompt = """OCR this image patch. Return only the exact text content visible in the image.
+Preserve original spelling, capitalization, punctuation, and symbols.
 Do not add any explanatory text, translations, comments, or quotation marks around the result.
 The text is likely from a Greek document, potentially a spreadsheet, containing Modern Greek words or numbers."""
 
@@ -83,10 +83,10 @@ The text is likely from a Greek document, potentially a spreadsheet, containing 
 def correct_text_region(region):
     # Use a high resolution for the LLM call for best accuracy
     return direct_ocr_llm(
-        region, 
-        client, 
-        prompt=prompt, 
-        resolution=300, 
+        region,
+        client,
+        prompt=prompt,
+        resolution=300,
         # model="claude-3-5-sonnet-20240620" # Example Anthropic model
         model="gpt-4o-mini" # Example OpenAI model
     )
@@ -97,15 +97,15 @@ for page in pdf.pages[:num_pages_to_process]:
     # This finds elements added by apply_ocr and passes their regions to 'correct_text_region'
     # The returned text from the LLM replaces the original OCR text for these elements
     # The source attribute is updated (e.g., to 'ocr-llm-corrected')
-    page.correct_ocr(correct_text_region) 
+page.update_ocr(correct_text_region)
 print("LLM correction complete.")
 
 # --- 5. Export for PaddleOCR Fine-tuning ---
 print("Configuring exporter...")
 exporter = PaddleOCRRecognitionExporter(
     # Select all of the non-blank OCR text
-    # Hopefully it's all been LLM-corrected! 
-    selector="text[source^=ocr][text!='']", 
+    # Hopefully it's all been LLM-corrected!
+    selector="text[source^=ocr][text!='']",
     resolution=300,     # Resolution for the exported image crops
     padding=2,          # Add slight padding around text boxes
     split_ratio=0.9,    # 90% for training, 10% for validation
@@ -125,7 +125,7 @@ print(f"Dataset ready for fine-tuning in: {output_directory}")
 print(f"Next step: Upload '{os.path.join(output_directory, 'fine_tune_paddleocr.ipynb')}' and the rest of the contents to Google Colab.")
 
 # --- Cleanup ---
-pdf.close() 
+pdf.close()
 ```
 
 ## Running the Fine-tuning
@@ -153,7 +153,7 @@ from natural_pdf import PDF
 from natural_pdf.ocr import PaddleOCROptions
 
 # Path to the directory you downloaded from Colab
-finetuned_model_dir = "/path/to/your/downloaded/inference_model" 
+finetuned_model_dir = "/path/to/your/downloaded/inference_model"
 
 # Specify the path in PaddleOCROptions
 paddle_opts = PaddleOCROptions(
@@ -169,10 +169,10 @@ page = pdf.pages[0]
 ocr_elements = page.apply_ocr(engine='paddle', options=paddle_opts)
 
 # Extract text using the improved results
-text = page.extract_text() 
+text = page.extract_text()
 print(text)
 
 pdf.close()
 ```
 
-By following this process, you can significantly enhance OCR performance on your specific documents using the power of fine-tuning. 
+By following this process, you can significantly enhance OCR performance on your specific documents using the power of fine-tuning.

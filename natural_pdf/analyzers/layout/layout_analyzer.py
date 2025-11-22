@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Set
 
 from natural_pdf import options as npdf_options
 from natural_pdf.analyzers.layout.layout_manager import ENGINE_REGISTRY
@@ -14,6 +14,8 @@ from natural_pdf.elements.region import Region
 from natural_pdf.engine_provider import get_provider
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_ENGINE_WARNING_SHOWN: Set[str] = set()
 
 
 class LayoutAnalyzer:
@@ -55,12 +57,19 @@ class LayoutAnalyzer:
             classes: Specific classes to detect (simple mode).
             exclude_classes: Classes to exclude (simple mode).
             device: Device for inference (simple mode).
-            existing: How to handle existing detected regions: 'replace' (default) or 'append'.
+            existing: Deprecated. Layout analysis always replaces previously detected regions.
             **kwargs: Additional engine-specific arguments (added to options.extra_args or used by constructor if options=None).
 
         Returns:
             List of created Region objects.
         """
+        if isinstance(existing, str) and existing.lower() != "replace":
+            logger.warning(
+                "Layout analysis always replaces existing detected regions; ignoring existing=%r",
+                existing,
+            )
+        existing = "replace"
+
         logger.info(
             f"Page {self._page.number}: Analyzing layout (Engine: {engine or 'default'}, Options provided: {options is not None})..."
         )
@@ -115,6 +124,8 @@ class LayoutAnalyzer:
             # Construct options from simple args (engine, confidence, classes, etc.)
             logger.debug("Constructing options from simple arguments.")
             selected_engine = engine or self._default_engine_name()
+            if engine is None:
+                self._warn_on_default_engine(selected_engine)
             engine_lower = selected_engine.lower()
             registry = ENGINE_REGISTRY
 
@@ -264,10 +275,8 @@ class LayoutAnalyzer:
                             logger.warning("Region object missing add_child method for hierarchy.")
 
         # --- Store Results ---
-        logger.debug(f"Storing {len(layout_regions)} processed layout regions (mode: {existing}).")
-        append_mode = existing.lower() == "append"
-        if not append_mode:
-            self._page.clear_detected_layout_regions()
+        logger.debug(f"Storing {len(layout_regions)} processed layout regions (mode: replace).")
+        self._page.clear_detected_layout_regions()
 
         for region in layout_regions:
             self._page.add_region(region, source="detected")
@@ -310,6 +319,24 @@ class LayoutAnalyzer:
             if isinstance(options, entry["options_class"]):
                 return name.lower()
         return None
+
+    def _warn_on_default_engine(self, engine_name: str) -> None:
+        normalized = (engine_name or "").lower()
+        if not normalized or normalized == "yolo":
+            return
+
+        if normalized in _DEFAULT_ENGINE_WARNING_SHOWN:
+            return
+
+        available = ", ".join(sorted(ENGINE_REGISTRY.keys()))
+        logger.warning(
+            "analyze_layout() called without specifying an engine; defaulting to '%s'. "
+            "Call page.analyze_layout('yolo') (or another engine name) or use natural_pdf.set_option('layout.engine', '<engine>') "
+            "to choose explicitly. Available engines: %s",
+            engine_name,
+            available,
+        )
+        _DEFAULT_ENGINE_WARNING_SHOWN.add(normalized)
 
     def _run_layout_engine(self, image, options, engine: Optional[str]):
         engine_name = self._resolve_engine_name(engine, options)

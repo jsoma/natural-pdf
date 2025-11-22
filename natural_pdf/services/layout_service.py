@@ -14,6 +14,33 @@ class LayoutService:
     def __init__(self, context):
         self._context = context
 
+    def _normalize_engine_arg(self, args, kwargs):
+        """Allow the first positional arg to act as the engine name."""
+        if not args:
+            return kwargs
+
+        if len(args) > 1:
+            raise TypeError(
+                "analyze_layout() accepts at most one positional argument (the engine name)"
+            )
+
+        if "engine" in kwargs and kwargs.get("engine") is not None:
+            raise TypeError("analyze_layout() got multiple values for 'engine'")
+
+        engine_arg = args[0]
+        if engine_arg is None:
+            return kwargs
+
+        if not isinstance(engine_arg, str):
+            raise TypeError(
+                "The positional argument to analyze_layout() must be a string engine name; "
+                f"received {type(engine_arg).__name__!r}"
+            )
+
+        merged_kwargs = dict(kwargs)
+        merged_kwargs["engine"] = engine_arg
+        return merged_kwargs
+
     # ------------------------------------------------------------------
     # Delegates
     # ------------------------------------------------------------------
@@ -27,19 +54,20 @@ class LayoutService:
 
     @register_delegate("layout", "analyze_layout")
     def analyze_layout(self, host, *args, **kwargs):
+        kwargs = self._normalize_engine_arg(args, kwargs)
         from natural_pdf.core.page import Page
         from natural_pdf.core.page_collection import PageCollection
         from natural_pdf.core.pdf import PDF
         from natural_pdf.flows.flow import Flow
 
         if isinstance(host, Page):
-            return self._analyze_page(host, *args, **kwargs)
+            return self._analyze_page(host, **kwargs)
         if isinstance(host, Flow):
-            return self._analyze_flow(host, *args, **kwargs)
+            return self._analyze_flow(host, **kwargs)
         if isinstance(host, PageCollection):
-            return self._analyze_page_collection(host, *args, **kwargs)
+            return self._analyze_page_collection(host, **kwargs)
         if isinstance(host, PDF):
-            return self._analyze_pdf(host, *args, **kwargs)
+            return self._analyze_pdf(host, **kwargs)
         raise TypeError(f"Host type {type(host)!r} is not layout-capable.")
 
     # ------------------------------------------------------------------
@@ -57,14 +85,21 @@ class LayoutService:
     def _analyze_page(self, page, **kwargs):
         from natural_pdf.elements.element_collection import ElementCollection
 
-        engine = kwargs.get("engine")
-        existing = kwargs.get("existing", "replace")
+        kwargs = dict(kwargs)
+        requested_existing = kwargs.get("existing")
+        if isinstance(requested_existing, str) and requested_existing.lower() != "replace":
+            logger.warning(
+                "Layout analysis always replaces existing detected regions; ignoring existing=%r",
+                requested_existing,
+            )
+        kwargs["existing"] = "replace"
 
-        if existing == "replace":
-            try:
-                page.clear_detected_layout_regions()
-            except Exception:
-                logger.debug("Failed to clear detected layout regions for %s", page)
+        engine = kwargs.get("engine")
+
+        try:
+            page.clear_detected_layout_regions()
+        except Exception:
+            logger.debug("Failed to clear detected layout regions for %s", page)
 
         analyzer = self._get_page_analyzer(page)
         analyzer.analyze_layout(**kwargs)
@@ -147,7 +182,7 @@ class LayoutService:
 
         return ElementCollection(unique_regions)
 
-    def _analyze_page_collection(self, collection, *args, **kwargs):
+    def _analyze_page_collection(self, collection, **kwargs):
         from natural_pdf.elements.element_collection import ElementCollection
 
         show_progress = kwargs.pop("show_progress", True)
@@ -162,11 +197,11 @@ class LayoutService:
 
         all_regions = []
         for page in pages_iter:
-            page_regions = self._analyze_page(page, *args, **kwargs)
+            page_regions = self._analyze_page(page, **kwargs)
             if page_regions:
                 all_regions.extend(page_regions.elements)
 
         return ElementCollection(all_regions)
 
-    def _analyze_pdf(self, pdf, *args, **kwargs):
-        return self._analyze_page_collection(pdf.pages, *args, **kwargs)
+    def _analyze_pdf(self, pdf, **kwargs):
+        return self._analyze_page_collection(pdf.pages, **kwargs)

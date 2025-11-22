@@ -8,6 +8,7 @@ class _DummyAnalyzer:
         self.host = host
 
     def analyze_layout(self, **kwargs):
+        assert kwargs.get("existing") == "replace"
         return []
 
 
@@ -31,6 +32,18 @@ def test_page_analyze_layout_uses_service(monkeypatch):
     try:
         page = pdf.pages[0]
         result = page.analyze_layout(engine="mock")
+    finally:
+        _close_pdf(pdf)
+
+    assert isinstance(result, ElementCollection)
+
+
+def test_page_analyze_layout_accepts_positional_engine(monkeypatch):
+    _patch_layout(monkeypatch)
+    pdf = PDF("pdfs/01-practice.pdf")
+    try:
+        page = pdf.pages[0]
+        result = page.analyze_layout("mock")
     finally:
         _close_pdf(pdf)
 
@@ -66,6 +79,17 @@ def test_pdf_analyze_layout(monkeypatch):
     pdf = PDF("pdfs/01-practice.pdf")
     try:
         result = pdf.analyze_layout(show_progress=False)
+    finally:
+        _close_pdf(pdf)
+
+    assert isinstance(result, ElementCollection)
+
+
+def test_pdf_analyze_layout_positional_engine(monkeypatch):
+    _patch_layout(monkeypatch)
+    pdf = PDF("pdfs/01-practice.pdf")
+    try:
+        result = pdf.analyze_layout("mock", show_progress=False)
     finally:
         _close_pdf(pdf)
 

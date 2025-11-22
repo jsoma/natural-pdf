@@ -259,6 +259,21 @@ class PageCollection(
             )
         return self
 
+    def update_ocr(
+        self,
+        transform: Callable[[Any], Optional[str]],
+        *,
+        apply_exclusions: bool = False,
+        **kwargs: Any,
+    ):
+        """Shortcut for updating only OCR text across the collection."""
+        return self.update_text(
+            transform=transform,
+            selector="text[source=ocr]",
+            apply_exclusions=apply_exclusions,
+            **kwargs,
+        )
+
     def apply_ocr(self, *, replace: bool = True, **ocr_params):
         """Apply OCR uniformly across all pages in the collection."""
 

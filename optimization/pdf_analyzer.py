@@ -191,10 +191,10 @@ def analyze_pdf(
                 print(f"❌ analyze_layout() failed: {e}")
                 page_data["analyze_layout"] = f"ERROR: {e}"
 
-            # 4b. .analyze_layout('tatr') - Table structure analysis (append to preserve YOLO results)
+            # 4b. .analyze_layout('tatr') - Table structure analysis
             print("\n🏗️  PAGE.ANALYZE_LAYOUT('TATR') - Table Structure:")
             try:
-                tatr_layout = page.analyze_layout("tatr", existing="append")
+                tatr_layout = page.analyze_layout("tatr")
                 if tatr_layout and len(tatr_layout) > 0:
                     print(f"TATR layout regions found: {len(tatr_layout)}")
                     tatr_info = []

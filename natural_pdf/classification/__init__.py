@@ -2,6 +2,7 @@
 
 from natural_pdf.engine_registry import register_classification_engine
 
+from .accessors import ClassificationResultAccessorMixin
 from .classification_provider import (
     register_classification_engines,
     run_classification_batch,
@@ -20,6 +21,7 @@ from .results import ClassificationResult
 __all__ = [
     "ClassificationError",
     "ClassificationResult",
+    "ClassificationResultAccessorMixin",
     "classify_batch_contents",
     "classify_single",
     "cleanup_models",

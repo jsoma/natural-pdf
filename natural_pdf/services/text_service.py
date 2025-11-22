@@ -47,6 +47,27 @@ class TextService:
             apply_exclusions=apply_exclusions,
         )
 
+    @register_delegate("text", "update_ocr")
+    def update_ocr(
+        self,
+        host: SupportsFindAll,
+        transform: Callable[[Any], Optional[str]],
+        *,
+        apply_exclusions: bool = False,
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None,
+        show_progress: bool = False,
+    ):
+        return self.update_text(
+            host,
+            transform=transform,
+            selector="text[source=ocr]",
+            apply_exclusions=apply_exclusions,
+            max_workers=max_workers,
+            progress_callback=progress_callback,
+            show_progress=show_progress,
+        )
+
     @register_delegate("text", "update_text")
     def update_text(
         self,

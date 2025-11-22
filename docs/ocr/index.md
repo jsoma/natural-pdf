@@ -182,7 +182,7 @@ def correct(region):
     )
 
 # Step 4: Apply cleanup to each detected region
-page.correct_ocr(correct)
+page.update_ocr(correct)
 
 # You're done! The page now has cleaned-up text
 ```

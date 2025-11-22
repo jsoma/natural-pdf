@@ -22,6 +22,7 @@ from typing import (
 
 # Import global options
 import natural_pdf
+from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.interfaces import Bounds, SupportsBBox, SupportsGeometry
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
@@ -1339,6 +1340,7 @@ class HighlightableMixin:
 
 
 class Element(
+    ClassificationResultAccessorMixin,
     ServiceHostMixin,
     SelectorHostMixin,
     DirectionalMixin,
@@ -2127,6 +2129,9 @@ class Element(
 
     def update_text(self, *args, **kwargs):
         return self.services.text.update_text(self, *args, **kwargs)
+
+    def update_ocr(self, *args, **kwargs):
+        return self.services.text.update_ocr(self, *args, **kwargs)
 
     def correct_ocr(self, *args, **kwargs):
         return self.services.text.correct_ocr(self, *args, **kwargs)

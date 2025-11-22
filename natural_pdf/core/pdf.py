@@ -41,6 +41,7 @@ else:
 
     PdfPlumberPDF = Any  # type: ignore[assignment]
 
+from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
@@ -322,7 +323,13 @@ class _LazyPageList(Sequence["Page"]):
 # --- End Lazy Page List Helper --- #
 
 
-class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
+class PDF(
+    ClassificationResultAccessorMixin,
+    ServiceHostMixin,
+    SelectorHostMixin,
+    ExportMixin,
+    Visualizable,
+):
     """Enhanced PDF wrapper built on top of pdfplumber.
 
     This class provides a fluent interface for working with PDF documents,
@@ -1983,6 +1990,27 @@ class PDF(ServiceHostMixin, SelectorHostMixin, ExportMixin, Visualizable):
 
         logger.info("Text update process finished.")
         return self
+
+    def update_ocr(
+        self,
+        transform: Callable[[Any], Optional[str]],
+        *,
+        apply_exclusions: bool = False,
+        pages: Optional[Union[Iterable[int], range, slice]] = None,
+        max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[], None]] = None,
+    ) -> "PDF":
+        """
+        Convenience wrapper for updating only OCR-derived text elements.
+        """
+        return self.update_text(
+            transform=transform,
+            selector="text[source=ocr]",
+            apply_exclusions=apply_exclusions,
+            pages=pages,
+            max_workers=max_workers,
+            progress_callback=progress_callback,
+        )
 
     def __len__(self) -> int:
         """Return the number of pages in the PDF."""

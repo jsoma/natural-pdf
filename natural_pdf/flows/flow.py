@@ -282,20 +282,23 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         legend_position: str = "right",
         annotate: Optional[Union[str, List[str]]] = None,
         layout: Optional[Literal["stack", "grid", "single"]] = None,
-        stack_direction: Literal["vertical", "horizontal"] = "vertical",
+        stack_direction: Optional[Literal["vertical", "horizontal"]] = None,
         gap: int = 5,
         columns: Optional[int] = 6,
         crop: Union[bool, int, str, "PhysicalRegion", Literal["wide"]] = False,
         crop_bbox: Optional[Tuple[float, float, float, float]] = None,
-        in_context: bool = False,
+        in_context: Optional[bool] = None,
         separator_color: Optional[Tuple[int, int, int]] = None,
         separator_thickness: int = 2,
         **kwargs,
     ) -> Optional["PIL_Image"]:
         """Generate a preview image with highlights.
 
-        If in_context=True, shows segments as cropped images stacked together
-        with separators between segments.
+        By default, Flow.show stacks multiple segments in the order of the
+        flow arrangement so you can see them as a single continuous surface.
+        Set in_context=False to revert to the traditional page-highlighting
+        behavior. You can also pass in_context=True explicitly to force the
+        stacked visualization.
 
         Args:
             resolution: DPI for rendering (default from global settings)
@@ -319,13 +322,36 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             PIL Image object or None if nothing to render
         """
         resolved_resolution = self._resolve_image_resolution(resolution)
+        resolved_stack_direction: Literal["vertical", "horizontal"] = (
+            stack_direction or self.arrangement
+        )
+
+        # Detect whether the caller is explicitly requesting highlight-driven
+        # rendering. In those cases we should not silently switch to the
+        # stacked visualization because it ignores highlight-specific args.
+        highlight_mode_requested = any(
+            [
+                color is not None,
+                labels is not True,
+                label_format is not None,
+                highlights is not None,
+                legend_position != "right",
+                annotate is not None,
+                layout is not None,
+                crop not in (False,),
+                crop_bbox is not None,
+            ]
+        )
+
+        if in_context is None:
+            in_context = len(self.segments) > 1 and not highlight_mode_requested
 
         if in_context:
             # Use the special in_context visualization
             return self._show_in_context(
                 resolution=resolved_resolution,
                 width=width,
-                stack_direction=stack_direction,
+                stack_direction=resolved_stack_direction,
                 stack_gap=gap,
                 separator_color=separator_color or (255, 0, 0),
                 separator_thickness=separator_thickness,
@@ -343,7 +369,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             legend_position=legend_position,
             annotate=annotate,
             layout=layout,
-            stack_direction=stack_direction,
+            stack_direction=resolved_stack_direction,
             gap=gap,
             columns=columns,
             crop=crop,

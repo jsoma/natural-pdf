@@ -28,6 +28,7 @@ from pdfplumber.utils.geometry import get_bbox_overlap
 from tqdm.auto import tqdm
 
 from natural_pdf.analyzers.layout.pdfplumber_table_finder import find_text_based_tables
+from natural_pdf.classification.accessors import ClassificationResultAccessorMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.crop_utils import resolve_crop_bbox
 from natural_pdf.core.exclusion_mixin import ExclusionEntry, ExclusionSpec
@@ -132,6 +133,7 @@ class RegionContext:
 
 
 class Region(
+    ClassificationResultAccessorMixin,
     SelectorHostMixin,
     DirectionalMixin,
     ServiceHostMixin,
@@ -1407,8 +1409,22 @@ class Region(
         if granularity not in ("chars", "words"):
             raise ValueError(f"granularity must be 'chars' or 'words', got '{granularity}'")
 
-        # Allow 'debug_exclusions' for backward compatibility
-        debug = kwargs.get("debug", debug or kwargs.get("debug_exclusions", False))
+        # Handle legacy keyword arguments that Element.extract_text accepted for
+        # compatibility with earlier APIs.
+        preserve_whitespace_flag = kwargs.pop("preserve_whitespace", None)
+        keep_blank_chars_flag = kwargs.pop("keep_blank_chars", None)
+        if preserve_whitespace_flag is None and keep_blank_chars_flag is not None:
+            preserve_whitespace_flag = keep_blank_chars_flag
+
+        use_exclusions_override = kwargs.pop("use_exclusions", None)
+
+        debug_kwarg = kwargs.pop("debug", None)
+        debug_exclusions_kwarg = kwargs.pop("debug_exclusions", None)
+        if debug_kwarg is not None:
+            debug = bool(debug_kwarg)
+        else:
+            debug = bool(debug or (debug_exclusions_kwarg or False))
+
         logger.debug(
             f"Region {self.bbox}: extract_text called with granularity='{granularity}', overlap='{overlap}', kwargs: {kwargs}"
         )
@@ -1455,7 +1471,9 @@ class Region(
             return ""
 
         # 3. Get Relevant Exclusions (overlapping this region)
-        apply_exclusions_flag = kwargs.get("apply_exclusions", apply_exclusions)
+        apply_exclusions_flag = apply_exclusions
+        if use_exclusions_override is not None:
+            apply_exclusions_flag = bool(use_exclusions_override)
         exclusion_regions = []
         if apply_exclusions_flag:
             all_page_exclusions = self._get_exclusion_regions(include_callable=True, debug=debug)
@@ -1515,6 +1533,9 @@ class Region(
         if content_filter is not None:
             final_kwargs["content_filter"] = content_filter
 
+        if preserve_whitespace_flag is not None and "strip" not in final_kwargs:
+            final_kwargs["strip"] = not bool(preserve_whitespace_flag)
+
         result = generate_text_layout(
             char_dicts=filtered_chars,
             layout_context_bbox=self.bbox,  # Use region's bbox for context
@@ -1532,6 +1553,9 @@ class Region(
 
         if replacement is not None:
             result = result.replace("\n", replacement).replace("\r", replacement)
+
+        if preserve_whitespace_flag is False:
+            result = result.strip()
 
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
         return result
@@ -1708,6 +1732,9 @@ class Region(
 
     def update_text(self, *args, **kwargs):
         return self.services.text.update_text(self, *args, **kwargs)
+
+    def update_ocr(self, *args, **kwargs):
+        return self.services.text.update_ocr(self, *args, **kwargs)
 
     def correct_ocr(self, *args, **kwargs):
         return self.services.text.correct_ocr(self, *args, **kwargs)
