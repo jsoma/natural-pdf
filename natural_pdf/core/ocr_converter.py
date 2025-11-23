@@ -17,12 +17,16 @@ class OCRConverter:
         *,
         scale_x: float = 1.0,
         scale_y: float = 1.0,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
     ) -> Tuple[List[TextElement], List[TextElement]]:
         words: List[TextElement] = []
         chars: List[TextElement] = []
 
         scale_x = float(scale_x)
         scale_y = float(scale_y)
+        offset_x = float(offset_x)
+        offset_y = float(offset_y)
 
         for result in ocr_results:
             try:
@@ -30,10 +34,10 @@ class OCRConverter:
             except Exception:
                 continue
 
-            pdf_x0 = x0_img * scale_x
-            pdf_top = top_img * scale_y
-            pdf_x1 = x1_img * scale_x
-            pdf_bottom = bottom_img * scale_y
+            pdf_x0 = offset_x + (x0_img * scale_x)
+            pdf_top = offset_y + (top_img * scale_y)
+            pdf_x1 = offset_x + (x1_img * scale_x)
+            pdf_bottom = offset_y + (bottom_img * scale_y)
             pdf_height = (bottom_img - top_img) * scale_y
 
             raw_confidence = result.get("confidence")

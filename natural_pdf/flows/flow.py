@@ -415,6 +415,9 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         ocr_results: Any,
         scale_x: Optional[float] = None,
         scale_y: Optional[float] = None,
+        *,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
     ) -> List[Any]:
         """
         Utility for constructing text elements from OCR output.
@@ -424,6 +427,8 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             ocr_results,
             scale_x=scale_x,
             scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
         )
 
     def ask(self, *args, **kwargs):

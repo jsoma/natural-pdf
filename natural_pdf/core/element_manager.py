@@ -354,7 +354,15 @@ class ElementManager:
 
         return TextElement(element_data, self._page)
 
-    def create_text_elements_from_ocr(self, ocr_results, scale_x=None, scale_y=None):
+    def create_text_elements_from_ocr(
+        self,
+        ocr_results,
+        scale_x=None,
+        scale_y=None,
+        *,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
+    ):
         """
         Convert OCR results to TextElement objects AND adds them to the manager's
         'words' and 'chars' lists.
@@ -382,7 +390,11 @@ class ElementManager:
         )
 
         word_elements, char_elements = self._ocr_converter.convert(
-            ocr_results, scale_x=scale_x, scale_y=scale_y
+            ocr_results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
         )
 
         if word_elements:

@@ -213,7 +213,13 @@ class FlowRegion(
         return total_chars, total_words
 
     def create_text_elements_from_ocr(
-        self, ocr_results: Any, scale_x: Optional[float] = None, scale_y: Optional[float] = None
+        self,
+        ocr_results: Any,
+        scale_x: Optional[float] = None,
+        scale_y: Optional[float] = None,
+        *,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
     ) -> List[Any]:
         if not self.constituent_regions:
             return []
@@ -223,7 +229,13 @@ class FlowRegion(
                 continue
             creator = getattr(page, "create_text_elements_from_ocr", None)
             if callable(creator):
-                created = creator(ocr_results, scale_x=scale_x, scale_y=scale_y)
+                created = creator(
+                    ocr_results,
+                    scale_x=scale_x,
+                    scale_y=scale_y,
+                    offset_x=offset_x,
+                    offset_y=offset_y,
+                )
                 if isinstance(created, list):
                     return created
                 if created is None:

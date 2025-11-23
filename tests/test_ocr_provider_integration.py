@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import natural_pdf as npdf
 import natural_pdf.engine_provider as provider_module
 from natural_pdf.engine_provider import EngineProvider
@@ -68,3 +70,34 @@ def test_page_apply_ocr_uses_provider(monkeypatch):
 
     assert after > before, "OCR should add new elements via provider-backed engine"
     pdf.close()
+
+
+def test_region_apply_ocr_respects_crop_offsets(monkeypatch):
+    provider = EngineProvider()
+    provider._entry_points_loaded = True
+    monkeypatch.setattr(provider_module, "_PROVIDER", provider)
+
+    for capability in ("ocr", "ocr.apply", "ocr.extract"):
+        provider.register(capability, "fake", lambda **_: _FakeOCREngine(), replace=True)
+
+    pdf = npdf.PDF("pdfs/tiny-ocr.pdf", text_layer=False)
+    try:
+        page = pdf.pages[0]
+        region = page.create_region(100, 150, 220, 260)
+
+        region.apply_ocr(engine="fake", resolution=72)
+
+        ocr_words = [
+            word
+            for word in page.words
+            if getattr(word, "source", None) == "ocr" and getattr(word, "text", None) == "fake-ocr"
+        ]
+        assert ocr_words, "Expected OCR words anchored to the crop region"
+        word = ocr_words[0]
+
+        assert word.x0 == pytest.approx(region.x0, abs=1e-3)
+        assert word.top == pytest.approx(region.top, abs=1e-3)
+        expected_width = region.width * 0.25
+        assert word.width == pytest.approx(expected_width, rel=1e-3, abs=1e-3)
+    finally:
+        pdf.close()

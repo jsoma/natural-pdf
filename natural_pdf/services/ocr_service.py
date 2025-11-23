@@ -64,6 +64,29 @@ class OCRService:
                 return kwargs
         return {"apply_exclusions": apply_exclusions}
 
+    @staticmethod
+    def _resolve_offsets(host, render_kwargs: Optional[Dict[str, Any]]) -> Tuple[float, float]:
+        if not render_kwargs:
+            return 0.0, 0.0
+
+        crop_bbox = render_kwargs.get("crop_bbox")
+        bbox = None
+        if (
+            isinstance(crop_bbox, (list, tuple))
+            and len(crop_bbox) == 4
+            and all(isinstance(coord, (int, float)) for coord in crop_bbox)
+        ):
+            bbox = crop_bbox
+        elif render_kwargs.get("crop"):
+            bbox = getattr(host, "bbox", None)
+
+        if bbox and len(bbox) >= 2:
+            try:
+                return float(bbox[0]), float(bbox[1])
+            except (TypeError, ValueError):
+                return 0.0, 0.0
+        return 0.0, 0.0
+
     def _resolve_resolution(self, host, requested: Optional[int], scope: str) -> int:
         if requested is not None:
             return requested
@@ -99,9 +122,17 @@ class OCRService:
         ocr_results: Any,
         scale_x: Optional[float] = None,
         scale_y: Optional[float] = None,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
     ):
         mgr = host._ocr_element_manager()
-        return mgr.create_text_elements_from_ocr(ocr_results, scale_x=scale_x, scale_y=scale_y)
+        return mgr.create_text_elements_from_ocr(
+            ocr_results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
+        )
 
     @register_delegate("ocr", "apply_ocr")
     def apply_ocr(
@@ -135,6 +166,7 @@ class OCRService:
 
         final_resolution = self._resolve_resolution(host, resolution, scope)
         render_kwargs = self._render_kwargs(host, apply_exclusions=apply_exclusions)
+        offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
         ocr_payload = run_ocr_apply(
             target=host,
@@ -165,7 +197,12 @@ class OCRService:
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
         created_elements = self.create_text_elements_from_ocr(
-            host, ocr_payload.results, scale_x=scale_x, scale_y=scale_y
+            host,
+            ocr_payload.results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
         )
         logger.info("Added %d OCR elements using '%s'.", len(created_elements), engine_name)
         return host
@@ -348,6 +385,7 @@ class OCRService:
 
         final_resolution = self._resolve_resolution(host, resolution, scope)
         render_kwargs = self._render_kwargs(host, apply_exclusions=True)
+        offset_x, offset_y = self._resolve_offsets(host, render_kwargs)
 
         ocr_payload = run_ocr_extract(
             target=host,
@@ -378,4 +416,11 @@ class OCRService:
         )
         scale_x = width / image_width if width else 1.0
         scale_y = height / image_height if height else 1.0
-        return self.create_text_elements_from_ocr(host, results, scale_x=scale_x, scale_y=scale_y)
+        return self.create_text_elements_from_ocr(
+            host,
+            results,
+            scale_x=scale_x,
+            scale_y=scale_y,
+            offset_x=offset_x,
+            offset_y=offset_y,
+        )
