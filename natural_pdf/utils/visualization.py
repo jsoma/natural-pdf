@@ -453,6 +453,24 @@ def render_plain_page(page, resolution):
     Returns:
         PIL Image of the rendered page
     """
+    # Prefer the page's own to_image (honors rotations/overrides) if available.
+    try:
+        if hasattr(page, "_page") and hasattr(page._page, "to_image"):
+            img_obj = page._page.to_image(resolution=resolution)
+            if hasattr(img_obj, "annotated"):
+                return img_obj.annotated.convert("RGB")
+            if hasattr(img_obj, "original"):
+                return img_obj.original.convert("RGB")
+    except Exception as exc:  # pragma: no cover - fall back to pdfium rendering
+        logger = None
+        try:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug("render_plain_page fallback to pdfium due to %s", exc, exc_info=True)
+        except Exception:
+            pass
+
     if pypdfium2 is None:
         raise RuntimeError(
             "pypdfium2 is required to render pages. Install with `pip install pypdfium2`."

@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import functools
 import hashlib
 import logging
@@ -6,6 +7,7 @@ import os
 import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
+from types import MethodType
 from typing import (  # Added overload
     TYPE_CHECKING,
     Any,
@@ -1576,6 +1578,112 @@ class Page(
 
         crop_arg: Any = resolved_bbox if resolved_bbox is not None else None
         return self._page.crop(crop_arg, **kwargs)
+
+    def rotate(
+        self,
+        angle: int = 90,
+        direction: Literal["clockwise", "counterclockwise"] = "clockwise",
+    ) -> "Page":
+        """
+        Return a rotated view of this page without mutating the original.
+
+        Rotations are limited to right angles and are applied before pdfplumber
+        processes layout, so all downstream extraction (text, tables, etc.)
+        sees the content in the new orientation.
+
+        Args:
+            angle: Magnitude of rotation in degrees (0/90/180/270).
+            direction: Direction of rotation; defaults to clockwise.
+
+        Returns:
+            A new Page instance backed by a rotated pdfplumber.Page.
+        """
+        allowed_angles = {0, 90, 180, 270}
+        if angle not in allowed_angles:
+            raise ValueError(f"angle must be one of {sorted(allowed_angles)}; got {angle}")
+
+        resolved_angle = angle % 360
+        if direction == "counterclockwise" and resolved_angle:
+            resolved_angle = (360 - resolved_angle) % 360
+        elif direction not in {"clockwise", "counterclockwise"}:
+            raise ValueError("direction must be 'clockwise' or 'counterclockwise'")
+
+        if resolved_angle == 0:
+            return self
+
+        if not hasattr(self, "_parent") or not hasattr(self._parent, "_pdf"):
+            raise RuntimeError("Cannot rotate page: parent PDF is not initialized.")
+
+        # Clone the underlying pdfminer page so we don't mutate shared state.
+        cloned_pdfminer_page = copy.copy(self._page.page_obj)
+        cloned_attrs = dict(getattr(cloned_pdfminer_page, "attrs", {}))
+        cloned_attrs["Rotate"] = resolved_angle
+        cloned_pdfminer_page.attrs = cloned_attrs
+        cloned_pdfminer_page.rotate = resolved_angle
+
+        # Rebuild a pdfplumber Page with the new rotation baked in.
+        doctop = getattr(self._page, "initial_doctop", 0)
+        rotated_plumber_page = pdfplumber.page.Page(
+            self._parent._pdf,
+            cloned_pdfminer_page,
+            page_number=self._page.page_number,
+            initial_doctop=doctop,
+        )
+
+        # Override to_image so rendering matches the rotated layout.
+        orig_to_image = rotated_plumber_page.to_image
+
+        def rotated_to_image(
+            self_page,
+            resolution: Optional[Union[int, float]] = None,
+            width: Optional[Union[int, float]] = None,
+            height: Optional[Union[int, float]] = None,
+            antialias: bool = False,
+            force_mediabox: bool = False,
+        ):
+            from pdfplumber.display import PageImage
+            from PIL import Image as PILImage
+
+            base_img = orig_to_image(
+                resolution=resolution,
+                width=width,
+                height=height,
+                antialias=antialias,
+                force_mediabox=force_mediabox,
+            )
+
+            pil_base = base_img.original if hasattr(base_img, "original") else base_img
+
+            if resolved_angle == 90:
+                rotated = pil_base.transpose(PILImage.ROTATE_270)  # clockwise
+            elif resolved_angle == 180:
+                rotated = pil_base.transpose(PILImage.ROTATE_180)
+            elif resolved_angle == 270:
+                rotated = pil_base.transpose(PILImage.ROTATE_90)  # counterclockwise
+            else:
+                rotated = pil_base
+
+            return PageImage(
+                self_page,
+                original=rotated.convert("RGB"),
+                resolution=getattr(base_img, "resolution", None)
+                or resolution
+                or getattr(self_page.pdf, "resolution", 72),
+                antialias=antialias,
+                force_mediabox=force_mediabox,
+            )
+
+        rotated_plumber_page.to_image = MethodType(rotated_to_image, rotated_plumber_page)
+
+        # Wrap in a fresh natural-pdf Page (not added to the parent cache).
+        return self.__class__(
+            rotated_plumber_page,
+            self._parent,
+            self._index,
+            font_attrs=self._parent._font_attrs,
+            load_text=self._load_text,
+            context=getattr(self, "_context", None),
+        )
 
     def extract_text(
         self,

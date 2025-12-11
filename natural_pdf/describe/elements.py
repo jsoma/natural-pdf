@@ -4,12 +4,67 @@ Element-specific describe functions.
 
 import logging
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from natural_pdf.elements.base import Element
 
 logger = logging.getLogger(__name__)
+
+_NAMED_COLOR_MAP = {
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "red": "#FF0000",
+    "green": "#008000",
+    "blue": "#0000FF",
+}
+
+
+def _color_to_hex(color: Any) -> Optional[str]:
+    """
+    Normalize various color representations (tuples, CSS names, hex strings) into hex.
+    Returns None when the color cannot be parsed.
+    """
+
+    if color is None:
+        return None
+
+    if isinstance(color, str):
+        normalized = color.strip()
+        if not normalized:
+            return None
+        if normalized.startswith("#"):
+            hex_value = normalized.upper()
+            if len(hex_value) == 4:  # #RGB → #RRGGBB
+                try:
+                    r, g, b = hex_value[1:]
+                    return f"#{r}{r}{g}{g}{b}{b}"
+                except Exception:
+                    return hex_value
+            return hex_value
+        mapped = _NAMED_COLOR_MAP.get(normalized.lower())
+        if mapped:
+            return mapped
+        return normalized
+
+    if isinstance(color, (tuple, list)):
+        if not color:
+            return None
+        components = []
+        try:
+            for value in color[:3]:
+                components.append(float(value))
+        except (TypeError, ValueError):
+            return None
+
+        if any(val > 1.0 for val in components):
+            ints = [int(round(max(0.0, min(val, 255.0)))) for val in components]
+        else:
+            ints = [int(round(max(0.0, min(val, 1.0)) * 255.0)) for val in components]
+
+        return "#{:02X}{:02X}{:02X}".format(*ints)
+
+    return None
 
 
 def describe_text_elements(elements: List["Element"]) -> Dict[str, Any]:
@@ -99,15 +154,8 @@ def describe_rect_elements(elements: List["Element"]) -> Dict[str, Any]:
         # Color - use the element's stroke/fill properties
         color = stroke or fill
         if color:
-            if isinstance(color, (tuple, list)):
-                if color == (0, 0, 0) or color == (0.0, 0.0, 0.0):
-                    colors["black"] += 1
-                elif color == (1, 1, 1) or color == (1.0, 1.0, 1.0):
-                    colors["white"] += 1
-                else:
-                    colors[str(color)] += 1
-            else:
-                colors[str(color)] += 1
+            color_key = _color_to_hex(color) or str(color)
+            colors[color_key] += 1
 
     # Size statistics
     if sizes:
@@ -177,13 +225,8 @@ def describe_line_elements(elements: List["Element"]) -> Dict[str, Any]:
         # Color - use the element's color property
         color = getattr(element, "color", None)  # LineElement has a color property
         if color:
-            if isinstance(color, (tuple, list)):
-                if color == (0, 0, 0) or color == (0.0, 0.0, 0.0):
-                    colors["black"] += 1
-                else:
-                    colors[str(color)] += 1
-            else:
-                colors[str(color)] += 1
+            color_key = _color_to_hex(color) or str(color)
+            colors[color_key] += 1
 
     # Length statistics
     if lengths:

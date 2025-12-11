@@ -22,6 +22,7 @@ from typing import (
     cast,
 )
 
+from pdfplumber.utils import crop_to_bbox
 from pdfplumber.utils.geometry import get_bbox_overlap
 
 # New Imports
@@ -407,6 +408,207 @@ class Region(
             include_callable=include_callable, debug=debug
         )
         return local + page_regions
+
+    def rotate(
+        self,
+        angle: int = 90,
+        direction: Literal["clockwise", "counterclockwise"] = "clockwise",
+    ) -> "Region":
+        """
+        Return a rotated view of this region as a new Region bound to a virtual page.
+
+        The rotation is applied to underlying pdfplumber objects (chars, rects, lines,
+        images) before extraction, so text/tables are reprocessed in the new orientation.
+        The original page/region are not mutated.
+        """
+        allowed_angles = {0, 90, 180, 270}
+        if angle not in allowed_angles:
+            raise ValueError(f"angle must be one of {sorted(allowed_angles)}; got {angle}")
+        resolved_angle = angle % 360
+        if direction == "counterclockwise" and resolved_angle:
+            resolved_angle = (360 - resolved_angle) % 360
+        elif direction not in {"clockwise", "counterclockwise"}:
+            raise ValueError("direction must be 'clockwise' or 'counterclockwise'")
+
+        if resolved_angle == 0:
+            return self
+
+        from pdfplumber.page import DerivedPage
+
+        parent_np_page = self.page
+        parent_plumber_page = parent_np_page._page
+        if parent_plumber_page is None:
+            raise RuntimeError("Cannot rotate region: underlying pdfplumber page is missing.")
+
+        x0, top, x1, bottom = self.bbox
+        width = x1 - x0
+        height = bottom - top
+
+        # Helper to rotate points in region-local coordinates (origin at region top-left).
+        def rotate_point(x: float, y: float) -> Tuple[float, float]:
+            if resolved_angle == 90:
+                return (height - y, x)  # clockwise
+            if resolved_angle == 180:
+                return (width - x, height - y)
+            if resolved_angle == 270:
+                return (y, width - x)  # counterclockwise
+            return (x, y)
+
+        new_width, new_height = (height, width) if resolved_angle in (90, 270) else (width, height)
+
+        def rotate_obj(obj: Dict[str, Any]) -> Dict[str, Any]:
+            # Work on a shallow copy to avoid mutating shared objects.
+            rotated = dict(obj)
+            ox0, otop, ox1, obottom = (
+                rotated.get("x0"),
+                rotated.get("top"),
+                rotated.get("x1"),
+                rotated.get("bottom"),
+            )
+            if None in (ox0, otop, ox1, obottom):
+                return rotated
+            # Rebase to region origin
+            x0r, x1r = ox0 - x0, ox1 - x0
+            y0r, y1r = otop - top, obottom - top
+            corners = [(x0r, y0r), (x0r, y1r), (x1r, y0r), (x1r, y1r)]
+            tx: List[float] = []
+            ty: List[float] = []
+            for cx, cy in corners:
+                rx, ry = rotate_point(cx, cy)
+                tx.append(rx)
+                ty.append(ry)
+            nx0, nx1 = min(tx), max(tx)
+            ntop, nbottom = min(ty), max(ty)
+            rotated.update(
+                {
+                    "x0": nx0,
+                    "x1": nx1,
+                    "top": ntop,
+                    "bottom": nbottom,
+                    "width": nx1 - nx0,
+                    "height": nbottom - ntop,
+                    "y0": new_height - nbottom,
+                    "y1": new_height - ntop,
+                    "upright": True,
+                    "doctop": parent_plumber_page.initial_doctop + ntop,
+                }
+            )
+            return rotated
+
+        def rotate_objects(objs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            return [rotate_obj(o) for o in objs]
+
+        # Crop relevant objects to the region bounds, then rotate them.
+        object_map: Dict[str, List[Dict[str, Any]]] = {}
+        for kind, source in (
+            ("char", parent_plumber_page.chars),
+            ("rect", parent_plumber_page.rects),
+            ("line", parent_plumber_page.lines),
+            ("curve", getattr(parent_plumber_page, "curves", [])),
+            ("image", parent_plumber_page.images),
+        ):
+            cropped = crop_to_bbox(source, self.bbox) if source else []
+            if cropped:
+                object_map[kind] = rotate_objects(cropped)
+
+        class RotatedSubPage(DerivedPage):
+            def __init__(
+                self,
+                parent_page,
+                objects: Dict[str, List[Dict[str, Any]]],
+                bbox: Tuple[float, float, float, float],
+                size: Tuple[float, float],
+                angle: int,
+                orig_bbox: Tuple[float, float, float, float],
+            ):
+                self.bbox = bbox
+                self._size = size
+                self._angle = angle
+                self._parent_page = parent_page
+                self._orig_bbox = orig_bbox
+                super().__init__(parent_page)
+                self._objects = objects
+                self.rotation = 0
+                self.mediabox = (0, 0, size[0], size[1])
+                self.cropbox = bbox
+
+            @property
+            def width(self):  # type: ignore[override]
+                return self._size[0]
+
+            @property
+            def height(self):  # type: ignore[override]
+                return self._size[1]
+
+            @property
+            def objects(self):  # type: ignore[override]
+                return self._objects
+
+            def to_image(  # type: ignore[override]
+                self,
+                resolution: Optional[Union[int, float]] = None,
+                width: Optional[Union[int, float]] = None,
+                height: Optional[Union[int, float]] = None,
+                antialias: bool = False,
+                force_mediabox: bool = False,
+            ):
+                """
+                Render the parent page, crop to the original region, rotate the bitmap,
+                and hand it to pdfplumber's PageImage so highlights align.
+                """
+                from pdfplumber.display import PageImage
+                from PIL import Image as PILImage
+
+                base = self._parent_page.to_image(resolution=resolution, antialias=antialias)
+                scale = base.scale
+                # Use the original (unrotated) region bbox for cropping
+                rx0, rtop, rx1, rbottom = self._orig_bbox
+                px0 = int(round((rx0 - base.bbox[0]) * scale))
+                py0 = int(round((rtop - base.bbox[1]) * scale))
+                px1 = int(round((rx1 - base.bbox[0]) * scale))
+                py1 = int(round((rbottom - base.bbox[1]) * scale))
+
+                region_img = base.original.crop((px0, py0, px1, py1))
+
+                if self._angle == 90:
+                    rotated_img = region_img.transpose(PILImage.ROTATE_270)
+                elif self._angle == 180:
+                    rotated_img = region_img.transpose(PILImage.ROTATE_180)
+                elif self._angle == 270:
+                    rotated_img = region_img.transpose(PILImage.ROTATE_90)
+                else:
+                    rotated_img = region_img
+
+                return PageImage(
+                    self,
+                    original=rotated_img.convert("RGB"),
+                    resolution=resolution or base.resolution,
+                    antialias=antialias,
+                    force_mediabox=force_mediabox,
+                )
+
+        rotated_bbox = (0.0, 0.0, float(new_width), float(new_height))
+        rotated_plumber_page = RotatedSubPage(
+            parent_plumber_page,
+            object_map,
+            rotated_bbox,
+            (new_width, new_height),
+            resolved_angle,
+            self.bbox,
+        )
+
+        from natural_pdf.core.page import Page as NpPage  # Local import to avoid circular deps
+
+        rotated_np_page = NpPage(
+            rotated_plumber_page,
+            parent_np_page._parent,
+            parent_np_page.index,
+            font_attrs=parent_np_page._parent._font_attrs,
+            load_text=parent_np_page._load_text,
+            context=getattr(parent_np_page, "_context", None),
+        )
+
+        return Region(rotated_np_page, rotated_bbox, parent=self, label=self.label)
 
     def to_region(self) -> "Region":
         """Regions already satisfy the section surface; return self."""
