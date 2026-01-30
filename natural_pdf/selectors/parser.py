@@ -31,6 +31,8 @@ This enables powerful document navigation like:
 """
 
 import ast
+import copy
+import functools
 import logging
 import re
 from collections import Counter
@@ -340,6 +342,48 @@ def _split_top_level_or(selector: str) -> List[str]:
     return parts if parts else [selector]
 
 
+# -----------------------------------------------------------------------------
+# Selector Parsing Cache
+# -----------------------------------------------------------------------------
+# LRU cache for parsed selectors. Since parse_selector returns mutable dicts,
+# we cache the result and return a deep copy to prevent mutation issues.
+# The cache size of 256 is chosen to balance memory usage with cache hit rate
+# for typical document processing scenarios.
+
+_SELECTOR_CACHE_SIZE = 256
+
+
+@functools.lru_cache(maxsize=_SELECTOR_CACHE_SIZE)
+def _parse_selector_cached(selector: str) -> Dict[str, Any]:
+    """Internal cached parser. Returns cached result - callers must copy if mutating."""
+    return _parse_selector_impl(selector)
+
+
+def clear_selector_cache() -> None:
+    """
+    Clear the selector parsing cache.
+
+    This can be useful in long-running applications or when memory usage
+    is a concern. Under normal usage, the cache is bounded to 256 entries
+    and does not need manual clearing.
+    """
+    _parse_selector_cached.cache_clear()
+
+
+def get_selector_cache_info():
+    """
+    Get statistics about the selector parsing cache.
+
+    Returns:
+        A named tuple with hits, misses, maxsize, and currsize.
+
+    Example:
+        >>> info = get_selector_cache_info()
+        >>> print(f"Cache hit rate: {info.hits / (info.hits + info.misses):.1%}")
+    """
+    return _parse_selector_cached.cache_info()
+
+
 def parse_selector(selector: str) -> Dict[str, Any]:
     """
     Parse a CSS-like selector string into a structured selector object.
@@ -371,6 +415,20 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         OR operators work with all selector types except spatial pseudo-classes
         (:above, :below, :near, :left-of, :right-of) which require page context.
         Spatial relationships within OR selectors are not currently supported.
+
+        Results are cached for performance. The returned dict is a deep copy
+        to prevent mutation of cached values.
+    """
+    # Use cached parser and return a deep copy to prevent mutation issues
+    return copy.deepcopy(_parse_selector_cached(selector))
+
+
+def _parse_selector_impl(selector: str) -> Dict[str, Any]:
+    """
+    Internal implementation of selector parsing.
+
+    This is the actual parser logic, separated from the public API
+    to enable caching. Do not call directly - use parse_selector() instead.
     """
     attributes: List[Dict[str, Any]] = []
     pseudo_classes: List[Dict[str, Any]] = []
@@ -407,12 +465,24 @@ def parse_selector(selector: str) -> Dict[str, Any]:
 
     # If we found OR parts, parse each one recursively and return compound selector
     if len(or_parts) > 1:
-        parsed_selectors = [parse_selector(part) for part in or_parts]
+        # Deduplicate OR parts while preserving order (first occurrence wins)
+        # This optimization avoids parsing and evaluating the same selector multiple times
+        seen = set()
+        unique_parts = []
+        for part in or_parts:
+            if part not in seen:
+                seen.add(part)
+                unique_parts.append(part)
+
+        # Use cached parser for recursive calls to avoid redundant parsing
+        # Note: We use _parse_selector_cached directly here since we're building
+        # a new compound result that will be cached at the top level
+        parsed_selectors = [_parse_selector_cached(part) for part in unique_parts]
 
         if len(parsed_selectors) > 1:
             return {"type": "or", "selectors": parsed_selectors}
         elif len(parsed_selectors) == 1:
-            # Only one valid part, return it directly
+            # Only one valid part after deduplication, return it directly
             return parsed_selectors[0]
         else:
             raise ValueError(f"No valid parts found in OR selector '{original_selector_for_error}'")

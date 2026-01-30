@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from PIL import Image
 
+from natural_pdf.utils.option_validation import validate_option_type
+
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, PaddleOCROptions
 
@@ -131,7 +133,7 @@ class PaddleOCREngine(OCREngine):
                 "paddleocr is not available. Install via: npdf install paddle"
             ) from e
 
-        paddle_options = options if isinstance(options, PaddleOCROptions) else PaddleOCROptions()
+        paddle_options, _ = validate_option_type(options, PaddleOCROptions, "PaddleOCREngine")
 
         if len(languages) > 1:
             self.logger.warning(

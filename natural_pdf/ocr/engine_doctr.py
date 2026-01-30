@@ -8,6 +8,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 import numpy as np
 from PIL import Image
 
+from natural_pdf.utils.option_validation import validate_option_type
+
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, DoctrOCROptions
 
@@ -54,8 +56,8 @@ class DoctrOCREngine(OCREngine):
         except ImportError:
             raise
 
-        # Cast to DoctrOCROptions or use default
-        doctr_opts = options if isinstance(options, DoctrOCROptions) else DoctrOCROptions()
+        # Cast to DoctrOCROptions or use default (with warning if wrong type)
+        doctr_opts, _ = validate_option_type(options, DoctrOCROptions, "DoctrOCREngine")
 
         # Check if CUDA is available in device string
         use_cuda = device.lower().startswith("cuda") if device else False
@@ -211,8 +213,8 @@ class DoctrOCREngine(OCREngine):
         height, width = image.shape[:2]
         self._last_image_dimensions = (height, width)
 
-        # Cast options to DoctrOCROptions or use default
-        doctr_opts = options if isinstance(options, DoctrOCROptions) else DoctrOCROptions()
+        # Cast options to DoctrOCROptions or use default (with warning if wrong type)
+        doctr_opts, _ = validate_option_type(options, DoctrOCROptions, "DoctrOCREngine")
 
         # Check if we need to detect orientation first
         if self._orientation_model is not None and doctr_opts.use_orientation_predictor:

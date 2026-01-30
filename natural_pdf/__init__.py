@@ -83,6 +83,21 @@ class Options:
 # Create global options instance
 options = Options()
 
+# Option validators: (validator_func, warning_message, corrector_func or None)
+# If corrector_func is None, the validator raises an error instead of correcting
+_OPTION_VALIDATORS = {
+    "ocr.min_confidence": (
+        lambda v: isinstance(v, (int, float)) and 0.0 <= v <= 1.0,
+        "must be a number between 0.0 and 1.0",
+        lambda v: max(0.0, min(1.0, float(v))) if isinstance(v, (int, float)) else 0.5,
+    ),
+    "image.resolution": (
+        lambda v: isinstance(v, (int, float)) and v > 0,
+        "must be a positive number",
+        lambda v: max(1, int(v)) if isinstance(v, (int, float)) else 150,
+    ),
+}
+
 
 def set_option(name: str, value):
     """
@@ -97,6 +112,8 @@ def set_option(name: str, value):
         npdf.set_option('layout.auto_multipage', True)
         npdf.set_option('ocr.engine', 'surya')
     """
+    from natural_pdf.utils.option_validation import is_strict_mode
+
     parts = name.split(".")
     obj = options
 
@@ -109,10 +126,23 @@ def set_option(name: str, value):
 
     # Set the final value
     final_key = parts[-1]
-    if hasattr(obj, final_key):
-        setattr(obj, final_key, value)
-    else:
+    if not hasattr(obj, final_key):
         raise KeyError(f"Unknown option: {name}")
+
+    # Validate if validator exists for this option
+    if name in _OPTION_VALIDATORS:
+        validator, message, corrector = _OPTION_VALIDATORS[name]
+        if not validator(value):
+            if is_strict_mode():
+                from natural_pdf.exceptions import InvalidOptionError
+
+                raise InvalidOptionError(f"[set_option] {name}={value!r} {message}")
+            else:
+                corrected = corrector(value)
+                logger.warning(f"[set_option] {name}={value!r} {message}, using {corrected!r}")
+                value = corrected
+
+    setattr(obj, final_key, value)
 
 
 # Version (surfaced from installed metadata when possible)
@@ -142,6 +172,24 @@ from natural_pdf.core.pdf import PDF
 # Core imports
 from natural_pdf.core.pdf_collection import PDFCollection
 from natural_pdf.elements.region import Region
+
+# Unified exception hierarchy
+from natural_pdf.exceptions import (
+    ClassificationError,
+    ConfigurationError,
+    ExportError,
+    InvalidOptionError,
+    LayoutEngineNotAvailableError,
+    LayoutError,
+    NaturalPDFError,
+    OCREngineNotAvailableError,
+    OCRError,
+    QAError,
+    SearchError,
+    SelectorError,
+    SelectorMatchError,
+    SelectorParseError,
+)
 from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
 
@@ -209,6 +257,7 @@ except ImportError:
 
 # Explicitly define what gets imported with 'from natural_pdf import *'
 __all__ = [
+    # Core classes
     "PDF",
     "PDFCollection",
     "Page",
@@ -216,16 +265,34 @@ __all__ = [
     "Flow",
     "FlowRegion",
     "Guides",
+    "PageCollection",
+    # Judge
     "Judge",
     "Decision",
     "PickResult",
     "JudgeError",
+    # Search options
     "TextSearchOptions",
     "MultiModalSearchOptions",
     "BaseSearchOptions",
+    # Configuration
     "configure_logging",
     "options",
-    "PageCollection",
+    # Exceptions (unified hierarchy)
+    "NaturalPDFError",
+    "OCRError",
+    "OCREngineNotAvailableError",
+    "LayoutError",
+    "LayoutEngineNotAvailableError",
+    "SelectorError",
+    "SelectorParseError",
+    "SelectorMatchError",
+    "ConfigurationError",
+    "InvalidOptionError",
+    "ExportError",
+    "SearchError",
+    "ClassificationError",
+    "QAError",
 ]
 
 # Add QA components to __all__ if available

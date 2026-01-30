@@ -3,6 +3,13 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
+from natural_pdf.utils.option_validation import (
+    validate_confidence,
+    validate_device,
+    validate_non_empty_string,
+    validate_positive_int,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +26,13 @@ class BaseLayoutOptions:
         default_factory=dict
     )  # For engine-specific args not yet fields
 
+    def __post_init__(self):
+        """Validate base layout options."""
+        self.confidence = validate_confidence(
+            self.confidence, "confidence", self.__class__.__name__
+        )
+        self.device = validate_device(self.device, "device", self.__class__.__name__)
+
 
 # --- YOLO Specific Options ---
 @dataclass
@@ -28,6 +42,13 @@ class YOLOLayoutOptions(BaseLayoutOptions):
     model_repo: str = "juliozhao/DocLayout-YOLO-DocStructBench"
     model_file: str = "doclayout_yolo_docstructbench_imgsz1024.pt"
     image_size: int = 1024  # Input image size for the model
+
+    def __post_init__(self):
+        """Validate YOLO layout options."""
+        super().__post_init__()
+        self.image_size = validate_positive_int(
+            self.image_size, "image_size", "YOLOLayoutOptions", default=1024
+        )
 
 
 # --- TATR Specific Options ---
@@ -49,6 +70,20 @@ class TATRLayoutOptions(BaseLayoutOptions):
     column_threshold: Optional[float] = (
         None  # Lower threshold for columns (default: confidence * 0.8)
     )
+
+    def __post_init__(self):
+        """Validate TATR layout options."""
+        super().__post_init__()
+        self.max_detection_size = validate_positive_int(
+            self.max_detection_size, "max_detection_size", "TATRLayoutOptions", default=800
+        )
+        self.max_structure_size = validate_positive_int(
+            self.max_structure_size, "max_structure_size", "TATRLayoutOptions", default=1000
+        )
+        if self.column_threshold is not None:
+            self.column_threshold = validate_confidence(
+                self.column_threshold, "column_threshold", "TATRLayoutOptions"
+            )
 
 
 # --- Paddle Specific Options ---
@@ -134,6 +169,70 @@ class PaddleLayoutOptions(BaseLayoutOptions):
     verbose: bool = False  # Verbose logging for the detector class
     create_cells: Optional[bool] = True
 
+    def __post_init__(self):
+        """Validate Paddle layout options."""
+        super().__post_init__()
+        # Validate threshold parameters if set
+        if self.layout_threshold is not None:
+            self.layout_threshold = validate_confidence(
+                self.layout_threshold, "layout_threshold", "PaddleLayoutOptions"
+            )
+        if self.text_det_thresh is not None:
+            self.text_det_thresh = validate_confidence(
+                self.text_det_thresh, "text_det_thresh", "PaddleLayoutOptions"
+            )
+        if self.text_det_box_thresh is not None:
+            self.text_det_box_thresh = validate_confidence(
+                self.text_det_box_thresh, "text_det_box_thresh", "PaddleLayoutOptions"
+            )
+        if self.text_rec_score_thresh is not None:
+            self.text_rec_score_thresh = validate_confidence(
+                self.text_rec_score_thresh, "text_rec_score_thresh", "PaddleLayoutOptions"
+            )
+        if self.seal_det_thresh is not None:
+            self.seal_det_thresh = validate_confidence(
+                self.seal_det_thresh, "seal_det_thresh", "PaddleLayoutOptions"
+            )
+        if self.seal_det_box_thresh is not None:
+            self.seal_det_box_thresh = validate_confidence(
+                self.seal_det_box_thresh, "seal_det_box_thresh", "PaddleLayoutOptions"
+            )
+        if self.seal_rec_score_thresh is not None:
+            self.seal_rec_score_thresh = validate_confidence(
+                self.seal_rec_score_thresh, "seal_rec_score_thresh", "PaddleLayoutOptions"
+            )
+        # Validate batch sizes if set
+        if self.chart_recognition_batch_size is not None:
+            self.chart_recognition_batch_size = validate_positive_int(
+                self.chart_recognition_batch_size,
+                "chart_recognition_batch_size",
+                "PaddleLayoutOptions",
+            )
+        if self.textline_orientation_batch_size is not None:
+            self.textline_orientation_batch_size = validate_positive_int(
+                self.textline_orientation_batch_size,
+                "textline_orientation_batch_size",
+                "PaddleLayoutOptions",
+            )
+        if self.text_recognition_batch_size is not None:
+            self.text_recognition_batch_size = validate_positive_int(
+                self.text_recognition_batch_size,
+                "text_recognition_batch_size",
+                "PaddleLayoutOptions",
+            )
+        if self.seal_text_recognition_batch_size is not None:
+            self.seal_text_recognition_batch_size = validate_positive_int(
+                self.seal_text_recognition_batch_size,
+                "seal_text_recognition_batch_size",
+                "PaddleLayoutOptions",
+            )
+        if self.formula_recognition_batch_size is not None:
+            self.formula_recognition_batch_size = validate_positive_int(
+                self.formula_recognition_batch_size,
+                "formula_recognition_batch_size",
+                "PaddleLayoutOptions",
+            )
+
 
 # --- Surya Specific Options ---
 @dataclass
@@ -142,6 +241,11 @@ class SuryaLayoutOptions(BaseLayoutOptions):
 
     model_name: str = "default"  # Placeholder if different models become available
     recognize_table_structure: bool = True  # Automatically run table structure recognition?
+
+    def __post_init__(self):
+        """Validate Surya layout options."""
+        super().__post_init__()
+        # Surya has minimal configuration - validation reserved for future expansion
 
 
 # --- Docling Specific Options ---
@@ -156,6 +260,11 @@ class DoclingLayoutOptions(BaseLayoutOptions):
     verbose: bool = False  # Verbose logging for the detector class
     # Other kwargs like 'device', 'batch_size' can go in extra_args
 
+    def __post_init__(self):
+        """Validate Docling layout options."""
+        super().__post_init__()
+        # Docling has minimal configuration - validation reserved for future expansion
+
 
 # --- Gemini Specific Options ---
 @dataclass
@@ -166,6 +275,13 @@ class GeminiLayoutOptions(BaseLayoutOptions):
     client: Optional[Any] = None  # Allow passing a pre-configured client
     # Removed: prompt_template, temperature, top_p, max_output_tokens
     # These are typically passed directly to the chat completion call or via extra_args
+
+    def __post_init__(self):
+        """Validate Gemini layout options."""
+        super().__post_init__()
+        self.model_name = validate_non_empty_string(
+            self.model_name, "model_name", "GeminiLayoutOptions", default="gemini-2.0-flash"
+        )
 
 
 # --- Union Type ---

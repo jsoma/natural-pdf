@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from natural_pdf.utils.option_validation import validate_option_type
+
 from .base import LayoutDetector
 from .layout_options import BaseLayoutOptions, GeminiLayoutOptions
 
@@ -50,8 +52,7 @@ class GeminiLayoutDetector(LayoutDetector):
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model name."""
-        if not isinstance(options, GeminiLayoutOptions):
-            options = GeminiLayoutOptions()  # Use defaults
+        options, _ = validate_option_type(options, GeminiLayoutOptions, "GeminiLayoutDetector")
 
         model_key = options.model_name
         # Prompt is built dynamically, so not part of cache key based on options

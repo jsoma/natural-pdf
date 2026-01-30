@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from PIL import Image
 
+from natural_pdf.utils.option_validation import validate_option_type
+
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, EasyOCROptions
 
@@ -37,8 +39,8 @@ class EasyOCREngine(OCREngine):
             self.logger.error(f"Failed to import EasyOCR: {e}")
             raise
 
-        # Cast to EasyOCROptions if possible, otherwise use default
-        easy_options = options if isinstance(options, EasyOCROptions) else EasyOCROptions()
+        # Cast to EasyOCROptions if possible, otherwise use default (with warning)
+        easy_options, _ = validate_option_type(options, EasyOCROptions, "EasyOCREngine")
 
         # Prepare constructor arguments
         use_gpu = "cuda" in device.lower() or "mps" in device.lower()
@@ -106,8 +108,8 @@ class EasyOCREngine(OCREngine):
         if not isinstance(image, np.ndarray):
             raise TypeError("EasyOCREngine expects preprocessed numpy arrays")
 
-        # Cast options to proper type if provided
-        easy_options = options if isinstance(options, EasyOCROptions) else EasyOCROptions()
+        # Cast options to proper type if provided (with warning if wrong type)
+        easy_options, _ = validate_option_type(options, EasyOCROptions, "EasyOCREngine")
 
         # Prepare readtext arguments (only needed if not detect_only)
         readtext_args: Dict[str, Any] = {}

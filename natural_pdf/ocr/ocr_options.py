@@ -2,6 +2,12 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple, Union
 
+from natural_pdf.utils.option_validation import (
+    validate_confidence,
+    validate_device,
+    validate_positive_int,
+)
+
 
 # --- Base Options ---
 @dataclass
@@ -51,6 +57,24 @@ class EasyOCROptions(BaseOCROptions):
     x_ths: float = 1.0
     add_margin: float = 0.1
     output_format: str = "standard"
+
+    def __post_init__(self):
+        """Validate EasyOCR options."""
+        self.batch_size = validate_positive_int(self.batch_size, "batch_size", "EasyOCROptions")
+        self.workers = (
+            validate_positive_int(self.workers, "workers", "EasyOCROptions", default=0)
+            if self.workers != 0
+            else 0
+        )
+        self.min_size = validate_positive_int(
+            self.min_size, "min_size", "EasyOCROptions", default=10
+        )
+        self.beamWidth = validate_positive_int(
+            self.beamWidth, "beamWidth", "EasyOCROptions", default=5
+        )
+        self.canvas_size = validate_positive_int(
+            self.canvas_size, "canvas_size", "EasyOCROptions", default=2560
+        )
 
 
 # --- PaddleOCR Specific Options ---
@@ -110,7 +134,32 @@ class PaddleOCROptions(BaseOCROptions):
     paddlex_config: Optional[str] = None
 
     def __post_init__(self):
-        pass
+        """Validate PaddleOCR options."""
+        self.device = validate_device(self.device, "device", "PaddleOCROptions")
+        if self.textline_orientation_batch_size is not None:
+            self.textline_orientation_batch_size = validate_positive_int(
+                self.textline_orientation_batch_size,
+                "textline_orientation_batch_size",
+                "PaddleOCROptions",
+            )
+        if self.text_recognition_batch_size is not None:
+            self.text_recognition_batch_size = validate_positive_int(
+                self.text_recognition_batch_size,
+                "text_recognition_batch_size",
+                "PaddleOCROptions",
+            )
+        if self.text_det_thresh is not None:
+            self.text_det_thresh = validate_confidence(
+                self.text_det_thresh, "text_det_thresh", "PaddleOCROptions"
+            )
+        if self.text_det_box_thresh is not None:
+            self.text_det_box_thresh = validate_confidence(
+                self.text_det_box_thresh, "text_det_box_thresh", "PaddleOCROptions"
+            )
+        if self.text_rec_score_thresh is not None:
+            self.text_rec_score_thresh = validate_confidence(
+                self.text_rec_score_thresh, "text_rec_score_thresh", "PaddleOCROptions"
+            )
 
 
 # --- Surya Specific Options ---
@@ -119,7 +168,11 @@ class SuryaOCROptions(BaseOCROptions):
     """Specific options for the Surya OCR engine."""
 
     # Currently, Surya example shows languages passed at prediction time.
-    pass
+
+    def __post_init__(self):
+        """Validate Surya OCR options."""
+        # Surya has minimal options - validation reserved for future expansion
+        pass
 
 
 # --- Doctr Specific Options ---
@@ -146,6 +199,14 @@ class DoctrOCROptions(BaseOCROptions):
 
     # Options for orientation predictors
     use_orientation_predictor: bool = False  # Whether to use page orientation predictor
+
+    def __post_init__(self):
+        """Validate DocTR options."""
+        self.batch_size = validate_positive_int(self.batch_size, "batch_size", "DoctrOCROptions")
+        if self.bin_thresh is not None:
+            self.bin_thresh = validate_confidence(self.bin_thresh, "bin_thresh", "DoctrOCROptions")
+        if self.box_thresh is not None:
+            self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "DoctrOCROptions")
 
 
 # --- Union type for type hinting ---

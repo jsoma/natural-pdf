@@ -15,6 +15,8 @@ else:  # pragma: no cover - runtime import with graceful fallback
     from .base import LayoutDetector
     from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
 
+from natural_pdf.utils.option_validation import validate_option_type
+
 logger = logging.getLogger(__name__)
 
 YOLOv10Type = Type[Any]
@@ -63,10 +65,8 @@ class YOLODocLayoutDetector(LayoutDetector):
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model repo/file and device."""
-        # Ensure options is the correct type
-        if not isinstance(options, YOLOLayoutOptions):
-            # This shouldn't happen if called correctly, but handle defensively
-            options = YOLOLayoutOptions(device=options.device)  # Use base device
+        # Ensure options is the correct type (with warning if wrong type)
+        options, _ = validate_option_type(options, YOLOLayoutOptions, "YOLODocLayoutDetector")
 
         device_key = str(options.device).lower()
         model_key = f"{options.model_repo.replace('/','_')}_{options.model_file}"
