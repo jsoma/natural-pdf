@@ -43,7 +43,20 @@ class ImageElement(Element):
         return self._obj.get("colorspace")
 
     # No text extraction for images
-    def extract_text(self, *args, **kwargs) -> str:  # noqa: D401 – consistent signature
+    def extract_text(
+        self, preserve_whitespace: bool = True, apply_exclusions: bool = True, **kwargs
+    ) -> str:
+        """Images don't have extractable text, so this returns an empty string."""
+        # Backward compatibility alias
+        if "use_exclusions" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "use_exclusions is deprecated, use apply_exclusions instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            kwargs.pop("use_exclusions")
         return ""
 
     def __repr__(self):

@@ -37,14 +37,16 @@ class GeminiLayoutDetector(LayoutDetector):
         """
         Check if the Gemini detector is available.
 
-        Since this detector expects users to provide their own compatible OpenAI client,
-        the detector itself is always available. Users must ensure they have a compatible
-        client (e.g., from the openai package) and provide it via GeminiLayoutOptions.client.
+        This checks whether the openai library is installed, which is required
+        for making API calls. Users must also provide a compatible client
+        via GeminiLayoutOptions.client.
 
         Returns:
-            True - the detector is always available, but requires a compatible client.
+            True if the openai library is available, False otherwise.
         """
-        return True
+        import importlib.util
+
+        return importlib.util.find_spec("openai") is not None
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model name."""

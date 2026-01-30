@@ -207,8 +207,9 @@ class DoctrOCREngine(OCREngine):
         if not isinstance(image, np.ndarray):
             raise TypeError("DoctrOCREngine expects numpy arrays after preprocessing")
 
-        # Capture image dimensions for denormalization
+        # Capture image dimensions for denormalization and store for _standardize_results
         height, width = image.shape[:2]
+        self._last_image_dimensions = (height, width)
 
         # Cast options to DoctrOCROptions or use default
         doctr_opts = options if isinstance(options, DoctrOCROptions) else DoctrOCROptions()
@@ -253,8 +254,7 @@ class DoctrOCREngine(OCREngine):
                     if doctr_opts.box_thresh is not None and original_box_thresh is not None:
                         postprocessor.box_thresh = original_box_thresh
 
-                # Return tuple of (result, dimensions)
-                return (result, (height, width))
+                return result
             except Exception as e:
                 logger.error(f"Error in detection_predictor: {e}")
                 # Fall back to OCR predictor if detection fails
@@ -300,8 +300,7 @@ class DoctrOCREngine(OCREngine):
             ):
                 self._model.det_predictor.model.postprocessor.box_thresh = original_box_thresh
 
-            # Return tuple of (result, dimensions)
-            return (result, (height, width))
+            return result
         except Exception as e:
             logger.error(f"Error in OCR prediction: {e}")
             raise
@@ -312,16 +311,16 @@ class DoctrOCREngine(OCREngine):
         """Convert doctr results to standardized TextRegion objects."""
         standardized_regions = []
 
-        # Extract results and dimensions
-        if isinstance(raw_results, tuple) and len(raw_results) == 2:
-            results, dimensions = raw_results
-            image_height, image_width = dimensions
+        # Get results and dimensions from instance attribute
+        results = raw_results
+        dims = getattr(self, "_last_image_dimensions", None)
+        if dims is not None:
+            image_height, image_width = dims
         else:
-            # Fallback if dimensions aren't provided
-            results = raw_results
+            # Fallback if dimensions aren't available
             image_width = 1
             image_height = 1
-            logger.warning("Image dimensions not provided, using normalized coordinates")
+            logger.warning("Image dimensions not available, using normalized coordinates")
 
         # Handle detection-only results differently
         if detect_only and self._detection_model is not None and not hasattr(results, "pages"):

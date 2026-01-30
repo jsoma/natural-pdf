@@ -4,6 +4,56 @@ Utility functions for color formatting and conversion.
 
 from typing import Any, List, Optional, Tuple, Union
 
+# Default color values
+DEFAULT_RGB = (0, 0, 0)  # Black
+
+
+def normalize_pdf_color(
+    color: Any, default: Tuple[float, float, float] = DEFAULT_RGB
+) -> Tuple[float, float, float]:
+    """
+    Convert PDF color to RGB tuple.
+
+    Handles various PDF color formats:
+    - None -> default
+    - Single value (grayscale) -> (v, v, v)
+    - RGB tuple (3 values) -> passed through
+    - CMYK tuple (4 values) -> converted to RGB
+
+    Args:
+        color: The color value from pdfplumber (can be int, float, tuple, or None)
+        default: Default RGB tuple to return if color is None or invalid
+
+    Returns:
+        RGB tuple with values typically in [0, 1] range
+    """
+    if color is None:
+        return default
+
+    # Handle single value as grayscale
+    if isinstance(color, (int, float)):
+        return (color, color, color)
+
+    # Handle tuple/list formats
+    if isinstance(color, (tuple, list)):
+        if len(color) == 1:
+            # Single-value tuple (grayscale)
+            return (color[0], color[0], color[0])
+        if len(color) == 3:
+            # RGB
+            return tuple(color)  # type: ignore
+        if len(color) == 4:
+            # CMYK - convert to approximate RGB
+            c, m, y, k = color
+            r = 1 - min(1, c + k)
+            g = 1 - min(1, m + k)
+            b = 1 - min(1, y + k)
+            return (r, g, b)
+
+    # Invalid format, return default
+    return default
+
+
 # List of known color attribute names in natural-pdf
 COLOR_ATTRIBUTES = [
     "color",

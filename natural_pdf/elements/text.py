@@ -255,38 +255,14 @@ class TextElement(Element):
     @property
     def color(self) -> tuple:
         """Get the text color (RGB tuple)."""
-        # PDFs often use non-RGB values, so we handle different formats
-        # In pdfplumber, colors can be in various formats depending on the PDF
-        color = self._obj.get("non_stroking_color", (0, 0, 0))
+        from natural_pdf.utils.color_utils import normalize_pdf_color
 
-        # If it's a single value, treat as grayscale
-        if isinstance(color, (int, float)):
-            return (color, color, color)
-
-        # If it's a single-value tuple (grayscale), treat as grayscale
-        if isinstance(color, tuple) and len(color) == 1:
-            gray = color[0]
-            return (gray, gray, gray)
-
-        # If it's a tuple of 3 values, treat as RGB
-        if isinstance(color, tuple) and len(color) == 3:
-            return color
-
-        # If it's a tuple of 4 values, treat as CMYK and convert to approximate RGB
-        if isinstance(color, tuple) and len(color) == 4:
-            c, m, y, k = color
-            r = 1 - min(1, c + k)
-            g = 1 - min(1, m + k)
-            b = 1 - min(1, y + k)
-            return (r, g, b)
-
-        # Default to black
-        return (0, 0, 0)
+        return normalize_pdf_color(self._obj.get("non_stroking_color"))
 
     def extract_text(
         self,
         preserve_whitespace: bool = True,
-        use_exclusions: bool = True,
+        apply_exclusions: bool = True,
         *,
         strip: Optional[bool] = True,
         newlines: Union[bool, str] = True,
@@ -299,7 +275,7 @@ class TextElement(Element):
 
         Args:
             preserve_whitespace: Whether to retain whitespace characters (default: True).
-            use_exclusions: Present for API compatibility; exclusions are not applied within text elements.
+            apply_exclusions: Present for API compatibility; exclusions are not applied within text elements.
             strip: If True (default) remove leading/trailing whitespace unless ``preserve_whitespace`` is True.
             content_filter: Optional content filter to exclude specific text patterns. Can be:
                 - A regex pattern string (characters matching the pattern are EXCLUDED)
@@ -311,6 +287,16 @@ class TextElement(Element):
         Returns:
             The text content, optionally stripped and filtered.
         """
+        # Backward compatibility alias
+        if "use_exclusions" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "use_exclusions is deprecated, use apply_exclusions instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            apply_exclusions = kwargs.pop("use_exclusions")
         if keep_blank_chars is not None:
             preserve_whitespace = keep_blank_chars
 

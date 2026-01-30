@@ -65,10 +65,11 @@ class PaddleLayoutDetector(LayoutDetector):
 
     def is_available(self) -> bool:
         """Check if dependencies are installed."""
-        if PPStructureV3 is None and _paddle_import_error:
-            # Raise an informative error instead of just returning False
-            raise RuntimeError(f"Paddle dependencies check failed: {_paddle_import_error}")
-        return PPStructureV3 is not None
+        if PPStructureV3 is None:
+            if _paddle_import_error:
+                logger.debug("Paddle unavailable: %s", _paddle_import_error)
+            return False
+        return True
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """Generate cache key based on model configuration."""

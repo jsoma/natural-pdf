@@ -102,7 +102,6 @@ ai-core = [
     "torch",
     "torchvision",
     "transformers[sentencepiece]",
-    "huggingface_hub>=0.29.3",
 ]
 
 qa = [

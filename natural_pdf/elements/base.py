@@ -1852,18 +1852,28 @@ class Element(
         """
         return getattr(self, name, None)
 
-    def extract_text(self, preserve_whitespace=True, use_exclusions=True, **kwargs) -> str:
+    def extract_text(self, preserve_whitespace=True, apply_exclusions=True, **kwargs) -> str:
         """
         Extract text from this element.
 
         Args:
             preserve_whitespace: Whether to keep blank characters (default: True)
-            use_exclusions: Whether to apply exclusion regions (default: True)
+            apply_exclusions: Whether to apply exclusion regions (default: True)
             **kwargs: Additional extraction parameters
 
         Returns:
             Extracted text as string
         """
+        # Backward compatibility alias
+        if "use_exclusions" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "use_exclusions is deprecated, use apply_exclusions instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            apply_exclusions = kwargs.pop("use_exclusions")
         # Default implementation - override in subclasses
         return ""
 

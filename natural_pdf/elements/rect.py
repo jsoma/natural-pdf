@@ -36,52 +36,16 @@ class RectangleElement(Element):
     @property
     def fill(self) -> Tuple:
         """Get the fill color of the rectangle (RGB tuple)."""
-        # PDFs often use non-RGB values, so we handle different formats
-        color = self._obj.get("non_stroking_color", (0, 0, 0))
+        from natural_pdf.utils.color_utils import normalize_pdf_color
 
-        # If it's a single value, treat as grayscale
-        if isinstance(color, (int, float)):
-            return (color, color, color)
-
-        # If it's a tuple of 3 values, treat as RGB
-        if isinstance(color, tuple) and len(color) == 3:
-            return color
-
-        # If it's a tuple of 4 values, treat as CMYK and convert to approximate RGB
-        if isinstance(color, tuple) and len(color) == 4:
-            c, m, y, k = color
-            r = 1 - min(1, c + k)
-            g = 1 - min(1, m + k)
-            b = 1 - min(1, y + k)
-            return (r, g, b)
-
-        # Default to black
-        return (0, 0, 0)
+        return normalize_pdf_color(self._obj.get("non_stroking_color"))
 
     @property
     def stroke(self) -> Tuple:
         """Get the stroke color of the rectangle (RGB tuple)."""
-        # PDFs often use non-RGB values, so we handle different formats
-        color = self._obj.get("stroking_color", (0, 0, 0))
+        from natural_pdf.utils.color_utils import normalize_pdf_color
 
-        # If it's a single value, treat as grayscale
-        if isinstance(color, (int, float)):
-            return (color, color, color)
-
-        # If it's a tuple of 3 values, treat as RGB
-        if isinstance(color, tuple) and len(color) == 3:
-            return color
-
-        # If it's a tuple of 4 values, treat as CMYK and convert to approximate RGB
-        if isinstance(color, tuple) and len(color) == 4:
-            c, m, y, k = color
-            r = 1 - min(1, c + k)
-            g = 1 - min(1, m + k)
-            b = 1 - min(1, y + k)
-            return (r, g, b)
-
-        # Default to black
-        return (0, 0, 0)
+        return normalize_pdf_color(self._obj.get("stroking_color"))
 
     @property
     def stroke_width(self) -> float:
@@ -126,25 +90,37 @@ class RectangleElement(Element):
     def extract_text(
         self,
         preserve_whitespace: bool = True,
-        use_exclusions: bool = True,
+        apply_exclusions: bool = True,
         **kwargs: Any,
     ) -> str:
         """
         Extract text from inside this rectangle.
 
         Args:
+            preserve_whitespace: Whether to keep blank characters (default: True)
+            apply_exclusions: Whether to apply exclusion regions (default: True)
             **kwargs: Additional extraction parameters
 
         Returns:
             Extracted text as string
         """
+        # Backward compatibility alias
+        if "use_exclusions" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "use_exclusions is deprecated, use apply_exclusions instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            apply_exclusions = kwargs.pop("use_exclusions")
         # Use the region to extract text
         from natural_pdf.elements.region import Region
 
         region = Region(self.page, self.bbox)
         return region.extract_text(
             preserve_whitespace=preserve_whitespace,
-            use_exclusions=use_exclusions,
+            apply_exclusions=apply_exclusions,
             **kwargs,
         )
 

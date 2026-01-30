@@ -41,27 +41,9 @@ class LineElement(Element):
     @property
     def color(self) -> Tuple:
         """Get the line color (RGB tuple)."""
-        # PDFs often use non-RGB values, so we handle different formats
-        color = self._obj.get("stroking_color", (0, 0, 0))
+        from natural_pdf.utils.color_utils import normalize_pdf_color
 
-        # If it's a single value, treat as grayscale
-        if isinstance(color, (int, float)):
-            return (color, color, color)
-
-        # If it's a tuple of 3 values, treat as RGB
-        if isinstance(color, tuple) and len(color) == 3:
-            return color
-
-        # If it's a tuple of 4 values, treat as CMYK and convert to approximate RGB
-        if isinstance(color, tuple) and len(color) == 4:
-            c, m, y, k = color
-            r = 1 - min(1, c + k)
-            g = 1 - min(1, m + k)
-            b = 1 - min(1, y + k)
-            return (r, g, b)
-
-        # Default to black
-        return (0, 0, 0)
+        return normalize_pdf_color(self._obj.get("stroking_color"))
 
     @property
     def width(self) -> float:
@@ -107,7 +89,7 @@ class LineElement(Element):
     def extract_text(
         self,
         preserve_whitespace: bool = True,
-        use_exclusions: bool = True,
+        apply_exclusions: bool = True,
         **kwargs,
     ) -> str:
         """
@@ -115,7 +97,7 @@ class LineElement(Element):
 
         Args:
             preserve_whitespace: Unused, kept for API compatibility with Element.
-            use_exclusions: Unused, kept for API compatibility with Element.
+            apply_exclusions: Unused, kept for API compatibility with Element.
             **kwargs: Additional extraction parameters (ignored).
 
         Returns:
@@ -124,8 +106,15 @@ class LineElement(Element):
         # Backward compatibility: honour legacy keyword names if provided.
         if "keep_blank_chars" in kwargs:
             preserve_whitespace = kwargs.pop("keep_blank_chars")  # noqa: F841
-        if "apply_exclusions" in kwargs:
-            use_exclusions = kwargs.pop("apply_exclusions")  # noqa: F841
+        if "use_exclusions" in kwargs:
+            import warnings
+
+            warnings.warn(
+                "use_exclusions is deprecated, use apply_exclusions instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            apply_exclusions = kwargs.pop("use_exclusions")  # noqa: F841
         return ""
 
     def __repr__(self) -> str:
