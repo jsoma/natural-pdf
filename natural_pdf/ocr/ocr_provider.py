@@ -60,35 +60,25 @@ def _instantiate_engine_provider(provider: EngineProviderValue) -> OCREngine:
     return cast(OCREngine, instance)
 
 
-_engine_instances: Dict[str, OCREngine] = {}
-_engine_locks: Dict[str, threading.Lock] = {}
 _engine_inference_locks: Dict[str, threading.Lock] = {}
 
 
-def _get_engine_instance(engine_name: str) -> OCREngine:
+def _create_engine_instance(engine_name: str) -> OCREngine:
+    """Create a new OCR engine instance. EngineProvider handles caching."""
     engine_name = engine_name.lower()
     if engine_name not in ENGINE_REGISTRY:
         raise RuntimeError(
             f"Unknown OCR engine '{engine_name}'. Available: {list(ENGINE_REGISTRY.keys())}"
         )
 
-    if engine_name in _engine_instances:
-        return _engine_instances[engine_name]
-
-    lock = _engine_locks.setdefault(engine_name, threading.Lock())
-    with lock:
-        if engine_name in _engine_instances:
-            return _engine_instances[engine_name]
-
-        registry_entry = ENGINE_REGISTRY[engine_name]
-        engine_instance = _instantiate_engine_provider(registry_entry["provider"])
-        if not engine_instance.is_available():
-            raise RuntimeError(
-                f"OCR engine '{engine_name}' is not available. "
-                "Install optional dependencies with 'pip install \"natural-pdf[ocr-ai]\"'."
-            )
-        _engine_instances[engine_name] = engine_instance
-        return engine_instance
+    registry_entry = ENGINE_REGISTRY[engine_name]
+    engine_instance = _instantiate_engine_provider(registry_entry["provider"])
+    if not engine_instance.is_available():
+        raise RuntimeError(
+            f"OCR engine '{engine_name}' is not available. "
+            "Install optional dependencies with 'pip install \"natural-pdf[ocr-ai]\"'."
+        )
+    return engine_instance
 
 
 def _get_engine_inference_lock(engine_name: str) -> threading.Lock:
@@ -99,7 +89,8 @@ def register_ocr_engines(provider=None) -> None:
     for engine_name in ENGINE_REGISTRY.keys():
 
         def factory(*, _engine_name=engine_name, **_opts):
-            return _get_engine_instance(_engine_name)
+            # EngineProvider handles caching - we just create the instance
+            return _create_engine_instance(_engine_name)
 
         for capability in ("ocr", "ocr.apply", "ocr.extract"):
             register_builtin(provider, capability, engine_name, factory)
@@ -478,30 +469,36 @@ def _normalize_engine_output(
 
 
 def cleanup_engine(engine_name: Optional[str] = None) -> int:
+    """Clean up OCR engine instances from the provider cache."""
+    provider = get_provider()
     cleaned = 0
-    targets = [engine_name.lower()] if engine_name else list(_engine_instances.keys())
+    targets = [engine_name.lower()] if engine_name else list(ENGINE_REGISTRY.keys())
+
     for target in targets:
-        engine = _engine_instances.pop(target, None)
-        if engine is None:
-            continue
-        cleanup_fn = getattr(engine, "cleanup", None)
-        if callable(cleanup_fn):
-            try:
-                cleanup_fn()
-            except Exception:  # pragma: no cover
-                logger.debug("Cleanup for OCR engine %s failed", target)
-        _engine_locks.pop(target, None)
+        # Remove from provider's instance cache for all OCR capabilities
+        for capability in ("ocr", "ocr.apply", "ocr.extract"):
+            key = (capability, target)
+            engine = provider._instances.pop(key, None)
+            if engine is not None:
+                cleanup_fn = getattr(engine, "cleanup", None)
+                if callable(cleanup_fn):
+                    try:
+                        cleanup_fn()
+                    except Exception:  # pragma: no cover
+                        logger.debug("Cleanup for OCR engine %s failed", target)
+                cleaned += 1
         _engine_inference_locks.pop(target, None)
-        cleaned += 1
     return cleaned
 
 
 def list_available_engines() -> List[str]:
+    """List OCR engines that are available (dependencies installed)."""
     available = []
     for name in ENGINE_REGISTRY:
         try:
-            engine = _get_engine_instance(name)
-            if engine:
+            registry_entry = ENGINE_REGISTRY[name]
+            engine_instance = _instantiate_engine_provider(registry_entry["provider"])
+            if engine_instance.is_available():
                 available.append(name)
         except Exception:
             continue

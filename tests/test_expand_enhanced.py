@@ -1,12 +1,9 @@
 """Test enhanced expand() method functionality."""
 
-import natural_pdf as npdf
 
-
-def test_expand_with_boolean_values():
+def test_expand_with_boolean_values(practice_pdf):
     """Test expanding to page edges with boolean True."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find an element in the middle of the page
     element = page.find('text:contains("Statute")')
@@ -34,10 +31,9 @@ def test_expand_with_boolean_values():
     assert expanded.bottom == page.height
 
 
-def test_expand_with_numeric_values():
+def test_expand_with_numeric_values(practice_pdf):
     """Test expanding with fixed pixel amounts."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     element = page.find('text:contains("Statute")')
     assert element is not None
@@ -57,10 +53,9 @@ def test_expand_with_numeric_values():
     assert expanded.bottom == element.bottom + 25
 
 
-def test_expand_with_selectors():
+def test_expand_with_selectors(practice_pdf):
     """Test expanding until specific elements using selectors."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find "Statute" element
     statute = page.find('text:contains("Statute")')
@@ -86,10 +81,9 @@ def test_expand_with_selectors():
     assert expanded_inclusive.bottom == statute.bottom
 
 
-def test_expand_with_selectors_not_found():
+def test_expand_with_selectors_not_found(practice_pdf):
     """Test behavior when selector doesn't match any elements."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     element = page.find('text:contains("Statute")')
     assert element is not None
@@ -102,10 +96,9 @@ def test_expand_with_selectors_not_found():
     assert expanded.bottom == element.bottom
 
 
-def test_expand_mixed_parameters():
+def test_expand_mixed_parameters(practice_pdf):
     """Test combining different types of expansion parameters."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     element = page.find('text:contains("Statute")')
     assert element is not None
@@ -128,10 +121,9 @@ def test_expand_mixed_parameters():
         assert expanded.x1 == repeat.x0 - 0.01  # With default offset
 
 
-def test_expand_with_factors():
+def test_expand_with_factors(practice_pdf):
     """Test expand with width and height factors."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     element = page.find('text:contains("Statute")')
     assert element is not None
@@ -147,10 +139,9 @@ def test_expand_with_factors():
         assert abs(actual_width - expected_width) < 1  # Allow small rounding differences
 
 
-def test_expand_directional_filtering():
+def test_expand_directional_filtering(practice_pdf):
     """Test that expand only considers elements in the correct direction."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find an element with text both above and below
     element = page.find('text:contains("Address")')
@@ -171,10 +162,9 @@ def test_expand_directional_filtering():
         assert expanded_right.x1 != expanded_left.x0
 
 
-def test_expand_zero_values():
+def test_expand_zero_values(practice_pdf):
     """Test that zero values don't change the element."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     element = page.find('text:contains("Statute")')
     assert element is not None
@@ -187,10 +177,9 @@ def test_expand_zero_values():
     assert expanded.bottom == element.bottom
 
 
-def test_expand_on_region():
+def test_expand_on_region(practice_pdf):
     """Test that expand works on regions as well as elements."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create a region
     element = page.find('text:contains("Statute")')

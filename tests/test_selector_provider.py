@@ -26,115 +26,82 @@ def _register_stub_engine(name: str) -> _StubSelectorEngine:
     return stub
 
 
-def test_page_find_all_uses_registered_selector_engine():
+def test_page_find_all_uses_registered_selector_engine(practice_pdf):
     stub_engine = _register_stub_engine("test-selectors-page")
-
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        page.find_all("text", engine="test-selectors-page")
-    finally:
-        pdf.close()
-
+    page = practice_pdf.pages[0]
+    page.find_all("text", engine="test-selectors-page")
     assert stub_engine.calls == 1
 
 
-def test_clause_pack_registration_enables_custom_pseudo():
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-
+def test_clause_pack_registration_enables_custom_pseudo(practice_pdf):
     @register_pseudo("always-match", replace=True)
     def _always_handler(pseudo, ctx):
         return {"name": ":always", "func": lambda _el: True}
 
     try:
-        page = pdf.pages[0]
+        page = practice_pdf.pages[0]
         results = page.find_all("text:always-match()")
         assert results
     finally:
         unregister_pseudo("always-match")
-        pdf.close()
 
 
-def test_regex_pseudo_via_clause_registry():
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        matches = page.find_all("text:regex('Total')")
-        assert matches is not None
-    finally:
-        pdf.close()
+def test_regex_pseudo_via_clause_registry(practice_pdf):
+    page = practice_pdf.pages[0]
+    matches = page.find_all("text:regex('Total')")
+    assert matches is not None
 
 
-def test_contains_clause_still_operational():
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        matches = page.find_all("text:contains('Total')")
-        assert matches is not None
-    finally:
-        pdf.close()
+def test_contains_clause_still_operational(practice_pdf):
+    page = practice_pdf.pages[0]
+    matches = page.find_all("text:contains('Total')")
+    assert matches is not None
 
 
-def test_region_find_all_passes_engine_to_page_selector():
+def test_region_find_all_passes_engine_to_page_selector(practice_pdf):
     stub_engine = _register_stub_engine("test-selectors-region")
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        region = page.create_region(0, 0, page.width / 2, page.height / 2)
-        region.find_all("text", engine="test-selectors-region")
-    finally:
-        pdf.close()
-
+    page = practice_pdf.pages[0]
+    region = page.create_region(0, 0, page.width / 2, page.height / 2)
+    region.find_all("text", engine="test-selectors-region")
     assert stub_engine.calls >= 1
 
 
-def test_flow_find_all_passes_engine_to_pages():
+def test_flow_find_all_passes_engine_to_pages(practice_pdf):
     stub_engine = _register_stub_engine("test-selectors-flow")
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        flow = Flow([pdf.pages[0]], arrangement="vertical", alignment="start")
-        flow.find_all("text", engine="test-selectors-flow")
-    finally:
-        pdf.close()
-
+    flow = Flow([practice_pdf.pages[0]], arrangement="vertical", alignment="start")
+    flow.find_all("text", engine="test-selectors-flow")
     assert stub_engine.calls >= 1
 
 
-def test_first_post_pseudo_returns_single_result():
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        matches = page.find_all("text:first")
-        assert len(matches.elements if matches else []) <= 1
-    finally:
-        pdf.close()
+def test_first_post_pseudo_returns_single_result(practice_pdf):
+    page = practice_pdf.pages[0]
+    matches = page.find_all("text:first")
+    assert len(matches.elements if matches else []) <= 1
 
 
-def test_above_relational_pseudo_executes():
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        matches = page.find_all("text:above(text:last)")
-        assert matches is not None
-    finally:
-        pdf.close()
+def test_above_relational_pseudo_executes(practice_pdf):
+    page = practice_pdf.pages[0]
+    matches = page.find_all("text:above(text:last)")
+    assert matches is not None
 
 
-def test_context_default_selector_engine():
+def test_context_default_selector_engine(pdf_factory):
+    # This test needs fresh PDF because it uses a custom context
     stub_engine = _register_stub_engine("context-selectors")
     context = PDFContext(options={"selector": {"engine": "context-selectors"}})
-    pdf = npdf.PDF("pdfs/01-practice.pdf", context=context)
+    pdf = pdf_factory("pdfs/01-practice.pdf")
+    # Note: pdf_factory caches, so we create context-aware PDF separately
+    pdf_with_context = npdf.PDF("pdfs/01-practice.pdf", context=context)
     try:
-        page = pdf.pages[0]
+        page = pdf_with_context.pages[0]
         page.find_all("text")
     finally:
-        pdf.close()
+        pdf_with_context.close()
 
     assert stub_engine.calls == 1
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    try:
-        page = pdf.pages[0]
-        matches = page.find_all("text:above(text:last)")
-        assert matches is not None
-    finally:
-        pdf.close()
+
+
+def test_above_relational_pseudo_executes_standalone(practice_pdf):
+    page = practice_pdf.pages[0]
+    matches = page.find_all("text:above(text:last)")
+    assert matches is not None

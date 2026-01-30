@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-import threading
 from typing import Any, Dict, Type, cast
 
 from natural_pdf.engine_provider import get_provider
@@ -78,9 +77,6 @@ ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
     "gemini": {"class": _lazy_import_gemini_detector, "options_class": GeminiLayoutOptions},
 }
 
-_detector_instances: Dict[str, LayoutDetector] = {}
-_detector_lock = threading.RLock()
-
 
 def _resolve_engine_class(engine_name: str) -> Type[LayoutDetector]:
     entry = ENGINE_REGISTRY[engine_name]["class"]
@@ -89,39 +85,35 @@ def _resolve_engine_class(engine_name: str) -> Type[LayoutDetector]:
     return cast(Type[LayoutDetector], entry())
 
 
-def _get_engine_instance(engine_name: str) -> LayoutDetector:
+def _create_engine_instance(engine_name: str) -> LayoutDetector:
+    """Create a new layout engine instance. EngineProvider handles caching."""
     engine_name = engine_name.lower()
     if engine_name not in ENGINE_REGISTRY:
         raise RuntimeError(
             f"Unknown layout engine '{engine_name}'. Available: {list(ENGINE_REGISTRY.keys())}"
         )
 
-    with _detector_lock:
-        if engine_name in _detector_instances:
-            return _detector_instances[engine_name]
+    logger.info("Creating layout engine instance: %s", engine_name)
+    engine_class = _resolve_engine_class(engine_name)
+    detector_instance = engine_class()
 
-        logger.info("Creating layout engine instance: %s", engine_name)
-        engine_class = _resolve_engine_class(engine_name)
-        detector_instance = engine_class()
+    try:
+        available = detector_instance.is_available()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Failed to check availability for %s", engine_name)
+        raise RuntimeError(f"Layout engine '{engine_name}' availability check failed: {exc}")
 
-        try:
-            available = detector_instance.is_available()
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("Failed to check availability for %s", engine_name)
-            raise RuntimeError(f"Layout engine '{engine_name}' availability check failed: {exc}")
+    if not available:
+        install_hint = (
+            f"npdf install {engine_name}"
+            if engine_name in {"yolo", "paddle", "surya", "docling"}
+            else ""
+        )
+        raise RuntimeError(
+            f"Layout engine '{engine_name}' is not available. {install_hint}".strip()
+        )
 
-        if not available:
-            install_hint = (
-                f"npdf install {engine_name}"
-                if engine_name in {"yolo", "paddle", "surya", "docling"}
-                else ""
-            )
-            raise RuntimeError(
-                f"Layout engine '{engine_name}' is not available. {install_hint}".strip()
-            )
-
-        _detector_instances[engine_name] = detector_instance
-        return detector_instance
+    return detector_instance
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +125,8 @@ def register_layout_engines(provider=None) -> None:
     for engine_name in ENGINE_REGISTRY.keys():
 
         def factory(*, context=None, _engine_name=engine_name, **opts):
-            return _get_engine_instance(_engine_name)
+            # EngineProvider handles caching - we just create the instance
+            return _create_engine_instance(_engine_name)
 
         register_builtin(provider, "layout", engine_name, factory)
 

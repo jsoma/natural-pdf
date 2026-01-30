@@ -2,15 +2,12 @@
 
 import pytest
 
-from natural_pdf import PDF
-
 pytestmark = [pytest.mark.ocr]
 
 
-def test_annotate_basic():
+def test_annotate_basic(practice_pdf):
     """Test basic annotate functionality with single attribute."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    page = practice_pdf[0]
 
     # Find all text elements
     text_elements = page.find_all("text")
@@ -21,10 +18,9 @@ def test_annotate_basic():
     assert image.size[0] == 600
 
 
-def test_annotate_string_to_list():
+def test_annotate_string_to_list(practice_pdf):
     """Test that annotate converts string to list automatically."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    page = practice_pdf[0]
 
     text_elements = page.find_all("text")
 
@@ -34,10 +30,9 @@ def test_annotate_string_to_list():
     assert image.size[0] == 600
 
 
-def test_annotate_multiple_attributes():
+def test_annotate_multiple_attributes(practice_pdf):
     """Test annotate with multiple attributes."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    page = practice_pdf[0]
 
     text_elements = page.find_all("text")
 
@@ -47,10 +42,9 @@ def test_annotate_multiple_attributes():
     assert image.size[0] == 600
 
 
-def test_annotate_with_group_by():
+def test_annotate_with_group_by(practice_pdf):
     """Test annotate combined with group_by."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    page = practice_pdf[0]
 
     text_elements = page.find_all("text")
 
@@ -61,10 +55,10 @@ def test_annotate_with_group_by():
     assert image.size[0] >= 600
 
 
-def test_annotate_with_ocr():
+def test_annotate_with_ocr(pdf_factory):
     """Test annotate with OCR elements showing confidence scores."""
-    # Use a PDF that needs OCR
-    pdf = PDF("pdfs/tiny-ocr.pdf")
+    # Use a PDF that needs OCR - needs fresh instance since apply_ocr mutates
+    pdf = pdf_factory("pdfs/tiny-ocr.pdf")
     page = pdf[0]
 
     # Run OCR - this adds OCR elements to the page
@@ -91,10 +85,9 @@ def test_annotate_with_ocr():
         pytest.skip("No OCR elements found in test PDF")
 
 
-def test_annotate_nonexistent_attribute():
+def test_annotate_nonexistent_attribute(practice_pdf):
     """Test annotate with non-existent attribute (should handle gracefully)."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    page = practice_pdf[0]
 
     text_elements = page.find_all("text")
 
@@ -105,10 +98,10 @@ def test_annotate_nonexistent_attribute():
 
 
 @pytest.mark.optional_deps
-def test_annotate_with_regions():
+def test_annotate_with_regions(practice_pdf_fresh):
     """Test annotate with regions."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf[0]
+    # Use fresh PDF since analyze_layout() mutates state
+    page = practice_pdf_fresh[0]
 
     # Run layout analysis using the correct API
     page.analyze_layout()

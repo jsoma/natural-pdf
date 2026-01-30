@@ -1,14 +1,22 @@
-import importlib.util
 import logging
 from typing import Dict
+
+from natural_pdf.engine_provider import get_provider
 
 from .engine import OCREngine
 
 logger = logging.getLogger(__name__)
 
+# Preference order for recommended engine selection
+_ENGINE_PREFERENCE = ["easyocr", "doctr", "paddle", "surya"]
+
 
 class OCRFactory:
-    """Factory for creating and managing OCR engines with optional dependencies."""
+    """Factory for creating and managing OCR engines.
+
+    This is a user-facing facade that delegates to the EngineProvider for
+    actual engine management and caching.
+    """
 
     @staticmethod
     def create_engine(engine_type: str, **kwargs) -> OCREngine:
@@ -22,86 +30,30 @@ class OCRFactory:
             An initialized OCR engine
 
         Raises:
-            ImportError: If the required dependencies aren't installed
-            ValueError: If the engine_type is unknown
+            RuntimeError: If the required dependencies aren't installed
+            LookupError: If the engine_type is unknown
         """
-        if engine_type == "surya":
-            try:
-                from .engine_surya import SuryaOCREngine
+        provider = get_provider()
+        engine_name = engine_type.lower()
 
-                return SuryaOCREngine(**kwargs)
-            except ImportError:
-                raise ImportError(
-                    "Surya engine requires additional dependencies. "
-                    "Install with: npdf install surya"
-                )
-        elif engine_type == "easyocr":
-            try:
-                from .engine_easyocr import EasyOCREngine
-
-                return EasyOCREngine(**kwargs)
-            except ImportError:
-                raise ImportError(
-                    "EasyOCR engine requires the 'easyocr' package. "
-                    "Install with: pip install easyocr (or npdf install easyocr when available)"
-                )
-        elif engine_type == "paddle":
-            try:
-                from .engine_paddle import PaddleOCREngine
-
-                return PaddleOCREngine(**kwargs)
-            except ImportError:
-                raise ImportError(
-                    "PaddleOCR engine requires 'paddleocr' and 'paddlepaddle'. "
-                    "Install with: npdf install paddle"
-                )
-        elif engine_type == "doctr":
-            try:
-                from .engine_doctr import DoctrOCREngine
-
-                return DoctrOCREngine(**kwargs)
-            except ImportError:
-                raise ImportError(
-                    "Doctr engine requires the 'python-doctr' package. "
-                    "Install with: pip install python-doctr[torch]"
-                )
-        else:
+        try:
+            return provider.get("ocr", context=None, name=engine_name, **kwargs)
+        except LookupError:
             raise ValueError(f"Unknown engine type: {engine_type}")
 
     @staticmethod
     def list_available_engines() -> Dict[str, bool]:
         """Returns a dictionary of engine names and their availability status."""
+        from .ocr_provider import ENGINE_REGISTRY, _instantiate_engine_provider
+
         engines = {}
-
-        # Check Surya
-        try:
-            engines["surya"] = importlib.util.find_spec("surya") is not None
-        except ImportError:
-            engines["surya"] = False
-
-        # Check EasyOCR
-        try:
-            engines["easyocr"] = importlib.util.find_spec("easyocr") is not None
-        except ImportError:
-            engines["easyocr"] = False
-
-        # Check PaddleOCR
-        try:
-            paddle = (
-                importlib.util.find_spec("paddle") is not None
-                or importlib.util.find_spec("paddlepaddle") is not None
-            )
-            paddleocr = importlib.util.find_spec("paddleocr") is not None
-            engines["paddle"] = paddle and paddleocr
-        except ImportError:
-            engines["paddle"] = False
-
-        # Check Doctr
-        try:
-            engines["doctr"] = importlib.util.find_spec("doctr") is not None
-        except ImportError:
-            engines["doctr"] = False
-
+        for name in ENGINE_REGISTRY:
+            try:
+                registry_entry = ENGINE_REGISTRY[name]
+                engine_instance = _instantiate_engine_provider(registry_entry["provider"])
+                engines[name] = engine_instance.is_available()
+            except Exception:
+                engines[name] = False
         return engines
 
     @staticmethod
@@ -123,18 +75,10 @@ class OCRFactory:
         available = OCRFactory.list_available_engines()
 
         # Try engines in order of recommendation
-        if available.get("easyocr", False):
-            logger.info("Using EasyOCR engine (recommended)")
-            return OCRFactory.create_engine("easyocr", **kwargs)
-        elif available.get("doctr", False):
-            logger.info("Using Doctr engine")
-            return OCRFactory.create_engine("doctr", **kwargs)
-        elif available.get("paddle", False):
-            logger.info("Using PaddleOCR engine")
-            return OCRFactory.create_engine("paddle", **kwargs)
-        elif available.get("surya", False):
-            logger.info("Using Surya OCR engine")
-            return OCRFactory.create_engine("surya", **kwargs)
+        for engine_name in _ENGINE_PREFERENCE:
+            if available.get(engine_name, False):
+                logger.info(f"Using {engine_name} OCR engine")
+                return OCRFactory.create_engine(engine_name, **kwargs)
 
         # If we get here, no engines are available
         raise ImportError(
