@@ -250,12 +250,12 @@ Different subsystems used different patterns for engine integration. This has be
 6. ~~**Color conversion utility**~~ ✅ Fixed - Added `normalize_pdf_color()` to `utils/color_utils.py`
 7. ~~**Preprocess return types**~~ ✅ Verified - Already typed (Surya: PIL Image, others: numpy array)
 8. ~~**Cache key strategy**~~ ✅ Audited - All detectors consistent (Gemini omits device intentionally as API-based)
-9. **Options handling** - Choose: always raise OR always convert+warn (currently: raises in load, converts in detect - consistent)
+9. ~~**Options handling**~~ ✅ No action - already consistent (raises in load, converts in detect)
 
 ### Low Priority (Nice to have)
 10. ~~**Logging standardization**~~ ✅ Fixed - Added logger to SuryaOCREngine
 11. **Type property unification** - Choose hardcoded vs dynamic
-12. **Service method naming** - `guides()` → `get_guides()` or similar (established API, document for future)
+12. ~~**Service method naming**~~ ✅ No action - established API, minor inconsistency acceptable
 
 ---
 
