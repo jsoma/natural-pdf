@@ -243,19 +243,19 @@ Different subsystems used different patterns for engine integration. This has be
 ### High Priority
 2. ~~**extract_text parameter naming**~~ ✅ Fixed - Unified to `apply_exclusions` with deprecation warning for `use_exclusions`
 3. ~~**DocTR return type**~~ ✅ Fixed - Now returns raw results, stores dimensions in instance attribute
-4. **Model return type contract** - Define in base class what `_load_model_from_options` returns
+4. ~~**Model return type contract**~~ ✅ Documented - Base class and all detectors now document return types
 5. ~~**Gemini is_available()**~~ ✅ Fixed - Now checks if openai library is available
 
 ### Medium Priority (Consolidation)
 6. ~~**Color conversion utility**~~ ✅ Fixed - Added `normalize_pdf_color()` to `utils/color_utils.py`
-7. **Preprocess return types** - Decide: all numpy or allow PIL
+7. ~~**Preprocess return types**~~ ✅ Verified - Already typed (Surya: PIL Image, others: numpy array)
 8. ~~**Cache key strategy**~~ ✅ Audited - All detectors consistent (Gemini omits device intentionally as API-based)
-9. **Options handling** - Choose: always raise OR always convert+warn
+9. **Options handling** - Choose: always raise OR always convert+warn (currently: raises in load, converts in detect - consistent)
 
 ### Low Priority (Nice to have)
-10. **Logging standardization** - Ensure all modules have proper loggers
+10. ~~**Logging standardization**~~ ✅ Fixed - Added logger to SuryaOCREngine
 11. **Type property unification** - Choose hardcoded vs dynamic
-12. **Service method naming** - `guides()` → `get_guides()` or similar
+12. **Service method naming** - `guides()` → `get_guides()` or similar (established API, document for future)
 
 ---
 
