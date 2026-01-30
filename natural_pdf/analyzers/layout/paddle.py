@@ -84,7 +84,11 @@ class PaddleLayoutDetector(LayoutDetector):
         return f"{self.__class__.__name__}_{device_key}_{lang_key}_{table_key}_{orientation_key}"
 
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
-        """Load the PPStructureV3 model based on options."""
+        """Load the PPStructureV3 model based on options.
+
+        Returns:
+            PPStructureV3 model instance from paddleocr.
+        """
         if not self.is_available():
             raise RuntimeError("Paddle dependencies (paddlepaddle, paddleocr) not installed.")
 

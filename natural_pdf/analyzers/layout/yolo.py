@@ -73,7 +73,11 @@ class YOLODocLayoutDetector(LayoutDetector):
         return f"{self.__class__.__name__}_{device_key}_{model_key}"
 
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
-        """Load the YOLOv10 model based on options."""
+        """Load the YOLOv10 model based on options.
+
+        Returns:
+            YOLOv10 model instance from doclayout_yolo.
+        """
         if not self.is_available():
             raise RuntimeError("YOLO dependencies not installed. Please run: npdf install yolo")
         if not isinstance(options, YOLOLayoutOptions):

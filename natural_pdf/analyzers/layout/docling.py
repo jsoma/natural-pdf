@@ -93,7 +93,11 @@ class DoclingLayoutDetector(LayoutDetector):
         return f"{self.__class__.__name__}_{device_key}_{extra_args_key}"
 
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
-        """Load the Docling DocumentConverter."""
+        """Load the Docling DocumentConverter.
+
+        Returns:
+            DocumentConverter instance from docling.
+        """
         if not self.is_available():
             raise RuntimeError("Docling dependency not installed.")
 

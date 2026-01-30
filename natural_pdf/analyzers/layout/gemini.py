@@ -57,8 +57,13 @@ class GeminiLayoutDetector(LayoutDetector):
         # Prompt is built dynamically, so not part of cache key based on options
         return f"{self.__class__.__name__}_{model_key}"
 
-    def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
-        """Validate options and return the model name."""
+    def _load_model_from_options(self, options: BaseLayoutOptions) -> str:
+        """Validate options and return the model name.
+
+        Returns:
+            str: The model name (e.g., 'gemini-2.0-flash'). Actual API client
+            must be provided via GeminiLayoutOptions.client.
+        """
         if not isinstance(options, GeminiLayoutOptions):
             raise TypeError("Incorrect options type provided for Gemini model loading.")
         # Model loading is deferred to detect() based on whether a client is provided

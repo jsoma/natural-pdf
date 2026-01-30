@@ -1,8 +1,11 @@
 # ocr_engine_surya.py
 import importlib.util
+import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, SuryaOCROptions

@@ -147,8 +147,14 @@ class LayoutDetector(ABC):
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
         """
         Abstract method for subclasses to implement the actual model loading logic
-        based on the provided options. Should return the loaded model object(s).
-        Should handle necessary imports internally.
+        based on the provided options. Should handle necessary imports internally.
+
+        Returns:
+            Model object(s) - format varies by detector:
+            - Single model instance (YOLO, Paddle, Docling)
+            - Dict with multiple models (TATR: {"detection", "structure"},
+              Surya: {"layout", "table_rec"})
+            - Model name string (Gemini - actual client provided separately)
         """
         raise NotImplementedError("Subclasses must implement _load_model_from_options")
 
