@@ -63,7 +63,7 @@ class TableResult(Sequence):
 
     def to_df(
         self,
-        header: Union[str, int, List[int], List[str], None] = "first",
+        header: Union[str, int, List[int], List[str], Sequence[Any], None] = "first",
         index_col=None,
         skip_repeating_headers=None,
         skiprows: Optional[Union[int, Iterable[int]]] = None,
@@ -75,8 +75,13 @@ class TableResult(Sequence):
 
         Parameters
         ----------
-        header : "first" | int | list[int] | list[str] | None, default "first"
-            • "first" – use row 0 as column names.\n            • int       – use that row index.\n            • list[int] – multi-row header.\n            • list[str] – custom column names.\n            • None/False– no header.
+        header : "first" | int | list[int] | list[str] | ElementCollection | None, default "first"
+            • "first" – use row 0 as column names.
+            • int       – use that row index.
+            • list[int] – multi-row header.
+            • list[str] – custom column names.
+            • ElementCollection/list of elements – extract text from elements, sorted by x0.
+            • None/False– no header.
 
             Note: If the header row has a different number of columns than the
             body rows, the method will automatically fall back to header=None
@@ -108,6 +113,10 @@ class TableResult(Sequence):
             raise ImportError(
                 "pandas is required for TableResult.to_df(); install via `pip install pandas`."
             ) from exc
+
+        # Handle ElementCollection or sequence of elements with x0 attribute
+        # Convert to list of strings sorted by x0 position
+        header = self._resolve_header_elements(header)
 
         rows = list(self._rows)
 
@@ -253,6 +262,29 @@ class TableResult(Sequence):
             )
 
         return df
+
+    # ------------------------------------------------------------------
+    # Helper methods
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _resolve_header_elements(header: Any) -> Any:
+        """Convert element collections to sorted list of header strings.
+
+        If header is an ElementCollection or sequence of elements with x0 attributes,
+        sort by x0 position and extract text. Otherwise return as-is.
+        """
+        if header is None or isinstance(header, (str, int)):
+            return header
+
+        # Check if it looks like an ElementCollection or list of elements
+        if hasattr(header, "__iter__") and not isinstance(header, (str, bytes)):
+            items = list(header)
+            if items and hasattr(items[0], "x0") and hasattr(items[0], "extract_text"):
+                # Sort by x0 position and extract text
+                sorted_items = sorted(items, key=lambda e: e.x0)
+                return [e.extract_text().strip().replace("\n", " ") for e in sorted_items]
+
+        return header
 
     # ------------------------------------------------------------------
     # Block mutating operations to keep result read-only

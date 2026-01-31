@@ -42,8 +42,9 @@ class TableService:
         show_progress: bool = False,
         content_filter=None,
         apply_exclusions: bool = True,
-        verticals: Optional[List[float]] = None,
-        horizontals: Optional[List[float]] = None,
+        verticals: Optional[Union[List[float], Sequence[Any]]] = None,
+        horizontals: Optional[Union[List[float], Sequence[Any]]] = None,
+        outer: bool = False,
         structure_engine: Optional[str] = None,
         # Flow-specific arguments
         stitch_rows: StitchPredicate = None,
@@ -64,6 +65,7 @@ class TableService:
                 apply_exclusions=apply_exclusions,
                 verticals=verticals,
                 horizontals=horizontals,
+                outer=outer,
                 structure_engine=structure_engine,
                 stitch_rows=stitch_rows,
                 merge_headers=merge_headers,
@@ -72,12 +74,31 @@ class TableService:
         table_settings = table_settings.copy() if table_settings else {}
         text_options = text_options.copy() if text_options else {}
 
-        if verticals is not None:
+        # Convert verticals/horizontals from elements to float positions if needed
+        verticals_floats = (
+            self._resolve_guide_positions(verticals, "x0") if verticals is not None else None
+        )
+        horizontals_floats = (
+            self._resolve_guide_positions(horizontals, "top") if horizontals is not None else None
+        )
+
+        # Handle outer=True - add region boundaries
+        if outer:
+            if verticals_floats is not None:
+                verticals_floats = self._add_outer_boundaries(
+                    host, verticals_floats, axis="vertical", apply_exclusions=apply_exclusions
+                )
+            if horizontals_floats is not None:
+                horizontals_floats = self._add_outer_boundaries(
+                    host, horizontals_floats, axis="horizontal", apply_exclusions=apply_exclusions
+                )
+
+        if verticals_floats is not None:
             table_settings["vertical_strategy"] = "explicit"
-            table_settings["explicit_vertical_lines"] = verticals
-        if horizontals is not None:
+            table_settings["explicit_vertical_lines"] = verticals_floats
+        if horizontals_floats is not None:
             table_settings["horizontal_strategy"] = "explicit"
-            table_settings["explicit_horizontal_lines"] = horizontals
+            table_settings["explicit_horizontal_lines"] = horizontals_floats
 
         effective_method = method
         if effective_method is None:
@@ -260,6 +281,88 @@ class TableService:
             )
         return None
 
+    def _resolve_guide_positions(
+        self,
+        guides: Union[List[float], Sequence[Any]],
+        attr: str,
+    ) -> List[float]:
+        """Convert guides to float positions.
+
+        Args:
+            guides: List of floats, or sequence of elements with positional attributes
+            attr: Attribute to extract ('x0' for verticals, 'top' for horizontals)
+
+        Returns:
+            Sorted list of float positions
+        """
+        positions: List[float] = []
+        for item in guides:
+            if isinstance(item, (int, float)):
+                positions.append(float(item))
+            elif hasattr(item, attr):
+                positions.append(float(getattr(item, attr)))
+            else:
+                raise TypeError(
+                    f"Cannot convert {type(item).__name__} to guide position. "
+                    f"Expected float or element with '{attr}' attribute."
+                )
+        return sorted(positions)
+
+    def _add_outer_boundaries(
+        self,
+        host,
+        positions: List[float],
+        axis: str,
+        apply_exclusions: bool = True,
+    ) -> List[float]:
+        """Add outer boundaries to guide positions based on content extent.
+
+        Args:
+            host: The region being processed
+            positions: Sorted list of guide positions
+            axis: 'vertical' or 'horizontal'
+            apply_exclusions: Whether to respect exclusions when finding content bounds
+
+        Returns:
+            Positions with outer boundaries added
+        """
+        if not positions:
+            return positions
+
+        # Find content bounds
+        text_elements = host.find_all("text", apply_exclusions=apply_exclusions)
+        if not text_elements:
+            # Fall back to region bounds
+            if axis == "vertical":
+                return [host.x0] + positions + [host.x1]
+            else:
+                return [host.top] + positions + [host.bottom]
+
+        if axis == "vertical":
+            # For vertical guides, we need x-axis bounds
+            content_left = min(t.x0 for t in text_elements)
+            content_right = max(t.x1 for t in text_elements)
+
+            # Add left boundary if there's content before first guide
+            left_boundary = min(content_left, positions[0])
+            # Add right boundary after last guide to capture all content
+            right_boundary = content_right + 1  # +1 for padding
+
+            result = (
+                [left_boundary] + [p for p in positions if p > left_boundary] + [right_boundary]
+            )
+        else:
+            # For horizontal guides, we need y-axis bounds
+            content_top = min(t.top for t in text_elements)
+            content_bottom = max(t.bottom for t in text_elements)
+
+            top_boundary = min(content_top, positions[0])
+            bottom_boundary = content_bottom + 1
+
+            result = [top_boundary] + [p for p in positions if p > top_boundary] + [bottom_boundary]
+
+        return sorted(set(result))  # Remove duplicates and sort
+
     def extract_flow_table(
         self,
         host,
@@ -274,6 +377,7 @@ class TableService:
         apply_exclusions: bool = True,
         verticals: Optional[Sequence[float]] = None,
         horizontals: Optional[Sequence[float]] = None,
+        outer: bool = False,
         stitch_rows: StitchPredicate = None,
         merge_headers: Optional[bool] = None,
         structure_engine: Optional[str] = None,
@@ -340,6 +444,7 @@ class TableService:
                 apply_exclusions=apply_exclusions,
                 verticals=verticals,
                 horizontals=horizontals,
+                outer=outer,
                 structure_engine=structure_engine,
                 **kwargs,
             )

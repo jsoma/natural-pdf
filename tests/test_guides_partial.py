@@ -67,9 +67,9 @@ def test_page_extract_table_with_horizontals(practice_pdf):
     assert hasattr(result, "to_df")
 
 
-def test_page_extract_table_with_both_guides(practice_pdf):
+def test_page_extract_table_with_both_guides(practice_pdf_fresh):
     """Test page.extract_table with both verticals and horizontals."""
-    page = practice_pdf[0]
+    page = practice_pdf_fresh[0]
 
     verticals = [100, 200, 300]
     horizontals = [100, 200, 300]

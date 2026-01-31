@@ -118,8 +118,14 @@ def filter_chars_spatially(
                     region_filtered_chars.append(char_dict)
                 # else: # Optionally log discarded by polygon
                 #     if debug: logger.debug(...)
-            else:  # Rectangular region, bbox overlap was sufficient
-                region_filtered_chars.append(char_dict)
+            else:  # Rectangular region - check center is inside bbox
+                # Use strict inequality on boundaries to exclude characters that merely touch
+                # the region edge (their center would be outside)
+                if (
+                    target_bbox[0] <= char_center_x < target_bbox[2]
+                    and target_bbox[1] <= char_center_y < target_bbox[3]
+                ):
+                    region_filtered_chars.append(char_dict)
         filtered_chars = region_filtered_chars
         if debug:
             logger.debug(
