@@ -92,6 +92,24 @@ class TableService:
                 horizontals_floats = self._add_outer_boundaries(
                     host, horizontals_floats, axis="horizontal", apply_exclusions=apply_exclusions
                 )
+            # When outer=True and verticals provided but no horizontals,
+            # add content-based horizontal boundaries to capture edge rows
+            elif verticals_floats is not None and horizontals_floats is None:
+                # Try to detect stripe boundaries (alternating row shading)
+                stripe_boundaries = self._detect_stripe_boundaries(host)
+                if stripe_boundaries:
+                    # Use stripes with outer boundaries added
+                    horizontals_floats = self._add_outer_boundaries(
+                        host,
+                        stripe_boundaries,
+                        axis="horizontal",
+                        apply_exclusions=apply_exclusions,
+                    )
+                else:
+                    # No stripes - just add top/bottom content boundaries
+                    horizontals_floats = self._get_content_boundaries(
+                        host, axis="horizontal", apply_exclusions=apply_exclusions
+                    )
 
         if verticals_floats is not None:
             table_settings["vertical_strategy"] = "explicit"
@@ -362,6 +380,93 @@ class TableService:
             result = [top_boundary] + [p for p in positions if p > top_boundary] + [bottom_boundary]
 
         return sorted(set(result))  # Remove duplicates and sort
+
+    def _get_content_boundaries(
+        self,
+        host,
+        axis: str,
+        apply_exclusions: bool = True,
+    ) -> List[float]:
+        """Get just the outer content boundaries (no intermediate positions).
+
+        This is used when outer=True but no explicit guides are provided
+        and no stripes are detected. Returns just the min/max content bounds.
+
+        Args:
+            host: The region being processed
+            axis: 'vertical' or 'horizontal'
+            apply_exclusions: Whether to respect exclusions when finding content bounds
+
+        Returns:
+            List with just [min, max] content boundaries
+        """
+        text_elements = host.find_all("text", apply_exclusions=apply_exclusions)
+        if not text_elements:
+            # Fall back to region bounds
+            if axis == "vertical":
+                return [host.x0, host.x1]
+            else:
+                return [host.top, host.bottom]
+
+        if axis == "vertical":
+            content_left = min(t.x0 for t in text_elements)
+            content_right = max(t.x1 for t in text_elements) + 1
+            return [content_left, content_right]
+        else:
+            content_top = min(t.top for t in text_elements)
+            content_bottom = max(t.bottom for t in text_elements) + 1
+            return [content_top, content_bottom]
+
+    def _detect_stripe_boundaries(self, host) -> List[float]:
+        """Detect horizontal stripe boundaries from pdfplumber rectangles.
+
+        Many PDF tables use alternating row shading (zebra stripes). This method
+        extracts the top/bottom boundaries of those rectangles to use as
+        horizontal guides for table extraction.
+
+        Args:
+            host: The region being processed
+
+        Returns:
+            Sorted list of y-positions from stripe rectangle boundaries,
+            or empty list if no stripes detected
+        """
+        try:
+            # Get the pdfplumber page object
+            page = getattr(host, "page", host)
+            plumber_page = getattr(page, "_page", None)
+            if plumber_page is None:
+                return []
+
+            rects = plumber_page.rects
+            if not rects:
+                return []
+
+            # Filter rectangles to those within the host region
+            region_top = getattr(host, "top", 0)
+            region_bottom = getattr(host, "bottom", float("inf"))
+
+            # Collect boundaries from rectangles that look like row stripes
+            # (rectangles that span horizontally and are within region bounds)
+            boundaries = set()
+            for r in rects:
+                rect_top = r.get("top", 0)
+                rect_bottom = r.get("bottom", 0)
+
+                # Check if rectangle is within region bounds (with some tolerance)
+                if rect_top >= region_top - 5 and rect_bottom <= region_bottom + 5:
+                    # Check if it's a horizontal stripe (wider than tall)
+                    rect_width = r.get("x1", 0) - r.get("x0", 0)
+                    rect_height = rect_bottom - rect_top
+                    if rect_width > rect_height * 2:  # At least 2x wider than tall
+                        boundaries.add(rect_top)
+                        boundaries.add(rect_bottom)
+
+            return sorted(boundaries) if boundaries else []
+
+        except Exception:
+            # If anything goes wrong, just return empty list
+            return []
 
     def extract_flow_table(
         self,
