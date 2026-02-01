@@ -1,15 +1,12 @@
 """Test the expand() method with single positional argument support."""
 
-from natural_pdf import PDF
-
 
 class TestExpand:
     """Test expand functionality using real PDFs."""
 
-    def test_expand_single_argument(self):
+    def test_expand_single_argument(self, practice_pdf):
         """Test expand() with single positional argument."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Test single element
         text_element = page.find("text")
@@ -24,10 +21,9 @@ class TestExpand:
         assert abs(expanded.top - (original_bbox[1] - 5)) < 0.01
         assert abs(expanded.bottom - (original_bbox[3] + 5)) < 0.01
 
-    def test_expand_keyword_arguments(self):
+    def test_expand_keyword_arguments(self, practice_pdf):
         """Test expand() with keyword arguments still works."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         text_element = page.find("text")
         assert text_element is not None
@@ -40,10 +36,9 @@ class TestExpand:
         assert abs(expanded.top - (text_element.top - 3)) < 0.01
         assert abs(expanded.bottom - (text_element.bottom + 7)) < 0.01
 
-    def test_collection_expand_single_argument(self):
+    def test_collection_expand_single_argument(self, practice_pdf):
         """Test ElementCollection.expand() with single positional argument."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Get first 3 text elements
         text_elements = page.find_all("text")[:3]
@@ -60,10 +55,9 @@ class TestExpand:
             assert abs(expanded.top - (original.top - 5)) < 0.01
             assert abs(expanded.bottom - (original.bottom + 5)) < 0.01
 
-    def test_expand_on_rectangles(self):
+    def test_expand_on_rectangles(self, practice_pdf):
         """Test expand on rectangle elements."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Find rectangles
         rects = page.find_all("rect")
@@ -78,10 +72,9 @@ class TestExpand:
             assert abs(expanded.top - (rect.top - 10)) < 0.01
             assert abs(expanded.bottom - (rect.bottom + 10)) < 0.01
 
-    def test_expand_boundary_clamping(self):
+    def test_expand_boundary_clamping(self, practice_pdf):
         """Test that expand() clamps to page boundaries."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Find an element and expand it by a huge amount
         element = page.find("text")
@@ -96,10 +89,9 @@ class TestExpand:
         assert expanded.x1 == page.width
         assert expanded.bottom == page.height
 
-    def test_expand_with_factors(self):
+    def test_expand_with_factors(self, practice_pdf):
         """Test expand() with width and height factors."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Find a smaller element that won't hit page boundaries when expanded
         elements = page.find_all("text")
@@ -136,10 +128,9 @@ class TestExpand:
         assert abs(new_center_x - original_center_x) < 0.1
         assert abs(new_center_y - original_center_y) < 0.1
 
-    def test_expand_chaining(self):
+    def test_expand_chaining(self, practice_pdf):
         """Test chaining expand operations."""
-        pdf = PDF("pdfs/01-practice.pdf")
-        page = pdf[0]
+        page = practice_pdf[0]
 
         # Chain operations: find text below something and expand
         expanded_regions = page.find("text:contains(Date)").below().find_all("rect").expand(5)

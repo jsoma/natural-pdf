@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Protocol
 
 # Forward declare SearchOptions to avoid circular import if needed,
 # or import if structure allows (assuming it's safe here)
+from natural_pdf.exceptions import SearchError
 from natural_pdf.search.search_options import BaseSearchOptions
 
 # Use typing_extensions for Python < 3.8 compatibility if needed,
@@ -15,14 +16,14 @@ from natural_pdf.search.search_options import BaseSearchOptions
 HaystackDocument = Dict[str, Any]
 
 
-class IndexConfigurationError(RuntimeError):
+class IndexConfigurationError(SearchError):
     """Custom exception for configuration mismatches during indexing."""
 
     pass
 
 
 # Add new exception for sync/init safety
-class IndexExistsError(RuntimeError):
+class IndexExistsError(SearchError):
     """Raised when attempting to index implicitly to an existing persistent index without force_reindex=True."""
 
     pass

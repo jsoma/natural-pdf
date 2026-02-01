@@ -33,6 +33,8 @@ from typing import (
 import numpy as np
 from PIL import Image
 
+from natural_pdf.exceptions import NaturalPDFError
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +50,7 @@ Decision = namedtuple("Decision", ["label", "score"])
 PickResult = namedtuple("PickResult", ["region", "index", "label", "score"])
 
 
-class JudgeError(Exception):
+class JudgeError(NaturalPDFError):
     """Raised when Judge operations fail."""
 
     pass

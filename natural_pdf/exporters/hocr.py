@@ -33,6 +33,7 @@ from pikepdf.canvas import (  # type: ignore[import]
     TextDirection,
 )
 
+from natural_pdf.exceptions import ExportError
 from natural_pdf.exporters.hocr_font import EncodableFont as Font
 from natural_pdf.exporters.hocr_font import GlyphlessFont
 
@@ -55,7 +56,7 @@ class DebugRenderOptions:
     render_space_bbox: bool = False
 
 
-class HocrTransformError(Exception):
+class HocrTransformError(ExportError):
     """Error while applying hOCR transform."""
 
 

@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-import natural_pdf as npdf
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.flows.element import FlowElement
 from natural_pdf.flows.flow import Flow
@@ -17,9 +16,9 @@ from natural_pdf.flows.region import FlowRegion
 class TestCurrentBehavior:
     """Tests documenting current limitations before implementing the protocol."""
 
-    def test_flow_region_in_collection_now_works(self):
+    def test_flow_region_in_collection_now_works(self, multipage_table_pdf):
         """FlowRegions in ElementCollection.show() now work with the protocol."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # Create a manual FlowRegion for testing
         flow = Flow(segments=[pdf.pages[0], pdf.pages[1]], arrangement="vertical")
@@ -49,11 +48,9 @@ class TestCurrentBehavior:
         # With explicit vertical stacking the total height should exceed a single page
         assert img.height > pdf.pages[0].height
 
-        pdf.close()
-
-    def test_mixed_pages_in_collection_now_works(self):
+    def test_mixed_pages_in_collection_now_works(self, multipage_table_pdf):
         """Elements from multiple pages in ElementCollection.show() now work."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # Get elements from different pages
         page1_text = pdf.pages[0].find_all("text")[:5]
@@ -73,16 +70,13 @@ class TestCurrentBehavior:
         # Height should be greater than a single page since it's stacked
         assert img.height > 1000  # Multi-page stacked
 
-        pdf.close()
-
 
 class TestHighlightProtocol:
     """Tests for the new highlighting protocol."""
 
-    def test_element_highlight_specs(self):
+    def test_element_highlight_specs(self, practice_pdf):
         """Regular elements should provide highlight specs."""
-        pdf = npdf.PDF("pdfs/01-practice.pdf")
-        page = pdf.pages[0]
+        page = practice_pdf.pages[0]
 
         # Get a text element
         text_elem = page.find("text")
@@ -106,11 +100,9 @@ class TestHighlightProtocol:
         assert spec["bbox"] == text_elem.bbox
         assert spec["element"] == text_elem
 
-        pdf.close()
-
-    def test_flow_region_highlight_specs(self):
+    def test_flow_region_highlight_specs(self, multipage_table_pdf):
         """FlowRegions should provide highlight specs for all constituent regions."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # Create a flow and find a table that spans pages
         flow = Flow(segments=[pdf.pages[0], pdf.pages[1]], arrangement="vertical")
@@ -146,11 +138,9 @@ class TestHighlightProtocol:
         assert specs[1]["page_index"] == 1
         assert specs[1]["bbox"] == region2.bbox
 
-        pdf.close()
-
-    def test_element_collection_with_protocol(self):
+    def test_element_collection_with_protocol(self, multipage_table_pdf):
         """ElementCollection.show() should work with mixed content using the protocol."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # Create a collection with:
         # 1. Regular elements from page 0
@@ -206,15 +196,13 @@ class TestHighlightProtocol:
             for spec in specs:
                 assert len(spec.highlights) > 0
 
-        pdf.close()
-
 
 class TestHighlightProtocolIntegration:
     """Integration tests with real rendering."""
 
-    def test_multipage_table_cells_visualization(self):
+    def test_multipage_table_cells_visualization(self, multipage_table_pdf):
         """Test the motivating use case: showing table cells across pages."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # This is the use case from the user's question
         # After implementing the protocol, this should work
@@ -238,11 +226,9 @@ class TestHighlightProtocolIntegration:
         img = cells.show()
         assert img is not None
 
-        pdf.close()
-
-    def test_flow_search_results_visualization(self):
+    def test_flow_search_results_visualization(self, multipage_table_pdf):
         """Test showing search results from a Flow."""
-        pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
+        pdf = multipage_table_pdf
 
         # Create a flow across multiple pages
         flow = Flow(segments=pdf.pages[:3], arrangement="vertical")
@@ -262,8 +248,6 @@ class TestHighlightProtocolIntegration:
         if len(results) > 0:
             assert img is not None
 
-        pdf.close()
-
 
 class TestEdgeCases:
     """Test edge cases and error handling."""
@@ -281,10 +265,9 @@ class TestEdgeCases:
         specs = mock_elem.get_highlight_specs()
         assert specs == []
 
-    def test_element_without_bbox(self):
+    def test_element_without_bbox(self, practice_pdf):
         """Elements without a bbox should return empty specs."""
-        pdf = npdf.PDF("pdfs/01-practice.pdf")
-        page = pdf.pages[0]
+        page = practice_pdf.pages[0]
 
         # Create a mock element with page but no bbox
         mock_elem = Mock()
@@ -299,14 +282,10 @@ class TestEdgeCases:
         specs = mock_elem.get_highlight_specs()
         assert specs == []
 
-        pdf.close()
-
-    def test_empty_flow_region(self):
+    def test_empty_flow_region(self, practice_pdf):
         """Empty FlowRegions should return empty specs."""
-        pdf = npdf.PDF("pdfs/01-practice.pdf")
-
-        flow = Flow(segments=[pdf.pages[0]], arrangement="vertical")
-        source_elem = pdf.pages[0].find("text")
+        flow = Flow(segments=[practice_pdf.pages[0]], arrangement="vertical")
+        source_elem = practice_pdf.pages[0].find("text")
         flow_elem = FlowElement(physical_object=source_elem, flow=flow)
 
         # Create FlowRegion with no constituent regions
@@ -315,18 +294,14 @@ class TestEdgeCases:
         specs = flow_region.get_highlight_specs()
         assert specs == []
 
-        pdf.close()
-
 
 class TestBackwardCompatibility:
     """Ensure existing functionality still works."""
 
-    def test_single_page_collection_still_works(self):
+    def test_single_page_collection_still_works(self, practice_pdf):
         """Single-page collections should work as before."""
-        pdf = npdf.PDF("pdfs/01-practice.pdf")
-
         # Get elements from a single page
-        elements = pdf.pages[0].find_all("text")
+        elements = practice_pdf.pages[0].find_all("text")
 
         # Single page collections should work normally
         img = elements.show()
@@ -336,13 +311,9 @@ class TestBackwardCompatibility:
         assert img.width > 0
         assert img.height > 0
 
-        pdf.close()
-
-    def test_existing_show_parameters_work(self):
+    def test_existing_show_parameters_work(self, practice_pdf):
         """All existing parameters should be passed through correctly."""
-        pdf = npdf.PDF("pdfs/01-practice.pdf")
-
-        elements = pdf.pages[0].find_all("text")
+        elements = practice_pdf.pages[0].find_all("text")
         # Limit to first 5 elements using slicing (now returns ElementCollection)
         limited_elements = elements[:5]
 
@@ -359,22 +330,3 @@ class TestBackwardCompatibility:
         # Should produce an image with the requested properties
         assert img is not None
         assert img.width == 400  # Width should be as requested
-
-        pdf.close()
-
-
-# Add fixtures for commonly used PDFs
-@pytest.fixture
-def multipage_table_pdf():
-    """Load the multi-page table PDF."""
-    pdf = npdf.PDF("pdfs/multipage-table-african-recipes.pdf")
-    yield pdf
-    pdf.close()
-
-
-@pytest.fixture
-def simple_pdf():
-    """Load a simple single-page PDF."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    yield pdf
-    pdf.close()

@@ -964,6 +964,27 @@ class Region(
         return self.region_type or "region"  # Prioritize specific region_type if set
 
     @property
+    def endpoint(self) -> Optional["Element"]:
+        """Get the boundary element that matched the 'until' selector.
+
+        When a region is created using directional navigation with an 'until'
+        parameter (e.g., `element.above(until='text[size>10]')`), this property
+        returns the element that matched the selector and defined the boundary.
+
+        Returns:
+            The element that matched the 'until' selector, or None if no
+            'until' was specified or no match was found.
+
+        Example:
+            ```python
+            # Find the header above a price element
+            region = price.above(until='text[size>14]')
+            header = region.endpoint  # The text element that matched
+            ```
+        """
+        return self.end_element
+
+    @property
     def page(self) -> "Page":
         """Get the parent page."""
         return self._page
@@ -1178,45 +1199,127 @@ class Region(
 
     def trim(
         self,
-        padding: int = 1,
+        padding: float = 1,
         threshold: float = 0.95,
         resolution: Optional[float] = None,
         pre_shrink: float = 0.5,
+        method: Literal["auto", "elements", "any", "average"] = "any",
     ) -> "Region":
         """
-        Trim visual whitespace from the edges of this region.
+        Trim whitespace from the edges of this region.
 
-        Similar to Python's string .strip() method, but for visual whitespace in the region image.
-        Uses pixel analysis to detect rows/columns that are predominantly whitespace.
+        Similar to Python's string .strip() method. Stops at ANY non-white pixel by default.
 
         Args:
-            padding: Number of pixels to keep as padding after trimming (default: 1)
-            threshold: Threshold for considering a row/column as whitespace (0.0-1.0, default: 0.95)
-                      Higher values mean more strict whitespace detection.
-                      E.g., 0.95 means if 95% of pixels in a row/column are white, consider it whitespace.
-            resolution: Resolution for image rendering in DPI (default: uses global options, fallback to 144 DPI)
-            pre_shrink: Amount to shrink region before trimming, then expand back after (default: 0.5)
-                       This helps avoid detecting box borders/slivers as content.
+            padding: Padding to keep around content in PDF points (default: 1)
+            threshold: For pixel methods, threshold for whitespace detection (0.0-1.0, default: 0.95)
+            resolution: Resolution for pixel-based methods in DPI (default: 144)
+            pre_shrink: For pixel methods, shrink before trim to avoid border artifacts (default: 0.5)
+            method: Trimming strategy:
+                - 'any' (default): Pixel-based, stop at ANY non-white pixel (like string.strip())
+                - 'auto': Use 'elements' if available, fall back to 'any'
+                - 'elements': Use bounding boxes of text/elements (best for digital PDFs)
+                - 'average': Pixel-based, use row/column averages (for noisy scans)
 
-        Returns
-        ------
+        Returns:
+            New Region with whitespace trimmed from all edges
 
-        New Region with visual whitespace trimmed from all edges
+        Examples:
+            ```python
+            # Default: stop at any content pixel (like string.strip())
+            trimmed = region.trim()
 
-        Examples
-        --------
+            # Use element bounding boxes (faster, but may include empty elements)
+            trimmed = region.trim(method='elements')
 
-        ```python
-        # Basic trimming with 1 pixel padding and 0.5px pre-shrink
-        trimmed = region.trim()
-
-        # More aggressive trimming with no padding and no pre-shrink
-        tight = region.trim(padding=0, threshold=0.9, pre_shrink=0)
-
-        # Conservative trimming with more padding
-        loose = region.trim(padding=3, threshold=0.98)
-        ```
+            # For noisy scanned documents
+            trimmed = region.trim(method='average', threshold=0.9)
+            ```
         """
+        valid_methods = ("auto", "elements", "any", "average")
+        if method not in valid_methods:
+            raise ValueError(f"method must be one of {valid_methods}, got {method!r}")
+
+        # Try element-based trimming for 'auto' or 'elements'
+        if method in ("auto", "elements"):
+            result = self._trim_by_elements(padding=padding)
+            if result is not None:
+                return result
+            elif method == "elements":
+                raise ValueError(
+                    f"Region {self.bbox}: no elements found for element-based trimming. "
+                    "Try method='any' or method='auto' for pixel-based fallback."
+                )
+            # Fall through to pixel-based for 'auto'
+
+        # Pixel-based trimming
+        return self._trim_by_pixels(
+            padding=padding,
+            threshold=threshold,
+            resolution=resolution,
+            pre_shrink=pre_shrink,
+            use_any=(method in ("auto", "any")),
+        )
+
+    def _trim_by_elements(self, padding: float = 1) -> Optional["Region"]:
+        """
+        Trim using element bounding boxes. Returns None if no elements found.
+        """
+        # Get all elements within this region
+        elements = self.find_all("*")
+        if not elements or len(elements) == 0:
+            return None
+
+        # Calculate bounding box of all elements
+        x0 = min(e.x0 for e in elements)
+        top = min(e.top for e in elements)
+        x1 = max(e.x1 for e in elements)
+        bottom = max(e.bottom for e in elements)
+
+        # Apply padding
+        final_x0 = max(self.x0, x0 - padding)
+        final_top = max(self.top, top - padding)
+        final_x1 = min(self.x1, x1 + padding)
+        final_bottom = min(self.bottom, bottom + padding)
+
+        # Ensure valid dimensions
+        if final_x1 <= final_x0 or final_bottom <= final_top:
+            return None
+
+        # Create the trimmed region
+        trimmed_region: Region = Region(self.page, (final_x0, final_top, final_x1, final_bottom))
+
+        # Copy metadata
+        trimmed_region.region_type = self.region_type
+        trimmed_region.normalized_type = self.normalized_type
+        trimmed_region.confidence = self.confidence
+        trimmed_region.model = self.model
+        trimmed_region.name = self.name
+        trimmed_region.label = self.label
+        trimmed_region.source = "trimmed"
+        trimmed_region.parent_region = self
+
+        logger.debug(
+            f"Region {self.bbox}: Element-trimmed to {trimmed_region.bbox} (padding={padding})"
+        )
+        return trimmed_region
+
+    def _trim_by_pixels(
+        self,
+        padding: float = 1,
+        threshold: float = 0.95,
+        resolution: Optional[float] = None,
+        pre_shrink: float = 0.5,
+        use_any: bool = True,
+    ) -> "Region":
+        """
+        Trim using pixel analysis.
+
+        Args:
+            use_any: If True, stop at ANY non-white pixel. If False, use row/column averages.
+        """
+        import numpy as np
+
         image_options = _image_options()
         if resolution is None:
             default_resolution = image_options.resolution
@@ -1232,16 +1335,12 @@ class Region(
         )
 
         # Get the region image
-        # Use render() for clean image without highlights, with cropping
         image = work_region.render(resolution=resolution, crop=True)
         if image is None:
             raise RuntimeError(f"Region {self.bbox}: render() returned None during trimming.")
 
-        # Convert to grayscale for easier analysis
-        import numpy as np
-
-        # Convert PIL image to numpy array
-        img_array = np.array(image.convert("L"))  # Convert to grayscale
+        # Convert to grayscale numpy array
+        img_array = np.array(image.convert("L"))
         height, width = img_array.shape
 
         if height == 0 or width == 0:
@@ -1250,53 +1349,47 @@ class Region(
         # Normalize pixel values to 0-1 range (255 = white = 1.0, 0 = black = 0.0)
         normalized = img_array.astype(np.float32) / 255.0
 
-        # Find content boundaries by analyzing row and column averages
-
-        # Analyze rows (horizontal strips) to find top and bottom boundaries
-        row_averages = np.mean(normalized, axis=1)  # Average each row
-        content_rows = row_averages < threshold  # True where there's content (not whitespace)
+        # Find content boundaries
+        if use_any:
+            # Stop at ANY non-white pixel (like string.strip())
+            content_rows = np.any(normalized < threshold, axis=1)
+            content_cols = np.any(normalized < threshold, axis=0)
+        else:
+            # Use averages (legacy behavior, for noisy scans)
+            content_rows = np.mean(normalized, axis=1) < threshold
+            content_cols = np.mean(normalized, axis=0) < threshold
 
         # Find first and last rows with content
         content_row_indices = np.where(content_rows)[0]
         if len(content_row_indices) == 0:
-            # No content found, return a minimal region at the center
             raise ValueError(f"Region {self.bbox}: no content detected during trimming.")
-
-        top_content_row = max(0, content_row_indices[0] - padding)
-        bottom_content_row = min(height - 1, content_row_indices[-1] + padding)
-
-        # Analyze columns (vertical strips) to find left and right boundaries
-        col_averages = np.mean(normalized, axis=0)  # Average each column
-        content_cols = col_averages < threshold  # True where there's content
 
         content_col_indices = np.where(content_cols)[0]
         if len(content_col_indices) == 0:
-            # No content found in columns either
             raise ValueError(f"Region {self.bbox}: no column content detected during trimming.")
 
-        left_content_col = max(0, content_col_indices[0] - padding)
-        right_content_col = min(width - 1, content_col_indices[-1] + padding)
+        # Convert padding from PDF points to pixels
+        scale_factor = resolution / 72.0
+        padding_pixels = int(padding * scale_factor)
+
+        top_content_row = max(0, content_row_indices[0] - padding_pixels)
+        bottom_content_row = min(height - 1, content_row_indices[-1] + padding_pixels)
+        left_content_col = max(0, content_col_indices[0] - padding_pixels)
+        right_content_col = min(width - 1, content_col_indices[-1] + padding_pixels)
 
         # Convert trimmed pixel coordinates back to PDF coordinates
-        scale_factor = resolution / 72.0  # Scale factor used in render()
-
-        # Calculate new PDF coordinates and ensure they are Python floats
         trimmed_x0 = float(work_region.x0 + (left_content_col / scale_factor))
         trimmed_top = float(work_region.top + (top_content_row / scale_factor))
-        trimmed_x1 = float(
-            work_region.x0 + ((right_content_col + 1) / scale_factor)
-        )  # +1 because we want inclusive right edge
-        trimmed_bottom = float(
-            work_region.top + ((bottom_content_row + 1) / scale_factor)
-        )  # +1 because we want inclusive bottom edge
+        trimmed_x1 = float(work_region.x0 + ((right_content_col + 1) / scale_factor))
+        trimmed_bottom = float(work_region.top + ((bottom_content_row + 1) / scale_factor))
 
-        # Ensure the trimmed region doesn't exceed the work region boundaries
+        # Ensure the trimmed region doesn't exceed boundaries
         final_x0 = max(work_region.x0, trimmed_x0)
         final_top = max(work_region.top, trimmed_top)
         final_x1 = min(work_region.x1, trimmed_x1)
         final_bottom = min(work_region.bottom, trimmed_bottom)
 
-        # Ensure valid coordinates (width > 0, height > 0)
+        # Ensure valid coordinates
         if final_x1 <= final_x0 or final_bottom <= final_top:
             raise ValueError(f"Region {self.bbox}: trimming produced invalid dimensions.")
 
@@ -1322,8 +1415,10 @@ class Region(
         trimmed_region.source = "trimmed"  # Indicate this is a derived region
         trimmed_region.parent_region = self
 
+        method_name = "any" if use_any else "average"
         logger.debug(
-            f"Region {self.bbox}: Trimmed to {trimmed_region.bbox} (padding={padding}, threshold={threshold}, pre_shrink={pre_shrink})"
+            f"Region {self.bbox}: Pixel-trimmed ({method_name}) to {trimmed_region.bbox} "
+            f"(padding={padding}, threshold={threshold}, pre_shrink={pre_shrink})"
         )
         return trimmed_region
 

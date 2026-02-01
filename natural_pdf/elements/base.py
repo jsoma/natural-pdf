@@ -236,25 +236,26 @@ class DirectionalMixin:
             if anchor_value == "center":
                 return "center"
             if anchor_value == "start":
-                # Start means the edge we're moving away from
+                # Start means the edge where the directional region begins
+                # (the boundary between source and the new region)
                 if dir == "below":
-                    return "top"
-                if dir == "above":
                     return "bottom"
+                if dir == "above":
+                    return "top"
                 if dir == "right":
-                    return "left"
-                if dir == "left":
                     return "right"
+                if dir == "left":
+                    return "left"
             elif anchor_value == "end":
-                # End means the edge we're moving towards
+                # End means the opposite edge (allows finding elements that overlap with source)
                 if dir == "below":
-                    return "bottom"
-                if dir == "above":
                     return "top"
+                if dir == "above":
+                    return "bottom"
                 if dir == "right":
-                    return "right"
-                if dir == "left":
                     return "left"
+                if dir == "left":
+                    return "right"
             # Already explicit (top/bottom/left/right) or unhandled direction fallback
             return anchor_value
 
@@ -356,10 +357,12 @@ class DirectionalMixin:
             all_matches = geometric_matches
 
             # Determine reference point based on normalized_anchor
+            # Note: We use <= or >= consistently to include adjacent/touching elements,
+            # since we already exclude self from matches at line 348.
             if direction == "above":
                 if normalized_anchor == "top":
                     ref_y = host.top
-                    comparator = lambda m: m.bottom < ref_y
+                    comparator = lambda m: m.bottom <= ref_y
                 elif normalized_anchor == "center":
                     ref_y = (host.top + host.bottom) / 2
                     comparator = lambda m: m.bottom <= ref_y
@@ -380,7 +383,7 @@ class DirectionalMixin:
             elif direction == "below":
                 if normalized_anchor == "top":
                     ref_y = host.top
-                    comparator = lambda m: m.top > ref_y
+                    comparator = lambda m: m.top >= ref_y
                 elif normalized_anchor == "center":
                     ref_y = (host.top + host.bottom) / 2
                     comparator = lambda m: m.top >= ref_y
@@ -401,7 +404,7 @@ class DirectionalMixin:
             elif direction == "left":
                 if normalized_anchor == "left":
                     ref_x = host.x0
-                    comparator = lambda m: m.x1 < ref_x
+                    comparator = lambda m: m.x1 <= ref_x
                 elif normalized_anchor == "center":
                     ref_x = (host.x0 + host.x1) / 2
                     comparator = lambda m: m.x1 <= ref_x
@@ -430,7 +433,7 @@ class DirectionalMixin:
                     comparator = lambda m: m.x0 >= ref_x
                 else:  # 'right'
                     ref_x = host.x1
-                    comparator = lambda m: m.x0 > ref_x
+                    comparator = lambda m: m.x0 >= ref_x
 
                 matches_in_direction = [m for m in all_matches if comparator(m)]
                 # Filter by vertical bounds if cross_size='element'

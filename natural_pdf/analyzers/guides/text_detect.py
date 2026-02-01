@@ -6,6 +6,7 @@ from typing import Any, Iterable, List, Sequence, Tuple, Union
 
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import find_peaks
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.flows.region import FlowRegion
@@ -95,6 +96,14 @@ def _find_whitespace_gaps(
     threshold: Threshold,
     guide_positions: Sequence[float] | None,
 ) -> List[Gap]:
+    """
+    Find whitespace gaps using prominence-based valley detection.
+
+    Uses scipy.signal.find_peaks on inverted density to find true valleys
+    (local minima) rather than just below-threshold regions. This handles
+    cases where text lengths vary across rows (e.g., one long name extending
+    into what should be a gap).
+    """
     if not bounds:
         return []
 
@@ -109,6 +118,7 @@ def _find_whitespace_gaps(
     if span <= 0:
         return []
 
+    # Build density array
     density = np.zeros(span)
     for element in text_elements:
         start = getattr(element, start_attr, None)
@@ -130,30 +140,16 @@ def _find_whitespace_gaps(
     if density.max() == 0:
         return []
 
-    guide_positions = list(guide_positions or [])
-    guides_needed = max(len(guide_positions) - 2, 0)
-
-    if threshold == "auto":
-        if guides_needed == 0:
-            threshold_val = 0.5
-        else:
-            threshold_val = None
-            for candidate in np.arange(0.1, 1.0, 0.05):
-                candidate_gaps = _find_gaps_with_threshold(density, candidate, min_gap, low)
-                if len(candidate_gaps) >= guides_needed:
-                    threshold_val = float(candidate)
-                    break
-            if threshold_val is None:
-                threshold_val = 0.8
-    else:
-        if not isinstance(threshold, (int, float)) or not (0.0 <= threshold <= 1.0):
-            raise ValueError("threshold must be a number between 0.0 and 1.0, or 'auto'")
-        threshold_val = float(threshold)
-
-    return _find_gaps_with_threshold(density, threshold_val, min_gap, low)
+    return _find_gaps_via_minima(density, min_gap, low)
 
 
-def _find_gaps_with_threshold(density, threshold_val, min_gap, origin) -> List[Gap]:
+def _find_gaps_via_minima(density: np.ndarray, min_gap: float, origin: float) -> List[Gap]:
+    """
+    Find gaps by detecting local minima (valleys) in the density signal.
+
+    Uses scipy.signal.find_peaks on inverted density with prominence filtering
+    to find true column separators, even when some text crosses the gap.
+    """
     if density.size == 0:
         return []
 
@@ -161,23 +157,81 @@ def _find_gaps_with_threshold(density, threshold_val, min_gap, origin) -> List[G
     if max_density <= 0:
         return []
 
-    threshold_density = threshold_val * max_density
-    smoothed_density = gaussian_filter1d(density.astype(float), sigma=1.0)
-    below_threshold = smoothed_density <= threshold_density
+    # Smooth the density to merge character-level noise into column-level hills
+    smoothed = gaussian_filter1d(density.astype(float), sigma=2.0)
 
-    labeled_regions, num_regions = _label_contiguous_regions(below_threshold)
+    # Normalize to 0-1 for consistent parameters
+    if smoothed.max() > 0:
+        normalized = smoothed / smoothed.max()
+    else:
+        return []
+
+    # Invert: valleys become peaks
+    inverted = 1.0 - normalized
+
+    # Find peaks in inverted signal (which are valleys in original)
+    # prominence: how much the valley drops relative to surrounding peaks
+    # width: minimum gap width
+    # distance: minimum separation between valleys (column width)
+    peaks, properties = find_peaks(
+        inverted,
+        prominence=0.1,  # Valley must drop at least 10% relative to surroundings
+        width=max(1, int(min_gap * 0.5)),  # At least half the min_gap width
+        distance=max(1, int(min_gap)),  # Valleys must be at least min_gap apart
+    )
+
+    if len(peaks) == 0:
+        return []
+
     gaps: List[Gap] = []
-    for region_id in range(1, num_regions + 1):
-        region_mask = labeled_regions == region_id
-        region_indices = np.where(region_mask)[0]
-        if len(region_indices) == 0:
-            continue
-        start_px = region_indices[0]
-        end_px = region_indices[-1] + 1
-        start_coord = origin + start_px
-        end_coord = origin + end_px
-        if end_coord - start_coord >= min_gap:
-            gaps.append((start_coord, end_coord))
+
+    for i, peak_idx in enumerate(peaks):
+        # Get the width bounds for this valley
+        left_ips = properties.get("left_ips", [])
+        right_ips = properties.get("right_ips", [])
+
+        if len(left_ips) > i and len(right_ips) > i:
+            # Use the interpolated width bounds from find_peaks
+            left_bound = int(left_ips[i])
+            right_bound = int(right_ips[i]) + 1
+        else:
+            # Fallback: expand from peak center until we hit rising density
+            left_bound = peak_idx
+            right_bound = peak_idx + 1
+
+            # Expand left
+            while left_bound > 0 and normalized[left_bound - 1] <= normalized[left_bound] + 0.05:
+                left_bound -= 1
+
+            # Expand right
+            while (
+                right_bound < len(normalized) - 1
+                and normalized[right_bound] <= normalized[right_bound - 1] + 0.05
+            ):
+                right_bound += 1
+
+        # Validate: the gap region should have actual zero-density somewhere
+        # This ensures we're not just finding a "saddle point" with text throughout
+        gap_region = density[left_bound:right_bound]
+        if len(gap_region) > 0 and gap_region.min() == 0:
+            # Find the actual zero-density portion within this valley
+            zero_mask = gap_region == 0
+            zero_indices = np.where(zero_mask)[0]
+
+            if len(zero_indices) > 0:
+                # Find largest contiguous zero-density run
+                splits = np.where(np.diff(zero_indices) != 1)[0] + 1
+                groups = np.split(zero_indices, splits)
+                largest_group = max(groups, key=len)
+
+                actual_start = left_bound + largest_group[0]
+                actual_end = left_bound + largest_group[-1] + 1
+
+                start_coord = origin + actual_start
+                end_coord = origin + actual_end
+
+                if end_coord - start_coord >= min_gap:
+                    gaps.append((start_coord, end_coord))
 
     return gaps
 

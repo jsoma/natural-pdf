@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence,
 from PIL import Image
 from tqdm.auto import tqdm
 
+from natural_pdf.exceptions import ClassificationError
 from natural_pdf.utils.optional_imports import is_available, require
 
 from .results import CategoryScore, ClassificationResult
@@ -22,9 +23,8 @@ DEFAULT_VISION_MODEL = "openai/clip-vit-base-patch16"
 _PIPELINE_CACHE: Dict[str, "Pipeline"] = {}
 _CACHE_LOCK = threading.RLock()
 
-
-class ClassificationError(Exception):
-    """Raised when classification cannot be performed."""
+# Re-export for backward compatibility
+__all__ = ["ClassificationError"]
 
 
 def _check_classification_dependencies() -> bool:

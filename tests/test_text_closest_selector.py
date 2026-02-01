@@ -1,12 +1,9 @@
 """Test the text:closest() selector for fuzzy text matching."""
 
-from natural_pdf import PDF
 
-
-def test_text_closest_basic():
+def test_text_closest_basic(practice_pdf):
     """Test basic fuzzy text matching with real PDF content."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Test finding text that might be OCR'd poorly
     # Look for "Durham" which appears in the PDF
@@ -32,10 +29,9 @@ def test_text_closest_basic():
     assert len(results_low) == len(all_text)
 
 
-def test_text_closest_with_threshold():
+def test_text_closest_with_threshold(practice_pdf):
     """Test fuzzy matching with different similarity thresholds."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Test with "Violation" and varying thresholds
     search_term = "Violation"
@@ -58,10 +54,9 @@ def test_text_closest_with_threshold():
     assert any("Violation" in text for text in texts)
 
 
-def test_text_closest_case_sensitivity():
+def test_text_closest_case_sensitivity(practice_pdf):
     """Test case-sensitive vs case-insensitive fuzzy matching."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Look for "chicago" - the PDF has "Chicago"
     results_insensitive = page.find_all('text:closest("chicago@0.6")')
@@ -78,10 +73,9 @@ def test_text_closest_case_sensitivity():
     assert any("Chicago" in text for text in texts)
 
 
-def test_text_closest_with_other_selectors():
+def test_text_closest_with_other_selectors(practice_pdf):
     """Test combining :closest with other selectors."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find fuzzy match with size constraint
     # Look for text similar to "Date" with size > 10
@@ -95,10 +89,9 @@ def test_text_closest_with_other_selectors():
         assert all(r.top > 100 for r in results)
 
 
-def test_text_closest_empty_and_whitespace():
+def test_text_closest_empty_and_whitespace(practice_pdf):
     """Test fuzzy matching with empty strings and whitespace."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Empty string should not match anything
     results = page.find_all('text:closest("")')
@@ -110,10 +103,9 @@ def test_text_closest_empty_and_whitespace():
     assert len(results1) == len(results2)
 
 
-def test_text_closest_special_characters():
+def test_text_closest_special_characters(practice_pdf):
     """Test fuzzy matching with special characters including @."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Test searching for text with punctuation
     results = page.find_all('text:closest("Date:@0.8")')
@@ -128,10 +120,9 @@ def test_text_closest_special_characters():
     assert hasattr(results, "__iter__")  # Should be iterable
 
 
-def test_text_closest_ocr_simulation():
+def test_text_closest_ocr_simulation(practice_pdf):
     """Test fuzzy matching for common OCR errors."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Common OCR errors:
     # - l/I confusion: "Chicago, Ill." might be read as "Chicago, lll."
@@ -154,10 +145,9 @@ def test_text_closest_ocr_simulation():
     assert any("Violation" in text for text in texts)
 
 
-def test_text_closest_practical_use_cases():
+def test_text_closest_practical_use_cases(practice_pdf):
     """Test practical use cases for OCR'd documents."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Use case 1: Finding labels that might be OCR'd poorly
     # Looking for "Summary:" which might be read as "Surnmary:" or "Summary;"

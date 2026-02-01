@@ -32,6 +32,7 @@ dependencies = [
     "numpy",
     "urllib3",
     "tqdm",
+    "rich",
     "pydantic",
     "jenkspy",
     "scipy",

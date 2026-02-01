@@ -1,10 +1,6 @@
-from natural_pdf import PDF
-
-
-def test_closest_until_should_use_best_match():
+def test_closest_until_should_use_best_match(practice_pdf):
     """Test that until='text:closest()' selects the best match, not just the first positional match"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Let's find a starting point and look for text below it
     # We'll search for text that might have multiple matches with varying quality
@@ -63,10 +59,9 @@ def test_closest_until_should_use_best_match():
             print("This suggests it's using positional proximity rather than match quality!")
 
 
-def test_closest_until_with_threshold():
+def test_closest_until_with_threshold(practice_pdf):
     """Test how threshold affects the until boundary selection"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     start = page.find("text")
     search_term = "City"
@@ -86,10 +81,9 @@ def test_closest_until_with_threshold():
             print(f"  Region ends at y={result.bottom}")
 
 
-def test_closest_until_real_world_case():
+def test_closest_until_real_world_case(practice_pdf):
     """Test the specific case mentioned in the issue"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Look for something that might have "ICE Information" or similar
     print("\n=== Looking for text containing 'Information' ===")

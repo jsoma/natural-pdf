@@ -1,4 +1,3 @@
-from natural_pdf import PDF
 from natural_pdf.core.page import _jaro_winkler_similarity
 
 
@@ -6,9 +5,9 @@ def jw_ratio(a: str, b: str) -> float:
     return _jaro_winkler_similarity(a, b)
 
 
-def test_closest_until_debug():
+def test_closest_until_debug(practice_pdf):
     """Debug test to understand the closest/until behavior"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     # Find a starting element
@@ -56,9 +55,9 @@ def test_closest_until_debug():
             print(f"Boundary element: '{boundary[0].extract_text()}'")
 
 
-def test_closest_sorting():
+def test_closest_sorting(practice_pdf):
     """Test that closest selector properly sorts by similarity"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     # Test with a word that might have partial matches

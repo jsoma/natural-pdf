@@ -2506,60 +2506,34 @@ class Guides:
         self, guides: List[float], trough_ranges: List[Tuple[float, float]]
     ) -> Dict[int, int]:
         """
-        Assign guides to trough ranges using the user's desired logic:
-        - Guides already in a trough stay put
-        - Only guides NOT in any trough get moved to available troughs
-        - Prefer closest assignment for guides that need to move
+        Assign guides to trough ranges and snap them to trough centers.
+        All internal guides (not boundary guides) get assigned to the closest trough
+        and moved to its center.
         """
         if not guides or not trough_ranges:
             return {}
 
         assignments = {}
 
-        # Step 1: Identify which guides are already in troughs
-        guides_in_troughs = set()
-        for i, guide_pos in enumerate(guides):
-            for trough_start, trough_end in trough_ranges:
-                if trough_start <= guide_pos <= trough_end:
-                    guides_in_troughs.add(i)
-                    logger.debug(
-                        f"Guide {i} (pos {guide_pos:.1f}) is already in trough ({trough_start:.1f}-{trough_end:.1f}), keeping in place"
-                    )
-                    break
+        # Identify boundary guides (first and last) - these don't get reassigned
+        boundary_indices = {0, len(guides) - 1} if len(guides) >= 2 else set()
 
-        # Step 2: Identify which troughs are already occupied
-        occupied_troughs = set()
-        for i in guides_in_troughs:
-            guide_pos = guides[i]
-            for j, (trough_start, trough_end) in enumerate(trough_ranges):
-                if trough_start <= guide_pos <= trough_end:
-                    occupied_troughs.add(j)
-                    break
-
-        # Step 3: Find guides that need reassignment (not in any trough)
-        guides_to_move = []
+        # Find internal guides that should be snapped to troughs
+        internal_guides = []
         for i, guide_pos in enumerate(guides):
-            if i not in guides_in_troughs:
-                guides_to_move.append(i)
+            if i not in boundary_indices:
+                internal_guides.append(i)
                 logger.debug(
-                    f"Guide {i} (pos {guide_pos:.1f}) is NOT in any trough, needs reassignment"
+                    f"Guide {i} (pos {guide_pos:.1f}) is internal, will be assigned to trough"
                 )
 
-        # Step 4: Find available troughs (not occupied by existing guides)
-        available_troughs = []
-        for j, (trough_start, trough_end) in enumerate(trough_ranges):
-            if j not in occupied_troughs:
-                available_troughs.append(j)
-                logger.debug(f"Trough {j} ({trough_start:.1f}-{trough_end:.1f}) is available")
-
-        # Step 5: Assign guides to move to closest available troughs
-        if guides_to_move and available_troughs:
+        # Assign each internal guide to closest available trough
+        if internal_guides and trough_ranges:
             # Calculate distances for all combinations
             distances = []
-            for guide_idx in guides_to_move:
+            for guide_idx in internal_guides:
                 guide_pos = guides[guide_idx]
-                for trough_idx in available_troughs:
-                    trough_start, trough_end = trough_ranges[trough_idx]
+                for trough_idx, (trough_start, trough_end) in enumerate(trough_ranges):
                     trough_center = (trough_start + trough_end) / 2
                     distance = abs(guide_pos - trough_center)
                     distances.append((distance, guide_idx, trough_idx))

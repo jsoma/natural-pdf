@@ -2,14 +2,12 @@
 
 import pytest
 
-import natural_pdf as npdf
 from natural_pdf.elements.element_collection import ElementCollection
 
 
-def test_element_collection_slicing():
+def test_element_collection_slicing(practice_pdf):
     """Test that slicing ElementCollection returns ElementCollection objects."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Get a collection of text elements
     text_elements = page.find_all("text")
@@ -60,13 +58,10 @@ def test_element_collection_slicing():
     except Exception as e:
         pytest.fail(f"show() method failed on sliced collection: {e}")
 
-    pdf.close()
 
-
-def test_empty_slice():
+def test_empty_slice(practice_pdf):
     """Test that empty slices return empty ElementCollection objects."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     text_elements = page.find_all("text")
 
@@ -80,13 +75,10 @@ def test_empty_slice():
     assert isinstance(out_of_bounds, ElementCollection)
     assert len(out_of_bounds) == 0
 
-    pdf.close()
 
-
-def test_slice_preserves_element_types():
+def test_slice_preserves_element_types(practice_pdf):
     """Test that slicing preserves the correct element types."""
-    pdf = npdf.PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Get different types of elements
     text_elements = page.find_all("text")
@@ -96,8 +88,6 @@ def test_slice_preserves_element_types():
         sliced = text_elements[:3]
         for element in sliced:
             assert hasattr(element, "text"), "Should still be text elements"
-
-    pdf.close()
 
 
 if __name__ == "__main__":

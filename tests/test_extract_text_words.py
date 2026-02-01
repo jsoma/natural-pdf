@@ -1,14 +1,11 @@
 import pytest
 
-from natural_pdf import PDF
 from natural_pdf.elements.region import Region
 
 
-def test_extract_text_words_vs_chars():
+def test_extract_text_words_vs_chars(practice_pdf):
     """Test that word-level extraction differs from character-level extraction."""
-    # Create a simple PDF with text
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create a region that cuts through the middle of some words
     # This region should capture partial words at the boundaries
@@ -38,10 +35,10 @@ def test_extract_text_words_vs_chars():
     assert len(word_text_center) <= len(word_text_partial)
 
 
-def test_extract_text_words_with_exclusions():
+def test_extract_text_words_with_exclusions(practice_pdf_fresh):
     """Test that word-level extraction respects exclusions."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    # Use fresh PDF since we're adding exclusions
+    page = practice_pdf_fresh.pages[0]
 
     # Find a word to exclude
     first_word = page.find("text")
@@ -60,10 +57,9 @@ def test_extract_text_words_with_exclusions():
         assert len(text_with_exclusions) < len(text_without_exclusions)
 
 
-def test_extract_text_words_overlap_modes():
+def test_extract_text_words_overlap_modes(practice_pdf):
     """Test different overlap modes for word extraction."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create a small region that will have words at its boundaries
     # Use the middle of the page to ensure we have some content
@@ -85,10 +81,9 @@ def test_extract_text_words_overlap_modes():
     assert len(text_full) <= len(text_center) <= len(text_partial)
 
 
-def test_extract_text_invalid_granularity():
+def test_extract_text_invalid_granularity(practice_pdf):
     """Test that invalid granularity raises appropriate error."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
     region = Region(page, bbox=(0, 0, 100, 100))
 
     # Should raise error for invalid granularity
@@ -96,10 +91,10 @@ def test_extract_text_invalid_granularity():
         region.extract_text("lines")
 
 
-def test_extract_text_backwards_compatibility():
+def test_extract_text_backwards_compatibility(practice_pdf_fresh):
     """Test that existing code continues to work unchanged."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    # Use fresh PDF to test exclusions without affecting other tests
+    page = practice_pdf_fresh.pages[0]
     region = Region(page, bbox=(0, 0, 200, 200))
 
     # All existing parameters should still work

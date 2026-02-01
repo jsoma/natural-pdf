@@ -4,7 +4,6 @@ from unittest.mock import Mock
 
 import pytest
 
-from natural_pdf import PDF
 from natural_pdf.analyzers.guides import Guides, GuidesList
 
 
@@ -398,10 +397,9 @@ class TestGuidesDefaults:
         assert params["include_outer_boundaries"].default is False
 
 
-def test_markers_parameter_flexibility():
+def test_markers_parameter_flexibility(practice_pdf):
     """Test that markers parameter accepts different input types."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
     guides = Guides(page)
 
     # Test 1: Single selector string
@@ -434,10 +432,9 @@ def test_markers_parameter_flexibility():
     assert len(guides.vertical) == 0, "Should handle None markers gracefully"
 
 
-def test_class_method_markers_flexibility():
+def test_class_method_markers_flexibility(practice_pdf):
     """Test that the class method also accepts flexible markers."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Test single selector
     guides1 = Guides.from_content(page, axis="vertical", markers='text:contains("Total")')
@@ -450,10 +447,9 @@ def test_class_method_markers_flexibility():
         assert len(guides2.vertical) > 0, "Class method should handle ElementCollection"
 
 
-def test_snap_to_content_markers_flexibility():
+def test_snap_to_content_markers_flexibility(practice_pdf):
     """Test that snap_to_content also accepts flexible markers."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create some initial guides
     guides = Guides([100, 200, 300], context=page)
@@ -467,10 +463,9 @@ def test_snap_to_content_markers_flexibility():
     assert len(guides.vertical) == len(original_positions), "Should preserve guide count"
 
 
-def test_add_content_markers_flexibility():
+def test_add_content_markers_flexibility(practice_pdf):
     """Test that add_content method accepts flexible markers."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create empty guides
     guides = Guides(context=page)
@@ -487,10 +482,9 @@ def test_add_content_markers_flexibility():
         assert len(guides.vertical) >= initial_count, "add_content should handle ElementCollection"
 
 
-def test_add_method_flexibility():
+def test_add_method_flexibility(practice_pdf):
     """Test that add method accepts both single values and lists."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
     guides = Guides(page)
 
     # Test 1: Add single position
@@ -518,10 +512,10 @@ def test_add_method_flexibility():
     assert guides.vertical.data == [10, 20, 30]
 
 
-def test_pixel_based_line_detection():
+def test_pixel_based_line_detection(practice_pdf_fresh):
     """Test that pixel-based line detection works in Guides API."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    # Use fresh PDF as pixel detection may add LineElements to the page
+    page = practice_pdf_fresh.pages[0]
 
     # Test 1: Create guides from pixel-based line detection
     guides = Guides.from_lines(
@@ -566,10 +560,9 @@ def test_pixel_based_line_detection():
     assert len(pixel_lines) > 0, "Pixel detection should create LineElement objects"
 
 
-def test_property_accessors_with_negative_indexing():
+def test_property_accessors_with_negative_indexing(practice_pdf):
     """Test property-based accessors with negative indexing."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create guides with 3x3 grid
     guides = Guides(page)
@@ -637,10 +630,9 @@ def test_property_accessors_with_negative_indexing():
         _ = guides.cells[0, -4]  # Column index out of bounds
 
 
-def test_property_accessors_with_slicing():
+def test_property_accessors_with_slicing(practice_pdf):
     """Test property-based accessors with slice notation."""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Create guides with 3x3 grid
     guides = Guides(page)

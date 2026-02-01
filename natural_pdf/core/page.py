@@ -1888,6 +1888,7 @@ class Page(
         apply_exclusions: bool = True,
         verticals: Optional[Sequence[float]] = None,
         horizontals: Optional[Sequence[float]] = None,
+        outer: bool = False,
         structure_engine: Optional[str] = None,
     ) -> TableResult:
         """Call the table service with the canonical extract_table signature."""
@@ -1906,6 +1907,7 @@ class Page(
             apply_exclusions=apply_exclusions,
             verticals=verticals,
             horizontals=horizontals,
+            outer=outer,
             structure_engine=structure_engine,
         )
 

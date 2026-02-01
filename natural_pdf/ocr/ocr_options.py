@@ -209,7 +209,42 @@ class DoctrOCROptions(BaseOCROptions):
             self.box_thresh = validate_confidence(self.box_thresh, "box_thresh", "DoctrOCROptions")
 
 
+# --- RapidOCR Specific Options ---
+@dataclass
+class RapidOCROptions(BaseOCROptions):
+    """
+    Specific options for the RapidOCR engine.
+
+    RapidOCR uses PaddleOCR models converted to ONNX format, providing
+    the same accuracy with simpler installation (~15MB vs ~500MB).
+    """
+
+    # Detection settings
+    det_model_type: str = "mobile"  # "mobile" or "server"
+    det_thresh: float = 0.3
+
+    # Recognition settings
+    rec_model_type: str = "mobile"  # "mobile" or "server"
+
+    # Engine settings
+    use_det: bool = True
+    use_cls: bool = True
+    use_rec: bool = True
+
+    # Advanced (for power users)
+    config_path: Optional[str] = None  # Path to custom config.yaml
+
+    def __post_init__(self):
+        """Validate RapidOCR options."""
+        self.det_thresh = validate_confidence(self.det_thresh, "det_thresh", "RapidOCROptions")
+
+
 # --- Union type for type hinting ---
 OCROptions = Union[
-    EasyOCROptions, PaddleOCROptions, SuryaOCROptions, DoctrOCROptions, BaseOCROptions
+    EasyOCROptions,
+    PaddleOCROptions,
+    SuryaOCROptions,
+    DoctrOCROptions,
+    RapidOCROptions,
+    BaseOCROptions,
 ]

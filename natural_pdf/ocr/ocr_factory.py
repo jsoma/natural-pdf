@@ -8,7 +8,8 @@ from .engine import OCREngine
 logger = logging.getLogger(__name__)
 
 # Preference order for recommended engine selection
-_ENGINE_PREFERENCE = ["easyocr", "doctr", "paddle", "surya"]
+# RapidOCR placed second: easier to install than doctr/paddle, same quality as paddle
+_ENGINE_PREFERENCE = ["easyocr", "rapidocr", "doctr", "paddle", "surya"]
 
 
 class OCRFactory:

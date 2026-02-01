@@ -17,12 +17,14 @@ from .engine import OCREngine
 from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
+from .engine_rapidocr import RapidOCREngine
 from .engine_surya import SuryaOCREngine
 from .ocr_options import (
     BaseOCROptions,
     DoctrOCROptions,
     EasyOCROptions,
     PaddleOCROptions,
+    RapidOCROptions,
     SuryaOCROptions,
 )
 
@@ -50,6 +52,7 @@ ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {
     "paddle": {"provider": PaddleOCREngine, "options_class": PaddleOCROptions},
     "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
     "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
+    "rapidocr": {"provider": RapidOCREngine, "options_class": RapidOCROptions},
 }
 
 

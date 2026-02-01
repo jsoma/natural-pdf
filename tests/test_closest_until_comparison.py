@@ -1,4 +1,3 @@
-from natural_pdf import PDF
 from natural_pdf.core.page import _jaro_winkler_similarity
 
 
@@ -6,9 +5,9 @@ def jw_ratio(a: str, b: str) -> float:
     return _jaro_winkler_similarity(a, b)
 
 
-def test_compare_before_after_fix():
+def test_compare_before_after_fix(practice_pdf):
     """Compare behavior with and without the fix"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     # Find a good starting point
@@ -68,9 +67,9 @@ def test_compare_before_after_fix():
                 print("\nBoundary IS the first positional match")
 
 
-def test_with_perfect_match():
+def test_with_perfect_match(practice_pdf):
     """Test with a search that has a perfect match"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     start = page.find("text")

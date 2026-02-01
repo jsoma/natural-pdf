@@ -72,16 +72,45 @@ class PaddleLayoutDetector(LayoutDetector):
         return True
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
-        """Generate cache key based on model configuration."""
+        """Generate cache key based on model configuration.
+
+        Includes all model-affecting parameters to ensure different model
+        configurations get separate cache entries.
+        """
         if not isinstance(options, PaddleLayoutOptions):
             options = PaddleLayoutOptions(device=options.device)
 
-        device_key = str(options.device).lower() if options.device else "default_device"
-        lang_key = options.lang
-        table_key = str(options.use_table_recognition)
-        orientation_key = str(options.use_textline_orientation)
+        # Collect all model-affecting parameters for the cache key
+        # Using a tuple of relevant values and hashing for a compact key
+        model_params = (
+            str(options.device).lower() if options.device else "default_device",
+            options.lang,
+            # Model names/dirs
+            options.layout_detection_model_name,
+            options.layout_detection_model_dir,
+            options.text_detection_model_name,
+            options.text_detection_model_dir,
+            options.text_recognition_model_name,
+            options.text_recognition_model_dir,
+            options.table_classification_model_name,
+            options.table_classification_model_dir,
+            options.wired_table_structure_recognition_model_name,
+            options.wireless_table_structure_recognition_model_name,
+            # Use flags that affect model loading
+            options.use_doc_orientation_classify,
+            options.use_doc_unwarping,
+            options.use_textline_orientation,
+            options.use_table_recognition,
+            options.use_formula_recognition,
+            options.use_chart_recognition,
+            options.use_region_detection,
+            options.use_seal_recognition,
+        )
 
-        return f"{self.__class__.__name__}_{device_key}_{lang_key}_{table_key}_{orientation_key}"
+        # Create a hash for compact representation
+        params_hash = hash(model_params)
+
+        return f"{self.__class__.__name__}_{params_hash}"
 
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
         """Load the PPStructureV3 model based on options.

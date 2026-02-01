@@ -202,6 +202,33 @@ class ElementCollection(
     def right(self, *args, **kwargs) -> "ElementCollection":
         return self.apply(lambda element: element.right(*args, **kwargs))
 
+    @property
+    def endpoints(self) -> "ElementCollection":
+        """Get the boundary elements from regions created with 'until' selectors.
+
+        When a collection contains regions created using directional navigation
+        with an 'until' parameter, this property returns a collection of the
+        elements that matched those selectors and defined the boundaries.
+
+        Returns:
+            ElementCollection containing the endpoint elements. Elements without
+            an endpoint (no 'until' was specified or no match was found) are skipped.
+
+        Example:
+            ```python
+            # Find headers above multiple price elements
+            prices = page.find_all('text:contains("$")')
+            regions = prices.above(until='text[size>14]')
+            headers = regions.endpoints  # All the header elements
+            ```
+        """
+        endpoints = []
+        for element in self._elements:
+            endpoint = getattr(element, "endpoint", None) or getattr(element, "end_element", None)
+            if endpoint is not None:
+                endpoints.append(endpoint)
+        return self.__class__(endpoints)
+
     def _supports_list(self) -> List[SupportsElement]:
         """Ensure elements satisfy SupportsElement protocol."""
         for element in self._elements:
@@ -1833,6 +1860,9 @@ class ElementCollection(
             logger.error(f"Error creating interactive viewer from collection: {e}", exc_info=True)
             return None
 
+    # Sentinel value for "no default provided"
+    _NO_DEFAULT = object()
+
     def find(
         self,
         selector: Optional[str] = None,
@@ -1847,6 +1877,7 @@ class ElementCollection(
         reading_order: bool = True,
         near_threshold: Optional[float] = None,
         engine: Optional[str] = None,
+        default: Any = _NO_DEFAULT,
     ) -> "ElementCollection":
         """
         Find the first matching element below each item in the collection.
@@ -1866,9 +1897,13 @@ class ElementCollection(
             reading_order: Whether matches are resolved in natural reading order (default: True).
             near_threshold: Maximum distance (in points) used by the ``:near`` pseudo-class.
             engine: Optional selector engine name registered with the selector provider.
+            default: If provided, include this value in results when no match is found for an
+                element. This preserves the collection length, making it safe to use with
+                ``extract_each_text()``. Common usage: ``default=None``.
 
         Returns:
             An ElementCollection built from the first match (if any) discovered beneath each element.
+            If ``default`` is provided, the result will have the same length as the input collection.
         """
 
         if selector is not None and text is not None:
@@ -1919,6 +1954,9 @@ class ElementCollection(
                     matches.extend(found.elements)
                 else:
                     matches.append(found)
+            elif default is not self._NO_DEFAULT:
+                # No match found, but default was provided - include it to preserve length
+                matches.append(default)
 
         typed_matches = cast(List[SupportsElement], matches)
         return self._spawn(typed_matches)
@@ -2051,8 +2089,9 @@ class ElementCollection(
         order: Optional[Union[str, Callable[[T], Any]]] = None,
         *,
         newlines: bool = True,
+        default: Optional[str] = None,
         **kwargs,
-    ) -> List[str]:
+    ) -> List[Optional[str]]:
         """Return a list with the extracted text for every element.
 
         Parameters
@@ -2065,6 +2104,11 @@ class ElementCollection(
             * ``"ltr"`` – left-to-right ordering (x0, then y-top).
             * ``"rtl"`` – right-to-left ordering (−x0, then y-top).
             * ``"natural"`` – natural reading order (y-top, then x0).
+
+        default
+            Value to use when an element is ``None`` or has no text. This is useful
+            when the collection was built with ``find(..., default=None)`` and you
+            want to preserve the list length with placeholder values (e.g., ``""``).
 
         Remaining keyword arguments are forwarded to each element's
         :py:meth:`extract_text` method.
@@ -2115,10 +2159,14 @@ class ElementCollection(
                 pass
 
         # -- Extract ----------------------------------------------------------------
-        return [
-            el.extract_text(newlines=newlines, **kwargs) if el is not None else None  # type: ignore[arg-type]
-            for el in elements
-        ]
+        results = []
+        for el in elements:
+            if el is None:
+                results.append(default)
+            else:
+                text = el.extract_text(newlines=newlines, **kwargs)  # type: ignore[arg-type]
+                results.append(text if text is not None else default)
+        return results
 
     def correct_ocr(
         self,

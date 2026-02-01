@@ -26,6 +26,7 @@ LOCAL_PDFS = {
     "needs_ocr": Path("pdfs/needs-ocr.pdf"),
     "cia_doc": Path("pdfs/cia-doc.pdf"),
     "geometry": Path("pdfs/geometry.pdf"),
+    "multipage_table": Path("pdfs/multipage-table-african-recipes.pdf"),
 }
 
 
@@ -82,6 +83,16 @@ def needs_ocr_pdf():
 def cia_doc_pdf():
     """Returns a loaded CIA document PDF (session-scoped for performance)."""
     pdf = _load_pdf("cia_doc")
+    yield pdf
+    pdf.close()
+
+
+@pytest.fixture(scope="session")
+def multipage_table_pdf():
+    """Returns a loaded multipage table PDF (session-scoped for performance)."""
+    from natural_pdf import PDF
+
+    pdf = PDF(str(LOCAL_PDFS["multipage_table"]))
     yield pdf
     pdf.close()
 

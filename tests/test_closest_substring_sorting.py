@@ -1,4 +1,3 @@
-from natural_pdf import PDF
 from natural_pdf.core.page import _jaro_winkler_similarity
 
 
@@ -6,10 +5,9 @@ def jw_ratio(a: str, b: str) -> float:
     return _jaro_winkler_similarity(a, b)
 
 
-def test_closest_sorts_substring_matches_by_similarity():
+def test_closest_sorts_substring_matches_by_similarity(practice_pdf):
     """Test that :closest sorts substring matches by similarity score"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Test with "Information" - should find exact matches first
     matches = page.find_all("text:closest(Information@0.3)")
@@ -30,10 +28,9 @@ def test_closest_sorts_substring_matches_by_similarity():
             assert matches[0] in exact_matches, "Exact match should come first"
 
 
-def test_closest_with_until_uses_best_match():
+def test_closest_with_until_uses_best_match(practice_pdf):
     """Test that .below(until=:closest) now uses the best similarity match"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find a starting point
     start = page.find("text:contains(Summary)")
@@ -75,10 +72,9 @@ def test_closest_with_until_uses_best_match():
             print(f"Best match below: '{best_text}' (similarity: {best_sim:.3f})")
 
 
-def test_exact_match_comes_before_partial():
+def test_exact_match_comes_before_partial(practice_pdf):
     """Test that exact matches come before partial matches"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Search for a short word that might have exact and partial matches
     # Let's try "Date" which might match "Date:" exactly
@@ -101,10 +97,9 @@ def test_exact_match_comes_before_partial():
         # with the same "contains" status
 
 
-def test_threshold_still_works():
+def test_threshold_still_works(practice_pdf):
     """Ensure threshold filtering still works with the new sorting"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     search_term = "Chicago"
 

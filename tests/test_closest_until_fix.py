@@ -1,4 +1,3 @@
-from natural_pdf import PDF
 from natural_pdf.core.page import _jaro_winkler_similarity
 
 
@@ -6,9 +5,9 @@ def jw_ratio(a: str, b: str) -> float:
     return _jaro_winkler_similarity(a, b)
 
 
-def test_closest_preserves_quality_ordering():
+def test_closest_preserves_quality_ordering(practice_pdf):
     """Test that until with :closest preserves quality-based ordering"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     # Start from the top of the page
@@ -62,9 +61,9 @@ def test_closest_preserves_quality_ordering():
             print(f"  Used: '{boundary_text}' at y={boundary_elems[0].top}")
 
 
-def test_specific_use_case():
+def test_specific_use_case(practice_pdf):
     """Test the specific use case from the issue"""
-    pdf = PDF("pdfs/01-practice.pdf")
+    pdf = practice_pdf
     page = pdf.pages[0]
 
     # Find "Name" as mentioned in the issue

@@ -1,10 +1,6 @@
-from natural_pdf import PDF
-
-
-def test_closest_preserves_similarity_ordering():
+def test_closest_preserves_similarity_ordering(practice_pdf):
     """Test that until with :closest uses similarity-based ordering, not positional"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Start from a known position
     start = page.find("text:contains(Summary)")
@@ -27,10 +23,9 @@ def test_closest_preserves_similarity_ordering():
         assert "Violation" in boundary[0].extract_text()
 
 
-def test_closest_ordering_demonstration():
+def test_closest_ordering_demonstration(practice_pdf):
     """Demonstrate how :closest ordering works with until"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     # Find a good starting point
     start = page.find("text:contains(Site)")
@@ -59,10 +54,9 @@ def test_closest_ordering_demonstration():
         ), f"Expected boundary near {expected_boundary.top}, got {result.bottom}"
 
 
-def test_regular_selectors_still_use_positional():
+def test_regular_selectors_still_use_positional(practice_pdf):
     """Ensure non-:closest selectors still use positional ordering"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     start = page.find("text:contains(Summary)")
     assert start, "Should find Summary text"
@@ -89,10 +83,9 @@ def test_regular_selectors_still_use_positional():
         assert abs(result.bottom - first_positional.top) <= 10
 
 
-def test_closest_with_threshold_zero():
+def test_closest_with_threshold_zero(practice_pdf):
     """Test the specific case mentioned - :closest with @0.0 threshold"""
-    pdf = PDF("pdfs/01-practice.pdf")
-    page = pdf.pages[0]
+    page = practice_pdf.pages[0]
 
     start = page.find("text:contains(Name)")
     if start:
