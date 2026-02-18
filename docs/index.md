@@ -11,9 +11,9 @@ Natural PDF lets you find and extract content from PDFs using simple code that m
 ## Installation
 
 ```
-pip install natural_pdf
+pip install natural-pdf
 # All the extras
-pip install "natural_pdf[all]"
+pip install "natural-pdf[all]"
 ```
 
 ## Quick Example
@@ -39,54 +39,25 @@ clean_text = page.extract_text()
 ## Getting Started
 
 ### New to Natural PDF?
+- **[Choose Your Path](getting-started/choose-your-path.md)** - Find the best starting point for your background and goals
 - **[Installation](installation/)** - Get Natural PDF installed and run your first extraction
-- **[Quick Reference](quick-reference/)** - Essential commands and patterns in one place
-- **[Tutorial Series](tutorials/)** - Step-by-step learning path through all features
+- **[Quickstart](getting-started/quickstart.md)** - Jump in with a hands-on introduction
+- **[Selectors 101](getting-started/selectors.md)** - Learn the selector syntax for finding elements
+- **[Concepts](getting-started/concepts.md)** - Understand the core ideas behind Natural PDF
 
-### Learning the Basics
+### Tutorials
 Follow the tutorial series to learn Natural PDF systematically:
 
-1. [Loading and Basic Text Extraction](tutorials/01-loading-and-extraction.md)
-2. [Finding Specific Elements](tutorials/02-finding-elements.md)
-3. [Extracting Content Blocks](tutorials/03-extracting-blocks.md)
-4. [Table Extraction](tutorials/04-table-extraction.md)
-5. [Excluding Unwanted Content](tutorials/05-excluding-content.md)
-6. [Document Question Answering](tutorials/06-document-qa.md)
-7. [Layout Analysis](tutorials/07-layout-analysis.md)
-8. [Spatial Navigation](tutorials/08-spatial-navigation.md)
-9. [Section Extraction](tutorials/09-section-extraction.md)
-10. [Form Field Extraction](tutorials/10-form-field-extraction.md)
-11. [Enhanced Table Processing](tutorials/11-enhanced-table-processing.md)
-12. [OCR Integration](tutorials/12-ocr-integration.md)
-13. [Semantic Search](tutorials/13-semantic-search.md)
-14. [Categorizing Documents](tutorials/14-categorizing-documents.md)
-
-## Solving Specific Problems
-
-### Text Extraction Issues
-- **[Extract Clean Text Without Headers and Footers](extracting-clean-text/)** - Remove repeated content that's cluttering your text extraction
-- **[Getting Text from Scanned Documents](ocr/)** - Use OCR to extract text from image-based PDFs
-
-### Table Problems
-- **[Fix Messy Table Extraction](fix-messy-tables/)** - Handle tables with no borders, merged cells, or poor alignment
-- **[Getting Tables Out of PDFs](tables/)** - Basic to advanced table extraction techniques
-
-### Data Extraction
-- **[Extract Data from Forms and Invoices](process-forms-and-invoices/)** - Pull structured information from standardized documents
-- **[Pulling Structured Data from PDFs](data-extraction/)** - Use AI to extract specific fields from any document
-
-### Document Analysis
-- **[Ask Questions to Your Documents](document-qa/)** - Use natural language to find information
-- **[Categorizing Pages and Regions](categorizing-documents/)** - Automatically classify document types and content
-
-### Finding Content
-- **[Finding What You Need in PDFs](element-selection/)** - Master selectors to locate any element
-- **[PDF Navigation](pdf-navigation/)** - Move around documents and work with multiple pages
-
-### Layout and Structure
-- **[Document Layout Analysis](layout-analysis/)** - Automatically detect titles, tables, and document structure
-- **[Working with Regions](regions/)** - Define and work with specific areas of pages
-- **[Visual Debugging](visual-debugging/)** - See what you're extracting and debug selector issues
+1. [Loading PDFs](tutorials/01-loading-and-extraction.ipynb) - Load PDFs and extract basic text
+2. [Finding Elements](tutorials/02-finding-elements.ipynb) - Use selectors to locate content
+3. [Spatial Navigation](tutorials/08-spatial-navigation.ipynb) - Navigate relative to elements
+4. [Tables](tutorials/04-table-extraction.ipynb) - Extract and process tabular data
+5. [Exclusions](tutorials/05-excluding-content.ipynb) - Remove headers, footers, and unwanted content
+6. [OCR](tutorials/12-ocr-integration.ipynb) - Extract text from scanned documents
+7. [Layout Analysis](tutorials/07-layout-analysis.ipynb) - Detect document structure automatically
+8. [Regions & Flows](tutorials/15-working-with-regions.ipynb) - Work with document regions and multi-page flows
+9. [Document QA](tutorials/06-document-qa.ipynb) - Ask questions and extract structured data
+10. [Batch Processing](cookbook/batch-processing.md) - Process multiple PDFs efficiently
 
 ## Key Features
 
@@ -169,21 +140,6 @@ if result.found:
     result.show()  # Highlight where the answer was found
 ```
 
-### Classify Pages and Regions
-
-Categorize pages or specific regions based on their content using text or vision models.
-
-```python
-# Classify a page based on text
-labels = ["invoice", "scientific article", "presentation"]
-page.classify(labels, using="text")
-print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
-
-# Classify a page based on what it looks like
-page.classify(labels, using="vision")
-print(f"Page Category: {page.category} (Confidence: {page.category_confidence:.2f})")
-```
-
 ### Visualize Your Work
 
 Debug and understand your extractions visually.
@@ -196,11 +152,9 @@ page.find_all('text[size>=14]').show(color="red", label="Headings")
 page.viewer()
 ```
 
-## Reference Documentation
+## Reference
 
-- **[Quick Reference](quick-reference/)** - Cheat sheet of essential commands and patterns
-- **[API Reference](api/)** - Complete library reference
-
-## Understanding Natural PDF
-
-Coming soon: Conceptual guides explaining how Natural PDF thinks about PDFs and when to use different approaches.
+- **[Quick Reference](quick-reference/)** - Essential commands and patterns in one place
+- **[API Reference](api/)** - Complete library documentation
+- **[Patterns & Pitfalls](for-llms/common-patterns.md)** - Common patterns and mistakes to avoid
+- **[Troubleshooting](cookbook/troubleshooting.md)** - Solutions to common issues

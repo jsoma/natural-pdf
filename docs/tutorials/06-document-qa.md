@@ -85,9 +85,62 @@ df
 
 `pd.json_normalize` flattens the list of answer dictionaries straight into a DataFrame, making it easy to inspect the questions, their extracted answers, and associated confidence scores.
 
-## TODO
+## Correcting OCR with LLMs
 
-* Demonstrate passing `model="impira/layoutlm-document-qa"` to switch models.
+After applying OCR, you can use an LLM to correct recognition errors:
+
+```python
+import os
+from openai import OpenAI
+from natural_pdf import PDF
+
+client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+
+pdf = PDF("scanned_document.pdf")
+page = pdf.pages[0]
+page.apply_ocr()
+
+# Define a correction function
+prompt = """Correct the spelling of this OCR'd text.
+Preserve original capitalization, punctuation, and symbols."""
+
+def correct_text_region(region):
+    text = region.extract_text()
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": text},
+        ],
+    )
+    updated = completion.choices[0].message.content
+    if text != updated:
+        print(f"OLD: {text}\nNEW: {updated}")
+    return updated
+
+# Apply correction to all OCR'd text
+page.correct_ocr(correct_text_region)
+```
+
+## Vision-Based OCR Correction
+
+For difficult documents, use a vision model to re-OCR specific regions:
+
+```python
+from natural_pdf.ocr.utils import direct_ocr_llm
+
+def correct_with_vision(region):
+    return direct_ocr_llm(
+        region,
+        client,
+        prompt="OCR this image patch. Return only the exact text content visible.",
+        resolution=150,
+        model="gpt-4o"
+    )
+
+# Apply vision-based correction
+page.correct_ocr(correct_with_vision)
+```
 
 ## QA Model and Limitations
 

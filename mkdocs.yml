@@ -43,7 +43,7 @@ theme:
     - content.code.annotate
     - toc.follow
   language: en
-  
+
 extra_css:
   - assets/stylesheets/custom.css
 
@@ -51,47 +51,36 @@ nav:
   - Home: index.md
   - Getting Started:
     - Installation: installation/index.md
-    - Quick Reference: quick-reference/index.md
+    - Choose Your Path: getting-started/choose-your-path.md
+    - Quickstart: getting-started/quickstart.md
+    - Selectors 101: getting-started/selectors.md
+    - Concepts: getting-started/concepts.md
   - Tutorials:
-    - Loading & Extraction: tutorials/01-loading-and-extraction.ipynb
-    - Finding Elements: tutorials/02-finding-elements.ipynb
-    - Extracting Blocks: tutorials/03-extracting-blocks.ipynb
-    - Table Extraction: tutorials/04-table-extraction.ipynb
-    - Excluding Content: tutorials/05-excluding-content.ipynb
-    - Document Q&A: tutorials/06-document-qa.ipynb
-    - Layout Analysis: tutorials/07-layout-analysis.ipynb
-    - Working with Regions: tutorials/07-working-with-regions.ipynb
-    - Spatial Navigation: tutorials/08-spatial-navigation.ipynb
-    - Section Extraction: tutorials/09-section-extraction.ipynb
-    - Form Fields: tutorials/10-form-field-extraction.ipynb
-    - Enhanced Tables: tutorials/11-enhanced-table-processing.ipynb
-    - OCR Integration: tutorials/12-ocr-integration.ipynb
-    - Semantic Search: tutorials/13-semantic-search.ipynb
-    - Categorizing Documents: tutorials/14-categorizing-documents.ipynb
-  - How-To Guides:
-    - Basic Text Extraction: text-extraction/index.md
-    - Text from Scanned Documents: ocr/index.md
-    - Clean Text Without Headers/Footers: extracting-clean-text/index.md
-    - Fix Messy Tables: fix-messy-tables/index.md
-    - Basic Table Extraction: tables/index.ipynb
-    - Extract from Forms/Invoices: process-forms-and-invoices/index.md
-    - Structured Data Extraction: data-extraction/index.md
-    - Ask Questions to Documents: document-qa/index.ipynb
-    - Categorize Documents: categorizing-documents/index.md
-    - Element Selection: element-selection/index.ipynb
-    - PDF Navigation: pdf-navigation/index.ipynb
-    - Layout Analysis: layout-analysis/index.ipynb
-    - Working with Regions: regions/index.ipynb
-    - Visual Debugging: visual-debugging/index.ipynb
-  - Extra fun features:
-    - Interactive Widget: interactive-widget/index.ipynb
-    - Describe & Inspect: describe/index.ipynb
-    - Loops and Groups: loops-and-groups/index.ipynb
-    - Text Analysis: text-analysis/index.ipynb
-    - Reflowing Pages: reflowing-pages/index.ipynb
-    - OCR Fine-tuning: finetuning/index.md
+    - 01 Loading PDFs: tutorials/01-loading-and-extraction.ipynb
+    - 02 Finding Elements: tutorials/02-finding-elements.ipynb
+    - 03 Spatial Navigation: tutorials/08-spatial-navigation.ipynb
+    - 04 Tables: tutorials/04-table-extraction.ipynb
+    - 05 Exclusions: tutorials/05-excluding-content.ipynb
+    - 06 OCR: tutorials/12-ocr-integration.ipynb
+    - 07 Layout Analysis: tutorials/07-layout-analysis.ipynb
+    - 08 Regions & Flows: tutorials/15-working-with-regions.ipynb
+    - 09 Document QA: tutorials/06-document-qa.ipynb
+    - 10 Batch Processing: cookbook/batch-processing.md
+  - Cookbook:
+    - One Page = One Row: cookbook/one-page-one-row.md
+    - Label-Value Extraction: cookbook/label-value-extraction.md
+    - Messy Tables: cookbook/messy-tables.md
+    - Multi-Column Layouts: cookbook/multi-column-layouts.md
+    - OCR Then Navigate: cookbook/ocr-then-navigate.md
+    - Multipage Content: cookbook/multipage-content.md
+    - Finding Sections: cookbook/finding-sections.md
+  - Use Cases:
+    - Idea Gallery: use-cases/idea-gallery.md
   - Reference:
-    - API Reference: api/index.md
+    - Quick Reference: quick-reference/index.ipynb
+    - API: api/index.md
+    - Patterns & Pitfalls: for-llms/common-patterns.md
+    - Troubleshooting: cookbook/troubleshooting.md
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -114,6 +103,45 @@ markdown_extensions:
 
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        # Old tutorial redirect
+        'tutorials/07-working-with-regions.md': 'tutorials/15-working-with-regions.md'
+        # Deleted tutorials -> closest remaining tutorial (use .md extension)
+        'tutorials/03-extracting-blocks.md': 'tutorials/08-spatial-navigation.md'
+        'tutorials/09-section-extraction.md': 'tutorials/15-working-with-regions.md'
+        'tutorials/10-form-field-extraction.md': 'tutorials/06-document-qa.md'
+        'tutorials/11-enhanced-table-processing.md': 'tutorials/04-table-extraction.md'
+        'tutorials/13-semantic-search.md': 'tutorials/06-document-qa.md'
+        'tutorials/14-categorizing-documents.md': 'tutorials/06-document-qa.md'
+        # How-To Guides -> Tutorials (use .md extension)
+        'text-extraction/index.md': 'tutorials/01-loading-and-extraction.md'
+        'ocr/index.md': 'tutorials/12-ocr-integration.md'
+        'extracting-clean-text/index.md': 'tutorials/05-excluding-content.md'
+        'fix-messy-tables/index.md': 'tutorials/04-table-extraction.md'
+        'tables/index.md': 'tutorials/04-table-extraction.md'
+        'process-forms-and-invoices/index.md': 'tutorials/08-spatial-navigation.md'
+        'data-extraction/index.md': 'tutorials/06-document-qa.md'
+        'document-qa/index.md': 'tutorials/06-document-qa.md'
+        'categorizing-documents/index.md': 'tutorials/06-document-qa.md'
+        'element-selection/index.md': 'tutorials/02-finding-elements.md'
+        'pdf-navigation/index.md': 'tutorials/01-loading-and-extraction.md'
+        'layout-analysis/index.md': 'tutorials/07-layout-analysis.md'
+        'regions/index.md': 'tutorials/15-working-with-regions.md'
+        'visual-debugging/index.md': 'tutorials/01-loading-and-extraction.md'
+        # Extra Fun Features -> Tutorials (use .md extension)
+        'interactive-widget/index.md': 'tutorials/01-loading-and-extraction.md'
+        'describe/index.md': 'tutorials/02-finding-elements.md'
+        'loops-and-groups/index.md': 'cookbook/batch-processing.md'
+        'text-analysis/index.md': 'tutorials/02-finding-elements.md'
+        'reflowing-pages/index.md': 'tutorials/15-working-with-regions.md'
+        'finetuning/index.md': 'tutorials/12-ocr-integration.md'
+        # For LLMs consolidation
+        'for-llms/anti-patterns.md': 'for-llms/common-patterns.md'
+        # Old getting-started index
+        'getting-started/index.md': 'getting-started/quickstart.md'
+        # Cookbook index
+        'cookbook/index.md': 'cookbook/batch-processing.md'
   - mkdocs-jupyter:
       include_source: true
       ignore:
@@ -122,32 +150,6 @@ plugins:
   - exclude:
       glob:
         - tutorials/*.md
-        - document-qa/index.md
-        - element-selection/index.md
-        - interactive-widget/index.md
-        - layout-analysis/index.md
-        - pdf-navigation/index.md
-        - regions/index.md
-        - tables/index.md
-        - text-analysis/index.md
-        - text-extraction/index.md
-        - loops-and-groups/index.md
-        - reflowing-pages/index.md
-        - tutorials/01-loading-and-extraction.md
-        - tutorials/02-finding-elements.md
-        - tutorials/03-extracting-blocks.md
-        - tutorials/04-table-extraction.md
-        - tutorials/05-excluding-content.md
-        - tutorials/06-document-qa.md
-        - tutorials/07-layout-analysis.md
-        - tutorials/07-working-with-regions.md
-        - tutorials/08-spatial-navigation.md
-        - tutorials/09-section-extraction.md
-        - tutorials/10-form-field-extraction.md
-        - tutorials/11-enhanced-table-processing.md
-        - tutorials/12-ocr-integration.md
-        - tutorials/13-semantic-search.md
-        - visual-debugging/index.md
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -164,7 +166,7 @@ plugins:
 watch:
   - natural_pdf/
   - docs/
-        
+
 extra:
   social:
     - icon: fontawesome/brands/github

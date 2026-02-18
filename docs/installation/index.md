@@ -100,13 +100,14 @@ print(text)
 
 # Find something specific
 title = page.find('text:bold')
-print(f"Found title: {title.text}")
+if title:
+    print(f"Found title: {title.extract_text()}")
 ```
 
 ## What's Next?
 
 Now that you have Natural PDF installed, you can:
 
-- Learn to [navigate PDFs](../pdf-navigation/index.ipynb)
-- Explore how to [select elements](../element-selection/index.ipynb)
-- See how to [extract text](../text-extraction/index.ipynb)
+- Follow the [Quickstart](../getting-started/quickstart.md) guide
+- Learn to [find elements](../tutorials/02-finding-elements.ipynb) in PDFs
+- See how to [extract text](../tutorials/01-loading-and-extraction.ipynb)

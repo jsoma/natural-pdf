@@ -74,9 +74,116 @@ The general workflow is: try different layout analyzers to locate your table, th
 
 For complex grids where even models struggle, see Tutorial 11 (enhanced table processing) for a lines-first workflow.
 
+## Using Guides for Borderless Tables
+
+When tables lack visible borders, use the `Guides` class to define structure based on content:
+
+```python
+from natural_pdf import PDF
+from natural_pdf.analyzers.guides import Guides
+
+pdf = PDF("document.pdf")
+page = pdf.pages[0]
+
+# Create guides for the page
+guides = Guides(page)
+
+# Define columns from header text positions
+headers = (
+    page
+    .find(text="NUMBER")
+    .right(include_source=True)
+    .expand(top=3, bottom=3)
+    .find_all('text')
+)
+guides.vertical.from_content(headers, align='left')
+
+# Define rows from zebra stripes or content patterns
+guides.horizontal.from_stripes()
+
+# Preview the grid
+guides.show()
+
+# Extract the table
+df = guides.extract_table(include_outer_boundaries=True).to_df()
+```
+
+## Guides from Content Patterns
+
+For tables where rows start with a specific pattern:
+
+```python
+from natural_pdf.analyzers.guides import Guides
+
+guides = Guides(page)
+
+# Define columns from header names
+columns = ['Number', 'Date', 'Location', 'Description', 'Disposition']
+guides.vertical.from_content(columns, outer="last")
+
+# Define rows based on content that starts each row
+guides.horizontal.from_content(
+    lambda p: p.find_all('text:starts-with(NF-)')
+)
+
+# Extract with first row as header
+table_result = guides.extract_table(header="first")
+df = table_result.to_df()
+```
+
+## Multi-Page Table Extraction
+
+Extract tables that span multiple pages:
+
+```python
+# Find headers on first page
+headers = page.find_all('text[y0=min()]')
+
+# Create guides from headers
+guides = Guides(page)
+guides.vertical.from_headers(headers)
+
+# Extract across all pages
+df = guides.extract_table(pdf.pages).to_df()
+print(f"Found {len(df)} rows across all pages")
+```
+
+## Converting Tables to pandas DataFrames
+
+Once you have a table extracted, convert it to a pandas DataFrame for analysis:
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+page = pdf.pages[0]
+
+# Extract the table
+table = page.extract_table()
+
+# Convert to DataFrame with first row as headers
+df = table.to_df(header="first")
+df
+```
+
+The `to_df()` method accepts these options:
+- `header="first"` – Use the first row as column headers
+- `header="none"` – No headers, use numeric indices
+- `header=["Col A", "Col B", ...]` – Provide custom column names
+
+```python
+# Example: Post-process numeric columns
+df['Amount'] = df['Amount'].str.replace('$', '').str.replace(',', '').astype(float)
+df['Percentage'] = df['Percentage'].str.rstrip('%').astype(float) / 100
+```
+
+## Related Tutorials
+
+- **[Spatial Navigation](08-spatial-navigation.md)** – Use `.below()` to extract just the table region
+- **[Layout Analysis](07-layout-analysis.md)** – Detect tables automatically with AI models
+
 ## TODO
 
 * Compare accuracy/time of the three methods on the sample PDF.
 * Show how to call `page.extract_table(method="text")` as a no-dependency fallback.
-* Add snippet exporting `rows` to pandas DataFrame.
 * Demonstrate cell post-processing (strip %, cast numbers).

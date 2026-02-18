@@ -35,6 +35,8 @@ title.text
 
 The `.above()` and `.below()` methods default to full page width, which is ideal for finding content across the entire page width below headings or sections.
 
+**Note:** Without a `height` parameter, `.below()` extends to the bottom of the page. Use `height=N` to limit to N points, or `until='selector'` to stop at a specific element.
+
 ```python
 # Create a region below the title
 # Default: width='full' (full page width)
@@ -447,3 +449,67 @@ region = element.expand(
     bottom='+text:contains("Footer")'  # Through element
 )
 ```
+
+## Using above() for Headers and Boundaries
+
+The `.above()` method is perfect for defining header regions or content before a landmark element:
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+page = pdf.pages[0]
+
+# Find a text element, then get the region above it
+text_element = page.find('text:contains("Summary")')
+header_region = text_element.above()
+header_region.show()
+
+# Get region above with limited height
+content_region = header_region.above(height=100)
+content_region.extract_text()
+```
+
+```python
+# Combine above() and below() to create exclusion zones
+premise_text = page.find(text="PREMISE")
+header = premise_text.above()
+
+page_num = page.find("text:regex(Page \\d+ of)")
+footer = page_num.below()
+
+(header + footer).show()
+```
+
+## Visualizing Exclusion Zones
+
+When working with exclusions, use `show(exclusions='red')` to see what's being excluded:
+
+```python
+# Add exclusions
+pdf.add_exclusion(lambda page: page.find(text="PREMISE").above())
+pdf.add_exclusion(lambda page: page.find("text:regex(Page \\d+ of)").expand())
+
+# Preview with exclusions highlighted in red
+page.show(exclusions='red')
+```
+
+## Highlighting Multiple Regions
+
+The `page.highlight()` method can highlight multiple regions at once:
+
+```python
+# Divide a page into columns and highlight them all
+left = page.region(left=0, right=page.width/3, top=0, bottom=page.height)
+mid = page.region(left=page.width/3, right=page.width/3*2, top=0, bottom=page.height)
+right = page.region(left=page.width/3*2, right=page.width, top=0, bottom=page.height)
+
+# Highlight all three regions at once
+page.highlight(left, mid, right)
+```
+
+## Related Tutorials
+
+- **[Table Extraction](04-table-extraction.md)** – Extract tables after locating them spatially
+- **[OCR Integration](12-ocr-integration.md)** – Apply OCR then use spatial navigation to extract values
+- **[Regions & Flows](15-working-with-regions.md)** – Work with regions across multiple pages

@@ -24,6 +24,8 @@ The core method is `page.apply_ocr()`. This runs the OCR process and adds `TextE
 
 **Note:** Re-applying OCR to the same page or region will automatically remove any previously generated OCR elements for that area before adding the new ones.
 
+**Tip:** After applying OCR, you can use [spatial navigation](08-spatial-navigation.md) to extract values relative to labels. For example, find "Total:" with OCR, then use `.right()` to get the value next to it.
+
 ```python
 # Apply OCR using the default engine (EasyOCR) for English
 page.apply_ocr(languages=['en'])
@@ -172,6 +174,39 @@ print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 After applying OCR to a PDF, you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
 
 Use the `save_searchable()` method on the `PDF`
+
+## Combining OCR with Spatial Navigation
+
+After OCR, use spatial navigation to extract structured data from scanned documents. This is especially useful for forms and invoices.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("scanned_invoice.pdf")
+page = pdf.pages[0]
+
+# Apply OCR first
+page.apply_ocr(engine='easyocr', languages=['en'])
+
+# Now use spatial navigation to extract values
+# Find a label and get the value to its right
+total_label = page.find('text:contains("Total:")')
+if total_label:
+    total_value = total_label.right(width=150).extract_text().strip()
+    print(f"Total: {total_value}")
+
+# Extract multiple fields
+fields = {}
+for label_text in ["Invoice #:", "Date:", "Amount Due:"]:
+    label = page.find(f'text:contains("{label_text}")')
+    if label:
+        value = label.right(width=200).extract_text().strip()
+        fields[label_text.rstrip(":")] = value
+
+print(fields)
+```
+
+See [Tutorial 08: Spatial Navigation](08-spatial-navigation.md) for more techniques.
 
 ## TODO
 
