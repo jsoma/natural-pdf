@@ -141,6 +141,20 @@ def docs(session):
     session.run("pytest", "tests", "-m", "tutorial", "-n", workers, "-v", "--tb=short")
 
 
+@nox.session(name="test-docs", python="3.10")
+def test_docs(session):
+    """Test markdown code examples in documentation.
+
+    This runs mktestdocs to verify that code examples in docs/getting-started/
+    and docs/cookbook/ are actually executable. Catches documentation rot early.
+
+    Usage:
+        nox -s test-docs
+    """
+    session.install(".[test]")
+    session.run("pytest", "tests/test_markdown_docs.py", "-v")
+
+
 @nox.session(name="docs-force", python="3.10")
 def docs_force(session):
     """Force execute all markdown tutorials and run tutorial tests.
