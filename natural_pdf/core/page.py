@@ -1745,6 +1745,8 @@ class Page(
         word_elements = self.words
         if not word_elements:
             logger.debug(f"Page {self.number}: No word elements found.")
+            if return_textmap:
+                return "", None
             return ""
 
         # 2. Apply element-based exclusions if enabled
