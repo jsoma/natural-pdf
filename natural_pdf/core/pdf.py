@@ -2408,6 +2408,45 @@ class PDF(
                 )
         return self
 
+    def extract(
+        self,
+        schema: Union[Type[Any], Sequence[str]],
+        client: Any = None,
+        analysis_key: str = "structured",
+        prompt: Optional[str] = None,
+        using: str = "text",
+        model: Optional[str] = None,
+        engine: Optional[str] = None,
+        overwrite: bool = True,
+        **kwargs: Any,
+    ) -> "PDF":
+        """Run structured extraction on the entire PDF as a single unit."""
+        self.services.extraction.extract(
+            self,
+            schema=schema,
+            client=client,
+            analysis_key=analysis_key,
+            prompt=prompt,
+            using=using,
+            model=model,
+            engine=engine,
+            overwrite=overwrite,
+            **kwargs,
+        )
+        return self
+
+    def extracted(
+        self,
+        field_name: Optional[str] = None,
+        analysis_key: Optional[str] = None,
+    ) -> Any:
+        """Fetch a previously stored extraction result."""
+        return self.services.extraction.extracted(
+            self,
+            field_name=field_name,
+            analysis_key=analysis_key,
+        )
+
     def ask_pages(
         self,
         question: QuestionInput,
