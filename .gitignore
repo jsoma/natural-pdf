@@ -1,6 +1,8 @@
 benchmark_output
+research
 .mcp.json
 temp
+.claude
 Untitled*.ipynb
 importtime_output.txt
 .notebook_cache.json

@@ -86,6 +86,125 @@ Natural PDF is a Python library for intelligent PDF document processing that com
 - **Progress bar support**: Automatic progress bars for large collections, disable with `show_progress=False`
 - **None handling**: Pages with no matching elements group under `None` key
 
+## Method Return Types Quick Reference
+
+| Method | Returns | Notes |
+|--------|---------|-------|
+| `PDF("path")` | `PDF` | Load from file, URL, or bytes |
+| `pdf.pages` | `PageCollection` | Iterable, supports slicing |
+| `pdf.pages[0]` | `Page` | Zero-indexed |
+| `page.find(selector)` | `Element \| None` | First match or None |
+| `page.find_all(selector)` | `ElementCollection` | All matches (may be empty) |
+| `element.below()` | `Region` | Spatial navigation |
+| `element.above()` | `Region` | Spatial navigation |
+| `element.left()` | `Region` | Spatial navigation |
+| `element.right()` | `Region` | Spatial navigation |
+| `region.extract_text()` | `str` | Text content |
+| `page.extract_text()` | `str` | Full page text |
+| `page.extract_table()` | `TableResult` | Has `.to_df()` method |
+| `table.to_df()` | `pandas.DataFrame` | Tabular data |
+| `page.apply_ocr()` | `ElementCollection` | OCR text elements |
+| `page.analyze_layout()` | `ElementCollection` | Detected regions |
+| `page.ask(question)` | `QAResult` | Has `.answer`, `.confidence` |
+| `element.show()` | `PIL.Image` | Visualization |
+| `elements.apply(fn)` | `ElementCollection` | Transform collection |
+| `elements.filter(fn)` | `ElementCollection` | Filter collection |
+
+## Selector Syntax Quick Reference
+
+```
+# Element types
+'text'                          # All text elements
+'line'                          # All line elements
+'rect'                          # All rectangles
+'region'                        # Layout-detected regions
+'image'                         # Images
+
+# Pseudo-classes (use colon)
+'text:bold'                     # Bold text
+'text:italic'                   # Italic text
+'text:contains("Invoice")'      # Text containing string
+'line:horizontal'               # Horizontal lines
+
+# Attribute filters (use brackets)
+'text[size>12]'                 # Font size > 12
+'text[fontname*=Arial]'         # Font contains "Arial"
+'region[type=table]'            # Tables from layout analysis
+'text[confidence>=0.8]'         # High-confidence OCR
+
+# Combined
+'text:bold[size>=14]'           # Bold AND large
+```
+
+## Common Mistakes to Avoid
+
+### Wrong Method Names
+```python
+# WRONG - these methods don't exist
+page.get_text()           # Use: page.extract_text()
+page.search("term")       # Use: page.find('text:contains("term")')
+element.text              # Use: element.extract_text()
+PDF.open("file.pdf")      # Use: PDF("file.pdf")
+
+# CORRECT
+text = page.extract_text()
+element = page.find('text:contains("Invoice")')
+text = element.extract_text() if element else ""
+pdf = PDF("file.pdf")
+```
+
+### Wrong Selector Syntax
+```python
+# WRONG
+page.find('text.bold')              # Use colon, not dot
+page.find('text[contains="X"]')     # contains is a pseudo-class
+page.find('text(size>12)')          # Use brackets, not parens
+
+# CORRECT
+page.find('text:bold')
+page.find('text:contains("X")')
+page.find('text[size>12]')
+```
+
+### Not Handling None
+```python
+# WRONG - will crash if element not found
+text = page.find('text:contains("Missing")').extract_text()
+
+# CORRECT - always check for None
+element = page.find('text:contains("Missing")')
+if element:
+    text = element.extract_text()
+```
+
+### Wrong Parameter Names
+```python
+# WRONG
+page.find('text:contains("X")', case_sensitive=False)  # Wrong param name
+page.apply_ocr(engine="easy_ocr")                      # Wrong engine name
+
+# CORRECT
+page.find('text:contains("X")', case=False)
+page.apply_ocr(engine="easyocr")
+```
+
+### Not Closing PDFs in Loops
+```python
+# WRONG - memory leak
+for path in pdf_paths:
+    pdf = PDF(path)
+    # process...
+    # PDF never closed!
+
+# CORRECT
+for path in pdf_paths:
+    pdf = PDF(path)
+    try:
+        # process...
+    finally:
+        pdf.close()
+```
+
 ## Development Best Practices
 
 ### File and Resource Management
