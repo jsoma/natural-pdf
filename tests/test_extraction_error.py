@@ -7,13 +7,13 @@ from unittest.mock import Mock
 import pytest
 
 from natural_pdf import PDF
+from natural_pdf.extraction.result import StructuredDataResult
 
 pytestmark = [pytest.mark.qa]
 
 
 def test_extraction_with_apparently_empty_content():
-    """Test that extraction returns None when content is empty."""
-    # Load a PDF that needs OCR (has no text layer)
+    """Test that extraction returns a failed result when content is empty."""
     source = Path("pdfs/needs-ocr.pdf")
     if not source.exists():
         pytest.skip("Test requires pdfs/needs-ocr.pdf fixture")
@@ -22,11 +22,9 @@ def test_extraction_with_apparently_empty_content():
     try:
         page = pdf.pages[0]
 
-        # Verify that extract_text() returns empty content
         text = page.extract_text()
         assert not text or not text.strip(), f"Expected empty text but got: {repr(text[:100])}"
 
-        # Create a mock client that would fail if actually called
         mock_client = Mock()
         mock_client.beta = Mock()
         mock_client.beta.chat = Mock()
@@ -35,7 +33,6 @@ def test_extraction_with_apparently_empty_content():
             side_effect=Exception("Should not reach API call")
         )
 
-        # Try the extraction - it should fail before reaching the API
         fields = [
             "site",
             "date",
@@ -45,16 +42,18 @@ def test_extraction_with_apparently_empty_content():
             "city",
             "state",
         ]
-        page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
+        result = page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
 
-        # The mock client should not have been called since there's no content
         assert (
             not mock_client.beta.chat.completions.parse.called
         ), "API should not be called when content is empty"
 
-        # Check that we get None instead of raising an error
-        result = page.extracted()
-        assert result is None, "Should return None for failed extraction instead of raising"
+        # Result should be a failed StructuredDataResult
+        assert isinstance(result, StructuredDataResult)
+        assert not result.success
+
+        # .extracted() should return None for failed extraction
+        assert page.extracted() is None
     finally:
         pdf.close()
 
@@ -64,17 +63,8 @@ def test_extraction_content_method():
     pdf = PDF("https://github.com/jsoma/abraji25-pdfs/raw/refs/heads/main/practice.pdf")
     page = pdf.pages[0]
 
-    # Test getting content directly
     content = page._get_extraction_content(using="text", layout=True)
 
-    print(f"Content type: {type(content)}")
-    print(f"Content length: {len(content) if content else 'None'}")
-    print(f"Content preview: {repr(content[:200]) if content else 'None'}")
-    print(f"Is content None? {content is None}")
-    print(f"Is content empty string? {content == ''}")
-    print(f"Is content whitespace only? {isinstance(content, str) and not content.strip()}")
-
-    # This should not be None or empty
     assert content is not None, "_get_extraction_content returned None"
     assert content, "_get_extraction_content returned empty/falsy value"
     if isinstance(content, str):
@@ -82,21 +72,20 @@ def test_extraction_content_method():
 
 
 if __name__ == "__main__":
-    # Run the tests
     print("=== Running extraction content test ===")
     try:
         test_extraction_content_method()
-        print("✓ Content test passed")
+        print("Content test passed")
     except AssertionError as e:
-        print(f"✗ Content test failed: {e}")
+        print(f"Content test failed: {e}")
     except Exception as e:
-        print(f"✗ Content test error: {type(e).__name__}: {e}")
+        print(f"Content test error: {type(e).__name__}: {e}")
 
     print("\n=== Running extraction error test ===")
     try:
         test_extraction_with_apparently_empty_content()
-        print("✓ Extraction error test passed")
+        print("Extraction error test passed")
     except AssertionError as e:
-        print(f"✗ Extraction error test failed: {e}")
+        print(f"Extraction error test failed: {e}")
     except Exception as e:
-        print(f"✗ Extraction error test error: {type(e).__name__}: {e}")
+        print(f"Extraction error test error: {type(e).__name__}: {e}")

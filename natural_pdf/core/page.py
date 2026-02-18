@@ -1703,6 +1703,7 @@ class Page(
         strip_final: bool = False,
         strip_empty: bool = False,
         bidi: bool = True,
+        return_textmap: bool = False,
     ) -> str:
         """
         Extract text from this page, respecting exclusions and using pdfplumber's
@@ -1820,11 +1821,20 @@ class Page(
         if content_filter is not None:
             merged_kwargs["content_filter"] = content_filter
 
-        result = generate_text_layout(
-            char_dicts=filtered_chars,
-            layout_context_bbox=page_bbox,
-            user_kwargs=merged_kwargs,
-        )
+        textmap_obj = None
+        if return_textmap:
+            result, textmap_obj = generate_text_layout(
+                char_dicts=filtered_chars,
+                layout_context_bbox=page_bbox,
+                user_kwargs=merged_kwargs,
+                return_textmap=True,
+            )
+        else:
+            result = generate_text_layout(
+                char_dicts=filtered_chars,
+                layout_context_bbox=page_bbox,
+                user_kwargs=merged_kwargs,
+            )
 
         if bidi and result:
             # Quick check for any RTL character
@@ -1873,6 +1883,8 @@ class Page(
                 result = " ".join(normalized.split())
 
         logger.debug(f"Page {self.number}: extract_text finished, result length: {len(result)}.")
+        if return_textmap:
+            return result, textmap_obj
         return result
 
     def extract_table(
@@ -2618,10 +2630,37 @@ class Page(
         engine: Optional[str] = None,
         overwrite: bool = True,
         **kwargs: Any,
-    ) -> Any:
-        """Run structured extraction through the extraction service."""
+    ):
+        """Run structured extraction and return the result.
 
-        self.services.extraction.extract(
+        Args:
+            schema: A Pydantic BaseModel class or list of field name strings.
+            client: An OpenAI-compatible client instance (required for LLM engine).
+            analysis_key: Key to store results under in ``self.analyses``.
+            prompt: Custom system prompt for the LLM.
+            using: Content mode — ``'text'`` (layout text) or ``'vision'`` (rendered image).
+            model: Model identifier passed to the LLM client.
+            engine: ``'llm'``, ``'doc_qa'``, or None (auto-detect from client).
+            overwrite: Re-run if results already exist for *analysis_key*.
+            **kwargs: Extra arguments forwarded to the extraction engine.
+                ``citations`` (bool): When True, each field's result includes
+                source citations mapping the value back to PDF elements.
+
+        Returns:
+            :class:`StructuredDataResult` with attribute, item, and iteration access:
+
+        .. code-block:: python
+
+            result = page.extract(MySchema, client=client, citations=True)
+
+            result.site                    # "Chicago" (attribute access)
+            result["site"].value           # "Chicago" (item access)
+            result["site"].citations       # ElementCollection of source elements
+            result["site"].citations.show()
+            result.to_dict()               # {"site": "Chicago", ...}
+            result.show()                  # highlight all citations on page
+        """
+        return self.services.extraction.extract(
             self,
             schema=schema,
             client=client,
@@ -2633,10 +2672,10 @@ class Page(
             overwrite=overwrite,
             **kwargs,
         )
-        return self
 
     def extract_structured_data(self, *args, **kwargs):
-        return self.services.extraction.extract(self, *args, **kwargs)
+        """Alias for :meth:`extract`."""
+        return self.extract(*args, **kwargs)
 
     def detect_lines(self, *args, **kwargs):
         return self.services.shapes.detect_lines(self, *args, **kwargs)
@@ -2649,22 +2688,28 @@ class Page(
 
     def extracted(
         self,
-        field_name: Optional[str] = None,
         analysis_key: Optional[str] = None,
     ) -> Any:
-        """Fetch a previously stored extraction result via the extraction service."""
+        """Retrieve the stored result from a previous ``.extract()`` call.
 
+        Returns the same :class:`StructuredDataResult` that ``.extract()``
+        returned, or ``None`` if the extraction failed.
+        """
         return self.services.extraction.extracted(
             self,
-            field_name=field_name,
             analysis_key=analysis_key,
         )
 
     def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
         """Internal helper for ExtractionService to gather page content."""
+        _return_textmap = kwargs.pop("_return_textmap", False)
 
         if using == "text":
             layout = kwargs.pop("layout", True)
+            if _return_textmap:
+                text, textmap = self.extract_text(layout=layout, return_textmap=True, **kwargs)
+                word_elements = list(self.words)
+                return (text, textmap, word_elements)
             return self.extract_text(layout=layout, **kwargs)
 
         if using == "vision":

@@ -252,7 +252,8 @@ def generate_text_layout(
     char_dicts: List[Dict[str, Any]],
     layout_context_bbox: Optional[Tuple[float, float, float, float]] = None,
     user_kwargs: Optional[Dict[str, Any]] = None,
-) -> str:
+    return_textmap: bool = False,
+) -> Union[str, Tuple[str, Any]]:
     """
     Generates a string representation of text from character dictionaries,
     attempting to reconstruct layout using pdfplumber's utilities.
@@ -261,9 +262,10 @@ def generate_text_layout(
         char_dicts: List of character dictionary objects.
         layout_context_bbox: Optional bounding box for layout context.
         user_kwargs: User-provided kwargs, potentially overriding defaults.
+        return_textmap: When True, return (text, textmap) tuple instead of just text.
 
     Returns:
-        String representation of the text.
+        String representation of the text, or (text, textmap) tuple when return_textmap=True.
     """
     # --- Filter out invalid char dicts early ---
     initial_count = len(char_dicts)
@@ -276,7 +278,7 @@ def generate_text_layout(
 
     if not valid_char_dicts:  # Return empty if no valid chars remain
         logger.debug("generate_text_layout: No valid character dicts found after filtering.")
-        return ""
+        return ("", None) if return_textmap else ""
 
     # Make a working copy of user_kwargs so we can safely pop custom keys
     incoming_kwargs = user_kwargs.copy() if user_kwargs else {}
@@ -302,6 +304,7 @@ def generate_text_layout(
     # layout=True) per user request.
     strip_result = explicit_strip_flag if explicit_strip_flag is not None else (not use_layout)
 
+    textmap_obj = None
     try:
         # Sort chars primarily by top, then x0 before layout analysis – required by
         # pdfplumber so that grouping into lines works deterministically.
@@ -309,8 +312,8 @@ def generate_text_layout(
 
         # Build the text map. `layout_kwargs` still contains the caller-specified or
         # default "layout" flag, which chars_to_textmap will respect.
-        textmap = chars_to_textmap(valid_char_dicts, **layout_kwargs)
-        result = textmap.as_string
+        textmap_obj = chars_to_textmap(valid_char_dicts, **layout_kwargs)
+        result = textmap_obj.as_string
 
         # ----------------------------------------------------------------
         # Optional post-processing strip
@@ -331,6 +334,8 @@ def generate_text_layout(
         if strip_result:
             result = result.strip()
 
+    if return_textmap:
+        return result, textmap_obj
     return result
 
 

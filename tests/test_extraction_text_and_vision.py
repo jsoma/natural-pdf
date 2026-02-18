@@ -54,7 +54,7 @@ def test_text_extraction(practice_pdf):
 
     # Perform extraction
     fields = ["site", "date", "violation count"]
-    page.extract(fields, client=mock_client, model="gpt-4o-mini", using="text")
+    result = page.extract(fields, client=mock_client, model="gpt-4o-mini", using="text")
 
     # Verify API was called with text content
     assert mock_client.beta.chat.completions.parse.called
@@ -66,8 +66,8 @@ def test_text_extraction(practice_pdf):
     assert isinstance(user_message["content"], str)
     assert len(user_message["content"]) > 1000  # Should have substantial text
 
-    # Get results
-    result = page.extracted()
+    # Get results via return value
+    assert isinstance(result, StructuredDataResult)
     assert result.site == "Durham's Meatpacking Chicago, Ill."
     assert result.date == "February 3, 1905"
     assert result.violation_count == "7"
@@ -91,7 +91,7 @@ def test_vision_extraction(practice_pdf):
 
     # Perform extraction with vision
     fields = ["site", "date", "violation count"]
-    page.extract(
+    result = page.extract(
         fields, client=mock_client, model="gpt-4o", using="vision", analysis_key="vision-test"
     )
 
@@ -115,7 +115,7 @@ def test_vision_extraction(practice_pdf):
     assert image_found, "Image should be included in vision request"
 
     # Get results
-    result = page.extracted(analysis_key="vision-test")
+    assert isinstance(result, StructuredDataResult)
     assert result.site == "Vision: Durham's Meatpacking"
     assert result.violation_count == "Vision: 7"
 
@@ -141,9 +141,6 @@ def test_vision_extraction_with_custom_resolution(practice_pdf):
     call_args = mock_client.beta.chat.completions.parse.call_args[1]
     messages = call_args["messages"]
 
-    # The resolution should affect the image size
-    # We can't directly check the image size from base64, but we can verify
-    # the base64 string is longer for higher resolution
     image_url = None
     for part in messages[1]["content"]:
         if part.get("type") == "image_url":
@@ -152,9 +149,6 @@ def test_vision_extraction_with_custom_resolution(practice_pdf):
 
     assert image_url is not None
     base64_data = image_url.split(",")[1]
-
-    # Higher resolution should produce larger base64 string
-    # 216 DPI should be roughly 3x the data of 72 DPI
     assert len(base64_data) > 200000, "High resolution image should be large"
 
 
@@ -164,8 +158,6 @@ def test_extraction_without_render_method_fails_for_vision():
     service = ExtractionService(PDFContext.with_defaults())
 
     class PageWithoutRender:
-        """Mock page without render method."""
-
         def __init__(self):
             self.analyses = {}
 
@@ -174,11 +166,9 @@ def test_extraction_without_render_method_fails_for_vision():
 
     page = PageWithoutRender()
 
-    # Text extraction should work
     content = service._default_extraction_content(page, using="text")
     assert content == "Some text"
 
-    # Vision extraction should return None
     content = service._default_extraction_content(page, using="vision")
     assert content is None
 
@@ -187,13 +177,11 @@ def test_api_error_propagates(practice_pdf):
     """Test that API errors are properly propagated."""
     page = practice_pdf.pages[0]
 
-    # Create client that raises API error
     mock_client = Mock()
     mock_client.beta.chat.completions.parse.side_effect = Exception(
         "Error code: 401 - Invalid API key"
     )
 
-    # Since we removed error swallowing, extract should now raise immediately
     with pytest.raises(Exception) as exc_info:
         page.extract(
             ["site"], client=mock_client, model="test", using="text", analysis_key="error-test"
@@ -264,7 +252,7 @@ def test_extraction_service_with_mock_client(monkeypatch):
     mock_extract = Mock(return_value=mock_result)
     monkeypatch.setattr(extraction_service, "extract_structured_data", mock_extract)
 
-    service.extract(
+    result = service.extract(
         host,
         schema=["site", "violation_count"],
         client=mock_client,
@@ -272,7 +260,8 @@ def test_extraction_service_with_mock_client(monkeypatch):
         using="text",
     )
 
-    result = host.analyses["structured"]
+    # The monkeypatched mock stores our mock_result, but the service
+    # returns what's in host.analyses — which is the mock_result
     assert result.data.site == "value1"
     assert result.data.violation_count == "value3"
 

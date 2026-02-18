@@ -1033,6 +1033,7 @@ class PDF(
         char_dir: Optional[str] = None,
         strip_final: bool = False,
         strip_empty: bool = False,
+        return_textmap: bool = False,
     ) -> str:
         """
         Extract text from the entire document or matching elements.
@@ -1085,6 +1086,47 @@ class PDF(
         if debug_exclusions:
             print(f"PDF: Extracting text with exclusions from {len(self.pages)} pages")
             print(f"PDF: Found {len(self._exclusions)} document-level exclusions")
+
+        if return_textmap:
+            from natural_pdf.extraction.citations import PageTextMapInfo
+
+            texts = []
+            page_textmap_infos = []
+            current_line = 0
+
+            for page in self.pages:
+                page_text, page_tm = page.extract_text(
+                    preserve_whitespace=preserve_whitespace,
+                    preserve_line_breaks=preserve_line_breaks,
+                    use_exclusions=use_exclusions,
+                    debug_exclusions=debug_exclusions,
+                    layout=layout,
+                    x_density=x_density,
+                    y_density=y_density,
+                    x_tolerance=x_tolerance,
+                    y_tolerance=y_tolerance,
+                    line_dir=line_dir,
+                    char_dir=char_dir,
+                    strip_final=strip_final,
+                    strip_empty=strip_empty,
+                    return_textmap=True,
+                )
+                line_count = page_text.count("\n") + 1 if page_text else 0
+                page_textmap_infos.append(
+                    PageTextMapInfo(
+                        page_number=page.number,
+                        textmap=page_tm,
+                        word_elements=list(page.words),
+                        line_start=current_line,
+                        line_end=current_line + line_count,
+                    )
+                )
+                texts.append(page_text)
+                current_line += line_count
+
+            separator = "" if page_separator is None else page_separator
+            joined = separator.join(texts)
+            return joined, page_textmap_infos
 
         texts = []
         for page in self.pages:
@@ -2337,9 +2379,13 @@ class PDF(
             List[PIL.Image.Image]: List of page images if using='vision'
             None: If content cannot be retrieved
         """
+        _return_textmap = kwargs.pop("_return_textmap", False)
+
         if using == "text":
             try:
                 layout = kwargs.pop("layout", True)
+                if _return_textmap:
+                    return self.extract_text(layout=layout, return_textmap=True, **kwargs)
                 return self.extract_text(layout=layout, **kwargs)
             except Exception as e:
                 logger.error(f"Error extracting text from PDF: {e}")
@@ -2419,9 +2465,17 @@ class PDF(
         engine: Optional[str] = None,
         overwrite: bool = True,
         **kwargs: Any,
-    ) -> "PDF":
-        """Run structured extraction on the entire PDF as a single unit."""
-        self.services.extraction.extract(
+    ):
+        """Run structured extraction on the entire PDF.
+
+        Accepts the same arguments as :meth:`Page.extract`.  Pass
+        ``citations=True`` to get per-field source citations that map
+        extracted values back to their source elements across pages.
+
+        Returns:
+            :class:`StructuredDataResult`
+        """
+        return self.services.extraction.extract(
             self,
             schema=schema,
             client=client,
@@ -2433,17 +2487,14 @@ class PDF(
             overwrite=overwrite,
             **kwargs,
         )
-        return self
 
     def extracted(
         self,
-        field_name: Optional[str] = None,
         analysis_key: Optional[str] = None,
     ) -> Any:
-        """Fetch a previously stored extraction result."""
+        """Retrieve the stored result from a previous ``.extract()`` call."""
         return self.services.extraction.extracted(
             self,
-            field_name=field_name,
             analysis_key=analysis_key,
         )
 

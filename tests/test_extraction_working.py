@@ -7,6 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 from pydantic import BaseModel
 
+from natural_pdf.extraction.result import StructuredDataResult
+
 pytestmark = pytest.mark.qa
 
 
@@ -55,24 +57,31 @@ def test_extraction_with_mock_client(practice_pdf):
 
     # Perform extraction
     fields = ["site", "date", "violation count", "inspection service", "summary", "city", "state"]
-    page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
+    result = page.extract(fields, client=mock_client, model="gpt-4.1-nano", using="text")
 
     # Verify the mock was called
     mock_client.beta.chat.completions.parse.assert_called_once()
 
-    # Get the extracted data
-    result = page.extracted()
+    # Verify the result is a StructuredDataResult
+    assert isinstance(result, StructuredDataResult)
+    assert result.success
 
-    # Verify the result
-    assert result is not None, "Should return extracted data"
+    # Attribute access
     assert result.site == "123 Main St"
     assert result.date == "2024-01-15"
     assert result.violation_count == "3"
 
-    # Test accessing specific fields
-    assert page.extracted("site") == "123 Main St"
-    assert page.extracted("date") == "2024-01-15"
-    assert page.extracted("violation_count") == "3"
+    # Item access
+    assert result["site"].value == "123 Main St"
+
+    # to_dict
+    d = result.to_dict()
+    assert d["site"] == "123 Main St"
+    assert d["date"] == "2024-01-15"
+
+    # .extracted() returns the same result
+    stored = page.extracted()
+    assert stored is result
 
 
 def test_extraction_handles_api_errors(practice_pdf):
@@ -99,8 +108,8 @@ def test_extraction_with_empty_content(practice_pdf):
     with patch.object(page, "extract_text", return_value=""):
         mock_client = Mock()
         fields = ["site", "date"]
-        page.extract(fields, client=mock_client, model="test", using="text")
+        result = page.extract(fields, client=mock_client, model="test", using="text")
 
-        # Should return None instead of raising
-        result = page.extracted()
-        assert result is None, "Should return None for empty content"
+        # Should return a failed result
+        assert isinstance(result, StructuredDataResult)
+        assert not result.success

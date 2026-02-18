@@ -1674,6 +1674,7 @@ class Region(
         overlap: str = "center",
         newlines: Union[bool, str] = True,
         content_filter=None,
+        return_textmap: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -1833,11 +1834,20 @@ class Region(
         if preserve_whitespace_flag is not None and "strip" not in final_kwargs:
             final_kwargs["strip"] = not bool(preserve_whitespace_flag)
 
-        result = generate_text_layout(
-            char_dicts=filtered_chars,
-            layout_context_bbox=self.bbox,  # Use region's bbox for context
-            user_kwargs=final_kwargs,  # Pass kwargs including content_filter
-        )
+        textmap_obj = None
+        if return_textmap:
+            result, textmap_obj = generate_text_layout(
+                char_dicts=filtered_chars,
+                layout_context_bbox=self.bbox,
+                user_kwargs=final_kwargs,
+                return_textmap=True,
+            )
+        else:
+            result = generate_text_layout(
+                char_dicts=filtered_chars,
+                layout_context_bbox=self.bbox,  # Use region's bbox for context
+                user_kwargs=final_kwargs,  # Pass kwargs including content_filter
+            )
 
         # Flexible newline handling (same logic as TextElement)
         if isinstance(newlines, bool):
@@ -1855,6 +1865,8 @@ class Region(
             result = result.strip()
 
         logger.debug(f"Region {self.bbox}: extract_text finished, result length: {len(result)}.")
+        if return_textmap:
+            return result, textmap_obj
         return result
 
     def extract_table(self, *args, **kwargs) -> TableResult:
@@ -1862,6 +1874,29 @@ class Region(
 
     def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
         return self.services.table.extract_tables(self, *args, **kwargs)
+
+    def _get_extraction_content(self, using: str = "text", **kwargs) -> Any:
+        """Internal helper for ExtractionService to gather region content."""
+        _return_textmap = kwargs.pop("_return_textmap", False)
+
+        if using == "text":
+            layout = kwargs.pop("layout", True)
+            if _return_textmap:
+                text, textmap = self.extract_text(layout=layout, return_textmap=True, **kwargs)
+                # Get words within this region from the parent page
+                from pdfplumber.utils.geometry import get_bbox_overlap
+
+                word_elements = [
+                    w for w in self.page.words if get_bbox_overlap(self.bbox, w.bbox) is not None
+                ]
+                return (text, textmap, word_elements)
+            return self.extract_text(layout=layout, **kwargs)
+
+        if using == "vision":
+            resolution = kwargs.pop("resolution", 96)
+            return self.render(resolution=resolution, **kwargs)
+
+        raise ValueError(f"Unsupported extraction content mode '{using}'")
 
     def _filter_elements_by_overlap_mode(
         self,
@@ -2017,12 +2052,20 @@ class Region(
         return self.services.ocr.create_text_elements_from_ocr(self, *args, **kwargs)
 
     def extract(self, *args, **kwargs):
-        self.services.extraction.extract(self, *args, **kwargs)
-        return self
+        """Run structured extraction on this region.
+
+        Accepts the same arguments as :meth:`Page.extract`.  Pass
+        ``citations=True`` to get per-field source citations within
+        this region.
+
+        Returns:
+            :class:`StructuredDataResult`
+        """
+        return self.services.extraction.extract(self, *args, **kwargs)
 
     def extract_structured_data(self, *args, **kwargs):
-        self.services.extraction.extract(self, *args, **kwargs)
-        return self
+        """Alias for :meth:`extract`."""
+        return self.extract(*args, **kwargs)
 
     def extracted(self, *args, **kwargs):
         return self.services.extraction.extracted(self, *args, **kwargs)
