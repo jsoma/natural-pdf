@@ -65,7 +65,8 @@ nav:
     - 07 Layout Analysis: tutorials/07-layout-analysis.ipynb
     - 08 Regions & Flows: tutorials/15-working-with-regions.ipynb
     - 09 Document QA: tutorials/06-document-qa.ipynb
-    - 10 Batch Processing: cookbook/batch-processing.md
+    - 10 Structured Extraction: tutorials/10-structured-extraction.md
+    - 11 Batch Processing: cookbook/batch-processing.md
   - Cookbook:
     - One Page = One Row: cookbook/one-page-one-row.md
     - Label-Value Extraction: cookbook/label-value-extraction.md
