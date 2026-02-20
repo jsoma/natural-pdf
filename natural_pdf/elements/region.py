@@ -1238,12 +1238,13 @@ class Region(
         threshold: float = 0.95,
         resolution: Optional[float] = None,
         pre_shrink: float = 0.5,
-        method: Literal["auto", "elements", "any", "average"] = "any",
+        method: Literal["auto", "elements", "any", "average"] = "auto",
     ) -> "Region":
         """
         Trim whitespace from the edges of this region.
 
-        Similar to Python's string .strip() method. Stops at ANY non-white pixel by default.
+        Similar to Python's string .strip() method. Uses element bounding boxes by default,
+        falling back to pixel-based detection when no elements are found.
 
         Args:
             padding: Padding to keep around content in PDF points (default: 1)
@@ -1251,8 +1252,8 @@ class Region(
             resolution: Resolution for pixel-based methods in DPI (default: 144)
             pre_shrink: For pixel methods, shrink before trim to avoid border artifacts (default: 0.5)
             method: Trimming strategy:
-                - 'any' (default): Pixel-based, stop at ANY non-white pixel (like string.strip())
-                - 'auto': Use 'elements' if available, fall back to 'any'
+                - 'auto' (default): Use 'elements' if available, fall back to 'any'
+                - 'any': Pixel-based, stop at ANY non-white pixel (like string.strip())
                 - 'elements': Use bounding boxes of text/elements (best for digital PDFs)
                 - 'average': Pixel-based, use row/column averages (for noisy scans)
 

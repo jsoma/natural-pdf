@@ -829,6 +829,7 @@ class TestEnrichedLegendLabels:
 class TestAnnotatedPdfExport:
     def test_create_annotated_pdf(self, tmp_path):
         """End-to-end: create an annotated PDF from mock extraction results."""
+        pytest.importorskip("pikepdf")
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
@@ -880,6 +881,7 @@ class TestAnnotatedPdfExport:
 
     def test_save_pdf_method(self, tmp_path):
         """Verify StructuredDataResult.save_pdf() delegates correctly."""
+        pytest.importorskip("pikepdf")
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")
@@ -916,6 +918,7 @@ class TestAnnotatedPdfExport:
 
     def test_annotated_pdf_popup_text(self, tmp_path):
         """Verify popup text includes field name, value, and confidence."""
+        pytest.importorskip("pikepdf")
         from natural_pdf import PDF
 
         pdf = PDF("pdfs/01-practice.pdf")

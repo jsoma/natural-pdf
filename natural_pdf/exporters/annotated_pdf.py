@@ -177,9 +177,6 @@ def create_annotated_pdf(
         ValueError: If no citation elements are found.
         ImportError: If pikepdf is not installed.
     """
-    pikepdf = require("pikepdf")
-    from pikepdf import Array, Dictionary, Name
-
     from natural_pdf.exporters.region_pdf import _open_source_pdf, _translate_bbox_to_pdf_coords
     from natural_pdf.extraction.result import build_enriched_label
 
@@ -233,6 +230,11 @@ def create_annotated_pdf(
 
     if source_page_obj is None:
         raise ValueError("No citation elements with page references found.")
+
+    # Import pikepdf after validation so missing-dependency errors don't mask
+    # the more informative "No citation elements" ValueError above.
+    pikepdf = require("pikepdf")
+    from pikepdf import Array, Dictionary, Name
 
     # Open source PDF
     source_cache: Dict[str, object] = {}
