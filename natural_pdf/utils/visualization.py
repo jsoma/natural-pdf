@@ -115,31 +115,23 @@ class ColorManager:
 # get_next_highlight_color(), reset_highlight_colors()
 
 
-def create_legend(
-    labels_colors: Mapping[str, Sequence[int]], width: int = 200, item_height: int = 30
-) -> Image.Image:
+def create_legend(labels_colors: Mapping[str, Sequence[int]], width: int = 250) -> Image.Image:
     """
     Create a legend image for the highlighted elements.
+
+    Supports multi-line labels (labels containing ``\\n``).  Each item's
+    height is computed dynamically from its text content.
 
     Args:
         labels_colors: Dictionary mapping labels to colors
         width: Width of the legend image
-        item_height: Height of each legend item
 
     Returns:
         PIL Image with the legend
     """
-    # Calculate the height based on the number of labels
-    height = len(labels_colors) * item_height + 10  # 10px padding
-
-    # Create a white image
-    legend = Image.new("RGBA", (width, height), (255, 255, 255, 255))
-    draw = ImageDraw.Draw(legend)
-
     # Try to load a font, use default if not available
     font: ImageFont.ImageFont
     try:
-        # Use a commonly available font, adjust size
         font = cast(ImageFont.ImageFont, ImageFont.truetype("DejaVuSans.ttf", 14))
     except IOError:
         try:
@@ -147,38 +139,67 @@ def create_legend(
         except IOError:
             font = cast(ImageFont.ImageFont, ImageFont.load_default())
 
-    # Draw each legend item
-    y = 5  # Start with 5px padding
-    for label, color in labels_colors.items():
-        # Get the color components
-        # Handle potential case where alpha isn't provided (use default 255)
+    padding_top = 5
+    padding_bottom = 5
+    item_gap = 8  # vertical gap between items
+    swatch_size = 15
+    text_x = 40  # x position for text (after swatch)
+    line_spacing = 4  # spacing between lines in multiline text
+
+    # --- First pass: measure each item to compute total height ---
+    # We need a temporary draw context for measurement
+    _tmp = Image.new("RGBA", (1, 1))
+    _tmp_draw = ImageDraw.Draw(_tmp)
+
+    item_heights: list = []  # height of each item (text block)
+    for label in labels_colors:
+        bbox = _tmp_draw.multiline_textbbox((0, 0), label, font=font, spacing=line_spacing)
+        text_h = bbox[3] - bbox[1]
+        # Item height is at least as tall as the swatch
+        item_heights.append(max(text_h, swatch_size))
+
+    total_height = (
+        padding_top + sum(item_heights) + item_gap * max(len(item_heights) - 1, 0) + padding_bottom
+    )
+
+    # --- Second pass: draw ---
+    legend = Image.new("RGBA", (width, total_height), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(legend)
+
+    y = padding_top
+    for (label, color), item_h in zip(labels_colors.items(), item_heights):
+        # Parse color components
         if len(color) == 3:
             r, g, b = cast(Tuple[int, int, int], tuple(color))  # type: ignore[misc]
-            alpha = 255  # Assume opaque if alpha is missing
+            alpha = 255
         elif len(color) >= 4:
             r, g, b, alpha = cast(Tuple[int, int, int, int], tuple(color[:4]))  # type: ignore[misc]
         else:
             raise ValueError("Color sequences must have at least three components.")
 
-        # Calculate the apparent color when drawn on white background
-        # Alpha blending formula: result = (source * alpha) + (dest * (1-alpha))
-        # Where alpha is normalized to 0-1 range
+        # Alpha-blend onto white to get the apparent color
         alpha_norm = alpha / 255.0
         apparent_r = int(r * alpha_norm + 255 * (1 - alpha_norm))
         apparent_g = int(g * alpha_norm + 255 * (1 - alpha_norm))
         apparent_b = int(b * alpha_norm + 255 * (1 - alpha_norm))
-
-        # Use solid color that matches the apparent color of the semi-transparent highlight
         legend_color = (apparent_r, apparent_g, apparent_b, 255)
 
-        # Draw the color box
-        draw.rectangle([(10, y), (30, y + item_height - 5)], fill=legend_color)
+        # Draw color swatch aligned to the first line of text
+        draw.rectangle(
+            [(10, y), (10 + swatch_size, y + swatch_size)],
+            fill=legend_color,
+        )
 
-        # Draw the label text
-        draw.text((40, y + (item_height // 2) - 6), label, fill=(0, 0, 0, 255), font=font)
+        # Draw (possibly multi-line) label text
+        draw.multiline_text(
+            (text_x, y),
+            label,
+            fill=(0, 0, 0, 255),
+            font=font,
+            spacing=line_spacing,
+        )
 
-        # Move to the next position
-        y += item_height
+        y += item_h + item_gap
 
     return legend
 

@@ -1701,6 +1701,55 @@ class ElementCollection(
 
         return None
 
+    def save_pdf(
+        self,
+        path: str,
+        method: str = "crop",
+    ) -> "ElementCollection":
+        """
+        Save each element in this collection as a page in a PDF file.
+
+        Each element's bounding box on its page becomes one page in the output PDF.
+        Elements without a page or bbox are skipped with a warning.
+
+        Args:
+            path: Output file path for the PDF.
+            method: 'crop' (default) sets CropBox to element bounds. 'whiteout'
+                    keeps full pages but whites out areas outside each element.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If the collection is empty or no valid elements found.
+            ImportError: If pikepdf is not installed.
+
+        Examples:
+            ```python
+            headers = page.find_all('text:bold[size>=14]')
+            headers.save_pdf("headers.pdf")
+            ```
+        """
+        from natural_pdf.exporters.region_pdf import create_region_pdf
+
+        if not self._elements:
+            raise ValueError("Cannot save PDF from an empty ElementCollection.")
+
+        regions = []
+        for elem in self._elements:
+            elem_page = getattr(elem, "page", None) or getattr(elem, "_page", None)
+            elem_bbox = getattr(elem, "bbox", None)
+            if elem_page is None or elem_bbox is None:
+                logger.warning(f"Skipping element without page or bbox: {elem}")
+                continue
+            regions.append((elem_page, elem_bbox))
+
+        if not regions:
+            raise ValueError("No valid elements with page and bbox found in collection.")
+
+        create_region_pdf(regions, path, method=method)
+        return self
+
     def _group_elements_by_attr(self, group_by: str) -> Dict[Any, List[T]]:
         """Groups elements by the specified attribute."""
         grouped_elements: Dict[Any, List[T]] = {}

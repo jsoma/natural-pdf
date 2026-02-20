@@ -28,6 +28,48 @@ Natural PDF is a Python library for intelligent PDF document processing that com
 - **Structured Data**: Extract specific fields with schema validation using Pydantic
 - **LLM Integration**: OpenAI/Gemini compatible for advanced extraction
 - **Classification**: Document/page categorization using text or vision models
+- **Per-field confidence scoring**: Add `confidence=True` to `extract()` for 0.0–1.0 scores per field
+- **Annotated PDF export**: `result.save_pdf("output.pdf")` saves highlights + sidebar legend as native PDF
+
+#### Confidence Scoring
+
+```python
+# Default numeric scale (0.0–1.0)
+result = page.extract(MySchema, client=client, confidence=True)
+result["field"].confidence  # 0.0–1.0
+
+# Scale anchors used by the LLM:
+# 0.0 = Not present or completely uncertain
+# 0.2 = Weakly implied but not stated
+# 0.5 = Partially supported or ambiguous
+# 0.8 = Strongly supported with minor inference
+# 1.0 = Explicitly stated in the text
+
+# Categorical — the LLM infers what the levels mean
+result = page.extract(MySchema, client=client, confidence=["low", "medium", "high"])
+
+# Categorical with descriptions — tell the LLM exactly what you mean
+result = page.extract(MySchema, client=client, confidence={
+    "low": "implied or inferred",
+    "medium": "strongly implied",
+    "high": "clearly and explicitly stated",
+})
+
+# Access results
+result["field"].confidence   # "high", 0.95, etc.
+result.confidences           # {"field": ..., ...} dict of all scores
+```
+
+#### Annotated PDF Export
+
+```python
+# Save extraction results as a native PDF with highlights + sidebar legend
+result = page.extract(MySchema, client=client, citations=True, confidence=True)
+result.save_pdf("annotated.pdf")
+
+# result.show() also displays enriched legend labels (field name + value)
+result.show()
+```
 
 ### 4. Advanced Document Processing
 - **Multi-column/Page Flows**: Reflow content across columns or pages for proper reading order

@@ -620,6 +620,34 @@ class FlowRegion(
         x0, y0, x1, y1 = bbox
         return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
+    def save_pdf(
+        self,
+        path: str,
+        method: str = "crop",
+    ) -> "FlowRegion":
+        """
+        Save this FlowRegion as a PDF. Each constituent region becomes a page.
+
+        Args:
+            path: Output file path for the PDF.
+            method: 'crop' (default) or 'whiteout'.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If there are no constituent regions or method is invalid.
+            ImportError: If pikepdf is not installed.
+        """
+        from natural_pdf.exporters.region_pdf import create_region_pdf
+
+        if not self.constituent_regions:
+            raise ValueError("Cannot save PDF from a FlowRegion with no constituent regions.")
+
+        regions = [(r.page, r.bbox) for r in self.constituent_regions]
+        create_region_pdf(regions, path, method=method)
+        return self
+
     def extract_text(self, apply_exclusions: bool = True, **kwargs) -> str:
         """Concatenate text from constituent regions while preserving flow order."""
         if self._cached_text is not None and apply_exclusions:

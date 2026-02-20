@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import textwrap
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, Optional, Tuple, Type
 
@@ -11,25 +12,53 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 
+def build_enriched_label(field_name: str, value: Any) -> str:
+    """Build a multi-line legend label from a field name and value.
+
+    Format::
+
+        field_name:
+          wrapped value line 1
+          wrapped value line 2
+
+    Newlines in the value are replaced with spaces, text is wrapped at 25
+    characters, and truncated to 4 value lines with ``...`` if needed.
+    """
+    value_str = str(value).replace("\n", " ").strip()
+    max_lines = 4
+    wrapped = textwrap.fill(value_str, width=25)
+    lines = wrapped.split("\n")
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1][:22] + "..."
+    return field_name + ":\n" + "\n".join("  " + line.strip() for line in lines)
+
+
 @dataclass
 class FieldResult:
-    """Bundles an extracted field value with its source citations.
+    """Bundles an extracted field value with its source citations and confidence.
 
     Attributes:
         value: The extracted value (str, int, list, etc.).
         citations: ElementCollection of source TextElements, or an empty
             collection when citations were not requested.
+        confidence: Per-field confidence score (float or str), or ``None``
+            when confidence was not requested.
     """
 
     value: Any
     citations: Any  # ElementCollection — typed as Any to avoid circular import
+    confidence: Optional[Any] = None
 
     def __str__(self) -> str:
         return str(self.value)
 
     def __repr__(self) -> str:
         cit_len = len(self.citations) if self.citations is not None else 0
-        return f"FieldResult(value={self.value!r}, citations={cit_len} elements)"
+        parts = [f"value={self.value!r}", f"citations={cit_len} elements"]
+        if self.confidence is not None:
+            parts.append(f"confidence={self.confidence!r}")
+        return f"FieldResult({', '.join(parts)})"
 
     def show(self, **kwargs):
         """Show the citation elements for this field."""
@@ -68,6 +97,7 @@ class StructuredDataResult:
         raw_output: Any = None,
         model_used: Optional[str] = None,
         citations: Optional[Dict[str, Any]] = None,
+        confidences: Optional[Dict[str, Any]] = None,
     ):
         self.data = data
         self.success = success
@@ -75,7 +105,7 @@ class StructuredDataResult:
         self.raw_output = raw_output
         self.model_used = model_used
 
-        # Build FieldResult map from data + citations
+        # Build FieldResult map from data + citations + confidences
         self._fields: Dict[str, FieldResult] = {}
         if data is not None:
             from natural_pdf.elements.element_collection import ElementCollection
@@ -83,10 +113,12 @@ class StructuredDataResult:
             empty = ElementCollection([])
             data_dict = data.model_dump() if hasattr(data, "model_dump") else data.dict()
             citations = citations or {}
+            confidences = confidences or {}
             for field_name, value in data_dict.items():
                 self._fields[field_name] = FieldResult(
                     value=value,
                     citations=citations.get(field_name, empty),
+                    confidence=confidences.get(field_name),
                 )
 
     # ------------------------------------------------------------------
@@ -155,6 +187,11 @@ class StructuredDataResult:
         """Dict mapping field names to their citation ElementCollections."""
         return {name: fr.citations for name, fr in self._fields.items()}
 
+    @property
+    def confidences(self) -> Dict[str, Any]:
+        """Dict mapping field names to their confidence scores."""
+        return {name: fr.confidence for name, fr in self._fields.items()}
+
     def show(self, **kwargs):
         """Highlight all citation elements on page(s), labeled by field name.
 
@@ -171,7 +208,8 @@ class StructuredDataResult:
         for name, fr in self._fields.items():
             if fr.citations is not None and len(fr.citations) > 0:
                 has_any = True
-                fr.citations.highlight(label=name)
+                label = build_enriched_label(name, fr.value)
+                fr.citations.highlight(label=label)
                 for elem in fr.citations:
                     if hasattr(elem, "page") and elem.page is not None:
                         if elem.page not in pages_seen:
@@ -192,6 +230,21 @@ class StructuredDataResult:
         collection = PageCollection(pages)
         kwargs.setdefault("columns", 1)
         return collection.show(**kwargs)
+
+    def save_pdf(self, path: str, **kwargs) -> None:
+        """Save an annotated PDF with highlight annotations for all citations.
+
+        Each field's citation elements become ``/Highlight`` annotations on the
+        corresponding PDF pages, preserving the native text layer.  Popup text
+        includes the field name, extracted value, and confidence (if present).
+
+        Args:
+            path: Output file path for the annotated PDF.
+            **kwargs: Forwarded to :func:`create_annotated_pdf`.
+        """
+        from natural_pdf.exporters.annotated_pdf import create_annotated_pdf
+
+        create_annotated_pdf(self._fields, path, **kwargs)
 
     # ------------------------------------------------------------------
     # Display

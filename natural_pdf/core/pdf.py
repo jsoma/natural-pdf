@@ -1331,6 +1331,7 @@ class PDF(
         output_path: Union[str, Path],
         ocr: bool = False,
         original: bool = False,
+        apply_exclusions: bool = False,
         dpi: int = 300,
     ):
         """
@@ -1344,21 +1345,34 @@ class PDF(
           Any OCR results or analyses from the natural-pdf session are NOT included.
           If the PDF was opened from an in-memory buffer, this mode may not be suitable.
           Requires 'ocr-export' extras.
+        - `apply_exclusions=True`: Saves the original PDF with exclusion zones whited out.
+          Exclusion regions added via add_exclusion() are covered with white rectangles,
+          preserving the rest of the original vector content. Cannot be combined with ocr=True.
 
         Args:
             output_path: Path to save the new PDF file.
             ocr: If True, save as a searchable, image-based PDF using OCR data.
             original: If True, save the original source PDF content.
+            apply_exclusions: If True, save with exclusion zones whited out.
             dpi: Resolution (dots per inch) used only when ocr=True.
 
         Raises:
-            ValueError: If the PDF has no pages, if neither or both 'ocr'
-                        and 'original' are True.
+            ValueError: If the PDF has no pages, or if the mode flags are invalid.
             ImportError: If required libraries are not installed for the chosen mode.
             RuntimeError: If an unexpected error occurs during saving.
         """
         if not self.pages:
             raise ValueError("Cannot save an empty PDF object.")
+
+        if apply_exclusions:
+            if ocr:
+                raise ValueError("Cannot combine apply_exclusions=True with ocr=True.")
+            from natural_pdf.exporters.region_pdf import create_exclusion_aware_pdf
+
+            output_path_str = str(output_path)
+            logger.info(f"Saving exclusion-aware PDF to: {output_path_str}")
+            create_exclusion_aware_pdf(list(self.pages), output_path_str)
+            return
 
         if not (ocr ^ original):  # XOR: exactly one must be true
             raise ValueError("Exactly one of 'ocr' or 'original' must be True.")
@@ -2471,6 +2485,8 @@ class PDF(
         Accepts the same arguments as :meth:`Page.extract`.  Pass
         ``citations=True`` to get per-field source citations that map
         extracted values back to their source elements across pages.
+        Pass ``confidence=True`` for per-field confidence scores, and
+        ``instructions="..."`` for domain-specific LLM guidance.
 
         Returns:
             :class:`StructuredDataResult`

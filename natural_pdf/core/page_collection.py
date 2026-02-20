@@ -689,6 +689,7 @@ class PageCollection(
         output_path: Union[str, Path],
         ocr: bool = False,
         original: bool = False,
+        apply_exclusions: bool = False,
         dpi: int = 300,
     ):
         """
@@ -701,11 +702,14 @@ class PageCollection(
         - `original=True`: Extracts the original pages from the source PDF,
           preserving all vector content, fonts, and annotations. OCR results
           from the natural-pdf session are NOT included. Requires 'ocr-export' extras.
+        - `apply_exclusions=True`: Saves the original pages with exclusion zones
+          whited out. Cannot be combined with ocr=True.
 
         Args:
             output_path: Path to save the new PDF file.
             ocr: If True, save as a searchable, image-based PDF using OCR data.
             original: If True, save the original, vector-based pages.
+            apply_exclusions: If True, save with exclusion zones whited out.
             dpi: Resolution (dots per inch) used only when ocr=True for
                  rendering page images and aligning the text layer.
 
@@ -719,6 +723,16 @@ class PageCollection(
         """
         if not self.pages:
             raise ValueError("Cannot save an empty PageCollection.")
+
+        if apply_exclusions:
+            if ocr:
+                raise ValueError("Cannot combine apply_exclusions=True with ocr=True.")
+            from natural_pdf.exporters.region_pdf import create_exclusion_aware_pdf
+
+            output_path_str = str(output_path)
+            logger.info(f"Saving exclusion-aware PDF to: {output_path_str}")
+            create_exclusion_aware_pdf(list(self.pages), output_path_str)
+            return
 
         if not (ocr ^ original):  # XOR: exactly one must be true
             raise ValueError("Exactly one of 'ocr' or 'original' must be True.")

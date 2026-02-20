@@ -1197,6 +1197,41 @@ class Region(
 
         return self
 
+    def save_pdf(
+        self,
+        path: str,
+        method: str = "crop",
+    ) -> "Region":
+        """
+        Save this region as a PDF file. The region becomes a single page in the output.
+
+        Uses pikepdf to manipulate the original vector PDF, preserving selectable text.
+
+        Args:
+            path: Output file path for the PDF.
+            method: 'crop' (default) sets CropBox to region bounds, producing a page
+                    sized to the region. 'whiteout' keeps the full page but draws white
+                    rectangles over areas outside the region.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ImportError: If pikepdf is not installed.
+            ValueError: If method is not 'crop' or 'whiteout'.
+
+        Examples:
+            ```python
+            region = page.find('text:bold').below()
+            region.save_pdf("output.pdf")
+            region.save_pdf("whiteout.pdf", method="whiteout")
+            ```
+        """
+        from natural_pdf.exporters.region_pdf import create_region_pdf
+
+        create_region_pdf([(self._page, self.bbox)], path, method=method)
+        return self
+
     def trim(
         self,
         padding: float = 1,
@@ -2055,8 +2090,9 @@ class Region(
         """Run structured extraction on this region.
 
         Accepts the same arguments as :meth:`Page.extract`.  Pass
-        ``citations=True`` to get per-field source citations within
-        this region.
+        ``citations=True`` for per-field source citations within this
+        region, ``confidence=True`` for per-field confidence scores,
+        and ``instructions="..."`` for domain-specific LLM guidance.
 
         Returns:
             :class:`StructuredDataResult`

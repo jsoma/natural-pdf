@@ -2647,6 +2647,11 @@ class Page(
             **kwargs: Extra arguments forwarded to the extraction engine.
                 ``citations`` (bool): When True, each field's result includes
                 source citations mapping the value back to PDF elements.
+                ``confidence``: Per-field confidence scoring. Accepts ``True``
+                or ``'range'`` for 0.0–1.0 scale, a ``list`` of categorical
+                levels, or a ``dict`` mapping values to descriptions.
+                ``instructions`` (str): Domain-specific guidance appended to
+                the LLM prompt, affecting all reasoning.
 
         Returns:
             :class:`StructuredDataResult` with attribute, item, and iteration access:
@@ -2659,6 +2664,8 @@ class Page(
             result["site"].value           # "Chicago" (item access)
             result["site"].citations       # ElementCollection of source elements
             result["site"].citations.show()
+            result["site"].confidence      # 0.95 (when confidence= is set)
+            result.confidences             # {"site": 0.95, ...}
             result.to_dict()               # {"site": "Chicago", ...}
             result.show()                  # highlight all citations on page
         """
