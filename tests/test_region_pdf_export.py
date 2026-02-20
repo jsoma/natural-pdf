@@ -75,6 +75,7 @@ class TestRegionSavePdfCrop:
 
     def test_save_pdf_returns_self(self, page):
         """Method chaining should work."""
+        pytest.importorskip("pikepdf")
         region = page.region(0, 0, page.width, 100)
         out = os.path.join(TEMP_DIR, "test_chain.pdf")
         assert region.save_pdf(out) is region

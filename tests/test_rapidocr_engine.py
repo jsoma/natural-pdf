@@ -15,8 +15,11 @@ from natural_pdf.ocr.ocr_options import RapidOCROptions
 
 
 def rapidocr_available() -> bool:
-    """Check if RapidOCR is installed."""
-    return importlib.util.find_spec("rapidocr") is not None
+    """Check if RapidOCR is installed with its runtime dependencies."""
+    return (
+        importlib.util.find_spec("rapidocr") is not None
+        and importlib.util.find_spec("onnxruntime") is not None
+    )
 
 
 class TestRapidOCREngineAvailability:

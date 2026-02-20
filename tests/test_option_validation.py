@@ -316,6 +316,16 @@ class TestLayoutOptionsValidation:
 class TestSetOptionValidation:
     """Tests for set_option validation."""
 
+    @pytest.fixture(autouse=True)
+    def reset_options(self):
+        import natural_pdf as npdf
+
+        orig_resolution = npdf.options.image.resolution
+        orig_confidence = npdf.options.ocr.min_confidence
+        yield
+        npdf.set_option("image.resolution", orig_resolution)
+        npdf.set_option("ocr.min_confidence", orig_confidence)
+
     def test_set_option_valid_confidence(self):
         """Valid confidence should be set without issue."""
         import natural_pdf as npdf

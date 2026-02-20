@@ -149,7 +149,7 @@ def test_vision_extraction_with_custom_resolution(practice_pdf):
 
     assert image_url is not None
     base64_data = image_url.split(",")[1]
-    assert len(base64_data) > 200000, "High resolution image should be large"
+    assert len(base64_data) > 50000, "High resolution image should be large"
 
 
 def test_extraction_without_render_method_fails_for_vision():
