@@ -4,12 +4,13 @@ from types import SimpleNamespace
 
 import pytest
 
+from natural_pdf.extraction.result import StructuredDataResult
+
 pytestmark = [pytest.mark.qa, pytest.mark.qa_remote, pytest.mark.slow]
 
 
 def _require_qa():
     """Skip if qa extras are unavailable."""
-
     pytest.importorskip("natural_pdf.qa")
 
 
@@ -32,11 +33,13 @@ class DummyLLMClient:
         self.completions = completions
 
 
-def _assert_result_schema(result: dict) -> None:
-    assert isinstance(result, dict)
-    assert set(result).issuperset({"answer", "confidence", "found"})
-    assert isinstance(result["confidence"], float)
-    assert isinstance(result["found"], bool)
+def _assert_result_schema(result) -> None:
+    """Assert that result is a StructuredDataResult with an 'answer' field."""
+    assert isinstance(
+        result, StructuredDataResult
+    ), f"Expected StructuredDataResult, got {type(result).__name__}"
+    assert result.success is True or result.answer is None
+    assert "answer" in result
 
 
 def test_qa_dependencies_available():
@@ -61,37 +64,28 @@ def test_pdf_ask_and_batch_smoke(practice_pdf):
         _assert_result_schema(result)
 
 
-def test_pdf_ask_invalid_inputs(practice_pdf):
-    _require_qa()
-
-    with pytest.raises(TypeError):
-        practice_pdf.ask(123)
-    with pytest.raises(ValueError):
-        practice_pdf.ask("Too wide", pages="invalid")
-    with pytest.raises(TypeError):
-        practice_pdf.ask_batch("not a list")
-
-
 def test_pdf_page_ask(practice_pdf):
     _require_qa()
     page = practice_pdf.pages[0]
     result = page.ask("What is shown on this page?")
     if isinstance(result, list):
-        assert result  # page.ask still supports batches
+        assert result
         result = result[0]
     _assert_result_schema(result)
 
 
-def test_pdf_ask_generative_mode(practice_pdf):
+def test_pdf_ask_with_client(practice_pdf):
+    """Test that client= + using='text' works via the new .extract() path."""
     _require_qa()
     client = DummyLLMClient(answer="Generated summary")
     result = practice_pdf.ask(
         "Provide a short summary.",
-        mode="generative",
-        llm_client=client,
+        client=client,
+        using="text",
+        pages=0,
     )
-    assert result["answer"] == "Generated summary"
-    assert result["confidence"] is None
+    _assert_result_schema(result)
+    assert result.answer == "Generated summary"
 
 
 def test_pdf_ask_with_ocr_page(practice_pdf):

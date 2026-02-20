@@ -12,7 +12,6 @@ from natural_pdf.extraction.structured_ops import (
     extract_structured_data,
     structured_data_is_available,
 )
-from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.services.registry import register_delegate
 
 DEFAULT_STRUCTURED_KEY = "structured"
@@ -84,6 +83,15 @@ class ExtractionService:
                 overwrite=overwrite,
                 **kwargs,
             )
+        elif resolved_engine == "vlm":
+            self._perform_vlm_extraction(
+                host=host,
+                schema=schema_model,
+                analysis_key=key,
+                prompt=prompt,
+                model=model,
+                **kwargs,
+            )
         else:
             self._perform_llm_extraction(
                 host=host,
@@ -137,8 +145,10 @@ class ExtractionService:
 
     @staticmethod
     def _resolve_engine(engine: Optional[str], client: Any) -> str:
+        if engine == "vlm":
+            return "vlm"
         if engine not in (None, "llm", "doc_qa"):
-            raise ValueError("engine must be either 'llm', 'doc_qa', or None")
+            raise ValueError("engine must be 'llm', 'doc_qa', 'vlm', or None")
         if engine is None:
             return "llm" if client is not None else "doc_qa"
         if engine == "llm" and client is None:
@@ -175,9 +185,9 @@ class ExtractionService:
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()
 
         fields_iter = (
-            schema.__fields__.items()
-            if hasattr(schema, "__fields__")
-            else schema.model_fields.items()
+            schema.model_fields.items()
+            if hasattr(schema, "model_fields")
+            else schema.__fields__.items()
         )
 
         answers: Dict[str, Any] = {}
@@ -193,7 +203,7 @@ class ExtractionService:
             )
 
         for field_name, field_obj in fields_iter:
-            display_name = getattr(field_obj, "alias", field_name)
+            display_name = getattr(field_obj, "alias", None) or field_name
             if display_name in question_map:
                 question = question_map[display_name]
             else:
@@ -225,10 +235,10 @@ class ExtractionService:
 
                 confidence_val = None
                 answer_val = None
-                if isinstance(qa_item, QAResult):
+                if isinstance(qa_item, dict):
                     confidence_val = qa_item.get("confidence")
                     answer_val = qa_item.get("answer")
-                elif isinstance(qa_item, dict):
+                elif hasattr(qa_item, "get"):
                     confidence_val = qa_item.get("confidence")
                     answer_val = qa_item.get("answer")
 
@@ -280,6 +290,65 @@ class ExtractionService:
             raw_output=combined,
             model_used=getattr(qa_engine, "model_name", None),
         )
+
+        host.analyses[analysis_key] = result
+
+    def _perform_vlm_extraction(
+        self,
+        *,
+        host,
+        schema: Type[BaseModel],
+        analysis_key: str,
+        prompt: Optional[str],
+        model: Optional[str],
+        **kwargs,
+    ) -> None:
+        """Run extraction using a local HuggingFace VLM."""
+        try:
+            from natural_pdf.extraction.vlm_adapter import get_vlm_adapter
+        except ImportError as exc:
+            raise RuntimeError(
+                "VLM engine requires 'transformers' and 'torch'. "
+                "Install with: pip install transformers torch"
+            ) from exc
+
+        # Get image from host
+        renderer = getattr(host, "render", None)
+        if not callable(renderer):
+            raise RuntimeError(f"VLM extraction requires 'render' on {host!r}")
+        resolution = kwargs.pop("resolution", 150)
+        image = renderer(resolution=resolution)
+
+        adapter = get_vlm_adapter(model_name=model)
+        effective_prompt = prompt or (
+            f"Extract the information corresponding to the fields in the "
+            f"{schema.__name__} schema from this document image."
+        )
+
+        max_new_tokens = kwargs.pop("max_new_tokens", 512)
+
+        try:
+            parsed = adapter.generate(
+                image=image,
+                prompt=effective_prompt,
+                schema=schema,
+                max_new_tokens=max_new_tokens,
+            )
+            result = StructuredDataResult(
+                data=parsed,
+                success=True,
+                error_message=None,
+                raw_output=None,
+                model_used=adapter.model_name,
+            )
+        except Exception as exc:
+            result = StructuredDataResult(
+                data=None,
+                success=False,
+                error_message=str(exc),
+                raw_output=None,
+                model_used=adapter.model_name,
+            )
 
         host.analyses[analysis_key] = result
 

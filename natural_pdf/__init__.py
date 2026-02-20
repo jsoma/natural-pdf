@@ -247,14 +247,6 @@ else:
     MultiModalSearchOptions = _MultiModalSearchOptionsFallback
 
 
-# Import QA module if available
-try:
-    from natural_pdf.qa import DocumentQA, get_qa_engine
-
-    HAS_QA = True
-except ImportError:
-    HAS_QA = False
-
 # Explicitly define what gets imported with 'from natural_pdf import *'
 __all__ = [
     # Core classes
@@ -294,7 +286,3 @@ __all__ = [
     "ClassificationError",
     "QAError",
 ]
-
-# Add QA components to __all__ if available
-if HAS_QA:
-    __all__.extend(["DocumentQA", "get_qa_engine"])

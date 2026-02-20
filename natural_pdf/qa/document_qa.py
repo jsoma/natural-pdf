@@ -15,11 +15,11 @@ from .qa_result import QAResult
 logger = logging.getLogger("natural_pdf.qa.document_qa")
 
 
-def get_qa_engine(model_name: str = "impira/layoutlm-document-qa", **kwargs):
-    """
-    Get a QA engine instance via the EngineProvider.
+_qa_engine_cache: Dict[str, "DocumentQA"] = {}
 
-    The EngineProvider handles caching, so repeated calls return the same instance.
+
+def get_qa_engine(model_name: str = "impira/layoutlm-document-qa", **kwargs):
+    """Get a cached DocumentQA engine instance.
 
     Args:
         model_name: Name of the model to use (default: "impira/layoutlm-document-qa")
@@ -28,14 +28,9 @@ def get_qa_engine(model_name: str = "impira/layoutlm-document-qa", **kwargs):
     Returns:
         DocumentQA instance
     """
-    from natural_pdf.engine_provider import get_provider
-
-    provider = get_provider()
-    # Get the wrapper engine from the provider (which handles caching)
-    wrapper = provider.get("qa.document", context=None, name="layoutlm")
-    # Ensure the underlying DocumentQA is initialized with the requested model
-    wrapper._ensure_engine(model_name)
-    return wrapper._engine
+    if model_name not in _qa_engine_cache:
+        _qa_engine_cache[model_name] = DocumentQA(model_name=model_name, **kwargs)
+    return _qa_engine_cache[model_name]
 
 
 class DocumentQA:

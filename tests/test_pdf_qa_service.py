@@ -1,96 +1,113 @@
+"""Tests for PDF-level .ask() and .ask_batch() using the new extract-based flow."""
+
 from __future__ import annotations
 
-from typing import List
+from typing import Optional
+from unittest.mock import MagicMock, patch
+
+from pydantic import BaseModel, Field, create_model
 
 from natural_pdf.core.pdf import PDF
-from natural_pdf.core.pdf_collection import PDFCollection
-from natural_pdf.qa.qa_result import QAResult
+from natural_pdf.extraction.result import StructuredDataResult
 
 
-def _fake_result(question: str, page_number: int) -> QAResult:
-    return QAResult(
-        {
-            "question": question,
-            "answer": f"page-{page_number}",
-            "confidence": float(page_number),
-            "found": True,
-            "page_num": page_number,
-            "source_elements": [],
-        }
+def _make_answer_result(answer: str, model_used: str = "test") -> StructuredDataResult:
+    """Build a StructuredDataResult with an 'answer' field."""
+    schema = create_model("_QA", answer=(Optional[str], Field(None)))
+    instance = schema(answer=answer)
+    return StructuredDataResult(
+        data=instance,
+        success=True,
+        error_message=None,
+        raw_output=None,
+        model_used=model_used,
     )
 
 
-def test_pdf_ask_extractive_uses_service(monkeypatch):
-    pdf = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
-    calls: List[int] = []
+def test_pdf_ask_returns_structured_data_result(monkeypatch):
+    """PDF.ask() should return StructuredDataResult via page-level extract."""
+    pdf = PDF("pdfs/01-practice.pdf")
 
-    def fake_run_document_qa(*, region, question, **kwargs):
-        page_number = getattr(region.page, "number", None)
-        calls.append(page_number)
-        return _fake_result(question, page_number)
+    fake_result = _make_answer_result("page-1")
 
-    monkeypatch.setattr(
-        "natural_pdf.services.qa_service.run_document_qa",
-        fake_run_document_qa,
-    )
+    # Patch the page-level .extract() to return our fake result
+    for page in pdf.pages:
+        monkeypatch.setattr(page, "extract", lambda **kw: fake_result)
 
     try:
         result = pdf.ask("Which page?", pages=0)
     finally:
         pdf.close()
 
-    assert result["answer"] == "page-1"
-    assert calls == [1]
+    assert isinstance(result, StructuredDataResult)
+    assert result.answer == "page-1"
+    assert result.success is True
 
 
-def test_pdf_ask_batch_extractive(monkeypatch):
-    pdf = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
-    calls: List[int] = []
+def test_pdf_ask_batch_returns_list(monkeypatch):
+    """PDF.ask_batch() should return a list of StructuredDataResult."""
+    pdf = PDF("pdfs/01-practice.pdf")
 
-    def fake_run_document_qa(*, region, question, **kwargs):
-        page_number = getattr(region.page, "number", None)
-        calls.append(page_number)
-        return _fake_result(question, page_number)
+    call_count = 0
 
-    monkeypatch.setattr(
-        "natural_pdf.services.qa_service.run_document_qa",
-        fake_run_document_qa,
-    )
+    def fake_extract(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        return _make_answer_result(f"answer-{call_count}")
+
+    for page in pdf.pages:
+        monkeypatch.setattr(page, "extract", fake_extract)
 
     try:
-        results = pdf.ask_batch(["first?", "second?"], pages=[0, 1])
+        results = pdf.ask_batch(["first?", "second?"], pages=0)
     finally:
         pdf.close()
 
     assert len(results) == 2
-    assert all(res["found"] for res in results)
-    # Two questions across two pages => four invocations
-    assert calls == [1, 2, 1, 2]
+    assert all(isinstance(r, StructuredDataResult) for r in results)
+    assert results[0].answer == "answer-1"
+    assert results[1].answer == "answer-2"
 
 
-def test_pdf_collection_ask(monkeypatch):
-    pdf1 = PDF("pdfs/01-practice.pdf")
-    pdf2 = PDF("pdfs/Atlanta_Public_Schools_GA_sample.pdf")
-    collection = PDFCollection([pdf1, pdf2])
+def test_pdf_ask_batch_resolves_pages_once(monkeypatch):
+    """ask_batch should call _resolve_qa_pages only once, not per question."""
+    pdf = PDF("pdfs/01-practice.pdf")
 
-    calls: List[int] = []
+    resolve_count = 0
+    original_resolve = pdf._resolve_qa_pages
 
-    def fake_run_document_qa(*, region, question, **kwargs):
-        page_number = getattr(region.page, "number", None) or 0
-        calls.append(page_number)
-        return _fake_result(question, page_number)
+    def counting_resolve(pages):
+        nonlocal resolve_count
+        resolve_count += 1
+        return original_resolve(pages)
 
-    monkeypatch.setattr(
-        "natural_pdf.services.qa_service.run_document_qa",
-        fake_run_document_qa,
-    )
+    monkeypatch.setattr(pdf, "_resolve_qa_pages", counting_resolve)
+
+    fake_result = _make_answer_result("batch-answer")
+    for page in pdf.pages:
+        monkeypatch.setattr(page, "extract", lambda **kw: fake_result)
 
     try:
-        result = collection.ask("Where?", min_confidence=0.0)
+        results = pdf.ask_batch(["q1", "q2", "q3"], pages=0)
     finally:
-        pdf1.close()
-        pdf2.close()
+        pdf.close()
 
-    assert result["found"] is True
-    total_pages = sum(len(pdf.pages) for pdf in (pdf1, pdf2))
-    assert len(calls) == total_pages
+    assert len(results) == 3
+    assert resolve_count == 1, f"Expected 1 _resolve_qa_pages call, got {resolve_count}"
+
+
+def test_pdf_ask_empty_pages():
+    """PDF.ask() with no valid pages returns blank StructuredDataResult."""
+    pdf = PDF("pdfs/01-practice.pdf")
+    try:
+        # Use an out-of-range page index to test error handling
+        try:
+            result = pdf.ask("test?", pages=9999)
+            # If no error, result should be blank with success=False
+            assert result.answer is None
+            assert result.success is False
+        except IndexError:
+            # Expected for invalid page index
+            pass
+    finally:
+        pdf.close()

@@ -251,18 +251,6 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
     def _qa_target_region(self):
         return self._analysis_region_host()._qa_target_region()
 
-    def _qa_context_page_number(self) -> int:
-        return self._analysis_region_host()._qa_context_page_number()
-
-    def _qa_source_elements(self):
-        return self._analysis_region_host()._qa_source_elements()
-
-    def _qa_normalize_result(self, result: Any):
-        return self._analysis_region_host()._qa_normalize_result(result)
-
-    def _qa_confidence(self, candidate: Any) -> float:
-        return self._analysis_region_host()._qa_confidence(candidate)
-
     def _get_highlighter(self):
         """Get the highlighting service from the first segment."""
         if not self.segments:

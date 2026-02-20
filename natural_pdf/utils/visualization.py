@@ -3,8 +3,11 @@ Visualization utilities for natural-pdf.
 """
 
 import itertools  # Added for cycling
+import logging
 import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union, cast
+
+logger = logging.getLogger(__name__)
 
 try:
     import pypdfium2  # type: ignore[import-untyped]
@@ -423,7 +426,6 @@ def merge_images_with_legend(
         return image  # Return original image if legend is None or empty
 
     bg_color = (255, 255, 255, 255)  # Always use white for the merged background
-    bg_color = (255, 255, 255, 255)  # Always use white for the merged background
 
     if position == "right":
         # Create a new image with extra width for the legend
@@ -457,7 +459,7 @@ def merge_images_with_legend(
         merged.paste(image, (legend.width, 0))
     else:
         # Invalid position, return the original image
-        print(f"Warning: Invalid legend position '{position}'. Returning original image.")
+        logger.warning("Invalid legend position '%s'. Returning original image.", position)
         merged = image
 
     return merged
@@ -483,14 +485,7 @@ def render_plain_page(page, resolution):
             if hasattr(img_obj, "original"):
                 return img_obj.original.convert("RGB")
     except Exception as exc:  # pragma: no cover - fall back to pdfium rendering
-        logger = None
-        try:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.debug("render_plain_page fallback to pdfium due to %s", exc, exc_info=True)
-        except Exception:
-            pass
+        logger.debug("render_plain_page fallback to pdfium due to %s", exc, exc_info=True)
 
     if pypdfium2 is None:
         raise RuntimeError(

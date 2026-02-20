@@ -248,17 +248,6 @@ class QACollectionMixin:
 
         return ElementCollection([])
 
-    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        from natural_pdf.elements.region import Region
-
-        return Region._normalize_qa_output(result)
-
-    @staticmethod
-    def _qa_confidence(candidate: Any) -> float:
-        from natural_pdf.flows.region import FlowRegion
-
-        return FlowRegion._qa_confidence(candidate)
-
 
 class ApplyMixin:
     """Provide ``apply``/``map``/``attr`` utilities for element collections."""

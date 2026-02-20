@@ -33,6 +33,18 @@ logger = logging.getLogger(__name__)
 
 RGBAColor = Tuple[int, int, int, int]
 
+_FONT_FALLBACK = ["DejaVuSans.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"]
+
+
+def _load_font(size: int) -> ImageFont.FreeTypeFont:
+    """Try fonts in fallback order, return default if all fail."""
+    for name in _FONT_FALLBACK:
+        try:
+            return ImageFont.truetype(name, size)
+        except (IOError, OSError):
+            continue
+    return ImageFont.load_default()
+
 
 @dataclass
 class Highlight:
@@ -102,11 +114,11 @@ class HighlightRenderer:
             page_offset_y = -self.page._page.bbox[1]
             logger.debug(f"Applying highlight offset: x={page_offset_x}, y={page_offset_y}")
 
-        for highlight in self.highlights:
-            # Create a transparent overlay for this single highlight
-            overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
-            draw = ImageDraw.Draw(overlay)
+        # Single overlay for all highlights — O(1) composite instead of O(N)
+        overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
 
+        for highlight in self.highlights:
             scaled_bbox = None
 
             if highlight.is_polygon and highlight.polygon is not None:
@@ -155,8 +167,8 @@ class HighlightRenderer:
             if highlight.attributes and scaled_bbox:  # Ensure bbox is calculated
                 self._draw_attributes(draw, highlight.attributes, scaled_bbox)
 
-            # Composite this highlight's overlay onto the result using alpha blending
-            self.result_image = Image.alpha_composite(self.result_image, overlay)
+        # Composite the shared overlay onto the result using alpha blending
+        self.result_image = Image.alpha_composite(self.result_image, overlay)
 
     def _draw_vertices(
         self,
@@ -181,14 +193,8 @@ class HighlightRenderer:
         self, draw: ImageDraw.ImageDraw, attributes: Dict[str, Any], bbox_scaled: List[float]
     ) -> None:
         """Draws attribute key-value pairs on the highlight."""
-        try:
-            # Slightly larger font, scaled
-            font_size = max(10, int(8 * self.scale_factor))
-            # Prioritize monospace fonts for better alignment
-            font = ImageFont.truetype("Arial.ttf", font_size)  # Fallback sans-serif
-        except IOError:
-            font = ImageFont.load_default()
-            font_size = 10  # Reset size for default font
+        font_size = max(10, int(8 * self.scale_factor))
+        font = _load_font(font_size)
 
         line_height = font_size + int(4 * self.scale_factor)  # Scaled line spacing
         bg_padding = int(3 * self.scale_factor)
@@ -253,16 +259,14 @@ class HighlightRenderer:
         overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Find a suitable font
+        # Find a suitable font path for size-varying loads below
         font_path = None
-        default_font = ImageFont.load_default()
-        common_fonts = ["DejaVuSans.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"]
-        for fname in common_fonts:
+        for fname in _FONT_FALLBACK:
             try:
                 ImageFont.truetype(fname, 10)  # Test load
                 font_path = fname
                 break
-            except IOError:
+            except (IOError, OSError):
                 continue
 
         for element in ocr_elements:
@@ -281,10 +285,12 @@ class HighlightRenderer:
             # --- Font Size Calculation ---
             font_size = max(9, int(box_h * 0.85))  # Min size 9, 85% of box height
 
-            try:
-                sized_font = ImageFont.truetype(font_path, font_size) if font_path else default_font
-            except IOError:
-                sized_font = default_font
+            sized_font = _load_font(font_size) if not font_path else None
+            if font_path:
+                try:
+                    sized_font = ImageFont.truetype(font_path, font_size)
+                except (IOError, OSError):
+                    sized_font = _load_font(font_size)
 
             # --- Adjust Font Size if Text Overflows ---
             try:
@@ -1473,6 +1479,7 @@ class HighlightingService:
                 page_offset_y = -page._page.bbox[1]
 
             # Draw the highlight
+            scaled_bbox = None
             if polygon is not None:
                 # Scale polygon points and apply offset
                 scaled_polygon = [
@@ -1485,6 +1492,10 @@ class HighlightingService:
                 draw.polygon(
                     scaled_polygon, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
+                # Compute bounding box from polygon for attribute drawing
+                xs = [p[0] for p in scaled_polygon]
+                ys = [p[1] for p in scaled_polygon]
+                scaled_bbox = [min(xs), min(ys), max(xs), max(ys)]
             elif bbox is not None:
                 # Scale bbox and apply offset
                 x0, y0, x1, y1 = bbox
@@ -1497,12 +1508,11 @@ class HighlightingService:
                 draw.rectangle(
                     scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
                 )
-            else:
-                continue
 
-                # Draw attributes if present
+            # Draw attributes if present
+            if scaled_bbox is not None:
                 attributes_to_draw = highlight_dict.get("attributes_to_draw")
-                if attributes_to_draw and scaled_bbox:
+                if attributes_to_draw:
                     self._draw_spec_attributes(draw, attributes_to_draw, scaled_bbox, scale_factor)
 
         # Composite overlay onto image
@@ -1516,21 +1526,8 @@ class HighlightingService:
         scale_factor: float,
     ) -> None:
         """Draw attribute key-value pairs on the highlight."""
-        try:
-            # Slightly larger font, scaled
-            font_size = max(10, int(8 * scale_factor))
-            # Try to load a font
-            try:
-                font = ImageFont.truetype("Arial.ttf", font_size)
-            except IOError:
-                try:
-                    font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-                except IOError:
-                    font = ImageFont.load_default()
-                    font_size = 10  # Reset size for default font
-        except Exception:
-            font = ImageFont.load_default()
-            font_size = 10
+        font_size = max(10, int(8 * scale_factor))
+        font = _load_font(font_size)
 
         line_height = font_size + int(4 * scale_factor)  # Scaled line spacing
         bg_padding = int(3 * scale_factor)

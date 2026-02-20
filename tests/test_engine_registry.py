@@ -9,7 +9,6 @@ from natural_pdf.engine_registry import (
     register_guides_engine,
     register_layout_engine,
     register_ocr_engine,
-    register_qa_engine,
     register_selector_engine,
     register_table_function,
 )
@@ -130,19 +129,6 @@ def test_register_classification_engine_round_trip():
     provider = get_provider()
     engine = provider.get("classification", context=None, name=name)
     assert isinstance(engine, DummyClassificationEngine)
-
-
-def test_register_qa_engine_round_trip():
-    name = f"qa.test.{uuid.uuid4().hex}"
-
-    class DummyQAEngine:
-        def ask_region(self, **kwargs):
-            return "answer"
-
-    register_qa_engine(name, lambda **_: DummyQAEngine())
-    provider = get_provider()
-    engine = provider.get("qa.document", context=None, name=name)
-    assert isinstance(engine, DummyQAEngine)
 
 
 def test_register_deskew_engine_registers_all_capabilities():

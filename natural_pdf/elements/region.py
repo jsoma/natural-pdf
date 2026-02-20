@@ -39,7 +39,6 @@ from natural_pdf.core.mixins import SinglePageContextMixin
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import DirectionalMixin, extract_bbox
 from natural_pdf.elements.text import TextElement  # ADDED IMPORT
-from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.selectors.parser import (
     build_text_contains_selector,
@@ -381,9 +380,6 @@ class Region(
                     exc_info=True,
                 )
         return char_dicts
-
-    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        return self._normalize_qa_output(result)
 
     def _evaluate_exclusion_entries(
         self, entries: Sequence[ExclusionSpec], include_callable: bool, debug: bool
@@ -2381,30 +2377,6 @@ class Region(
         )
 
         return self  # Return self for chaining
-
-    @staticmethod
-    def _normalize_qa_output(result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """Convert QA engine results into plain dictionaries for typing compliance."""
-        from natural_pdf.qa.qa_result import QAResult
-
-        if isinstance(result, QAResult):
-            return dict(result)
-
-        if isinstance(result, list):
-            normalized: List[Dict[str, Any]] = []
-            for item in result:
-                if isinstance(item, QAResult):
-                    normalized.append(dict(item))
-                elif isinstance(item, MappingABC):
-                    normalized.append(dict(item))
-                else:
-                    normalized.append({"value": item})
-            return normalized
-
-        if isinstance(result, MappingABC):
-            return dict(result)
-
-        raise TypeError(f"Unexpected QA result type {type(result).__name__}")
 
     def add_child(self, child):
         """

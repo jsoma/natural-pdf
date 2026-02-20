@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.pdf import PDF
     from natural_pdf.describe.summary import InspectionSummary
     from natural_pdf.elements.base import Element
+    from natural_pdf.extraction.result import StructuredDataResult
 else:  # pragma: no cover - runtime typing helper
     PdfPlumberPage = Any  # type: ignore[assignment]
 
@@ -73,7 +74,6 @@ from natural_pdf.ocr.ocr_manager import (
     run_ocr_apply,
     run_ocr_extract,
 )
-from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
 from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
 from natural_pdf.services import guides_service as _guides_service  # noqa: F401
@@ -2608,9 +2608,27 @@ class Page(
         min_confidence: float = 0.1,
         model: Optional[str] = None,
         debug: bool = False,
+        *,
+        client: Any = None,
+        using: str = "text",
+        engine: Optional[str] = None,
         **kwargs: Any,
-    ) -> Any:
-        """Delegate QA execution to the shared QA service."""
+    ) -> "StructuredDataResult":
+        """Ask a question about the page content.
+
+        Args:
+            question: Question string or list of question strings.
+            min_confidence: Minimum confidence for extractive QA.
+            model: Model name for the QA / VLM engine.
+            debug: Enable debug output.
+            client: OpenAI-compatible client for LLM-backed QA.
+            using: Content mode — ``'text'`` or ``'vision'``.
+            engine: Extraction engine — ``None`` (auto), ``'doc_qa'``,
+                ``'vlm'``.
+
+        Returns:
+            :class:`StructuredDataResult` with an ``answer`` field.
+        """
 
         return self.services.qa.ask(
             self,
@@ -2618,6 +2636,9 @@ class Page(
             min_confidence=min_confidence,
             model=model,
             debug=debug,
+            client=client,
+            using=using,
+            engine=engine,
             **kwargs,
         )
 

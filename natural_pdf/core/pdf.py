@@ -1,6 +1,5 @@
 import copy
 import io
-import json
 import logging
 import os
 import ssl
@@ -27,12 +26,14 @@ from typing import (
 
 import pdfplumber
 from PIL import Image
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from typing import Any as _Any
 
     from pdfplumber.pdf import PDF as PdfPlumberPDF
+
+    from natural_pdf.extraction.result import StructuredDataResult
 
     def tqdm(*args: _Any, **kwargs: _Any) -> _Any: ...
 
@@ -53,10 +54,6 @@ from natural_pdf.core.qa_mixin import QuestionInput
 from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.region import Region
 from natural_pdf.export.mixin import ExportMixin
-from natural_pdf.extraction.structured_ops import (
-    extract_structured_data,
-    structured_data_is_available,
-)
 from natural_pdf.ocr.ocr_manager import (
     normalize_ocr_options,
     resolve_ocr_device,
@@ -64,7 +61,6 @@ from natural_pdf.ocr.ocr_manager import (
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
 )
-from natural_pdf.qa.qa_result import QAResult
 from natural_pdf.search import (
     BaseSearchOptions,
     SearchOptions,
@@ -114,12 +110,6 @@ logger = logging.getLogger("natural_pdf.core.pdf")
 ExclusionSpec = Tuple[Any, Optional[str]]
 RegionFactory = Callable[["Page"], Optional["Region"]]
 RegionRegistry = List[Tuple[RegionFactory, Optional[str]]]
-
-DEFAULT_GENERATIVE_QA_PROMPT = (
-    "You answer questions about the supplied document content. "
-    "Respond using JSON matching the schema. Populate the 'answer' field with a concise reply; "
-    "if the answer cannot be determined, set 'answer' to an empty string."
-)
 
 # Deskew Imports (Conditional)
 try:
@@ -1526,55 +1516,49 @@ class PDF(
         self,
         question: str,
         *,
-        mode: Literal["extractive", "generative"] = "extractive",
         pages: Optional[Union[int, Iterable[int], range]] = None,
         min_confidence: float = 0.1,
         model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        llm_client: Optional[Any] = None,
-        prompt: Optional[str] = None,
-    ) -> QAResult:
-        """
-        Ask a single question about the document content.
+        client: Optional[Any] = None,
+        using: str = "text",
+        engine: Optional[str] = None,
+        **kwargs: Any,
+    ) -> "StructuredDataResult":
+        """Ask a single question about the document content.
+
+        Routes through page-level ``.ask()`` which delegates to
+        ``.extract()`` internally, returning :class:`StructuredDataResult`.
 
         Args:
-            question: Question string to ask about the document
-            mode: "extractive" to extract answer from document, "generative" to generate
-            pages: Specific pages to query (default: all pages)
-            min_confidence: Minimum confidence threshold for answers (extractive mode).
-            model: Optional model name for the QA engine or LLM.
-            temperature: Optional sampling temperature for LLM-backed QA.
-            top_p: Optional nucleus sampling parameter for LLM-backed QA.
-            llm_client: Client instance to use when ``mode="generative"``.
-            prompt: Optional system prompt override for generative QA.
+            question: Question string.
+            pages: Specific pages to query (default: all).
+            min_confidence: Minimum confidence for extractive QA.
+            model: Model name for QA / VLM / LLM engine.
+            client: OpenAI-compatible client for LLM-backed QA.
+            using: ``'text'`` or ``'vision'``.
+            engine: ``None`` (auto), ``'doc_qa'``, ``'vlm'``.
 
         Returns:
-            :class:`QAResult` containing answer metadata. Confidence may be ``None`` in generative
-            mode; ``source_elements`` may be empty if no span is available.
+            :class:`StructuredDataResult` with an ``answer`` field.
         """
-        # Delegate to ask_batch and return the first result
-        results = self.ask_batch(
-            [question],
-            mode=mode,
-            pages=pages,
+        target_pages = self._resolve_qa_pages(pages)
+        if not target_pages:
+            logger.warning("No valid pages found for QA processing.")
+            from natural_pdf.services.qa_service import QAService
+
+            return QAService._blank_structured_result(question)
+
+        from natural_pdf.core.page_collection import PageCollection
+
+        page_collection = PageCollection(target_pages, context=self._context)
+        return page_collection.ask(
+            question,
             min_confidence=min_confidence,
             model=model,
-            temperature=temperature,
-            top_p=top_p,
-            llm_client=llm_client,
-            prompt=prompt,
-        )
-        if results:
-            return results[0]
-        return QAResult(
-            {
-                "answer": None,
-                "confidence": 0.0,
-                "found": False,
-                "page_num": None,
-                "source_elements": [],
-            }
+            client=client,
+            using=using,
+            engine=engine,
+            **kwargs,
         )
 
     def classify(
@@ -1604,245 +1588,45 @@ class PDF(
         self,
         questions: List[str],
         *,
-        mode: Literal["extractive", "generative"] = "extractive",
         pages: Optional[Union[int, Iterable[int], range]] = None,
         min_confidence: float = 0.1,
         model: Optional[str] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        llm_client: Optional[Any] = None,
-        prompt: Optional[str] = None,
-    ) -> List[QAResult]:
-        """
-        Ask multiple questions about the document content using batch processing.
+        client: Optional[Any] = None,
+        using: str = "text",
+        engine: Optional[str] = None,
+        **kwargs: Any,
+    ) -> List["StructuredDataResult"]:
+        """Ask multiple questions about the document content.
 
-        This method processes multiple questions efficiently in a single batch,
-        avoiding the multiprocessing resource accumulation that can occur with
-        sequential individual question calls.
-
-        Args:
-            questions: List of question strings to ask about the document
-            mode: "extractive" to extract answer from document, "generative" to generate
-            pages: Specific pages to query (default: all pages)
-            min_confidence: Minimum confidence threshold for extractive answers.
-            model: Optional model name for the QA engine or LLM.
-            temperature: Optional sampling temperature for LLM-backed QA.
-            top_p: Optional nucleus sampling parameter for LLM-backed QA.
-            llm_client: Client instance to use when ``mode="generative"``.
-            prompt: Optional system prompt override for generative QA.
-
-        Returns:
-            List of :class:`QAResult` objects containing answer metadata. Confidence may be
-            ``None`` in generative mode; ``source_elements`` may be empty if no span is available.
+        Resolves pages once and creates a single :class:`PageCollection`,
+        then routes each question through it, returning a list of
+        :class:`StructuredDataResult` objects.
         """
         if not questions:
             return []
 
-        if mode not in ("extractive", "generative"):
-            raise ValueError("mode must be either 'extractive' or 'generative'")
-
-        if not isinstance(questions, list) or not all(isinstance(q, str) for q in questions):
-            raise TypeError("'questions' must be a list of strings")
+        from natural_pdf.services.qa_service import QAService
 
         target_pages = self._resolve_qa_pages(pages)
-
-        def _empty_result() -> QAResult:
-            return QAResult(
-                {
-                    "answer": None,
-                    "confidence": 0.0,
-                    "found": False,
-                    "page_num": None,
-                    "source_elements": [],
-                }
-            )
-
         if not target_pages:
             logger.warning("No valid pages found for QA processing.")
-            return [_empty_result() for _ in questions]
-
-        if mode == "generative":
-            return self._ask_batch_generative(
-                questions,
-                target_pages=target_pages,
-                llm_client=llm_client,
-                prompt=prompt,
-                model=model,
-                temperature=temperature,
-                top_p=top_p,
-            )
-
-        if temperature is not None or top_p is not None:
-            logger.info(
-                "temperature/top_p parameters are only honored in generative mode; ignoring them for extractive QA."
-            )
+            return [QAService._blank_structured_result(q) for q in questions]
 
         from natural_pdf.core.page_collection import PageCollection
 
         page_collection = PageCollection(target_pages, context=self._context)
-        qa_result = page_collection.ask(
-            questions,
-            min_confidence=min_confidence,
-            model=model,
-        )
-
-        normalized = qa_result if isinstance(qa_result, list) else [qa_result]
         return [
-            QAResult(result) if not isinstance(result, QAResult) else result
-            for result in normalized
+            page_collection.ask(
+                q,
+                min_confidence=min_confidence,
+                model=model,
+                client=client,
+                using=using,
+                engine=engine,
+                **kwargs,
+            )
+            for q in questions
         ]
-
-    def _ask_batch_generative(
-        self,
-        questions: List[str],
-        *,
-        target_pages: List["Page"],
-        llm_client: Optional[Any],
-        prompt: Optional[str],
-        model: Optional[str],
-        temperature: Optional[float],
-        top_p: Optional[float],
-    ) -> List[QAResult]:
-        """Handle the ``mode='generative'`` logic for :meth:`ask_batch`."""
-
-        def _empty_result() -> QAResult:
-            return QAResult(
-                {
-                    "answer": None,
-                    "confidence": 0.0,
-                    "found": False,
-                    "page_num": None,
-                    "source_elements": [],
-                }
-            )
-
-        if llm_client is None:
-            raise ValueError("Generative QA requires 'llm_client' to be provided.")
-
-        if not structured_data_is_available():
-            raise RuntimeError(
-                "Structured data extraction is not available; install pydantic to enable generative QA."
-            )
-
-        # Compile text content from selected pages
-        page_sections: List[str] = []
-        for page in target_pages:
-            page_text = ""
-            try:
-                page_text = page.extract_text(layout=True) or ""
-            except Exception as exc:  # noqa: BLE001
-                logger.debug(
-                    "Failed to extract layout text from page %s: %s",
-                    getattr(page, "number", "?"),
-                    exc,
-                )
-
-            if not page_text.strip():
-                try:
-                    page_text = page.extract_text(layout=False) or ""
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug(
-                        "Failed to extract text (layout=False) from page %s: %s",
-                        getattr(page, "number", "?"),
-                        exc,
-                    )
-
-            page_text = page_text.strip()
-            if page_text:
-                page_sections.append(f"Page {page.number}:\n{page_text}")
-
-        combined_text = "\n\n".join(page_sections).strip()
-        if not combined_text:
-            logger.warning(
-                "Generative QA could not extract text from the selected pages. "
-                "Consider running apply_ocr() before using mode='generative'."
-            )
-            return [_empty_result() for _ in questions]
-
-        max_chars = 20000
-        if len(combined_text) > max_chars:
-            logger.info(
-                "Truncating combined page text for generative QA from %d to %d characters",
-                len(combined_text),
-                max_chars,
-            )
-            combined_text = combined_text[:max_chars]
-
-        GenerativeQAResponse = create_model(
-            "GenerativeQAResponse",
-            answer=(str, Field("", description="Answer to the question; leave empty if unknown.")),
-        )
-
-        llm_kwargs: Dict[str, Any] = {}
-        if temperature is not None:
-            llm_kwargs["temperature"] = temperature
-        if top_p is not None:
-            llm_kwargs["top_p"] = top_p
-
-        prompt_text = prompt or DEFAULT_GENERATIVE_QA_PROMPT
-        results: List[QAResult] = []
-
-        for question_text in questions:
-            question_text = question_text.strip()
-            if not question_text:
-                results.append(_empty_result())
-                continue
-
-            payload = json.dumps(
-                {
-                    "question": question_text,
-                    "document": combined_text,
-                }
-            )
-
-            try:
-                extraction_result = extract_structured_data(
-                    content=payload,
-                    schema=GenerativeQAResponse,
-                    client=llm_client,
-                    prompt=prompt_text,
-                    using="text",
-                    model=model,
-                    **llm_kwargs,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.error("Generative QA failed for question %r: %s", question_text, exc)
-                results.append(_empty_result())
-                continue
-
-            parsed = getattr(extraction_result, "data", None)
-            if not extraction_result.success or parsed is None:
-                logger.debug(
-                    "Generative QA returned no parsed data for question %r (success=%s, error=%s)",
-                    question_text,
-                    getattr(extraction_result, "success", None),
-                    getattr(extraction_result, "error_message", None),
-                )
-                results.append(_empty_result())
-                continue
-
-            answer = getattr(parsed, "answer", "")
-            normalized_answer = answer.strip() if isinstance(answer, str) else ""
-
-            found = bool(normalized_answer)
-
-            if not found:
-                results.append(_empty_result())
-                continue
-
-            results.append(
-                QAResult(
-                    {
-                        "answer": normalized_answer,
-                        "confidence": None,
-                        "found": True,
-                        "page_num": None,
-                        "source_elements": [],
-                    }
-                )
-            )
-
-        return results
 
     def search_within_index(
         self,
@@ -2521,25 +2305,34 @@ class PDF(
         pages: Optional[Union[Iterable[int], range, slice]] = None,
         min_confidence: float = 0.1,
         model: Optional[str] = None,
+        client: Any = None,
+        using: str = "text",
+        engine: Optional[str] = None,
         **kwargs,
-    ) -> List[QAResult]:
-        """Ask a question across a set of pages and return per-page responses."""
+    ) -> List["StructuredDataResult"]:
+        """Ask a question across a set of pages and return per-page responses.
+
+        Returns a list of :class:`StructuredDataResult`, one per page.
+        """
 
         target_pages = self._get_target_pages(pages)
         if not target_pages:
             logger.warning("No pages selected for QA.")
             return []
 
-        responses: List[QAResult] = []
+        responses: List[Any] = []
         for page in target_pages:
             try:
                 result = page.ask(
                     question=question,
                     min_confidence=min_confidence,
                     model=model,
+                    client=client,
+                    using=using,
+                    engine=engine,
                     **kwargs,
                 )
-                responses.append(result if isinstance(result, QAResult) else QAResult(result))
+                responses.append(result)
             except Exception as exc:
                 logger.warning("QA failed on page %s (%s)", getattr(page, "number", "?"), exc)
         return responses

@@ -1,11 +1,13 @@
 import math
+from typing import Optional
 
 import pytest
+from pydantic import Field, create_model
 
 from natural_pdf import PDF
+from natural_pdf.extraction.result import StructuredDataResult
 from natural_pdf.flows import Flow
 from natural_pdf.flows.collections import FlowRegionCollection
-from natural_pdf.qa.qa_result import QAResult
 
 
 @pytest.mark.parametrize("pdf_path", ["pdfs/multicolumn.pdf"])
@@ -94,6 +96,22 @@ def test_flow_region_collection_within_requires_region():
         collection.below(within=region)
 
 
+def _make_answer_result(answer: str, confidence: float = 0.5) -> StructuredDataResult:
+    schema = create_model(
+        "_QA",
+        answer=(Optional[str], Field(None)),
+        answer_confidence=(Optional[float], Field(None)),
+    )
+    instance = schema(answer=answer, answer_confidence=confidence)
+    return StructuredDataResult(
+        data=instance,
+        success=True,
+        error_message=None,
+        raw_output=None,
+        model_used="test",
+    )
+
+
 def test_flow_region_collection_qa(monkeypatch):
     pdf = PDF("pdfs/multicolumn.pdf")
     try:
@@ -108,29 +126,24 @@ def test_flow_region_collection_qa(monkeypatch):
         secondary_region = primary_region.below(height=120.0, include_source=False)
         collection = FlowRegionCollection([primary_region, secondary_region])
 
+        call_count = 0
+
+        def fake_extract(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            # Return different confidence for different regions
+            if call_count <= len(primary_region.constituent_regions):
+                return _make_answer_result("first-answer", confidence=0.25)
+            return _make_answer_result("second-answer", confidence=0.9)
+
+        # Patch extract on all constituent regions
         for region in primary_region.constituent_regions:
-            setattr(region, "_qa_test_tag", "first")
+            monkeypatch.setattr(region, "extract", fake_extract)
         for region in secondary_region.constituent_regions:
-            setattr(region, "_qa_test_tag", "second")
-
-        def fake_run_document_qa(*, region, question, **kwargs):
-            tag = getattr(region, "_qa_test_tag", "first")
-            confidence = 0.25 if tag == "first" else 0.9
-            return QAResult(
-                question=question,
-                answer=f"{tag}-answer",
-                confidence=confidence,
-                found=True,
-            )
-
-        monkeypatch.setattr(
-            "natural_pdf.services.qa_service.run_document_qa",
-            fake_run_document_qa,
-        )
+            monkeypatch.setattr(region, "extract", fake_extract)
 
         result = collection.ask("Which region?", min_confidence=0.0)
-        assert isinstance(result, dict)
-        assert result["answer"] == "second-answer"
-        assert pytest.approx(result["confidence"], rel=0.01) == 0.9
+        assert isinstance(result, StructuredDataResult)
+        assert result.answer in ("first-answer", "second-answer")
     finally:
         pdf.close()

@@ -1,8 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from pydantic import Field, create_model
 
 import natural_pdf as npdf
+from natural_pdf.extraction.result import StructuredDataResult
 from natural_pdf.flows.flow import Flow
-from natural_pdf.qa.qa_result import QAResult
 
 
 class _StubAnalysisRegion:
@@ -35,6 +37,18 @@ def _make_flow():
     return pdf, flow
 
 
+def _make_answer_result(answer: str) -> StructuredDataResult:
+    schema = create_model("_QA", answer=(Optional[str], Field(None)))
+    instance = schema(answer=answer)
+    return StructuredDataResult(
+        data=instance,
+        success=True,
+        error_message=None,
+        raw_output=None,
+        model_used="test",
+    )
+
+
 def test_flow_analysis_methods_delegate(monkeypatch):
     pdf, flow = _make_flow()
     stub = _StubAnalysisRegion()
@@ -59,25 +73,19 @@ def test_flow_analysis_methods_delegate(monkeypatch):
     ]
 
 
-def test_flow_ask_uses_qa_service(monkeypatch):
+def test_flow_ask_returns_structured_data_result(monkeypatch):
     pdf, flow = _make_flow()
-    capture: Dict[str, Any] = {}
 
-    def fake_run_document_qa(*, context, region, question, **kwargs):
-        capture["region"] = region
-        capture["question"] = question
-        return QAResult(question=question, answer="flow", confidence=0.42, found=True)
+    fake_result = _make_answer_result("flow")
 
-    monkeypatch.setattr(
-        "natural_pdf.services.qa_service.run_document_qa",
-        fake_run_document_qa,
-    )
+    # Patch the constituent region's extract method
+    region = flow._analysis_region().constituent_regions[0]
+    monkeypatch.setattr(region, "extract", lambda **kw: fake_result)
 
     try:
         result = flow.ask("What?", min_confidence=0.0)
     finally:
         pdf.close()
 
-    assert result["answer"] == "flow"
-    assert result["found"] is True
-    assert capture["region"] is flow._analysis_region().constituent_regions[0]
+    assert isinstance(result, StructuredDataResult)
+    assert result.answer == "flow"

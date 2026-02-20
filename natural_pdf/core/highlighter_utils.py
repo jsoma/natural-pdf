@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Any, Iterable, List, Set
 
 from natural_pdf.core.interfaces import HasHighlighter, HasPages, HasSinglePage
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_highlighter(*sources: Any):
@@ -34,8 +37,8 @@ def resolve_highlighter(*sources: Any):
             if callable(getter):
                 try:
                     return getter()  # type: ignore[call-arg]
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("get_highlighter() failed on %s: %s", type(obj).__name__, exc)
 
         highlighter = getattr(obj, "_highlighter", None)
         if highlighter is not None:

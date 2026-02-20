@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Mapping as MappingABC
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -148,11 +147,6 @@ class FlowRegion(
     def _qa_segments(self) -> Sequence["PhysicalRegion"]:
         return self.constituent_regions
 
-    def _qa_normalize_result(self, result: Any) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        from natural_pdf.elements.region import Region
-
-        return Region._normalize_qa_output(result)
-
     def _qa_target_region(self):
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions for QA.")
@@ -163,27 +157,6 @@ class FlowRegion(
         if not self.constituent_regions:
             raise RuntimeError("FlowRegion has no constituent regions to convert into a Region.")
         return self.constituent_regions[0]
-
-    @staticmethod
-    def _qa_confidence(candidate: Any) -> float:
-        """Best-effort confidence extraction from normalized QA results."""
-        if isinstance(candidate, list) and candidate:
-            return FlowRegion._qa_confidence(candidate[0])
-        if isinstance(candidate, MappingABC):
-            value = candidate.get("confidence")
-            if isinstance(value, (int, float, str)):
-                try:
-                    return float(value)
-                except (TypeError, ValueError):
-                    return float("-inf")
-            return float("-inf")
-        value = getattr(candidate, "confidence", None)
-        if isinstance(value, (int, float, str)):
-            try:
-                return float(value)
-            except (TypeError, ValueError):
-                return float("-inf")
-        return float("-inf")
 
     def _ocr_element_manager(self):
         if not self.constituent_regions:
