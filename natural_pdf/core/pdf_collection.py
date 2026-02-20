@@ -617,6 +617,23 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         # Pass the collection itself (self) as the source
         create_correction_task_package(source=self, output_zip_path=output_zip_path, **kwargs)
 
+    def export_training_data(self, output_dir: str, **kwargs) -> dict:
+        """Export cropped text images and labels for OCR model training.
+
+        Creates a HuggingFace ImageFolder-compatible directory with cropped
+        text-element images and metadata (JSONL or CSV).
+
+        Args:
+            output_dir: Destination directory.
+            **kwargs: Forwarded to :func:`~natural_pdf.exporters.training_data.export_training_data`.
+
+        Returns:
+            Summary dict with ``images``, ``skipped``, and ``output_dir`` keys.
+        """
+        from natural_pdf.exporters.training_data import export_training_data
+
+        return export_training_data(source=self, output_dir=output_dir, **kwargs)
+
     # --- Mixin Required Implementation ---
     def get_indexable_items(self) -> Iterable[Indexable]:
         """Yields Page objects from the collection, conforming to Indexable."""

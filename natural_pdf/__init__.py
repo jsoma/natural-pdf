@@ -190,6 +190,7 @@ from natural_pdf.exceptions import (
     SelectorMatchError,
     SelectorParseError,
 )
+from natural_pdf.exporters import export_training_data
 from natural_pdf.flows.flow import Flow
 from natural_pdf.flows.region import FlowRegion
 
@@ -285,4 +286,6 @@ __all__ = [
     "SearchError",
     "ClassificationError",
     "QAError",
+    # Exporters
+    "export_training_data",
 ]

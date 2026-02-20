@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import shutil
 import tempfile
 import zipfile
 from collections.abc import Sequence
@@ -229,6 +228,8 @@ def create_correction_task_package(
                     page_regions_data.append(
                         {
                             "resolution": float(scale_x * 72.0),
+                            "scale_x": float(scale_x),
+                            "scale_y": float(scale_y),
                             "id": region_id,
                             "bbox": scaled_bbox,
                             "ocr_text": elem.text,
@@ -270,28 +271,6 @@ def create_correction_task_package(
         except Exception as e:
             logger.error(f"Failed to write manifest.json: {e}", exc_info=True)
             raise  # Re-raise error, cannot proceed
-
-        # --- Copy SPA files into temp dir ---
-        try:
-            # Find the path to the spa template directory relative to this file
-            # Using __file__ assumes this script is installed alongside the templates
-            utils_dir = os.path.dirname(os.path.abspath(__file__))
-            templates_dir = os.path.join(
-                os.path.dirname(utils_dir), "templates"
-            )  # Go up one level from utils
-            spa_template_dir = os.path.join(templates_dir, "spa")
-
-            if not os.path.isdir(spa_template_dir):
-                raise FileNotFoundError(f"SPA template directory not found at {spa_template_dir}")
-
-            logger.info(f"Copying SPA shell from: {spa_template_dir}")
-            # Copy contents of spa_template_dir/* into temp_dir/
-            # dirs_exist_ok=True handles merging if subdirs like js/ already exist (Python 3.8+)
-            shutil.copytree(spa_template_dir, temp_dir, dirs_exist_ok=True)
-
-        except Exception as e:
-            logger.error(f"Failed to copy SPA template files: {e}", exc_info=True)
-            raise RuntimeError("Could not package SPA files.") from e
 
         # --- Create the final zip file ---
         try:
@@ -424,7 +403,10 @@ def import_ocr_from_manifest(pdf: "PDF", manifest_path: str) -> Dict[str, int]:
             continue
 
         processed_pages += 1
-        # We are adding elements, no need to fetch existing ones unless we want to prevent duplicates (not implemented here)
+        # Clear existing OCR and manifest-import elements to make import idempotent
+        if hasattr(page, "remove_elements_by_source"):
+            page.remove_elements_by_source("text", "ocr")
+            page.remove_elements_by_source("text", "manifest-import")
 
         regions_to_add: List[TextElement] = []
         for region_data in page_data.get("regions", []):
@@ -446,26 +428,34 @@ def import_ocr_from_manifest(pdf: "PDF", manifest_path: str) -> Dict[str, int]:
             else:
                 text_to_import_str = str(text_to_import)
 
-            resolution = region_data.get("resolution")  # Mandatory from export
+            # Per-axis scale factors (preferred) or legacy single-resolution fallback
+            manifest_scale_x = region_data.get("scale_x")
+            manifest_scale_y = region_data.get("scale_y")
+            resolution = region_data.get("resolution")  # Legacy / fallback
             confidence = region_data.get("confidence")  # Optional
 
-            if not all([manifest_bbox, text_to_import_str is not None, resolution]):
+            has_scale = manifest_scale_x is not None and manifest_scale_y is not None
+            if not all([manifest_bbox, text_to_import_str is not None, has_scale or resolution]):
                 logger.warning(
-                    f"Skipping incomplete/invalid region data on page {page_index}, region id '{region_id}': Missing bbox, text, or resolution."
+                    f"Skipping incomplete/invalid region data on page {page_index}, region id '{region_id}': Missing bbox, text, or scale info."
                 )
                 skipped_count += 1
                 continue
             assert text_to_import_str is not None
 
-            # Convert manifest bbox (image pixels) back to PDF coordinates (points @ 72 DPI)
+            # Convert manifest bbox (image pixels) back to PDF coordinates (points)
             try:
                 if not isinstance(manifest_bbox, (list, tuple)) or len(manifest_bbox) != 4:
                     raise ValueError("Bounding box must contain four coordinates.")
-                scale_factor = 72.0 / float(resolution)
-                pdf_x0 = float(manifest_bbox[0]) * scale_factor
-                pdf_top = float(manifest_bbox[1]) * scale_factor
-                pdf_x1 = float(manifest_bbox[2]) * scale_factor
-                pdf_bottom = float(manifest_bbox[3]) * scale_factor
+                if has_scale:
+                    inv_scale_x = 1.0 / float(manifest_scale_x)
+                    inv_scale_y = 1.0 / float(manifest_scale_y)
+                else:
+                    inv_scale_x = inv_scale_y = 72.0 / float(resolution)
+                pdf_x0 = float(manifest_bbox[0]) * inv_scale_x
+                pdf_top = float(manifest_bbox[1]) * inv_scale_y
+                pdf_x1 = float(manifest_bbox[2]) * inv_scale_x
+                pdf_bottom = float(manifest_bbox[3]) * inv_scale_y
             except (ValueError, TypeError, IndexError, ZeroDivisionError):
                 logger.warning(
                     f"Invalid bbox or resolution for region '{region_id}' on page {page_index}. Skipping."
