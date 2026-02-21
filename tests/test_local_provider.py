@@ -129,6 +129,7 @@ class TestRenderPdfPages:
 # --- LocalProvider.call with mock ---
 
 
+@pytest.mark.optional_deps
 class TestLocalProviderCall:
     def test_call_sends_image_content_blocks(self):
         """Verify that call() sends image_url content blocks to the API."""
