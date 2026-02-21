@@ -1313,7 +1313,7 @@ class PDF(
         DEPRECATED: Use save_pdf(..., ocr=True) instead.
         Saves the PDF with an OCR text layer, making content searchable.
 
-        Requires optional dependencies. Install with: pip install \"natural-pdf[ocr-export]\"
+        Requires optional dependencies. Install with: pip install \"natural-pdf[export]\"
 
         Args:
             output_path: Path to save the searchable PDF
@@ -1325,7 +1325,7 @@ class PDF(
         if create_searchable_pdf is None:
             raise ImportError(
                 "Saving searchable PDF requires 'pikepdf'. "
-                'Install with: pip install "natural-pdf[ocr-export]"'
+                'Install with: pip install "natural-pdf[export]"'
             )
         output_path_str = str(output_path)
         # Call the exporter directly, passing self (the PDF instance)
@@ -1391,7 +1391,7 @@ class PDF(
             if create_searchable_pdf is None:
                 raise ImportError(
                     "Saving with ocr=True requires the OCR export dependencies. "
-                    'Install with: pip install "natural-pdf[ocr-export]"'
+                    'Install with: pip install "natural-pdf[export]"'
                 )
             has_vector_elements = False
             for page in self.pages:
@@ -1439,7 +1439,7 @@ class PDF(
             if create_original_pdf is None:
                 raise ImportError(
                     "Saving with original=True requires 'pikepdf'. "
-                    'Install with: pip install "natural-pdf[ocr-export]"'
+                    'Install with: pip install "natural-pdf[export]"'
                 )
 
             # Optional: Add warning about losing OCR data similar to PageCollection
@@ -1907,14 +1907,15 @@ class PDF(
         angle: Optional[float] = None,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
+        engine: Optional[str] = None,
         **deskew_kwargs,
     ) -> "PDF":
         """
         Creates a new, in-memory PDF object containing deskewed versions of the
         specified pages from the original PDF.
 
-        This method renders each selected page, detects and corrects skew using the 'deskew'
-        library, and then combines the resulting images into a new PDF using 'img2pdf'.
+        This method renders each selected page, detects and corrects skew, and then
+        combines the resulting images into a new PDF using 'img2pdf'.
         The new PDF object is returned directly.
 
         Important: The returned PDF is image-based. Any existing text, OCR results,
@@ -1929,14 +1930,15 @@ class PDF(
             force_overwrite: If False (default), raises a ValueError if any target page
                              already contains processed elements (text, OCR, regions) to
                              prevent accidental data loss. Set to True to proceed anyway.
-            **deskew_kwargs: Additional keyword arguments forwarded to the deskew engine.
-                             during automatic detection (e.g., `max_angle`, `num_peaks`).
+            engine: Engine name — ``"projection"`` (default), ``"hough"``, or ``"standard"``.
+            **deskew_kwargs: Additional keyword arguments forwarded to the deskew engine
+                             during automatic detection (e.g., ``num_peaks`` for Hough).
 
         Returns:
             A new PDF object representing the deskewed document.
 
         Raises:
-            ImportError: If 'deskew' or 'img2pdf' libraries are not installed.
+            ImportError: If 'img2pdf' library is not installed.
             ValueError: If `force_overwrite` is False and target pages contain elements.
             FileNotFoundError: If the source PDF cannot be read (if file-based).
             IOError: If creating the in-memory PDF fails.
@@ -1944,7 +1946,7 @@ class PDF(
         """
         if not DESKEW_AVAILABLE:
             raise ImportError(
-                "Deskew/img2pdf libraries missing. Install with: pip install natural-pdf[deskew]"
+                "img2pdf library missing. Install with: pip install natural-pdf[export]"
             )
 
         target_pages = self._get_target_pages(pages)  # Use helper to resolve pages
@@ -1972,6 +1974,7 @@ class PDF(
                     resolution=resolution,
                     angle=angle,  # Let page.deskew handle detection/caching
                     detection_resolution=detection_resolution,
+                    engine=engine,
                     **deskew_kwargs,
                 )
 

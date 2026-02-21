@@ -336,11 +336,11 @@ class PageCollection(
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
 
-    def describe(self, *args, **kwargs):
-        return self.services.describe.describe(self, *args, **kwargs)
+    def describe(self, **kwargs):
+        return self.services.describe.describe(self.find_all("*"), **kwargs)
 
-    def inspect(self, *args, **kwargs):
-        return self.services.describe.inspect(self, *args, **kwargs)
+    def inspect(self, limit: int = 30, **kwargs):
+        return self.services.describe.inspect(self.find_all("*"), limit=limit, **kwargs)
 
     def split(
         self,
@@ -589,6 +589,7 @@ class PageCollection(
         resolution: int = 300,
         detection_resolution: int = 72,
         force_overwrite: bool = False,
+        engine: Optional[str] = None,
         **deskew_kwargs,
     ) -> "PDF":  # Changed return type
         """
@@ -608,8 +609,9 @@ class PageCollection(
             force_overwrite: If False (default), raises a ValueError if any target page
                              already contains processed elements (text, OCR, regions) to
                              prevent accidental data loss. Set to True to proceed anyway.
-            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
-                             during automatic detection (e.g., `max_angle`, `num_peaks`).
+            engine: Engine name — ``"projection"`` (default), ``"hough"``, or ``"standard"``.
+            **deskew_kwargs: Additional keyword arguments forwarded to the deskew engine
+                             during automatic detection.
 
         Returns:
             A new PDF object representing the deskewed document.
@@ -644,6 +646,7 @@ class PageCollection(
             resolution=resolution,
             detection_resolution=detection_resolution,
             force_overwrite=force_overwrite,
+            engine=engine,
             **deskew_kwargs,
         )
 
@@ -761,7 +764,7 @@ class PageCollection(
             if create_searchable_pdf is None:
                 raise ImportError(
                     "Saving with ocr=True requires 'pikepdf' and 'Pillow'. "
-                    'Install with: pip install \\"natural-pdf[ocr-export]\\"'  # Escaped quotes
+                    'Install with: pip install \\"natural-pdf[export]\\"'  # Escaped quotes
                 )
 
             # Check for non-OCR vector elements (provide a warning)
@@ -807,7 +810,7 @@ class PageCollection(
             if create_original_pdf is None:
                 raise ImportError(
                     "Saving with original=True requires 'pikepdf'. "
-                    'Install with: pip install \\"natural-pdf[ocr-export]\\"'  # Escaped quotes
+                    'Install with: pip install \\"natural-pdf[export]\\"'  # Escaped quotes
                 )
 
             # Check for OCR elements (provide a warning) - keep this check here

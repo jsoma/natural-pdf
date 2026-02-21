@@ -4,6 +4,8 @@ from natural_pdf.engine_registry import register_deskew_engine
 
 from .deskew_provider import (
     DeskewApplyResult,
+    HoughEngine,
+    ProjectionProfileEngine,
     register_deskew_engines,
     run_deskew_apply,
     run_deskew_detect,
@@ -11,6 +13,8 @@ from .deskew_provider import (
 
 __all__ = [
     "DeskewApplyResult",
+    "HoughEngine",
+    "ProjectionProfileEngine",
     "register_deskew_engine",
     "register_deskew_engines",
     "run_deskew_apply",

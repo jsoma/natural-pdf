@@ -16,7 +16,6 @@ from natural_pdf.utils import optional_imports as oi
 
 REQUIRED_DEPENDENCIES = {
     "pikepdf",
-    "deskew",
     "easyocr",
     "sentence_transformers",
     "torch",
@@ -26,7 +25,6 @@ REQUIRED_DEPENDENCIES = {
     "doclayout_yolo",
     "timm",
     "img2pdf",
-    "openai",
 }
 
 

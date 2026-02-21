@@ -2444,7 +2444,7 @@ class Page(
         """
         Saves the PDF page with an OCR text layer, making content searchable.
 
-        Requires optional dependencies. Install with: pip install "natural-pdf[ocr-export]"
+        Requires optional dependencies. Install with: pip install "natural-pdf[export]"
 
         Note: OCR must have been applied to the pages beforehand
                 (e.g., pdf.apply_ocr()).
@@ -2538,9 +2538,18 @@ class Page(
         resolution: int = 72,
         grayscale: bool = True,
         force_recalculate: bool = False,
+        engine: Optional[str] = None,
         **deskew_kwargs,
     ) -> Optional[float]:
-        """Detect the skew angle of this page using the deskew provider."""
+        """Detect the skew angle of this page using the deskew provider.
+
+        Args:
+            resolution: DPI resolution for rendering before detection.
+            grayscale: Whether to convert to grayscale before detection.
+            force_recalculate: Re-detect even if a cached angle exists.
+            engine: Engine name — ``"projection"`` (default), ``"hough"``, or ``"standard"``.
+            **deskew_kwargs: Extra arguments forwarded to the detection engine.
+        """
         if self._skew_angle is not None and not force_recalculate:
             logger.debug(f"Page {self.number}: Returning cached skew angle: {self._skew_angle:.2f}")
             return self._skew_angle
@@ -2549,6 +2558,7 @@ class Page(
             angle = run_deskew_detect(
                 target=self,
                 context=self,
+                engine_name=engine,
                 resolution=resolution,
                 grayscale=grayscale,
                 deskew_kwargs=deskew_kwargs,
@@ -2568,6 +2578,7 @@ class Page(
         resolution: int = 300,
         angle: Optional[float] = None,
         detection_resolution: int = 72,
+        engine: Optional[str] = None,
         **deskew_kwargs,
     ) -> Optional[Image.Image]:
         """
@@ -2580,19 +2591,20 @@ class Page(
             resolution: DPI resolution for the output deskewed image.
             angle: The specific angle (in degrees) to rotate by. If None, detects automatically.
             detection_resolution: DPI resolution used for detection if `angle` is None.
-            **deskew_kwargs: Additional keyword arguments passed to `deskew.determine_skew`
+            engine: Engine name — ``"projection"`` (default), ``"hough"``, or ``"standard"``.
+            **deskew_kwargs: Additional keyword arguments passed to the detection engine
                                 if automatic detection is performed.
 
         Returns:
             A deskewed PIL.Image.Image object.
 
         Raises:
-            ImportError: If the 'deskew' library is not installed.
             Exception: Any errors raised by the configured deskew provider.
         """
         result = run_deskew_apply(
             target=self,
             context=self,
+            engine_name=engine,
             resolution=resolution,
             angle=angle,
             detection_resolution=detection_resolution,

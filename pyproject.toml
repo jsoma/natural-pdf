@@ -36,13 +36,31 @@ dependencies = [
     "pydantic",
     "jenkspy",
     "scipy",
-    "sentence-transformers",
+    "scikit-image",
+    "openai",
     "ipywidgets>=7.0.0",
     "python-bidi",
     "matplotlib",
 ]
 
 [project.optional-dependencies]
+ai = [
+    "torch",
+    "torchvision",
+    "transformers[sentencepiece]",
+    "sentence-transformers",
+    "easyocr",
+    "timm",
+    "doclayout_yolo",
+]
+
+export = [
+    "pikepdf",
+    "img2pdf",
+    "jupytext",
+    "nbformat",
+]
+
 test = [
     "pytest",
     "pytest-xdist",
@@ -75,78 +93,9 @@ dev = [
 ]
 
 all = [
-    "natural-pdf[ocr-export]",
-    "natural-pdf[deskew]",
+    "natural-pdf[ai]",
+    "natural-pdf[export]",
     "natural-pdf[test]",
-    "natural-pdf[export-extras]",
-    "natural-pdf[ai]"
-]
-
-deskew = [
-    "deskew>=1.5",
-    "img2pdf"
-]
-
-
-ocr-export = [
-    "pikepdf",
-]
-
-export-extras = [
-    "jupytext",
-    "nbformat",
-]
-
-ai-core = [
-    "torch",
-    "torchvision",
-    "transformers[sentencepiece]",
-]
-
-qa = [
-    "natural-pdf[ai-core]",
-]
-
-classification = [
-    "natural-pdf[ai-core]",
-]
-
-embeddings = [
-    "natural-pdf[ai-core]",
-]
-
-ocr-ai = [
-    "natural-pdf[ai-core]",
-    "easyocr",
-]
-
-layout-ai = [
-    "natural-pdf[ai-core]",
-    "timm",
-    "doclayout_yolo",
-]
-
-ai-api = [
-    "openai",
-]
-
-ai-vision = [
-    "natural-pdf[ocr-ai]",
-    "natural-pdf[layout-ai]",
-]
-
-ai-nlp = [
-    "natural-pdf[qa]",
-    "natural-pdf[classification]",
-    "natural-pdf[embeddings]",
-]
-
-ai = [
-    "natural-pdf[ai-core]",
-    "natural-pdf[embeddings]",
-    "natural-pdf[ocr-ai]",
-    "natural-pdf[layout-ai]",
-    "natural-pdf[ai-api]",
 ]
 
 [project.urls]
