@@ -1,7 +1,6 @@
 import contextlib
 import copy
 import functools
-import hashlib
 import logging
 import os
 import re
@@ -1164,6 +1163,8 @@ class Page(
             return self._element_mgr.rects
         elif et == "line":
             return self._element_mgr.lines
+        elif et == "image":
+            return self._element_mgr.images
         elif et == "region":
             return self._element_mgr.regions
         else:
@@ -1213,6 +1214,7 @@ class Page(
             matching_elements: List[Any] = []
             all_post: List[Dict[str, Any]] = []
             all_relational: List[Dict[str, Any]] = []
+            branches_with_post = 0
 
             for sub_selector in selector_obj.get("selectors", []):
                 sub_type = sub_selector.get("type", "any").lower()
@@ -1230,6 +1232,8 @@ class Page(
                 sub_filter, sub_post, sub_relational = build_execution_plan(
                     sub_selector, aggregates=sub_aggregates, **selector_kwargs
                 )
+                if sub_post:
+                    branches_with_post += 1
                 all_post.extend(sub_post)
                 all_relational.extend(sub_relational)
 
@@ -1238,6 +1242,15 @@ class Page(
                     if el_id not in seen_ids and sub_filter(el):
                         seen_ids.add(el_id)
                         matching_elements.append(el)
+
+            if branches_with_post > 1:
+                names = [p["name"] for p in all_post]
+                logger.warning(
+                    "Multiple OR branches have post-pseudos (%s). "
+                    "These are applied sequentially to the merged result set, "
+                    "which may not match expectations. Consider separate queries.",
+                    ", ".join(f":{n}" for n in names),
+                )
 
             matching_elements = _apply_relational(all_relational, matching_elements)
 

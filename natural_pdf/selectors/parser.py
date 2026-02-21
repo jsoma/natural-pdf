@@ -46,7 +46,9 @@ from colour import Color  # type: ignore[import-untyped]
 from natural_pdf.selectors.registry import (
     ClauseEvalContext,
     get_attribute_handler,
+    get_post_handler,
     get_pseudo_handler,
+    get_relational_handler,
 )
 
 logger = logging.getLogger(__name__)
@@ -294,11 +296,18 @@ def _split_top_level_or(selector: str) -> List[str]:
     while i < len(selector):
         char = selector[i]
 
-        # Handle escape sequences in quotes
+        # Handle escape sequences — count preceding backslashes to handle
+        # double-escaped backslashes correctly (e.g. \\" is not an escape).
         if i > 0 and selector[i - 1] == "\\":
-            current_part += char
-            i += 1
-            continue
+            num_slashes = 0
+            j = i - 1
+            while j >= 0 and selector[j] == "\\":
+                num_slashes += 1
+                j -= 1
+            if num_slashes % 2 == 1:  # odd backslashes → char is escaped
+                current_part += char
+                i += 1
+                continue
 
         # Handle quote state changes
         if char == '"' and not in_single_quotes:
@@ -419,8 +428,9 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         (:above, :below, :near, :left-of, :right-of) which require page context.
         Spatial relationships within OR selectors are not currently supported.
 
-        Results are cached for performance. The returned dict is a deep copy
-        to prevent mutation of cached values.
+        Results are cached for performance. The returned dict is the cached
+        object itself and MUST NOT be mutated. Use ``build_execution_plan()``
+        to obtain filter functions and post/relational pseudos without mutation.
     """
     return _parse_selector_cached(selector)
 
@@ -784,8 +794,10 @@ def _build_filter_list(
                  - case: Whether to do case-sensitive text search
 
     Returns:
-        List of dictionaries, each with 'name' (str) and 'func' (callable).
-        The callable takes an element and returns True if it matches the specific filter.
+        Tuple of (filters, post_pseudos, relational_pseudos):
+        - filters: List of dicts with 'name' (str) and 'func' (callable) for element-level matching
+        - post_pseudos: List of pseudo dicts for collection-level operations (:first, :last, :nth, etc.)
+        - relational_pseudos: List of pseudo dicts for spatial operations (:above, :below, :near, etc.)
     """
     filters: List[Dict[str, Any]] = []
     selector_type = selector["type"]
@@ -1135,10 +1147,10 @@ def _build_filter_list(
             handler_result = handler(pseudo, clause_ctx)
             _extend_from_handler(handler_result)
             continue
-        if name in ("first", "last", "nth", "slice", "limit"):
+        if get_post_handler(name):
             post_pseudos.append(pseudo)
             continue
-        if name in ("above", "below", "near", "left-of", "right-of"):
+        if get_relational_handler(name):
             relational_pseudos.append(pseudo)
             continue
 
