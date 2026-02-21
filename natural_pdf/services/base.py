@@ -7,6 +7,7 @@ from natural_pdf.core.context import PDFContext
 if TYPE_CHECKING:
     from natural_pdf.services.checkbox_service import CheckboxDetectionService
     from natural_pdf.services.classification_service import ClassificationService
+    from natural_pdf.services.conversion_service import ConversionService
     from natural_pdf.services.describe_service import DescribeService
     from natural_pdf.services.exclusion_service import ExclusionService
     from natural_pdf.services.extraction_service import ExtractionService
@@ -36,6 +37,10 @@ class ServiceNamespace:
     @property
     def classification(self) -> ClassificationService:
         return self._context.get_service("classification")
+
+    @property
+    def conversion(self) -> ConversionService:
+        return self._context.get_service("conversion")
 
     @property
     def describe(self) -> DescribeService:

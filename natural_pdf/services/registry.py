@@ -32,6 +32,7 @@ _REGISTRY = DelegateRegistry()
 _CAPABILITY_MODULES = {
     "checkbox": "natural_pdf.services.checkbox_service",
     "classification": "natural_pdf.services.classification_service",
+    "conversion": "natural_pdf.services.conversion_service",
     "describe": "natural_pdf.services.describe_service",
     "exclusion": "natural_pdf.services.exclusion_service",
     "extraction": "natural_pdf.services.extraction_service",

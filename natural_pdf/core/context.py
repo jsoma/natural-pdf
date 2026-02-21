@@ -48,6 +48,8 @@ class PDFContext:
             factories["layout"] = self._default_layout_factory()
         if "rendering" not in factories:
             factories["rendering"] = self._default_rendering_factory()
+        if "conversion" not in factories:
+            factories["conversion"] = self._default_conversion_factory()
         self._service_factories: Dict[str, ServiceFactory] = factories
         self._options: Dict[str, Mapping[str, Any]] = dict(self.options or {})
 
@@ -228,5 +230,14 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> RenderingService:
             return RenderingService(context)
+
+        return factory
+
+    @staticmethod
+    def _default_conversion_factory() -> ServiceFactory:
+        from natural_pdf.services.conversion_service import ConversionService
+
+        def factory(context: "PDFContext") -> ConversionService:
+            return ConversionService(context)
 
         return factory

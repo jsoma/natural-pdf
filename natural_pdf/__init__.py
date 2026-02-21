@@ -171,6 +171,7 @@ from natural_pdf.core.pdf import PDF
 
 # Core imports
 from natural_pdf.core.pdf_collection import PDFCollection
+from natural_pdf.core.vlm_client import set_default_client
 from natural_pdf.elements.region import Region
 
 # Unified exception hierarchy
@@ -268,6 +269,8 @@ __all__ = [
     "TextSearchOptions",
     "MultiModalSearchOptions",
     "BaseSearchOptions",
+    # VLM client
+    "set_default_client",
     # Configuration
     "configure_logging",
     "options",

@@ -183,6 +183,23 @@ class PageCollection(
 
         return cast("PDF", parent)
 
+    def to_markdown(
+        self,
+        *,
+        separator: str = "\n\n---\n\n",
+        **kwargs,
+    ) -> str:
+        """Convert all pages in the collection to Markdown.
+
+        Args:
+            separator: String inserted between page results.
+            **kwargs: Passed to each page's ``to_markdown()``.
+
+        Returns:
+            Combined Markdown string.
+        """
+        return separator.join(p.to_markdown(**kwargs) for p in self.pages)
+
     def extract_text(
         self,
         separator: str = "\n",

@@ -1005,6 +1005,31 @@ class PDF(
 
         return self
 
+    def to_markdown(
+        self,
+        *,
+        pages: Optional[List[int]] = None,
+        separator: str = "\n\n---\n\n",
+        **kwargs,
+    ) -> str:
+        """Convert PDF pages to Markdown using a VLM.
+
+        Falls back to ``extract_text()`` per-page when no model is configured.
+
+        Args:
+            pages: Optional list of 0-based page indices. Defaults to all pages.
+            separator: String inserted between page results.
+            **kwargs: Passed to each page's ``to_markdown()``.
+
+        Returns:
+            Combined Markdown string.
+        """
+        if pages is not None:
+            target_pages = [self.pages[i] for i in pages]
+        else:
+            target_pages = list(self.pages)
+        return separator.join(p.to_markdown(**kwargs) for p in target_pages)
+
     def extract_text(
         self,
         selector: Optional[str] = None,

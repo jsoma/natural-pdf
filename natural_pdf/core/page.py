@@ -74,6 +74,7 @@ from natural_pdf.ocr.ocr_manager import (
     run_ocr_apply,
     run_ocr_extract,
 )
+from natural_pdf.services import conversion_service as _conversion_service  # noqa: F401
 from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
 from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
 from natural_pdf.services import guides_service as _guides_service  # noqa: F401
@@ -694,7 +695,11 @@ class Page(
         return {"apply_exclusions": apply_exclusions}
 
     def apply_ocr(self, *args, **kwargs) -> "Page":
-        """Apply OCR to the entire page via the shared OCR service."""
+        """Apply OCR to the entire page via the shared OCR service.
+
+        When ``model=`` or ``client=`` is passed, routes to the VLM OCR
+        pipeline instead of the traditional engine-based OCR.
+        """
 
         params = dict(kwargs)
         if args and len(args) > 0:
@@ -703,6 +708,24 @@ class Page(
             params.setdefault("replace", args[0])
 
         replace = params.get("replace", True)
+
+        # VLM OCR path: when model= or client= is provided
+        vlm_model = params.pop("model", None)
+        vlm_client = params.pop("client", None)
+        if vlm_model is not None or vlm_client is not None:
+            ignored_engine = params.pop("engine", None)
+            if ignored_engine is not None:
+                logger.warning(
+                    "apply_ocr: model=/client= switches to VLM OCR; " "engine=%r is ignored.",
+                    ignored_engine,
+                )
+            return self._apply_vlm_ocr(
+                model=vlm_model,
+                client=vlm_client,
+                replace=replace,
+                **{k: v for k, v in params.items() if k != "replace"},
+            )
+
         custom_func = params.pop("function", None) or params.pop("ocr_function", None)
         if callable(custom_func):
             region = self._full_page_region()
@@ -714,6 +737,63 @@ class Page(
             return self
 
         self.services.ocr.apply_ocr(self, **params)
+        return self
+
+    def _apply_vlm_ocr(
+        self,
+        *,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        replace: bool = True,
+        resolution: int = 144,
+        render_kwargs: Optional[Dict[str, Any]] = None,
+        max_new_tokens: int = 4096,
+        prompt: Optional[str] = None,
+        min_confidence: Optional[float] = None,
+    ) -> "Page":
+        """Run VLM-based OCR and create text elements from the results."""
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr, scale_ocr_results
+
+        if replace:
+            removed = self.services.ocr.remove_ocr_elements(self)
+            if removed:
+                logger.info("Removed %d OCR elements before VLM OCR run.", removed)
+
+        results, (img_w, img_h) = run_vlm_ocr(
+            self,
+            model=model,
+            client=client,
+            resolution=resolution,
+            render_kwargs=render_kwargs,
+            max_new_tokens=max_new_tokens,
+            prompt=prompt,
+        )
+
+        if not results:
+            logger.warning("VLM OCR returned no results for page %s.", self.number)
+            return self
+
+        page_width = getattr(self, "width", 0) or 0
+        page_height = getattr(self, "height", 0) or 0
+
+        scaled = scale_ocr_results(
+            results,
+            image_width=float(img_w),
+            image_height=float(img_h),
+            page_width=float(page_width),
+            page_height=float(page_height),
+        )
+
+        # Filter by min_confidence if requested
+        if min_confidence is not None:
+            scaled = [r for r in scaled if r.get("confidence", 0) >= min_confidence]
+
+        self.services.ocr.create_text_elements_from_ocr(
+            self,
+            ocr_results=scaled,
+        )
+
+        logger.info("VLM OCR created %d text elements on page %s.", len(scaled), self.number)
         return self
 
     def extract_ocr_elements(self, *args, **kwargs):
@@ -1685,6 +1765,41 @@ class Page(
             font_attrs=self._parent._font_attrs,
             load_text=self._load_text,
             context=getattr(self, "_context", None),
+        )
+
+    def to_markdown(
+        self,
+        *,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        resolution: int = 144,
+        render_kwargs: Optional[Dict[str, Any]] = None,
+        max_new_tokens: int = 4096,
+        prompt: Optional[str] = None,
+    ) -> str:
+        """Convert this page to Markdown using a VLM.
+
+        Falls back to ``extract_text()`` when no model is configured.
+
+        Args:
+            model: HuggingFace model ID or remote model name.
+            client: OpenAI-compatible client for remote inference.
+            resolution: DPI for rendering the page image.
+            render_kwargs: Extra kwargs for ``render()``.
+            max_new_tokens: Maximum tokens for the VLM to generate.
+            prompt: Custom prompt override.
+
+        Returns:
+            Markdown string.
+        """
+        return self.services.conversion.to_markdown(
+            self,
+            model=model,
+            client=client,
+            resolution=resolution,
+            render_kwargs=render_kwargs,
+            max_new_tokens=max_new_tokens,
+            prompt=prompt,
         )
 
     def extract_text(
