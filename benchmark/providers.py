@@ -5,9 +5,11 @@ Unified interface for calling PDF-native APIs from:
 - OpenAI (GPT-4o, GPT-4V, GPT-5.2)
 - Google (Gemini Pro, Gemini 2.5 Pro, Gemini 3 Pro)
 - OpenRouter (Claude, Llama, etc.)
+- Local models (Ollama, vLLM, LM Studio) via OpenAI-compatible APIs
 
 Handles:
 - Native PDF input (no image rendering)
+- Image-based input for local models
 - Rate limiting with exponential backoff
 - Retries on transient errors
 - Cost calculation
@@ -155,6 +157,63 @@ def parse_json_response(text: str) -> list[dict[str, Any]]:
         return []
     except json.JSONDecodeError:
         return []
+
+
+DEFAULT_LOCAL_BASE_URL = "http://localhost:11434/v1"
+
+
+def parse_local_model_spec(model: str) -> tuple[str, str | None]:
+    """
+    Parse a local model specification.
+
+    Formats:
+        "local/modelname"                        -> ("modelname", None)
+        "local/modelname@http://host:port/v1"    -> ("modelname", "http://host:port/v1")
+
+    Returns:
+        (model_name, base_url_or_none)
+    """
+    # Strip the "local/" prefix
+    spec = model.split("/", 1)[1]
+
+    if "@" in spec:
+        model_name, base_url = spec.split("@", 1)
+        return model_name, base_url
+
+    return spec, None
+
+
+def render_pdf_pages(pdf_path: str, max_pages: int | None = None, dpi: int = 150) -> list[str]:
+    """
+    Render PDF pages to base64-encoded PNG images.
+
+    Uses pdfplumber (already a project dependency) for rendering.
+
+    Args:
+        pdf_path: Path to the PDF file.
+        max_pages: If set, render only the first N pages.
+        dpi: Resolution for rendering (default 150).
+
+    Returns:
+        List of base64-encoded PNG strings, one per page.
+    """
+    import io
+
+    import pdfplumber
+
+    images_b64 = []
+    with pdfplumber.open(pdf_path) as pdf:
+        pages = pdf.pages
+        if max_pages:
+            pages = pages[:max_pages]
+
+        for page in pages:
+            img = page.to_image(resolution=dpi)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            images_b64.append(base64.b64encode(buf.getvalue()).decode("utf-8"))
+
+    return images_b64
 
 
 class LLMProvider(ABC):
@@ -480,6 +539,110 @@ class OpenRouterProvider(LLMProvider):
         )
 
 
+class LocalProvider(LLMProvider):
+    """
+    Provider for local/self-hosted models via OpenAI-compatible APIs.
+
+    Renders PDF pages to images since local models typically can't process
+    native PDF bytes. Sends images as base64-encoded image_url content blocks.
+
+    Works with Ollama, vLLM, LM Studio, and any OpenAI-compatible server.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        base_url: str | None = None,
+        **kwargs,
+    ):
+        # Local models don't need API keys
+        super().__init__(api_key="local", **kwargs)
+        self.model_name = model_name
+        self.base_url = base_url or os.environ.get("LOCAL_MODEL_BASE_URL") or DEFAULT_LOCAL_BASE_URL
+
+    @property
+    def provider_name(self) -> str:
+        return "local"
+
+    def _call_api(
+        self,
+        prompt: str,
+        pdf_bytes: bytes,
+        model: str,
+    ) -> ProviderResponse:
+        raise NotImplementedError(
+            "LocalProvider overrides call() directly; _call_api should not be invoked."
+        )
+
+    def call(
+        self,
+        prompt: str,
+        pdf_path: str,
+        model: str,
+        max_pages: int | None = None,
+    ) -> ProviderResponse:
+        """
+        Render PDF pages to images and send via OpenAI-compatible API.
+        """
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError("openai package required: pip install openai")
+
+        # Render pages to base64 images
+        page_images = render_pdf_pages(pdf_path, max_pages=max_pages)
+
+        if not page_images:
+            raise ValueError(f"No pages rendered from {pdf_path}")
+
+        # Build content blocks: text prompt + all page images
+        content: list[dict] = [{"type": "text", "text": prompt}]
+        for img_b64 in page_images:
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{img_b64}",
+                    },
+                }
+            )
+
+        client = OpenAI(
+            api_key="not-needed",  # Local servers typically ignore the API key
+            base_url=self.base_url,
+        )
+
+        last_error = None
+        for attempt in range(self.max_retries):
+            try:
+                start = time.time()
+                response = client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": content}],
+                    max_tokens=16384,
+                    timeout=self.timeout,
+                )
+                latency_ms = int((time.time() - start) * 1000)
+
+                return ProviderResponse(
+                    raw_text=response.choices[0].message.content or "",
+                    tokens_input=response.usage.prompt_tokens if response.usage else 0,
+                    tokens_output=response.usage.completion_tokens if response.usage else 0,
+                    latency_ms=latency_ms,
+                    model=model,
+                    provider=self.provider_name,
+                )
+            except Exception as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2**attempt)
+                    time.sleep(delay)
+
+        raise RuntimeError(
+            f"Local model API call failed after {self.max_retries} retries: {last_error}"
+        )
+
+
 def normalize_anthropic_model(model: str) -> str:
     """
     Normalize Anthropic model names to API aliases.
@@ -509,7 +672,10 @@ def get_provider(model: str, api_key: Optional[str] = None) -> LLMProvider:
     """Get the appropriate provider for a model."""
     model_lower = model.lower()
 
-    if (
+    if model_lower.startswith("local/"):
+        model_name, base_url = parse_local_model_spec(model)
+        return LocalProvider(model_name=model_name, base_url=base_url)
+    elif (
         model_lower.startswith("gpt")
         or model_lower.startswith("o1")
         or model_lower.startswith("o3")
@@ -538,6 +704,8 @@ def validate_models(models: list[str]) -> None:
 
     for model in models:
         provider = get_provider(model)
+        if provider.provider_name == "local":
+            continue  # Local models don't need API keys
         if not provider.api_key:
             provider_name = provider.provider_name.upper()
             if provider_name == "GOOGLE":

@@ -65,7 +65,7 @@ class ResponseCache:
 
     def _normalize_model_name(self, model: str) -> str:
         """Normalize model name for use as filename."""
-        return model.replace("/", "_").replace(":", "_")
+        return model.replace("/", "_").replace(":", "_").replace("@", "_")
 
     def _cache_path(self, pdf_name: str, model: str) -> Path:
         """Get path for a cache entry: {cache_dir}/{pdf_name}/{model}.json"""

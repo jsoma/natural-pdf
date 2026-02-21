@@ -29,6 +29,7 @@ class ProviderConfig:
     """Configuration for a single provider."""
 
     api_key: Optional[str] = None
+    base_url: Optional[str] = None
     rate_limit_per_minute: int = 30
     max_retries: int = 3
     timeout: float = 120.0
@@ -46,6 +47,7 @@ class BenchmarkConfig:
     openai: ProviderConfig = field(default_factory=ProviderConfig)
     google: ProviderConfig = field(default_factory=ProviderConfig)
     openrouter: ProviderConfig = field(default_factory=ProviderConfig)
+    local: ProviderConfig = field(default_factory=ProviderConfig)
 
     # Default models
     default_models: list[str] = field(
@@ -145,13 +147,15 @@ class BenchmarkConfig:
             config.open_report_after_generation = data["open_report_after_generation"]
 
         # Provider configs - use dataclass field defaults to avoid duplication
-        for provider_name in ["openai", "google", "openrouter"]:
+        for provider_name in ["openai", "google", "openrouter", "local"]:
             if provider_name in data:
                 provider_data = data[provider_name]
                 # Build kwargs only for keys that are actually present in the config
                 kwargs = {}
                 if "api_key" in provider_data:
                     kwargs["api_key"] = provider_data["api_key"]
+                if "base_url" in provider_data:
+                    kwargs["base_url"] = provider_data["base_url"]
                 if "rate_limit_per_minute" in provider_data:
                     kwargs["rate_limit_per_minute"] = provider_data["rate_limit_per_minute"]
                 if "max_retries" in provider_data:
@@ -173,6 +177,8 @@ class BenchmarkConfig:
             config.google.api_key = os.environ["GOOGLE_API_KEY"]
         if os.environ.get("OPENROUTER_API_KEY"):
             config.openrouter.api_key = os.environ["OPENROUTER_API_KEY"]
+        if os.environ.get("LOCAL_MODEL_BASE_URL"):
+            config.local.base_url = os.environ["LOCAL_MODEL_BASE_URL"]
 
         # Other overrides
         if os.environ.get("BENCHMARK_OUTPUT_DIR"):
@@ -213,6 +219,12 @@ class BenchmarkConfig:
                 "rate_limit_per_minute": self.openrouter.rate_limit_per_minute,
                 "max_retries": self.openrouter.max_retries,
                 "timeout": self.openrouter.timeout,
+            },
+            "local": {
+                "base_url": self.local.base_url,
+                "rate_limit_per_minute": self.local.rate_limit_per_minute,
+                "max_retries": self.local.max_retries,
+                "timeout": self.local.timeout,
             },
         }
 
@@ -258,6 +270,12 @@ def create_sample_config(path: str = "benchmark.json") -> None:
         },
         "openrouter": {
             "api_key": "(or set OPENROUTER_API_KEY env var)",
+            "rate_limit_per_minute": 30,
+            "max_retries": 3,
+            "timeout": 120.0,
+        },
+        "local": {
+            "base_url": "http://localhost:11434/v1 (or set LOCAL_MODEL_BASE_URL env var)",
             "rate_limit_per_minute": 30,
             "max_retries": 3,
             "timeout": 120.0,

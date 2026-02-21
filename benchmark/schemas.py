@@ -363,7 +363,7 @@ class BenchmarkOutput:
     def llm_result_path(self, pdf_name: str, model: str) -> Path:
         """Get path for LLM result JSON."""
         # Normalize model name for filename
-        clean_model = model.replace("/", "_").replace(":", "_")
+        clean_model = model.replace("/", "_").replace(":", "_").replace("@", "_")
         return self.llm_results_dir(pdf_name) / f"{clean_model}.json"
 
     def report_path(self, pdf_name: str) -> Path:
