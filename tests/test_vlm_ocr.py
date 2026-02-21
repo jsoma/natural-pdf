@@ -9,7 +9,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from natural_pdf.ocr.vlm_ocr import parse_grounding_response, scale_ocr_results
+from natural_pdf.core.vlm_prompts import build_ocr_prompt, detect_model_family
+from natural_pdf.ocr.vlm_ocr import (
+    normalize_qwen_coordinates,
+    parse_grounding_response,
+    scale_ocr_results,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -225,3 +230,375 @@ class TestApplyOCRVLMPath:
         # The VLM client should have been called
         mock_client.chat.completions.create.assert_called_once()
         pdf.close()
+
+
+# ---------------------------------------------------------------------------
+# detect_model_family
+# ---------------------------------------------------------------------------
+
+
+class TestDetectModelFamily:
+    def test_qwen3_vl_full_path(self):
+        assert detect_model_family("Qwen/Qwen3-VL-2B-Instruct") == "qwen_vl"
+
+    def test_qwen3_vl_short(self):
+        assert detect_model_family("qwen3-vl-2b") == "qwen_vl"
+
+    def test_qwen25_vl(self):
+        assert detect_model_family("Qwen/Qwen2.5-VL-7B-Instruct") == "qwen_vl"
+
+    def test_gutenocr_priority_over_qwen(self):
+        """GutenOCR is checked before Qwen since it's built on Qwen2.5-VL."""
+        assert detect_model_family("rootsautomation/GutenOCR-3B") == "gutenocr"
+
+    def test_generic_model(self):
+        assert detect_model_family("some/random-model") == "generic"
+
+    def test_none_model(self):
+        assert detect_model_family(None) == "generic"
+
+    def test_case_insensitive(self):
+        assert detect_model_family("QWEN3-VL-2B") == "qwen_vl"
+        assert detect_model_family("GUTENOCR-3b") == "gutenocr"
+
+
+# ---------------------------------------------------------------------------
+# build_ocr_prompt with family
+# ---------------------------------------------------------------------------
+
+
+class TestBuildOCRPromptFamily:
+    def test_generic_prompt_unchanged_no_family(self):
+        prompt = build_ocr_prompt(grounding=True)
+        assert "bbox" in prompt
+        assert "text" in prompt
+
+    def test_qwen_prompt_contains_bbox_2d(self):
+        prompt = build_ocr_prompt(grounding=True, family="qwen_vl")
+        assert "bbox_2d" in prompt
+        assert "1000" in prompt
+
+    def test_gutenocr_prompt_contains_text2d(self):
+        prompt = build_ocr_prompt(grounding=True, family="gutenocr")
+        assert "TEXT2D" in prompt
+
+    def test_grounding_false_ignores_family(self):
+        prompt_generic = build_ocr_prompt(grounding=False, family="generic")
+        prompt_qwen = build_ocr_prompt(grounding=False, family="qwen_vl")
+        assert prompt_generic == prompt_qwen
+        assert "reading order" in prompt_generic
+
+
+# ---------------------------------------------------------------------------
+# parse_grounding_response with family
+# ---------------------------------------------------------------------------
+
+
+class TestParseGroundingResponseFamily:
+    def test_qwen_keys_parsed(self):
+        raw = json.dumps(
+            [
+                {"bbox_2d": [100, 200, 500, 250], "label": "Hello"},
+            ]
+        )
+        results = parse_grounding_response(raw, family="qwen_vl")
+        assert len(results) == 1
+        assert results[0]["bbox"] == [100.0, 200.0, 500.0, 250.0]
+        assert results[0]["text"] == "Hello"
+        assert results[0]["confidence"] == 0.75  # qwen_vl default
+
+    def test_gutenocr_keys_parsed(self):
+        raw = json.dumps(
+            [
+                {"bbox": [10, 20, 300, 50], "text": "World"},
+            ]
+        )
+        results = parse_grounding_response(raw, family="gutenocr")
+        assert len(results) == 1
+        assert results[0]["text"] == "World"
+        assert results[0]["confidence"] == 0.8  # gutenocr default
+
+    def test_generic_family_falls_back_to_bbox_2d(self):
+        """Generic family can still parse bbox_2d if model outputs it."""
+        raw = json.dumps(
+            [
+                {"bbox_2d": [10, 20, 30, 40], "label": "Adaptive"},
+            ]
+        )
+        results = parse_grounding_response(raw, family="generic")
+        assert len(results) == 1
+        assert results[0]["text"] == "Adaptive"
+
+    def test_qwen_family_falls_back_to_bbox(self):
+        """Qwen family can still parse bbox/text if model ignores prompt."""
+        raw = json.dumps(
+            [
+                {"bbox": [10, 20, 30, 40], "text": "Fallback"},
+            ]
+        )
+        results = parse_grounding_response(raw, family="qwen_vl")
+        assert len(results) == 1
+        assert results[0]["text"] == "Fallback"
+
+    def test_backward_compat_no_family(self):
+        """Calling without family works as before."""
+        raw = json.dumps(
+            [
+                {"bbox": [1, 2, 3, 4], "text": "Old", "confidence": 0.9},
+            ]
+        )
+        results = parse_grounding_response(raw)
+        assert len(results) == 1
+        assert results[0]["text"] == "Old"
+        assert results[0]["confidence"] == 0.9
+
+    def test_explicit_confidence_overrides_default(self):
+        """Explicit confidence in data takes precedence over family default."""
+        raw = json.dumps(
+            [
+                {"bbox_2d": [10, 20, 30, 40], "label": "X", "confidence": 0.99},
+            ]
+        )
+        results = parse_grounding_response(raw, family="qwen_vl")
+        assert results[0]["confidence"] == 0.99
+
+
+# ---------------------------------------------------------------------------
+# normalize_qwen_coordinates
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeQwenCoordinates:
+    def test_full_page_coords(self):
+        results = [{"bbox": [0, 0, 1000, 1000], "text": "Full", "confidence": 0.9}]
+        scaled = normalize_qwen_coordinates(results, 800, 600)
+        assert scaled[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_partial_coords_scale(self):
+        results = [{"bbox": [500, 250, 750, 500], "text": "Partial", "confidence": 0.8}]
+        scaled = normalize_qwen_coordinates(results, 1000, 800)
+        assert scaled[0]["bbox"] == [500.0, 200.0, 750.0, 400.0]
+
+    def test_out_of_range_clamped_high(self):
+        results = [{"bbox": [0, 0, 1200, 1100], "text": "Overflow", "confidence": 0.7}]
+        scaled = normalize_qwen_coordinates(results, 800, 600)
+        # Values >1000 clamped to 1000 → full image size
+        assert scaled[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_out_of_range_clamped_low(self):
+        results = [{"bbox": [-50, -100, 500, 500], "text": "Negative", "confidence": 0.7}]
+        scaled = normalize_qwen_coordinates(results, 800, 600)
+        assert scaled[0]["bbox"][0] == 0.0
+        assert scaled[0]["bbox"][1] == 0.0
+
+    def test_other_fields_preserved(self):
+        results = [
+            {"bbox": [0, 0, 1000, 1000], "text": "Keep", "confidence": 0.95, "extra": "data"}
+        ]
+        scaled = normalize_qwen_coordinates(results, 100, 100)
+        assert scaled[0]["text"] == "Keep"
+        assert scaled[0]["confidence"] == 0.95
+        assert scaled[0]["extra"] == "data"
+
+
+# ---------------------------------------------------------------------------
+# run_vlm_ocr with family detection (integration with mocks)
+# ---------------------------------------------------------------------------
+
+
+class TestRunVLMOCRFamily:
+    def _make_mock_host(self):
+        host = MagicMock()
+        img = Image.new("RGB", (800, 600), "white")
+        host.render.return_value = img
+        return host, img
+
+    def _make_mock_client(self, response_json):
+        client = MagicMock()
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=response_json))]
+        )
+        return client
+
+    def test_qwen_model_uses_qwen_prompt_and_normalizes(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, img = self._make_mock_host()
+        qwen_response = json.dumps(
+            [
+                {"bbox_2d": [0, 0, 500, 500], "label": "Top-left"},
+            ]
+        )
+        client = self._make_mock_client(qwen_response)
+
+        results, size = run_vlm_ocr(host, model="Qwen/Qwen3-VL-2B-Instruct", client=client)
+
+        # Should have called with Qwen prompt
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "bbox_2d" in prompt_text
+
+        # Coordinates should be normalized from 0-1000 to pixel coords
+        assert len(results) == 1
+        assert results[0]["bbox"] == [0.0, 0.0, 400.0, 300.0]  # 500/1000 * 800, 500/1000 * 600
+
+    def test_custom_prompt_overrides_family_prompt(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, img = self._make_mock_host()
+        # Return generic format despite being called with qwen model
+        generic_response = json.dumps(
+            [
+                {"bbox_2d": [0, 0, 500, 500], "label": "Custom"},
+            ]
+        )
+        client = self._make_mock_client(generic_response)
+
+        results, size = run_vlm_ocr(
+            host,
+            model="Qwen/Qwen3-VL-2B-Instruct",
+            client=client,
+            prompt="My custom prompt",
+        )
+
+        # Should have used custom prompt
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert prompt_text == "My custom prompt"
+
+        # But family parsing and normalization still apply
+        assert len(results) == 1
+        assert results[0]["bbox"] == [0.0, 0.0, 400.0, 300.0]
+
+    def test_default_model_triggers_family_detection(self):
+        from natural_pdf.core.vlm_client import set_default_client
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, img = self._make_mock_host()
+        qwen_response = json.dumps(
+            [
+                {"bbox_2d": [0, 0, 1000, 1000], "label": "Full"},
+            ]
+        )
+        client = self._make_mock_client(qwen_response)
+
+        set_default_client(client, model="Qwen/Qwen2.5-VL-7B-Instruct")
+
+        results, size = run_vlm_ocr(host)
+
+        # Should detect Qwen family from default model
+        assert len(results) == 1
+        # Full-page coords normalized: 1000/1000 * 800, 1000/1000 * 600
+        assert results[0]["bbox"] == [0.0, 0.0, 800.0, 600.0]
+
+    def test_generic_model_no_normalization(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, img = self._make_mock_host()
+        generic_response = json.dumps(
+            [
+                {"bbox": [10, 20, 200, 45], "text": "Generic", "confidence": 0.9},
+            ]
+        )
+        client = self._make_mock_client(generic_response)
+
+        results, size = run_vlm_ocr(host, model="some-model", client=client)
+
+        # No normalization for generic models — coords pass through as-is
+        assert len(results) == 1
+        assert results[0]["bbox"] == [10.0, 20.0, 200.0, 45.0]
+
+
+# ---------------------------------------------------------------------------
+# run_vlm_ocr with languages parameter
+# ---------------------------------------------------------------------------
+
+
+class TestRunVLMOCRLanguages:
+    def _make_mock_host(self):
+        host = MagicMock()
+        img = Image.new("RGB", (800, 600), "white")
+        host.render.return_value = img
+        return host, img
+
+    def _make_mock_client(self, response_json):
+        client = MagicMock()
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=response_json))]
+        )
+        return client
+
+    def test_languages_appear_in_prompt(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps(
+            [
+                {"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9},
+            ]
+        )
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(host, model="some-model", client=client, languages=["ja"])
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "Japanese" in prompt_text
+
+    def test_no_hint_when_languages_omitted(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps(
+            [
+                {"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9},
+            ]
+        )
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(host, model="some-model", client=client)
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "The document is in" not in prompt_text
+
+    def test_custom_prompt_ignores_languages(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps(
+            [
+                {"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9},
+            ]
+        )
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(
+            host,
+            model="some-model",
+            client=client,
+            prompt="My custom prompt",
+            languages=["ja"],
+        )
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert prompt_text == "My custom prompt"
+        assert "Japanese" not in prompt_text
+
+    def test_english_only_no_hint(self):
+        from natural_pdf.ocr.vlm_ocr import run_vlm_ocr
+
+        host, _ = self._make_mock_host()
+        response = json.dumps(
+            [
+                {"bbox": [10, 20, 200, 45], "text": "Test", "confidence": 0.9},
+            ]
+        )
+        client = self._make_mock_client(response)
+
+        run_vlm_ocr(host, model="some-model", client=client, languages=["en"])
+
+        call_args = client.chat.completions.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"][1]["text"]
+        assert "The document is in" not in prompt_text

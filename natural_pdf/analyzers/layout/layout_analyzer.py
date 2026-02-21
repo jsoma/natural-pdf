@@ -3,11 +3,15 @@ import logging
 from typing import Any, List, Optional, Set
 
 from natural_pdf import options as npdf_options
-from natural_pdf.analyzers.layout.layout_manager import ENGINE_REGISTRY
+from natural_pdf.analyzers.layout.layout_manager import (
+    engine_name_for_options,
+    get_options_class_for_engine,
+)
 from natural_pdf.analyzers.layout.layout_options import (
     BaseLayoutOptions,
-    GeminiLayoutOptions,
+    DetectionContext,
     LayoutOptions,
+    VLMLayoutOptions,
 )
 from natural_pdf.elements.region import Region
 from natural_pdf.engine_provider import get_provider
@@ -40,7 +44,6 @@ class LayoutAnalyzer:
         classes: Optional[List[str]] = None,
         exclude_classes: Optional[List[str]] = None,
         device: Optional[str] = None,
-        existing: str = "replace",
         **kwargs,
     ) -> List[Region]:
         """
@@ -56,19 +59,11 @@ class LayoutAnalyzer:
             classes: Specific classes to detect (simple mode).
             exclude_classes: Classes to exclude (simple mode).
             device: Device for inference (simple mode).
-            existing: Deprecated. Layout analysis always replaces previously detected regions.
             **kwargs: Additional engine-specific arguments (added to options.extra_args or used by constructor if options=None).
 
         Returns:
             List of created Region objects.
         """
-        if isinstance(existing, str) and existing.lower() != "replace":
-            logger.warning(
-                "Layout analysis always replaces existing detected regions; ignoring existing=%r",
-                existing,
-            )
-        existing = "replace"
-
         logger.info(
             f"Page {self._page.number}: Analyzing layout (Engine: {engine or 'default'}, Options provided: {options is not None})..."
         )
@@ -110,7 +105,6 @@ class LayoutAnalyzer:
             final_options = dataclasses.replace(
                 options,
                 extra_args=dict(options.extra_args),
-                _internal=dict(options._internal),
                 classes=list(options.classes) if options.classes else None,
                 exclude_classes=list(options.exclude_classes) if options.exclude_classes else None,
             )
@@ -120,12 +114,11 @@ class LayoutAnalyzer:
                 )
             # Infer engine from options type if engine arg wasn't provided
             if engine is None:
-                for name, registry_entry in ENGINE_REGISTRY.items():
-                    if isinstance(final_options, registry_entry["options_class"]):
-                        engine = name
-                        logger.debug(f"Inferred engine '{engine}' from options type.")
-                        break
-                if engine is None:
+                inferred = engine_name_for_options(final_options)
+                if inferred:
+                    engine = inferred
+                    logger.debug(f"Inferred engine '{engine}' from options type.")
+                else:
                     logger.warning("Could not infer engine from provided options object.")
         else:
             # Construct options from simple args (engine, confidence, classes, etc.)
@@ -134,14 +127,13 @@ class LayoutAnalyzer:
             if engine is None:
                 self._warn_on_default_engine(selected_engine)
             engine_lower = selected_engine.lower()
-            registry = ENGINE_REGISTRY
 
-            if engine_lower not in registry:
+            options_class = get_options_class_for_engine(engine_lower)
+            if options_class is None:
+                available = list(self._engine_provider.list("layout").get("layout", ()))
                 raise ValueError(
-                    f"Unknown or unavailable engine: '{selected_engine}'. Available: {list(registry.keys())}"
+                    f"Unknown or unavailable engine: '{selected_engine}'. Available: {available}"
                 )
-
-            options_class = registry[engine_lower]["options_class"]
 
             # Get base defaults
             base_defaults = BaseLayoutOptions()
@@ -149,10 +141,12 @@ class LayoutAnalyzer:
             # Separate client from other kwargs
             client_instance = kwargs.pop("client", None)  # Get client, remove from kwargs
 
-            # Separate model_name if provided for Gemini
+            # Separate model_name/model if provided for VLM
             model_name_kwarg = None
-            if issubclass(options_class, GeminiLayoutOptions):
-                model_name_kwarg = kwargs.pop("model_name", None)
+            languages_kwarg = None
+            if issubclass(options_class, VLMLayoutOptions):
+                model_name_kwarg = kwargs.pop("model_name", None) or kwargs.pop("model", None)
+                languages_kwarg = kwargs.pop("languages", None)
 
             # Prepare args for constructor, prioritizing explicit args over defaults
             constructor_args = {
@@ -160,25 +154,26 @@ class LayoutAnalyzer:
                 "classes": classes,  # Pass None if not provided
                 "exclude_classes": exclude_classes,  # Pass None if not provided
                 "device": device if device is not None else base_defaults.device,
-                # Pass client explicitly if constructing Gemini options
-                # Note: We check issubclass *before* calling constructor
+                # Pass client explicitly if constructing VLM options
                 **(
                     {"client": client_instance}
-                    if client_instance and issubclass(options_class, GeminiLayoutOptions)
+                    if client_instance and issubclass(options_class, VLMLayoutOptions)
                     else {}
                 ),
-                # Pass model_name explicitly if constructing Gemini options and it was provided
+                # Pass model_name explicitly if constructing VLM options and it was provided
                 **(
                     {"model_name": model_name_kwarg}
-                    if model_name_kwarg and issubclass(options_class, GeminiLayoutOptions)
+                    if model_name_kwarg and issubclass(options_class, VLMLayoutOptions)
+                    else {}
+                ),
+                # Pass languages if constructing VLM options and it was provided
+                **(
+                    {"languages": languages_kwarg}
+                    if languages_kwarg is not None and issubclass(options_class, VLMLayoutOptions)
                     else {}
                 ),
                 "extra_args": kwargs,  # Pass REMAINING kwargs here
             }
-            # Remove None values unless they are valid defaults (like classes=None)
-            # We can pass all to the dataclass constructor; it handles defaults
-            # **Filter constructor_args to remove None values that aren't defaults?**
-            # For simplicity, let dataclass handle it for now.
 
             try:
                 final_options = options_class(**constructor_args)
@@ -187,27 +182,32 @@ class LayoutAnalyzer:
                 logger.error(
                     f"Failed to construct options object {options_class.__name__} with args {constructor_args}: {e}"
                 )
-                # Filter kwargs to only include fields defined in the specific options class? Complex.
-                # Re-raise for now, indicates programming error or invalid kwarg.
                 raise e
 
             engine = selected_engine
 
-        # --- Add Internal Context ---
-        final_options._internal["_layout_host"] = self._page
-        final_options._internal["_img_scale_x"] = img_scale_x
-        final_options._internal["_img_scale_y"] = img_scale_y
+        # --- Build Detection Context ---
+        detection_context = DetectionContext(
+            layout_host=self._page,
+            img_scale_x=img_scale_x,
+            img_scale_y=img_scale_y,
+        )
 
         # --- Call Layout Manager (ALWAYS with options object) ---
         detections, detector = self._run_layout_engine(
-            std_res_page_image, final_options, engine=engine
+            std_res_page_image, final_options, engine=engine, context=detection_context
         )
         if detections is None:
             return []
 
+        # --- Apply Canonical Type Mapping ---
+        type_map = getattr(detector, "TYPE_MAP", {})
+        for detection in detections:
+            engine_normalized = detection.get("normalized_class", "unknown")
+            detection["canonical_type"] = type_map.get(engine_normalized, engine_normalized)
+
         # --- Process Detections (Convert to Regions, Scale Coords from Image to PDF) ---
         layout_regions = []
-        docling_id_to_region = {}  # For hierarchy if using Docling
 
         for detection in detections:
             try:
@@ -231,7 +231,7 @@ class LayoutAnalyzer:
                 # Create a Region object with PDF coordinates
                 region = Region(self._page, (pdf_x0, pdf_y0, pdf_x1, pdf_y1))
                 region.region_type = detection.get("class", "unknown")
-                region.normalized_type = detection.get("normalized_class", "unknown")
+                region.normalized_type = detection.get("canonical_type", "unknown")
                 region.confidence = detection.get("confidence", 0.0)
                 region.model = detection.get("model", engine or "unknown")
                 region.source = "detected"
@@ -240,35 +240,11 @@ class LayoutAnalyzer:
                 if "text" in detection:
                     region.text_content = detection["text"]
 
-                docling_id = detection.get("docling_id")
-                parent_id = detection.get("parent_id")
-                if docling_id is not None or parent_id is not None:
-                    docling_meta = region.metadata.setdefault("docling", {})
-                    if docling_id is not None:
-                        docling_meta["id"] = docling_id
-                        docling_id_to_region[docling_id] = region
-                    if parent_id is not None:
-                        docling_meta["parent_id"] = parent_id
-
                 layout_regions.append(region)
 
             except (KeyError, IndexError, TypeError, ValueError) as e:
                 logger.warning(f"Could not process layout detection: {detection}. Error: {e}")
                 continue
-
-        # --- Build Hierarchy (if Docling results detected) ---
-        if docling_id_to_region:
-            logger.debug("Building Docling region hierarchy...")
-            for region in layout_regions:
-                docling_meta = region.metadata.get("docling", {})
-                parent_id = docling_meta.get("parent_id")
-                if parent_id:
-                    parent_region = docling_id_to_region.get(parent_id)
-                    if parent_region:
-                        if hasattr(parent_region, "add_child"):
-                            parent_region.add_child(region)
-                        else:
-                            logger.warning("Region object missing add_child method for hierarchy.")
 
         # --- Store Results ---
         logger.debug(f"Storing {len(layout_regions)} processed layout regions (mode: replace).")
@@ -295,10 +271,8 @@ class LayoutAnalyzer:
         if engine:
             return engine.lower()
 
-        for name, entry in ENGINE_REGISTRY.items():
-            if isinstance(options, entry["options_class"]):
-                return name.lower()
-        return None
+        inferred = engine_name_for_options(options)
+        return inferred.lower() if inferred else None
 
     def _warn_on_default_engine(self, engine_name: str) -> None:
         normalized = (engine_name or "").lower()
@@ -308,7 +282,8 @@ class LayoutAnalyzer:
         if normalized in _DEFAULT_ENGINE_WARNING_SHOWN:
             return
 
-        available = ", ".join(sorted(ENGINE_REGISTRY.keys()))
+        available_engines = self._engine_provider.list("layout").get("layout", ())
+        available = ", ".join(sorted(available_engines))
         logger.warning(
             "analyze_layout() called without specifying an engine; defaulting to '%s'. "
             "Call page.analyze_layout('yolo') (or another engine name) or use natural_pdf.set_option('layout.engine', '<engine>') "
@@ -318,7 +293,7 @@ class LayoutAnalyzer:
         )
         _DEFAULT_ENGINE_WARNING_SHOWN.add(normalized)
 
-    def _run_layout_engine(self, image, options, engine: Optional[str]):
+    def _run_layout_engine(self, image, options, engine: Optional[str], context=None):
         engine_name = self._resolve_engine_name(engine, options)
         if engine_name is None:
             logger.error("Unable to determine layout engine for provided options")
@@ -326,7 +301,7 @@ class LayoutAnalyzer:
 
         try:
             detector = self._engine_provider.get("layout", context=self._page, name=engine_name)
-            detections = detector.detect(image, options)
+            detections = detector.detect(image, options, context=context)
             logger.info(
                 "  Layout engine '%s' returned %d detections.",
                 engine_name,

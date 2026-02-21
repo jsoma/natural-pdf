@@ -19,18 +19,139 @@ from natural_pdf.utils.locks import pdf_render_lock
 logger = logging.getLogger(__name__)
 
 
-def parse_grounding_response(raw: str) -> List[Dict[str, Any]]:
+_FAMILY_DEFAULT_CONFIDENCE = {
+    "qwen_vl": 0.75,
+    "gutenocr": 0.8,
+    "generic": 0.5,
+}
+
+
+def normalize_qwen_coordinates(
+    results: List[Dict[str, Any]],
+    image_width: float,
+    image_height: float,
+) -> List[Dict[str, Any]]:
+    """Convert Qwen-VL 0-1000 normalized coordinates to image pixel coordinates.
+
+    Args:
+        results: OCR result dicts with ``bbox`` in 0-1000 normalized range.
+        image_width: Width of the rendered image in pixels.
+        image_height: Height of the rendered image in pixels.
+
+    Returns:
+        New list with ``bbox`` values scaled to image pixel coordinates.
+    """
+    scaled = []
+    for r in results:
+        bbox = r["bbox"]
+        x0 = max(0.0, min(float(bbox[0]), 1000.0)) / 1000.0 * image_width
+        y0 = max(0.0, min(float(bbox[1]), 1000.0)) / 1000.0 * image_height
+        x1 = max(0.0, min(float(bbox[2]), 1000.0)) / 1000.0 * image_width
+        y1 = max(0.0, min(float(bbox[3]), 1000.0)) / 1000.0 * image_height
+        scaled.append({**r, "bbox": [x0, y0, x1, y1]})
+    return scaled
+
+
+def _extract_json_array(text: str) -> Optional[list]:
+    """Extract the first JSON array from *text* using ``json.JSONDecoder``.
+
+    Falls back to a regex search if the decoder approach fails.
+    """
+    # Try raw_decode starting from the first '['
+    idx = text.find("[")
+    if idx != -1:
+        decoder = json.JSONDecoder()
+        try:
+            obj, _ = decoder.raw_decode(text, idx)
+            if isinstance(obj, list):
+                return obj
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback: greedy regex (handles some edge cases)
+    match = re.search(r"\[.*\]", text, re.DOTALL)
+    if match:
+        try:
+            obj = json.loads(match.group(0))
+            if isinstance(obj, list):
+                return obj
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
+def _extract_item(item: dict, family: str) -> Optional[Dict[str, Any]]:
+    """Extract bbox/text/confidence from a single response item.
+
+    Uses adaptive key detection: tries the expected schema for the given
+    *family* first, then falls back to the alternative schema.
+    """
+    default_conf = _FAMILY_DEFAULT_CONFIDENCE.get(family, 0.5)
+
+    # Define key schemas in priority order based on family
+    if family == "qwen_vl":
+        schemas = [
+            ("bbox_2d", "label"),
+            ("bbox", "text"),
+        ]
+    else:
+        schemas = [
+            ("bbox", "text"),
+            ("bbox_2d", "label"),
+        ]
+
+    bbox = None
+    item_text = None
+    for bbox_key, text_key in schemas:
+        candidate_bbox = item.get(bbox_key)
+        candidate_text = item.get(text_key, "")
+        if (
+            candidate_bbox is not None
+            and isinstance(candidate_bbox, (list, tuple))
+            and len(candidate_bbox) == 4
+            and candidate_text
+        ):
+            bbox = candidate_bbox
+            item_text = candidate_text
+            break
+
+    if bbox is None or not item_text:
+        return None
+
+    confidence = item.get("confidence", default_conf)
+
+    try:
+        bbox = [float(v) for v in bbox]
+        confidence = float(confidence)
+    except (TypeError, ValueError):
+        return None
+
+    return {
+        "bbox": bbox,
+        "text": str(item_text),
+        "confidence": max(0.0, min(1.0, confidence)),
+    }
+
+
+def parse_grounding_response(raw: str, family: str = "generic") -> List[Dict[str, Any]]:
     """Parse a VLM grounding response into OCR result dicts.
 
-    Expects a JSON array of objects with ``bbox``, ``text``, and optionally
-    ``confidence`` keys.  Handles common model quirks like markdown fences.
+    Supports multiple output schemas via adaptive key detection:
+    - Generic / GutenOCR: ``bbox`` + ``text``
+    - Qwen-VL: ``bbox_2d`` + ``label``
+
+    The *family* hint controls which schema is tried first, but the parser
+    will fall back to the alternative schema per-item if the primary keys
+    are missing.
 
     Args:
         raw: The raw text response from the VLM.
+        family: Model family hint (``"generic"``, ``"qwen_vl"``, ``"gutenocr"``).
 
     Returns:
         List of dicts, each with ``bbox`` (4-element list), ``text`` (str),
-        and ``confidence`` (float, default 0.5).
+        and ``confidence`` (float).
     """
     text = raw.strip()
 
@@ -39,16 +160,14 @@ def parse_grounding_response(raw: str) -> List[Dict[str, Any]]:
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
 
-    # Try to find a JSON array in the response
-    match = re.search(r"\[.*\]", text, re.DOTALL)
-    if match:
-        text = match.group(0)
-
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        logger.warning("Failed to parse VLM grounding response as JSON: %s", text[:200])
-        return []
+    data = _extract_json_array(text)
+    if data is None:
+        # Last resort: try the whole string
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse VLM grounding response as JSON: %s", text[:200])
+            return []
 
     if not isinstance(data, list):
         logger.warning("VLM grounding response is not a JSON array.")
@@ -58,28 +177,9 @@ def parse_grounding_response(raw: str) -> List[Dict[str, Any]]:
     for item in data:
         if not isinstance(item, dict):
             continue
-        bbox = item.get("bbox")
-        item_text = item.get("text", "")
-        confidence = item.get("confidence", 0.5)
-
-        if bbox is None or not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
-            continue
-        if not item_text:
-            continue
-
-        try:
-            bbox = [float(v) for v in bbox]
-            confidence = float(confidence)
-        except (TypeError, ValueError):
-            continue
-
-        results.append(
-            {
-                "bbox": bbox,
-                "text": str(item_text),
-                "confidence": max(0.0, min(1.0, confidence)),
-            }
-        )
+        extracted = _extract_item(item, family)
+        if extracted is not None:
+            results.append(extracted)
 
     return results
 
@@ -156,6 +256,7 @@ def run_vlm_ocr(
     render_kwargs: Optional[Dict[str, Any]] = None,
     max_new_tokens: int = 4096,
     prompt: Optional[str] = None,
+    languages: Optional[List[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], Tuple[int, int]]:
     """Run VLM-based OCR on a page/region and return scaled results.
 
@@ -167,15 +268,36 @@ def run_vlm_ocr(
         render_kwargs: Extra kwargs for ``host.render()``.
         max_new_tokens: Max tokens for VLM generation.
         prompt: Custom prompt (default uses the grounding prompt).
+        languages: Optional language codes for VLM hint (ignored when *prompt* is set).
 
     Returns:
         Tuple of (ocr_results, (image_width, image_height)).
         ``ocr_results`` are in *image* pixel coordinates (not yet scaled).
     """
-    from natural_pdf.core.vlm_client import generate
-    from natural_pdf.core.vlm_prompts import build_ocr_prompt
+    from natural_pdf.core.vlm_client import generate, get_default_client
+    from natural_pdf.core.vlm_prompts import build_ocr_prompt, detect_model_family
 
-    effective_prompt = prompt or build_ocr_prompt(grounding=True)
+    # Resolve effective model name for family detection
+    effective_model = model
+    if effective_model is None:
+        _, default_model = get_default_client()
+        effective_model = default_model
+
+    family = detect_model_family(effective_model)
+
+    if family == "generic":
+        logger.warning(
+            "VLM OCR: model %r is not a recognized grounding model. "
+            "Bounding-box accuracy may be poor. For best results use a "
+            "Qwen-VL family model (e.g. Qwen/Qwen3-VL-2B-Instruct).",
+            effective_model,
+        )
+
+    # Use family-specific prompt unless the caller supplied a custom one
+    if prompt is not None:
+        effective_prompt = prompt
+    else:
+        effective_prompt = build_ocr_prompt(grounding=True, family=family, languages=languages)
 
     # Render page/region to image
     render_fn = getattr(host, "render", None)
@@ -197,5 +319,10 @@ def run_vlm_ocr(
         max_new_tokens=max_new_tokens,
     )
 
-    results = parse_grounding_response(raw_response)
+    results = parse_grounding_response(raw_response, family=family)
+
+    # Convert Qwen-VL 0-1000 normalized coords to image pixel coords
+    if family == "qwen_vl":
+        results = normalize_qwen_coordinates(results, image.size[0], image.size[1])
+
     return results, image.size

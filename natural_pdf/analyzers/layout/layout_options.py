@@ -1,7 +1,9 @@
 # layout_options.py
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from typing_extensions import TypedDict
 
 from natural_pdf.utils.option_validation import (
     validate_confidence,
@@ -11,6 +13,33 @@ from natural_pdf.utils.option_validation import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# --- LayoutDetection TypedDict ---
+# Functional form needed because "class" is a reserved word.
+LayoutDetection = TypedDict(
+    "LayoutDetection",
+    {
+        "bbox": Tuple,
+        "class": str,
+        "confidence": float,
+        "normalized_class": str,
+        "canonical_type": str,
+        "source": str,
+        "model": str,
+    },
+    total=False,
+)
+
+
+# --- DetectionContext ---
+@dataclass
+class DetectionContext:
+    """Context passed to detect() — not user-facing."""
+
+    layout_host: Any = None  # Page reference (used by Surya for high-res crops)
+    img_scale_x: float = 1.0  # Image-to-PDF X scale factor
+    img_scale_y: float = 1.0  # Image-to-PDF Y scale factor
 
 
 # --- Base Layout Options ---
@@ -25,9 +54,6 @@ class BaseLayoutOptions:
     extra_args: Dict[str, Any] = field(
         default_factory=dict
     )  # For engine-specific args not yet fields
-    _internal: Dict[str, Any] = field(
-        default_factory=dict, repr=False
-    )  # Internal context (layout_host, scale factors); not user-facing
 
     def __post_init__(self):
         """Validate base layout options."""
@@ -134,40 +160,25 @@ class SuryaLayoutOptions(BaseLayoutOptions):
         # Surya has minimal configuration - validation reserved for future expansion
 
 
-# --- Docling Specific Options ---
+# --- VLM Specific Options ---
 @dataclass
-class DoclingLayoutOptions(BaseLayoutOptions):
-    """Options specific to Docling layout detection."""
-
-    # Pass kwargs directly to Docling's DocumentConverter via extra_args
-    # Common examples shown here for documentation, add others as needed to extra_args
-    # model_name: str = "ds4sd/SmolDocling-256M-preview" # Example model (pass via extra_args)
-    # prompt_text: Optional[str] = None # Optional prompt (pass via extra_args)
-    verbose: bool = False  # Verbose logging for the detector class
-    # Other kwargs like 'device', 'batch_size' can go in extra_args
-
-    def __post_init__(self):
-        """Validate Docling layout options."""
-        super().__post_init__()
-        # Docling has minimal configuration - validation reserved for future expansion
-
-
-# --- Gemini Specific Options ---
-@dataclass
-class GeminiLayoutOptions(BaseLayoutOptions):
-    """Options specific to Gemini-based layout detection (using OpenAI compatibility)."""
+class VLMLayoutOptions(BaseLayoutOptions):
+    """Options specific to VLM-based layout detection (any OpenAI-compatible API or local model)."""
 
     model_name: str = "gemini-2.0-flash"
     client: Optional[Any] = None  # Allow passing a pre-configured client
-    # Removed: prompt_template, temperature, top_p, max_output_tokens
-    # These are typically passed directly to the chat completion call or via extra_args
+    languages: Optional[List[str]] = None  # Language hints for VLM prompt
 
     def __post_init__(self):
-        """Validate Gemini layout options."""
+        """Validate VLM layout options."""
         super().__post_init__()
         self.model_name = validate_non_empty_string(
-            self.model_name, "model_name", "GeminiLayoutOptions", default="gemini-2.0-flash"
+            self.model_name, "model_name", "VLMLayoutOptions", default="gemini-2.0-flash"
         )
+
+
+# Backward-compatible alias
+GeminiLayoutOptions = VLMLayoutOptions
 
 
 # --- Union Type ---
@@ -176,7 +187,6 @@ LayoutOptions = Union[
     TATRLayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
-    DoclingLayoutOptions,
-    GeminiLayoutOptions,
+    VLMLayoutOptions,
     BaseLayoutOptions,  # Include base for typing flexibility
 ]

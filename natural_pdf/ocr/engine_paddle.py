@@ -13,6 +13,33 @@ from .ocr_options import BaseOCROptions, PaddleOCROptions
 
 logger = logging.getLogger(__name__)
 
+# Common ISO 639-1 codes mapped to PaddleOCR's internal language codes.
+_PADDLE_LANG_ALIASES = {
+    "ja": "japan",
+    "ko": "korean",
+    "zh": "ch",
+    "zh-cn": "ch",
+    "zh-hans": "ch",
+    "zh-tw": "chinese_cht",
+    "zh-hant": "chinese_cht",
+    "de": "german",
+    "fr": "french",
+}
+
+
+def _normalize_paddle_language(code: str) -> str:
+    """Normalize a language code to PaddleOCR's expected format.
+
+    Maps common ISO 639-1 codes (e.g. ``"ja"``, ``"zh"``) to PaddleOCR's
+    internal codes (``"japan"``, ``"ch"``). Unknown codes pass through as-is.
+    """
+    lower = code.strip().lower()
+    mapped = _PADDLE_LANG_ALIASES.get(lower)
+    if mapped:
+        logger.debug("PaddleOCR: normalized language code '%s' -> '%s'", code, mapped)
+        return mapped
+    return lower
+
 
 class PaddleOCREngine(OCREngine):
     """PaddleOCR engine implementation."""
@@ -130,18 +157,21 @@ class PaddleOCREngine(OCREngine):
         except ImportError as e:
             self.logger.error(f"Failed to import PaddleOCR/PaddlePaddle: {e}")
             raise RuntimeError(
-                "paddleocr is not available. Install via: npdf install paddle"
+                'paddleocr is not available. Install via: pip install "natural-pdf[paddle]"'
             ) from e
 
         paddle_options, _ = validate_option_type(options, PaddleOCROptions, "PaddleOCREngine")
 
-        if len(languages) > 1:
+        # Normalize language codes (e.g. "ja" -> "japan", "zh" -> "ch")
+        normalized = [_normalize_paddle_language(l) for l in languages] if languages else ["en"]
+
+        if len(normalized) > 1:
             self.logger.warning(
                 "PaddleOCR >= 3.0.0 only supports one language at a time. "
                 "Using the first language provided: '%s'",
-                languages[0],
+                normalized[0],
             )
-        primary_lang = languages[0] if languages else "en"
+        primary_lang = normalized[0]
 
         # Determine the appropriate ocr_version based on language support
         user_ocr_version = paddle_options.ocr_version
@@ -189,10 +219,19 @@ class PaddleOCREngine(OCREngine):
                         "No language specified and no match found. Defaulting to ocr_version 'PP-OCRv5'. Note: 'PP-OCRv3' has the widest language support among PaddleOCR versions."
                     )
                 else:
+                    # Collect all supported codes and find similar ones
+                    all_supported = set()
+                    for codes in self.SUPPORT_MATRIX.values():
+                        all_supported.update(codes)
+                    similar = sorted(c for c in all_supported if c.startswith(primary_lang[:2]))
+                    hint = ""
+                    if similar:
+                        hint = f" Similar supported codes: {', '.join(similar)}."
                     self.logger.error(
                         "Language '%s' is not supported by any available PaddleOCR version (v3, v4, v5). "
-                        "Proceeding without a specific version, but this is likely to fail.",
+                        "Proceeding without a specific version, but this is likely to fail.%s",
                         primary_lang,
+                        hint,
                     )
                     final_ocr_version = None  # Let paddleocr handle the error
             elif final_ocr_version != "PP-OCRv5":

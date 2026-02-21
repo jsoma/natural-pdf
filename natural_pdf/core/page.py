@@ -749,9 +749,16 @@ class Page(
         max_new_tokens: int = 4096,
         prompt: Optional[str] = None,
         min_confidence: Optional[float] = None,
+        languages: Optional[List[str]] = None,
     ) -> "Page":
         """Run VLM-based OCR and create text elements from the results."""
         from natural_pdf.ocr.vlm_ocr import run_vlm_ocr, scale_ocr_results
+
+        # Resolve languages from config chain if not explicitly provided
+        if languages is None:
+            resolved = resolve_ocr_languages(self, None)
+            if resolved:
+                languages = resolved
 
         if replace:
             removed = self.services.ocr.remove_ocr_elements(self)
@@ -766,6 +773,7 @@ class Page(
             render_kwargs=render_kwargs,
             max_new_tokens=max_new_tokens,
             prompt=prompt,
+            languages=languages,
         )
 
         if not results:
