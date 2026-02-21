@@ -488,54 +488,37 @@ class FlowRegion(
 
         return specs
 
-    def __getattr__(self, name: str) -> Any:
-        """
-        Dynamically proxy attribute access to the source FlowElement for safe attributes only.
-        Spatial methods (above, below, left, right) are explicitly implemented to prevent
-        silent failures and incorrect behavior.
-        """
-        if name in self.__dict__:
-            return self.__dict__[name]
+    @property
+    def parts(self) -> List["PhysicalRegion"]:
+        """Alias for ``constituent_regions`` — the physical region parts of this FlowRegion."""
+        return self.constituent_regions
 
-        # List of methods that should NOT be proxied - they need proper FlowRegion implementation
-        spatial_methods = {"above", "below", "left", "right", "to_region"}
+    def map_parts(self, fn: Callable[["PhysicalRegion"], Any]) -> List[Any]:
+        """Apply *fn* to each constituent region and return the results."""
+        return [fn(region) for region in self.constituent_regions]
 
-        if name in spatial_methods:
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{name}'. "
-                f"This method requires proper FlowRegion implementation to handle spatial relationships correctly."
-            )
-
-        # Only proxy safe attributes and methods
-        if self.source_flow_element is not None:
-            try:
-                attr = getattr(self.source_flow_element, name)
-                # Only proxy non-callable attributes and explicitly safe methods
-                if not callable(attr) or name in {"page", "document"}:  # Add safe methods as needed
-                    return attr
-                else:
-                    raise AttributeError(
-                        f"Method '{name}' cannot be safely proxied from FlowElement to FlowRegion. "
-                        f"It may need explicit implementation."
-                    )
-            except AttributeError:
-                pass
-
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    @property
+    def is_empty(self) -> bool:
+        """True when this FlowRegion contains no constituent regions."""
+        return not self.constituent_regions
 
     @property
     def bbox(self) -> Optional[Tuple[float, float, float, float]]:
         """
         The bounding box that encloses all constituent regions.
-        Calculated dynamically and cached.
+
+        For single-page FlowRegions this is a true geometric union. For
+        multi-page FlowRegions the result is a ``merge_bboxes`` over all
+        constituent regions regardless of page — useful for sorting and
+        size estimates, but not a physically meaningful rectangle.
+
+        Returns ``None`` only when there are no constituent regions.
         """
         if self._cached_bbox is not None:
             return self._cached_bbox
         if not self.constituent_regions:
             return None
 
-        # Use merge_bboxes from pdfplumber.utils.geometry to merge bboxes
-        # Extract bbox tuples from regions first
         region_bboxes = [
             region.bbox for region in self.constituent_regions if hasattr(region, "bbox")
         ]

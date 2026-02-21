@@ -612,10 +612,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         Returns:
             PIL Image with all segments stacked together
         """
-        from PIL import Image, ImageDraw
-
-        segment_images = []
-        segment_pages = []
+        from natural_pdf.flows._utils import stack_images
 
         # Determine stacking direction
         final_stack_direction = stack_direction
@@ -623,27 +620,20 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             final_stack_direction = self.arrangement
 
         # Get cropped images for each segment
+        segment_images = []
         for i, segment in enumerate(self.segments):
-            # Get the page reference for this segment
             if hasattr(segment, "page") and segment.page is not None:
-                segment_page = segment.page
-                # Get cropped image of the segment
-                # Use render() for clean image without highlights
                 segment_image = segment.render(
                     resolution=resolution,
                     crop=True,
                     width=width,
                     **kwargs,
                 )
-
             elif (
                 hasattr(segment, "index")
                 and hasattr(segment, "width")
                 and hasattr(segment, "height")
             ):
-                # It's a full Page object
-                segment_page = segment
-                # Use render() for clean image without highlights
                 segment_image = segment.render(resolution=resolution, width=width, **kwargs)
             else:
                 raise ValueError(
@@ -654,138 +644,18 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
                 raise RuntimeError(f"Segment {i+1} render() returned None")
 
             segment_images.append(segment_image)
-            segment_pages.append(segment_page)
 
-        # Check if we have any valid images
         if not segment_images:
             logger.error("No valid segment images could be rendered")
             return None
 
-        # We should have at least one segment image by now (or an exception would have been raised)
-        if len(segment_images) == 1:
-            return segment_images[0]
-
-        # Calculate dimensions for the final stacked image
-        if final_stack_direction == "vertical":
-            # Stack vertically
-            final_width = max(img.width for img in segment_images)
-
-            # Calculate total height including gaps and separators
-            total_height = sum(img.height for img in segment_images)
-            total_height += (len(segment_images) - 1) * stack_gap
-
-            # Add separator thickness between all segments
-            num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
-            total_height += num_separators * separator_thickness
-
-            # Create the final image
-            final_image = Image.new("RGB", (final_width, total_height), stack_background_color)
-            draw = ImageDraw.Draw(final_image)
-
-            current_y = 0
-
-            for i, img in enumerate(segment_images):
-                # Add separator line before each segment (except the first one)
-                if i > 0:
-                    # Draw separator line
-                    draw.rectangle(
-                        [(0, current_y), (final_width, current_y + separator_thickness)],
-                        fill=separator_color,
-                    )
-                    current_y += separator_thickness
-
-                # Paste the segment image
-                paste_x = (final_width - img.width) // 2  # Center horizontally
-                final_image.paste(img, (paste_x, current_y))
-                current_y += img.height
-
-                # Add gap after segment (except for the last one)
-                if i < len(segment_images) - 1:
-                    current_y += stack_gap
-
-            return final_image
-
-        elif final_stack_direction == "horizontal":
-            # Stack horizontally
-            final_height = max(img.height for img in segment_images)
-
-            # Calculate total width including gaps and separators
-            total_width = sum(img.width for img in segment_images)
-            total_width += (len(segment_images) - 1) * stack_gap
-
-            # Add separator thickness between all segments
-            num_separators = len(segment_images) - 1 if len(segment_images) > 1 else 0
-            total_width += num_separators * separator_thickness
-
-            # Create the final image
-            final_image = Image.new("RGB", (total_width, final_height), stack_background_color)
-            draw = ImageDraw.Draw(final_image)
-
-            current_x = 0
-
-            for i, img in enumerate(segment_images):
-                # Add separator line before each segment (except the first one)
-                if i > 0:
-                    # Draw separator line
-                    draw.rectangle(
-                        [(current_x, 0), (current_x + separator_thickness, final_height)],
-                        fill=separator_color,
-                    )
-                    current_x += separator_thickness
-
-                # Paste the segment image
-                paste_y = (final_height - img.height) // 2  # Center vertically
-                final_image.paste(img, (current_x, paste_y))
-                current_x += img.width
-
-                # Add gap after segment (except for the last one)
-                if i < len(segment_images) - 1:
-                    current_x += stack_gap
-
-            return final_image
-
-        else:
-            raise ValueError(
-                f"Invalid stack_direction '{final_stack_direction}' for in_context. Must be 'vertical' or 'horizontal'."
-            )
-
-    # --- Helper methods for coordinate transformations and segment iteration ---
-    # These will be crucial for FlowElement's directional methods.
-
-    def get_segment_bounding_box_in_flow(
-        self, segment_index: int
-    ) -> Optional[tuple[float, float, float, float]]:
-        """
-        Calculates the conceptual bounding box of a segment within the flow's coordinate system.
-        This considers arrangement, alignment, and segment gaps.
-        (This is a placeholder for more complex logic if a true virtual coordinate system is needed)
-        For now, it might just return the physical segment's bbox if gaps are 0 and alignment is simple.
-        """
-        if segment_index < 0 or segment_index >= len(self.segments):
-            return None
-
-        # This is a simplified version. A full implementation would calculate offsets.
-        # For now, we assume FlowElement directional logic handles segment traversal and uses physical coords.
-        # If we were to *draw* the flow or get a FlowRegion bbox that spans gaps, this would be critical.
-        # physical_segment = self.segments[segment_index]
-        # return physical_segment.bbox
-        raise NotImplementedError(
-            "Calculating a segment's bbox *within the flow's virtual coordinate system* is not yet fully implemented."
-        )
-
-    def get_element_flow_coordinates(
-        self, physical_element: "PhysicalElement"
-    ) -> Optional[tuple[float, float, float, float]]:
-        """
-        Translates a physical element's coordinates into the flow's virtual coordinate system.
-        (Placeholder - very complex if segment_gap > 0 or complex alignments)
-        """
-        # For now, elements operate in their own physical coordinates. This method would be needed
-        # if FlowRegion.bbox or other operations needed to present a unified coordinate space.
-        # As per our discussion, elements *within* a FlowRegion retain original physical coordinates.
-        # So, this might not be strictly necessary for the current design's core functionality.
-        raise NotImplementedError(
-            "Translating element coordinates to a unified flow coordinate system is not yet implemented."
+        return stack_images(
+            segment_images,
+            direction=final_stack_direction,
+            gap=stack_gap,
+            background=stack_background_color,
+            separator_color=separator_color,
+            separator_thickness=separator_thickness,
         )
 
     def get_sections(

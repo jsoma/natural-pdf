@@ -148,29 +148,12 @@ class FlowElement:
 
         return clipped_region, hit
 
-    def _flow_direction(
-        self,
-        direction: str,  # "above", "below", "left", "right"
-        size: Optional[float] = None,
-        cross_size_ratio: Optional[float] = None,  # Default to None for full flow width
-        cross_size_absolute: Optional[float] = None,
-        cross_alignment: str = "center",  # "start", "center", "end"
-        until: Optional[str] = None,
-        include_source: bool = False,
-        include_endpoint: bool = True,
-        **kwargs,
-    ) -> "FlowRegion":
-        # Ensure correct import for creating new PhysicalRegion instances if needed
-        from natural_pdf.elements.region import Region as PhysicalRegion_Class  # Runtime import
+    # ------------------------------------------------------------------
+    # Helpers extracted from _flow_direction for readability / testability
+    # ------------------------------------------------------------------
 
-        collected_constituent_regions: List[PhysicalRegion_Class] = (
-            []
-        )  # PhysicalRegion_Class is runtime
-        boundary_element_hit: Optional["PhysicalElement"] = None  # Stringized
-        # Ensure remaining_size is float, even if size is int.
-        remaining_size = float(size) if size is not None else float("inf")
-
-        # 1. Identify Starting Segment and its index
+    def _find_start_segment(self) -> int:
+        """Return the index of the flow segment containing this element, or -1."""
         start_segment_index = -1
         for i, segment_in_flow in enumerate(self.flow.segments):
             if self.physical_object.page != segment_in_flow.page:
@@ -180,8 +163,8 @@ class FlowElement:
             obj_center_y = (self.physical_object.top + self.physical_object.bottom) / 2
 
             if segment_in_flow.is_point_inside(obj_center_x, obj_center_y):
-                start_segment_index = i
-                break
+                return i
+
             obj_bbox = self.physical_object.bbox
             seg_bbox = segment_in_flow.bbox
             if not (
@@ -193,17 +176,177 @@ class FlowElement:
                 if start_segment_index == -1:
                     start_segment_index = i
 
-        if start_segment_index == -1:
+        return start_segment_index
+
+    def _resolve_cross_size(
+        self,
+        direction: str,
+        cross_size_ratio: Optional[float],
+        cross_size_absolute: Optional[float],
+    ) -> Union[str, float]:
+        """Determine the cross-axis size value for a directional operation."""
+        if cross_size_absolute is not None:
+            return cross_size_absolute
+        if cross_size_ratio is not None:
+            base_cross_dim = (
+                self.physical_object.width
+                if direction in ("above", "below")
+                else self.physical_object.height
+            )
+            return base_cross_dim * cross_size_ratio
+        # Default: element size for left/right, full for above/below
+        if direction in ("left", "right"):
+            return self.physical_object.height
+        return "full"
+
+    @staticmethod
+    def _build_segment_iterator(
+        direction: str,
+        start_index: int,
+        num_segments: int,
+    ) -> Tuple[range, bool]:
+        """Return ``(range, is_forward)`` for iterating segments in *direction*."""
+        if direction == "below":
+            return range(start_index, num_segments), True
+        elif direction == "above":
+            return range(start_index, -1, -1), False
+        elif direction == "right":
+            return range(start_index, num_segments), True
+        elif direction == "left":
+            return range(start_index, -1, -1), False
+        else:
+            raise ValueError(
+                f"Internal error: Invalid direction '{direction}' for _flow_direction."
+            )
+
+    def _shape_start_segment(
+        self,
+        current_segment: "PhysicalRegion",
+        direction: str,
+        cross_size_for_op: Union[str, float],
+        cross_alignment: str,
+        remaining_size: float,
+        size: Optional[float],
+        include_source: bool,
+        until: Optional[str],
+        include_endpoint: bool,
+        **kwargs,
+    ) -> Tuple[Optional["PhysicalRegion"], Optional["PhysicalElement"]]:
+        """Build the contribution from the *start* segment.
+
+        Returns ``(clipped_region, boundary_hit_or_None)``.
+        """
+        from natural_pdf.elements.region import Region as PhysicalRegion_Class
+
+        source_for_op = self.physical_object
+        if not isinstance(source_for_op, PhysicalRegion_Class):
+            if hasattr(source_for_op, "to_region"):
+                source_for_op = source_for_op.to_region()
+            else:
+                logger.error(
+                    "FlowElement: Cannot convert op_source %s to region.",
+                    type(self.physical_object),
+                )
+                return None, None
+
+        initial_op_params: Dict[str, Any] = {
+            "direction": direction,
+            "size": remaining_size if size is not None else None,
+            "cross_size": cross_size_for_op,
+            "cross_alignment": cross_alignment,
+            "include_source": include_source,
+            "_from_flow": True,
+            **{k: v for k, v in kwargs.items() if k in ("strict_type", "first_match_only")},
+        }
+        initial_region = source_for_op._direction(**initial_op_params)
+
+        clipped = current_segment.clip(initial_region)
+
+        contribution, hit = self._clip_region_until(
+            clipped,
+            direction=direction,
+            until=until,
+            include_endpoint=include_endpoint,
+            search_kwargs=kwargs,
+        )
+        return contribution, hit
+
+    @staticmethod
+    def _clip_to_budget(
+        contribution: "PhysicalRegion",
+        remaining: float,
+        direction: str,
+        is_forward: bool,
+    ) -> Tuple["PhysicalRegion", float]:
+        """Clip *contribution* to fit within *remaining* points.
+
+        Returns ``(possibly_clipped_region, new_remaining)``.
+        """
+        if direction in ("below", "above"):
+            consumed = contribution.height
+            if consumed > remaining:
+                edge = (
+                    (contribution.top + remaining)
+                    if is_forward
+                    else (contribution.bottom - remaining)
+                )
+                contribution = contribution.clip(
+                    bottom=edge if is_forward else None,
+                    top=edge if not is_forward else None,
+                )
+                consumed = remaining
+        else:  # left / right
+            consumed = contribution.width
+            if consumed > remaining:
+                edge = (
+                    (contribution.x0 + remaining) if is_forward else (contribution.x1 - remaining)
+                )
+                contribution = contribution.clip(
+                    right=edge if is_forward else None,
+                    left=edge if not is_forward else None,
+                )
+                consumed = remaining
+
+        return contribution, remaining - consumed
+
+    # ------------------------------------------------------------------
+    # Main directional engine
+    # ------------------------------------------------------------------
+
+    def _flow_direction(
+        self,
+        direction: str,  # "above", "below", "left", "right"
+        size: Optional[float] = None,
+        cross_size_ratio: Optional[float] = None,
+        cross_size_absolute: Optional[float] = None,
+        cross_alignment: str = "center",
+        until: Optional[str] = None,
+        include_source: bool = False,
+        include_endpoint: bool = True,
+        **kwargs,
+    ) -> "FlowRegion":
+        from natural_pdf.elements.region import Region as PhysicalRegion_Class
+
+        from .region import FlowRegion as RuntimeFlowRegion
+
+        # Validate direction vs arrangement
+        is_primary_vertical = self.flow.arrangement == "vertical"
+        if direction in ("below", "above") and not is_primary_vertical:
+            raise NotImplementedError(f"'{direction}' is for vertical flows.")
+
+        # 1. Find starting segment
+        start_idx = self._find_start_segment()
+        if start_idx == -1:
             page_num_str = (
                 str(self.physical_object.page.page_number) if self.physical_object.page else "N/A"
             )
             logger.warning(
-                f"FlowElement's physical object {self.physical_object.bbox} on page {page_num_str} "
-                f"not found within any flow segment. Cannot perform directional operation '{direction}'."
+                "FlowElement's physical object %s on page %s "
+                "not found within any flow segment. Cannot perform directional operation '%s'.",
+                self.physical_object.bbox,
+                page_num_str,
+                direction,
             )
-            # Need FlowRegion for the return type, ensure it's available or stringized
-            from .region import FlowRegion as RuntimeFlowRegion
-
             return RuntimeFlowRegion(
                 flow=self.flow,
                 constituent_regions=[],
@@ -211,191 +354,89 @@ class FlowElement:
                 boundary_element_found=None,
             )
 
-        is_primary_vertical = self.flow.arrangement == "vertical"
-        segment_iterator: range
+        # 2. Resolve cross-size and build iterator
+        cross_size_for_op = self._resolve_cross_size(
+            direction, cross_size_ratio, cross_size_absolute
+        )
+        segment_iterator, is_forward = self._build_segment_iterator(
+            direction, start_idx, len(self.flow.segments)
+        )
 
-        if direction == "below":
-            if not is_primary_vertical:
-                raise NotImplementedError("'below' is for vertical flows.")
-            is_forward = True
-            segment_iterator = range(start_segment_index, len(self.flow.segments))
-        elif direction == "above":
-            if not is_primary_vertical:
-                raise NotImplementedError("'above' is for vertical flows.")
-            is_forward = False
-            segment_iterator = range(start_segment_index, -1, -1)
-        elif direction == "right":
-            is_forward = True
-            segment_iterator = range(start_segment_index, len(self.flow.segments))
-        elif direction == "left":
-            is_forward = False
-            segment_iterator = range(start_segment_index, -1, -1)
-        else:
-            raise ValueError(
-                f"Internal error: Invalid direction '{direction}' for _flow_direction."
-            )
+        # 3. Iterate segments collecting contributions
+        parts: List[PhysicalRegion_Class] = []
+        boundary_hit: Optional["PhysicalElement"] = None
+        remaining = float(size) if size is not None else float("inf")
 
-        for current_segment_idx in segment_iterator:
-            if remaining_size <= 0 and size is not None:
-                break
-            if boundary_element_hit:
+        for seg_idx in segment_iterator:
+            if (size is not None and remaining <= 0) or boundary_hit:
                 break
 
-            current_segment: PhysicalRegion_Class = self.flow.segments[current_segment_idx]
-            segment_contribution: Optional[PhysicalRegion_Class] = None
+            current_segment: PhysicalRegion_Class = self.flow.segments[seg_idx]
 
-            op_source: Union["PhysicalElement", PhysicalRegion_Class]  # Stringized PhysicalElement
-            op_direction_params: dict = {
-                "direction": direction,
-                "until": until,
-                "include_endpoint": include_endpoint,
-                "include_source": include_source,
-                **kwargs,
-            }
-
-            # --- Cross-size logic: Default based on direction ---
-            cross_size_for_op: Union[str, float]
-            if cross_size_absolute is not None:
-                cross_size_for_op = cross_size_absolute
-            elif cross_size_ratio is not None:  # User explicitly provided a ratio
-                # Cross dimension depends on direction, not flow arrangement
-                base_cross_dim = (
-                    self.physical_object.width
-                    if direction in ["above", "below"]
-                    else self.physical_object.height
-                )
-                cross_size_for_op = base_cross_dim * cross_size_ratio
-            else:  # Default case: neither absolute nor ratio provided
-                # Default to element size for left/right, full for above/below
-                if direction in ["left", "right"]:
-                    cross_size_for_op = self.physical_object.height
-                else:
-                    cross_size_for_op = "full"
-            op_direction_params["cross_size"] = cross_size_for_op
-
-            if current_segment_idx == start_segment_index:
-                op_source = self.physical_object
-                op_direction_params["size"] = remaining_size if size is not None else None
-                op_direction_params["include_source"] = include_source
-
-                source_for_op_call = op_source
-                if not isinstance(source_for_op_call, PhysicalRegion_Class):
-                    if hasattr(source_for_op_call, "to_region"):
-                        source_for_op_call = source_for_op_call.to_region()
-                    else:
-                        logger.error(
-                            f"FlowElement: Cannot convert op_source {type(op_source)} to region."
-                        )
-                        continue
-
-                # 1. Perform directional operation *without* 'until' initially to get basic shape.
-                initial_op_params = {
-                    "direction": direction,
-                    "size": remaining_size if size is not None else None,
-                    "cross_size": cross_size_for_op,
-                    "cross_alignment": cross_alignment,  # Pass alignment
-                    "include_source": include_source,
-                    "_from_flow": True,  # Prevent multipage recursion
-                    # Pass other relevant kwargs if Region._direction uses them (e.g. strict_type)
-                    **{k: v for k, v in kwargs.items() if k in ["strict_type", "first_match_only"]},
-                }
-                initial_region_from_op = source_for_op_call._direction(**initial_op_params)
-
-                # 2. Clip this initial region to the current flow segment's boundaries.
-                clipped_search_area = current_segment.clip(initial_region_from_op)
-                segment_contribution = clipped_search_area  # Default contribution
-
-                segment_contribution, hit = self._clip_region_until(
-                    clipped_search_area,
+            if seg_idx == start_idx:
+                contribution, hit = self._shape_start_segment(
+                    current_segment,
                     direction=direction,
+                    cross_size_for_op=cross_size_for_op,
+                    cross_alignment=cross_alignment,
+                    remaining_size=remaining,
+                    size=size,
+                    include_source=include_source,
                     until=until,
                     include_endpoint=include_endpoint,
-                    search_kwargs=kwargs,
+                    **kwargs,
                 )
                 if hit:
-                    boundary_element_hit = hit
+                    boundary_hit = hit
             else:
-                candidate_region_in_segment = current_segment
-                if not boundary_element_hit:
-                    (
-                        candidate_region_in_segment,
-                        hit,
-                    ) = self._clip_region_until(
-                        candidate_region_in_segment,
+                contribution = current_segment
+                if not boundary_hit:
+                    contribution, hit = self._clip_region_until(
+                        contribution,
                         direction=direction,
                         until=until,
                         include_endpoint=include_endpoint,
                         search_kwargs=kwargs,
                     )
                     if hit:
-                        boundary_element_hit = hit
-                segment_contribution = candidate_region_in_segment
+                        boundary_hit = hit
 
+            # Clip to size budget
             if (
-                segment_contribution
-                and segment_contribution.width > 0
-                and segment_contribution.height > 0
+                contribution
+                and contribution.width > 0
+                and contribution.height > 0
                 and size is not None
             ):
-                current_part_consumed_size = 0.0
-                if direction in ["below", "above"]:
-                    current_part_consumed_size = segment_contribution.height
-                    if current_part_consumed_size > remaining_size:
-                        new_edge = (
-                            (segment_contribution.top + remaining_size)
-                            if is_forward
-                            else (segment_contribution.bottom - remaining_size)
-                        )
-                        segment_contribution = segment_contribution.clip(
-                            bottom=new_edge if is_forward else None,
-                            top=new_edge if not is_forward else None,
-                        )
-                        current_part_consumed_size = remaining_size
-                else:  # direction in ["left", "right"]
-                    current_part_consumed_size = segment_contribution.width
-                    if current_part_consumed_size > remaining_size:
-                        new_edge = (
-                            (segment_contribution.x0 + remaining_size)
-                            if is_forward
-                            else (segment_contribution.x1 - remaining_size)
-                        )
-                        segment_contribution = segment_contribution.clip(
-                            right=new_edge if is_forward else None,
-                            left=new_edge if not is_forward else None,
-                        )
-                        current_part_consumed_size = remaining_size
-                remaining_size -= current_part_consumed_size
+                contribution, remaining = self._clip_to_budget(
+                    contribution, remaining, direction, is_forward
+                )
 
-            if (
-                segment_contribution
-                and segment_contribution.width > 0
-                and segment_contribution.height > 0
+            # Collect valid contribution
+            if contribution and contribution.width > 0 and contribution.height > 0:
+                parts.append(contribution)
+
+            # Stop after boundary hit (unless we still collected a valid start contribution)
+            if boundary_hit and (
+                seg_idx != start_idx
+                or not contribution
+                or contribution.width <= 0
+                or contribution.height <= 0
             ):
-                collected_constituent_regions.append(segment_contribution)
+                break
 
-            # If boundary was hit in this segment, and we are not on the start segment (where we might still collect part of it)
-            # or if we are on the start segment AND the contribution became zero (e.g. until was immediate)
-            if boundary_element_hit and (
-                current_segment_idx != start_segment_index
-                or not segment_contribution
-                or (segment_contribution.width <= 0 or segment_contribution.height <= 0)
-            ):
-                break  # Stop iterating through more segments
-
-            is_logically_last_segment = (
-                is_forward and current_segment_idx == len(self.flow.segments) - 1
-            ) or (not is_forward and current_segment_idx == 0)
-            if not is_logically_last_segment and self.flow.segment_gap > 0 and size is not None:
-                if remaining_size > 0:
-                    remaining_size -= self.flow.segment_gap
-
-        from .region import FlowRegion as RuntimeFlowRegion  # Ensure it's available for return
+            # Deduct segment gap from budget
+            is_last = (is_forward and seg_idx == len(self.flow.segments) - 1) or (
+                not is_forward and seg_idx == 0
+            )
+            if not is_last and self.flow.segment_gap > 0 and size is not None and remaining > 0:
+                remaining -= self.flow.segment_gap
 
         return RuntimeFlowRegion(
             flow=self.flow,
-            constituent_regions=collected_constituent_regions,
+            constituent_regions=parts,
             source_flow_element=self,
-            boundary_element_found=boundary_element_hit,
+            boundary_element_found=boundary_hit,
         )
 
     # --- Public Directional Methods ---

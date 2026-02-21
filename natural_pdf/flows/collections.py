@@ -349,55 +349,19 @@ class FlowElementCollection(MutableSequence["FlowElement"]):
             if page_image:
                 output_page_images.append(page_image)
 
-        # Stack the generated page images if multiple
+        # Stack the generated page images
         if not output_page_images:
             logger.info("FlowElementCollection.show() produced no page images to concatenate.")
             return None
 
-        if len(output_page_images) == 1:
-            return output_page_images[0]
+        from natural_pdf.flows._utils import stack_images
 
-        # Stacking logic (same as in FlowRegionCollection.show)
-        if stack_direction == "vertical":
-            final_width = max(img.width for img in output_page_images)
-            final_height = (
-                sum(img.height for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = Image.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_y = 0
-            for img in output_page_images:
-                paste_x = (final_width - img.width) // 2
-                concatenated_image.paste(img, (paste_x, current_y))
-                current_y += img.height + stack_gap
-            return concatenated_image
-        elif stack_direction == "horizontal":
-            final_width = (
-                sum(img.width for img in output_page_images)
-                + (len(output_page_images) - 1) * stack_gap
-            )
-            final_height = max(img.height for img in output_page_images)
-            if final_width == 0 or final_height == 0:
-                raise ValueError("Cannot create concatenated image with zero width or height.")
-
-            concatenated_image = Image.new(
-                "RGB", (final_width, final_height), stack_background_color
-            )
-            current_x = 0
-            for img in output_page_images:
-                paste_y = (final_height - img.height) // 2
-                concatenated_image.paste(img, (current_x, paste_y))
-                current_x += img.width + stack_gap
-            return concatenated_image
-        else:
-            raise ValueError(
-                f"Invalid stack_direction '{stack_direction}' for FlowElementCollection.show(). Must be 'vertical' or 'horizontal'."
-            )
+        return stack_images(
+            output_page_images,
+            direction=stack_direction,
+            gap=stack_gap,
+            background=stack_background_color,
+        )
 
 
 class FlowRegionCollection(
