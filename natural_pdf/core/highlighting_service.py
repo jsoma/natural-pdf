@@ -46,6 +46,124 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
+def draw_vertices(
+    draw: ImageDraw.ImageDraw,
+    vertices: List[Tuple[float, float]],
+    color: RGBAColor,
+    vertex_size: int,
+) -> None:
+    """Draw small markers at each vertex of a highlight shape.
+
+    Args:
+        draw: PIL ImageDraw object to draw on.
+        vertices: List of (x, y) pixel coordinates.
+        color: RGBA color for the vertex markers.
+        vertex_size: Radius in pixels for the ellipse markers.
+    """
+    for x, y in vertices:
+        draw.ellipse(
+            [x - vertex_size, y - vertex_size, x + vertex_size, y + vertex_size],
+            fill=color,
+        )
+
+
+def render_ocr_overlay(
+    page: "Page",
+    base_image: Image.Image,
+    scale_factor: float,
+) -> Image.Image:
+    """Render OCR text elements onto an image.
+
+    Pure function that composites OCR text boxes onto the provided image.
+
+    Args:
+        page: The Page object to read OCR elements from.
+        base_image: The RGBA image to composite onto.
+        scale_factor: Scale factor from PDF coordinates to pixel coordinates.
+
+    Returns:
+        A new RGBA image with OCR text composited on top.
+    """
+    result_image = base_image if base_image.mode == "RGBA" else base_image.convert("RGBA")
+
+    # Find OCR elements on the page
+    ocr_elements = page.find_all("text[source=ocr]")
+    if not ocr_elements:
+        ocr_elements = [el for el in page.words if getattr(el, "source", None) == "ocr"]
+
+    if not ocr_elements:
+        logger.debug(f"No OCR elements found for page {page.number} to render.")
+        return result_image
+
+    overlay = Image.new("RGBA", result_image.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    # Find a suitable font path for size-varying loads below
+    font_path = None
+    for fname in _FONT_FALLBACK:
+        try:
+            ImageFont.truetype(fname, 10)
+            font_path = fname
+            break
+        except (IOError, OSError):
+            continue
+
+    for element in ocr_elements:
+        x0, top, x1, bottom = element.bbox
+        x0_s = x0 * scale_factor
+        top_s = top * scale_factor
+        x1_s = x1 * scale_factor
+        bottom_s = bottom * scale_factor
+        box_w, box_h = x1_s - x0_s, bottom_s - top_s
+
+        if box_h <= 0:
+            continue
+
+        font_size = max(9, int(box_h * 0.85))
+
+        sized_font = _load_font(font_size) if not font_path else None
+        if font_path:
+            try:
+                sized_font = ImageFont.truetype(font_path, font_size)
+            except (IOError, OSError):
+                sized_font = _load_font(font_size)
+
+        # Adjust font size if text overflows
+        try:
+            text_w = draw.textlength(element.text, font=sized_font)
+            if text_w > box_w * 1.1:
+                ratio = max(0.5, (box_w * 1.0) / text_w)
+                font_size = max(9, int(font_size * ratio))
+                if font_path:
+                    try:
+                        sized_font = ImageFont.truetype(font_path, font_size)
+                    except IOError:
+                        pass
+        except AttributeError:
+            pass
+
+        # Draw background and text
+        padding = max(1, int(font_size * 0.05))
+        draw.rectangle(
+            [x0_s - padding, top_s - padding, x1_s + padding, bottom_s + padding],
+            fill=(255, 255, 255, 230),
+        )
+
+        text_top_offset = 0
+        if hasattr(sized_font, "getbbox"):
+            _, text_top_offset, _, text_bottom_offset = sized_font.getbbox(element.text)
+            text_h = text_bottom_offset - text_top_offset
+        else:
+            text_h = font_size
+        text_y = top_s + (box_h - text_h) / 2
+        text_y -= text_top_offset
+        text_x = x0_s + padding
+
+        draw.text((text_x, text_y), element.text, fill=(0, 0, 0, 255), font=sized_font)
+
+    return Image.alpha_composite(result_image, overlay)
+
+
 @dataclass
 class Highlight:
     """
@@ -71,264 +189,6 @@ class Highlight:
         """Calculate a slightly darker/more opaque border color."""
         # Use base color but increase alpha for border
         return (self.color[0], self.color[1], self.color[2], BORDER_ALPHA)
-
-
-class HighlightRenderer:
-    """
-    Handles the drawing logic for highlights on a single page image.
-    Instantiated by HighlightingService for each render request.
-    """
-
-    def __init__(
-        self,
-        page: Page,
-        base_image: Image.Image,
-        highlights: List[Highlight],
-        scale_factor: float,
-        render_ocr: bool,
-    ):
-        self.page = page  # Keep page reference for OCR rendering
-        self.base_image = base_image.convert("RGBA")  # Ensure RGBA
-        self.highlights = highlights
-        self.scale_factor = scale_factor  # Renamed from scale to scale_factor for clarity
-        self.render_ocr = render_ocr
-        self.result_image = self.base_image.copy()
-        self.vertex_size = max(3, int(2 * self.scale_factor))  # Size of corner markers
-
-    def render(self) -> Image.Image:
-        """Executes the rendering process."""
-        self._draw_highlights()
-        if self.render_ocr:
-            self._render_ocr_text()
-        return self.result_image
-
-    def _draw_highlights(self):
-        """Draws all highlight shapes, borders, vertices, and attributes."""
-        # Get the pdfplumber page offset for coordinate translation
-        page_offset_x = 0
-        page_offset_y = 0
-
-        if hasattr(self.page, "_page") and hasattr(self.page._page, "bbox"):
-            # PDFPlumber page bbox might have negative offsets
-            page_offset_x = -self.page._page.bbox[0]
-            page_offset_y = -self.page._page.bbox[1]
-            logger.debug(f"Applying highlight offset: x={page_offset_x}, y={page_offset_y}")
-
-        # Single overlay for all highlights — O(1) composite instead of O(N)
-        overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-
-        for highlight in self.highlights:
-            scaled_bbox = None
-
-            if highlight.is_polygon and highlight.polygon is not None:
-                polygon = highlight.polygon
-                scaled_polygon = [
-                    (
-                        (p[0] + page_offset_x) * self.scale_factor,
-                        (p[1] + page_offset_y) * self.scale_factor,
-                    )
-                    for p in polygon
-                ]
-                # Draw polygon fill and border
-                draw.polygon(
-                    scaled_polygon, fill=highlight.color, outline=highlight.border_color, width=2
-                )
-                self._draw_vertices(draw, scaled_polygon, highlight.border_color)
-
-                # Calculate scaled bbox for attribute drawing
-                x_coords = [p[0] for p in scaled_polygon]
-                y_coords = [p[1] for p in scaled_polygon]
-                scaled_bbox = [min(x_coords), min(y_coords), max(x_coords), max(y_coords)]
-
-            else:  # Rectangle
-                x0, top, x1, bottom = highlight.bbox
-                x0_s, top_s, x1_s, bottom_s = (
-                    (x0 + page_offset_x) * self.scale_factor,
-                    (top + page_offset_y) * self.scale_factor,
-                    (x1 + page_offset_x) * self.scale_factor,
-                    (bottom + page_offset_y) * self.scale_factor,
-                )
-                logger.debug(f"Original bbox: ({x0}, {top}, {x1}, {bottom})")
-                logger.debug(
-                    f"Offset bbox: ({x0 + page_offset_x}, {top + page_offset_y}, {x1 + page_offset_x}, {bottom + page_offset_y})"
-                )
-                logger.debug(f"Scaled bbox: ({x0_s}, {top_s}, {x1_s}, {bottom_s})")
-                scaled_bbox = [x0_s, top_s, x1_s, bottom_s]
-                # Draw rectangle fill and border
-                draw.rectangle(
-                    scaled_bbox, fill=highlight.color, outline=highlight.border_color, width=2
-                )
-
-                vertices = [(x0_s, top_s), (x1_s, top_s), (x1_s, bottom_s), (x0_s, bottom_s)]
-                self._draw_vertices(draw, vertices, highlight.border_color)
-
-            # Draw attributes if present on the highlight object
-            if highlight.attributes and scaled_bbox:  # Ensure bbox is calculated
-                self._draw_attributes(draw, highlight.attributes, scaled_bbox)
-
-        # Composite the shared overlay onto the result using alpha blending
-        self.result_image = Image.alpha_composite(self.result_image, overlay)
-
-    def _draw_vertices(
-        self,
-        draw: ImageDraw.ImageDraw,
-        vertices: List[Tuple[float, float]],
-        color: RGBAColor,
-    ) -> None:
-        """Draw small markers at each vertex."""
-        for x, y in vertices:
-            # Draw ellipse centered at vertex
-            draw.ellipse(
-                [
-                    x - self.vertex_size,
-                    y - self.vertex_size,
-                    x + self.vertex_size,
-                    y + self.vertex_size,
-                ],
-                fill=color,  # Use border color for vertices
-            )
-
-    def _draw_attributes(
-        self, draw: ImageDraw.ImageDraw, attributes: Dict[str, Any], bbox_scaled: List[float]
-    ) -> None:
-        """Draws attribute key-value pairs on the highlight."""
-        font_size = max(10, int(8 * self.scale_factor))
-        font = _load_font(font_size)
-
-        line_height = font_size + int(4 * self.scale_factor)  # Scaled line spacing
-        bg_padding = int(3 * self.scale_factor)
-        max_width = 0
-        text_lines = []
-
-        # Format attribute lines
-        for name, value in attributes.items():
-            if isinstance(value, float):
-                value_str = f"{value:.2f}"  # Format floats
-            else:
-                value_str = str(value)
-            line = f"{name}: {value_str}"
-            text_lines.append(line)
-            try:
-                # Calculate max width for background box
-                max_width = max(max_width, draw.textlength(line, font=font))
-            except AttributeError:
-                pass  # Ignore if textlength not available
-
-        if not text_lines:
-            return  # Nothing to draw
-
-        total_height = line_height * len(text_lines)
-
-        # Position near top-right corner with padding
-        x = bbox_scaled[2] - int(2 * self.scale_factor) - max_width
-        y = bbox_scaled[1] + int(2 * self.scale_factor)
-
-        # Draw background rectangle (semi-transparent white)
-        bg_x0 = x - bg_padding
-        bg_y0 = y - bg_padding
-        bg_x1 = x + max_width + bg_padding
-        bg_y1 = y + total_height + bg_padding
-        draw.rectangle(
-            [bg_x0, bg_y0, bg_x1, bg_y1],
-            fill=(255, 255, 255, 240),
-            outline=(0, 0, 0, 180),  # Light black outline
-            width=1,
-        )
-
-        # Draw text lines (black)
-        current_y = y
-        for line in text_lines:
-            draw.text((x, current_y), line, fill=(0, 0, 0, 255), font=font)
-            current_y += line_height
-
-    def _render_ocr_text(self):
-        """Renders OCR text onto the image. (Adapted from old HighlightManager)"""
-        # Use the page reference to get OCR elements
-        # Try finding first, then extracting if necessary
-        ocr_elements = self.page.find_all("text[source=ocr]")
-        if not ocr_elements:
-            # Don't run full OCR here, just extract if already run
-            ocr_elements = [el for el in self.page.words if getattr(el, "source", None) == "ocr"]
-            # Alternative: self.page.extract_ocr_elements() - but might be slow
-
-        if not ocr_elements:
-            logger.debug(f"No OCR elements found for page {self.page.number} to render.")
-            return
-
-        overlay = Image.new("RGBA", self.base_image.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-
-        # Find a suitable font path for size-varying loads below
-        font_path = None
-        for fname in _FONT_FALLBACK:
-            try:
-                ImageFont.truetype(fname, 10)  # Test load
-                font_path = fname
-                break
-            except (IOError, OSError):
-                continue
-
-        for element in ocr_elements:
-            x0, top, x1, bottom = element.bbox
-            x0_s, top_s, x1_s, bottom_s = (
-                x0 * self.scale_factor,
-                top * self.scale_factor,
-                x1 * self.scale_factor,
-                bottom * self.scale_factor,
-            )
-            box_w, box_h = x1_s - x0_s, bottom_s - top_s
-
-            if box_h <= 0:
-                continue  # Skip zero-height boxes
-
-            # --- Font Size Calculation ---
-            font_size = max(9, int(box_h * 0.85))  # Min size 9, 85% of box height
-
-            sized_font = _load_font(font_size) if not font_path else None
-            if font_path:
-                try:
-                    sized_font = ImageFont.truetype(font_path, font_size)
-                except (IOError, OSError):
-                    sized_font = _load_font(font_size)
-
-            # --- Adjust Font Size if Text Overflows ---
-            try:
-                text_w = draw.textlength(element.text, font=sized_font)
-                if text_w > box_w * 1.1:  # Allow 10% overflow
-                    ratio = max(0.5, (box_w * 1.0) / text_w)  # Don't shrink below 50%
-                    font_size = max(9, int(font_size * ratio))
-                    if font_path:
-                        try:
-                            sized_font = ImageFont.truetype(font_path, font_size)
-                        except IOError:
-                            pass  # Keep previous if error
-            except AttributeError:
-                pass  # Skip adjustment if textlength fails
-
-            # --- Draw Background and Text ---
-            padding = max(1, int(font_size * 0.05))  # Minimal padding
-            draw.rectangle(
-                [x0_s - padding, top_s - padding, x1_s + padding, bottom_s + padding],
-                fill=(255, 255, 255, 230),  # Highly transparent white background
-            )
-
-            # Calculate text position (centered vertically, slightly offset from left)
-            text_top_offset = 0
-            if hasattr(sized_font, "getbbox"):  # Modern PIL
-                _, text_top_offset, _, text_bottom_offset = sized_font.getbbox(element.text)
-                text_h = text_bottom_offset - text_top_offset
-            else:  # Older PIL approximation
-                text_h = font_size
-            text_y = top_s + (box_h - text_h) / 2
-            # Adjust for vertical offset in some fonts
-            text_y -= text_top_offset
-            text_x = x0_s + padding  # Start near left edge with padding
-
-            draw.text((text_x, text_y), element.text, fill=(0, 0, 0, 255), font=sized_font)
-
-        # Composite the OCR text overlay onto the result image
-        self.result_image = Image.alpha_composite(self.result_image, overlay)
 
 
 class HighlightContext:
@@ -776,184 +636,6 @@ class HighlightingService:
         """Returns a mapping of labels used to their assigned colors (for persistent highlights)."""
         return self._color_manager.get_label_colors()
 
-    def render_page(
-        self,
-        page_index: int,
-        resolution: float = 144,
-        labels: bool = True,
-        legend_position: str = "right",
-        render_ocr: bool = False,
-        **kwargs,  # Pass other args to pdfplumber.page.to_image if needed (internal API)
-    ) -> Optional[Image.Image]:
-        """
-        Renders a specific page with its highlights.
-        Legend is now generated based only on highlights present on this page.
-
-        Args:
-            page_index: The 0-based index of the page to render.
-            resolution: Resolution (DPI) for the base page image if width/height not in kwargs.
-                       Defaults to 144 DPI (equivalent to previous scale=2.0).
-            labels: Whether to include a legend for highlights.
-            legend_position: Position of the legend.
-            render_ocr: Whether to render OCR text on the image.
-            kwargs: Additional keyword arguments for pdfplumber's internal page.to_image (e.g., width, height).
-
-        Returns:
-            A PIL Image object of the rendered page, or None if rendering fails.
-        """
-        if page_index < 0 or page_index >= len(self._pdf.pages):
-            logger.error(f"Invalid page index {page_index} for rendering.")
-            return None
-
-        page_obj = self._pdf[page_index]  # Renamed to avoid conflict
-        highlights_on_page = self.get_highlights_for_page(page_index)
-
-        to_image_args = kwargs.copy()
-        actual_scale_x = None
-        actual_scale_y = None
-
-        if "width" in to_image_args and to_image_args["width"] is not None:
-            logger.debug(f"Rendering page {page_index} with width={to_image_args['width']}.")
-            if "height" in to_image_args:
-                to_image_args.pop("height", None)
-            # Actual scale will be calculated after image creation
-        elif "height" in to_image_args and to_image_args["height"] is not None:
-            logger.debug(f"Rendering page {page_index} with height={to_image_args['height']}.")
-            # Actual scale will be calculated after image creation
-        else:
-            # Use explicit resolution if provided via kwargs, otherwise fallback to the
-            # `resolution` parameter (which might be None).  If we still end up with
-            # `None`, default to 144 DPI to avoid downstream errors.
-            render_resolution = to_image_args.pop("resolution", resolution)
-            if render_resolution is None:
-                render_resolution = 144
-
-            # Reinstate into kwargs for pdfplumber
-            to_image_args["resolution"] = render_resolution
-
-            actual_scale_x = render_resolution / 72.0
-            actual_scale_y = render_resolution / 72.0
-            logger.debug(
-                f"Rendering page {page_index} with resolution {render_resolution} (scale: {actual_scale_x:.2f})."
-            )
-
-        try:
-            img_object = page_obj._page.to_image(**to_image_args)
-            base_image_pil = (
-                img_object.annotated
-                if hasattr(img_object, "annotated")
-                else img_object._repr_png_()
-            )
-            if isinstance(base_image_pil, bytes):
-                from io import BytesIO
-
-                base_image_pil = Image.open(BytesIO(base_image_pil))
-            base_image_pil = base_image_pil.convert("RGBA")  # Ensure RGBA for renderer
-            logger.debug(f"Base image for page {page_index} rendered. Size: {base_image_pil.size}.")
-
-            if actual_scale_x is None or actual_scale_y is None:  # If not set by resolution path
-                if page_obj.width > 0:
-                    actual_scale_x = base_image_pil.width / page_obj.width
-                else:
-                    actual_scale_x = resolution / 72.0  # Fallback to resolution-based scale
-                if page_obj.height > 0:
-                    actual_scale_y = base_image_pil.height / page_obj.height
-                else:
-                    actual_scale_y = resolution / 72.0  # Fallback to resolution-based scale
-                logger.debug(
-                    f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f}"
-                )
-
-        except IOError as e:
-            logger.error(f"IOError creating base image for page {page_index}: {e}")
-            raise
-        except AttributeError as e:
-            logger.error(f"AttributeError creating base image for page {page_index}: {e}")
-            raise
-
-        renderer_scale = actual_scale_x  # Assuming aspect ratio maintained, use x_scale
-
-        # --- Render Highlights ---
-        rendered_image: Image.Image
-        if highlights_on_page:
-            renderer = HighlightRenderer(
-                page=page_obj,
-                base_image=base_image_pil,
-                highlights=highlights_on_page,
-                scale_factor=renderer_scale,  # Use the determined actual scale
-                render_ocr=render_ocr,
-            )
-            rendered_image = renderer.render()
-        else:
-            if render_ocr:
-                # Still render OCR even if no highlights, using the determined actual scale
-                renderer = HighlightRenderer(
-                    page=page_obj,
-                    base_image=base_image_pil,
-                    highlights=[],
-                    scale_factor=renderer_scale,
-                    render_ocr=True,
-                )
-                rendered_image = renderer.render()
-            else:
-                rendered_image = base_image_pil  # No highlights, no OCR requested
-
-        # --- Add Legend or Colorbar (Based ONLY on this page's highlights) ---
-        if labels:
-            # Check if we have quantitative metadata (for colorbar)
-            quantitative_metadata = None
-            for hl in highlights_on_page:
-                if hasattr(hl, "quantitative_metadata") and hl.quantitative_metadata:
-                    quantitative_metadata = hl.quantitative_metadata
-                    break
-
-            if quantitative_metadata:
-                # Create colorbar for quantitative data
-                from natural_pdf.utils.visualization import create_colorbar
-
-                try:
-                    colorbar = create_colorbar(
-                        values=quantitative_metadata["values"],
-                        colormap=quantitative_metadata["colormap"],
-                        bins=quantitative_metadata["bins"],
-                        orientation=(
-                            "horizontal" if legend_position in ["top", "bottom"] else "vertical"
-                        ),
-                    )
-                    rendered_image = merge_images_with_legend(
-                        rendered_image, colorbar, legend_position
-                    )
-                    logger.debug(
-                        f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' on page {page_index}."
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to create colorbar for page {page_index}: {e}")
-                    # Fall back to regular legend
-                    quantitative_metadata = None
-
-            if not quantitative_metadata:
-                # Create regular categorical legend
-                labels_colors_on_page: Dict[str, RGBAColor] = {}
-                for hl in highlights_on_page:
-                    if hl.label and hl.label not in labels_colors_on_page:
-                        labels_colors_on_page[hl.label] = hl.color
-
-                if labels_colors_on_page:  # Only add legend if there are labels on this page
-                    legend = create_legend(labels_colors_on_page)
-                    if legend:  # Ensure create_legend didn't return None
-                        rendered_image = merge_images_with_legend(
-                            rendered_image, legend, legend_position
-                        )
-                        logger.debug(
-                            f"Added legend with {len(labels_colors_on_page)} labels for page {page_index}."
-                        )
-                    else:
-                        logger.debug(f"Legend creation returned None for page {page_index}.")
-                else:
-                    logger.debug(f"No labels found on page {page_index}, skipping legend.")
-
-        return rendered_image
-
     def render_preview(
         self,
         page_index: int,
@@ -969,18 +651,17 @@ class HighlightingService:
         Renders a preview image for a specific page containing only the
         provided temporary highlights. Does not affect persistent state.
 
+        Delegates to ``_render_spec`` via a temporary ``RenderSpec``.
+
         Args:
             page_index: Index of the page to render.
-            temporary_highlights: List of highlight data dicts (from ElementCollection._prepare).
-            resolution: Resolution (DPI) for base page image rendering if width/height not used.
-                       Defaults to 144 DPI (equivalent to previous scale=2.0).
+            temporary_highlights: List of highlight data dicts.
+            resolution: Resolution (DPI) for base page image rendering.
             labels: Whether to include a legend.
             legend_position: Position of the legend.
             render_ocr: Whether to render OCR text.
-            crop_bbox: Optional bounding box (x0, top, x1, bottom) in PDF coordinate
-                space to crop the output image to, before legends or other overlays are
-                applied. If None, no cropping is performed.
-            **kwargs: Additional args for pdfplumber's internal to_image (e.g., width, height).
+            crop_bbox: Optional bounding box in PDF coordinates to crop to.
+            **kwargs: Additional args (e.g., width, height).
 
         Returns:
             PIL Image of the preview, or None if rendering fails.
@@ -991,201 +672,72 @@ class HighlightingService:
 
         page_obj = self._pdf.pages[page_index]
 
-        to_image_args = kwargs.copy()
-        actual_scale_x = None
-        actual_scale_y = None
+        # Build a RenderSpec from the temporary highlights
+        from natural_pdf.core.render_spec import RenderSpec
 
-        # Determine arguments for page._page.to_image()
-        if "width" in to_image_args and to_image_args["width"] is not None:
-            logger.debug(
-                f"Rendering preview for page {page_index} with width={to_image_args['width']}."
-            )
-            # Resolution is implicitly handled by pdfplumber when width is set
-            if "height" in to_image_args:
-                to_image_args.pop("height", None)
-            # after image is created, we will calculate actual_scale_x and actual_scale_y
+        spec = RenderSpec(page=page_obj, crop_bbox=crop_bbox)
 
-        elif "height" in to_image_args and to_image_args["height"] is not None:
-            logger.debug(
-                f"Rendering preview for page {page_index} with height={to_image_args['height']}."
-            )
-            # Resolution is implicitly handled by pdfplumber when height is set
-            # after image is created, we will calculate actual_scale_x and actual_scale_y
-        else:
-            # Neither width nor height is provided, rely on `resolution`.
-            # If `resolution` was explicitly passed as `None`, fall back to 144 DPI.
-            render_resolution = 144 if resolution is None else resolution
-            to_image_args["resolution"] = render_resolution
-
-            actual_scale_x = render_resolution / 72.0
-            actual_scale_y = render_resolution / 72.0
-            logger.debug(
-                f"Rendering preview for page {page_index} with resolution={render_resolution} (scale: {actual_scale_x:.2f})."
+        for hl_data in temporary_highlights:
+            # Resolve color using the same logic as before
+            final_color = self._determine_highlight_color(
+                color_input=hl_data.get("color"),
+                label=hl_data.get("label"),
+                use_color_cycling=hl_data.get("use_color_cycling", False),
             )
 
-        try:
-            img_object = page_obj._page.to_image(**to_image_args)
-            base_image_pil = (
-                img_object.annotated
-                if hasattr(img_object, "annotated")
-                else img_object._repr_png_()
-            )
-            if isinstance(base_image_pil, bytes):
-                from io import BytesIO
+            # Extract attributes from element if requested
+            attrs_to_draw = {}
+            element = hl_data.get("element")
+            annotate = hl_data.get("annotate")
+            if element and annotate:
+                for attr_name in annotate:
+                    try:
+                        attr_value = getattr(element, attr_name, None)
+                        if attr_value is not None:
+                            attrs_to_draw[attr_name] = attr_value
+                    except AttributeError:
+                        logger.warning(f"Attribute '{attr_name}' not found on element {element}")
 
-                base_image_pil = Image.open(BytesIO(base_image_pil))
-            base_image_pil = base_image_pil.convert("RGB")
+            # Resolve bbox
+            bbox_value = extract_bbox(cast(Any, hl_data.get("bbox")))
+            polygon_value = hl_data.get("polygon")
+            if bbox_value is None and not polygon_value:
+                continue
 
-            # If scale was not determined by resolution, calculate it now from base_image_pil dimensions
-            if actual_scale_x is None or actual_scale_y is None:
-                if page_obj.width > 0:
-                    actual_scale_x = base_image_pil.width / page_obj.width
-                else:
-                    actual_scale_x = resolution / 72.0  # Fallback to resolution-based scale
-                if page_obj.height > 0:
-                    actual_scale_y = base_image_pil.height / page_obj.height
-                else:
-                    actual_scale_y = resolution / 72.0  # Fallback to resolution-based scale
-                logger.debug(
-                    f"Calculated actual scales for page {page_index}: x={actual_scale_x:.2f}, y={actual_scale_y:.2f} from image size {base_image_pil.size} and page size ({page_obj.width}, {page_obj.height})"
-                )
-
-            # Convert temporary highlight dicts to Highlight objects
-            preview_highlights = []
-            for hl_data in temporary_highlights:
-                final_color = self._determine_highlight_color(
-                    color_input=hl_data.get("color"),
-                    label=hl_data.get("label"),
-                    use_color_cycling=hl_data.get("use_color_cycling", False),
-                )
-                attrs_to_draw = {}
-                element = hl_data.get("element")
-                annotate = hl_data.get("annotate")
-                if element and annotate:
-                    for attr_name in annotate:
-                        try:
-                            attr_value = getattr(element, attr_name, None)
-                            if attr_value is not None:
-                                attrs_to_draw[attr_name] = attr_value
-                        except AttributeError:
-                            logger.warning(
-                                f"Attribute '{attr_name}' not found on element {element}"
-                            )
-                bbox_value = extract_bbox(cast(Any, hl_data.get("bbox")))
-                polygon_value = hl_data.get("polygon")
-                if bbox_value is None and not polygon_value:
-                    continue
-
-                if bbox_value is not None:
-                    highlight_bbox = cast(Tuple[float, float, float, float], bbox_value)
-                elif polygon_value:
+            highlight_entry: Dict[str, Any] = {
+                "color": final_color,
+                "label": hl_data.get("label"),
+            }
+            if bbox_value is not None:
+                highlight_entry["bbox"] = cast(Tuple[float, float, float, float], bbox_value)
+            if polygon_value:
+                highlight_entry["polygon"] = polygon_value
+                if bbox_value is None:
                     xs = [pt[0] for pt in polygon_value]
                     ys = [pt[1] for pt in polygon_value]
-                    highlight_bbox = (min(xs), min(ys), max(xs), max(ys))
-                else:
-                    continue
+                    highlight_entry["bbox"] = (min(xs), min(ys), max(xs), max(ys))
+            if attrs_to_draw:
+                highlight_entry["attributes_to_draw"] = attrs_to_draw
 
-                preview_highlights.append(
-                    Highlight(
-                        page_index=hl_data["page_index"],
-                        bbox=highlight_bbox,
-                        polygon=polygon_value,
-                        color=final_color,
-                        label=hl_data.get("label"),
-                        attributes=attrs_to_draw,
-                    )
-                )
+            quantitative_metadata = hl_data.get("quantitative_metadata")
+            if quantitative_metadata:
+                highlight_entry["quantitative_metadata"] = quantitative_metadata
 
-            # Use the calculated actual_scale_x for the HighlightRenderer
-            # Assuming HighlightRenderer can handle a single scale or we adapt it.
-            # For now, pdfplumber usually maintains aspect ratio, so one scale should be okay.
-            # If not, HighlightRenderer needs to accept scale_x and scale_y.
-            # We will use actual_scale_x assuming aspect ratio is maintained by pdfplumber,
-            # or if not, it's a reasonable approximation for highlight scaling.
-            renderer_scale = actual_scale_x
+            spec.highlights.append(highlight_entry)
 
-            renderer = HighlightRenderer(
-                page=page_obj,
-                base_image=base_image_pil,
-                highlights=preview_highlights,
-                scale_factor=renderer_scale,
-                render_ocr=render_ocr,
-            )
-            rendered_image = renderer.render()
+        # Extract width from kwargs for _render_spec
+        render_width = kwargs.pop("width", None)
 
-            # --- Optional Cropping BEFORE legend addition ---
-            if crop_bbox is not None:
-                cb_x0, cb_top, cb_x1, cb_bottom = crop_bbox
-                # Convert to pixel coordinates using actual scales
-                left_px = int(cb_x0 * actual_scale_x) - 1
-                top_px = int(cb_top * actual_scale_y) - 1
-                right_px = int(cb_x1 * actual_scale_x) + 1
-                bottom_px = int(cb_bottom * actual_scale_y) + 1
-
-                # Safeguard coordinates within bounds
-                left_px = max(0, min(left_px, rendered_image.width - 1))
-                top_px = max(0, min(top_px, rendered_image.height - 1))
-                right_px = max(left_px + 1, min(right_px, rendered_image.width))
-                bottom_px = max(top_px + 1, min(bottom_px, rendered_image.height))
-
-                rendered_image = rendered_image.crop((left_px, top_px, right_px, bottom_px))
-
-            legend = None
-            if labels:
-                # Check if we have quantitative metadata (for colorbar)
-                quantitative_metadata = None
-                for hl_data in temporary_highlights:
-                    if "quantitative_metadata" in hl_data and hl_data["quantitative_metadata"]:
-                        quantitative_metadata = hl_data["quantitative_metadata"]
-                        break
-
-                final_image = rendered_image
-
-                if quantitative_metadata:
-                    # Create colorbar for quantitative data
-                    from natural_pdf.utils.visualization import create_colorbar
-
-                    try:
-                        colorbar = create_colorbar(
-                            values=quantitative_metadata["values"],
-                            colormap=quantitative_metadata["colormap"],
-                            bins=quantitative_metadata["bins"],
-                            orientation=(
-                                "horizontal" if legend_position in ["top", "bottom"] else "vertical"
-                            ),
-                        )
-                        final_image = merge_images_with_legend(
-                            rendered_image, colorbar, position=legend_position
-                        )
-                        logger.debug(
-                            f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' on page {page_index}."
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to create colorbar for page {page_index}: {e}")
-                        # Fall back to regular legend
-                        quantitative_metadata = None
-
-                if not quantitative_metadata:
-                    # Create regular categorical legend
-                    preview_labels: Dict[str, RGBAColor] = {
-                        cast(str, h.label): h.color for h in preview_highlights if h.label
-                    }
-                    if preview_labels:
-                        legend = create_legend(preview_labels)
-                        final_image = merge_images_with_legend(
-                            rendered_image, legend, position=legend_position
-                        )
-            else:
-                final_image = rendered_image
-
-        except IOError as e:
-            logger.error(f"IOError rendering preview for page {page_index}: {e}")
-            raise
-        except AttributeError as e:
-            logger.error(f"AttributeError rendering preview for page {page_index}: {e}")
-            raise
-
-        return final_image
+        return self._render_spec(
+            spec=spec,
+            resolution=resolution if resolution is not None else 144,
+            width=render_width,
+            labels=labels,
+            label_format=None,
+            render_ocr=render_ocr,
+            legend_position=legend_position,
+            spec_index=0,
+        )
 
     def unified_render(
         self,
@@ -1194,6 +746,7 @@ class HighlightingService:
         width: Optional[int] = None,
         labels: bool = True,
         label_format: Optional[str] = None,
+        render_ocr: bool = False,
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
@@ -1214,6 +767,7 @@ class HighlightingService:
             width: Target width in pixels (overrides resolution)
             labels: Whether to show labels for highlights
             label_format: Format string for labels
+            render_ocr: Whether to render OCR text overlay
             layout: How to arrange multiple images
             stack_direction: Direction for stack layout
             gap: Pixels between images
@@ -1242,6 +796,7 @@ class HighlightingService:
                 width=width,
                 labels=labels,
                 label_format=label_format,
+                render_ocr=render_ocr,
                 legend_position=legend_position,
                 spec_index=spec_idx,
                 **kwargs,
@@ -1280,8 +835,9 @@ class HighlightingService:
         width: Optional[int],
         labels: bool,
         label_format: Optional[str],
-        legend_position: str,
-        spec_index: int,
+        render_ocr: bool = False,
+        legend_position: str = "right",
+        spec_index: int = 0,
         **kwargs,
     ) -> Optional[Image.Image]:
         """Render a single RenderSpec to an image."""
@@ -1299,6 +855,8 @@ class HighlightingService:
             # Use provided resolution or default
             actual_resolution = resolution if resolution is not None else 150
 
+        scale_factor = actual_resolution / 72
+
         # Get base page image
         logger.debug(f"Calling render_plain_page with page={page}, resolution={actual_resolution}")
         page_image = render_plain_page(page, resolution=actual_resolution)
@@ -1307,9 +865,7 @@ class HighlightingService:
 
         # Apply crop if specified
         if spec.crop_bbox:
-            page_image = self._crop_image(
-                page_image, spec.crop_bbox, page, actual_resolution / 72  # scale factor
-            )
+            page_image = self._crop_image(page_image, spec.crop_bbox, page, scale_factor)
 
         # Apply highlights if any
         if spec.highlights:
@@ -1317,72 +873,73 @@ class HighlightingService:
                 page_image,
                 spec.highlights,
                 page,
-                actual_resolution / 72,  # scale factor
+                scale_factor,
                 labels=labels,
                 label_format=label_format,
                 spec_index=spec_index,
-                crop_offset=spec.crop_bbox[:2] if spec.crop_bbox else None,  # Pass crop offset
+                crop_offset=spec.crop_bbox[:2] if spec.crop_bbox else None,
             )
 
-            # Add legend or colorbar if labels are enabled
-            if labels:
-                # Import visualization functions
-                from natural_pdf.utils.visualization import (
-                    create_colorbar,
-                    create_legend,
-                    merge_images_with_legend,
+        # Apply OCR overlay (after highlights, before legend)
+        if render_ocr:
+            page_image = render_ocr_overlay(page, page_image, scale_factor)
+
+        # Add legend or colorbar if labels are enabled
+        if spec.highlights and labels:
+            from natural_pdf.utils.visualization import (
+                create_colorbar,
+                create_legend,
+                merge_images_with_legend,
+            )
+
+            # Check if we have quantitative metadata (for colorbar)
+            quantitative_metadata = None
+            for highlight_data in spec.highlights:
+                if (
+                    "quantitative_metadata" in highlight_data
+                    and highlight_data["quantitative_metadata"]
+                ):
+                    quantitative_metadata = highlight_data["quantitative_metadata"]
+                    break
+
+            if quantitative_metadata:
+                colorbar = create_colorbar(
+                    values=quantitative_metadata["values"],
+                    colormap=quantitative_metadata["colormap"],
+                    bins=quantitative_metadata["bins"],
+                    orientation=(
+                        "horizontal" if legend_position in ["top", "bottom"] else "vertical"
+                    ),
+                )
+                page_image = merge_images_with_legend(
+                    page_image, colorbar, position=legend_position
+                )
+                logger.debug(
+                    f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' in spec {spec_index}."
                 )
 
-                # Check if we have quantitative metadata (for colorbar)
-                quantitative_metadata = None
-                for highlight_data in spec.highlights:
-                    if (
-                        "quantitative_metadata" in highlight_data
-                        and highlight_data["quantitative_metadata"]
-                    ):
-                        quantitative_metadata = highlight_data["quantitative_metadata"]
-                        break
+            if not quantitative_metadata:
+                # Create regular categorical legend
+                spec_labels = {}
+                for hl in spec.highlights:
+                    label = hl.get("label")
+                    color = hl.get("color")
+                    if label and color:
+                        processed_color = self._process_color_input(color)
+                        if processed_color:
+                            spec_labels[label] = processed_color
+                        else:
+                            spec_labels[label] = self._color_manager.get_color(label=label)
 
-                if quantitative_metadata:
-                    colorbar = create_colorbar(
-                        values=quantitative_metadata["values"],
-                        colormap=quantitative_metadata["colormap"],
-                        bins=quantitative_metadata["bins"],
-                        orientation=(
-                            "horizontal" if legend_position in ["top", "bottom"] else "vertical"
-                        ),
-                    )
-                    page_image = merge_images_with_legend(
-                        page_image, colorbar, position=legend_position
-                    )
-                    logger.debug(
-                        f"Added colorbar for quantitative attribute '{quantitative_metadata['attribute']}' in spec {spec_index}."
-                    )
-
-                if not quantitative_metadata:
-                    # Create regular categorical legend
-                    spec_labels = {}
-                    for hl in spec.highlights:
-                        label = hl.get("label")
-                        color = hl.get("color")
-                        if label and color:
-                            # Process color to ensure it's an RGBA tuple
-                            processed_color = self._process_color_input(color)
-                            if processed_color:
-                                spec_labels[label] = processed_color
-                            else:
-                                # Fallback to color manager if processing fails
-                                spec_labels[label] = self._color_manager.get_color(label=label)
-
-                    if spec_labels:
-                        legend = create_legend(spec_labels)
-                        if legend:
-                            page_image = merge_images_with_legend(
-                                page_image, legend, position=legend_position
-                            )
-                            logger.debug(
-                                f"Added legend with {len(spec_labels)} labels for spec {spec_index}."
-                            )
+                if spec_labels:
+                    legend = create_legend(spec_labels)
+                    if legend:
+                        page_image = merge_images_with_legend(
+                            page_image, legend, position=legend_position
+                        )
+                        logger.debug(
+                            f"Added legend with {len(spec_labels)} labels for spec {spec_index}."
+                        )
 
         return page_image
 
@@ -1479,7 +1036,10 @@ class HighlightingService:
                 page_offset_y = -page._page.bbox[1]
 
             # Draw the highlight
+            border_color = (color[0], color[1], color[2], BORDER_ALPHA)
+            vertex_size = max(3, int(2 * scale_factor))
             scaled_bbox = None
+
             if polygon is not None:
                 # Scale polygon points and apply offset
                 scaled_polygon = [
@@ -1489,9 +1049,8 @@ class HighlightingService:
                     )
                     for p in polygon
                 ]
-                draw.polygon(
-                    scaled_polygon, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
-                )
+                draw.polygon(scaled_polygon, fill=color, outline=border_color)
+                draw_vertices(draw, scaled_polygon, border_color, vertex_size)
                 # Compute bounding box from polygon for attribute drawing
                 xs = [p[0] for p in scaled_polygon]
                 ys = [p[1] for p in scaled_polygon]
@@ -1505,9 +1064,14 @@ class HighlightingService:
                     (x1 + page_offset_x) * scale_factor - offset_x,
                     (y1 + page_offset_y) * scale_factor - offset_y,
                 ]
-                draw.rectangle(
-                    scaled_bbox, fill=color, outline=(color[0], color[1], color[2], BORDER_ALPHA)
-                )
+                draw.rectangle(scaled_bbox, fill=color, outline=border_color)
+                vertices = [
+                    (scaled_bbox[0], scaled_bbox[1]),
+                    (scaled_bbox[2], scaled_bbox[1]),
+                    (scaled_bbox[2], scaled_bbox[3]),
+                    (scaled_bbox[0], scaled_bbox[3]),
+                ]
+                draw_vertices(draw, vertices, border_color, vertex_size)
 
             # Draw attributes if present
             if scaled_bbox is not None:

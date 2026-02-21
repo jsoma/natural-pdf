@@ -83,6 +83,8 @@ class RenderSpec:
         color: Optional[ColorInput] = None,
         label: Optional[str] = None,
         element: Optional[Any] = None,
+        attributes_to_draw: Optional[Dict[str, Any]] = None,
+        quantitative_metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Add a highlight to this render spec.
 
@@ -92,6 +94,8 @@ class RenderSpec:
             color: Color for the highlight
             label: Label text for the highlight
             element: Source element reference
+            attributes_to_draw: Key-value pairs to draw on the highlight
+            quantitative_metadata: Colorbar metadata for quantitative attributes
         """
         if bbox is None and polygon is None and element is not None:
             # Extract geometry from element
@@ -107,12 +111,14 @@ class RenderSpec:
         if bbox is None and polygon is None:
             raise ValueError("Must provide bbox, polygon, or element with geometry")
 
-        highlight = {
+        highlight: Dict[str, Any] = {
             "bbox": bbox,
             "polygon": polygon,
             "color": color,
             "label": label,
             "element": element,
+            "attributes_to_draw": attributes_to_draw,
+            "quantitative_metadata": quantitative_metadata,
         }
         # Remove None values
         highlight = {k: v for k, v in highlight.items() if v is not None}
@@ -231,6 +237,7 @@ class Visualizable:
         highlights: Optional[Union[List[Dict[str, Any]], bool]] = None,
         legend_position: str = "right",
         annotate: Optional[Union[str, List[str]]] = None,
+        render_ocr: bool = False,
         layout: Optional[Literal["stack", "grid", "single"]] = None,
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
@@ -254,6 +261,7 @@ class Visualizable:
             highlights: Additional highlight groups to show, or False to disable all highlights
             legend_position: Position of legend/colorbar ('right', 'left', 'top', 'bottom')
             annotate: Attribute name(s) to display on highlights (string or list)
+            render_ocr: Whether to render OCR text overlay on the image
             layout: How to arrange multiple pages/regions (defaults to 'grid' for multi-page, 'single' for single page)
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
@@ -281,6 +289,7 @@ class Visualizable:
             highlights=highlights,
             legend_position=legend_position,
             annotate=annotate,
+            render_ocr=render_ocr,
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,

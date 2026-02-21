@@ -388,6 +388,8 @@ class Page(
                     color=highlight.color,
                     label=highlight.label,
                     element=None,  # Persistent highlights don't have element refs
+                    attributes_to_draw=highlight.attributes if highlight.attributes else None,
+                    quantitative_metadata=highlight.quantitative_metadata,
                 )
 
             # Add additional highlight groups if provided
@@ -2266,42 +2268,6 @@ class Page(
     def __repr__(self) -> str:
         """String representation of the page."""
         return f"<Page number={self.number} index={self.index}>"
-
-    def show_preview(
-        self,
-        temporary_highlights: List[Dict],
-        resolution: float = 144,
-        width: Optional[int] = None,
-        labels: bool = True,
-        legend_position: str = "right",
-        render_ocr: bool = False,
-    ) -> Optional[Image.Image]:
-        """
-        Generates and returns a non-stateful preview image containing only
-        the provided temporary highlights.
-
-        Args:
-            temporary_highlights: List of highlight data dictionaries (as prepared by
-                                    ElementCollection._prepare_highlight_data).
-            resolution: Resolution in DPI for rendering (default: 144 DPI, equivalent to previous scale=2.0).
-            width: Optional width for the output image.
-            labels: Whether to include a legend.
-            legend_position: Position of the legend.
-            render_ocr: Whether to render OCR text.
-
-        Returns:
-            PIL Image object of the preview, or None if rendering fails.
-        """
-        return self.services.rendering.render_preview(
-            self,
-            page_index=self.index,
-            temporary_highlights=temporary_highlights,
-            resolution=resolution,
-            width=width,
-            labels=labels,
-            legend_position=legend_position,
-            render_ocr=render_ocr,
-        )
 
     @property
     def text_style_labels(self) -> List[str]:
