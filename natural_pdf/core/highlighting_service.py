@@ -35,6 +35,25 @@ RGBAColor = Tuple[int, int, int, int]
 
 _FONT_FALLBACK = ["DejaVuSans.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"]
 
+# Cached font path: None = not yet probed, False = all failed, str = valid path
+_cached_font_path: Union[str, bool, None] = None
+
+
+def _get_font_path() -> Optional[str]:
+    """Find and cache the first available truetype font from the fallback list."""
+    global _cached_font_path
+    if _cached_font_path is not None:
+        return _cached_font_path if _cached_font_path else None
+    for fname in _FONT_FALLBACK:
+        try:
+            ImageFont.truetype(fname, 10)
+            _cached_font_path = fname
+            return fname
+        except (IOError, OSError):
+            continue
+    _cached_font_path = False
+    return None
+
 
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
     """Try fonts in fallback order, return default if all fail."""
@@ -98,15 +117,8 @@ def render_ocr_overlay(
     overlay = Image.new("RGBA", result_image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Find a suitable font path for size-varying loads below
-    font_path = None
-    for fname in _FONT_FALLBACK:
-        try:
-            ImageFont.truetype(fname, 10)
-            font_path = fname
-            break
-        except (IOError, OSError):
-            continue
+    # Find a suitable font path (cached at module level)
+    font_path = _get_font_path()
 
     for element in ocr_elements:
         x0, top, x1, bottom = element.bbox
@@ -737,6 +749,7 @@ class HighlightingService:
             render_ocr=render_ocr,
             legend_position=legend_position,
             spec_index=0,
+            **kwargs,
         )
 
     def unified_render(

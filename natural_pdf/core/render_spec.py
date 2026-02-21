@@ -305,6 +305,7 @@ class Visualizable:
         *,
         resolution: Optional[float] = None,
         width: Optional[int] = None,
+        render_ocr: bool = False,
         layout: Literal["stack", "grid", "single"] = "stack",
         stack_direction: Literal["vertical", "horizontal"] = "vertical",
         gap: int = 5,
@@ -321,6 +322,7 @@ class Visualizable:
         Args:
             resolution: DPI for rendering (default from global settings)
             width: Target width in pixels (overrides resolution)
+            render_ocr: Whether to render OCR text overlay on the image
             layout: How to arrange multiple pages/regions
             stack_direction: Direction for stack layout
             gap: Pixels between stacked images
@@ -336,6 +338,7 @@ class Visualizable:
             self,
             resolution=resolution,
             width=width,
+            render_ocr=render_ocr,
             layout=layout,
             stack_direction=stack_direction,
             gap=gap,
