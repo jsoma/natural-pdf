@@ -162,6 +162,23 @@ class PaddleOCROptions(BaseOCROptions):
             )
 
 
+# --- PaddleOCR-VL Specific Options ---
+@dataclass
+class PaddleOCRVLOptions(BaseOCROptions):
+    """
+    Specific options for the PaddleOCR-VL engine (VLM-based document understanding).
+    See: https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/pipeline_usage/PP-ChatOCRv4.html
+    """
+
+    pipeline_version: Optional[str] = None
+    use_layout_detection: Optional[bool] = None
+    use_chart_recognition: Optional[bool] = None
+    use_seal_recognition: Optional[bool] = None
+    use_doc_orientation_classify: Optional[bool] = None
+    use_doc_unwarping: Optional[bool] = None
+    format_block_content: Optional[bool] = None
+
+
 # --- Surya Specific Options ---
 @dataclass
 class SuryaOCROptions(BaseOCROptions):
@@ -243,6 +260,7 @@ class RapidOCROptions(BaseOCROptions):
 OCROptions = Union[
     EasyOCROptions,
     PaddleOCROptions,
+    PaddleOCRVLOptions,
     SuryaOCROptions,
     DoctrOCROptions,
     RapidOCROptions,

@@ -17,6 +17,7 @@ from .engine import OCREngine
 from .engine_doctr import DoctrOCREngine
 from .engine_easyocr import EasyOCREngine
 from .engine_paddle import PaddleOCREngine
+from .engine_paddleocr_vl import PaddleOCRVLEngine
 from .engine_rapidocr import RapidOCREngine
 from .engine_surya import SuryaOCREngine
 from .ocr_options import (
@@ -24,6 +25,7 @@ from .ocr_options import (
     DoctrOCROptions,
     EasyOCROptions,
     PaddleOCROptions,
+    PaddleOCRVLOptions,
     RapidOCROptions,
     SuryaOCROptions,
 )
@@ -53,6 +55,7 @@ ENGINE_REGISTRY: Dict[str, EngineRegistryEntry] = {
     "surya": {"provider": SuryaOCREngine, "options_class": SuryaOCROptions},
     "doctr": {"provider": DoctrOCREngine, "options_class": DoctrOCROptions},
     "rapidocr": {"provider": RapidOCREngine, "options_class": RapidOCROptions},
+    "paddlevl": {"provider": PaddleOCRVLEngine, "options_class": PaddleOCRVLOptions},
 }
 
 
@@ -79,7 +82,7 @@ def _create_engine_instance(engine_name: str) -> OCREngine:
     if not engine_instance.is_available():
         raise RuntimeError(
             f"OCR engine '{engine_name}' is not available. "
-            "Install optional dependencies with 'pip install \"natural-pdf[ocr-ai]\"'."
+            "Install optional dependencies with 'pip install \"natural-pdf[ai]\"'."
         )
     return engine_instance
 
