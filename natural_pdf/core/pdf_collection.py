@@ -34,6 +34,8 @@ from natural_pdf.classification.pipelines import ClassificationError
 # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(threadName)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Import the ApplyMixin
+from natural_pdf.collections.mixins import ApplyMixin
 from natural_pdf.core.context import PDFContext
 from natural_pdf.core.highlighting_service import HighlightingService
 from natural_pdf.core.pdf import PDF
@@ -41,13 +43,6 @@ from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.export.mixin import ExportMixin
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
-
-Indexable = Any
-SearchOptions = Any
-SearchServiceProtocol = Any
-
-# Import the ApplyMixin
-from natural_pdf.collections.mixins import ApplyMixin
 
 
 class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin):
@@ -83,7 +78,6 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
             if isinstance(source_list[0], PDF):
                 if all(isinstance(item, PDF) for item in source_list):
                     self._pdfs = [cast("PDF", item) for item in source_list]
-                    # Don't adopt search context anymore
                     self._bind_service_context()
                     return
                 else:
@@ -97,9 +91,6 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         self._initialize_pdfs(resolved_paths_or_urls, PDF)  # Pass PDF class
 
         self._iter_index = 0
-
-        # Initialize internal search service reference (available when search extras installed)
-        self._search_service: Optional[Any] = None
 
         self._bind_service_context()
 
@@ -628,24 +619,53 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
 
         return export_training_data(source=self, output_dir=output_dir, **kwargs)
 
-    # --- Mixin Required Implementation ---
-    def get_indexable_items(self) -> Iterable[Indexable]:
-        """Yields Page objects from the collection, conforming to Indexable."""
-        if not self._pdfs:
-            return  # Return empty iterator if no PDFs
+    # --- Semantic Search ---
 
+    def search(
+        self,
+        query: str,
+        *,
+        top_k: int = 5,
+        model: Optional[str] = None,
+    ) -> "PageCollection":
+        """Semantic search across pages in all PDFs in this collection.
+
+        Finds the pages most relevant to the query using sentence-transformers
+        embeddings. Pages from all PDFs are ranked together.
+
+        Args:
+            query: Text to search for.
+            top_k: Number of pages to return.
+            model: Embedding model name (default: all-MiniLM-L6-v2).
+
+        Returns:
+            PageCollection of the most relevant pages, ordered by relevance.
+            Each page has a ``_search_score`` attribute with the similarity score.
+        """
+        from natural_pdf.core.page_collection import PageCollection
+        from natural_pdf.search.search_service import SearchService
+
+        model_name = model or "all-MiniLM-L6-v2"
+
+        # Gather all pages across all PDFs
+        all_pages = []
         for pdf in self._pdfs:
-            if not pdf.pages:  # Handle case where a PDF might have 0 pages after loading
-                logger.warning(f"PDF '{pdf.path}' has no pages. Skipping.")
-                continue
-            for page in pdf.pages:
-                # Optional: Add filtering here if needed (e.g., skip empty pages)
-                # Assuming Page object conforms to Indexable
-                # We might still want the empty page check here for efficiency
-                # if not page.extract_text(use_exclusions=False).strip():
-                #     logger.debug(f"Skipping empty page {page.page_number} from PDF '{pdf.path}'.")
-                #     continue
-                yield page
+            all_pages.extend(pdf.pages)
+
+        if not all_pages:
+            return PageCollection([])
+
+        embeddings = SearchService.encode_pages(all_pages, model_name=model_name)
+        results = SearchService.rank(
+            query, embeddings, all_pages, top_k=top_k, model_name=model_name
+        )
+
+        ranked_pages = []
+        for page, score in results:
+            page._search_score = score
+            ranked_pages.append(page)
+
+        return PageCollection(ranked_pages)
 
     # --- Classification Method --- #
     def classify_all(

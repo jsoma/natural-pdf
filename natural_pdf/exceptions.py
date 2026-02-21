@@ -138,19 +138,11 @@ class ExportError(NaturalPDFError):
     pass
 
 
-# --- Search/Index Errors ---
-# Note: Existing IndexConfigurationError and IndexExistsError in search module
-# should migrate to inherit from these
+# --- Search Errors ---
 
 
 class SearchError(NaturalPDFError):
-    """Error during search or indexing operations."""
-
-    pass
-
-
-class IndexError(SearchError):
-    """Error during index operations (not Python's built-in IndexError)."""
+    """Error during search operations."""
 
     pass
 

@@ -1,4 +1,3 @@
-import copy
 import io
 import logging
 import os
@@ -61,13 +60,6 @@ from natural_pdf.ocr.ocr_manager import (
     resolve_ocr_languages,
     resolve_ocr_min_confidence,
 )
-from natural_pdf.search import (
-    BaseSearchOptions,
-    SearchOptions,
-    TextSearchOptions,
-    get_search_service,
-)
-from natural_pdf.search.search_service_protocol import SearchServiceProtocol
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 
@@ -1653,118 +1645,59 @@ class PDF(
             for q in questions
         ]
 
-    def search_within_index(
+    # --- Semantic Search ---
+
+    def _get_page_embeddings(self, model_name: str) -> Any:
+        """Lazily compute and cache page embeddings for semantic search."""
+        if not hasattr(self, "_search_embeddings"):
+            self._search_embeddings: Dict[str, Any] = {}
+        if model_name not in self._search_embeddings:
+            from natural_pdf.search.search_service import SearchService
+
+            self._search_embeddings[model_name] = SearchService.encode_pages(
+                self.pages, model_name=model_name
+            )
+        return self._search_embeddings[model_name]
+
+    def search(
         self,
-        query: Union[str, Path, Image.Image, "Region"],
-        search_service: "SearchServiceProtocol",
-        options: Optional["SearchOptions"] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Finds relevant documents from this PDF within a search index.
-        Finds relevant documents from this PDF within a search index.
+        query: str,
+        *,
+        top_k: int = 5,
+        model: Optional[str] = None,
+    ) -> "PageCollection":
+        """Semantic search across pages in this PDF.
+
+        Finds the pages most relevant to the query using sentence-transformers
+        embeddings. Embeddings are cached so repeated searches are fast.
 
         Args:
-            query: The search query (text, image path, PIL Image, Region)
-            search_service: A pre-configured SearchService instance
-            options: Optional SearchOptions to configure the query
-            query: The search query (text, image path, PIL Image, Region)
-            search_service: A pre-configured SearchService instance
-            options: Optional SearchOptions to configure the query
+            query: Text to search for.
+            top_k: Number of pages to return.
+            model: Embedding model name (default: all-MiniLM-L6-v2).
 
         Returns:
-            A list of result dictionaries, sorted by relevance
-            A list of result dictionaries, sorted by relevance
-
-        Raises:
-            ImportError: If search dependencies are not installed
-            ValueError: If search_service is None
-            TypeError: If search_service does not conform to the protocol
-            FileNotFoundError: If the collection managed by the service does not exist
-            RuntimeError: For other search failures
-            ImportError: If search dependencies are not installed
-            ValueError: If search_service is None
-            TypeError: If search_service does not conform to the protocol
-            FileNotFoundError: If the collection managed by the service does not exist
-            RuntimeError: For other search failures
+            PageCollection of the most relevant pages, ordered by relevance.
+            Each page has a ``_search_score`` attribute with the similarity score.
         """
-        if not search_service:
-            raise ValueError("A configured SearchServiceProtocol instance must be provided.")
+        from natural_pdf.search.search_service import SearchService
 
-        collection_name = getattr(search_service, "collection_name", "<Unknown Collection>")
-        logger.info(
-            f"Searching within index '{collection_name}' for content from PDF '{self.path}'"
+        model_name = model or "all-MiniLM-L6-v2"
+        embeddings = self._get_page_embeddings(model_name)
+        page_list = list(self.pages)
+
+        results = SearchService.rank(
+            query, embeddings, page_list, top_k=top_k, model_name=model_name
         )
 
-        service = search_service
+        ranked_pages = []
+        for page, score in results:
+            page._search_score = score
+            ranked_pages.append(page)
 
-        query_input = query
-        effective_options = copy.deepcopy(options) if options is not None else TextSearchOptions()
+        from natural_pdf.core.page_collection import PageCollection
 
-        if isinstance(query, Region):
-            logger.debug("Query is a Region object. Extracting text.")
-            if not isinstance(effective_options, TextSearchOptions):
-                logger.warning(
-                    "Querying with Region image requires MultiModalSearchOptions. Falling back to text extraction."
-                )
-            query_input = query.extract_text()
-            if not query_input or query_input.isspace():
-                logger.error("Region has no extractable text for query.")
-                return []
-
-        # Add filter to scope search to THIS PDF
-        # Add filter to scope search to THIS PDF
-        pdf_scope_filter = {
-            "field": "pdf_path",
-            "operator": "eq",
-            "value": self.path,
-        }
-        logger.debug(f"Applying filter to scope search to PDF: {pdf_scope_filter}")
-
-        # Combine with existing filters in options (if any)
-        if effective_options.filters:
-            logger.debug("Combining PDF scope filter with existing filters")
-            if (
-                isinstance(effective_options.filters, dict)
-                and effective_options.filters.get("operator") == "AND"
-            ):
-                effective_options.filters["conditions"].append(pdf_scope_filter)
-            elif isinstance(effective_options.filters, list):
-                effective_options.filters = {
-                    "operator": "AND",
-                    "conditions": effective_options.filters + [pdf_scope_filter],
-                }
-            elif isinstance(effective_options.filters, dict):
-                effective_options.filters = {
-                    "operator": "AND",
-                    "conditions": [effective_options.filters, pdf_scope_filter],
-                }
-            else:
-                logger.warning(
-                    "Unsupported format for existing filters. Overwriting with PDF scope filter."
-                )
-                effective_options.filters = pdf_scope_filter
-        else:
-            effective_options.filters = pdf_scope_filter
-
-        logger.debug(f"Final filters for service search: {effective_options.filters}")
-
-        try:
-            results = service.search(
-                query=query_input,
-                options=effective_options,
-            )
-            logger.info(f"SearchService returned {len(results)} results from PDF '{self.path}'")
-            return results
-        except FileNotFoundError as fnf:
-            logger.error(f"Search failed: Collection not found. Error: {fnf}")
-            raise
-            logger.error(f"Search failed: Collection not found. Error: {fnf}")
-            raise
-        except Exception as e:
-            logger.error(f"SearchService search failed: {e}")
-            raise RuntimeError("Search within index failed. See logs for details.") from e
-            logger.error(f"SearchService search failed: {e}")
-            raise RuntimeError("Search within index failed. See logs for details.") from e
+        return PageCollection(ranked_pages)
 
     def export_ocr_correction_task(
         self,

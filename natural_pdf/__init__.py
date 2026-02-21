@@ -198,57 +198,6 @@ from natural_pdf.flows.region import FlowRegion
 # Judge for visual classification
 from natural_pdf.judge import Decision, Judge, JudgeError, PickResult
 
-# Search options (if extras installed)
-BaseSearchOptions: Type[Any]
-TextSearchOptions: Type[Any]
-MultiModalSearchOptions: Type[Any]
-
-try:
-    from natural_pdf.search.search_options import BaseSearchOptions as _BaseSearchOptions
-    from natural_pdf.search.search_options import (
-        MultiModalSearchOptions as _MultiModalSearchOptions,
-    )
-    from natural_pdf.search.search_options import TextSearchOptions as _TextSearchOptions
-except ImportError:  # pragma: no cover - optional dependency
-    _BaseSearchOptions = None  # type: ignore[assignment]
-    _MultiModalSearchOptions = None  # type: ignore[assignment]
-    _TextSearchOptions = None  # type: ignore[assignment]
-
-if TYPE_CHECKING:
-    from natural_pdf.search.search_options import BaseSearchOptions as _TypeCheckBaseSearchOptions
-    from natural_pdf.search.search_options import (
-        MultiModalSearchOptions as _TypeCheckMultiModalSearchOptions,
-    )
-    from natural_pdf.search.search_options import TextSearchOptions as _TypeCheckTextSearchOptions
-
-if (
-    "_BaseSearchOptions" in locals()
-    and "_MultiModalSearchOptions" in locals()
-    and "_TextSearchOptions" in locals()
-    and _BaseSearchOptions is not None
-    and _MultiModalSearchOptions is not None
-    and _TextSearchOptions is not None
-):
-    BaseSearchOptions = _BaseSearchOptions
-    MultiModalSearchOptions = _MultiModalSearchOptions
-    TextSearchOptions = _TextSearchOptions
-else:
-
-    class _SearchOptionsFallback:
-        def __init__(self, *args, **kwargs):
-            pass
-
-    class _TextSearchOptionsFallback(_SearchOptionsFallback):
-        pass
-
-    class _MultiModalSearchOptionsFallback(_SearchOptionsFallback):
-        pass
-
-    BaseSearchOptions = _SearchOptionsFallback
-    TextSearchOptions = _TextSearchOptionsFallback
-    MultiModalSearchOptions = _MultiModalSearchOptionsFallback
-
-
 # Explicitly define what gets imported with 'from natural_pdf import *'
 __all__ = [
     # Core classes
@@ -265,10 +214,6 @@ __all__ = [
     "Decision",
     "PickResult",
     "JudgeError",
-    # Search options
-    "TextSearchOptions",
-    "MultiModalSearchOptions",
-    "BaseSearchOptions",
     # VLM client
     "set_default_client",
     # Configuration

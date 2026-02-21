@@ -65,18 +65,8 @@ OPTIONAL_DEPENDENCIES: Dict[str, OptionalDependency] = {
     # Search / embeddings
     "sentence_transformers": OptionalDependency(
         "sentence_transformers",
-        ('pip install "natural-pdf[embeddings]"', 'pip install "natural-pdf[search]"'),
+        ('pip install "natural-pdf[embeddings]"',),
         "Embedding models for semantic search.",
-    ),
-    "lancedb": OptionalDependency(
-        "lancedb",
-        ('pip install "natural-pdf[search]"',),
-        "Vector database backend for semantic search.",
-    ),
-    "pyarrow": OptionalDependency(
-        "pyarrow",
-        ('pip install "natural-pdf[search]"',),
-        "Columnar storage format required by LanceDB search backend.",
     ),
     # ML Core
     "torch": OptionalDependency(

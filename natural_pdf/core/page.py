@@ -2440,41 +2440,6 @@ class Page(
         # Pass self (the Page object) to the factory method
         return InteractiveViewerWidget.from_page(self)
 
-    def get_id(self) -> str:
-        """Returns a unique identifier for the page (required by Indexable protocol)."""
-        # Ensure path is safe for use in IDs (replace problematic chars)
-        safe_path = re.sub(r"[^a-zA-Z0-9_-]", "_", str(self.pdf.path))
-        return f"pdf_{safe_path}_page_{self.page_number}"
-
-    def get_metadata(self) -> Dict[str, Any]:
-        """Returns metadata associated with the page (required by Indexable protocol)."""
-        # Add content hash here for sync
-        metadata = {
-            "pdf_path": str(self.pdf.path),
-            "page_number": self.page_number,
-            "width": self.width,
-            "height": self.height,
-            "content_hash": self.get_content_hash(),  # Include the hash
-        }
-        return metadata
-
-    def get_content(self) -> "Page":
-        """
-        Returns the primary content object (self) for indexing (required by Indexable protocol).
-        SearchService implementations decide how to process this (e.g., call extract_text).
-        """
-        return self  # Return the Page object itself
-
-    def get_content_hash(self) -> str:
-        """Returns a SHA256 hash of the extracted text content (required by Indexable for sync)."""
-        # Hash the extracted text (without exclusions for consistency)
-        # Consider if exclusions should be part of the hash? For now, hash raw text.
-        # Using extract_text directly might be slow if called repeatedly. Cache? TODO: Optimization
-        text_content = self.extract_text(
-            use_exclusions=False, preserve_whitespace=False
-        )  # Normalize whitespace?
-        return hashlib.sha256(text_content.encode("utf-8")).hexdigest()
-
     def save_searchable(self, output_path: Union[str, "Path"], dpi: int = 300):
         """
         Saves the PDF page with an OCR text layer, making content searchable.
@@ -2650,20 +2615,6 @@ class Page(
         if not hasattr(self, "metadata") or self.metadata is None:
             self.metadata = {}
         self.metadata["analysis"] = value
-
-    def inspect(self, limit: int = 30) -> "InspectionSummary":
-        """
-        Inspect all elements on this page with detailed tabular view.
-        Equivalent to page.find_all('*').inspect().
-
-        Args:
-            limit: Maximum elements per type to show (default: 30)
-
-        Returns:
-            InspectionSummary with element tables showing coordinates,
-            properties, and other details for each element
-        """
-        return self.find_all("*").inspect(limit=limit)
 
     def describe(self, **kwargs):
         """

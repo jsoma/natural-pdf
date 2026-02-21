@@ -18,8 +18,6 @@ REQUIRED_DEPENDENCIES = {
     "pikepdf",
     "deskew",
     "easyocr",
-    "lancedb",
-    "pyarrow",
     "sentence_transformers",
     "torch",
     "transformers",
@@ -58,11 +56,3 @@ def test_list_optional_dependencies_matches_registry():
 def test_require_unknown_dependency_raises_key_error():
     with pytest.raises(KeyError):
         oi.require("nonexistent-dependency")
-
-
-def test_search_extra_stays_lightweight():
-    extras = _load_optional_extras()
-    search_requirements = extras["search"]
-    assert "sentence-transformers" in search_requirements
-    assert not any(req.startswith("natural-pdf[") for req in search_requirements)
-    assert {"lancedb", "pyarrow"}.issubset(set(search_requirements))
