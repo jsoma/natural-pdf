@@ -42,6 +42,19 @@ from .table_structure_utils import group_cells_into_rows_and_columns
 class PaddleLayoutDetector(LayoutDetector):
     """Document layout and table structure detector using PaddlePaddle's PP-StructureV3."""
 
+    # Fields that are internal to PaddleLayoutOptions and should not be
+    # forwarded to the PPStructureV3 constructor or included in cache keys.
+    _SKIP_FIELDS = {
+        "confidence",
+        "classes",
+        "exclude_classes",
+        "extra_args",
+        "verbose",
+        "create_cells",
+        "lang",
+        "_internal",
+    }
+
     def __init__(self):
         super().__init__()
         # Supported classes by PP-StructureV3 (based on docs and common usage)
@@ -80,36 +93,17 @@ class PaddleLayoutDetector(LayoutDetector):
         if not isinstance(options, PaddleLayoutOptions):
             options = PaddleLayoutOptions(device=options.device)
 
-        # Collect all model-affecting parameters for the cache key
-        # Using a tuple of relevant values and hashing for a compact key
-        model_params = (
-            str(options.device).lower() if options.device else "default_device",
-            options.lang,
-            # Model names/dirs
-            options.layout_detection_model_name,
-            options.layout_detection_model_dir,
-            options.text_detection_model_name,
-            options.text_detection_model_dir,
-            options.text_recognition_model_name,
-            options.text_recognition_model_dir,
-            options.table_classification_model_name,
-            options.table_classification_model_dir,
-            options.wired_table_structure_recognition_model_name,
-            options.wireless_table_structure_recognition_model_name,
-            # Use flags that affect model loading
-            options.use_doc_orientation_classify,
-            options.use_doc_unwarping,
-            options.use_textline_orientation,
-            options.use_table_recognition,
-            options.use_formula_recognition,
-            options.use_chart_recognition,
-            options.use_region_detection,
-            options.use_seal_recognition,
+        # Collect all model-affecting parameters: dataclass fields + extra_args
+        model_params = tuple(
+            (field_name, getattr(options, field_name))
+            for field_name in sorted(options.__dataclass_fields__)
+            if field_name not in self._SKIP_FIELDS
         )
-
-        # Create a hash for compact representation
-        params_hash = hash(model_params)
-
+        # Include extra_args that affect model loading (exclude internal keys)
+        extra = tuple(
+            sorted((k, v) for k, v in options.extra_args.items() if not k.startswith("_"))
+        )
+        params_hash = hash(model_params + extra)
         return f"{self.__class__.__name__}_{params_hash}"
 
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Any:
@@ -126,93 +120,18 @@ class PaddleLayoutDetector(LayoutDetector):
 
         self.logger.info(f"Loading PP-StructureV3 model with options: {options}")
 
-        # List of valid PPStructureV3 constructor arguments (from official docs)
-        valid_init_args = {
-            "layout_detection_model_name",
-            "layout_detection_model_dir",
-            "layout_threshold",
-            "layout_nms",
-            "layout_unclip_ratio",
-            "layout_merge_bboxes_mode",
-            "chart_recognition_model_name",
-            "chart_recognition_model_dir",
-            "chart_recognition_batch_size",
-            "region_detection_model_name",
-            "region_detection_model_dir",
-            "doc_orientation_classify_model_name",
-            "doc_orientation_classify_model_dir",
-            "doc_unwarping_model_name",
-            "doc_unwarping_model_dir",
-            "text_detection_model_name",
-            "text_detection_model_dir",
-            "text_det_limit_side_len",
-            "text_det_limit_type",
-            "text_det_thresh",
-            "text_det_box_thresh",
-            "text_det_unclip_ratio",
-            "textline_orientation_model_name",
-            "textline_orientation_model_dir",
-            "textline_orientation_batch_size",
-            "text_recognition_model_name",
-            "text_recognition_model_dir",
-            "text_recognition_batch_size",
-            "text_rec_score_thresh",
-            "table_classification_model_name",
-            "table_classification_model_dir",
-            "wired_table_structure_recognition_model_name",
-            "wired_table_structure_recognition_model_dir",
-            "wireless_table_structure_recognition_model_name",
-            "wireless_table_structure_recognition_model_dir",
-            "wired_table_cells_detection_model_name",
-            "wired_table_cells_detection_model_dir",
-            "wireless_table_cells_detection_model_name",
-            "wireless_table_cells_detection_model_dir",
-            "seal_text_detection_model_name",
-            "seal_text_detection_model_dir",
-            "seal_det_limit_side_len",
-            "seal_det_limit_type",
-            "seal_det_thresh",
-            "seal_det_box_thresh",
-            "seal_det_unclip_ratio",
-            "seal_text_recognition_model_name",
-            "seal_text_recognition_model_dir",
-            "seal_text_recognition_batch_size",
-            "seal_rec_score_thresh",
-            "formula_recognition_model_name",
-            "formula_recognition_model_dir",
-            "formula_recognition_batch_size",
-            "use_doc_orientation_classify",
-            "use_doc_unwarping",
-            "use_textline_orientation",
-            "use_seal_recognition",
-            "use_table_recognition",
-            "use_formula_recognition",
-            "use_chart_recognition",
-            "use_region_detection",
-            "device",
-            "enable_hpi",
-            "use_tensorrt",
-            "precision",
-            "enable_mkldnn",
-            "cpu_threads",
-            "paddlex_config",
-        }
-
-        # Build init_args from dataclass fields and filtered extra_args
+        # Build init_args from dataclass fields (excluding internal ones)
         init_args = {}
-        # Add all dataclass fields that are in the valid set and not None
         for field_name in options.__dataclass_fields__:
-            if field_name in valid_init_args:
-                value = getattr(options, field_name)
-                if value is not None:
-                    init_args[field_name] = value
-        # Add filtered extra_args (not starting with '_' and in valid set)
-        filtered_extra_args = {
-            k: v
-            for k, v in options.extra_args.items()
-            if not k.startswith("_") and k in valid_init_args
-        }
-        init_args.update(filtered_extra_args)
+            if field_name in self._SKIP_FIELDS:
+                continue
+            value = getattr(options, field_name)
+            if value is not None:
+                init_args[field_name] = value
+        # Forward all non-internal extra_args directly to PPStructureV3
+        for k, v in options.extra_args.items():
+            if not k.startswith("_"):
+                init_args[k] = v
 
         # Special handling for English model selection
         if getattr(options, "lang", None) == "en":
@@ -283,15 +202,7 @@ class PaddleLayoutDetector(LayoutDetector):
             self.logger.warning("PaddleLayout returned empty results")
             return []
 
-        # Prepare normalized class filters once
-        normalized_classes_req = (
-            {self._normalize_class_name(c) for c in options.classes} if options.classes else None
-        )
-        normalized_classes_excl = (
-            {self._normalize_class_name(c) for c in options.exclude_classes}
-            if options.exclude_classes
-            else set()
-        )
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
 
         # Debug counters
         table_count = 0
@@ -360,7 +271,7 @@ class PaddleLayoutDetector(LayoutDetector):
                             "confidence": confidence_score,
                             "normalized_class": normalized_class,
                             "source": "layout",
-                            "model": "paddle_v3",
+                            "model": "paddle",
                         }
 
                         # --- Table structure parsing ---
@@ -403,7 +314,7 @@ class PaddleLayoutDetector(LayoutDetector):
                                                 "table_cell"
                                             ),
                                             "source": "layout",
-                                            "model": "paddle_v3",
+                                            "model": "paddle",
                                             "parent_bbox": (x_min, y_min, x_max, y_max),
                                         }
                                     )
@@ -429,7 +340,7 @@ class PaddleLayoutDetector(LayoutDetector):
                                                     "table_row"
                                                 ),
                                                 "source": "layout",
-                                                "model": "paddle_v3",
+                                                "model": "paddle",
                                                 "parent_bbox": (x_min, y_min, x_max, y_max),
                                             }
                                         )
@@ -448,7 +359,7 @@ class PaddleLayoutDetector(LayoutDetector):
                                                     "table_column"
                                                 ),
                                                 "source": "layout",
-                                                "model": "paddle_v3",
+                                                "model": "paddle",
                                                 "parent_bbox": (x_min, y_min, x_max, y_max),
                                             }
                                         )
@@ -471,7 +382,7 @@ class PaddleLayoutDetector(LayoutDetector):
                                                     "table_row"
                                                 ),
                                                 "source": "layout",
-                                                "model": "paddle_v3",
+                                                "model": "paddle",
                                                 "parent_bbox": (x_min, y_min, x_max, y_max),
                                             }
                                         )
@@ -493,7 +404,7 @@ class PaddleLayoutDetector(LayoutDetector):
                                                     "table_column"
                                                 ),
                                                 "source": "layout",
-                                                "model": "paddle_v3",
+                                                "model": "paddle",
                                                 "parent_bbox": (x_min, y_min, x_max, y_max),
                                             }
                                         )

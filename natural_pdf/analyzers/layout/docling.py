@@ -4,21 +4,12 @@ import importlib.util
 import logging
 import os
 import tempfile
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Type, cast
+from typing import Any, Dict, List, Optional, Protocol, Type, cast
 
 from PIL import Image
 
-if TYPE_CHECKING:
-    from .base import LayoutDetector
-    from .layout_options import BaseLayoutOptions, DoclingLayoutOptions
-else:  # pragma: no cover - runtime import with graceful fallback
-    try:
-        from .base import LayoutDetector
-        from .layout_options import BaseLayoutOptions, DoclingLayoutOptions
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "Docling layout detector requires natural_pdf.analyzers.layout base modules"
-        ) from exc
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, DoclingLayoutOptions
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +66,6 @@ class DoclingLayoutDetector(LayoutDetector):
             "Unknown",
             "Metadata",  # Add more as needed
         }
-        self._docling_document_cache = {}  # Cache the output doc per image/options if needed
-        self._docling_document: Optional[Any] = None
 
     def is_available(self) -> bool:
         """Check if docling is installed."""
@@ -178,9 +167,6 @@ class DoclingLayoutDetector(LayoutDetector):
                     except OSError as e_rm:
                         self.logger.warning(f"Could not remove temp file {temp_image_path}: {e_rm}")
 
-        # Cache the docling document if needed elsewhere (maybe associate with page?)
-        self._docling_document = docling_doc
-
         self.logger.info(f"Docling detected {len(detections)} layout elements matching criteria.")
         return detections
 
@@ -193,17 +179,9 @@ class DoclingLayoutDetector(LayoutDetector):
             return []
 
         detections = []
-        id_to_detection_index = {}  # Map Docling ID to index in detections list
 
         # Prepare normalized class filters once
-        normalized_classes_req = (
-            {self._normalize_class_name(c) for c in options.classes} if options.classes else None
-        )
-        normalized_classes_excl = (
-            {self._normalize_class_name(c) for c in options.exclude_classes}
-            if options.exclude_classes
-            else set()
-        )
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
 
         # --- Iterate through elements using Docling's structure ---
         # This requires traversing the hierarchy (e.g., doc.body.children)
@@ -234,7 +212,6 @@ class DoclingLayoutDetector(LayoutDetector):
                 if not hasattr(doc.pages.get(page_no), "size"):
                     continue
                 page_height = doc.pages[page_no].size.height
-                page_width = doc.pages[page_no].size.width  # Needed? Bbox seems absolute
 
                 # Convert coordinates from Docling's system (often bottom-left origin)
                 # to standard top-left origin (0,0 at top-left)
@@ -299,16 +276,3 @@ class DoclingLayoutDetector(LayoutDetector):
                 continue
 
         return detections
-
-    def get_docling_document(self, image: Image.Image, options: BaseLayoutOptions):
-        """
-        Get the raw DoclingDocument object after running detection.
-        Ensures detection is run if not already cached for these options/image.
-        """
-        # This requires caching the doc based on image/options or re-running.
-        # For simplicity, let's just re-run detect if needed.
-        self.logger.warning(
-            "get_docling_document: Re-running detection to ensure document is generated."
-        )
-        self.detect(image, options)  # Run detect to populate internal doc
-        return getattr(self, "_docling_document", None)  # Return the stored doc

@@ -238,10 +238,6 @@ class GeminiLayoutDetector(LayoutDetector):
 
         return detections
 
-    def _normalize_class_name(self, name: str) -> str:
-        """Normalizes class names for filtering (lowercase, hyphenated)."""
-        return super()._normalize_class_name(name)
-
     def validate_classes(self, classes: List[str]):
-        """Validation is less critical as we pass requested classes to the LLM."""
-        pass  # Override base validation if needed, but likely not necessary
+        # Override: Gemini supports dynamic classes, skip validation
+        pass

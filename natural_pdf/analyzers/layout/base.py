@@ -1,7 +1,7 @@
 # layout_detector_base.py
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from PIL import Image
 
@@ -85,14 +85,14 @@ class LayoutDetector(ABC):
 
         Returns:
             List of standardized detection dictionaries with at least:
-            - 'bbox': Tuple[float, float, float, float] - (x0, y0, x1, y1) relative to image size
+            - 'bbox': Tuple[float, float, float, float] - (x0, y0, x1, y1) in pixel coordinates of the input image
             - 'class': str - Original class name from the model
             - 'confidence': float - Confidence score (0.0-1.0)
             - 'normalized_class': str - Hyphenated, lowercase class name
             - 'model': str - Name of the model used (e.g., 'yolo', 'tatr')
             - 'source': str - Usually 'layout'
         """
-        raise NotImplementedError("Subclasses must implement this method")
+        ...
 
     @abstractmethod
     def is_available(self) -> bool:
@@ -102,7 +102,7 @@ class LayoutDetector(ABC):
         Returns:
             True if the detector is available, False otherwise.
         """
-        raise NotImplementedError("Subclasses must implement this method")
+        ...
 
     def _get_cache_key(self, options: BaseLayoutOptions) -> str:
         """
@@ -156,7 +156,7 @@ class LayoutDetector(ABC):
               Surya: {"layout", "table_rec"})
             - Model name string (Gemini - actual client provided separately)
         """
-        raise NotImplementedError("Subclasses must implement _load_model_from_options")
+        ...
 
     def _normalize_class_name(self, name: str) -> str:
         """Convert class names with spaces/underscores to hyphenated lowercase format."""
@@ -195,7 +195,26 @@ class LayoutDetector(ABC):
                     f"Supported (normalized): {sorted(list(normalized_supported))}"
                 )
 
-    def __del__(self):
-        """Cleanup resources."""
-        self.logger.info(f"Cleaning up {self.__class__.__name__} resources.")
-        self._model_cache.clear()
+    def _build_class_filters(
+        self, options: BaseLayoutOptions
+    ) -> Tuple[Optional[Set[str]], Set[str]]:
+        """Build precomputed normalized class filter sets from options.
+
+        Returns:
+            (required_set_or_None, exclude_set)
+        """
+        req = {self._normalize_class_name(c) for c in options.classes} if options.classes else None
+        excl = (
+            {self._normalize_class_name(c) for c in options.exclude_classes}
+            if options.exclude_classes
+            else set()
+        )
+        return req, excl
+
+    def post_process_regions(self, regions: List[Any], options: BaseLayoutOptions) -> None:
+        """Hook for engine-specific post-processing of created Region objects.
+
+        Called by the orchestrator after detection results are converted to Regions.
+        Override in subclasses that need post-processing (e.g., TATR cell creation).
+        """
+        ...

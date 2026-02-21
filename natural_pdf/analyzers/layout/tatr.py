@@ -100,8 +100,28 @@ class TableTransformerDetector(LayoutDetector):
             structure_model = AutoModelForObjectDetection.from_pretrained(
                 options.structure_model
             ).to(device)
+            # Build transforms once per model load
+            detection_transform = transforms.Compose(
+                [
+                    self.MaxResize(options.max_detection_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                ]
+            )
+            structure_transform = transforms.Compose(
+                [
+                    self.MaxResize(options.max_structure_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                ]
+            )
             self.logger.info("TATR models loaded.")
-            return {"detection": detection_model, "structure": structure_model}
+            return {
+                "detection": detection_model,
+                "structure": structure_model,
+                "detection_transform": detection_transform,
+                "structure_transform": structure_transform,
+            }
         except Exception as e:
             self.logger.error(f"Failed to load TATR models: {e}", exc_info=True)
             raise
@@ -198,23 +218,9 @@ class TableTransformerDetector(LayoutDetector):
         models = self._get_model(options)
         detection_model = models["detection"]
         structure_model = models["structure"]
+        detection_transform = models["detection_transform"]
+        structure_transform = models["structure_transform"]
         device = options.device or ("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Prepare transforms based on options
-        detection_transform = transforms.Compose(
-            [
-                self.MaxResize(options.max_detection_size),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            ]
-        )
-        structure_transform = transforms.Compose(
-            [
-                self.MaxResize(options.max_structure_size),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            ]
-        )
 
         # Use image preprocessing for better structure detection
         enhance_contrast = (
@@ -240,15 +246,7 @@ class TableTransformerDetector(LayoutDetector):
 
         all_detections = []
 
-        # Add table detections if requested
-        normalized_classes_req = (
-            {self._normalize_class_name(c) for c in options.classes} if options.classes else None
-        )
-        normalized_classes_excl = (
-            {self._normalize_class_name(c) for c in options.exclude_classes}
-            if options.exclude_classes
-            else set()
-        )
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
 
         if normalized_classes_req is None or "table" in normalized_classes_req:
             if "table" not in normalized_classes_excl:
@@ -361,3 +359,20 @@ class TableTransformerDetector(LayoutDetector):
 
         self.logger.info(f"TATR detected {len(all_detections)} layout elements matching criteria.")
         return all_detections
+
+    def post_process_regions(self, regions, options):
+        """Create cells for detected table regions if requested."""
+        if not isinstance(options, TATRLayoutOptions) or not options.create_cells:
+            return
+        self.logger.info("Option create_cells=True: attempting cell creation for TATR tables...")
+        for region in regions:
+            if (
+                getattr(region, "model", None) == "tatr"
+                and getattr(region, "region_type", None) == "table"
+            ):
+                try:
+                    region.create_cells()
+                except Exception as e:
+                    self.logger.warning(
+                        "Error calling create_cells for table region %s: %s", region.bbox, e
+                    )

@@ -4,18 +4,14 @@ import importlib.util
 import logging
 import os
 import tempfile
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, cast
+from typing import Any, Callable, Dict, List, Optional, Type, cast
 
 from PIL import Image
 
-if TYPE_CHECKING:
-    from .base import LayoutDetector
-    from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
-else:  # pragma: no cover - runtime import with graceful fallback
-    from .base import LayoutDetector
-    from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
-
 from natural_pdf.utils.option_validation import validate_option_type
+
+from .base import LayoutDetector
+from .layout_options import BaseLayoutOptions, YOLOLayoutOptions
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +118,7 @@ class YOLODocLayoutDetector(LayoutDetector):
 
         # Get the cached/loaded model
         model = self._get_model(options)
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
 
         # YOLOv10 predict method requires an image path. Save temp file.
         detections = []
@@ -169,14 +166,13 @@ class YOLODocLayoutDetector(LayoutDetector):
                         label_name = class_names[label_idx]
                         normalized_class = self._normalize_class_name(label_name)
 
-                        # Apply class filtering (using normalized names)
-                        if options.classes and normalized_class not in [
-                            self._normalize_class_name(c) for c in options.classes
-                        ]:
+                        # Apply class filtering
+                        if (
+                            normalized_classes_req
+                            and normalized_class not in normalized_classes_req
+                        ):
                             continue
-                        if options.exclude_classes and normalized_class in [
-                            self._normalize_class_name(c) for c in options.exclude_classes
-                        ]:
+                        if normalized_class in normalized_classes_excl:
                             continue
 
                         detections.append(

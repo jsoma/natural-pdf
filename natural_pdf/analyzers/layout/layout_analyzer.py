@@ -1,4 +1,4 @@
-import copy
+import dataclasses
 import logging
 from typing import Any, List, Optional, Set
 
@@ -8,7 +8,6 @@ from natural_pdf.analyzers.layout.layout_options import (
     BaseLayoutOptions,
     GeminiLayoutOptions,
     LayoutOptions,
-    TATRLayoutOptions,
 )
 from natural_pdf.elements.region import Region
 from natural_pdf.engine_provider import get_provider
@@ -106,7 +105,15 @@ class LayoutAnalyzer:
 
         if options is not None:
             logger.debug("Using user-provided options object.")
-            final_options = copy.deepcopy(options)  # Copy to avoid modifying original user object
+            # Safe copy: dataclasses.replace() avoids deepcopy (which breaks
+            # non-copyable fields like OpenAI clients) while isolating mutable state.
+            final_options = dataclasses.replace(
+                options,
+                extra_args=dict(options.extra_args),
+                _internal=dict(options._internal),
+                classes=list(options.classes) if options.classes else None,
+                exclude_classes=list(options.exclude_classes) if options.exclude_classes else None,
+            )
             if kwargs:
                 logger.warning(
                     f"Ignoring simple mode keyword arguments {list(kwargs.keys())} because a full options object was provided."
@@ -186,26 +193,15 @@ class LayoutAnalyzer:
 
             engine = selected_engine
 
-        # --- Add Internal Context to extra_args (Applies to the final_options object) ---
-        if not hasattr(final_options, "extra_args") or final_options.extra_args is None:
-            # Ensure extra_args exists, potentially overwriting if needed
-            final_options.extra_args = {}
-        elif not isinstance(final_options.extra_args, dict):
-            logger.warning(
-                f"final_options.extra_args was not a dict ({type(final_options.extra_args)}), replacing with internal context."
-            )
-            final_options.extra_args = {}
-
-        final_options.extra_args["_layout_host"] = self._page
-        final_options.extra_args["_page_ref"] = self._page  # Backwards compatibility
-        final_options.extra_args["_img_scale_x"] = img_scale_x
-        final_options.extra_args["_img_scale_y"] = img_scale_y
-        logger.debug(
-            f"Added/updated internal context in final_options.extra_args: {final_options.extra_args}"
-        )
+        # --- Add Internal Context ---
+        final_options._internal["_layout_host"] = self._page
+        final_options._internal["_img_scale_x"] = img_scale_x
+        final_options._internal["_img_scale_y"] = img_scale_y
 
         # --- Call Layout Manager (ALWAYS with options object) ---
-        detections = self._run_layout_engine(std_res_page_image, final_options, engine=engine)
+        detections, detector = self._run_layout_engine(
+            std_res_page_image, final_options, engine=engine
+        )
         if detections is None:
             return []
 
@@ -281,27 +277,11 @@ class LayoutAnalyzer:
         for region in layout_regions:
             self._page.add_region(region, source="detected")
 
-        # Store layout regions in a dedicated attribute for easier access
-        self._page.detected_layout_regions = self._page._regions.get("detected", [])
         logger.info(f"Layout analysis complete for page {self._page.number}.")
 
-        # --- Auto-create cells if requested by TATR options ---
-        if isinstance(final_options, TATRLayoutOptions) and final_options.create_cells:
-            logger.info("  Option create_cells=True detected for TATR. Attempting cell creation...")
-            created_cell_count = 0
-            for region in layout_regions:
-                # Only attempt on regions identified as tables by the TATR model
-                if region.model == "tatr" and region.region_type == "table":
-                    try:
-                        # create_cells now modifies the page elements directly and returns self
-                        region.create_cells()
-                        # We could potentially count cells created here if needed,
-                        # but the method logs its own count.
-                    except Exception as cell_error:
-                        logger.warning(
-                            f"    Error calling create_cells for table region {region.bbox}: {cell_error}"
-                        )
-            logger.info("  Finished cell creation process triggered by options.")
+        # --- Engine-specific post-processing (e.g., TATR cell creation) ---
+        if detector is not None and hasattr(detector, "post_process_regions"):
+            detector.post_process_regions(layout_regions, final_options)
 
         return layout_regions
 
@@ -342,7 +322,7 @@ class LayoutAnalyzer:
         engine_name = self._resolve_engine_name(engine, options)
         if engine_name is None:
             logger.error("Unable to determine layout engine for provided options")
-            return None
+            return None, None
 
         try:
             detector = self._engine_provider.get("layout", context=self._page, name=engine_name)
@@ -352,7 +332,7 @@ class LayoutAnalyzer:
                 engine_name,
                 len(detections),
             )
-            return detections
+            return detections, detector
         except LookupError as provider_err:
             raise RuntimeError(
                 f"Layout engine '{engine_name}' is not registered: {provider_err}"

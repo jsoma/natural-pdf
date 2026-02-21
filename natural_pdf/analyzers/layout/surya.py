@@ -114,8 +114,8 @@ class SuryaLayoutDetector(LayoutDetector):
                 recognize_table_structure=True,
             )
 
-        # Extract page reference passed through extra_args (from LayoutAnalyzer)
-        host_obj = options.extra_args.get("_layout_host") or options.extra_args.get("_page_ref")
+        # Extract page reference passed through _internal context (from LayoutAnalyzer)
+        host_obj = options._internal.get("_layout_host")
         page_ref = None
         context_bounds: Optional[Tuple[float, float, float, float]] = None
         if host_obj is not None:
@@ -124,13 +124,6 @@ class SuryaLayoutDetector(LayoutDetector):
             except ValueError as exc:
                 self.logger.debug("Unable to resolve page context from %s: %s", host_obj, exc)
 
-        # We still need this check, otherwise later steps that need these vars will fail
-        can_do_table_rec = options.recognize_table_structure
-        if options.recognize_table_structure and not can_do_table_rec:
-            logger.warning(
-                "Surya table recognition cannot proceed without page reference. Disabling."
-            )
-            options.recognize_table_structure = False
         if options.recognize_table_structure and (expand_bbox is None or rescale_bbox is None):
             logger.warning(
                 "Surya table recognition functions unavailable; disabling table recognition."
@@ -159,14 +152,7 @@ class SuryaLayoutDetector(LayoutDetector):
             return []
         prediction = layout_predictions[0]
 
-        normalized_classes_req = (
-            {self._normalize_class_name(c) for c in options.classes} if options.classes else None
-        )
-        normalized_classes_excl = (
-            {self._normalize_class_name(c) for c in options.exclude_classes}
-            if options.exclude_classes
-            else set()
-        )
+        normalized_classes_req, normalized_classes_excl = self._build_class_filters(options)
 
         for layout_box in prediction.bboxes:
 

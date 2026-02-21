@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from natural_pdf.services.registry import register_delegate
 
@@ -86,12 +86,6 @@ class LayoutService:
         from natural_pdf.elements.element_collection import ElementCollection
 
         kwargs = dict(kwargs)
-        requested_existing = kwargs.get("existing")
-        if isinstance(requested_existing, str) and requested_existing.lower() != "replace":
-            logger.warning(
-                "Layout analysis always replaces existing detected regions; ignoring existing=%r",
-                requested_existing,
-            )
         kwargs["existing"] = "replace"
 
         engine = kwargs.get("engine")
@@ -108,7 +102,7 @@ class LayoutService:
             region
             for region in getattr(page._element_mgr, "regions", [])
             if getattr(region, "source", None) == "detected"
-            and (not engine or getattr(region, "model", None) == engine)
+            and (not engine or getattr(region, "model", "").lower() == engine.lower())
         ]
         return ElementCollection(detected_regions)
 
@@ -165,8 +159,11 @@ class LayoutService:
                         try:
                             if segment.intersects(region):
                                 intersecting.append(region)
-                        except Exception:
-                            intersecting.append(region)
+                        except (AttributeError, TypeError):
+                            logger.warning(
+                                "Geometry interface error checking intersection; skipping region %r",
+                                region,
+                            )
                     all_detected_regions.extend(intersecting)
 
         unique_regions = []
