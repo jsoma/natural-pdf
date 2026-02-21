@@ -1,11 +1,9 @@
 """Tests for the PaddleOCR-VL engine adapter."""
 
 import types
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from PIL import Image
 
 from natural_pdf.ocr.engine_paddleocr_vl import (
     _DEFAULT_BLOCK_CONFIDENCE,

@@ -1,4 +1,4 @@
-# ocr_engine_paddleocr_vl.py
+# engine_paddleocr_vl.py
 import importlib.util
 import logging
 import re
@@ -180,6 +180,9 @@ class PaddleOCRVLEngine(OCREngine):
         if isinstance(raw_results, dict) or hasattr(raw_results, "blocks"):
             raw_results = [raw_results]
         elif not isinstance(raw_results, list):
+            self.logger.warning(
+                "Unexpected raw_results type from PaddleOCR-VL: %s", type(raw_results).__name__
+            )
             return standardized_regions
 
         # PaddleOCR-VL returns a list of result objects (one per image)
