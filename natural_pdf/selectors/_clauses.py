@@ -162,6 +162,8 @@ def _register_boolean(names: list[str], attr: str, *, invert: bool = False):
 
 _register_boolean(["bold"], "bold")
 _register_boolean(["italic"], "italic")
+_register_boolean(["not-bold"], "bold", invert=True)
+_register_boolean(["not-italic"], "italic", invert=True)
 _register_boolean(["horizontal"], "is_horizontal")
 _register_boolean(["vertical"], "is_vertical")
 _register_boolean(["checked"], "is_checked")
@@ -169,6 +171,42 @@ _register_boolean(["unchecked"], "is_checked", invert=True)
 _register_boolean(["strike", "strikethrough", "strikeout"], "strike")
 _register_boolean(["underline", "underlined"], "underline")
 _register_boolean(["highlight", "highlighted"], "is_highlighted")
+
+
+@register_pseudo("empty", replace=True)
+def _empty_clause(_pseudo: Dict[str, Any], _ctx: ClauseEvalContext):
+    def _filter(element: Any) -> bool:
+        text = getattr(element, "text", None)
+        return text is None or not str(text).strip()
+
+    return {"name": "pseudo-class :empty", "func": _filter}
+
+
+@register_pseudo("not-empty", replace=True)
+def _not_empty_clause(_pseudo: Dict[str, Any], _ctx: ClauseEvalContext):
+    def _filter(element: Any) -> bool:
+        text = getattr(element, "text", None)
+        return text is not None and bool(str(text).strip())
+
+    return {"name": "pseudo-class :not-empty", "func": _filter}
+
+
+@register_pseudo("first-child", replace=True)
+def _first_child_clause(_pseudo: Dict[str, Any], _ctx: ClauseEvalContext):
+    def _filter(element: Any) -> bool:
+        parent = getattr(element, "parent", None)
+        return parent is not None and hasattr(parent, "children") and parent.children[0] == element
+
+    return {"name": "pseudo-class :first-child", "func": _filter}
+
+
+@register_pseudo("last-child", replace=True)
+def _last_child_clause(_pseudo: Dict[str, Any], _ctx: ClauseEvalContext):
+    def _filter(element: Any) -> bool:
+        parent = getattr(element, "parent", None)
+        return parent is not None and hasattr(parent, "children") and parent.children[-1] == element
+
+    return {"name": "pseudo-class :last-child", "func": _filter}
 
 
 def _single_reference(ctx: ClauseEvalContext, pseudo: Dict[str, Any]) -> Any:
@@ -186,6 +224,63 @@ def _post_last(elements: List[Any], _pseudo: Dict[str, Any], _ctx: ClauseEvalCon
     if not elements:
         return []
     return elements[-1:]
+
+
+@register_post_pseudo("nth", replace=True)
+def _post_nth(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalContext) -> List[Any]:
+    """Select the nth element (0-indexed). Negative indices count from the end."""
+    args = pseudo.get("args")
+    if args is None:
+        return elements
+    try:
+        idx = int(args)
+    except (TypeError, ValueError):
+        return elements
+    if not elements:
+        return []
+    try:
+        return [elements[idx]]
+    except IndexError:
+        return []
+
+
+@register_post_pseudo("slice", replace=True)
+def _post_slice(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalContext) -> List[Any]:
+    """Slice elements with :slice(start, stop) or :slice(stop). Python slice semantics."""
+    args = pseudo.get("args")
+    if args is None:
+        return elements
+    # args was parsed by safe_parse_value — could be an int or a tuple
+    if isinstance(args, (list, tuple)):
+        parts = [int(x) if x is not None else None for x in args[:3]]
+        if len(parts) == 1:
+            return elements[: parts[0]]
+        elif len(parts) == 2:
+            return elements[parts[0] : parts[1]]
+        elif len(parts) >= 3:
+            return elements[parts[0] : parts[1] : parts[2]]
+    else:
+        try:
+            stop = int(args)
+            return elements[:stop]
+        except (TypeError, ValueError):
+            return elements
+    return elements
+
+
+@register_post_pseudo("limit", replace=True)
+def _post_limit(elements: List[Any], pseudo: Dict[str, Any], _ctx: ClauseEvalContext) -> List[Any]:
+    """Limit results to the first N elements."""
+    args = pseudo.get("args")
+    if args is None:
+        return elements
+    try:
+        n = int(args)
+    except (TypeError, ValueError):
+        return elements
+    if n < 0:
+        return elements
+    return elements[:n]
 
 
 def _register_relational(name: str, predicate):

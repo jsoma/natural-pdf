@@ -198,7 +198,13 @@ class TableService:
         host,
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
-    ) -> List[List[List[Optional[str]]]]:
+    ) -> List[TableResult]:
+        logger.warning(
+            "extract_tables() extracts all tables at once without targeting. "
+            "Consider using page.find('region[type=table]').extract_table() "
+            "to isolate and extract a specific table."
+        )
+
         # Check if host is a FlowRegion
         if hasattr(host, "constituent_regions") and host.constituent_regions:
             return self.extract_flow_tables(
@@ -213,12 +219,13 @@ class TableService:
             requested=method,
             scope="region",
         )
-        return run_table_engine(
+        raw_tables = run_table_engine(
             context=host,
             region=host,
             engine_name=engine_name,
             table_settings=normalized_settings,
         )
+        return [TableResult(table) for table in raw_tables]
 
     def _extract_table_from_structure(
         self,
@@ -500,12 +507,12 @@ class TableService:
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
         **kwargs,
-    ) -> List[List[List[Optional[str]]]]:
+    ) -> List[TableResult]:
         if table_settings is None:
             table_settings = {}
         if not host.constituent_regions:
             return []
-        result: List[List[List[Optional[str]]]] = []
+        result: List[TableResult] = []
         for region in host.constituent_regions:
             tables = region.extract_tables(
                 method=method,

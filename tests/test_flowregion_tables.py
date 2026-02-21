@@ -22,9 +22,9 @@ class _DummyRegion:
         self.extract_table_calls.append(kwargs)
         return TableResult(list(self._rows))
 
-    def extract_tables(self, **kwargs: Any) -> List[List[List[Optional[str]]]]:
+    def extract_tables(self, **kwargs: Any) -> List[TableResult]:
         self.extract_tables_calls.append(kwargs)
-        return [list(self._rows)]
+        return [TableResult(list(self._rows))]
 
 
 def _flow_region_with(rows_per_region: List[List[List[Optional[str]]]]) -> FlowRegion:
@@ -121,8 +121,10 @@ def test_flow_extract_tables_aggregates_all_segments():
     tables = flow.extract_tables(method="stream", table_settings=table_settings)
 
     assert len(tables) == 2
-    assert tables[0] == rows[0]
-    assert tables[1] == rows[1]
+    assert isinstance(tables[0], TableResult)
+    assert isinstance(tables[1], TableResult)
+    assert list(tables[0]) == rows[0]
+    assert list(tables[1]) == rows[1]
 
     for segment in flow.segments:
         kwargs = segment.extract_tables_calls[-1]
@@ -161,5 +163,7 @@ def test_flow_region_collection_extract_tables_flattens_results():
 
     tables = collection.extract_tables(method="lattice")
     assert len(tables) == len(flows)
-    assert tables[0] == flows[0][0]
-    assert tables[1] == flows[1][0]
+    assert isinstance(tables[0], TableResult)
+    assert isinstance(tables[1], TableResult)
+    assert list(tables[0]) == flows[0][0]
+    assert list(tables[1]) == flows[1][0]

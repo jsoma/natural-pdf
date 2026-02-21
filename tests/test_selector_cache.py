@@ -46,20 +46,28 @@ class TestSelectorCache:
         info2 = get_selector_cache_info()
         assert info2.hits >= 1
 
-    def test_cache_isolation_from_mutations(self):
-        """Mutations to returned dict should not affect cached values."""
-        # Get first result
+    def test_cache_returns_same_object(self):
+        """Cache should return the same object (no wasteful deep copy)."""
         result1 = parse_selector("text:bold")
-        original_type = result1["type"]
-
-        # Mutate it
-        result1["type"] = "MUTATED"
-        result1["pseudo_classes"].append({"name": "fake", "args": None})
-
-        # Get second result - should be unaffected
         result2 = parse_selector("text:bold")
-        assert result2["type"] == original_type
-        assert len(result2["pseudo_classes"]) == 1  # Original count
+        # Same cached object — no deep copy overhead
+        assert result1 is result2
+
+    def test_build_filter_list_does_not_mutate_selector(self):
+        """build_execution_plan should not mutate the parsed selector dict."""
+        from natural_pdf.selectors.parser import build_execution_plan
+
+        parsed = parse_selector("text:bold:first:above(rect)")
+        original_pseudo_count = len(parsed["pseudo_classes"])
+        original_keys = set(parsed.keys())
+
+        # Build execution plan — should NOT add post_pseudos/relational_pseudos to dict
+        build_execution_plan(parsed)
+
+        assert set(parsed.keys()) == original_keys
+        assert len(parsed["pseudo_classes"]) == original_pseudo_count
+        assert "post_pseudos" not in parsed
+        assert "relational_pseudos" not in parsed
 
     def test_cache_clear(self):
         """clear_selector_cache should reset the cache."""

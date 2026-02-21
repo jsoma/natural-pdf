@@ -55,10 +55,9 @@ VAR_TO_CLASS: dict[str, str] = {
     "tbl": "TableResult",
     "table_result": "TableResult",
     "df": "DataFrame",  # pandas, not our API
-    # QA-related
-    "result": "QAResult",
-    "answer": "QAResult",
-    "qa_result": "QAResult",
+    # Extraction result-related
+    "result": "StructuredDataResult",
+    "answer": "StructuredDataResult",
     # Flow-related
     "flow": "Flow",
     "flow_region": "FlowRegion",
@@ -104,7 +103,7 @@ RECEIVER_PATTERNS: dict[str, str] = {
     "left()": "Region",
     "right()": "Region",
     "extract_table()": "TableResult",
-    "ask()": "QAResult",
+    "ask()": "StructuredDataResult",
     "apply_ocr()": "ElementCollection",
     "analyze_layout()": "ElementCollection",
     "create_region()": "Region",

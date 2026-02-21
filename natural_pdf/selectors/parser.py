@@ -31,7 +31,6 @@ This enables powerful document navigation like:
 """
 
 import ast
-import copy
 import functools
 import logging
 import re
@@ -313,10 +312,14 @@ def _split_top_level_or(selector: str) -> List[str]:
                 paren_depth += 1
             elif char == ")":
                 paren_depth -= 1
+                if paren_depth < 0:
+                    raise ValueError(f"Unmatched closing parenthesis in selector: '{selector}'")
             elif char == "[":
                 bracket_depth += 1
             elif char == "]":
                 bracket_depth -= 1
+                if bracket_depth < 0:
+                    raise ValueError(f"Unmatched closing bracket in selector: '{selector}'")
 
             # Check for top-level OR operators
             elif (char == "|" or char == ",") and paren_depth == 0 and bracket_depth == 0:
@@ -419,8 +422,7 @@ def parse_selector(selector: str) -> Dict[str, Any]:
         Results are cached for performance. The returned dict is a deep copy
         to prevent mutation of cached values.
     """
-    # Use cached parser and return a deep copy to prevent mutation issues
-    return copy.deepcopy(_parse_selector_cached(selector))
+    return _parse_selector_cached(selector)
 
 
 def _parse_selector_impl(selector: str) -> Dict[str, Any]:
@@ -604,28 +606,62 @@ def _parse_selector_impl(selector: str) -> Dict[str, Any]:
             name, args_str = pseudo_match.groups()
             match_end_idx = pseudo_match.end()
 
-            # If the args_str contains unmatched opening parens, continue scanning the
-            # selector until parentheses are balanced. This allows patterns like
-            # :contains((Tre) Ofertu) or complex regex with grouping.
-            if args_str is not None and args_str.count("(") > args_str.count(")"):
-                balance = args_str.count("(") - args_str.count(")")
-                i = match_end_idx
-                while i < len(selector) and balance > 0:
-                    char = selector[i]
-                    # Append char to args_str as we extend the capture
-                    args_str += char
-                    if char == "(":
-                        balance += 1
-                    elif char == ")":
-                        balance -= 1
-                    i += 1
-                # After loop, ensure parentheses are balanced; otherwise raise error
-                if balance != 0:
-                    raise ValueError(
-                        f"Mismatched parentheses in pseudo-class :{name}(). Full selector: '{original_selector_for_error}'"
-                    )
-                # Update where the selector should be sliced off from
-                match_end_idx = i
+            # If the args_str has unbalanced parens (respecting quotes) or unbalanced
+            # quotes, extend the capture past the initial regex match until everything
+            # is balanced. This handles :contains((Tre) Ofertu), :regex("foo(bar)"),
+            # and other complex patterns.
+            if args_str is not None:
+                # Check if the initial regex capture is correct by verifying
+                # that quotes and parens are balanced within args_str.
+                balance = 0
+                _in_dq = False
+                _in_sq = False
+                for ci, ch in enumerate(args_str):
+                    prev_ch = args_str[ci - 1] if ci > 0 else ""
+                    if prev_ch != "\\":
+                        if ch == '"' and not _in_sq:
+                            _in_dq = not _in_dq
+                        elif ch == "'" and not _in_dq:
+                            _in_sq = not _in_sq
+                        elif not _in_dq and not _in_sq:
+                            if ch == "(":
+                                balance += 1
+                            elif ch == ")":
+                                balance -= 1
+
+                # If the initial regex capture got confused by quotes or nested
+                # parens (e.g. :regex("foo(bar)") where non-greedy .*? stops at
+                # the wrong ")"), rescan from the opening "(" with full
+                # quote/paren awareness to find the correct closing ")".
+                if balance > 0 or _in_dq or _in_sq:
+                    open_paren_pos = 1 + len(name)  # position of '(' in selector
+                    args_start = open_paren_pos + 1
+                    depth = 1
+                    in_dq = False
+                    in_sq = False
+                    i = args_start
+                    while i < len(selector):
+                        char = selector[i]
+                        prev_char = selector[i - 1] if i > 0 else ""
+                        if prev_char != "\\":
+                            if char == '"' and not in_sq:
+                                in_dq = not in_dq
+                            elif char == "'" and not in_dq:
+                                in_sq = not in_sq
+                            elif not in_dq and not in_sq:
+                                if char == "(":
+                                    depth += 1
+                                elif char == ")":
+                                    depth -= 1
+                                    if depth == 0:
+                                        break
+                        i += 1
+                    if depth != 0:
+                        raise ValueError(
+                            f"Mismatched parentheses or quotes in pseudo-class :{name}(). Full selector: '{original_selector_for_error}'"
+                        )
+                    args_str = selector[args_start:i]
+                    match_end_idx = i + 1  # past the closing ')'
 
             name = name.lower()  # Normalize pseudo-class name
             processed_args = args_str  # Keep as string initially, or None
@@ -732,18 +768,6 @@ def _is_exact_color_match(value1, value2) -> bool:
 
     # Default to exact match for non-colors
     return bool(value1 == value2)
-
-
-PSEUDO_CLASS_FUNCTIONS = {
-    "bold": lambda el: hasattr(el, "bold") and el.bold,
-    "italic": lambda el: hasattr(el, "italic") and el.italic,
-    "first-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[0] == el,
-    "last-child": lambda el: hasattr(el, "parent") and el.parent and el.parent.children[-1] == el,
-    "empty": lambda el: not hasattr(el, "text") or not el.text or not el.text.strip(),
-    "not-empty": lambda el: bool(hasattr(el, "text") and el.text and el.text.strip()),
-    "not-bold": lambda el: hasattr(el, "bold") and not el.bold,
-    "not-italic": lambda el: hasattr(el, "italic") and not el.italic,
-}
 
 
 def _build_filter_list(
@@ -1111,7 +1135,7 @@ def _build_filter_list(
             handler_result = handler(pseudo, clause_ctx)
             _extend_from_handler(handler_result)
             continue
-        if name in ("first", "last"):
+        if name in ("first", "last", "nth", "slice", "limit"):
             post_pseudos.append(pseudo)
             continue
         if name in ("above", "below", "near", "left-of", "right-of"):
@@ -1135,9 +1159,9 @@ def _build_filter_list(
             ) -> bool:
                 return not inner_func(element)
 
-            # Try to create a descriptive name (can be long)
-            # Maybe simplify this later if needed
-            inner_filter_list = _build_filter_list(args, aggregates=aggregate_values, **kwargs)
+            inner_filter_list, _, _ = _build_filter_list(
+                args, aggregates=aggregate_values, **kwargs
+            )
             inner_filter_names = ", ".join([f["name"] for f in inner_filter_list])
             filter_name = f"pseudo-class :not({inner_filter_names})"
             filters.append({"name": filter_name, "func": not_filter})
@@ -1154,16 +1178,10 @@ def _build_filter_list(
             filters.append({"name": "pseudo-class :closest", "func": closest_filter})
             continue
 
-        # Check predefined lambda functions (e.g., :first-child, :empty)
-        elif name in PSEUDO_CLASS_FUNCTIONS:
-            filters.append({"name": f"pseudo-class :{name}", "func": PSEUDO_CLASS_FUNCTIONS[name]})
-            continue
         else:
             raise ValueError(f"Unknown or unsupported pseudo-class: ':{name}'")
 
-    selector["post_pseudos"] = post_pseudos
-    selector["relational_pseudos"] = relational_pseudos
-    return filters
+    return filters, post_pseudos, relational_pseudos
 
 
 def _assemble_filter_func(filters: List[Dict[str, Any]]) -> Callable[[Any], bool]:
@@ -1290,51 +1308,53 @@ def _calculate_aggregates(elements: List[Any], selector: Dict[str, Any]) -> Dict
     return aggregates
 
 
+def build_execution_plan(
+    selector: Dict[str, Any], aggregates: Optional[Dict[str, Any]] = None, **kwargs
+) -> Tuple[Callable[[Any], bool], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Build a complete execution plan from a parsed selector without mutating it.
+
+    Returns:
+        Tuple of (filter_func, post_pseudos, relational_pseudos).
+        - filter_func: callable that takes an element and returns True if it matches
+        - post_pseudos: collection-level pseudos like :first, :last, :nth, :slice, :limit
+        - relational_pseudos: spatial pseudos like :above, :below, :near
+    """
+    if selector.get("type") == "or":
+        sub_selectors = selector.get("selectors", [])
+        if not sub_selectors:
+            return (lambda element: False), [], []
+
+        sub_filter_funcs = []
+        all_post: List[Dict[str, Any]] = []
+        all_relational: List[Dict[str, Any]] = []
+        for sub_selector in sub_selectors:
+            sub_func, sub_post, sub_relational = build_execution_plan(
+                sub_selector, aggregates=aggregates, **kwargs
+            )
+            sub_filter_funcs.append(sub_func)
+            all_post.extend(sub_post)
+            all_relational.extend(sub_relational)
+
+        def or_filter(element):
+            return any(func(element) for func in sub_filter_funcs)
+
+        return or_filter, all_post, all_relational
+
+    filter_list, post_pseudos, relational_pseudos = _build_filter_list(
+        selector, aggregates=aggregates, **kwargs
+    )
+    filter_func = _assemble_filter_func(filter_list)
+    return filter_func, post_pseudos, relational_pseudos
+
+
 def selector_to_filter_func(
     selector: Dict[str, Any], aggregates: Optional[Dict[str, Any]] = None, **kwargs
 ) -> Callable[[Any], bool]:
     """
     Convert a parsed selector to a single filter function.
 
-    Internally, this builds a list of individual filters and then combines them.
-    To inspect the individual filters, call `_build_filter_list` directly.
-
-    Args:
-        selector: Parsed selector dictionary (single or compound OR selector)
-        aggregates: Pre-calculated aggregate values (optional)
-        **kwargs: Additional filter parameters (e.g., regex, case).
-
-    Returns:
-        Function that takes an element and returns True if it matches the selector.
+    For callers that also need post/relational pseudos, use ``build_execution_plan`` instead.
     """
-    # Handle compound OR selectors
-    if selector.get("type") == "or":
-        sub_selectors = selector.get("selectors", [])
-        if not sub_selectors:
-            # Empty OR selector, return a function that never matches
-            return lambda element: False
-
-        # Create filter functions for each sub-selector
-        sub_filter_funcs = []
-        for sub_selector in sub_selectors:
-            sub_filter_funcs.append(
-                selector_to_filter_func(sub_selector, aggregates=aggregates, **kwargs)
-            )
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(f"Creating OR filter with {len(sub_filter_funcs)} sub-selectors")
-
-        # Return OR combination - element matches if ANY sub-selector matches
-        def or_filter(element):
-            return any(func(element) for func in sub_filter_funcs)
-
-        return or_filter
-
-    # Handle single selectors (existing logic)
-    filter_list = _build_filter_list(selector, aggregates=aggregates, **kwargs)
-
-    if logger.isEnabledFor(logging.DEBUG):
-        filter_names = [f["name"] for f in filter_list]
-        logger.debug(f"Assembling filters for selector {selector}: {filter_names}")
-
-    return _assemble_filter_func(filter_list)
+    filter_func, _, _ = build_execution_plan(selector, aggregates=aggregates, **kwargs)
+    return filter_func

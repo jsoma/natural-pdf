@@ -435,7 +435,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         # Delegate to the analysis region which will use TableService
         return self._analysis_region().extract_table(*args, **kwargs)
 
-    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+    def extract_tables(self, *args, **kwargs) -> "List[TableResult]":
         """Extract tables from the flow, delegating to the analysis region."""
         if not self.segments:
             return []

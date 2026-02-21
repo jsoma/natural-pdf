@@ -10,8 +10,6 @@ from PIL import Image, ImageDraw
 
 from natural_pdf.utils.optional_imports import require
 
-from .qa_result import QAResult
-
 logger = logging.getLogger("natural_pdf.qa.document_qa")
 
 
@@ -130,7 +128,7 @@ class DocumentQA:
         min_confidence: float = 0.1,
         debug: bool = False,
         debug_output_dir: str = "output",
-    ) -> Union[QAResult, List[QAResult]]:
+    ) -> Union[dict, List[dict]]:
         """
         Ask one or more natural-language questions about the supplied document image.
 
@@ -152,8 +150,8 @@ class DocumentQA:
             debug_output_dir: Directory where debug artefacts should be saved.
 
         Returns:
-            • A single :class:`QAResult` when *question* is a string.
-            • A ``list`` of :class:`QAResult`` objects (one per question) when
+            • A single :class:`dict` when *question* is a string.
+            • A ``list`` of :class:`dict`` objects (one per question) when
               *question* is a list/tuple.
         """
         if not self._is_initialized:
@@ -255,7 +253,7 @@ class DocumentQA:
             normalized_output,
         )
 
-        processed_results: List[QAResult] = []
+        processed_results: List[dict] = []
 
         for q, res in zip(questions, raw_results):
             top_res = res[0] if isinstance(res, list) else res  # pipeline may or may not nest
@@ -284,7 +282,7 @@ class DocumentQA:
 
             # Apply confidence threshold
             if top_res["score"] < min_confidence:
-                qa_res = QAResult(
+                qa_res = dict(
                     question=q,
                     answer="",
                     confidence=top_res["score"],
@@ -293,7 +291,7 @@ class DocumentQA:
                     found=False,
                 )
             else:
-                qa_res = QAResult(
+                qa_res = dict(
                     question=q,
                     answer=top_res["answer"],
                     confidence=top_res["score"],
@@ -313,7 +311,7 @@ class DocumentQA:
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         debug: bool = False,
-    ) -> Union[QAResult, List[QAResult]]:
+    ) -> Union[dict, List[dict]]:
         """
         Ask a question about a specific PDF page.
 
@@ -323,7 +321,7 @@ class DocumentQA:
             min_confidence: Minimum confidence threshold for answers
 
         Returns:
-            QAResult instance with answer details
+            dict instance with answer details
         """
         # Ensure we have text elements on the page
         elements = page.find_all("text")
@@ -338,7 +336,7 @@ class DocumentQA:
             # Return appropriate "not found" result(s)
             if isinstance(question, (list, tuple)):
                 return [
-                    QAResult(
+                    dict(
                         question=q,
                         answer="",
                         confidence=0.0,
@@ -349,7 +347,7 @@ class DocumentQA:
                     for q in question
                 ]
             else:
-                return QAResult(
+                return dict(
                     question=question,
                     answer="",
                     confidence=0.0,
@@ -385,12 +383,12 @@ class DocumentQA:
 
             for res in results:
                 # Attach page reference
-                res.page_num = page.index
+                res["page_num"] = page.index
 
                 # Map answer span back to source elements
-                if res.found and "start" in res and "end" in res:
-                    start_idx = res.start
-                    end_idx = res.end
+                if res.get("found") and "start" in res and "end" in res:
+                    start_idx = res["start"]
+                    end_idx = res["end"]
 
                     if (
                         elements
@@ -408,7 +406,7 @@ class DocumentQA:
 
                         from natural_pdf.elements.element_collection import ElementCollection
 
-                        res.source_elements = ElementCollection(source_elements)
+                        res["source_elements"] = ElementCollection(source_elements)
 
             # Return result(s) preserving original input type
             if isinstance(question, (list, tuple)):
@@ -427,7 +425,7 @@ class DocumentQA:
         question: Union[str, List[str], Tuple[str, ...]],
         min_confidence: float = 0.1,
         debug: bool = False,
-    ) -> Union[QAResult, List[QAResult]]:
+    ) -> Union[dict, List[dict]]:
         """
         Ask a question about a specific region of a PDF page.
 
@@ -437,7 +435,7 @@ class DocumentQA:
             min_confidence: Minimum confidence threshold for answers
 
         Returns:
-            QAResult instance with answer details
+            dict instance with answer details
         """
         # Get all text elements within the region
         elements = region.find_all("text")
@@ -454,7 +452,7 @@ class DocumentQA:
             # Return appropriate "not found" result(s)
             if isinstance(question, (list, tuple)):
                 return [
-                    QAResult(
+                    dict(
                         question=q,
                         answer="",
                         confidence=0.0,
@@ -465,7 +463,7 @@ class DocumentQA:
                     for q in question
                 ]
             else:
-                return QAResult(
+                return dict(
                     question=question,
                     answer="",
                     confidence=0.0,
@@ -504,12 +502,12 @@ class DocumentQA:
             results = result_obj if isinstance(result_obj, list) else [result_obj]
 
             for res in results:
-                res.region = region
-                res.page_num = region.page.index
+                res["region"] = region
+                res["page_num"] = region.page.index
 
-                if res.found and "start" in res and "end" in res:
-                    start_idx = res.start
-                    end_idx = res.end
+                if res.get("found") and "start" in res and "end" in res:
+                    start_idx = res["start"]
+                    end_idx = res["end"]
 
                     if (
                         elements
@@ -527,7 +525,7 @@ class DocumentQA:
 
                         from natural_pdf.elements.element_collection import ElementCollection
 
-                        res.source_elements = ElementCollection(source_elements)
+                        res["source_elements"] = ElementCollection(source_elements)
 
             return results if isinstance(question, (list, tuple)) else results[0]
 

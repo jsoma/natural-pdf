@@ -980,7 +980,7 @@ class FlowRegion(
     def extract_table(self, *args, **kwargs) -> TableResult:
         return self.services.table.extract_table(self, *args, **kwargs)
 
-    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
+    def extract_tables(self, *args, **kwargs) -> "List[TableResult]":
         return self.services.table.extract_tables(self, *args, **kwargs)
 
     def ask(self, *args, **kwargs):

@@ -755,8 +755,8 @@ class FlowRegionCollection(
             results.append(fr.extract_table(**fr_kwargs))
         return results
 
-    def extract_tables(self, *args, **kwargs) -> List[List[List[Optional[str]]]]:
-        tables: List[List[List[Optional[str]]]] = []
+    def extract_tables(self, *args, **kwargs) -> "List[TableResult]":
+        tables: "List[TableResult]" = []
         for fr in self._flow_regions:
             fr_kwargs = dict(kwargs)
             settings = fr_kwargs.get("table_settings")

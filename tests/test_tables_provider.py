@@ -24,7 +24,9 @@ def test_region_extract_tables_delegates_to_provider(monkeypatch, practice_pdf_f
 
     region = practice_pdf_fresh.pages[0].to_region()
     tables = region.extract_tables(table_settings={"foo": "bar"})
-    assert tables == [[["provider"]]]
+    assert len(tables) == 1
+    assert isinstance(tables[0], TableResult)
+    assert list(tables[0]) == [["provider"]]
 
 
 def test_pdfplumber_auto_engine_falls_back_to_stream(monkeypatch):

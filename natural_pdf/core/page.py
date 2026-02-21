@@ -1153,9 +1153,23 @@ class Page(
             if restore_invalidated:
                 self._element_mgr.invalidate_cache()
 
-    def _apply_selector(
-        self, selector_obj: Dict[str, Any], **kwargs: Any
-    ) -> "ElementCollection":  # Removed apply_exclusions arg
+    def _get_element_pool(self, element_type: str) -> List[Any]:
+        """Return the element pool for a given selector type."""
+        et = element_type.lower()
+        if et in ("text", "word"):
+            return self._element_mgr.words
+        elif et == "char":
+            return self._element_mgr.chars
+        elif et in ("rect", "rectangle"):
+            return self._element_mgr.rects
+        elif et == "line":
+            return self._element_mgr.lines
+        elif et == "region":
+            return self._element_mgr.regions
+        else:
+            return self._element_mgr.get_all_elements()
+
+    def _apply_selector(self, selector_obj: Dict[str, Any], **kwargs: Any) -> "ElementCollection":
         """
         Apply selector to page elements.
         Exclusions are now handled by the calling methods (find, find_all) if requested.
@@ -1167,71 +1181,65 @@ class Page(
         Returns:
             ElementCollection of matching elements (unfiltered by exclusions)
         """
-        from natural_pdf.selectors.parser import _calculate_aggregates, selector_to_filter_func
+        from natural_pdf.selectors.parser import _calculate_aggregates, build_execution_plan
 
         selector_kwargs = dict(kwargs)
         selector_kwargs.setdefault("selector_context", self)
 
-        def _apply_relational_only(sel: Dict[str, Any], elements: List[Any]) -> List[Any]:
-            relational = sel.get("relational_pseudos")
-            if not relational:
+        def _apply_relational(relational_pseudos, elements):
+            if not relational_pseudos:
                 return elements
             return _apply_relational_post_pseudos(
                 self,
-                {"relational_pseudos": relational},
+                {"relational_pseudos": relational_pseudos},
                 elements,
                 selector_kwargs,
             )
 
-        def _apply_post_only(sel: Dict[str, Any], elements: List[Any]) -> List[Any]:
-            post = sel.get("post_pseudos")
-            if not post:
+        def _apply_post(post_pseudos, elements):
+            if not post_pseudos:
                 return elements
             return _apply_relational_post_pseudos(
                 self,
-                {"post_pseudos": post},
+                {"post_pseudos": post_pseudos},
                 elements,
                 selector_kwargs,
             )
 
-        # Handle compound OR selectors
+        # Handle compound OR selectors — evaluate each sub-selector against its
+        # natural element pool and union results for better performance.
         if selector_obj.get("type") == "or":
-            elements_to_search = self._element_mgr.get_all_elements()
+            seen_ids: set = set()
+            matching_elements: List[Any] = []
+            all_post: List[Dict[str, Any]] = []
+            all_relational: List[Dict[str, Any]] = []
 
-            has_aggregates = False
             for sub_selector in selector_obj.get("selectors", []):
-                for attr in sub_selector.get("attributes", []):
-                    value = attr.get("value")
-                    if isinstance(value, dict) and value.get("type") == "aggregate":
-                        has_aggregates = True
-                        break
-                if has_aggregates:
-                    break
+                sub_type = sub_selector.get("type", "any").lower()
+                pool = self._get_element_pool(sub_type)
 
-            aggregates: Dict[str, Any] = {}
-            if has_aggregates:
-                for sub_selector in selector_obj.get("selectors", []):
-                    sub_type = sub_selector.get("type", "any").lower()
-                    if sub_type == "text":
-                        sub_elements = self._element_mgr.words
-                    elif sub_type == "rect":
-                        sub_elements = self._element_mgr.rects
-                    elif sub_type == "line":
-                        sub_elements = self._element_mgr.lines
-                    elif sub_type == "region":
-                        sub_elements = self._element_mgr.regions
-                    else:
-                        sub_elements = elements_to_search
+                # Calculate aggregates for this sub-selector if needed
+                sub_aggregates: Dict[str, Any] = {}
+                has_agg = any(
+                    isinstance(attr.get("value"), dict) and attr["value"].get("type") == "aggregate"
+                    for attr in sub_selector.get("attributes", [])
+                )
+                if has_agg:
+                    sub_aggregates = _calculate_aggregates(pool, sub_selector)
 
-                    sub_aggregates = _calculate_aggregates(sub_elements, sub_selector)
-                    aggregates.update(sub_aggregates)
+                sub_filter, sub_post, sub_relational = build_execution_plan(
+                    sub_selector, aggregates=sub_aggregates, **selector_kwargs
+                )
+                all_post.extend(sub_post)
+                all_relational.extend(sub_relational)
 
-            filter_func = selector_to_filter_func(
-                selector_obj, aggregates=aggregates, **selector_kwargs
-            )
-            matching_elements = [element for element in elements_to_search if filter_func(element)]
+                for el in pool:
+                    el_id = id(el)
+                    if el_id not in seen_ids and sub_filter(el):
+                        seen_ids.add(el_id)
+                        matching_elements.append(el)
 
-            matching_elements = _apply_relational_only(selector_obj, matching_elements)
+            matching_elements = _apply_relational(all_relational, matching_elements)
 
             if selector_kwargs.get("reading_order", True):
                 if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
@@ -1241,38 +1249,12 @@ class Page(
                         "Cannot sort elements in reading order: Missing required attributes (top, x0)."
                     )
 
-            # Handle collection-level pseudo-classes (:first, :last) for OR selectors
-            has_first = any(
-                any(p.get("name") == "first" for p in sub_selector.get("post_pseudos", []))
-                for sub_selector in selector_obj.get("selectors", [])
-            )
-            has_last = any(
-                any(p.get("name") == "last" for p in sub_selector.get("post_pseudos", []))
-                for sub_selector in selector_obj.get("selectors", [])
-            )
-
-            if has_first:
-                matching_elements = matching_elements[:1] if matching_elements else []
-            elif has_last:
-                matching_elements = matching_elements[-1:] if matching_elements else []
-
+            matching_elements = _apply_post(all_post, matching_elements)
             return ElementCollection(matching_elements)
 
+        # Single selector path
         element_type = selector_obj.get("type", "any").lower()
-        if element_type == "text" or element_type == "word":
-            elements_to_search = self._element_mgr.words
-        elif element_type == "char":
-            elements_to_search = self._element_mgr.chars
-        elif element_type in ("rect", "rectangle"):
-            elements_to_search = self._element_mgr.rects
-        elif element_type == "line":
-            elements_to_search = self._element_mgr.lines
-        elif element_type == "region":
-            elements_to_search = self._element_mgr.regions
-        elif element_type == "any":
-            elements_to_search = self._element_mgr.get_all_elements()
-        else:
-            elements_to_search = self._element_mgr.get_all_elements()
+        elements_to_search = self._get_element_pool(element_type)
 
         has_aggregates = any(
             isinstance(attr.get("value"), dict) and attr["value"].get("type") == "aggregate"
@@ -1283,12 +1265,12 @@ class Page(
         if has_aggregates:
             aggregates = _calculate_aggregates(elements_to_search, selector_obj)
 
-        filter_func = selector_to_filter_func(
+        filter_func, post_pseudos, relational_pseudos = build_execution_plan(
             selector_obj, aggregates=aggregates, **selector_kwargs
         )
         matching_elements = [element for element in elements_to_search if filter_func(element)]
 
-        matching_elements = _apply_relational_only(selector_obj, matching_elements)
+        matching_elements = _apply_relational(relational_pseudos, matching_elements)
 
         if selector_kwargs.get("reading_order", True):
             if all(hasattr(el, "top") and hasattr(el, "x0") for el in matching_elements):
@@ -1338,7 +1320,7 @@ class Page(
             matching_elements = [entry[2] for entry in scored_elements]
             break
 
-        matching_elements = _apply_post_only(selector_obj, matching_elements)
+        matching_elements = _apply_post(post_pseudos, matching_elements)
 
         return ElementCollection(matching_elements)
 
@@ -2046,7 +2028,7 @@ class Page(
         self,
         method: Optional[str] = None,
         table_settings: Optional[dict] = None,
-    ) -> List[List[List[Optional[str]]]]:
+    ) -> "List[TableResult]":
         """Call the table service to extract every table for the host."""
 
         region = self._full_page_region()

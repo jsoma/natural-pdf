@@ -107,7 +107,7 @@ Natural PDF is a Python library for intelligent PDF document processing that com
 | `table.to_df()` | `pandas.DataFrame` | Tabular data |
 | `page.apply_ocr()` | `ElementCollection` | OCR text elements |
 | `page.analyze_layout()` | `ElementCollection` | Detected regions |
-| `page.ask(question)` | `QAResult` | Has `.answer`, `.confidence` |
+| `page.ask(question)` | `StructuredDataResult` | Has `.data`, `.success` |
 | `element.show()` | `PIL.Image` | Visualization |
 | `elements.apply(fn)` | `ElementCollection` | Transform collection |
 | `elements.filter(fn)` | `ElementCollection` | Filter collection |
