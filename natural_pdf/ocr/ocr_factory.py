@@ -83,9 +83,8 @@ class OCRFactory:
 
         # If we get here, no engines are available
         raise ImportError(
-            "No OCR engines are installed. You can add one via the npdf installer, e.g.:\n"
-            "  npdf install easyocr   # fastest to set up\n"
-            "  npdf install paddle    # best Asian-language accuracy\n"
-            "  npdf install surya     # Surya OCR engine\n"
-            "  npdf install yolo      # Layout detection (YOLO)\n"
+            "No OCR engines are installed. You can add one with pip, e.g.:\n"
+            "  pip install easyocr                 # fastest to set up\n"
+            '  pip install "natural-pdf[paddle]"   # PaddleOCR engine\n'
+            '  pip install "surya-ocr<0.15"        # Surya OCR engine\n'
         )

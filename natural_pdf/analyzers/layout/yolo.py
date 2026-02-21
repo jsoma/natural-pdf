@@ -40,6 +40,17 @@ else:  # pragma: no cover - optional dependency
 class YOLODocLayoutDetector(LayoutDetector):
     """Document layout detector using YOLO model."""
 
+    TYPE_MAP: Dict[str, str] = {
+        "plain-text": "text",
+        "abandon": "unknown",
+        "figure-caption": "caption",
+        "table-caption": "caption",
+        "table-footnote": "footnote",
+        "isolate-formula": "formula",
+        "formula-caption": "caption",
+        # title, figure, table pass through as-is (already canonical)
+    }
+
     def __init__(self):
         super().__init__()
         self.supported_classes = {
@@ -75,7 +86,9 @@ class YOLODocLayoutDetector(LayoutDetector):
             YOLOv10 model instance from doclayout_yolo.
         """
         if not self.is_available():
-            raise RuntimeError("YOLO dependencies not installed. Please run: npdf install yolo")
+            raise RuntimeError(
+                "YOLO dependencies not installed. Install via: pip install doclayout_yolo"
+            )
         if not isinstance(options, YOLOLayoutOptions):
             raise TypeError("Incorrect options type provided for YOLO model loading.")
         self.logger.info(f"Loading YOLO model: {options.model_repo}/{options.model_file}")
@@ -93,10 +106,14 @@ class YOLODocLayoutDetector(LayoutDetector):
             self.logger.error(f"Failed to download or load YOLO model: {e}", exc_info=True)
             raise
 
-    def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
         """Detect layout elements in an image using YOLO."""
         if not self.is_available():
-            raise RuntimeError("YOLO dependencies not installed. Please run: npdf install yolo")
+            raise RuntimeError(
+                "YOLO dependencies not installed. Install via: pip install doclayout_yolo"
+            )
 
         # Ensure options are the correct type, falling back to defaults if base type passed
         if not isinstance(options, YOLOLayoutOptions):

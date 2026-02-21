@@ -173,7 +173,7 @@ def classify_single(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
+            "Classification dependencies missing. Install with: pip install torch transformers"
         )
 
     if not labels:
@@ -252,7 +252,7 @@ def classify_batch_contents(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
+            "Classification dependencies missing. Install with: pip install torch transformers"
         )
 
     if not labels:

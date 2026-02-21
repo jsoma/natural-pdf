@@ -54,6 +54,12 @@ ai = [
     "doclayout_yolo",
 ]
 
+paddle = [
+    "paddlepaddle>=3.0.0",
+    "paddleocr>=3.0.1",
+    "paddlex>=3.0.2",
+]
+
 export = [
     "pikepdf",
     "img2pdf",

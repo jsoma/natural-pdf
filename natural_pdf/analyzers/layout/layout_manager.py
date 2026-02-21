@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Dict, Type, cast
+from typing import Any, Dict, Optional, Type, cast
 
 from natural_pdf.engine_provider import get_provider
 from natural_pdf.engine_registry import register_builtin, register_layout_engine
 
 from .base import LayoutDetector
 from .layout_options import (
-    DoclingLayoutOptions,
-    GeminiLayoutOptions,
+    BaseLayoutOptions,
     LayoutOptions,
     PaddleLayoutOptions,
     SuryaLayoutOptions,
     TATRLayoutOptions,
+    VLMLayoutOptions,
     YOLOLayoutOptions,
 )
 
@@ -52,34 +52,76 @@ def _lazy_import_surya_detector() -> Type[LayoutDetector]:
     return cast(Type[LayoutDetector], SuryaLayoutDetector)
 
 
-def _lazy_import_docling_detector() -> Type[LayoutDetector]:
-    from .docling import DoclingLayoutDetector
+def _lazy_import_vlm_detector() -> Type[LayoutDetector]:
+    from .vlm import VLMLayoutDetector
 
-    return cast(Type[LayoutDetector], DoclingLayoutDetector)
-
-
-def _lazy_import_gemini_detector() -> Type[LayoutDetector]:
-    from .gemini import GeminiLayoutDetector
-
-    return cast(Type[LayoutDetector], GeminiLayoutDetector)
+    return cast(Type[LayoutDetector], VLMLayoutDetector)
 
 
 # ---------------------------------------------------------------------------
-# Registry and caching
+# Engine definitions (name -> lazy class factory + options class)
 # ---------------------------------------------------------------------------
 
-ENGINE_REGISTRY: Dict[str, Dict[str, Any]] = {
-    "yolo": {"class": _lazy_import_yolo_detector, "options_class": YOLOLayoutOptions},
-    "tatr": {"class": _lazy_import_tatr_detector, "options_class": TATRLayoutOptions},
-    "paddle": {"class": _lazy_import_paddle_detector, "options_class": PaddleLayoutOptions},
-    "surya": {"class": _lazy_import_surya_detector, "options_class": SuryaLayoutOptions},
-    "docling": {"class": _lazy_import_docling_detector, "options_class": DoclingLayoutOptions},
-    "gemini": {"class": _lazy_import_gemini_detector, "options_class": GeminiLayoutOptions},
+_ENGINE_DEFS: list[tuple[str, Any, type]] = [
+    ("yolo", _lazy_import_yolo_detector, YOLOLayoutOptions),
+    ("tatr", _lazy_import_tatr_detector, TATRLayoutOptions),
+    ("paddle", _lazy_import_paddle_detector, PaddleLayoutOptions),
+    ("surya", _lazy_import_surya_detector, SuryaLayoutOptions),
+    ("vlm", _lazy_import_vlm_detector, VLMLayoutOptions),
+]
+
+# Deprecated alias: "gemini" -> "vlm"
+_DEPRECATED_ALIASES: Dict[str, str] = {
+    "gemini": "vlm",
 }
+_DEPRECATION_WARNED: set = set()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for querying options_class from EngineProvider metadata
+# ---------------------------------------------------------------------------
+
+
+def engine_name_for_options(options: BaseLayoutOptions) -> Optional[str]:
+    """Return the engine name whose options_class matches *options*, or None.
+
+    Deprecated aliases are skipped so the canonical name is always returned.
+    """
+    provider = get_provider()
+    layout_engines = provider.list("layout").get("layout", ())
+    for name in layout_engines:
+        if name in _DEPRECATED_ALIASES:
+            continue
+        meta = provider.get_metadata("layout", name)
+        if meta and isinstance(options, meta.get("options_class", type(None))):
+            return name
+    return None
+
+
+def get_options_class_for_engine(name: str) -> Optional[type]:
+    """Return the options class registered for *name*, or None."""
+    provider = get_provider()
+    meta = provider.get_metadata("layout", name)
+    if meta:
+        return meta.get("options_class")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Instance creation
+# ---------------------------------------------------------------------------
 
 
 def _resolve_engine_class(engine_name: str) -> Type[LayoutDetector]:
-    entry = ENGINE_REGISTRY[engine_name]["class"]
+    """Resolve the detector class for an engine name by querying registered metadata."""
+    provider = get_provider()
+    meta = provider.get_metadata("layout", engine_name)
+    if not meta or "class_factory" not in meta:
+        raise RuntimeError(
+            f"Unknown layout engine '{engine_name}'. "
+            f"Available: {list(provider.list('layout').get('layout', ()))}"
+        )
+    entry = meta["class_factory"]
     if inspect.isclass(entry):
         return cast(Type[LayoutDetector], entry)
     return cast(Type[LayoutDetector], entry())
@@ -88,10 +130,18 @@ def _resolve_engine_class(engine_name: str) -> Type[LayoutDetector]:
 def _create_engine_instance(engine_name: str) -> LayoutDetector:
     """Create a new layout engine instance. EngineProvider handles caching."""
     engine_name = engine_name.lower()
-    if engine_name not in ENGINE_REGISTRY:
-        raise RuntimeError(
-            f"Unknown layout engine '{engine_name}'. Available: {list(ENGINE_REGISTRY.keys())}"
-        )
+
+    # Handle deprecated aliases
+    if engine_name in _DEPRECATED_ALIASES:
+        canonical = _DEPRECATED_ALIASES[engine_name]
+        if engine_name not in _DEPRECATION_WARNED:
+            logger.warning(
+                "Layout engine name '%s' is deprecated; use '%s' instead.",
+                engine_name,
+                canonical,
+            )
+            _DEPRECATION_WARNED.add(engine_name)
+        engine_name = canonical
 
     logger.info("Creating layout engine instance: %s", engine_name)
     engine_class = _resolve_engine_class(engine_name)
@@ -104,11 +154,12 @@ def _create_engine_instance(engine_name: str) -> LayoutDetector:
         raise RuntimeError(f"Layout engine '{engine_name}' availability check failed: {exc}")
 
     if not available:
-        install_hint = (
-            f"npdf install {engine_name}"
-            if engine_name in {"yolo", "paddle", "surya", "docling"}
-            else ""
-        )
+        install_map = {
+            "yolo": "pip install doclayout_yolo",
+            "paddle": 'pip install "natural-pdf[paddle]"',
+            "surya": 'pip install "surya-ocr<0.15"',
+        }
+        install_hint = install_map.get(engine_name, "")
         raise RuntimeError(
             f"Layout engine '{engine_name}' is not available. {install_hint}".strip()
         )
@@ -122,13 +173,36 @@ def _create_engine_instance(engine_name: str) -> LayoutDetector:
 
 
 def register_layout_engines(provider=None) -> None:
-    for engine_name in ENGINE_REGISTRY.keys():
+    for engine_name, class_factory, options_class in _ENGINE_DEFS:
 
         def factory(*, context=None, _engine_name=engine_name, **opts):
-            # EngineProvider handles caching - we just create the instance
             return _create_engine_instance(_engine_name)
 
-        register_builtin(provider, "layout", engine_name, factory)
+        register_builtin(
+            provider,
+            "layout",
+            engine_name,
+            factory,
+            metadata={"options_class": options_class, "class_factory": class_factory},
+        )
+
+    # Register deprecated aliases so they are discoverable via EngineProvider
+    for alias, canonical in _DEPRECATED_ALIASES.items():
+
+        def alias_factory(*, context=None, _alias=alias, **opts):
+            return _create_engine_instance(_alias)
+
+        # Alias shares the canonical engine's options class
+        canonical_options = next(
+            (oc for name, _, oc in _ENGINE_DEFS if name == canonical), BaseLayoutOptions
+        )
+        register_builtin(
+            provider,
+            "layout",
+            alias,
+            alias_factory,
+            metadata={"options_class": canonical_options},
+        )
 
 
 try:  # Register at import time so engines are discoverable immediately.
@@ -137,4 +211,8 @@ except Exception:  # pragma: no cover - defensive
     logger.exception("Failed to register built-in layout engines")
 
 
-__all__ = ["ENGINE_REGISTRY", "register_layout_engines"]
+__all__ = [
+    "engine_name_for_options",
+    "get_options_class_for_engine",
+    "register_layout_engines",
+]

@@ -63,7 +63,7 @@ class _DefaultClassificationEngine:
         if not is_classification_available():
             raise ImportError(
                 "Classification dependencies missing. "
-                'Install with: pip install "natural-pdf[ai]"'
+                "Install with: pip install torch transformers"
             )
         self._device: Optional[str] = None
 

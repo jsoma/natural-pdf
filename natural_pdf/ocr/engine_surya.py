@@ -10,6 +10,12 @@ logger = logging.getLogger(__name__)
 from .engine import OCREngine, TextRegion
 from .ocr_options import BaseOCROptions, SuryaOCROptions
 
+_SURYA_COMPAT_HINT = (
+    "Your version of surya-ocr is not compatible with your installed transformers. "
+    'Install a compatible version: pip install "surya-ocr<0.15"\n'
+    "See: https://github.com/datalab-to/surya/issues/484"
+)
+
 
 class SuryaOCREngine(OCREngine):
     """Surya OCR engine implementation."""
@@ -27,7 +33,9 @@ class SuryaOCREngine(OCREngine):
     ):
         """Initialize Surya predictors."""
         if not self.is_available():
-            raise ImportError("Surya OCR library is not installed or available.")
+            raise ImportError(
+                'Surya OCR library is not installed. Install with: pip install "surya-ocr<0.15"'
+            )
 
         self._langs = languages or self.DEFAULT_LANGUAGES
 
@@ -49,10 +57,19 @@ class SuryaOCREngine(OCREngine):
         if self._surya_detection is None or self._surya_recognition is None:
             raise RuntimeError("Failed to load Surya predictors.")
 
-        self.logger.info("Instantiating Surya DetectionPredictor...")
-        self._detection_predictor = self._surya_detection(**filtered_args)
-        self.logger.info("Instantiating Surya RecognitionPredictor...")
-        self._recognition_predictor = self._surya_recognition(**filtered_args)
+        try:
+            self.logger.info("Instantiating Surya DetectionPredictor...")
+            self._detection_predictor = self._surya_detection(**filtered_args)
+            self.logger.info("Instantiating Surya RecognitionPredictor...")
+            self._recognition_predictor = self._surya_recognition(**filtered_args)
+        except AttributeError as exc:
+            if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
+        except KeyError as exc:
+            if "rope" in str(exc).lower() or "default" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
 
         self.logger.info("Surya predictors initialized.")
 
@@ -71,44 +88,52 @@ class SuryaOCREngine(OCREngine):
             raise TypeError("SuryaOCREngine expects PIL images after preprocessing")
 
         langs = [list(self._langs)]
-        surya_options = options if isinstance(options, SuryaOCROptions) else None
 
-        # Surya expects lists of images, so we need to wrap our single image
-        if detect_only:
-            detection_predictor = self._detection_predictor
-            assert detection_predictor is not None
-            results = detection_predictor(images=[image])
-        else:
-            # Some Surya versions require 'langs' parameter in the __call__ while
-            # others assume the predictor was initialized with languages already.
-            # Inspect the callable signature to decide what to pass.
-            import inspect
-
-            recog_callable = self._recognition_predictor
-            try:
-                sig = inspect.signature(recog_callable)
-                has_langs_param = "langs" in sig.parameters
-            except (TypeError, ValueError):
-                # Fallback: assume langs not required if signature cannot be inspected
-                has_langs_param = False
-
-            recognition_predictor = self._recognition_predictor
-            detection_predictor = self._detection_predictor
-            assert recognition_predictor is not None
-            assert detection_predictor is not None
-
-            if has_langs_param:
-                results = recognition_predictor(
-                    langs=langs,
-                    images=[image],
-                    det_predictor=detection_predictor,
-                )
+        try:
+            # Surya expects lists of images, so we need to wrap our single image
+            if detect_only:
+                detection_predictor = self._detection_predictor
+                assert detection_predictor is not None
+                results = detection_predictor(images=[image])
             else:
-                # Older/newer Surya versions that omit 'langs'
-                results = recognition_predictor(
-                    images=[image],
-                    det_predictor=detection_predictor,
-                )
+                # Some Surya versions require 'langs' parameter in the __call__ while
+                # others assume the predictor was initialized with languages already.
+                # Inspect the callable signature to decide what to pass.
+                import inspect
+
+                recog_callable = self._recognition_predictor
+                try:
+                    sig = inspect.signature(recog_callable)
+                    has_langs_param = "langs" in sig.parameters
+                except (TypeError, ValueError):
+                    # Fallback: assume langs not required if signature cannot be inspected
+                    has_langs_param = False
+
+                recognition_predictor = self._recognition_predictor
+                detection_predictor = self._detection_predictor
+                assert recognition_predictor is not None
+                assert detection_predictor is not None
+
+                if has_langs_param:
+                    results = recognition_predictor(
+                        langs=langs,
+                        images=[image],
+                        det_predictor=detection_predictor,
+                    )
+                else:
+                    # Older/newer Surya versions that omit 'langs'
+                    results = recognition_predictor(
+                        images=[image],
+                        det_predictor=detection_predictor,
+                    )
+        except AttributeError as exc:
+            if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
+        except KeyError as exc:
+            if "rope" in str(exc).lower() or "default" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
 
         # Surya may return a list with one result per image or a single result object
         # Return the result as-is and handle the extraction in _standardize_results
@@ -143,10 +168,8 @@ class SuryaOCREngine(OCREngine):
             results_iterable = [results_iter]
 
         for line in results_iterable:
-            # Always extract bbox first
             bbox_raw: Any = None
             try:
-                # Prioritize line.bbox, fallback to line.polygon
                 bbox_raw = getattr(line, "bbox", None)
                 if bbox_raw is None:
                     bbox_raw = getattr(line, "polygon", None)

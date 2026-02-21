@@ -38,14 +38,13 @@ OPTIONAL_PACKAGES = [
     "easyocr",
     "paddleocr",
     "paddlepaddle",
-    "surya-ocr",
+    "surya-ocr<0.15",
     "doclayout_yolo",
     # NOTE: python-doctr requires huggingface_hub<1.0 due to deprecated Repository import
     # This pins transformers to 4.x (5.0+ requires hf-hub>=1.3). Remove when doctr fixes upstream:
     # https://github.com/mindee/doctr/pull/2024
     "huggingface_hub>=0.23.0,<1.0",
     "python-doctr[torch]",
-    "docling",
     "openai",
     "lancedb",
     "pyarrow",
@@ -123,7 +122,7 @@ def docs(session):
         session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
         session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
 
-    session.install("surya-ocr")
+    session.install("surya-ocr<0.15")
     session.install("easyocr")
     session.install("doclayout_yolo")
     for package in OPTIONAL_PACKAGES:
@@ -172,7 +171,7 @@ def docs_force(session):
         session.log("Pre-installing torch from official PyTorch wheel to avoid shm.dll error")
         session.install("torch", "--index-url", "https://download.pytorch.org/whl/cpu")
 
-    session.install("surya-ocr")
+    session.install("surya-ocr<0.15")
     session.install("easyocr")
     session.install("doclayout_yolo")
     for package in OPTIONAL_PACKAGES:

@@ -179,7 +179,7 @@ class ExtractionService:
             from natural_pdf.qa.document_qa import get_qa_engine
         except ImportError as exc:
             raise RuntimeError(
-                'Document-QA dependencies missing. Install with `pip install "natural-pdf[qa]"`.'
+                "Document-QA dependencies missing. Install with: pip install torch transformers"
             ) from exc
 
         qa_engine = get_qa_engine(model_name=model) if model else get_qa_engine()

@@ -13,6 +13,12 @@ from .layout_options import BaseLayoutOptions, SuryaLayoutOptions
 
 logger = logging.getLogger(__name__)
 
+_SURYA_COMPAT_HINT = (
+    "Your version of surya-ocr is not compatible with your installed transformers. "
+    'Install a compatible version: pip install "surya-ocr<0.15"\n'
+    "See: https://github.com/datalab-to/surya/issues/484"
+)
+
 # Check for dependencies
 surya_spec = importlib.util.find_spec("surya")
 LayoutPredictor: Optional[Type[Any]] = None
@@ -46,6 +52,20 @@ else:  # pragma: no cover - optional dependency
 
 class SuryaLayoutDetector(LayoutDetector):
     """Document layout and table structure detector using Surya models."""
+
+    TYPE_MAP: Dict[str, str] = {
+        "pageheader": "header",
+        "pagefooter": "footer",
+        "sectionheader": "heading",
+        "tableofcontents": "table-of-contents",
+        "picture": "figure",
+        "listitem": "list-item",
+        "textinlinemath": "formula",
+        "mathformula": "formula",
+        "table-cell": "table-cell",
+        # text, caption, heading, title, list, code, form, table,
+        # table-row, table-column pass through as-is (already canonical)
+    }
 
     def __init__(self):
         super().__init__()
@@ -83,7 +103,8 @@ class SuryaLayoutDetector(LayoutDetector):
     def _load_model_from_options(self, options: BaseLayoutOptions) -> Dict[str, Any]:
         if not self.is_available():
             raise RuntimeError(
-                "Surya dependencies (surya.layout and surya.table_rec) not installed."
+                "Surya dependencies (surya.layout and surya.table_rec) not installed. "
+                'Install with: pip install "surya-ocr<0.15"'
             )
         if not isinstance(options, SuryaLayoutOptions):
             raise TypeError("Incorrect options type provided for Surya model loading.")
@@ -91,15 +112,29 @@ class SuryaLayoutDetector(LayoutDetector):
         models = {}
         assert LayoutPredictor is not None
         assert TableRecPredictor is not None
-        models["layout"] = LayoutPredictor()
-        models["table_rec"] = TableRecPredictor()
+        try:
+            models["layout"] = LayoutPredictor()
+            models["table_rec"] = TableRecPredictor()
+        except AttributeError as exc:
+            if "pad_token_id" in str(exc) or "rope" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
+        except KeyError as exc:
+            if "rope" in str(exc).lower() or "default" in str(exc).lower():
+                raise RuntimeError(_SURYA_COMPAT_HINT) from exc
+            raise
         self.logger.info("Surya LayoutPredictor and TableRecPredictor loaded.")
         return models
 
-    def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
         """Detect layout elements and optionally table structure in an image using Surya."""
         if not self.is_available():
-            raise RuntimeError("Surya dependencies (layout and table_rec) not installed.")
+            raise RuntimeError(
+                "Surya dependencies (layout and table_rec) not installed. "
+                'Install with: pip install "surya-ocr<0.15"'
+            )
 
         if not isinstance(options, SuryaLayoutOptions):
             self.logger.warning(
@@ -114,8 +149,8 @@ class SuryaLayoutDetector(LayoutDetector):
                 recognize_table_structure=True,
             )
 
-        # Extract page reference passed through _internal context (from LayoutAnalyzer)
-        host_obj = options._internal.get("_layout_host")
+        # Extract page reference from DetectionContext (passed by LayoutAnalyzer)
+        host_obj = context.layout_host if context else None
         page_ref = None
         context_bounds: Optional[Tuple[float, float, float, float]] = None
         if host_obj is not None:

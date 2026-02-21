@@ -1,81 +1,9 @@
 import argparse
-import subprocess
-import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as get_version
 from typing import Dict
 
-from packaging.requirements import Requirement
-
 from natural_pdf.utils.optional_imports import list_optional_dependencies
-
-
-# ---------------------------------------------------------------------------
-# Mapping: sub-command name -> list of pip requirement specifiers to install
-# ---------------------------------------------------------------------------
-def _package_prefix() -> str:
-    package_name = __package__ or "natural_pdf"
-    return package_name.split(".")[0]
-
-
-INSTALL_RECIPES: Dict[str, list[str]] = {
-    # heavyweight stacks
-    "paddle": ["paddlepaddle>=3.0.0", "paddleocr>=3.0.1", "paddlex>=3.0.2", "pandas>=2.2.0"],
-    "numpy-high": ["numpy>=2.0"],
-    "numpy-low": ["numpy<1.27"],
-    "surya": ["surya-ocr<0.15"],
-    "yolo": ["doclayout_yolo", "huggingface_hub>=0.29.3"],
-    "docling": ["docling"],
-    # light helpers
-    "deskew": [f"{_package_prefix()}[deskew]"],
-    "search": [f"{_package_prefix()}[search]"],
-    "easyocr": ["easyocr"],
-    "ai-core": [f"{_package_prefix()}[ai-core]"],
-    "qa": [f"{_package_prefix()}[qa]"],
-    "classification": [f"{_package_prefix()}[classification]"],
-    "embeddings": [f"{_package_prefix()}[embeddings]"],
-    "ocr-ai": [f"{_package_prefix()}[ocr-ai]"],
-    "layout-ai": [f"{_package_prefix()}[layout-ai]"],
-    "ai-vision": [f"{_package_prefix()}[ai-vision]"],
-    "ai-nlp": [f"{_package_prefix()}[ai-nlp]"],
-    "ai-api": [f"{_package_prefix()}[ai-api]"],
-    "ai": [f"{_package_prefix()}[ai]"],
-}
-
-
-def _build_pip_install_args(requirements: list[str], upgrade: bool = True):
-    """Return the pip command list to install/upgrade the given requirement strings."""
-    cmd = [sys.executable, "-m", "pip", "--quiet", "install"]
-    if upgrade:
-        cmd.append("--upgrade")
-    cmd.extend(requirements)
-    return cmd
-
-
-def _run(cmd):
-    print("$", " ".join(cmd), flush=True)
-    subprocess.check_call(cmd)
-
-
-def cmd_install(args):
-    for extra in args.extras:
-        group_key = extra.lower()
-        if group_key not in INSTALL_RECIPES:
-            print(
-                f"❌ Unknown extra '{group_key}'. Known extras: {', '.join(sorted(INSTALL_RECIPES))}",
-                file=sys.stderr,
-            )
-            continue
-
-        requirements = INSTALL_RECIPES[group_key]
-
-        # Special handling for paddle stack: install paddlepaddle & paddleocr first
-        # each in its own resolver run, then paddlex.
-        base_reqs = [r for r in requirements]
-        for req in base_reqs:
-            pip_cmd = _build_pip_install_args([req])
-            _run(pip_cmd)
-        print("✔ Finished installing extra dependencies for", group_key)
 
 
 def main():
@@ -85,17 +13,8 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # install subcommand
-    install_p = subparsers.add_parser(
-        "install", help="Install optional dependency groups (e.g. paddle, surya)"
-    )
-    install_p.add_argument(
-        "extras", nargs="+", help="One or more extras to install (e.g. paddle surya)"
-    )
-    install_p.set_defaults(func=cmd_install)
-
-    # list subcommand -------------------------------------------------------
-    list_p = subparsers.add_parser("list", help="Show status of optional dependency groups")
+    # list subcommand
+    list_p = subparsers.add_parser("list", help="Show status of optional dependencies")
     list_p.set_defaults(func=cmd_list)
 
     args = parser.parse_args()
@@ -106,6 +25,11 @@ def main():
 # List command implementation
 # ---------------------------------------------------------------------------
 
+EXTRA_GROUPS: Dict[str, list[str]] = {
+    "export": ["pikepdf", "img2pdf", "jupytext", "nbformat"],
+    "paddle": ["paddlepaddle", "paddleocr", "paddlex"],
+}
+
 
 def _pkg_version(pkg_name: str):
     try:
@@ -115,26 +39,28 @@ def _pkg_version(pkg_name: str):
 
 
 def cmd_list(args):
-    print("Optional dependency groups status:\n")
-    for extra, reqs in INSTALL_RECIPES.items():
+    print("Optional dependency groups:\n")
+    for group, pkgs in EXTRA_GROUPS.items():
         installed_all = True
         pieces = []
-        for req_str in reqs:
-            pkg_name = Requirement(req_str).name  # strip version specifiers
-            ver = _pkg_version(pkg_name)
+        for pkg in pkgs:
+            ver = _pkg_version(pkg)
             if ver is None:
                 installed_all = False
-                pieces.append(f"{pkg_name} (missing)")
+                pieces.append(f"{pkg} (missing)")
             else:
-                pieces.append(f"{pkg_name} {ver}")
-        status = "✓" if installed_all else "✗"
-        print(f"{status} {extra:<8} -> " + ", ".join(pieces))
-    print("\nLegend: ✓ group fully installed, ✗ some packages missing\n")
+                pieces.append(f"{pkg} {ver}")
+        status = "\u2713" if installed_all else "\u2717"
+        install_cmd = f'pip install "natural-pdf[{group}]"'
+        print(f"{status} {group:<8} -> " + ", ".join(pieces))
+        if not installed_all:
+            print(f"   install: {install_cmd}")
+    print()
 
     print("Optional dependency modules:\n")
     dep_info = list_optional_dependencies()
     for name, payload in sorted(dep_info.items()):
-        status = "✓" if payload["available"] else "✗"
+        status = "\u2713" if payload["available"] else "\u2717"
         hints = " or ".join(payload["install_hints"]) or "pip install"
         desc = payload.get("description") or ""
         print(f"{status} {name:<20} -> {desc}")

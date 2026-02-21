@@ -70,7 +70,7 @@ Natural PDF supports multiple OCR engines:
 | Engine | Best For | Installation |
 |--------|----------|--------------|
 | `easyocr` | General use, good default | Included |
-| `surya` | High accuracy, multi-language | `pip install surya-ocr` |
+| `surya` | High accuracy, multi-language | `pip install "surya-ocr<0.15"` |
 | `paddle` | Chinese/Asian languages | `pip install paddlepaddle paddleocr` |
 | `doctr` | Fast, good for batches | `pip install python-doctr` |
 

@@ -58,7 +58,7 @@ class DocumentQA:
         except ImportError as exc:
             self._is_initialized = False
             raise ImportError(
-                'DocumentQA requires torch and transformers. Install with: pip install "natural-pdf[qa]"'
+                "DocumentQA requires torch and transformers. Install with: pip install torch transformers"
             ) from exc
 
         logger.info(f"Initializing DocumentQA with model {model_name} on {device}")

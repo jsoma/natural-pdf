@@ -204,8 +204,8 @@ class QAService:
             return extract_fn(**extract_kw)
         except ImportError as exc:
             message = (
-                "Question answering requires the 'natural_pdf.qa' extras. "
-                'Install with `pip install "natural-pdf[qa]"`.'
+                "Question answering requires torch and transformers. "
+                "Install with: pip install torch transformers"
             )
             raise RuntimeError(message) from exc
 
