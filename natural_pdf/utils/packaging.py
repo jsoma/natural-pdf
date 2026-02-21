@@ -295,7 +295,7 @@ def create_correction_task_package(
             if os.path.exists(output_zip_path):
                 try:
                     os.remove(output_zip_path)
-                except:
+                except OSError:
                     pass
             raise  # Re-raise error
 

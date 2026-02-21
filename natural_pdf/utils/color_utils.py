@@ -67,6 +67,8 @@ COLOR_ATTRIBUTES = [
     "border_color",
 ]
 
+_COLOR_ATTRIBUTES_LOWER = frozenset(attr.lower() for attr in COLOR_ATTRIBUTES)
+
 
 def rgb_to_hex(color: Union[Tuple[float, ...], List[float]]) -> str:
     """
@@ -113,7 +115,7 @@ def is_color_attribute(attr_name: str) -> bool:
     Returns:
         True if this is a known color attribute
     """
-    return attr_name.lower() in [attr.lower() for attr in COLOR_ATTRIBUTES]
+    return attr_name.lower() in _COLOR_ATTRIBUTES_LOWER
 
 
 def format_color_value(value: Any, attr_name: Optional[str] = None) -> str:
@@ -142,7 +144,7 @@ def format_color_value(value: Any, attr_name: Optional[str] = None) -> str:
                 if all(0 <= v <= 1 for v in value[:3]) or all(0 <= v <= 255 for v in value[:3]):
                     try:
                         return rgb_to_hex(value)
-                    except Exception:
+                    except (ValueError, TypeError):
                         # If conversion fails, fall back to string representation
                         pass
 

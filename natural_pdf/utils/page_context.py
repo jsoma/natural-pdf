@@ -88,12 +88,4 @@ def resolve_page_context(obj: Any) -> Tuple["Page", Optional[Bounds]]:
             raise ValueError(f"Resolved page attribute is not a Page: {type(page_candidate)}")
         return page_candidate, _ensure_bounds(_maybe_extract_bounds(obj))
 
-    if isinstance(obj, SupportsBBox):
-        bounds = extract_bbox(obj)
-        page_candidate = getattr(obj, "page", None) or getattr(obj, "_page", None)
-        if page_candidate is not None:
-            if not isinstance(page_candidate, Page):
-                raise ValueError(f"Resolved page attribute is not a Page: {type(page_candidate)}")
-            return page_candidate, _ensure_bounds(bounds)
-
     raise ValueError(f"Cannot resolve page context from object of type {type(obj).__name__}.")

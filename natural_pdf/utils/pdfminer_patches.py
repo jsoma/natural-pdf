@@ -6,6 +6,7 @@ natural_pdf is imported.
 """
 
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,6 @@ logger = logging.getLogger(__name__)
 _patches_applied = False
 
 # Allow disabling patches via environment variable
-import os
 
 DISABLE_PATCHES = os.environ.get("NATURAL_PDF_DISABLE_PDFMINER_PATCHES", "").lower() in (
     "1",
@@ -33,7 +33,8 @@ def _patch_color_space_bug():
     This patch detects when there are more color components on the stack than
     expected and handles RGB colors correctly.
 
-    Reference: https://github.com/jsvine/pdfplumber/issues/XXX
+    Affects pdfminer.six versions through at least 20231228.
+    See pdfminer PDFPageInterpreter.do_scn for the upstream color-space handling.
     """
     try:
         import pdfminer.pdfinterp
@@ -118,10 +119,15 @@ def apply_patches():
 
 
 def get_patch_status() -> dict:
-    """Get information about applied patches."""
+    """Get information about applied patches.
+
+    The color_space_bug patch is needed for pdfminer.six versions through at
+    least 20231228 where bare ``sc`` commands are parsed as DeviceGray.
+    """
     return {
         "patches_applied": _patches_applied,
         "pdfminer_version": _get_pdfminer_version(),
+        "known_affected_versions": "pdfminer.six <= 20231228",
     }
 
 

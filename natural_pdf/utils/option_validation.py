@@ -55,10 +55,10 @@ def _handle_validation(
 
 
 def validate_confidence(
-    value: float,
+    value: Optional[float],
     field_name: str = "confidence",
     class_name: str = "Options",
-) -> float:
+) -> Optional[float]:
     """
     Validate confidence is 0.0-1.0, warn and clamp if not.
 
@@ -93,11 +93,11 @@ def validate_confidence(
 
 
 def validate_positive_int(
-    value: int,
+    value: Optional[int],
     field_name: str,
     class_name: str = "Options",
     default: int = 1,
-) -> int:
+) -> Optional[int]:
     """
     Validate value > 0, warn and use default if not.
 
@@ -133,10 +133,10 @@ def validate_positive_int(
 
 
 def validate_device(
-    value: str,
+    value: Optional[str],
     field_name: str = "device",
     class_name: str = "Options",
-) -> str:
+) -> Optional[str]:
     """
     Validate device is cpu/cuda/mps/auto, warn and use 'cpu' if not.
 
@@ -167,11 +167,11 @@ def validate_device(
 
 
 def validate_non_empty_string(
-    value: str,
+    value: Optional[str],
     field_name: str,
     class_name: str = "Options",
     default: str = "",
-) -> str:
+) -> Optional[str]:
     """
     Validate value is a non-empty string.
 
@@ -234,7 +234,7 @@ def coerce_to_float(
     field_name: str,
     class_name: str = "Options",
     default: float = 0.0,
-) -> float:
+) -> Optional[float]:
     """
     Coerce value to float, warn if coerced.
 

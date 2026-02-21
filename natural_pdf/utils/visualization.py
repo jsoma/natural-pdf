@@ -15,6 +15,8 @@ except ImportError:  # pragma: no cover - optional dependency
     pypdfium2 = None  # type: ignore[assignment]
 from PIL import Image, ImageDraw, ImageFont
 
+from natural_pdf.utils.locks import pdf_render_lock
+
 # Define a base list of visually distinct colors for highlighting
 # Format: (R, G, B)
 _BASE_HIGHLIGHT_COLORS = [
@@ -38,8 +40,7 @@ _BASE_HIGHLIGHT_COLORS = [
 # Default Alpha for highlight fills
 DEFAULT_FILL_ALPHA = 100
 
-# Add quantitative color mapping functionality
-import matplotlib.cm as cm
+# Quantitative color mapping (matplotlib imported lazily in get_colormap_color)
 
 
 class ColorManager:
@@ -264,7 +265,7 @@ def create_colorbar(
             # Load default font but try to get a larger size
             try:
                 font = ImageFont.load_default(size=16)
-            except:
+            except (TypeError, OSError):
                 font = ImageFont.load_default()
 
     # Draw the color blocks (5 discrete blocks)
@@ -492,21 +493,22 @@ def render_plain_page(page, resolution):
             "pypdfium2 is required to render pages. Install with `pip install pypdfium2`."
         )
 
-    doc = pypdfium2.PdfDocument(page._page.pdf.stream)
+    with pdf_render_lock:
+        doc = pypdfium2.PdfDocument(page._page.pdf.stream)
 
-    pdf_page = doc[page.index]
+        pdf_page = doc[page.index]
 
-    # Convert resolution (DPI) to scale factor for pypdfium2
-    # PDF standard is 72 DPI, so scale = resolution / 72
-    scale_factor = resolution / 72.0
+        # Convert resolution (DPI) to scale factor for pypdfium2
+        # PDF standard is 72 DPI, so scale = resolution / 72
+        scale_factor = resolution / 72.0
 
-    bitmap = pdf_page.render(
-        scale=scale_factor,
-    )
-    image = bitmap.to_pil().convert("RGB")
+        bitmap = pdf_page.render(
+            scale=scale_factor,
+        )
+        image = bitmap.to_pil().convert("RGB")
 
-    pdf_page.close()
-    doc.close()
+        pdf_page.close()
+        doc.close()
 
     return image
 
@@ -558,12 +560,20 @@ def get_colormap_color(
     Returns:
         RGB color tuple (0-255)
     """
-    # Try to get the colormap from matplotlib
     try:
-        cmap = cm.get_cmap(colormap_name)
+        import matplotlib  # lazy import – heavy dependency
+    except ImportError as e:
+        raise RuntimeError(
+            "matplotlib is required for colormap-based coloring. "
+            "Install with: pip install matplotlib"
+        ) from e
+
+    # Try to get the colormap (colormaps[] preferred since matplotlib 3.7)
+    _get = getattr(matplotlib, "colormaps", {}).get
+    try:
+        cmap = _get(colormap_name) or matplotlib.cm.get_cmap(colormap_name)
     except (ValueError, KeyError):
-        # Fallback to viridis if colormap doesn't exist
-        cmap = cm.get_cmap("viridis")
+        cmap = _get("viridis") or matplotlib.cm.get_cmap("viridis")
 
     # Normalize value to [0, 1]
     if vmax == vmin:
