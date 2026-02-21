@@ -20,7 +20,7 @@ class CategoryScore:
         return {"category": self.label, "score": self.score}
 
 
-@dataclass
+@dataclass(init=False, repr=False)
 class ClassificationResult(Mapping):
     """Results from a classification operation."""
 
@@ -34,62 +34,49 @@ class ClassificationResult(Mapping):
 
     def __init__(
         self,
-        scores: List[CategoryScore],  # Now the primary source
+        scores: List[CategoryScore],
         model_id: str,
         using: str,
         parameters: Optional[Dict[str, Any]] = None,
         timestamp: Optional[datetime] = None,
     ):
-        # Determine top category and score from the scores list
         if scores:
-            # Sort scores descending by score to find the top one
             sorted_scores = sorted(scores, key=lambda s: s.score, reverse=True)
             self.category = sorted_scores[0].label
             self.score = sorted_scores[0].score
-            self.scores = sorted_scores  # Store the sorted list
+            self.scores = sorted_scores
         else:
-            # Handle empty scores list
             self.category = None
             self.score = 0.0
-            self.scores = []  # Store empty list
+            self.scores = []
 
         self.model_id = model_id
         self.using = using
         self.parameters = parameters or {}
         self.timestamp = timestamp or datetime.now()
+        # Cache for to_dict(). Safe because instances are treated as immutable
+        # after construction — do not mutate attributes after __init__.
+        self._dict_cache: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the classification result to a dictionary for serialization.
-
-        Returns:
-            Dictionary representation of the classification result
-        """
-        return {
-            "category": self.category,
-            "score": self.score,
-            "scores": [s.to_dict() for s in self.scores],
-            "model_id": self.model_id,
-            "using": self.using,
-            "parameters": self.parameters,
-            "timestamp": self.timestamp.isoformat(),
-        }
-
-    @property
-    def top_category(self) -> Optional[str]:
-        """Returns the category with the highest score."""
-        return self.category
-
-    @property
-    def top_confidence(self) -> float:
-        """Returns the confidence score of the top category."""
-        return self.score
+        """Convert the classification result to a dictionary for serialization."""
+        if self._dict_cache is None:
+            self._dict_cache = {
+                "category": self.category,
+                "score": self.score,
+                "scores": [s.to_dict() for s in self.scores],
+                "model_id": self.model_id,
+                "using": self.using,
+                "parameters": self.parameters,
+                "timestamp": self.timestamp.isoformat(),
+            }
+        return self._dict_cache
 
     def __repr__(self) -> str:
         return f"<ClassificationResult category='{self.category}' score={self.score:.3f} model='{self.model_id}'>"
 
     def __iter__(self):
-        """Iterate over mapping keys (linked to ``to_dict`` so it stays in sync)."""
+        """Iterate over mapping keys."""
         return iter(self.to_dict())
 
     def __getitem__(self, key):

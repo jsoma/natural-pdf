@@ -2039,6 +2039,8 @@ class PDF(
         using: Optional[str] = None,
         min_confidence: float = 0.0,
         multi_label: bool = False,
+        batch_size: int = 8,
+        progress_bar: bool = True,
         **kwargs,
     ) -> "PDF":
         """
@@ -2100,8 +2102,8 @@ class PDF(
                 using=inferred_using,
                 min_confidence=min_confidence,
                 multi_label=multi_label,
-                batch_size=8,
-                progress_bar=True,
+                batch_size=batch_size,
+                progress_bar=progress_bar,
                 engine_name=engine_name,
                 **kwargs,
             )

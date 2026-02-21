@@ -126,6 +126,38 @@ def infer_using(
     )
 
 
+def _parse_raw_scores(
+    raw_result: Any,
+    min_confidence: float,
+    model_id: str,
+) -> List[CategoryScore]:
+    """Parse pipeline output into a list of CategoryScore, filtering by min_confidence."""
+    scores: List[CategoryScore] = []
+
+    if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
+        for label, score_val in zip(raw_result["labels"], raw_result["scores"]):
+            if score_val >= min_confidence:
+                scores.append(CategoryScore(label, score_val))
+    elif isinstance(raw_result, list):
+        for item in raw_result:
+            if not isinstance(item, dict):
+                continue
+            label = item.get("label")
+            score_val = item.get("score")
+            if label is None or score_val is None:
+                continue
+            if score_val >= min_confidence:
+                scores.append(CategoryScore(label, score_val))
+    else:
+        logger.warning(
+            "Unexpected raw result format from pipeline for model '%s': %s",
+            model_id,
+            type(raw_result),
+        )
+
+    return scores
+
+
 def classify_single(
     *,
     item_content: Union[str, Image.Image],
@@ -141,7 +173,7 @@ def classify_single(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[classification]"`.'
+            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
         )
 
     if not labels:
@@ -161,10 +193,6 @@ def classify_single(
             raise TypeError(f"Unsupported item_content type: {type(item_content)}")
     else:
         effective_using = infer_using(selected_model, effective_using, device=device)
-        if selected_model is None:
-            selected_model = (
-                DEFAULT_TEXT_MODEL if effective_using == "text" else DEFAULT_VISION_MODEL
-            )
 
     pipeline_instance = _load_pipeline(selected_model, effective_using, device=device)
     timestamp = datetime.now()
@@ -196,42 +224,7 @@ def classify_single(
             f"Classification failed using model '{selected_model}'. Error: {exc}"
         ) from exc
 
-    scores_list: List[CategoryScore] = []
-
-    if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
-        for label, score_val in zip(raw_result["labels"], raw_result["scores"]):
-            if score_val >= min_confidence:
-                try:
-                    scores_list.append(CategoryScore(label, score_val))
-                except (ValueError, TypeError) as err:
-                    logger.warning(
-                        "Skipping invalid score from text pipeline (label=%s, score=%s): %s",
-                        label,
-                        score_val,
-                        err,
-                    )
-    elif isinstance(raw_result, list) and all(
-        isinstance(item, dict) and "label" in item and "score" in item for item in raw_result
-    ):
-        for item in raw_result:
-            score_val = item["score"]
-            label = item["label"]
-            if score_val >= min_confidence:
-                try:
-                    scores_list.append(CategoryScore(label, score_val))
-                except (ValueError, TypeError) as err:
-                    logger.warning(
-                        "Skipping invalid score from vision pipeline (label=%s, score=%s): %s",
-                        label,
-                        score_val,
-                        err,
-                    )
-    else:
-        logger.warning(
-            "Unexpected raw result format from pipeline for model '%s': %s",
-            selected_model,
-            type(raw_result),
-        )
+    scores_list = _parse_raw_scores(raw_result, min_confidence, selected_model)
 
     return ClassificationResult(
         scores=scores_list,
@@ -259,7 +252,7 @@ def classify_batch_contents(
 
     if not _check_classification_dependencies():
         raise ImportError(
-            'Classification dependencies missing. Install with `pip install "natural-pdf[classification]"`.'
+            'Classification dependencies missing. Install with `pip install "natural-pdf[ai]"`.'
         )
 
     if not labels:
@@ -314,30 +307,12 @@ def classify_batch_contents(
     batch_results: List[ClassificationResult] = []
 
     for raw_result in iterator:
-        scores_list: List[CategoryScore] = []
         try:
-            if isinstance(raw_result, dict) and "labels" in raw_result and "scores" in raw_result:
-                for label, score_val in zip(raw_result["labels"], raw_result["scores"]):
-                    if score_val >= min_confidence:
-                        scores_list.append(CategoryScore(label, score_val))
-            elif isinstance(raw_result, list):
-                for item in raw_result:
-                    score_val = item.get("score")
-                    label = item.get("label")
-                    if label is None or score_val is None:
-                        continue
-                    if score_val >= min_confidence:
-                        scores_list.append(CategoryScore(label, score_val))
-            else:
-                logger.warning(
-                    "Unexpected raw result format in batch for model '%s': %s",
-                    selected_model,
-                    type(raw_result),
-                )
+            scores_list = _parse_raw_scores(raw_result, min_confidence, selected_model)
         except Exception as err:
             logger.error("Error processing batch result: %s", err, exc_info=True)
+            scores_list = []
 
-        scores_list.sort(key=lambda s: s.score, reverse=True)
         batch_results.append(
             ClassificationResult(
                 scores=scores_list,
@@ -356,15 +331,18 @@ def cleanup_models(model_id: Optional[str] = None) -> int:
     if not _PIPELINE_CACHE:
         return 0
 
-    cleaned = 0
-    torch = None
-
+    # Pop all targeted entries under the lock in one pass
     with _CACHE_LOCK:
-        items = list(_PIPELINE_CACHE.items())
         if model_id:
-            items = [item for item in items if model_id in item[0]]
+            prefix = f"{model_id}_"
+            keys_to_remove = [k for k in _PIPELINE_CACHE if k.startswith(prefix)]
+        else:
+            keys_to_remove = list(_PIPELINE_CACHE.keys())
+        removed = {k: _PIPELINE_CACHE.pop(k) for k in keys_to_remove}
 
-    for cache_key, pipeline in items:
+    # GPU cleanup outside the lock on already-removed pipelines
+    torch = None
+    for cache_key, pipeline in removed.items():
         model = getattr(pipeline, "model", None)
         if model is not None:
             try:
@@ -377,9 +355,5 @@ def cleanup_models(model_id: Optional[str] = None) -> int:
                     torch.cuda.empty_cache()
             except Exception as exc:
                 logger.debug("GPU cleanup failed for pipeline %s: %s", cache_key, exc)
-        with _CACHE_LOCK:
-            if cache_key in _PIPELINE_CACHE:
-                _PIPELINE_CACHE.pop(cache_key, None)
-                cleaned += 1
 
-    return cleaned
+    return len(removed)

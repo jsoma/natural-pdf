@@ -27,7 +27,6 @@ from natural_pdf.classification.classification_provider import (
     get_classification_engine,
     run_classification_batch,
 )
-from natural_pdf.classification.pipelines import ClassificationError
 
 # Set up logger early
 # Configure logging to include thread information
@@ -674,6 +673,10 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         using: Optional[str] = None,
         model: Optional[str] = None,
         analysis_key: str = "classification",
+        min_confidence: float = 0.0,
+        multi_label: bool = False,
+        batch_size: int = 8,
+        progress_bar: bool = True,
         **kwargs,
     ) -> "PDFCollection":
         """
@@ -719,17 +722,23 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
                 labels=labels,
                 model_id=model or engine_obj.default_model(inferred_using),
                 using=inferred_using,
-                min_confidence=kwargs.get("min_confidence", 0.0),
-                multi_label=kwargs.get("multi_label", False),
-                batch_size=8,
-                progress_bar=True,
+                min_confidence=min_confidence,
+                multi_label=multi_label,
+                batch_size=batch_size,
+                progress_bar=progress_bar,
                 engine_name=engine_name,
             )
         except Exception as exc:
-            raise ClassificationError(f"Batch classification failed: {exc}") from exc
+            logger.error("Batch classification failed for PDFCollection: %s", exc)
+            return self
 
         if len(batch_results) != len(valid_pdfs):
-            raise ClassificationError("Batch result count mismatch with input PDFs")
+            logger.error(
+                "Batch classification result count (%d) mismatch with input PDFs (%d).",
+                len(batch_results),
+                len(valid_pdfs),
+            )
+            return self
 
         processed_count = 0
         for pdf, result_obj in zip(valid_pdfs, batch_results):

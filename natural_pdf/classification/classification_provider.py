@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, List, Optional, Protocol, Sequence, Union, runtime_checkable
 
 from PIL import Image
 
@@ -23,14 +23,13 @@ from .results import ClassificationResult
 logger = logging.getLogger(__name__)
 
 
-class ClassificationEngine:
-    """Protocol-like wrapper for classification engines."""
+@runtime_checkable
+class ClassificationEngine(Protocol):
+    """Structural interface for classification engines."""
 
-    def infer_using(self, model_id: Optional[str], using: Optional[str]) -> str:
-        raise NotImplementedError
+    def infer_using(self, model_id: Optional[str], using: Optional[str]) -> str: ...
 
-    def default_model(self, using: str) -> str:
-        raise NotImplementedError
+    def default_model(self, using: str) -> str: ...
 
     def classify_item(
         self,
@@ -41,9 +40,8 @@ class ClassificationEngine:
         using: Optional[str],
         min_confidence: float,
         multi_label: bool,
-        **kwargs,
-    ) -> ClassificationResult:
-        raise NotImplementedError
+        **kwargs: Any,
+    ) -> ClassificationResult: ...
 
     def classify_batch(
         self,
@@ -56,17 +54,16 @@ class ClassificationEngine:
         multi_label: bool,
         batch_size: int,
         progress_bar: bool,
-        **kwargs,
-    ) -> List[ClassificationResult]:
-        raise NotImplementedError
+        **kwargs: Any,
+    ) -> List[ClassificationResult]: ...
 
 
-class _DefaultClassificationEngine(ClassificationEngine):
+class _DefaultClassificationEngine:
     def __init__(self) -> None:
         if not is_classification_available():
             raise ImportError(
                 "Classification dependencies missing. "
-                'Install with: pip install "natural-pdf[classification]"'
+                'Install with: pip install "natural-pdf[ai]"'
             )
         self._device: Optional[str] = None
 
@@ -98,7 +95,12 @@ def get_classification_engine(context: Any, name: Optional[str] = None) -> Class
 def _get_engine(context: Any, name: Optional[str] = None) -> ClassificationEngine:
     provider = get_provider()
     engine_name = (name or "default").strip().lower()
-    return provider.get("classification", context=context, name=engine_name)
+    engine = provider.get("classification", context=context, name=engine_name)
+    if not isinstance(engine, ClassificationEngine):
+        raise TypeError(
+            f"Classification engine '{engine_name}' does not implement the ClassificationEngine interface"
+        )
+    return engine
 
 
 def run_classification_item(
