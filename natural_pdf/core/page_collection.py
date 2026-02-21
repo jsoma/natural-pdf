@@ -930,12 +930,6 @@ class PageCollection(
 
         return HighlightContext(self, show_on_exit=show)
 
-    def match_template(self, *args, **kwargs):
-        return self.services.vision.match_template(self, *args, **kwargs)
-
-    def find_similar(self, *args, **kwargs):
-        return self.services.vision.find_similar(self, *args, **kwargs)
-
     def groupby(self, by: Union[str, Callable], *, show_progress: bool = True) -> "PageGroupBy":
         """
         Group pages by selector text or callable result.

@@ -2660,66 +2660,6 @@ class PDF(
 
         return HighlightContext(self, show_on_exit=show)
 
-    def match_template(
-        self,
-        examples: Union[Any, Sequence[Any]],  # Avoid circular imports
-        confidence: float = 0.6,
-        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
-        resolution: int = 72,
-        hash_size: int = 20,
-        step: Optional[int] = None,
-        method: str = "phash",
-        max_per_page: Optional[int] = None,
-        show_progress: bool = True,
-        mask_threshold: Optional[float] = None,
-    ) -> Any:
-        """Run visual template matching through the vision service."""
-
-        return self.services.vision.match_template(
-            self,
-            examples=examples,
-            confidence=confidence,
-            sizes=sizes,
-            resolution=resolution,
-            hash_size=hash_size,
-            step=step,
-            method=method,
-            max_per_page=max_per_page,
-            show_progress=show_progress,
-            mask_threshold=mask_threshold,
-        )
-
-    def find_similar(
-        self,
-        examples: Union[Any, Sequence[Any]],
-        using: str = "vision",
-        confidence: float = 0.6,
-        sizes: Optional[Union[float, Tuple, List]] = (0.8, 1.2),
-        resolution: int = 72,
-        hash_size: int = 20,
-        step: Optional[int] = None,
-        method: str = "phash",
-        max_per_page: Optional[int] = None,
-        show_progress: bool = True,
-        mask_threshold: Optional[float] = None,
-    ) -> Any:
-        """Run visual template matching through the vision service."""
-
-        return self.services.vision.find_similar(
-            self,
-            examples=examples,
-            using=using,
-            confidence=confidence,
-            sizes=sizes,
-            resolution=resolution,
-            hash_size=hash_size,
-            step=step,
-            method=method,
-            max_per_page=max_per_page,
-            show_progress=show_progress,
-            mask_threshold=mask_threshold,
-        )
-
     def describe(self, **kwargs):
         """
         Describe the PDF content using the describe service.

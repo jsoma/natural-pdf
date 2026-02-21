@@ -400,12 +400,6 @@ class PDFCollection(ServiceHostMixin, SelectorHostMixin, ApplyMixin, ExportMixin
         # Return the combined image (Jupyter will display it automatically)
         return combined
 
-    def match_template(self, *args, **kwargs):
-        return self.services.vision.match_template(self, *args, **kwargs)
-
-    def find_similar(self, *args, **kwargs):
-        return self.services.vision.find_similar(self, *args, **kwargs)
-
     def ask(self, *args, **kwargs):
         return self.services.qa.ask(self, *args, **kwargs)
 

@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from natural_pdf.services.shape_detection_service import ShapeDetectionService
     from natural_pdf.services.table_service import TableService
     from natural_pdf.services.text_service import TextService
-    from natural_pdf.services.vision_service import VisualSearchService
 
 
 class ServiceNamespace:
@@ -93,10 +92,6 @@ class ServiceNamespace:
     @property
     def text(self) -> TextService:
         return self._context.get_service("text")
-
-    @property
-    def vision(self) -> VisualSearchService:
-        return self._context.get_service("vision")
 
 
 class ServiceHostMixin:

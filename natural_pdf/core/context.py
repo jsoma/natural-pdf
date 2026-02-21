@@ -36,8 +36,6 @@ class PDFContext:
             factories["selector"] = self._default_selector_factory()
         if "describe" not in factories:
             factories["describe"] = self._default_describe_factory()
-        if "vision" not in factories:
-            factories["vision"] = self._default_vision_factory()
         if "shapes" not in factories:
             factories["shapes"] = self._default_shape_factory()
         if "checkbox" not in factories:
@@ -176,15 +174,6 @@ class PDFContext:
 
         def factory(context: "PDFContext") -> DescribeService:
             return DescribeService(context)
-
-        return factory
-
-    @staticmethod
-    def _default_vision_factory() -> ServiceFactory:
-        from natural_pdf.services.vision_service import VisualSearchService
-
-        def factory(context: "PDFContext") -> VisualSearchService:
-            return VisualSearchService(context)
 
         return factory
 
