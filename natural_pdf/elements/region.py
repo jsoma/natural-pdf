@@ -293,8 +293,6 @@ class Region(
         if self.parent_region is not None:
             self.parent_region.child_regions.append(self)
 
-        self._cached_text: Optional[str] = None
-        self._cached_elements: Optional[ElementCollection] = None
         self._cached_bbox: Optional[Tuple[float, float, float, float]] = None
         self._exclusions: List[ExclusionSpec] = []
 
@@ -315,8 +313,7 @@ class Region(
         return Region(self.page, (x0, top, x1, bottom), label=label)
 
     def _invalidate_exclusion_cache(self) -> None:
-        self._cached_text = None
-        self._cached_elements = None
+        pass
 
     def _ocr_element_manager(self):
         return self.page._element_mgr
@@ -735,7 +732,7 @@ class Region(
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Region-specific wrapper around :py:meth:`DirectionalMixin._direction`.
 
@@ -785,7 +782,7 @@ class Region(
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region above this region.
 
@@ -800,7 +797,7 @@ class Region(
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area above
+            Region object representing the area above, or None if within constraint has no overlap
         """
         return self._direction(
             direction="above",
@@ -830,7 +827,7 @@ class Region(
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region below this region.
 
@@ -845,7 +842,7 @@ class Region(
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area below
+            Region object representing the area below, or None if within constraint has no overlap
         """
         return self._direction(
             direction="below",
@@ -875,7 +872,7 @@ class Region(
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region to the left of this region.
 
@@ -890,7 +887,7 @@ class Region(
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area to the left
+            Region object representing the area to the left, or None if within constraint has no overlap
         """
         return self._direction(
             direction="left",
@@ -920,7 +917,7 @@ class Region(
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region to the right of this region.
 
@@ -935,7 +932,7 @@ class Region(
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area to the right
+            Region object representing the area to the right, or None if within constraint has no overlap
         """
         return self._direction(
             direction="right",
@@ -1052,11 +1049,6 @@ class Region(
     def origin(self) -> Optional[Union["Element", "Region"]]:
         """The element/region that created this region (if it was created via directional method)."""
         return getattr(self, "source_element", None)
-
-    @property
-    def endpoint(self) -> Optional["Element"]:
-        """The element where this region stopped (if created with 'until' parameter)."""
-        return getattr(self, "boundary_element", None)
 
     def exclude(self):
         """
@@ -2439,11 +2431,13 @@ class Region(
 
         logger = logging.getLogger("natural_pdf.elements.region")
 
+        from collections import deque
+
         all_descendants = []
-        queue = list(self.child_regions)  # Start with direct children
+        queue = deque(self.child_regions)  # Start with direct children
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
             all_descendants.append(current)
             # Add current's children to the queue for processing
             if hasattr(current, "child_regions"):
@@ -3096,8 +3090,7 @@ class Region(
         """
         Inspect the region content using the describe service.
         """
-        collection = self.find_all("*")
-        return self.services.describe.inspect(collection, limit=limit, **kwargs)
+        return self.services.describe.inspect(self, limit=limit, **kwargs)
 
 
 # Flow navigation fallback uses Region directional helpers

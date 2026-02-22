@@ -44,14 +44,15 @@ def test_closest_ordering_demonstration(practice_pdf):
     print(f"\nRegion ends at y={result.bottom}")
 
     # The result should stop at the first match in the :closest ordering
-    # that's below our starting point
+    # that's below our starting point.  include_endpoint=True (the default)
+    # means the region extends to target.bottom.
     below_matches = [m for m in matches if m.top > start.bottom]
     if below_matches:
         expected_boundary = below_matches[0]
-        # Allow for small differences due to include_endpoint behavior
+        # Region should extend to the bottom of the endpoint element
         assert (
-            abs(result.bottom - expected_boundary.top) < 10
-        ), f"Expected boundary near {expected_boundary.top}, got {result.bottom}"
+            abs(result.bottom - expected_boundary.bottom) < 5
+        ), f"Expected boundary near {expected_boundary.bottom}, got {result.bottom}"
 
 
 def test_regular_selectors_still_use_positional(practice_pdf):

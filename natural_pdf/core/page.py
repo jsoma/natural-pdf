@@ -7,7 +7,7 @@ import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from types import MethodType
-from typing import (  # Added overload
+from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
@@ -20,6 +20,7 @@ from typing import (  # Added overload
     Type,
     Union,
     cast,
+    overload,
 )
 
 import pdfplumber
@@ -993,8 +994,13 @@ class Page(
         )
 
         # Collect element-based exclusions
-        # Store element bboxes for comparison instead of object ids
-        excluded_element_bboxes = set()  # Use set for O(1) lookup
+        # Use rounded bboxes for comparison (avoids float equality issues)
+        # and element ids for direct element exclusions (exact identity)
+        def _round_bbox(bbox):
+            return tuple(round(v, 2) for v in bbox)
+
+        excluded_element_bboxes = set()  # Rounded bboxes for O(1) lookup
+        excluded_element_ids = set()  # Element ids for identity matching
 
         # Process both page-level and PDF-level exclusions
         all_exclusions = list(self._exclusions) if has_page_exclusions else []
@@ -1026,7 +1032,8 @@ class Page(
                     bbox_vals = extract_bbox(cast(Any, el))
                     if bbox_vals is None:
                         continue
-                    excluded_element_bboxes.add(bbox_vals)
+                    excluded_element_bboxes.add(_round_bbox(bbox_vals))
+                    excluded_element_ids.add(id(el))
                     if debug_exclusions:
                         print(
                             f"  - Added element exclusion from selector '{selector_str}': {bbox_vals}"
@@ -1036,7 +1043,8 @@ class Page(
             elif method == "element":
                 bbox = extract_bbox(cast(Any, exclusion_item))
                 if bbox is not None:
-                    excluded_element_bboxes.add(bbox)
+                    excluded_element_bboxes.add(_round_bbox(bbox))
+                    excluded_element_ids.add(id(exclusion_item))
                     if debug_exclusions:
                         print(f"  - Added element exclusion with bbox {bbox}: {exclusion_item}")
                 else:
@@ -1058,8 +1066,17 @@ class Page(
             exclude = False
 
             # Check element-based exclusions first (faster)
-            element_bbox = extract_bbox(element)
-            if element_bbox in excluded_element_bboxes:
+            # Try identity match first, then rounded bbox comparison
+            if id(element) in excluded_element_ids:
+                exclude = True
+            else:
+                element_bbox = extract_bbox(element)
+                if (
+                    element_bbox is not None
+                    and _round_bbox(element_bbox) in excluded_element_bboxes
+                ):
+                    exclude = True
+            if exclude:
                 exclude = True
                 element_excluded_count += 1
                 if debug_exclusions:
@@ -1805,6 +1822,50 @@ class Page(
             prompt=prompt,
         )
 
+    @overload
+    def extract_text(
+        self,
+        preserve_whitespace: bool = ...,
+        preserve_line_breaks: bool = ...,
+        use_exclusions: bool = ...,
+        debug_exclusions: bool = ...,
+        content_filter: Any = ...,
+        *,
+        layout: bool = ...,
+        x_density: Optional[float] = ...,
+        y_density: Optional[float] = ...,
+        x_tolerance: Optional[float] = ...,
+        y_tolerance: Optional[float] = ...,
+        line_dir: Optional[str] = ...,
+        char_dir: Optional[str] = ...,
+        strip_final: bool = ...,
+        strip_empty: bool = ...,
+        bidi: bool = ...,
+        return_textmap: Literal[False] = ...,
+    ) -> str: ...
+
+    @overload
+    def extract_text(
+        self,
+        preserve_whitespace: bool = ...,
+        preserve_line_breaks: bool = ...,
+        use_exclusions: bool = ...,
+        debug_exclusions: bool = ...,
+        content_filter: Any = ...,
+        *,
+        layout: bool = ...,
+        x_density: Optional[float] = ...,
+        y_density: Optional[float] = ...,
+        x_tolerance: Optional[float] = ...,
+        y_tolerance: Optional[float] = ...,
+        line_dir: Optional[str] = ...,
+        char_dir: Optional[str] = ...,
+        strip_final: bool = ...,
+        strip_empty: bool = ...,
+        bidi: bool = ...,
+        return_textmap: Literal[True] = ...,
+    ) -> Tuple[str, Any]: ...
+
     def extract_text(
         self,
         preserve_whitespace: bool = True,
@@ -1824,7 +1885,7 @@ class Page(
         strip_empty: bool = False,
         bidi: bool = True,
         return_textmap: bool = False,
-    ) -> str:
+    ) -> Union[str, Tuple[str, Any]]:
         """
         Extract text from this page, respecting exclusions and using pdfplumber's
         layout engine (chars_to_textmap) if layout arguments are provided or default.
@@ -1959,37 +2020,7 @@ class Page(
             )
 
         if bidi and result:
-            # Quick check for any RTL character
-            import unicodedata
-
-            def _contains_rtl(s):
-                return any(unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in s)
-
-            if _contains_rtl(result):
-                try:
-                    from bidi.algorithm import get_display  # type: ignore
-
-                    from natural_pdf.utils.bidi_mirror import mirror_brackets
-
-                    normalized_lines = []
-                    for line in result.split("\n"):
-                        base_dir = (
-                            "R"
-                            if any(
-                                unicodedata.bidirectional(ch) in ("R", "AL", "AN") for ch in line
-                            )
-                            else "L"
-                        )
-                        raw_display = get_display(line, base_dir=base_dir)
-                        display_line = (
-                            raw_display.decode("utf-8", errors="ignore")
-                            if isinstance(raw_display, bytes)
-                            else str(raw_display)
-                        )
-                        normalized_lines.append(mirror_brackets(display_line))
-                    result = "\n".join(normalized_lines)
-                except ModuleNotFoundError:
-                    pass  # silently skip if python-bidi not available
+            result = apply_bidi_processing(result)
 
         if strip_empty and result:
             result = "\n".join(line for line in result.splitlines() if line.strip())
@@ -2759,6 +2790,24 @@ class Page(
 
     def detect_checkboxes(self, *args, **kwargs):
         return self.services.checkbox.detect_checkboxes(self, *args, **kwargs)
+
+    def annotate_checkboxes(self, resolution: int = 150):
+        """Open an interactive widget for manual checkbox annotation.
+
+        Draw rectangles on the page image to mark checkbox locations.
+        Call ``get_regions()`` on the returned annotator to retrieve results.
+
+        Args:
+            resolution: DPI for rendering the page image.
+
+        Returns:
+            CheckboxAnnotator instance.
+        """
+        from natural_pdf.widgets.checkbox_annotator import CheckboxAnnotator
+
+        annotator = CheckboxAnnotator(self, resolution=resolution)
+        annotator.show()
+        return annotator
 
     def guides(self, *args, **kwargs):
         return self.services.guides.guides(self, *args, **kwargs)

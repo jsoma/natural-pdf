@@ -51,7 +51,7 @@ class _DirectionalHost(SupportsGeometry, Protocol):
     @property
     def height(self) -> float: ...
 
-    def _direction(self, *args: Any, **kwargs: Any) -> Union["Region", "FlowRegion"]: ...
+    def _direction(self, *args: Any, **kwargs: Any) -> Optional[Union["Region", "FlowRegion"]]: ...
 
     def _direction_multipage(self, *args: Any, **kwargs: Any) -> Union["Region", "FlowRegion"]: ...
 
@@ -192,9 +192,11 @@ class DirectionalMixin:
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Protected helper method to create a region in a specified direction relative to this element/region.
+
+        Returns None if a 'within' constraint produces a zero/negative-area intersection.
 
         Args:
             direction: 'left', 'right', 'above', or 'below'
@@ -459,12 +461,12 @@ class DirectionalMixin:
                 else:  # Vertical
                     if is_positive:  # below
                         if include_endpoint:
-                            y1_final = target.bottom if not preserve_order else target.top
+                            y1_final = target.bottom
                         else:
                             y1_final = target.top - pixel_offset
                     else:  # above
                         if include_endpoint:
-                            y0_final = target.top if not preserve_order else target.bottom
+                            y0_final = target.top
                         else:
                             y0_final = target.bottom + pixel_offset
 
@@ -502,6 +504,10 @@ class DirectionalMixin:
             final_y0 = max(final_y0, constraint_region.top)
             final_x1 = min(final_x1, constraint_region.x1)
             final_y1 = min(final_y1, constraint_region.bottom)
+
+            # If constraint produces zero or negative area, return None
+            if final_x1 <= final_x0 or final_y1 <= final_y0:
+                return None
 
             # Update final_bbox with constrained values
             final_bbox = (final_x0, final_y0, final_x1, final_y1)
@@ -590,11 +596,12 @@ class DirectionalMixin:
         # Get access to the PDF to create a Flow
         pdf = host.page.pdf
         # Find the index of the current page
-        current_page_idx = None
-        for idx, page in enumerate(pdf.pages):
-            if page == host.page:
-                current_page_idx = idx
-                break
+        current_page_idx = getattr(host.page, "index", None)
+        if current_page_idx is None:
+            for idx, page in enumerate(pdf.pages):
+                if page == host.page:
+                    current_page_idx = idx
+                    break
 
         if current_page_idx is None:
             # Fallback - just use current page
@@ -729,7 +736,7 @@ class DirectionalMixin:
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region above this element/region.
 
@@ -748,7 +755,7 @@ class DirectionalMixin:
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area above
+            Region object representing the area above, or None if within constraint has no overlap
 
         Examples:
             ```python
@@ -795,7 +802,7 @@ class DirectionalMixin:
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region below this element/region.
 
@@ -814,7 +821,7 @@ class DirectionalMixin:
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area below
+            Region object representing the area below, or None if within constraint has no overlap
 
         Examples:
             ```python
@@ -861,7 +868,7 @@ class DirectionalMixin:
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region to the left of this element/region.
 
@@ -880,7 +887,7 @@ class DirectionalMixin:
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area to the left
+            Region object representing the area to the left, or None if within constraint has no overlap
 
         Examples:
             ```python
@@ -927,7 +934,7 @@ class DirectionalMixin:
         within: Optional["Region"] = None,
         anchor: str = "start",
         **kwargs,
-    ) -> Union["Region", "FlowRegion"]:
+    ) -> Optional[Union["Region", "FlowRegion"]]:
         """
         Select region to the right of this element/region.
 
@@ -946,7 +953,7 @@ class DirectionalMixin:
             **kwargs: Additional parameters
 
         Returns:
-            Region object representing the area to the right
+            Region object representing the area to the right, or None if within constraint has no overlap
 
         Examples:
             ```python
@@ -1496,7 +1503,7 @@ class Element(
         """Check if this element has polygon coordinates."""
         return (
             "polygon" in self._obj and self._obj["polygon"] and len(self._obj["polygon"]) >= 3
-        ) or hasattr(self, "_polygon")
+        ) or (self._polygon is not None and len(self._polygon) >= 3)
 
     @property
     def polygon(self) -> List[Tuple[float, float]]:
@@ -1579,8 +1586,11 @@ class Element(
         Returns:
             Next element or None if not found
         """
-        # Get all elements in reading order
-        all_elements = self.page.find_all("*", apply_exclusions=apply_exclusions)
+        # Get all elements and sort by reading order (top, x0, id for stability)
+        all_elements = sorted(
+            self.page.get_elements(apply_exclusions=apply_exclusions),
+            key=lambda e: (getattr(e, "top", 0), getattr(e, "x0", 0), id(e)),
+        )
 
         # Find our index in the list
         try:
@@ -1633,8 +1643,11 @@ class Element(
         Returns:
             Previous element or None if not found
         """
-        # Get all elements in reading order
-        all_elements = self.page.find_all("*", apply_exclusions=apply_exclusions)
+        # Get all elements and sort by reading order (top, x0, id for stability)
+        all_elements = sorted(
+            self.page.get_elements(apply_exclusions=apply_exclusions),
+            key=lambda e: (getattr(e, "top", 0), getattr(e, "x0", 0), id(e)),
+        )
 
         # Find our index in the list
         try:

@@ -210,9 +210,13 @@ class _LazyPageList(Sequence["Page"]):
             # Apply any stored exclusions to the newly created page
             if hasattr(self._parent_pdf, "_exclusions"):
                 for exclusion_data in self._parent_pdf._exclusions:
-                    exclusion_func, label = exclusion_data
+                    if len(exclusion_data) == 3:
+                        exclusion_func, label, method = exclusion_data
+                    else:
+                        exclusion_func, label = exclusion_data
+                        method = "region"
                     try:
-                        cached.add_exclusion(exclusion_func, label=label)
+                        cached.add_exclusion(exclusion_func, label=label, method=method)
                     except Exception as e:
                         logger.warning(f"Failed to apply exclusion to page {cached.number}: {e}")
 
@@ -398,7 +402,8 @@ class PDF(
             source_str = str(source)
             if source_str.startswith(("http://", "https://")):
                 # Download from URL
-                with urllib.request.urlopen(source_str) as response:
+                ssl_context = PDF._create_ssl_context()
+                with urllib.request.urlopen(source_str, context=ssl_context) as response:
                     img_data = response.read()
                 return Image.open(io.BytesIO(img_data))
             else:
@@ -550,14 +555,7 @@ class PDF(
             if is_url:
                 logger.info(f"Downloading PDF from URL: {path_or_url}")
                 try:
-                    ssl_context = None
-                    try:
-                        if certifi is not None:
-                            ssl_context = ssl.create_default_context(cafile=certifi.where())
-                        else:
-                            ssl_context = ssl.create_default_context()
-                    except Exception:
-                        ssl_context = ssl.create_default_context()
+                    ssl_context = PDF._create_ssl_context()
 
                     with urllib.request.urlopen(path_or_url, context=ssl_context) as response:
                         data = response.read()
@@ -614,15 +612,10 @@ class PDF(
         self._regions: RegionRegistry = []
         self._from_images: bool = False
         self._source_metadata: Optional[Dict[str, Any]] = None
+        self._analyses: Dict[str, Any] = {}
 
         logger.info(f"PDF '{self.source_path}' initialized with {len(self._pages)} pages.")
         self._initialize_highlighter()
-
-        # Remove text layer if requested
-        if not self._text_layer:
-            logger.info("Removing text layer as requested (text_layer=False)")
-            # Text layer is not loaded when text_layer=False, so no need to remove
-            pass
 
         # Analysis results accessed via self.analyses property (see below)
 
@@ -765,7 +758,9 @@ class PDF(
                 logger.warning(f"Failed to clear exclusions from existing page {i}: {e}")
         return self
 
-    def add_exclusion(self, exclusion_func, label: Optional[str] = None) -> "PDF":
+    def add_exclusion(
+        self, exclusion_func, label: Optional[str] = None, method: str = "region"
+    ) -> "PDF":
         """Add an exclusion function to the PDF.
 
         Exclusion functions define regions of each page that should be ignored during
@@ -779,6 +774,8 @@ class PDF(
                 to that page. The function is called once per page.
             label: Optional descriptive label for this exclusion rule, useful for
                 debugging and identification.
+            method: Exclusion method - 'region' (default) converts to region,
+                'element' matches individual elements by bbox.
 
         Returns:
             Self for method chaining.
@@ -810,23 +807,8 @@ class PDF(
         if not hasattr(self, "_pages"):
             raise AttributeError("PDF pages not yet initialized.")
 
-        # ------------------------------------------------------------------
-        # Support selector strings and ElementCollection objects directly.
-        # Store exclusion and apply only to already-created pages.
-        # ------------------------------------------------------------------
-        from natural_pdf.elements.element_collection import ElementCollection  # local import
-
-        if isinstance(exclusion_func, str) or isinstance(exclusion_func, ElementCollection):
-            # Store for bookkeeping and lazy application
-            self._exclusions.append((exclusion_func, label))
-
-            # Don't modify already-cached pages - they will get PDF-level exclusions
-            # dynamically through _get_exclusion_regions()
-            return self
-
-        # Fallback to original callable / Region behaviour ------------------
-        exclusion_data = (exclusion_func, label)
-        self._exclusions.append(exclusion_data)
+        # Store as 3-tuple (exclusion, label, method) for consistent handling
+        self._exclusions.append((exclusion_func, label, method))
 
         # Don't modify already-cached pages - they will get PDF-level exclusions
         # dynamically through _get_exclusion_regions()
@@ -1050,9 +1032,6 @@ class PDF(
             preserve_whitespace: Whether to keep blank characters
             preserve_line_breaks: When False, collapse newlines in each page's text.
             page_separator: String inserted between page texts when combining results.
-            use_exclusions: Whether to apply exclusion regions
-            debug_exclusions: Whether to output detailed debugging for exclusions
-            preserve_whitespace: Whether to keep blank characters
             use_exclusions: Whether to apply exclusion regions
             debug_exclusions: Whether to output detailed debugging for exclusions
             layout: Whether to enable layout-aware spacing (default: True).
@@ -1850,30 +1829,14 @@ class PDF(
 
     def close(self):
         """Close the underlying PDF file and clean up any temporary files."""
-        if hasattr(self, "_pdf") and self._pdf is not None:
-            try:
-                self._pdf.close()
-                logger.debug(f"Closed pdfplumber PDF object for {self.source_path}")
-            except Exception as e:
-                logger.warning(f"Error closing pdfplumber object: {e}")
-            finally:
-                self._pdf = None
-
-        if hasattr(self, "_temp_file") and self._temp_file is not None:
-            temp_file_path = None
-            try:
-                if hasattr(self._temp_file, "name") and self._temp_file.name:
-                    temp_file_path = self._temp_file.name
-                    # Only unlink if it exists and _is_stream is False (meaning WE created it)
-                    if not self._is_stream and os.path.exists(temp_file_path):
-                        os.unlink(temp_file_path)
-                        logger.debug(f"Removed temporary PDF file: {temp_file_path}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up temporary file '{temp_file_path}': {e}")
-
-        # Cancels the weakref finalizer so we don't double-clean
+        # Delegate to the weakref finalizer which handles closing pdfplumber
+        # and cleaning up temp files. Calling it marks it as dead, so
+        # subsequent close() calls are safe no-ops.
         if hasattr(self, "_finalizer") and self._finalizer.alive:
             self._finalizer()
+        # Prevent further operations via the pdfplumber object
+        if hasattr(self, "_pdf"):
+            self._pdf = None
 
     def __enter__(self):
         """Context manager entry."""
@@ -1894,7 +1857,6 @@ class PDF(
         return f"<PDF source='{source_info}' pages={page_count_str}>"
 
     def get_id(self) -> str:
-        """Get unique identifier for this PDF."""
         """Get unique identifier for this PDF."""
         return self.path
 
@@ -2509,32 +2471,21 @@ class PDF(
 
     @property
     def analyses(self) -> Dict[str, Any]:
-        plumber_pdf = getattr(self, "_pdf", None)
-        if plumber_pdf is None:
-            raise RuntimeError("Underlying pdfplumber PDF is not initialized.")
-
-        metadata = getattr(plumber_pdf, "metadata", None)
-        if metadata is None:
-            metadata = {}
-            plumber_pdf.metadata = metadata
-
-        analysis_entry = metadata.setdefault("analysis", {})
-        if not isinstance(analysis_entry, dict):
-            raise TypeError("PDF metadata 'analysis' entry must be a dictionary")
-
-        return cast(Dict[str, Any], analysis_entry)
+        return self._analyses
 
     @analyses.setter
     def analyses(self, value: Dict[str, Any]):
-        plumber_pdf = getattr(self, "_pdf", None)
-        if plumber_pdf is None:
-            raise RuntimeError("Underlying pdfplumber PDF is not initialized.")
+        self._analyses = value
 
-        metadata = getattr(plumber_pdf, "metadata", None)
-        if metadata is None:
-            metadata = {}
-            plumber_pdf.metadata = metadata
-        metadata["analysis"] = value
+    @staticmethod
+    def _create_ssl_context():
+        """Create an SSL context using certifi if available, else system defaults."""
+        try:
+            if certifi is not None:
+                return ssl.create_default_context(cafile=certifi.where())
+            return ssl.create_default_context()
+        except Exception:
+            return ssl.create_default_context()
 
     # Static helper for weakref.finalize to avoid capturing 'self'
     @staticmethod

@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from natural_pdf.core.page import Page
     from natural_pdf.elements.region import Region
     from natural_pdf.elements.text import TextElement  # Ensure TextElement is imported
+    from natural_pdf.flows.region import FlowRegion
 else:  # pragma: no cover - fallback when ipywidgets is unavailable at runtime
     DOMWidget = Any  # type: ignore[assignment]
 
@@ -330,6 +331,21 @@ class ElementCollection(
         if not elements_by_page and not flow_regions:
             return []
 
+        # Pre-compute highlight data once (outside per-page loop) if group_by is used
+        _cached_prepared_highlights = None
+        _cached_quantitative_metadata = None
+        if mode == "show" and group_by is not None:
+            _cached_prepared_highlights = self._prepare_highlight_data(
+                group_by=group_by, color=color, bins=bins, annotate=annotate, **kwargs
+            )
+            for highlight_data in _cached_prepared_highlights:
+                if (
+                    "quantitative_metadata" in highlight_data
+                    and highlight_data["quantitative_metadata"]
+                ):
+                    _cached_quantitative_metadata = highlight_data["quantitative_metadata"]
+                    break
+
         # Create or update RenderSpec for each page with regular elements
         for page, page_elements in elements_by_page.items():
             # Check if we already have a spec for this page from FlowRegions
@@ -388,20 +404,9 @@ class ElementCollection(
             if mode == "show":
                 # Handle group_by parameter for quantitative/categorical grouping
                 if group_by is not None:
-                    # Use the improved highlighting logic from _prepare_highlight_data
-                    prepared_highlights = self._prepare_highlight_data(
-                        group_by=group_by, color=color, bins=bins, annotate=annotate, **kwargs
-                    )
-
-                    # Check if we have quantitative metadata to preserve
-                    quantitative_metadata = None
-                    for highlight_data in prepared_highlights:
-                        if (
-                            "quantitative_metadata" in highlight_data
-                            and highlight_data["quantitative_metadata"]
-                        ):
-                            quantitative_metadata = highlight_data["quantitative_metadata"]
-                            break
+                    # Use pre-computed highlight data (hoisted out of per-page loop)
+                    prepared_highlights = _cached_prepared_highlights
+                    quantitative_metadata = _cached_quantitative_metadata
 
                     # Add highlights from prepared data
                     for highlight_data in prepared_highlights:
@@ -910,7 +915,7 @@ class ElementCollection(
 
         return result
 
-    def merge(self) -> "Region":
+    def merge(self) -> Union["Region", "FlowRegion"]:
         """
         Merge all elements into a single region encompassing their bounding box.
 
@@ -918,8 +923,11 @@ class ElementCollection(
         a single region that spans from the minimum to maximum coordinates of all
         elements, regardless of whether they touch.
 
+        When elements span multiple pages, returns a FlowRegion with one
+        constituent Region per page.
+
         Returns:
-            A single Region object encompassing all elements
+            A single Region (same page) or FlowRegion (cross-page)
 
         Raises:
             ValueError: If the collection is empty or elements have no valid bounding boxes
@@ -937,39 +945,63 @@ class ElementCollection(
         if not self._elements:
             raise ValueError("Cannot merge an empty ElementCollection")
 
-        # Collect all bounding boxes
-        bboxes = []
-        page = None
+        # Group elements by page index (not object identity) to handle
+        # different Page wrappers for the same logical page
+        from collections import OrderedDict
 
-        for elem in self._elements:
-            if hasattr(elem, "bbox") and elem.bbox:
-                bboxes.append(elem.bbox)
-                # Get the page from the first element that has one
-                if page is None and hasattr(elem, "page"):
-                    page = elem.page
-
-        if not bboxes:
-            raise ValueError("No elements with valid bounding boxes to merge")
-
-        if page is None:
-            raise ValueError("Cannot determine page for merged region")
-
-        # Find min/max coordinates
-        x_coords = []
-        y_coords = []
-
-        for bbox in bboxes:
-            x0, y0, x1, y1 = bbox
-            x_coords.extend([x0, x1])
-            y_coords.extend([y0, y1])
-
-        # Create encompassing bounding box
-        merged_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
-
-        # Create and return the merged region
         from natural_pdf.elements.region import Region
 
-        return Region(page, merged_bbox)
+        elements_by_page_idx: OrderedDict[int, list] = OrderedDict()
+        page_objects: dict[int, object] = {}
+        for elem in self._elements:
+            if hasattr(elem, "bbox") and elem.bbox and hasattr(elem, "page"):
+                page = elem.page
+                page_idx = getattr(page, "index", id(page))
+                if page_idx not in elements_by_page_idx:
+                    elements_by_page_idx[page_idx] = []
+                    page_objects[page_idx] = page
+                elements_by_page_idx[page_idx].append(elem)
+
+        if not elements_by_page_idx:
+            raise ValueError("No elements with valid bounding boxes to merge")
+
+        if len(elements_by_page_idx) == 1:
+            # Single page — return a Region
+            page_idx = next(iter(elements_by_page_idx))
+            page = page_objects[page_idx]
+            bboxes = [elem.bbox for elem in elements_by_page_idx[page_idx]]
+            x_coords = []
+            y_coords = []
+            for x0, y0, x1, y1 in bboxes:
+                x_coords.extend([x0, x1])
+                y_coords.extend([y0, y1])
+            merged_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+            return Region(page, merged_bbox)
+
+        # Multi-page — create one Region per page, then wrap in FlowRegion
+        # Sort by page index to ensure document order
+        sorted_page_idxs = sorted(elements_by_page_idx.keys())
+
+        per_page_regions = []
+        sorted_pages = []
+        for page_idx in sorted_page_idxs:
+            page = page_objects[page_idx]
+            sorted_pages.append(page)
+            elems = elements_by_page_idx[page_idx]
+            bboxes = [elem.bbox for elem in elems]
+            x_coords = []
+            y_coords = []
+            for x0, y0, x1, y1 in bboxes:
+                x_coords.extend([x0, x1])
+                y_coords.extend([y0, y1])
+            merged_bbox = (min(x_coords), min(y_coords), max(x_coords), max(y_coords))
+            per_page_regions.append(Region(page, merged_bbox))
+
+        from natural_pdf.flows.flow import Flow
+        from natural_pdf.flows.region import FlowRegion
+
+        flow = Flow(segments=sorted_pages, arrangement="vertical")
+        return FlowRegion(flow=flow, constituent_regions=per_page_regions)
 
     def sort(
         self, key: Optional[Callable[[T], Any]] = None, reverse: bool = False
@@ -1524,8 +1556,6 @@ class ElementCollection(
             render_ocr=render_ocr,
         )
         return self
-
-        return None
 
     def save_pdf(
         self,
@@ -2469,6 +2499,8 @@ class ElementCollection(
                         bottom=bottom,
                     )
                     clipped_elements.append(cast(SupportsElement, clipped))
+                else:
+                    clipped_elements.append(cast(SupportsElement, el))
             return self._spawn(clipped_elements)
 
         # Fallback to original behaviour: apply same clipping parameters to all elements

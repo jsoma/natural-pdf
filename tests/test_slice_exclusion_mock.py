@@ -120,7 +120,7 @@ def test_exclusions_persist_across_slices():
 def test_new_pages_get_all_exclusions():
     """Test that pages created after exclusions are added get all exclusions."""
     mock_pdf = Mock()
-    mock_pdf._exclusions = [("exclusion1", "label1"), ("exclusion2", "label2")]
+    mock_pdf._exclusions = [("exclusion1", "label1", "region"), ("exclusion2", "label2", "region")]
     mock_pdf._regions = []
 
     mock_plumber_pdf = Mock()
@@ -140,7 +140,9 @@ def test_new_pages_get_all_exclusions():
         mock_page._exclusions = []
         exclusions_added = []
         mock_page.add_exclusion = Mock(
-            side_effect=lambda exc, label: exclusions_added.append((exc, label))
+            side_effect=lambda exc, label, method="region": exclusions_added.append(
+                (exc, label, method)
+            )
         )
 
         MockPage.return_value = mock_page
@@ -150,7 +152,10 @@ def test_new_pages_get_all_exclusions():
 
         # Verify all exclusions were applied
         assert mock_page.add_exclusion.call_count == 2, "Both exclusions should be applied"
-        assert exclusions_added == [("exclusion1", "label1"), ("exclusion2", "label2")]
+        assert exclusions_added == [
+            ("exclusion1", "label1", "region"),
+            ("exclusion2", "label2", "region"),
+        ]
 
 
 if __name__ == "__main__":
