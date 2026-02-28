@@ -1,22 +1,30 @@
 """Checkbox detection analyzers for natural-pdf."""
 
-from .checkbox_options import CheckboxOptions, RTDETRCheckboxOptions
-from .registry import (
-    DEFAULT_ENGINE,
-    ENGINE_REGISTRY,
-    get_detector,
-    list_available_engines,
-    prepare_checkbox_options,
-    register_checkbox_engine,
+# Trigger engine registration at import time
+from .checkbox_manager import (
+    engine_name_for_options,
+    get_options_class_for_engine,
+    register_checkbox_engines,
+)
+from .checkbox_options import (
+    BaseCheckboxOptions,
+    DefaultCheckboxOptions,
+    OnnxCheckboxOptions,
+    VectorCheckboxOptions,
+    VLMCheckboxOptions,
 )
 
+# Backward-compat alias
+CheckboxOptions = BaseCheckboxOptions
+
 __all__ = [
+    "BaseCheckboxOptions",
     "CheckboxOptions",
-    "RTDETRCheckboxOptions",
-    "DEFAULT_ENGINE",
-    "ENGINE_REGISTRY",
-    "register_checkbox_engine",
-    "list_available_engines",
-    "get_detector",
-    "prepare_checkbox_options",
+    "DefaultCheckboxOptions",
+    "OnnxCheckboxOptions",
+    "VectorCheckboxOptions",
+    "VLMCheckboxOptions",
+    "engine_name_for_options",
+    "get_options_class_for_engine",
+    "register_checkbox_engines",
 ]
