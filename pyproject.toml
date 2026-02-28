@@ -60,6 +60,7 @@ paddle = [
     "paddlepaddle>=3.0.0",
     "paddleocr>=3.0.1",
     "paddlex[ocr]>=3.0.2",
+    "numpy<2.0",  # PaddlePaddle incompatible with numpy 2.x scalar conversion
 ]
 
 export = [

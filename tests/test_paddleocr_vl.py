@@ -283,7 +283,7 @@ class TestPaddleOCRVLIntegration:
             for el in elements:
                 assert el.x0 >= 0
                 assert el.x1 <= page.width + 1  # small tolerance
-                assert el.y0 >= 0
-                assert el.y1 <= page.height + 1
+                assert el.top >= 0
+                assert el.bottom <= page.height + 1
         finally:
             pdf.close()

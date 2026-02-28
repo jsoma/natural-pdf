@@ -39,6 +39,7 @@ OPTIONAL_PACKAGES = [
     "paddleocr",
     "paddlepaddle",
     "paddlex[ocr]>=3.0.2",
+    "numpy<2.0",  # PaddlePaddle incompatible with numpy 2.x scalar conversion
     "surya-ocr<0.15",
     "doclayout_yolo",
     # NOTE: python-doctr requires huggingface_hub<1.0 due to deprecated Repository import
