@@ -41,6 +41,8 @@ dependencies = [
     "ipywidgets>=7.0.0",
     "python-bidi",
     "matplotlib",
+    "onnxruntime",
+    "huggingface_hub",
 ]
 
 [project.optional-dependencies]

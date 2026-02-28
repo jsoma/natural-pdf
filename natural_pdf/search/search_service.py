@@ -4,7 +4,8 @@ import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
+
+from natural_pdf.utils.optional_imports import require
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +22,12 @@ class SearchService:
     _models: Dict[str, Any] = {}
 
     @classmethod
-    def get_model(cls, model_name: str = DEFAULT_MODEL) -> SentenceTransformer:
+    def get_model(cls, model_name: str = DEFAULT_MODEL):
         """Get or create a cached SentenceTransformer model."""
         if model_name not in cls._models:
             logger.info(f"Loading embedding model '{model_name}'...")
-            cls._models[model_name] = SentenceTransformer(model_name)
+            st = require("sentence_transformers")
+            cls._models[model_name] = st.SentenceTransformer(model_name)
         return cls._models[model_name]
 
     @staticmethod

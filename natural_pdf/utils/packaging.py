@@ -112,7 +112,7 @@ def create_correction_task_package(
                     or not hasattr(page, "width")
                     or not hasattr(page, "height")
                     or not hasattr(page, "find_all")
-                    or not hasattr(page, "to_image")
+                    or not hasattr(page, "render")
                 ):
                     logger.warning(
                         f"Skipping invalid Page object in {pdf_path}: page index {getattr(page, 'index', 'unknown')}"

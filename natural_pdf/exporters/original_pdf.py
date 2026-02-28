@@ -26,7 +26,7 @@ def create_original_pdf(
     Creates a new PDF file containing only the original, unmodified pages
     specified by the source object.
 
-    Requires 'pikepdf'. Install with: pip install "natural-pdf[ocr-export]"
+    Requires 'pikepdf'. Install with: pip install "natural-pdf[export]"
 
     Args:
         source: The Page, PageCollection, or PDF object indicating which pages to include.

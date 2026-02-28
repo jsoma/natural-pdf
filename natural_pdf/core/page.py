@@ -2213,7 +2213,7 @@ class Page(
             render_ocr: Whether to render OCR text.
             include_highlights: Whether to render highlights.
             resolution: Resolution in DPI for base image rendering (default: 144 DPI, equivalent to previous scale=2.0).
-            **kwargs: Additional args for pdfplumber's internal to_image.
+            **kwargs: Additional args for rendering.
 
         Returns:
             Self for method chaining.

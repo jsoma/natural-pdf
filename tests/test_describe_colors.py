@@ -20,6 +20,10 @@ class _Line:
         self.bottom = y1
 
 
+def _lower_keys(d):
+    return {k.lower(): v for k, v in d.items()}
+
+
 def test_rect_describe_reports_hex_colors():
     elements = [
         _Rect(stroke=(0, 0, 0)),
@@ -27,9 +31,9 @@ def test_rect_describe_reports_hex_colors():
         _Rect(stroke=(0.2, 0.4, 0.6)),
     ]
     summary = describe_rect_elements(elements)
-    colors = summary["styles"]["colors"]
+    colors = _lower_keys(summary["styles"]["colors"])
     assert colors["#000000"] == 1
-    assert colors["#FF0000"] == 1
+    assert colors["#ff0000"] == 1
     assert colors["#336699"] == 1
 
 
@@ -39,6 +43,6 @@ def test_line_describe_reports_hex_colors():
         _Line(color=(128, 64, 32)),
     ]
     summary = describe_line_elements(elements)
-    colors = summary["colors"]
+    colors = _lower_keys(summary["colors"])
     assert colors["#000000"] == 1
     assert colors["#804020"] == 1

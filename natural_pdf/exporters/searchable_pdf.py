@@ -289,16 +289,6 @@ def _generate_hocr_for_page(page: "Page", image_width: int, image_height: int) -
     # hocr_content = xml_declaration + doctype_declaration + hocr_string_content # Removed string addition
     # --- End ElementTree hOCR Generation ---
 
-    # --- Add code to save hOCR output for inspection ---
-    try:
-        hocr_output_path = "natural_pdf_hocr_output.hocr"
-        with open(hocr_output_path, "w", encoding="utf-8") as f_out:
-            f_out.write(hocr_content)
-        logger.info(f"Saved hOCR content for page {page.index} to: {hocr_output_path}")
-    except Exception as e:
-        logger.error(f"Failed to save hOCR output to file: {e}")
-    # --- End save hOCR ---
-
     return hocr_content
 
 
@@ -357,7 +347,6 @@ def create_searchable_pdf(
             try:
                 # 1. Render page image at target DPI
                 logger.debug(f"  Rendering page {i} to image ({dpi} DPI)...")
-                # Use the Page's to_image method
                 # Use render() for clean image without highlights
                 pil_image = page.render(resolution=dpi)
                 if pil_image is None:

@@ -83,7 +83,12 @@ class _LocalVLMAdapter:
     def _do_load(self) -> None:
         try:
             import torch
-            from transformers import AutoModelForVision2Seq, AutoProcessor
+            from transformers import AutoProcessor
+
+            try:
+                from transformers import AutoModelForImageTextToText as AutoVLM
+            except ImportError:
+                from transformers import AutoModelForVision2Seq as AutoVLM
         except ImportError as exc:
             raise RuntimeError(
                 "Local VLM inference requires 'transformers' and 'torch'. "
@@ -105,17 +110,30 @@ class _LocalVLMAdapter:
             dtype = torch.float32
             device_map = None
 
-        self._processor = AutoProcessor.from_pretrained(self.model_name)
-        self._model = AutoModelForVision2Seq.from_pretrained(
+        processor_kwargs: dict[str, Any] = {}
+        from natural_pdf.core.vlm_prompts import detect_model_family
+
+        if detect_model_family(self.model_name) in ("qwen_vl", "gutenocr"):
+            # Qwen-VL defaults have no real pixel cap (longest_edge=16M),
+            # which causes OOM on even modest document images.  Use the
+            # values recommended in the Qwen-VL documentation.
+            processor_kwargs["min_pixels"] = 256 * 28 * 28  # ~200k
+            processor_kwargs["max_pixels"] = 1280 * 28 * 28  # ~1M
+
+        self._processor = AutoProcessor.from_pretrained(self.model_name, **processor_kwargs)
+        self._model = AutoVLM.from_pretrained(
             self.model_name,
             torch_dtype=dtype,
             device_map=device_map,
         )
         if device_map is None:
             self._model = self._model.to(device)
+        self._model.eval()
         logger.info("VLM model %r loaded on %s.", self.model_name, device)
 
     def generate(self, image: Image.Image, prompt: str, *, max_new_tokens: int = 4096) -> str:
+        import torch
+
         self._ensure_loaded()
 
         messages = [
@@ -135,7 +153,8 @@ class _LocalVLMAdapter:
             self._model.device
         )
 
-        output_ids = self._model.generate(**inputs, max_new_tokens=max_new_tokens)
+        with torch.inference_mode():
+            output_ids = self._model.generate(**inputs, max_new_tokens=max_new_tokens)
         generated = output_ids[0][inputs.input_ids.shape[1] :]
         return self._processor.decode(generated, skip_special_tokens=True)
 

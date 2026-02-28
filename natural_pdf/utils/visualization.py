@@ -477,7 +477,7 @@ def render_plain_page(page, resolution):
     Returns:
         PIL Image of the rendered page
     """
-    # Prefer the page's own to_image (honors rotations/overrides) if available.
+    # Prefer pdfplumber's renderer (honors rotations/overrides) if available.
     try:
         if hasattr(page, "_page") and hasattr(page._page, "to_image"):
             img_obj = page._page.to_image(resolution=resolution)

@@ -90,7 +90,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
 
         # Extract table as if it were continuous
         table_data = table_flow.extract_table()
-        text_content = table_flow.get_text()
+        text_content = table_flow.extract_text()
         ```
 
         Multi-column article flow:
@@ -107,7 +107,7 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
         )
 
         # Read in proper order
-        article_text = article_flow.get_text()
+        article_text = article_flow.extract_text()
         ```
 
     Note:
@@ -418,6 +418,12 @@ class Flow(ServiceHostMixin, Visualizable, SelectorHostMixin):
             offset_x=offset_x,
             offset_y=offset_y,
         )
+
+    def extract_text(self, **kwargs) -> str:
+        """Extract text from the flow, concatenating text from all segments."""
+        if not self.segments:
+            return ""
+        return self._analysis_region().extract_text(**kwargs)
 
     def ask(self, *args, **kwargs):
         return self.services.qa.ask(self, *args, **kwargs)

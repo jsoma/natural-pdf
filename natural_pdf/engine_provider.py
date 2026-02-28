@@ -85,6 +85,17 @@ class EngineProvider:
         cap = capability.strip().lower()
         return {cap: tuple(self._registry.get(cap, {}).keys())}
 
+    def get_metadata(
+        self,
+        capability: str,
+        name: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Return the metadata dict for a registered engine, or None if not found."""
+        cap = capability.strip().lower()
+        engine_name = name.strip().lower()
+        reg = self._registry.get(cap, {}).get(engine_name)
+        return dict(reg.metadata) if reg and reg.metadata else None
+
     # ------------------------------------------------------------------
     # Retrieval
     # ------------------------------------------------------------------

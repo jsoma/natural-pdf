@@ -121,8 +121,7 @@ def test_page_viewer_widget_creation_when_installed(standard_pdf_page):
         ("surya", "surya"),
         ("doctr", "doctr"),
         ("yolo", "doclayout_yolo"),
-        ("docling", "docling"),
-        ("gemini", "openai"),
+        ("vlm", "openai"),
     ],
 )
 def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engine, package_name):
@@ -131,18 +130,16 @@ def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engi
 
     if engine == "paddle" and sys.platform == "darwin":
         pytest.skip("PaddleOCR tests skipped on macOS")
-    if engine in ["surya", "docling"] and sys.version_info < (3, 10):
+    if engine in ["surya"] and sys.version_info < (3, 10):
         pytest.skip(f"{engine} tests skipped on Python < 3.10")
 
     try:
         if engine in ["easyocr", "paddle", "surya", "doctr"]:
             result = needs_ocr_pdf_page.apply_ocr(engine=engine)
-        elif engine in ["yolo", "surya", "docling", "gemini"]:
-            # Gemini requires classes, so we provide a default list for testing
-            if engine == "gemini":
+        elif engine in ["yolo", "surya", "vlm"]:
+            # VLM requires classes, so we provide a default list for testing
+            if engine == "vlm":
                 pytest.importorskip("openai")
-                # A mock client or specific test setup might be needed here if real calls are made
-                # For now, we assume the test environment handles credentials or mocking
                 with pytest.raises(Exception):  # It will fail on client
                     _ = standard_pdf_page.analyze_layout(engine=engine, classes=["text", "title"])
                 return
@@ -167,8 +164,7 @@ def test_engine_works_when_installed(needs_ocr_pdf_page, standard_pdf_page, engi
         ("surya", "surya"),
         ("doctr", "doctr"),
         ("yolo", "doclayout_yolo"),
-        ("docling", "docling"),
-        ("gemini", "openai"),
+        ("vlm", "openai"),
     ],
 )
 def test_engine_fails_gracefully_when_not_installed(
@@ -180,16 +176,12 @@ def test_engine_fails_gracefully_when_not_installed(
             f"Skipping test: All optional dependencies, including {package_name}, are installed."
         )
 
-    if engine == "gemini":
-        with pytest.raises(RuntimeError, match="No client provided"):
+    if _package_available(package_name):
+        pytest.skip(
+            f"Skipping failure-path check for '{engine}' because {package_name} is installed."
+        )
+    with pytest.raises(RuntimeError, match="is not available"):
+        if engine in ["easyocr", "paddle", "surya", "doctr"]:
+            _ = needs_ocr_pdf_page.apply_ocr(engine=engine)
+        elif engine in ["yolo", "surya", "vlm"]:
             _ = standard_pdf_page.analyze_layout(engine=engine)
-    else:
-        if _package_available(package_name):
-            pytest.skip(
-                f"Skipping failure-path check for '{engine}' because {package_name} is installed."
-            )
-        with pytest.raises(RuntimeError, match="is not available"):
-            if engine in ["easyocr", "paddle", "surya", "doctr"]:
-                _ = needs_ocr_pdf_page.apply_ocr(engine=engine)
-            elif engine in ["yolo", "surya", "docling", "gemini"]:
-                _ = standard_pdf_page.analyze_layout(engine=engine)

@@ -45,7 +45,16 @@ class DescribeService:
     def inspect(self, host, limit: int = 30) -> Any:
         from natural_pdf.describe import inspect_collection
         from natural_pdf.describe.summary import InspectionSummary
+        from natural_pdf.elements.base import Element
         from natural_pdf.elements.element_collection import ElementCollection
+        from natural_pdf.elements.region import Region
+
+        # Wrap single Element in a collection so inspect() works on it
+        if isinstance(host, Element) and not isinstance(host, Region):
+            host = ElementCollection([host])
+        # Region: gather its children so we get the same result as describe
+        elif isinstance(host, Region):
+            host = host.find_all("*")
 
         if not isinstance(host, ElementCollection):
             raise TypeError("inspect() is only available on ElementCollection instances.")

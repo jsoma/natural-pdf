@@ -96,29 +96,6 @@ class ElementSummary:
 
         return lines
 
-    def _format_list(self, data: List[Any]) -> List[str]:
-        """Format list as markdown."""
-        lines = []
-        for item in data:
-            if isinstance(item, dict):
-                # Could be table rows
-                lines.append(f"- {item}")
-            else:
-                lines.append(f"- {item}")
-        return lines
-
-    def _format_horizontal_table(self, title: str, data: Dict[str, Any]) -> List[str]:
-        """Format dict as horizontal table."""
-        headers = list(data.keys())
-        values = list(data.values())
-
-        # Create table
-        header_row = "| " + " | ".join(headers) + " |"
-        separator = "|" + "|".join("------" for _ in headers) + "|"
-        value_row = "| " + " | ".join(str(v) for v in values) + " |"
-
-        return [f"- **{title}**:", "", header_row, separator, value_row, ""]
-
     # Added for better VS Code and other frontends support
     def _repr_html_(self) -> str:  # type: ignore
         """Return HTML representation so rich rendering works in more frontends.

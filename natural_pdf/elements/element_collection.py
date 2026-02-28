@@ -2213,7 +2213,7 @@ class ElementCollection(
                     element_data["content"] = ""
 
             # Save image if requested
-            if include_images and image_dir and hasattr(element, "to_image"):
+            if include_images and image_dir and hasattr(element, "show"):
                 try:
                     # Create identifier for the element
                     pdf_name = "unknown"

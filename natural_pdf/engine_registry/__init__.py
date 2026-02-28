@@ -1,6 +1,7 @@
 """Convenience exports for engine registration helpers."""
 
 from .base import list_engines, register_builtin, register_engine
+from .checkbox import register_checkbox_engine
 from .classification import register_classification_engine
 from .deskew import register_deskew_engine
 from .guides import register_guides_engine
@@ -13,6 +14,7 @@ __all__ = [
     "list_engines",
     "register_builtin",
     "register_engine",
+    "register_checkbox_engine",
     "register_table_engine",
     "register_table_function",
     "register_structure_engine",

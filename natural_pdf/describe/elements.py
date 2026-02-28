@@ -62,7 +62,7 @@ def _color_to_hex(color: Any) -> Optional[str]:
         else:
             ints = [int(round(max(0.0, min(val, 1.0)) * 255.0)) for val in components]
 
-        return "#{:02X}{:02X}{:02X}".format(*ints)
+        return "#{:02x}{:02x}{:02x}".format(*ints)
 
     return None
 
@@ -140,10 +140,10 @@ def describe_rect_elements(elements: List["Element"]) -> Dict[str, Any]:
 
         # Style properties - use RectangleElement properties
         stroke = getattr(element, "stroke", None)
-        if stroke and stroke != (0, 0, 0):  # Check if stroke color exists and isn't black
+        if stroke is not None:
             stroke_count += 1
         fill = getattr(element, "fill", None)
-        if fill and fill != (0, 0, 0):  # Check if fill color exists and isn't black
+        if fill is not None:
             fill_count += 1
 
         # Stroke width

@@ -48,7 +48,6 @@ OPTIONAL_PACKAGES = [
     "openai",
     "lancedb",
     "pyarrow",
-    "deskew>=1.5",
     "img2pdf",
     "jupytext",
     "nbformat",

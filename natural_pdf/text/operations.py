@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Un
 from pdfplumber.utils.geometry import get_bbox_overlap, merge_bboxes
 from pdfplumber.utils.text import TEXTMAP_KWARGS, WORD_EXTRACTOR_KWARGS, chars_to_textmap
 
+from natural_pdf.utils.bidi_mirror import mirror_brackets
+
 if TYPE_CHECKING:
     from natural_pdf.elements.region import Region  # Use type hint
 
@@ -351,26 +353,20 @@ def apply_bidi_processing(text: str) -> str:
     if not _contains_rtl(text):
         return text
 
-    try:
-        from bidi.algorithm import get_display  # type: ignore
+    from bidi.algorithm import get_display  # type: ignore
 
-        processed_lines = []
-        for line in text.split("\n"):
-            if line.strip():
-                base_dir = "R" if _contains_rtl(line) else "L"
-                logical_line = get_display(line, base_dir=base_dir)
-                if isinstance(logical_line, bytes):
-                    try:
-                        logical_line = logical_line.decode("utf-8")
-                    except UnicodeDecodeError:
-                        logical_line = logical_line.decode("utf-8", "ignore")
-                processed_lines.append(mirror_brackets(logical_line))
-            else:
-                processed_lines.append(line)
+    processed_lines = []
+    for line in text.split("\n"):
+        if line.strip():
+            base_dir = "R" if _contains_rtl(line) else "L"
+            logical_line = get_display(line, base_dir=base_dir)
+            if isinstance(logical_line, bytes):
+                logical_line = logical_line.decode("utf-8", errors="ignore")
+            processed_lines.append(mirror_brackets(logical_line))
+        else:
+            processed_lines.append(line)
 
-        return "\n".join(processed_lines)
-    except Exception:  # pragma: no cover - optional dependency
-        return text
+    return "\n".join(processed_lines)
 
 
 __all__ = [

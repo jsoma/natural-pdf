@@ -117,18 +117,19 @@ class TestWithinConstraint:
         assert result.bottom <= first_page.height / 2
 
     def test_within_no_results_in_constraint(self, first_page):
-        """Test behavior when no elements found within constraint."""
-        # Create a small region unlikely to have text
+        """Test behavior when constraint doesn't overlap navigation direction."""
+        # Create a small region unlikely to overlap with below() direction
         tiny_region = first_page.region(left=0, right=10, top=0, bottom=10)
 
         # Find element outside the tiny region
         element = first_page.find("text")
 
-        # Search within tiny region
+        # Search within tiny region — if the region doesn't overlap with
+        # the directional result, we get None back
         result = element.below(until="text", within=tiny_region)
 
-        # Should return a region with no endpoint
-        assert result.endpoint is None
+        # Should return None when constraint produces zero/negative area
+        assert result is None
 
     def test_within_multipage_not_supported(self, pdf):
         """Test that within constraint with multipage raises appropriate error."""

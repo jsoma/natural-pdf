@@ -7,6 +7,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Any, List
 
 from .elements import (
+    _color_to_hex,
     describe_line_elements,
     describe_rect_elements,
     describe_region_elements,
@@ -27,58 +28,35 @@ def describe_page(page: "Page") -> ElementSummary:
     """
     Describe what's on a page with high-level summary.
 
+    Delegates element analysis to ``describe_collection`` so that pages
+    get the same rect/line/region breakdowns that collections do, with
+    page-specific info (number, dimensions) prepended.
+
     Args:
         page: Page to describe
 
     Returns:
         ElementSummary with page overview
     """
-    data = {}
-
-    # Get all elements
-    all_elements = page.get_elements()
+    all_elements = page.find_all("*")
 
     if not all_elements:
-        data["message"] = "No elements found on page"
+        data = {"message": "No elements found on page"}
         return ElementSummary(data, f"Page {page.number} Summary")
 
-    # Element counts by type (exclude chars - too granular)
-    type_counts = Counter()
-    for element in all_elements:
-        element_type = getattr(element, "type", "unknown")
-        if element_type != "char":  # Skip character elements
-            type_counts[element_type] += 1
+    # Page-specific header info
+    page_info = {
+        "page_number": page.number,
+        "dimensions": f"{page.width:.0f} x {page.height:.0f} pts",
+    }
 
-    # Format element counts as dictionary for proper list formatting
-    element_summary = {}
-    for element_type, count in type_counts.most_common():
-        type_display = element_type.replace("_", " ").title()
-        if element_type == "word":
-            # Add source breakdown for text
-            text_elements = [e for e in all_elements if getattr(e, "type", "") == "word"]
-            sources = Counter()
-            for elem in text_elements:
-                source = getattr(elem, "source", "unknown")
-                sources[source] += 1
+    # Get full collection analysis (handles type breakdown, text/rect/line/region details)
+    collection_summary = describe_collection(all_elements)
+    collection_data = collection_summary.to_dict()
 
-            if len(sources) > 1:
-                source_parts = []
-                for source, source_count in sources.most_common():
-                    source_parts.append(f"{source_count} {source}")
-                element_summary["text"] = f"{count} elements ({', '.join(source_parts)})"
-            else:
-                element_summary["text"] = f"{count} elements"
-        else:
-            element_summary[element_type] = f"{count} elements"
-
-    data["elements"] = element_summary
-
-    # Text analysis if we have text elements (exclude chars - too granular)
-    text_elements = [e for e in all_elements if getattr(e, "type", "") == "word"]
-    if text_elements:
-        text_analysis = describe_text_elements(text_elements)
-        if text_analysis and "message" not in text_analysis:
-            data["text_analysis"] = text_analysis
+    # Build final data with page info first
+    data = {"page_info": page_info}
+    data.update(collection_data)
 
     return ElementSummary(data, f"Page {page.number} Summary")
 
@@ -260,7 +238,7 @@ def inspect_collection(collection: "ElementCollection", limit: int = 30) -> Insp
         # Add note if truncated
         if len(type_elements) > limit:
             section_data["note"] = (
-                f"Showing {limit} of {len(type_elements)} elements (pass limit= to see more)"
+                f"Showing {limit} of {len(type_elements)} elements (pass a higher limit to see more)"
             )
 
         data[section_name] = section_data
@@ -352,16 +330,7 @@ def _extract_element_value(element: "Element", column: str) -> Any:
             # If element is highlighted, return its colour; otherwise blank
             if getattr(element, "is_highlighted", False):
                 col_val = getattr(element, "highlight_color", None)
-                if col_val is None:
-                    return "True"  # fallback if colour missing
-                # Convert tuple to hex
-                if isinstance(col_val, (tuple, list)) and len(col_val) >= 3:
-                    try:
-                        r, g, b = [int(v * 255) if v <= 1 else int(v) for v in col_val[:3]]
-                        return f"#{r:02x}{g:02x}{b:02x}"
-                    except Exception:
-                        return str(col_val)
-                return str(col_val)
+                return _color_to_hex(col_val) or "True"
             return ""
 
         elif column == "styles":
@@ -379,32 +348,9 @@ def _extract_element_value(element: "Element", column: str) -> Any:
 
             # Handle highlight specially - include color if not default yellow
             if getattr(element, "is_highlighted", False):
-                highlight_color = getattr(element, "highlight_color", None)
-                if highlight_color is not None:
-                    # Convert color to hex if needed
-                    if isinstance(highlight_color, (tuple, list)) and len(highlight_color) >= 3:
-                        try:
-                            r, g, b = [
-                                int(v * 255) if v <= 1 else int(v) for v in highlight_color[:3]
-                            ]
-                            hex_color = f"#{r:02x}{g:02x}{b:02x}"
-                            styles.append(f"highlight({hex_color})")
-                        except Exception:
-                            styles.append("highlight")
-                    elif isinstance(highlight_color, (int, float)):
-                        # Grayscale value
-                        try:
-                            gray = (
-                                int(highlight_color * 255)
-                                if highlight_color <= 1
-                                else int(highlight_color)
-                            )
-                            hex_color = f"#{gray:02x}{gray:02x}{gray:02x}"
-                            styles.append(f"highlight({hex_color})")
-                        except Exception:
-                            styles.append("highlight")
-                    else:
-                        styles.append("highlight")
+                hex_color = _color_to_hex(getattr(element, "highlight_color", None))
+                if hex_color:
+                    styles.append(f"highlight({hex_color})")
                 else:
                     styles.append("highlight")
 
@@ -412,17 +358,7 @@ def _extract_element_value(element: "Element", column: str) -> Any:
 
         elif column in ["stroke", "fill", "color"]:
             value = getattr(element, column, None)
-            # If already a string (e.g. '#ff00aa' or 'red') return as is
-            if isinstance(value, str):
-                return value
-            # If tuple/list convert to hex
-            if value and isinstance(value, (tuple, list)) and len(value) >= 3:
-                try:
-                    r, g, b = [int(v * 255) if v <= 1 else int(v) for v in value[:3]]
-                    return f"#{r:02x}{g:02x}{b:02x}"
-                except Exception:
-                    return str(value)
-            return ""
+            return _color_to_hex(value) or ""
 
         elif column in ["x0", "top", "x1", "bottom", "width", "height", "size", "stroke_width"]:
             value = getattr(element, column, 0)
@@ -530,18 +466,8 @@ def describe_element(element: "Element") -> "ElementSummary":
         if hasattr(element, prop):
             value = getattr(element, prop)
             if value is not None:
-                if isinstance(value, (tuple, list)) and len(value) >= 3:
-                    # Convert RGB to hex if it's a color tuple
-                    try:
-                        if all(isinstance(v, (int, float)) for v in value[:3]):
-                            r, g, b = [int(v * 255) if v <= 1 else int(v) for v in value[:3]]
-                            color_info[prop] = f"#{r:02x}{g:02x}{b:02x}"
-                        else:
-                            color_info[prop] = str(value)
-                    except:
-                        color_info[prop] = str(value)
-                else:
-                    color_info[prop] = str(value)
+                hex_val = _color_to_hex(value)
+                color_info[prop] = hex_val if hex_val else str(value)
 
     if color_info:
         data["colors"] = color_info

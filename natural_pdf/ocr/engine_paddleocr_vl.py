@@ -2,7 +2,6 @@
 import importlib.util
 import logging
 import re
-import threading
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -21,11 +20,6 @@ _TEXT_LABELS = {"text", "paragraph_title", "header", "footer"}
 # Pre-compiled regexes for HTML stripping
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
-
-# Module-level guard for the numpy compatibility monkeypatch
-_PADDLE_INT_PATCHED = False
-_ORIG_PADDLE_TENSOR_INT = None
-_PATCH_LOCK = threading.Lock()
 
 # Default confidence score for PaddleOCR-VL blocks (no per-block scores available)
 _DEFAULT_BLOCK_CONFIDENCE = 0.99
@@ -66,42 +60,6 @@ class PaddleOCRVLEngine(OCREngine):
                 "PaddleOCR-VL does not support language selection; ignoring languages=%s",
                 languages,
             )
-
-        # Apply numpy monkeypatch for PaddlePaddle 3.x + numpy 2.x compatibility.
-        # PaddlePaddle's Tensor.__int__ calls deprecated np.int_() on numpy 2.x.
-        # This patches it to use .numpy().item() as a fallback.
-        # Guarded at module level so it's applied exactly once per process.
-        global _PADDLE_INT_PATCHED, _ORIG_PADDLE_TENSOR_INT
-        if not _PADDLE_INT_PATCHED:
-            with _PATCH_LOCK:
-                if not _PADDLE_INT_PATCHED:
-                    try:
-                        import paddle  # type: ignore[import-untyped]
-                    except Exception:
-                        self.logger.debug(
-                            "paddle not importable; skipping numpy compatibility patch",
-                            exc_info=True,
-                        )
-                    else:
-                        try:
-                            _ORIG_PADDLE_TENSOR_INT = paddle.Tensor.__int__
-
-                            def _patched_int(self):
-                                try:
-                                    return _ORIG_PADDLE_TENSOR_INT(self)
-                                except (TypeError, ValueError):
-                                    return int(self.numpy().item())
-
-                            paddle.Tensor.__int__ = _patched_int
-                            _PADDLE_INT_PATCHED = True
-                            self.logger.debug(
-                                "Applied numpy compatibility monkeypatch for paddle.Tensor.__int__"
-                            )
-                        except Exception:
-                            self.logger.warning(
-                                "Failed applying paddle.Tensor.__int__ compatibility patch",
-                                exc_info=True,
-                            )
 
         try:
             from paddleocr import PaddleOCRVL  # type: ignore[import-untyped]
@@ -177,7 +135,11 @@ class PaddleOCRVLEngine(OCREngine):
             return standardized_regions
 
         # Normalize: if a single result object was returned, wrap in a list
-        if isinstance(raw_results, dict) or hasattr(raw_results, "blocks"):
+        if (
+            isinstance(raw_results, dict)
+            or hasattr(raw_results, "blocks")
+            or hasattr(raw_results, "parsing_res_list")
+        ):
             raw_results = [raw_results]
         elif not isinstance(raw_results, list):
             self.logger.warning(
@@ -189,9 +151,9 @@ class PaddleOCRVLEngine(OCREngine):
         for result in raw_results:
             blocks = getattr(result, "blocks", None)
             if blocks is None:
-                # Try dict-style access
+                # Try dict-style access; PaddleOCR-VL 3.4+ uses "parsing_res_list"
                 if isinstance(result, dict):
-                    blocks = result.get("blocks", [])
+                    blocks = result.get("parsing_res_list") or result.get("blocks", [])
                 else:
                     continue
 

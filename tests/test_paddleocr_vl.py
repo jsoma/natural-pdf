@@ -169,6 +169,24 @@ class TestPaddleOCRVLEngineUnit:
         assert len(regions) == 1
         assert regions[0].text == "Dict text"
 
+    def test_dict_parsing_res_list_key(self):
+        """Test handling PaddleOCR-VL 3.4+ format with 'parsing_res_list' key."""
+        engine = PaddleOCRVLEngine()
+        raw_results = [
+            {
+                "parsing_res_list": [
+                    self._make_block("text", [207, 359, 1025, 416], "Site: Durham's"),
+                    self._make_block("header", [1665, 149, 2359, 238], "Page Header"),
+                    self._make_block("image", [10, 60, 200, 200], ""),
+                ],
+            }
+        ]
+        regions = engine._standardize_results(raw_results, min_confidence=0.0, detect_only=False)
+
+        assert len(regions) == 2
+        assert regions[0].text == "Site: Durham's"
+        assert regions[1].text == "Page Header"
+
     def test_bbox_as_numpy_array(self):
         engine = PaddleOCRVLEngine()
         blocks = [
