@@ -114,7 +114,6 @@ Natural PDF sits on top of a *lot* of fantastic tools and mdoels, some of which 
 - [PaddleOCR](https://paddlepaddle.github.io/PaddleOCR/latest/en/index.html)
 - [Surya](https://github.com/VikParuchuri/surya)
 - A specific [YOLO](https://github.com/opendatalab/DocLayout-YOLO)
-- [deskew](https://github.com/sbrunner/deskew)
 - [doctr](https://github.com/mindee/doctr)
 - [docling](https://github.com/docling-project/docling)
 - [Hugging Face](https://huggingface.co/models)

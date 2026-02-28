@@ -300,3 +300,6 @@ build/
 eval_results/
 bad_pdf_analysis
 extracted_data.csv
+
+# Checkbox dataset pipeline
+datasets/
