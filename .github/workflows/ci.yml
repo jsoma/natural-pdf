@@ -50,6 +50,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python }}-
 
+      - name: Install system dependencies (OpenCV/Paddle need libGL)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
       - name: Install Nox and uv dependencies
         run: |
           uv pip install --system nox nox-uv
