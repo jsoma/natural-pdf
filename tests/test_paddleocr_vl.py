@@ -265,14 +265,6 @@ class TestPaddleOCRVLIntegration:
         engine = PaddleOCRVLEngine()
         if not engine.is_available():
             pytest.skip("PaddleOCR-VL dependencies not installed")
-        # paddlex may be importable but fail at pipeline creation due to
-        # missing native libraries (e.g. libGL on headless CI runners).
-        try:
-            engine._initialize_model(languages=[], device="cpu", options=None)
-        except RuntimeError as e:
-            if "dependency error" in str(e).lower():
-                pytest.skip(f"PaddleOCR-VL pipeline unavailable: {e}")
-            raise
 
     def test_ocr_on_needs_ocr_pdf(self):
         from natural_pdf import PDF
