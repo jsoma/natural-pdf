@@ -136,18 +136,24 @@ document_parts = {
 document_parts
 ```
 
-## Creating an Image of a Region
+## Creating and Saving Images
+
+`.show()` returns a PIL `Image` object. You can save it to disk:
 
 ```python
-# Find a region of interest
+# Save the full page as an image
+page_image = page.show()
+page_image.save("page_output.png")
+
+# Save a region as an image
 table_header = page.find('text:contains("Statute")')
 table_region = table_header.below(height=100)
+region_image = table_region.show(color="purple", label="Table Region")
+region_image.save("table_region.png")
 
-# Visualize the region
-table_region.show(color="purple", label="Table Region")
-
-# Create an image of just this region
-table_region.show(resolution=150)
+# Higher resolution for print or OCR
+hi_res = page.show(resolution=300)
+hi_res.save("page_300dpi.png")
 ```
 
 ## Using above() for Headers and Boundaries

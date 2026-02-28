@@ -126,6 +126,37 @@ surya_opts = SuryaOCROptions()
 page.apply_ocr(engine='surya', languages=['en'], min_confidence=0.5, detect_only=True, options=surya_opts)
 ```
 
+## PaddleOCR-VL (VLM-Based OCR)
+
+PaddleOCR-VL uses a Vision Language Model for document understanding. It can handle complex layouts, charts, and mixed content better than traditional OCR.
+
+```python
+from natural_pdf.ocr import PaddleOCRVLOptions
+
+# Basic usage
+page.apply_ocr(engine='paddlevl')
+
+# With options
+vl_opts = PaddleOCRVLOptions(
+    use_layout_detection=True,
+    use_chart_recognition=True,
+)
+page.apply_ocr(engine='paddlevl', options=vl_opts)
+```
+
+**Install:** `pip install paddlepaddle paddleocr` (same as regular PaddleOCR).
+
+## Language Codes
+
+All OCR engines accept standard ISO language codes like `'en'`, `'fr'`, `'de'`, `'ja'`, `'zh'`, `'ko'`. PaddleOCR automatically normalizes these to its internal format (e.g. `'ja'` becomes `'japan'`, `'zh'` becomes `'ch'`), so you don't need to look up engine-specific codes.
+
+```python
+# Standard codes work across all engines
+page.apply_ocr(engine='easyocr', languages=['ja'])
+page.apply_ocr(engine='paddle', languages=['ja'])   # auto-normalized to 'japan'
+page.apply_ocr(engine='surya', languages=['ja'])
+```
+
 ## Interactive OCR Correction / Debugging
 
 If OCR results aren't perfect, you can use the bundled interactive web application (SPA) to review and correct them.
@@ -142,7 +173,11 @@ If OCR results aren't perfect, you can use the bundled interactive web applicati
     ```
 
 2.  **Run the SPA:**
-    Navigate to the SPA directory within the installed `natural_pdf` library in your terminal and start a simple web server.
+    The correction app is bundled with the library. Start a local server pointing to it:
+
+    ```bash
+    python -m http.server 8000 -d "$(python -c 'import natural_pdf; import os; print(os.path.join(os.path.dirname(natural_pdf.__file__), "spa"))')"
+    ```
 
 3.  **Use the SPA:**
     Open `http://localhost:8000` in your browser. Drag the `correction_package.zip` file onto the page to load the document. You can then click on text elements to correct the OCR results.
@@ -171,9 +206,13 @@ print(f"\nCombined text from all pages:\n{all_text_content[:500]}...")
 
 ## Saving PDFs with Searchable Text
 
-After applying OCR to a PDF, you can save a new version of the PDF where the recognized text is embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
+After applying OCR to a PDF, you can save a new version with the recognized text embedded as an invisible layer. This makes the text searchable and copyable in standard PDF viewers.
 
-Use the `save_searchable()` method on the `PDF`
+```python
+pdf.save_pdf("searchable_output.pdf", ocr=True)
+```
+
+**Install:** `pip install "natural-pdf[export]"` (requires pikepdf and img2pdf).
 
 ## Combining OCR with Spatial Navigation
 
@@ -208,10 +247,142 @@ print(fields)
 
 See [Tutorial 08: Spatial Navigation](08-spatial-navigation.md) for more techniques.
 
-## TODO
+## Detecting Checkboxes
 
-* Add guidance on installing only the OCR engines you need (e.g. `pip install "natural-pdf[ocr-ai]"`) instead of the heavy `[all]` extra.
-* Show how to use `detect_only=True` to combine OCR detection with external recognition for higher accuracy (ties into fine-tuning tutorial).
-* Include an example of saving a searchable PDF via `pdf.save_searchable("output.pdf")` after OCR.
-* Mention `resolution` parameter trade-offs (speed vs accuracy) when calling `apply_ocr`.
-* Provide a quick snippet demonstrating `.viewer()` for interactive visual QC of OCR results.
+Scanned forms often contain checkboxes. The `detect_checkboxes()` method finds them and determines whether each one is checked or unchecked.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
+page = pdf.pages[0]
+
+# Detect checkboxes
+checkboxes = page.detect_checkboxes()
+print(f"Found {len(checkboxes)} checkboxes")
+
+for cb in checkboxes:
+    print(f"  {'[x]' if cb.is_checked else '[ ]'} confidence={cb.confidence:.2f}")
+```
+
+The default engine uses a YOLO12n model that detects and classifies checkboxes in a single pass — no separate classification step needed. It works on both vector PDFs and scanned images.
+
+```python
+# Visualize detected checkboxes
+checkboxes = page.find_all('region[type=checkbox]')
+checkboxes.show(group_by='checkbox_state')
+```
+
+### Combining with Spatial Navigation
+
+You can use spatial navigation to find the label next to each checkbox:
+
+```python
+for cb in page.detect_checkboxes():
+    label = cb.right(width=200).extract_text().strip()
+    status = "checked" if cb.is_checked else "unchecked"
+    print(f"  {status}: {label}")
+```
+
+### Engine Options
+
+Multiple detection engines are available:
+
+* **default** — YOLO12n 2-class model (checked/unchecked). Best accuracy, used automatically.
+* **vector** — Detects checkbox-shaped rectangles in native PDF markup. Instant, no rendering needed. Tried first in auto mode for vector PDFs.
+* **onnx** — Generic ONNX engine for custom YOLO-format models from HuggingFace.
+
+```python
+# Use a specific engine
+page.detect_checkboxes(engine="vector")
+
+# Adjust confidence threshold
+page.detect_checkboxes(confidence=0.5)
+
+# Use a custom ONNX model from HuggingFace
+page.detect_checkboxes(engine="onnx", model="some-user/some-model")
+```
+
+## Correcting OCR Results
+
+If OCR results aren't perfect, you can programmatically correct them using `correct_ocr()`. It takes a callback function that receives each OCR element and returns corrected text.
+
+```python
+from openai import OpenAI
+from natural_pdf import PDF
+
+client = OpenAI()
+
+pdf = PDF("scanned_document.pdf")
+page = pdf.pages[0]
+page.apply_ocr()
+
+# Define a correction function using an LLM
+def correct_text(region):
+    text = region.extract_text()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Correct the spelling of this OCR'd text. Preserve original formatting."},
+            {"role": "user", "content": text},
+        ],
+    )
+    return response.choices[0].message.content
+
+# Apply correction to all OCR'd text on the page
+page.correct_ocr(correct_text)
+```
+
+For difficult documents, use a vision model to re-OCR specific regions instead of correcting text:
+
+```python
+from natural_pdf.ocr.utils import direct_ocr_llm
+
+def correct_with_vision(region):
+    return direct_ocr_llm(
+        region,
+        client,
+        prompt="OCR this image patch. Return only the exact text content visible.",
+        resolution=150,
+        model="gpt-4o"
+    )
+
+page.correct_ocr(correct_with_vision)
+```
+
+## Deskewing Scanned Pages
+
+Scanned documents are often slightly rotated. You can detect and correct skew before or after OCR.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("skewed_scan.pdf")
+page = pdf.pages[0]
+
+# Detect the skew angle (in degrees)
+angle = page.detect_skew_angle()
+print(f"Skew angle: {angle:.2f}°")
+
+# Get a deskewed image of the page
+deskewed_image = page.deskew()
+```
+
+To create a new deskewed PDF (image-based):
+
+```python
+# Deskew all pages and get a new PDF
+deskewed_pdf = pdf.deskew()
+
+# Or deskew specific pages
+deskewed_pdf = pdf.deskew(pages=[0, 1, 2])
+
+# Save the result
+deskewed_pdf.save_pdf("deskewed_output.pdf")
+```
+
+Detection engines: `"projection"` (default), `"hough"`, or `"standard"`.
+
+**Note:** `pdf.deskew()` returns an image-based PDF. Text, OCR results, and annotations from the original are not carried over — apply OCR again on the deskewed result if needed.
+
+**Install:** `pip install "natural-pdf[export]"` (requires img2pdf for PDF output).

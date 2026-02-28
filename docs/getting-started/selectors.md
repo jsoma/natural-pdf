@@ -45,6 +45,7 @@ Pseudo-classes filter by state or content. They use a **colon** (`:`) prefix.
 | `:contains("X")` | Contains the text "X" | `'text:contains("Invoice")'` |
 | `:startswith("X")` | Starts with "X" | `'text:startswith("Total")'` |
 | `:endswith("X")` | Ends with "X" | `'text:endswith(":")'` |
+| `:regex("pattern")` | Matches a regex pattern | `'text:regex("INV-\\d+")'` |
 | `:horizontal` | Horizontal lines | `'line:horizontal'` |
 | `:vertical` | Vertical lines | `'line:vertical'` |
 
@@ -122,14 +123,12 @@ summary = page.find('text:bold[size>=16]:contains("Summary")')
 ```
 
 !!! tip "Selector Order"
-    The order should be: `type` → `:pseudo-classes` → `[attributes]` → `:contains()`
+    Pseudo-classes and attributes can appear in any order after the type. These are all equivalent:
 
     ```python
     'text:bold[size>14]:contains("Summary")'
-    #    ^      ^            ^
-    #    |      |            +-- :contains last
-    #    |      +-- attributes after pseudo
-    #    +-- pseudo after type
+    'text:contains("Summary"):bold[size>14]'
+    'text[size>14]:bold:contains("Summary")'
     ```
 
 ## Finding Elements
@@ -168,17 +167,25 @@ texts = all_bold.extract_text()  # Extract text from all
 
 ### Regex Matching
 
-Use `regex=True` for pattern matching:
+There are two ways to use regex. The `:regex()` pseudo-class matches against the full text of each element:
 
 ```python
 # Find invoice numbers like "INV-12345"
-invoice = page.find('text:contains("INV-\\d+")', regex=True)
+invoice = page.find('text:regex("INV-\\d+")')
 
 # Find dates in MM/DD/YYYY format
-dates = page.find_all('text:contains("\\d{2}/\\d{2}/\\d{4}")', regex=True)
+dates = page.find_all('text:regex("\\d{2}/\\d{2}/\\d{4}")')
 
-# Match multiple words
-page.find('text:contains("Total|Sum|Amount")', regex=True)
+# Find page numbers like "Page 1 of 10"
+page.find('text:regex("Page \\d+ of \\d+")')
+```
+
+You can also use `regex=True` with `:contains()` for the same effect:
+
+```python
+# These are equivalent
+page.find('text:regex("Total|Sum")')
+page.find('text:contains("Total|Sum")', regex=True)
 ```
 
 ### Layout Regions

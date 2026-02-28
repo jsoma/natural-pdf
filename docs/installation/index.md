@@ -4,7 +4,7 @@ Let's get Natural PDF installed and run your first extraction.
 
 ## Installation
 
-The base installation is lightweight and includes the core library for selecting, extracting, and spatially navigating PDF elements. It also includes the `openai` client for API-based features.
+The base install includes the core library (selectors, extraction, spatial navigation) plus the `openai` client for LLM-based features like `.extract()` and `.to_markdown()`.
 
 ```bash
 pip install natural-pdf
@@ -14,8 +14,8 @@ Optional dependencies can be installed individually as needed. The library will 
 
 ```bash
 # Bundles
-pip install "natural-pdf[export]"   # PDF export, deskew (pikepdf, img2pdf, etc.)
-pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr + paddlex)
+pip install "natural-pdf[export]"   # PDF export (pikepdf, img2pdf, etc.)
+pip install "natural-pdf[paddle]"   # PaddleOCR stack (paddlepaddle + paddleocr + paddlex) — includes paddlevl engine
 pip install "natural-pdf[all]"      # Everything
 
 # Individual packages

@@ -58,6 +58,9 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 - `page.find_all(selector)` -> ElementCollection
 - `page.extract_text()` -> str
 - `page.extract_table()` -> TableResult
+- `page.extract_tables()` -> List[TableResult]
+- `page.to_markdown()` -> str (VLM-powered)
+- `pdf.search(query, top_k=5)` -> PageCollection (semantic search)
 - `element.below()` / `.above()` / `.left()` / `.right()` -> Region
 - `page.apply_ocr(engine='easyocr')` -> ElementCollection
 - `page.analyze_layout(engine='yolo')` -> ElementCollection
@@ -65,6 +68,7 @@ Natural PDF combines traditional PDF parsing with modern AI capabilities. It pro
 ### OCR Engines
 - `easyocr`: Default, good accuracy, supports many languages
 - `paddle`: Fast, CPU-friendly
+- `paddlevl`: VLM-based document understanding (charts, complex layouts)
 - `surya`: High accuracy for invoices/forms
 - `doctr`: Document-focused OCR
 

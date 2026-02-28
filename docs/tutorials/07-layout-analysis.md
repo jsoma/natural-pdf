@@ -4,12 +4,11 @@ Beyond simple text and lines, `natural-pdf` can use layout analysis models (like
 
 ## Available Layout Engines
 
-* **yolo** – YOLOv5 model trained on DocLayNet; fast and good at classic page objects (paragraph, table, figure, heading).  Install via `npdf install yolo`.
-* **tatr** – Microsoft's Table Transformer (LayoutLM) specialised in tables; already included in the **ai** extra.
-* **paddle** – PaddleOCR`s layout detector; lightweight and CPU-friendly.
-* **surya** – Surya Layout Parser (DETR backbone) tuned for invoices and forms.
-* **docling** – YOLOX model published by DocLING researchers; performs well on historical documents.
-* **gemini** – Calls Google's Vision Gemini API (experimental, requires `OPENAI_API_KEY`).
+* **yolo** – YOLOv5 model trained on DocLayNet. Detects paragraphs, tables, figures, headings. Install: `pip install doclayout_yolo`.
+* **tatr** – Microsoft Table Transformer. Specialized in table structure (rows, columns, cells). Install: `pip install torch transformers`.
+* **paddle** – PaddleOCR's layout detector. Runs on CPU without PyTorch. Install: `pip install paddlepaddle paddleocr`.
+* **surya** – Surya Layout Parser (DETR backbone). Install: `pip install "surya-ocr<0.15"`.
+* **vlm** – Calls any OpenAI-compatible Vision API (e.g. Gemini, GPT-4o) for layout detection. Requires an API client.
 
 `page.analyze_layout()` defaults to the first available engine (search order `yolo → paddle → tatr`), but you can pick one explicitly with `engine="..."`.
 
@@ -54,7 +53,7 @@ table_text_layout
 
 ```python
 # Layout-detected regions can also be used for table extraction
-# This can be more robust than the basic page.extract_tables()
+# Extracting from a detected region can give better results than page.extract_tables()
 # especially for tables without clear lines.
 table_data = table_region.extract_table()
 table_data
@@ -83,18 +82,3 @@ The helper accepts these common kwargs (see `LayoutOptions` subclasses for full 
 Each engine also exposes its own options class (e.g., `YOLOLayoutOptions`) for fine control over NMS thresholds, model sizes, etc. Pass an instance via the `options=` param.
 
 Layout analysis provides structured `Region` objects. You can filter these regions by their predicted `type` and then perform actions like visualization or extracting text/tables specifically from those regions.
-
-## TODO
-
-* Add a speed/accuracy comparison snippet looping over all installed engines.
-* Demonstrate multi-page batch: `pdf.pages[::2].analyze_layout(engine="yolo")`.
-* Show `page.get_sections(start_elements=page.find_all('region[type=heading]'))` to split by detected headings.
-* Include an example of exporting regions to COCO JSON for custom model fine-tuning.
-* Document how to override the model path via `model_name` and how to plug a remote inference client (`client=`).
-
-## Wish List (Future Enhancements)
-
-* **Confidence palette** – Allow `show(color_by="confidence")` to auto-map scores to a red–green gradient.
-* **`ElementCollection.to_json()`** – one-liner export of detected regions (and optionally `to_df()`).
-* **Model cache override** – honor an env variable like `NATPDF_MODEL_DIR` so enterprises can redirect weight downloads.
-* **Remote inference support** – make the `client=` hook forward images to a custom REST or gRPC service.

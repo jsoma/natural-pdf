@@ -2,12 +2,11 @@
 
 Spatial navigation lets you work with PDF content based on the physical layout of elements on the page. It's perfect for finding elements relative to each other and extracting information in context.
 
-## Smart Defaults
+## Defaults
 
-Natural PDF uses intelligent defaults for spatial navigation:
-- **`.left()` and `.right()`**: Default to `height='element'` (matches source element height)
-- **`.above()` and `.below()`**: Default to `width='full'` (full page width)
-- **Directional offset**: 0.01 points by default (configurable via `natural_pdf.options.layout.directional_offset`)
+- **`.left()` and `.right()`**: `height='element'` (matches source element height)
+- **`.above()` and `.below()`**: `width='full'` (full page width)
+- **Directional offset**: 0.01 points (configurable via `natural_pdf.options.layout.directional_offset`)
 - **Exclusions**: Applied by default (disable with `apply_exclusions=False`)
 
 ```python
@@ -265,14 +264,6 @@ This is particularly useful when:
 - You want to see all content in a region, including normally excluded headers/footers
 - You're debugging and need to verify what content exists before exclusions
 - You're working with documents where exclusions might interfere with spatial relationships
-
-## TODO
-
-* Add examples for navigating across multiple pages using `pdf.pages` slicing and `below(..., until=...)` that spans pages.
-* Show how to chain selectors, e.g., `page.find('text:bold').below().right()` for complex paths.
-* Include a sidebar on performance when many spatial calls are chained and how to cache intermediate regions.
-* Add examples using `.until()` for one-liner "from here until X" extractions.
-* Demonstrate attribute selectors (e.g., `line[width>2]`) and `:not()` pseudo-class for exclusion in spatial chains.
 
 ## Chaining Spatial Calls
 

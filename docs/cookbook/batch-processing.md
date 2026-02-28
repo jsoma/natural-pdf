@@ -1,6 +1,6 @@
 # Batch Processing PDFs
 
-When working with FOIA responses, court records, or large document dumps, you often need to process hundreds or thousands of PDFs efficiently. This guide covers practical patterns for batch processing that journalists and data analysts use every day.
+When working with FOIA responses, court records, or large document dumps, you often need to process hundreds or thousands of PDFs efficiently. This guide covers practical patterns for batch processing.
 
 ## Processing Multiple PDFs in a Directory
 
@@ -76,7 +76,10 @@ for pdf in collection:
     print(f"Processing: {pdf.path}")
 
     for page in pdf.pages:
-        # Extract tables from each page
+        # Detect layout first — required to create region elements
+        page.analyze_layout(engine='tatr')
+
+        # Now find detected table regions
         tables = page.find_all('region[type=table]')
         for table in tables:
             data = table.extract_table()

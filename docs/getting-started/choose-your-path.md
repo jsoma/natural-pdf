@@ -51,7 +51,7 @@ Different backgrounds and goals need different starting points. Find your path b
 3. [Batch Processing](../cookbook/batch-processing.md)
 4. [Idea Gallery](../use-cases/idea-gallery.md) - Find your document pattern
 
-**You'll learn:** Robust patterns, error handling, processing multiple files.
+**You'll learn:** Batch patterns, error handling, processing multiple files.
 
 ---
 
@@ -134,7 +134,7 @@ You build production systems and need to evaluate or integrate the library.
 
 **Tips:**
 
-- Install only what you need: `pip install natural-pdf` for core, add `[ai]` etc. as needed
+- Install only what you need: `pip install natural-pdf` for core, add extras like `[paddle]` or `[export]` as needed
 - Use context managers or `pdf.close()` in loops
 - OCR and layout analysis are the slow operations - profile before optimizing
 

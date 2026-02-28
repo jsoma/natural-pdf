@@ -90,6 +90,27 @@ text = page.extract_text(layout=True)
 print(text)
 ```
 
+## Converting Pages to Markdown
+
+If you have access to a Vision Language Model, you can convert pages to structured markdown. This works well for pages with complex formatting, tables, and mixed content.
+
+```python
+from natural_pdf import PDF, set_default_client
+from openai import OpenAI
+
+# Configure a VLM client once
+set_default_client(OpenAI(), model="gpt-4o")
+
+pdf = PDF("document.pdf")
+page = pdf.pages[0]
+
+# Get markdown representation of the page
+md = page.to_markdown()
+print(md)
+```
+
+Without a configured client, `to_markdown()` falls back to `extract_text()`.
+
 ## Viewing Multiple Pages at Once
 
 Use `pages.show()` to preview multiple pages in a grid:

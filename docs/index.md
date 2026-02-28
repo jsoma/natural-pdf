@@ -1,10 +1,13 @@
 # Natural PDF
 
-A friendly library for working with PDFs, built on top of [pdfplumber](https://github.com/jsvine/pdfplumber).
+A Python library for PDF extraction built on [pdfplumber](https://github.com/jsvine/pdfplumber). Find and extract content using CSS-like selectors and spatial navigation. Simple code that makes sense.
 
-Natural PDF lets you find and extract content from PDFs using simple code that makes sense.
+Demos:
 
-- [Live demo here](https://colab.research.google.com/github/jsoma/natural-pdf/blob/main/notebooks/Examples.ipynb)
+- [Basics](https://colab.research.google.com/github/jsoma/natural-pdf-workshop/blob/main/docs/01-Natural%20PDF%20basics%20with%20text%20and%20tables-ANSWERS.ipynb)
+- [OCR and scanned PDFs](https://colab.research.google.com/github/jsoma/natural-pdf-workshop/blob/main/docs/02-OCR%20and%20AI%20magic-ANSWERS.ipynb)
+- [AI and data extraction](https://colab.research.google.com/github/jsoma/natural-pdf-workshop/blob/main/docs/03-AI%20and%20data%20extraction-ANSWERS.ipynb)
+- [Columns, multi-page flows](https://colab.research.google.com/github/jsoma/natural-pdf-workshop/blob/main/docs/04-Page%20structure-ANSWERS.ipynb)
 
 <div style="max-width: 400px; margin: auto"><a href="assets/sample-screen.png"><img src="assets/sample-screen.png"></a></div>
 
@@ -135,9 +138,7 @@ Ask natural language questions directly to your documents.
 ```python
 # Ask a question
 result = page.ask("What was the company's revenue in 2022?")
-if result.found:
-    print(f"Answer: {result.answer}")
-    result.show()  # Highlight where the answer was found
+print(f"Answer: {result.answer}")
 ```
 
 ### Visualize Your Work

@@ -16,9 +16,9 @@ from natural_pdf import PDF
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
 
-# For a single table, extract_table returns list-of-lists
+# extract_table returns a TableResult (supports iteration and .to_df())
 table = page.extract_table(method="pdfplumber")
-table  # List-of-lists of cell text
+table
 ```
 
 `extract_table()` defaults to the **plumber** backend, so the explicit `method` is optional—but it clarifies what's happening.
@@ -65,14 +65,12 @@ if paddle_table:
 ### Choosing the right backend
 
 * **plumber** – fastest; needs rule lines or tidy whitespace.
-* **tatr** – robust to missing lines; slower; requires AI extra.
+* **tatr** – handles tables without visible lines; slower; requires `pip install torch transformers`.
 * **text** – whitespace clustering; fallback when lines + models fail.
 
 You can call `page.extract_table(method="text")` or on a `Region` as well.
 
-The general workflow is: try different layout analyzers to locate your table, then extract from the specific region. Keep trying options until one works for your particular PDF!
-
-For complex grids where even models struggle, see Tutorial 11 (enhanced table processing) for a lines-first workflow.
+The general workflow is: try different layout analyzers to locate your table, then extract from the specific region. If one backend doesn't work, try another — `plumber` and `tatr` handle different table styles, so comparing their output on your PDF is the fastest way to find what works.
 
 ## Using Guides for Borderless Tables
 
@@ -181,9 +179,3 @@ df['Percentage'] = df['Percentage'].str.rstrip('%').astype(float) / 100
 
 - **[Spatial Navigation](08-spatial-navigation.md)** – Use `.below()` to extract just the table region
 - **[Layout Analysis](07-layout-analysis.md)** – Detect tables automatically with AI models
-
-## TODO
-
-* Compare accuracy/time of the three methods on the sample PDF.
-* Show how to call `page.extract_table(method="text")` as a no-dependency fallback.
-* Demonstrate cell post-processing (strip %, cast numbers).

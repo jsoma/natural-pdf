@@ -13,7 +13,7 @@ Is text completely empty?
 │
 └── No, but text is garbled
     ├── Strange Unicode characters? → Font encoding issue
-    │   └── Try: Check if PDF has embedded fonts
+    │   └── Try: page.apply_ocr() (re-reads from the rendered image)
     │
     ├── Text appears but wrong order? → Reading order issue
     │   └── Try: page.extract_text(layout=True)
@@ -279,7 +279,7 @@ Is the image quality poor?
     │   └── page.apply_ocr(languages=['en', 'es'])
     │
     └── Try a different OCR engine
-        └── paddle, surya, or doctr
+        └── paddle, paddlevl, surya, or doctr
 ```
 
 ### Try Different OCR Engines
@@ -296,6 +296,9 @@ page.apply_ocr(engine='surya')
 
 # DocTR - good for dense text
 page.apply_ocr(engine='doctr')
+
+# PaddleOCR-VL - VLM-based, good for complex layouts and charts
+page.apply_ocr(engine='paddlevl')
 ```
 
 ### Increase Resolution
@@ -338,9 +341,8 @@ page.apply_ocr(languages=['en'])
 # Multiple languages
 page.apply_ocr(languages=['en', 'es'])  # English and Spanish
 
-# For specific engines, language codes vary:
-# EasyOCR: ['en', 'fr', 'de', 'zh-cn']
-# PaddleOCR: ['en', 'chinese_cht', 'german']
+# Standard language codes (en, fr, de, ja, zh, ko) work across all engines.
+# PaddleOCR auto-normalizes codes like 'ja' → 'japan', 'zh' → 'ch'.
 ```
 
 ---
@@ -481,17 +483,17 @@ for page in pdf.pages:
 
 ## Quick Reference: Common Fixes
 
-| Problem | Quick Fix |
-|---------|-----------|
-| Empty text | `page.apply_ocr()` |
-| Garbled text | `page.apply_ocr(engine='paddle')` |
-| Table not detected | `page.analyze_layout(engine='tatr')` |
-| Table columns wrong | `table.extract_table(method='tatr')` |
-| Selector empty | `page.find_all('text').show()` to debug |
-| Case mismatch | Add `case=False` to find() |
-| Low OCR quality | `page.apply_ocr(resolution=300)` |
-| Headers in text | `page.add_exclusion(region)` |
-| Slow layout | Use `engine='yolo'` instead of `'tatr'` |
+| Problem | What to Try |
+|---------|-------------|
+| Empty text | `page.apply_ocr()` — the PDF is likely scanned |
+| Garbled text | `page.apply_ocr()` — re-reads from the rendered image, bypassing broken font encoding |
+| Table not detected | `page.analyze_layout(engine='tatr')` then `page.find('region[type=table]')` |
+| Table columns wrong | Try `region.extract_table(method='tatr')` or use `Guides` for manual columns |
+| Selector returns None | `page.find_all('text').show()` — see what text actually exists |
+| Case mismatch | `page.find('text:contains("x")', case=False)` |
+| Low OCR quality | `page.apply_ocr(resolution=300)` or try a different engine |
+| Headers in text | `page.add_exclusion(region)` — see [Excluding Content](../tutorials/05-excluding-content.md) |
+| Slow layout | `engine='yolo'` is faster than `'tatr'` (but only detects region types, not table structure) |
 
 ## Getting Help
 

@@ -67,12 +67,13 @@ print(data)
 
 Natural PDF supports multiple OCR engines:
 
-| Engine | Best For | Installation |
-|--------|----------|--------------|
-| `easyocr` | General use, good default | Included |
-| `surya` | High accuracy, multi-language | `pip install "surya-ocr<0.15"` |
-| `paddle` | Chinese/Asian languages | `pip install paddlepaddle paddleocr` |
-| `doctr` | Fast, good for batches | `pip install python-doctr` |
+| Engine | Notes | Installation |
+|--------|-------|--------------|
+| `easyocr` | Good starting point. Supports 80+ languages. | `pip install easyocr` |
+| `surya` | Handles multi-language and dense layouts. | `pip install "surya-ocr<0.15"` |
+| `paddle` | Best CJK (Chinese/Japanese/Korean) support. | `pip install paddlepaddle paddleocr` |
+| `paddlevl` | VLM-based — understands charts and complex layouts. | `pip install paddlepaddle paddleocr` |
+| `doctr` | Smaller model footprint. | `pip install python-doctr` |
 
 ```python
 # Use a specific engine
@@ -150,20 +151,19 @@ if len(easyocr_text) < 100:  # Suspiciously short
 
 ## Extracting Form Fields
 
-Scanned forms often have checkboxes and filled-in fields:
+Scanned forms often have checkboxes. Use `detect_checkboxes()` instead of text matching — it uses a YOLO model that works on both scanned and vector PDFs:
 
 ```python
-# Find checkbox labels
-checkbox_labels = page.find_all('text:contains("[")')  # Common checkbox pattern
+# Detect checkboxes on the page
+checkboxes = page.detect_checkboxes()
 
-# Or look for specific options
-standard = page.find('text:contains("Standard Processing")')
-if standard:
-    # Check if there's a checkmark nearby
-    checkbox_area = standard.left(width=30)
-    checkbox_text = checkbox_area.extract_text()
-    is_checked = 'X' in checkbox_text or '✓' in checkbox_text
+for cb in checkboxes:
+    label = cb.right(width=200).extract_text().strip()
+    status = "checked" if cb.is_checked else "unchecked"
+    print(f"  {status}: {label}")
 ```
+
+See the [OCR Integration tutorial](../tutorials/12-ocr-integration.md#detecting-checkboxes) for engine options and details.
 
 ## Complete Example
 

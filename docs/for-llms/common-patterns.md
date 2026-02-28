@@ -136,6 +136,66 @@ for i, table_region in enumerate(table_regions):
 
 ---
 
+### 6b. Extract All Tables from a Page (Shortcut)
+
+**Use case**: Extract every table on a page without manual layout analysis.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("document.pdf")
+page = pdf.pages[0]
+tables = page.extract_tables()
+
+for i, table in enumerate(tables):
+    df = table.to_df(header="first")
+    print(f"Table {i+1}: {len(df)} rows")
+```
+
+**Returns**: `List[TableResult]` - All tables found on the page.
+
+---
+
+### 6c. Convert Page to Markdown with VLM
+
+**Use case**: Get a structured markdown representation of a page using a Vision Language Model.
+
+```python
+from natural_pdf import PDF, set_default_client
+from openai import OpenAI
+
+# Configure a default VLM client
+set_default_client(OpenAI(), model="gpt-4o")
+
+pdf = PDF("document.pdf")
+page = pdf.pages[0]
+md = page.to_markdown()
+```
+
+**Returns**: `str` - Markdown representation of the page. Falls back to `extract_text()` when no model is configured.
+
+---
+
+### 6d. Semantic Search Across Pages
+
+**Use case**: Find the most relevant pages for a query using semantic similarity.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("document.pdf")
+results = pdf.search("payment terms and conditions", top_k=3)
+
+for page in results:
+    print(f"Page {page.number}: {page.extract_text()[:100]}...")
+```
+
+**Returns**: `PageCollection` - The top-k most relevant pages.
+
+**Note**: Requires `torch` and `transformers` (`pip install torch transformers`).
+
+---
+
 ### 7. Apply OCR
 
 **Use case**: Run OCR on a scanned document to make it searchable.
@@ -224,7 +284,7 @@ section_titles = page.find_all('text:bold[fontname*=Arial][size>=16]')
 
 **Returns**: `ElementCollection` for `find_all()`, `Element | None` for `find()`.
 
-**Selector ordering**: `type:pseudo[attribute]:contains("text")` - pseudo-classes come before attributes, `:contains()` comes last.
+**Selector ordering**: Pseudo-classes and attributes can appear in any order after the type — `text:bold[size>14]:contains("X")` and `text:contains("X"):bold[size>14]` are equivalent.
 
 ---
 
@@ -412,6 +472,9 @@ image = elements.show(color="red", label="Bold Text")
 | Navigate above | `element.above()` | `Region` |
 | Navigate left | `element.left()` | `Region` |
 | Extract table | `page.extract_table()` | `TableResult` |
+| Extract all tables | `page.extract_tables()` | `List[TableResult]` |
+| Page to markdown | `page.to_markdown()` | `str` |
+| Semantic search | `pdf.search(query)` | `PageCollection` |
 | Apply OCR | `page.apply_ocr()` | `ElementCollection` |
 | Analyze layout | `page.analyze_layout()` | `ElementCollection` |
 | Create region | `page.create_region(...)` | `Region` |
@@ -431,7 +494,6 @@ These are frequent errors when working with Natural PDF.
 # WRONG - these methods don't exist
 page.get_text()           # Use: page.extract_text()
 page.search("term")       # Use: page.find('text:contains("term")')
-element.text              # Use: element.extract_text()
 PDF.open("file.pdf")      # Use: PDF("file.pdf")
 page.apply_layout()       # Use: page.analyze_layout()
 pdf[0]                    # Use: pdf.pages[0]
@@ -503,7 +565,7 @@ first = elements.first  # Returns None if empty
 | Wrong | Correct | Issue |
 |-------|---------|-------|
 | `page.get_text()` | `page.extract_text()` | Wrong method name |
-| `page.search("X")` | `page.find('text:contains("X")')` | Wrong method |
+| `page.search("X")` | `page.find('text:contains("X")')` | Wrong method name |
 | `PDF.open("file")` | `PDF("file")` | Direct instantiation |
 | `'text.bold'` | `'text:bold'` | Colon for pseudo-classes |
 | `case_sensitive=False` | `case=False` | Wrong parameter name |

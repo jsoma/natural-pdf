@@ -7,7 +7,7 @@ Sometimes, instead of searching for specific text patterns, you just want to ask
 Let's ask our `01-practice.pdf` a few questions.
 
 ```python
-#%pip install "natural-pdf[qa]"  # DocumentQA relies on torch + transformers
+#%pip install torch transformers  # DocumentQA relies on torch + transformers
 ```
 
 ```python
@@ -21,12 +21,9 @@ page = pdf.pages[0]
 question_1 = "What is the inspection date?"
 answer_1 = page.ask(question_1)
 
-# The result dictionary always contains:
-#   question    - original question
-#   answer      – extracted span (string, may be empty)
-#   confidence  – model score 0–1
-#   start / end – indices into page.words
-#   found       – False if confidence < min_confidence
+# The result is a StructuredDataResult with an `answer` attribute:
+#   result.answer     – extracted span (string, may be empty)
+#   result.success    – whether extraction succeeded
 answer_1
 ```
 
@@ -38,11 +35,11 @@ page.ask("What company was inspected?")
 page.ask( "What is statute 5.8.3 about?")
 ```
 
-The results include the extracted `answer`, a `confidence` score (useful for filtering uncertain answers), the `page_num`, and the `source_elements`.
+The result has an `.answer` attribute with the extracted text.
 
 ## Visualising Where the Answer Came From
 
-You can manually access results sources through `answer['source_elements']` but it's much more fun to just use `.show()`.
+You can visualise the answer using `.show()`.
 
 ```python
 answer = page.ask("What is the inspection ID?")
@@ -59,13 +56,12 @@ pdf.ask("What company was inspected?")
 
 Notice that it collects the page number for later investigation.
 
-## Collecting Results into a DataFrame
+## Asking Multiple Questions
 
-If you're asking multiple questions, it's often useful to collect the results into a pandas DataFrame. `page.ask` supports passing a **list of questions** directly. This is far faster than looping because the underlying model is invoked only once.
+You can pass a list of questions to `.ask()`. Each question returns a separate result.
 
 ```python
 from natural_pdf import PDF
-import pandas as pd
 
 pdf = PDF("https://github.com/jsoma/natural-pdf/raw/refs/heads/main/pdfs/01-practice.pdf")
 page = pdf.pages[0]
@@ -77,13 +73,11 @@ questions = [
     "How many violations were there in total?"
 ]
 
-answers = page.ask(questions, min_confidence=0.2)
+results = page.ask(questions, min_confidence=0.2)
 
-df = pd.json_normalize(answers)
-df
+for r in results:
+    print(r.answer)
 ```
-
-`pd.json_normalize` flattens the list of answer dictionaries straight into a DataFrame, making it easy to inspect the questions, their extracted answers, and associated confidence scores.
 
 ## Correcting OCR with LLMs
 
@@ -141,6 +135,34 @@ def correct_with_vision(region):
 # Apply vision-based correction
 page.correct_ocr(correct_with_vision)
 ```
+
+## Semantic Search
+
+For longer documents, you can use `pdf.search()` to find the most relevant pages before asking questions. This uses sentence-transformer embeddings to rank pages by semantic similarity.
+
+```python
+from natural_pdf import PDF
+
+pdf = PDF("long_report.pdf")
+
+# Find the pages most relevant to your query
+results = pdf.search("payment terms and conditions", top_k=3)
+
+for page in results:
+    print(f"Page {page.number} (score: {page._search_score:.3f})")
+    print(page.extract_text()[:100])
+    print()
+```
+
+You can combine search with `.ask()` to focus QA on the most relevant pages:
+
+```python
+results = pdf.search("total revenue", top_k=1)
+answer = results[0].ask("What was the total revenue?")
+print(answer.answer)
+```
+
+**Note:** Requires `torch` and `transformers` (`pip install torch transformers`). Embeddings are cached, so repeated searches on the same PDF are fast.
 
 ## QA Model and Limitations
 

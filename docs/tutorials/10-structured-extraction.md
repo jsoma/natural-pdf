@@ -105,19 +105,19 @@ result["vendor"].confidence  # 0.95
 result.confidences           # {"vendor": 0.95, "date": 0.85, ...}
 ```
 
-The LLM uses these scale anchors:
+The prompt asks the LLM to self-report confidence using these anchors. These are the LLM's own assessments — they are not calibrated or independently verified:
 
-| Score | Meaning |
-|-------|---------|
+| Score | Prompt Anchor |
+|-------|---------------|
 | 0.0 | Not present or completely uncertain |
 | 0.2 | Weakly implied but not stated |
 | 0.5 | Partially supported or ambiguous |
-| 0.8 | Strongly supported with minor inference |
+| 0.8 | Supported with minor inference |
 | 1.0 | Explicitly stated in the text |
 
 ### Categorical Confidence
 
-Instead of numeric scores, use a list of levels — the LLM infers what they mean:
+Instead of numeric scores, use a list of levels. You define what they mean, or the LLM interprets them from the label:
 
 ```python
 result = page.extract(
@@ -150,6 +150,8 @@ Save extraction results as a native PDF with highlight annotations and a sidebar
 result = page.extract(MySchema, client=client, citations=True, confidence=True)
 result.save_pdf("annotated.pdf")
 ```
+
+**Install:** `pip install "natural-pdf[export]"` (requires pikepdf).
 
 Each field's citation elements become `/Highlight` annotations on the corresponding pages. The sidebar shows field names, extracted values, and colors matching the highlights.
 
