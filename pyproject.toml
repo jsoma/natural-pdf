@@ -59,7 +59,7 @@ ai = [
 paddle = [
     "paddlepaddle>=3.0.0",
     "paddleocr>=3.0.1",
-    "paddlex>=3.0.2",
+    "paddlex[ocr]>=3.0.2",
 ]
 
 export = [

@@ -38,7 +38,7 @@ OPTIONAL_PACKAGES = [
     "easyocr",
     "paddleocr",
     "paddlepaddle",
-    "paddlex>=3.0.2",
+    "paddlex[ocr]>=3.0.2",
     "surya-ocr<0.15",
     "doclayout_yolo",
     # NOTE: python-doctr requires huggingface_hub<1.0 due to deprecated Repository import
