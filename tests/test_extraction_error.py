@@ -52,8 +52,10 @@ def test_extraction_with_apparently_empty_content():
         assert isinstance(result, StructuredDataResult)
         assert not result.success
 
-        # .extracted() should return None for failed extraction
-        assert page.extracted() is None
+        # .extracted() should return the failed StructuredDataResult
+        stored = page.extracted()
+        assert isinstance(stored, StructuredDataResult)
+        assert not stored.success
     finally:
         pdf.close()
 

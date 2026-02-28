@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 from natural_pdf.extraction.vlm_adapter import HFVLMAdapter, get_vlm_adapter
 
+pytestmark = pytest.mark.optional_deps
+torch = pytest.importorskip("torch")
+
 
 class InvoiceSchema(BaseModel):
     total: Optional[str] = None
@@ -35,8 +38,6 @@ class FakeModel:
     device = "cpu"
 
     def generate(self, **kwargs):
-        import torch
-
         return torch.tensor([[0] * 10 + [1, 2, 3]])
 
     def to(self, device):
@@ -134,8 +135,6 @@ def test_mps_device_detection(monkeypatch):
     """_ensure_loaded should use MPS when CUDA is unavailable but MPS is."""
     import sys
     import types
-
-    import torch
 
     adapter = HFVLMAdapter(model_name="test-mps")
 

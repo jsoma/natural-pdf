@@ -49,7 +49,8 @@ class PaddleOCRVLEngine(OCREngine):
             or importlib.util.find_spec("paddlepaddle") is not None
         )
         paddleocr_installed = importlib.util.find_spec("paddleocr") is not None
-        return paddle_installed and paddleocr_installed
+        paddlex_installed = importlib.util.find_spec("paddlex") is not None
+        return paddle_installed and paddleocr_installed and paddlex_installed
 
     def _initialize_model(
         self, languages: List[str], device: str, options: Optional[BaseOCROptions]

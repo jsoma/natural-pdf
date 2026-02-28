@@ -101,9 +101,10 @@ def test_merge_vs_dissolve():
         pytest.skip("No PDF files found")
 
     pdf = npdf.PDF(str(pdf_files[0]))
+    page = pdf.pages[0]
 
-    # Find elements that are NOT connected
-    elements = pdf.find_all("text")
+    # Find elements on a single page so merge returns a Region (not FlowRegion)
+    elements = page.find_all("text")
 
     if len(elements) < 2:
         pytest.skip("Not enough elements")
