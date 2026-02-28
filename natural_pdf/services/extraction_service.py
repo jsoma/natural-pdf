@@ -433,22 +433,26 @@ class ExtractionService:
         if content is None or (
             using == "text" and isinstance(content, str) and not content.strip()
         ):
-            preview = content[:120] if isinstance(content, str) else None
             msg = (
-                f"No content available for extraction (using='{using}'). "
-                "Ensure the page has a text layer or render() returns an image. "
-                "For scanned PDFs run apply_ocr() or switch to using='vision'. "
-                f"Content preview: {preview!r}"
+                "No text content found for extraction. "
+                "This PDF may be scanned/image-based. Try:\n"
+                "  - using='vision' to send page images to the LLM\n"
+                "  - page.apply_ocr() first to add a text layer\n"
+                "\n"
+                "Currently using='text' (the default), which only works "
+                "when the PDF has embedded text."
             )
+            logger.warning(msg)
             warnings.warn(msg, RuntimeWarning)
-            host.analyses[analysis_key] = StructuredDataResult(
+            result = StructuredDataResult(
                 data=None,
                 success=False,
                 error_message=msg,
                 raw_output=None,
                 model_used=model,
             )
-            return
+            host.analyses[analysis_key] = result
+            return result
 
         # ---- Extended pipeline (citations and/or confidence) ---- #
         if need_extended:
@@ -608,11 +612,11 @@ class ExtractionService:
         self,
         host,
         analysis_key: Optional[str] = None,
-    ) -> Optional[StructuredDataResult]:
+    ) -> StructuredDataResult:
         """Retrieve the stored :class:`StructuredDataResult` from a previous ``.extract()`` call.
 
-        Returns the same object that ``.extract()`` returned, or ``None``
-        if the extraction failed.
+        Always returns the result object. Check ``.success`` to see if
+        extraction succeeded and ``.error_message`` for failure details.
         """
         target_key = analysis_key if analysis_key is not None else DEFAULT_STRUCTURED_KEY
 
@@ -635,11 +639,10 @@ class ExtractionService:
 
         if not result.success:
             logger.warning(
-                "Extraction '%s' failed: %s. Returning None.",
+                "Extraction '%s' failed: %s",
                 target_key,
                 result.error_message,
             )
-            return None
 
         return result
 

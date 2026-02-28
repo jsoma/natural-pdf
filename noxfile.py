@@ -16,7 +16,7 @@ import nox
 #    nox -s docs-force
 #
 # 3. Advanced: Execute notebooks only with custom options:
-#    python 01-execute_notebooks.py --force --workers 8
+#    python scripts/01-execute_notebooks.py --force --workers 8
 #
 # ============================================================================
 
@@ -109,7 +109,7 @@ def docs(session):
     """Execute markdown tutorials and run tutorial tests in one command.
 
     This replaces the old two-step process:
-    - OLD: python 01-execute_notebooks.py && nox -s tutorials
+    - OLD: python scripts/01-execute_notebooks.py && nox -s tutorials
     - NEW: nox -s docs
 
     Uses intelligent caching to skip unchanged notebooks.
@@ -131,7 +131,7 @@ def docs(session):
     # First, execute notebooks (convert md to ipynb and run them)
     session.log("Step 1: Executing markdown notebooks...")
     workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
-    session.run("python", "01-execute_notebooks.py", "--workers", workers)
+    session.run("python", "scripts/01-execute_notebooks.py", "--workers", workers)
 
     # Then run tutorial tests
     # Note: These tests verify the notebooks were executed successfully,
@@ -180,7 +180,7 @@ def docs_force(session):
     # Execute notebooks with --force flag
     session.log("Step 1: Force executing all markdown notebooks...")
     workers = os.environ.get("NOTEBOOK_WORKERS", str(os.cpu_count() or 4))
-    session.run("python", "01-execute_notebooks.py", "--force", "--workers", workers)
+    session.run("python", "scripts/01-execute_notebooks.py", "--force", "--workers", workers)
 
     # Run tutorial tests
     # Note: These tests verify the notebooks were executed successfully,

@@ -9,7 +9,7 @@ set -e
 # 4. If publish is successful, push the tag: git push origin vX.Y.Z
 # ----------------------------------------
 
-# --- Check for Git Tag --- 
+# --- Check for Git Tag ---
 # Check if the current commit HEAD is tagged. setuptools-scm uses this tag.
 # Redirect stderr to /dev/null to avoid printing git errors if no tag is found.
 if ! git describe --exact-match --tags HEAD 2> /dev/null; then
@@ -49,7 +49,7 @@ then
     # Publish to PyPI
     echo "\nPublishing to PyPI..."
     python -m twine upload dist/*
-    
+
     # Version extraction and tagging removed - tagging should be done *before* running this script.
     echo "\nPackage published!"
     echo "Remember to push the tag used for this release (e.g., git push origin vX.Y.Z)"
