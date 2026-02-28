@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from PIL import Image
 
-from .layout_options import BaseLayoutOptions
+from .layout_options import BaseLayoutOptions, DetectionContext
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class LayoutDetector(ABC):
 
     Subclasses should also populate the 'supported_classes' set with the document
     element types they can detect (e.g., 'table', 'figure', 'text', 'title').
+
+    Subclasses may define a ``TYPE_MAP`` dict mapping their normalized class names
+    to canonical cross-engine types. Unmapped names pass through as-is.
 
     Attributes:
         logger: Logger instance for the specific detector.
@@ -66,6 +69,10 @@ class LayoutDetector(ABC):
         ```
     """
 
+    # Mapping from engine-native normalized class names to canonical types.
+    # Subclasses override with their specific mappings; unmapped names pass through.
+    TYPE_MAP: Dict[str, str] = {}
+
     def __init__(self):
         """Initializes the base layout detector."""
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -74,7 +81,12 @@ class LayoutDetector(ABC):
         self._model_cache: Dict[str, Any] = {}  # Cache for initialized models
 
     @abstractmethod
-    def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
+    def detect(
+        self,
+        image: Image.Image,
+        options: BaseLayoutOptions,
+        context: Optional[DetectionContext] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Detect layout elements in a given PIL Image.
 
@@ -82,6 +94,7 @@ class LayoutDetector(ABC):
             image: PIL Image of the page to analyze.
             options: An instance of a dataclass inheriting from BaseLayoutOptions
                      containing configuration for this run.
+            context: Optional DetectionContext with page reference and scale factors.
 
         Returns:
             List of standardized detection dictionaries with at least:

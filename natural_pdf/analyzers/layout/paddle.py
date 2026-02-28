@@ -42,18 +42,37 @@ from .table_structure_utils import group_cells_into_rows_and_columns
 class PaddleLayoutDetector(LayoutDetector):
     """Document layout and table structure detector using PaddlePaddle's PP-StructureV3."""
 
-    # Fields that are internal to PaddleLayoutOptions and should not be
-    # forwarded to the PPStructureV3 constructor or included in cache keys.
-    _SKIP_FIELDS = {
-        "confidence",
-        "classes",
-        "exclude_classes",
-        "extra_args",
-        "verbose",
-        "create_cells",
-        "lang",
-        "_internal",
+    TYPE_MAP: Dict[str, str] = {
+        "equation": "formula",
+        "paragraph-title": "heading",
+        "doc-title": "title",
+        "figure-title": "caption",
+        "image": "figure",
+        "table-cell": "table-cell",
+        "table-row": "table-row",
+        "table-column": "table-column",
+        # text, title, figure, table, header, footer, reference pass through as-is
     }
+
+    # Fields forwarded to the PPStructureV3 constructor and included in cache
+    # keys.  Everything else (confidence, classes, extra_args, …) is consumed
+    # by the detector itself and must NOT be passed to the model.
+    #
+    # ``_CACHE_EXTRA_FIELDS`` lists fields that are NOT forwarded to the
+    # constructor but still affect which cached model instance to use (e.g.
+    # ``lang`` triggers English model selection).
+    _ENGINE_FIELDS = {
+        "device",
+        "use_doc_orientation_classify",
+        "use_doc_unwarping",
+        "use_textline_orientation",
+        "use_table_recognition",
+        "use_formula_recognition",
+        "use_chart_recognition",
+        "use_region_detection",
+        "use_seal_recognition",
+    }
+    _CACHE_EXTRA_FIELDS = {"lang"}
 
     def __init__(self):
         super().__init__()
@@ -93,11 +112,12 @@ class PaddleLayoutDetector(LayoutDetector):
         if not isinstance(options, PaddleLayoutOptions):
             options = PaddleLayoutOptions(device=options.device)
 
-        # Collect all model-affecting parameters: dataclass fields + extra_args
+        # Collect model-affecting parameters (allow-list + cache-extra fields)
+        cache_fields = self._ENGINE_FIELDS | self._CACHE_EXTRA_FIELDS
         model_params = tuple(
             (field_name, getattr(options, field_name))
-            for field_name in sorted(options.__dataclass_fields__)
-            if field_name not in self._SKIP_FIELDS
+            for field_name in sorted(cache_fields)
+            if hasattr(options, field_name)
         )
         # Include extra_args that affect model loading (exclude internal keys)
         extra = tuple(
@@ -120,10 +140,10 @@ class PaddleLayoutDetector(LayoutDetector):
 
         self.logger.info(f"Loading PP-StructureV3 model with options: {options}")
 
-        # Build init_args from dataclass fields (excluding internal ones)
+        # Build init_args from allow-listed engine fields only
         init_args = {}
-        for field_name in options.__dataclass_fields__:
-            if field_name in self._SKIP_FIELDS:
+        for field_name in self._ENGINE_FIELDS:
+            if not hasattr(options, field_name):
                 continue
             value = getattr(options, field_name)
             if value is not None:
@@ -149,7 +169,9 @@ class PaddleLayoutDetector(LayoutDetector):
             self.logger.error(f"Failed to load PP-StructureV3 model: {e}", exc_info=True)
             raise
 
-    def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
         """Detect layout elements in an image using PP-StructureV3."""
         if not self.is_available():
             raise RuntimeError("Paddle dependencies (paddlepaddle, paddleocr) not installed.")

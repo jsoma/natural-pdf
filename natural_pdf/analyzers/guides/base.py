@@ -2160,7 +2160,7 @@ class Guides:
             on: Page, Region, PIL Image, or string to display guides on.
                 If None, uses self.context (the object guides were created from).
                 If string 'page', uses the page from self.context.
-            **kwargs: Additional arguments passed to to_image() if applicable.
+            **kwargs: Additional arguments passed to render() if applicable.
 
         Returns:
             PIL Image with guides drawn on it.

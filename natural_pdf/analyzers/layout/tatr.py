@@ -1,7 +1,7 @@
 # layout_detector_tatr.py
 import importlib.util
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from PIL import Image, ImageEnhance
 
@@ -36,6 +36,16 @@ else:
 
 class TableTransformerDetector(LayoutDetector):
     """Table structure detector using Microsoft's Table Transformer (TATR) models."""
+
+    TYPE_MAP: Dict[str, str] = {
+        # TATR types are already canonical table-* names; identity mappings.
+        "table": "table",
+        "table-row": "table-row",
+        "table-column": "table-column",
+        "table-column-header": "table-column-header",
+        "table-projected-row-header": "table-projected-row-header",
+        "table-spanning-cell": "table-spanning-cell",
+    }
 
     # Custom resize transform (keep as nested class or move outside)
     class MaxResize(object):
@@ -192,7 +202,9 @@ class TableTransformerDetector(LayoutDetector):
 
     # --- End Helper Methods ---
 
-    def detect(self, image: Image.Image, options: BaseLayoutOptions) -> List[Dict[str, Any]]:
+    def detect(
+        self, image: Image.Image, options: BaseLayoutOptions, context=None
+    ) -> List[Dict[str, Any]]:
         """Detect tables and their structure in an image."""
         if not self.is_available():
             raise RuntimeError(

@@ -86,8 +86,6 @@ class LayoutService:
         from natural_pdf.elements.element_collection import ElementCollection
 
         kwargs = dict(kwargs)
-        kwargs["existing"] = "replace"
-
         engine = kwargs.get("engine")
 
         try:

@@ -7,8 +7,8 @@ import pytest
 
 from natural_pdf.analyzers.layout.layout_options import (
     BaseLayoutOptions,
-    GeminiLayoutOptions,
     PaddleLayoutOptions,
+    VLMLayoutOptions,
 )
 
 
@@ -43,10 +43,10 @@ class TestPaddleModelName:
 # Bug 2 regression: GeminiLayoutOptions with client survives options copying
 # ---------------------------------------------------------------------------
 class TestOptionsCopying:
-    def test_gemini_options_with_client_survive_replace(self):
-        """dataclasses.replace() should work on GeminiLayoutOptions with a mock client."""
+    def test_vlm_options_with_client_survive_replace(self):
+        """dataclasses.replace() should work on VLMLayoutOptions with a mock client."""
         mock_client = MagicMock()
-        opts = GeminiLayoutOptions(
+        opts = VLMLayoutOptions(
             client=mock_client,
             classes=["table", "figure"],
             extra_args={"temperature": 0.5},
@@ -56,7 +56,6 @@ class TestOptionsCopying:
         copied = dataclasses.replace(
             opts,
             extra_args=dict(opts.extra_args),
-            _internal=dict(opts._internal),
             classes=list(opts.classes) if opts.classes else None,
             exclude_classes=list(opts.exclude_classes) if opts.exclude_classes else None,
         )
@@ -78,7 +77,6 @@ class TestOptionsCopying:
         copied = dataclasses.replace(
             original,
             extra_args=dict(original.extra_args),
-            _internal=dict(original._internal),
             classes=list(original.classes) if original.classes else None,
             exclude_classes=list(original.exclude_classes) if original.exclude_classes else None,
         )
@@ -86,12 +84,10 @@ class TestOptionsCopying:
         # Mutate the copy
         copied.extra_args["new_key"] = "new_value"
         copied.classes.append("figure")
-        copied._internal["_layout_host"] = "test"
 
         # Original should be unchanged
         assert "new_key" not in original.extra_args
         assert original.classes == ["table"]
-        assert "_layout_host" not in original._internal
 
 
 # ---------------------------------------------------------------------------
@@ -121,12 +117,28 @@ class TestInternalContext:
         source = inspect.getsource(LayoutAnalyzer.analyze_layout)
         assert "_page_ref" not in source
 
-    def test_internal_dict_exists_on_base_options(self):
-        """BaseLayoutOptions should have _internal dict field."""
+    def test_internal_dict_removed_from_base_options(self):
+        """BaseLayoutOptions should NOT have _internal dict field (replaced by DetectionContext)."""
         opts = BaseLayoutOptions()
-        assert hasattr(opts, "_internal")
-        assert isinstance(opts._internal, dict)
-        assert opts._internal == {}
+        assert not hasattr(opts, "_internal")
+
+    def test_detection_context_exists(self):
+        """DetectionContext dataclass should be importable and have expected fields."""
+        from natural_pdf.analyzers.layout.layout_options import DetectionContext
+
+        ctx = DetectionContext()
+        assert ctx.layout_host is None
+        assert ctx.img_scale_x == 1.0
+        assert ctx.img_scale_y == 1.0
+
+    def test_detection_context_with_values(self):
+        """DetectionContext should accept values."""
+        from natural_pdf.analyzers.layout.layout_options import DetectionContext
+
+        ctx = DetectionContext(layout_host="page", img_scale_x=2.0, img_scale_y=3.0)
+        assert ctx.layout_host == "page"
+        assert ctx.img_scale_x == 2.0
+        assert ctx.img_scale_y == 3.0
 
 
 # ---------------------------------------------------------------------------
@@ -207,23 +219,150 @@ class TestBuildClassFilters:
 
 
 # ---------------------------------------------------------------------------
-# Review fix: _internal excluded from Paddle cache key and init_args
+# Review fix: Paddle uses _ENGINE_FIELDS allow-list
 # ---------------------------------------------------------------------------
-class TestPaddleInternalExcluded:
-    def test_internal_excluded_from_cache_key(self):
-        """_internal dict should not affect Paddle model cache key."""
+class TestPaddleEngineFields:
+    def test_cache_key_consistent(self):
+        """Paddle model cache key should be consistent for same options."""
         from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
 
         detector = PaddleLayoutDetector()
         opts1 = PaddleLayoutOptions()
         opts2 = PaddleLayoutOptions()
-        opts2._internal["_layout_host"] = "some_page_object"
-        opts2._internal["_img_scale_x"] = 1.5
 
         assert detector._get_cache_key(opts1) == detector._get_cache_key(opts2)
 
-    def test_internal_excluded_from_skip_fields(self):
-        """_internal must be in _SKIP_FIELDS class constant."""
+    def test_cache_key_differs_for_lang(self):
+        """Paddle cache key should differ when lang changes (affects model init)."""
         from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
 
-        assert "_internal" in PaddleLayoutDetector._SKIP_FIELDS
+        detector = PaddleLayoutDetector()
+        opts_default = PaddleLayoutOptions()
+        opts_en = PaddleLayoutOptions(lang="en")
+
+        assert detector._get_cache_key(opts_default) != detector._get_cache_key(opts_en)
+
+    def test_engine_fields_is_allow_list(self):
+        """_ENGINE_FIELDS should contain only fields forwarded to PPStructureV3."""
+        from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
+
+        engine_fields = PaddleLayoutDetector._ENGINE_FIELDS
+        # Must include device and use_* flags
+        assert "device" in engine_fields
+        assert "use_table_recognition" in engine_fields
+        # Must NOT include internal/filtering fields
+        assert "confidence" not in engine_fields
+        assert "classes" not in engine_fields
+        assert "extra_args" not in engine_fields
+        assert "create_cells" not in engine_fields
+        assert "lang" not in engine_fields
+
+    def test_no_skip_fields_attribute(self):
+        """_SKIP_FIELDS should no longer exist (replaced by _ENGINE_FIELDS)."""
+        from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
+
+        assert not hasattr(PaddleLayoutDetector, "_SKIP_FIELDS")
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Canonical type mapping
+# ---------------------------------------------------------------------------
+class TestCanonicalTypeMapping:
+    def test_yolo_plain_text_maps_to_text(self):
+        """YOLO 'plain-text' should map to canonical 'text'."""
+        from natural_pdf.analyzers.layout.yolo import YOLODocLayoutDetector
+
+        assert YOLODocLayoutDetector.TYPE_MAP["plain-text"] == "text"
+
+    def test_yolo_abandon_maps_to_unknown(self):
+        """YOLO 'abandon' should map to canonical 'unknown'."""
+        from natural_pdf.analyzers.layout.yolo import YOLODocLayoutDetector
+
+        assert YOLODocLayoutDetector.TYPE_MAP["abandon"] == "unknown"
+
+    def test_surya_pageheader_maps_to_header(self):
+        """Surya 'pageheader' should map to canonical 'header'."""
+        from natural_pdf.analyzers.layout.surya import SuryaLayoutDetector
+
+        assert SuryaLayoutDetector.TYPE_MAP["pageheader"] == "header"
+
+    def test_surya_sectionheader_maps_to_heading(self):
+        """Surya 'sectionheader' should map to canonical 'heading'."""
+        from natural_pdf.analyzers.layout.surya import SuryaLayoutDetector
+
+        assert SuryaLayoutDetector.TYPE_MAP["sectionheader"] == "heading"
+
+    def test_paddle_equation_maps_to_formula(self):
+        """Paddle 'equation' should map to canonical 'formula'."""
+        from natural_pdf.analyzers.layout.paddle import PaddleLayoutDetector
+
+        assert PaddleLayoutDetector.TYPE_MAP["equation"] == "formula"
+
+    def test_unknown_type_passes_through(self):
+        """Unmapped types should pass through as-is."""
+        from natural_pdf.analyzers.layout.yolo import YOLODocLayoutDetector
+
+        type_map = YOLODocLayoutDetector.TYPE_MAP
+        assert type_map.get("never-seen-before", "never-seen-before") == "never-seen-before"
+
+    def test_base_type_map_is_empty(self):
+        """Base class TYPE_MAP should be empty."""
+        from natural_pdf.analyzers.layout.base import LayoutDetector
+
+        assert LayoutDetector.TYPE_MAP == {}
+
+    def test_vlm_type_map_is_empty(self):
+        """VLM TYPE_MAP should be empty (dynamic classes)."""
+        from natural_pdf.analyzers.layout.vlm import VLMLayoutDetector
+
+        assert VLMLayoutDetector.TYPE_MAP == {}
+
+
+# ---------------------------------------------------------------------------
+# Consensus fix: engine_name_for_options skips deprecated aliases
+# ---------------------------------------------------------------------------
+class TestEngineNameForOptions:
+    def test_returns_canonical_not_alias(self):
+        """engine_name_for_options should return 'vlm', never 'gemini'."""
+        from natural_pdf.analyzers.layout.layout_manager import engine_name_for_options
+        from natural_pdf.analyzers.layout.layout_options import VLMLayoutOptions
+
+        opts = VLMLayoutOptions()
+        name = engine_name_for_options(opts)
+        assert name == "vlm", f"Expected 'vlm' but got '{name}'"
+
+    def test_returns_none_for_unknown_options(self):
+        """engine_name_for_options should return None for unknown options."""
+        from natural_pdf.analyzers.layout.layout_manager import engine_name_for_options
+
+        opts = BaseLayoutOptions()
+        name = engine_name_for_options(opts)
+        # BaseLayoutOptions is parent of all, so it may match the first engine
+        # The important thing is it never returns a deprecated alias
+        if name is not None:
+            from natural_pdf.analyzers.layout.layout_manager import _DEPRECATED_ALIASES
+
+            assert name not in _DEPRECATED_ALIASES
+
+
+# ---------------------------------------------------------------------------
+# Consensus fix: VLM bbox length validation
+# ---------------------------------------------------------------------------
+class TestVLMBboxValidation:
+    def test_malformed_bbox_skipped(self):
+        """VLM detector should skip regions with bbox length != 4."""
+        from natural_pdf.analyzers.layout.layout_options import VLMLayoutOptions
+        from natural_pdf.analyzers.layout.vlm import DetectedRegion, VLMLayoutDetector
+
+        detector = VLMLayoutDetector()
+        opts = VLMLayoutOptions(classes=["table", "figure"])
+
+        parsed = [
+            DetectedRegion(label="table", bbox=[10, 20, 100, 200], confidence=0.9),
+            DetectedRegion(label="figure", bbox=[10, 20, 100], confidence=0.8),  # too short
+            DetectedRegion(label="table", bbox=[1, 2, 3, 4, 5], confidence=0.7),  # too long
+        ]
+        results = detector._filter_detections(parsed, opts)
+        assert len(results) == 1
+        assert results[0]["class"] == "table"
+        assert results[0]["bbox"] == (10, 20, 100, 200)

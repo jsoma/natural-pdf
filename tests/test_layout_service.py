@@ -7,7 +7,6 @@ class _DummyAnalyzer:
         self.host = host
 
     def analyze_layout(self, **kwargs):
-        assert kwargs.get("existing") == "replace"
         return []
 
 
