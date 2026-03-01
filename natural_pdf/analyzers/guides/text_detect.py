@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import Any, Iterable, List, Sequence, Tuple, Union
 
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
-from scipy.signal import find_peaks
 
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.flows.region import FlowRegion
@@ -156,6 +154,9 @@ def _find_gaps_via_minima(density: np.ndarray, min_gap: float, origin: float) ->
     max_density = density.max()
     if max_density <= 0:
         return []
+
+    from scipy.ndimage import gaussian_filter1d
+    from scipy.signal import find_peaks
 
     # Smooth the density to merge character-level noise into column-level hills
     smoothed = gaussian_filter1d(density.astype(float), sigma=2.0)

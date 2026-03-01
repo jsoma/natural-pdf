@@ -399,7 +399,7 @@ class TestOptionsHierarchy:
 
     def test_default_options_defaults(self):
         opts = DefaultCheckboxOptions()
-        assert opts.model_repo == "jsoma/checkbox-detector"
+        assert opts.model_repo == "wendys-llc/checkbox-detector"
         assert opts.model_file == "checkbox_yolo12n.onnx"
         assert opts.model_revision == "v1"
         assert opts.input_size == 1024

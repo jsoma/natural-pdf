@@ -109,6 +109,45 @@ def process_tables_with_rtl(
     return processed
 
 
+def _has_alt_text_regions(region) -> bool:
+    """Return True if *region* contains any child regions with alt_text."""
+    for r in region.page.iter_regions():
+        alt = getattr(r, "alt_text", None)
+        if alt is None or r is region:
+            continue
+        cx = (r.x0 + r.x1) / 2
+        cy = (r.top + r.bottom) / 2
+        if region.x0 <= cx <= region.x1 and region.top <= cy <= region.bottom:
+            return True
+    return False
+
+
+def _extract_tables_via_regions(
+    found_tables,
+    page,
+    *,
+    apply_exclusions: bool,
+) -> List[List[List[Optional[str]]]]:
+    """Re-extract each cell using Region.extract_text() so alt_text is included."""
+    from natural_pdf.elements.region import Region
+
+    result: List[List[List[Optional[str]]]] = []
+    for ft in found_tables:
+        processed_table: List[List[Optional[str]]] = []
+        for row in ft.rows:
+            processed_row: List[Optional[str]] = []
+            for cell_bbox in row.cells:
+                if cell_bbox is None:
+                    processed_row.append(None)
+                    continue
+                cell_region = Region(page, cell_bbox)
+                text = cell_region.extract_text(apply_exclusions=apply_exclusions).strip()
+                processed_row.append(text or None)
+            processed_table.append(processed_row)
+        result.append(processed_table)
+    return result
+
+
 def extract_tables_plumber(
     region,
     table_settings: Dict[str, Any],
@@ -127,6 +166,22 @@ def extract_tables_plumber(
     cropped = crop_page_to_region(filtered_page, region.bbox)
     if cropped is None:
         return []
+
+    if _has_alt_text_regions(region):
+        try:
+            found_tables = cropped.find_tables(table_settings)
+        except Exception:
+            logger.debug(
+                "Region %s: find_tables failed; falling back without alt_text",
+                getattr(region, "bbox", None),
+            )
+            found_tables = None
+
+        if found_tables is not None:
+            tables = _extract_tables_via_regions(
+                found_tables, region.page, apply_exclusions=apply_exclusions
+            )
+            return process_tables_with_rtl(region, tables)
 
     tables = cropped.extract_tables(table_settings)
     return process_tables_with_rtl(region, tables)

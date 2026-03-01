@@ -1,9 +1,10 @@
-"""Default checkbox detector — jsoma/checkbox-detector YOLO12n.
+"""Default checkbox detector — wendys-llc/checkbox-detector YOLO12n.
 
-A 2-class YOLO12n model (checked/unchecked) trained on ~16k tiled
-document images. Detects and classifies in one pass — no separate
-classifier step needed. Uses SAHI tiling at inference for reliable
-detection of small checkboxes on full-page images.
+A 2-class YOLO12n model (checked/unchecked) trained on full-page
+document images (~1000px max side, letterboxed to 1024x1024).
+Detects and classifies in one pass — no separate classifier step.
+Renders at 72 DPI to match training scale; SAHI tiles when the
+rendered image exceeds 1024px.
 
 Only needs onnxruntime + numpy + huggingface_hub.
 """
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class DefaultCheckboxDetector(OnnxCheckboxDetector):
-    """jsoma/checkbox-detector — detects checked/unchecked checkboxes via ONNX."""
+    """wendys-llc/checkbox-detector — detects checked/unchecked checkboxes via ONNX."""
 
     def detect(
         self,
@@ -33,7 +34,6 @@ class DefaultCheckboxDetector(OnnxCheckboxDetector):
         if not isinstance(options, DefaultCheckboxOptions):
             opts = DefaultCheckboxOptions(
                 confidence=options.confidence,
-                resolution=options.resolution,
                 device=options.device,
             )
         else:

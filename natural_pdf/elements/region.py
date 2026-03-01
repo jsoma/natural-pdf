@@ -46,24 +46,19 @@ from natural_pdf.selectors.parser import (
     selector_to_filter_func,
 )
 
-# Table utilities
-from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
-from natural_pdf.services import extraction_service as _extraction_service  # noqa: F401
-from natural_pdf.services import guides_service as _guides_service  # noqa: F401
-from natural_pdf.services import qa_service as _qa_service  # noqa: F401
-from natural_pdf.services import table_service as _table_service  # noqa: F401
+# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables.result import TableResult
 
 # Import new utils
 from natural_pdf.text.operations import (
+    _create_alt_text_char_dict,
     apply_bidi_processing,
     filter_chars_spatially,
     generate_text_layout,
 )
 
-# Import viewer widget support
-from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+# Viewer widget support is lazy-loaded to avoid importing ipywidgets/IPython at startup
 
 if TYPE_CHECKING:
     from PIL.Image import Image
@@ -283,6 +278,9 @@ class Region(
         self.parent_region: Optional["Region"] = parent
         self.child_regions: List["Region"] = []
         self.text_content: Optional[str] = None  # Direct text content (e.g., from Docling)
+        self.alt_text: Optional[str] = (
+            None  # Semantic text for non-text elements (checkboxes, icons)
+        )
         self.associated_text_elements: List[TextElement] = (
             []
         )  # Native text elements that overlap with this region
@@ -1750,6 +1748,12 @@ class Region(
             f"Region {self.bbox}: extract_text called with granularity='{granularity}', overlap='{overlap}', kwargs: {kwargs}"
         )
 
+        # Self short-circuit: if this region carries alt_text, return it directly
+        if self.alt_text is not None:
+            if return_textmap:
+                return self.alt_text, None
+            return self.alt_text
+
         # Handle word-level extraction
         if granularity == "words":
             # Use find_all to get words with proper overlap and exclusion handling
@@ -1787,8 +1791,21 @@ class Region(
             if get_bbox_overlap(self.bbox, word.bbox) is not None:
                 all_char_dicts.extend(getattr(word, "_char_dicts", []))
 
+        # 2b. Inject alt_text from overlapping child regions
+        for region in self.page.iter_regions():
+            region_alt = getattr(region, "alt_text", None)
+            if region is self or region_alt is None:
+                continue
+            # Check if the region's center point falls inside our bbox
+            cx = (region.x0 + region.x1) / 2
+            cy = (region.top + region.bottom) / 2
+            if self.x0 <= cx <= self.x1 and self.top <= cy <= self.bottom:
+                all_char_dicts.append(_create_alt_text_char_dict(region))
+
         if not all_char_dicts:
             logger.debug(f"Region {self.bbox}: No character dicts found overlapping region bbox.")
+            if return_textmap:
+                return "", None
             return ""
 
         # 3. Get Relevant Exclusions (overlapping this region)
@@ -3101,7 +3118,9 @@ class Region(
             an error occurred during creation.
         """
 
-        # Dependency / environment checks
+        # Dependency / environment checks (lazy import to avoid startup cost)
+        from natural_pdf.widgets.viewer import _IPYWIDGETS_AVAILABLE, InteractiveViewerWidget
+
         if not _IPYWIDGETS_AVAILABLE or InteractiveViewerWidget is None:
             logger.error(
                 "Interactive viewer requires 'ipywidgets'. "

@@ -74,6 +74,11 @@ class CheckboxAnalyzer:
 
         logger.info("Detecting checkboxes (engine=%s)", engine_name)
 
+        # Remove old checkbox regions before detection so their alt_text
+        # doesn't interfere with the text-rejection filter on new candidates.
+        if existing.lower() == "replace":
+            self._page.remove_regions(source="checkbox", region_type="checkbox")
+
         if engine_name == "auto":
             detections = self._detect_auto(final_options)
         else:
@@ -104,6 +109,17 @@ class CheckboxAnalyzer:
                 classify=do_classify or has_unknown,
             )
 
+        # Set alt_text based on classification result
+        from natural_pdf import options as _npdf_options
+
+        _alt_cfg = getattr(_npdf_options, "alt_text", None)
+        for region in regions:
+            if region.is_checked is True:
+                region.alt_text = getattr(_alt_cfg, "checkbox_checked", "[CHECKED]")
+            elif region.is_checked is False:
+                region.alt_text = getattr(_alt_cfg, "checkbox_unchecked", "[UNCHECKED]")
+            # is_checked=None → leave alt_text as None
+
         # Apply limit
         if limit is not None and len(regions) > limit:
             regions = sorted(regions, key=lambda r: r.confidence, reverse=True)[:limit]
@@ -111,19 +127,20 @@ class CheckboxAnalyzer:
         return self._store_results(regions, existing)
 
     def _detect_auto(self, options: BaseCheckboxOptions) -> List[Dict[str, Any]]:
-        """Auto-strategy: try default YOLO model first, fall back to vector."""
-        # Default engine is preferred (2-class checked/unchecked YOLO12n)
-        if self._engine_available("default"):
-            results = self._try_engine("default", options)
-            if results:
-                return results
-
-        # Fall back to vector detection (instant, no rendering, but no state classification)
+        """Auto-strategy: vector first for native PDFs, ONNX model for scanned."""
         page_type = self._probe_page_type()
+
+        # Native PDFs: try vector detection first (instant, no rendering)
         if page_type in ("vector", "mixed"):
             vector_results = self._try_engine("vector", options)
             if vector_results:
                 return vector_results
+
+        # Scanned pages or vector found nothing: try ONNX model
+        if self._engine_available("default"):
+            results = self._try_engine("default", options)
+            if results:
+                return results
 
         logger.warning("No checkbox engine available or produced results")
         return []
@@ -132,23 +149,7 @@ class CheckboxAnalyzer:
         self, engine_name: str, options: BaseCheckboxOptions
     ) -> List[Dict[str, Any]]:
         """Run a specific engine."""
-        engine_name = engine_name.lower()
-
-        # Get engine-specific options class and convert if needed
-        opts_class = get_options_class_for_engine(engine_name)
-        if opts_class and not isinstance(options, opts_class):
-            # Convert base options to engine-specific options
-            base_fields = {
-                f.name: getattr(options, f.name)
-                for f in dataclasses.fields(BaseCheckboxOptions)
-                if hasattr(options, f.name)
-            }
-            try:
-                options = opts_class(**base_fields)
-            except TypeError:
-                pass  # Use as-is
-
-        return self._try_engine(engine_name, options) or []
+        return self._try_engine(engine_name.lower(), options) or []
 
     def _try_engine(
         self, engine_name: str, options: BaseCheckboxOptions
@@ -159,6 +160,23 @@ class CheckboxAnalyzer:
         except (LookupError, RuntimeError) as e:
             logger.debug("Engine '%s' not available: %s", engine_name, e)
             return None
+
+        # Convert to engine-specific options before rendering so the
+        # engine's defaults (e.g. resolution, sahi_enabled) take effect.
+        # Only copy fields that differ from BaseCheckboxOptions defaults,
+        # so that engine-specific defaults aren't overridden by base defaults.
+        opts_class = get_options_class_for_engine(engine_name)
+        if opts_class and not isinstance(options, opts_class):
+            override_fields = {}
+            for f in dataclasses.fields(BaseCheckboxOptions):
+                val = getattr(options, f.name, None)
+                default = f.default if f.default is not dataclasses.MISSING else None
+                if val != default:
+                    override_fields[f.name] = val
+            try:
+                options = opts_class(**override_fields)
+            except TypeError:
+                pass
 
         try:
             # Build detection context
@@ -190,7 +208,16 @@ class CheckboxAnalyzer:
                     img_scale_x=img_scale_x,
                     img_scale_y=img_scale_y,
                 )
-                return detector.detect(image, options, context)
+                detections = detector.detect(image, options, context)
+
+                # Stamp actual scale factors so _convert_to_regions
+                # doesn't need to re-render at a potentially different DPI.
+                if detections:
+                    for det in detections:
+                        det["_img_scale_x"] = img_scale_x
+                        det["_img_scale_y"] = img_scale_y
+
+                return detections
 
         except Exception as e:
             logger.error("Engine '%s' failed: %s", engine_name, e, exc_info=True)
@@ -229,12 +256,17 @@ class CheckboxAnalyzer:
                 if coord_space == "pdf":
                     pdf_x0, pdf_y0, pdf_x1, pdf_y1 = bbox
                 elif coord_space == "image":
-                    # Convert image coords to PDF coords
-                    image = self._page.render(resolution=resolution)
-                    if image is None:
-                        continue
-                    scale_x = self._page.width / image.width
-                    scale_y = self._page.height / image.height
+                    # Convert image coords to PDF coords using the scale
+                    # factors from the actual rendered image (stamped by
+                    # _try_engine), falling back to re-rendering.
+                    scale_x = det.get("_img_scale_x")
+                    scale_y = det.get("_img_scale_y")
+                    if scale_x is None or scale_y is None:
+                        image = self._page.render(resolution=resolution)
+                        if image is None:
+                            continue
+                        scale_x = self._page.width / image.width
+                        scale_y = self._page.height / image.height
                     pdf_x0 = bbox[0] * scale_x
                     pdf_y0 = bbox[1] * scale_y
                     pdf_x1 = bbox[2] * scale_x
@@ -298,15 +330,17 @@ class CheckboxAnalyzer:
         return filtered
 
     def _store_results(self, regions: List[Region], existing: str) -> List[Region]:
-        """Store regions on the page and return them."""
-        append_mode = existing.lower() == "append"
-        if not append_mode:
-            self._page.remove_regions(source="checkbox", region_type="checkbox")
+        """Store regions on the page and return them.
 
+        Note: for existing="replace", old regions are already removed
+        at the start of detect() so alt_text doesn't interfere with
+        the text-rejection filter.
+        """
         for region in regions:
             self._page.add_region(region, source="checkbox")
 
         # Update analysis snapshot
+        append_mode = existing.lower() == "append"
         checkbox_analysis = self._page.analyses.setdefault("checkbox", {})
         prior = list(checkbox_analysis.get("regions", [])) if append_mode else []
         checkbox_analysis["regions"] = prior + list(regions)

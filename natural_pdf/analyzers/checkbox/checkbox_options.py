@@ -54,12 +54,18 @@ class OnnxCheckboxOptions(BaseCheckboxOptions):
 
 @dataclass
 class DefaultCheckboxOptions(OnnxCheckboxOptions):
-    """Options for the default jsoma/checkbox-detector YOLO12n model."""
+    """Options for the default wendys-llc/checkbox-detector YOLO12n model.
 
-    model_repo: str = "jsoma/checkbox-detector"
+    Trained on full-page images resized to ~1000px (max side) then
+    letterboxed to 1024x1024.  Checkboxes appear at ~30-35px in that
+    regime.  Rendering at 72 DPI keeps inference scale close to training.
+    """
+
+    model_repo: str = "wendys-llc/checkbox-detector"
     model_file: str = "checkbox_yolo12n.onnx"
     model_revision: Optional[str] = "v1"
     input_size: int = 1024
+    resolution: int = 72  # Matches training scale (~1000px full-page images)
 
 
 @dataclass

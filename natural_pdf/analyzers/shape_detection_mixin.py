@@ -5,10 +5,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence,
 
 import numpy as np
 from PIL import Image
-from scipy.ndimage import binary_closing, binary_opening, find_objects, gaussian_filter1d
-from scipy.ndimage import label as nd_label
-from scipy.signal import find_peaks
-from sklearn.cluster import MiniBatchKMeans
 
 if TYPE_CHECKING:
     from natural_pdf.core.page import Page
@@ -200,6 +196,9 @@ class ShapeDetectionMixin:
         Core image processing logic to detect lines using projection profiling.
         Returns raw line data (image coordinates) and smoothed profiles.
         """
+        from scipy.ndimage import binary_closing, binary_opening, gaussian_filter1d
+        from scipy.signal import find_peaks
+
         if cv_image is None:
             return [], None, None
 
@@ -1135,6 +1134,9 @@ class ShapeDetectionMixin:
                 including black ones.
         """
         import numpy as np
+        from scipy.ndimage import binary_opening, find_objects
+        from scipy.ndimage import label as nd_label
+        from sklearn.cluster import MiniBatchKMeans
 
         # Acquire raster image & scale info
         cv_image, scale_factor, origin_offset_pdf, page_obj = self._get_image_for_detection(

@@ -76,6 +76,12 @@ class Options:
         # Table extraction defaults
         self.tables = ConfigSection(engine="pdfplumber")
 
+        # Alt text defaults for non-text elements (checkboxes, icons, etc.)
+        self.alt_text = ConfigSection(
+            checkbox_checked="[CHECKED]",
+            checkbox_unchecked="[UNCHECKED]",
+        )
+
         # Selector defaults (None = native engine)
         self.selectors = ConfigSection(engine=None)
 
