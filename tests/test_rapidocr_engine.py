@@ -50,7 +50,7 @@ class TestRapidOCROptions:
         opts = RapidOCROptions()
         assert opts.det_model_type == "mobile"
         assert opts.rec_model_type == "mobile"
-        assert opts.det_thresh == 0.3
+        assert opts.box_thresh is None
         assert opts.use_det is True
         assert opts.use_cls is True
         assert opts.use_rec is True
@@ -60,25 +60,25 @@ class TestRapidOCROptions:
         opts = RapidOCROptions(
             det_model_type="server",
             rec_model_type="server",
-            det_thresh=0.5,
+            box_thresh=0.5,
             use_cls=False,
         )
         assert opts.det_model_type == "server"
         assert opts.rec_model_type == "server"
-        assert opts.det_thresh == 0.5
+        assert opts.box_thresh == 0.5
         assert opts.use_cls is False
 
-    def test_det_thresh_validation(self):
+    def test_box_thresh_validation(self):
         # Valid threshold
-        opts = RapidOCROptions(det_thresh=0.5)
-        assert opts.det_thresh == 0.5
+        opts = RapidOCROptions(box_thresh=0.5)
+        assert opts.box_thresh == 0.5
 
         # Threshold at boundaries
-        opts_zero = RapidOCROptions(det_thresh=0.0)
-        assert opts_zero.det_thresh == 0.0
+        opts_zero = RapidOCROptions(box_thresh=0.0)
+        assert opts_zero.box_thresh == 0.0
 
-        opts_one = RapidOCROptions(det_thresh=1.0)
-        assert opts_one.det_thresh == 1.0
+        opts_one = RapidOCROptions(box_thresh=1.0)
+        assert opts_one.box_thresh == 1.0
 
 
 class TestRapidOCREngineStandardization:
