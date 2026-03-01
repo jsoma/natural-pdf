@@ -32,10 +32,8 @@ from natural_pdf.core.render_spec import RenderSpec, Visualizable
 from natural_pdf.elements.base import extract_bbox
 from natural_pdf.elements.element_collection import ElementCollection
 from natural_pdf.selectors.host_mixin import SelectorHostMixin
-from natural_pdf.services import exclusion_service as _exclusion_service  # noqa: F401
-from natural_pdf.services import guides_service as _guides_service  # noqa: F401
-from natural_pdf.services import navigation_service as _navigation_service  # noqa: F401
-from natural_pdf.services import qa_service as _qa_service  # noqa: F401
+
+# Service modules are loaded lazily via the registry in natural_pdf.services.registry
 from natural_pdf.services.base import ServiceHostMixin, resolve_service
 from natural_pdf.tables import TableResult
 
@@ -233,13 +231,16 @@ class FlowRegion(
         detect_only: bool = False,
         apply_exclusions: bool = True,
         replace: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        instructions: Optional[str] = None,
         **kwargs: Any,
     ) -> "FlowRegion":
         """Apply OCR across all constituent regions.
 
         Args:
             engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
-                ``"paddlevl"``, or ``"doctr"``.
+                ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
             options: Engine-specific option object.
             languages: Language codes, e.g. ``["en", "fr"]``.
             min_confidence: Discard results below this confidence (0–1).
@@ -248,6 +249,9 @@ class FlowRegion(
             detect_only: Detect text regions without recognizing characters.
             apply_exclusions: Mask exclusion zones before OCR.
             replace: Remove existing OCR elements first.
+            model: VLM model name — switches to VLM OCR pipeline.
+            client: OpenAI-compatible client — switches to VLM OCR pipeline.
+            instructions: Additional instructions appended to the VLM prompt.
             **kwargs: Extra engine-specific parameters.
 
         Returns:
@@ -266,6 +270,9 @@ class FlowRegion(
                     resolution=resolution,
                     detect_only=detect_only,
                     apply_exclusions=apply_exclusions,
+                    model=model,
+                    client=client,
+                    instructions=instructions,
                     **kwargs,
                 )
         return self

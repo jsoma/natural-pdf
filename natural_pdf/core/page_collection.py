@@ -303,13 +303,16 @@ class PageCollection(
         detect_only: bool = False,
         apply_exclusions: bool = True,
         replace: bool = True,
+        model: Optional[str] = None,
+        client: Optional[Any] = None,
+        instructions: Optional[str] = None,
         **kwargs,
     ):
         """Apply OCR uniformly across all pages in the collection.
 
         Args:
             engine: OCR engine — ``"easyocr"``, ``"surya"``, ``"paddle"``,
-                ``"paddlevl"``, or ``"doctr"``.
+                ``"paddlevl"``, ``"doctr"``, or ``"vlm"``.
             options: Engine-specific option object.
             languages: Language codes, e.g. ``["en", "fr"]``.
             min_confidence: Discard results below this confidence (0–1).
@@ -317,6 +320,9 @@ class PageCollection(
             resolution: DPI for the image sent to the engine.
             detect_only: Detect text regions without recognizing characters.
             apply_exclusions: Mask exclusion zones before OCR.
+            model: VLM model name — switches to VLM OCR pipeline.
+            client: OpenAI-compatible client — switches to VLM OCR pipeline.
+            instructions: Additional instructions appended to the VLM prompt.
             **kwargs: Extra engine-specific parameters.
 
         Returns:
@@ -338,6 +344,9 @@ class PageCollection(
                 resolution=resolution,
                 detect_only=detect_only,
                 apply_exclusions=apply_exclusions,
+                model=model,
+                client=client,
+                instructions=instructions,
                 **kwargs,
             )
         return self
@@ -943,6 +952,8 @@ class PageCollection(
 
     def analyze_layout(self, *args, **kwargs):
         return self.services.layout.analyze_layout(self, *args, **kwargs)
+
+    detect_layout = analyze_layout
 
     def highlights(self, show: bool = False) -> "HighlightContext":
         """

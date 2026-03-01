@@ -38,11 +38,6 @@ from collections import Counter
 from collections.abc import Iterable
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
-from colormath2.color_conversions import convert_color  # type: ignore[import-untyped]
-from colormath2.color_diff import delta_e_cie2000  # type: ignore[import-untyped]
-from colormath2.color_objects import LabColor, sRGBColor  # type: ignore[import-untyped]
-from colour import Color  # type: ignore[import-untyped]
-
 from natural_pdf.selectors.registry import (
     ClauseEvalContext,
     get_attribute_handler,
@@ -50,6 +45,10 @@ from natural_pdf.selectors.registry import (
     get_pseudo_handler,
     get_relational_handler,
 )
+
+# colormath2 and colour are lazy-imported in color utility functions below
+# to avoid pulling in networkx (~94ms) at startup.
+
 
 logger = logging.getLogger(__name__)
 
@@ -249,6 +248,8 @@ def safe_parse_color(value_str: str) -> tuple[float, float, float]:
 
     # Try as a color name or hex
     try:
+        from colour import Color  # type: ignore[import-untyped]
+
         color = Color(value_str)
         return (float(color.red), float(color.green), float(color.blue))
     except (ValueError, AttributeError) as e:
@@ -708,6 +709,8 @@ def _is_color_value(value) -> bool:
         if isinstance(value, (list, tuple)) and len(value) >= 3:
             return True
         # Otherwise try parsing as a color name/hex
+        from colour import Color  # type: ignore[import-untyped]
+
         Color(value)
         return True
     except (ValueError, TypeError, AttributeError):
@@ -721,6 +724,8 @@ def _extract_rgb_triplet(value: Any) -> tuple[float, float, float]:
             raise ValueError("Color tuples must include at least three components.")
         r, g, b = value[0], value[1], value[2]
     else:
+        from colour import Color  # type: ignore[import-untyped]
+
         rgb_sequence = cast(Sequence[float], Color(value).rgb)
         r, g, b = rgb_sequence[0], rgb_sequence[1], rgb_sequence[2]
     return float(r), float(g), float(b)
@@ -735,6 +740,10 @@ def _color_distance(color1: Any, color2: Any) -> float:
         Delta E value, or float('inf') if colors can't be compared
     """
     try:
+        from colormath2.color_conversions import convert_color  # type: ignore[import-untyped]
+        from colormath2.color_diff import delta_e_cie2000  # type: ignore[import-untyped]
+        from colormath2.color_objects import LabColor, sRGBColor  # type: ignore[import-untyped]
+
         # Convert to RGB tuples
         rgb1 = sRGBColor(*_extract_rgb_triplet(color1))
         rgb2 = sRGBColor(*_extract_rgb_triplet(color2))
